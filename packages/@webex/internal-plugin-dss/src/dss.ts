@@ -228,12 +228,11 @@ const DSS = WebexPlugin.extend({
    * Uses a batcher to make the request to the directory service
    * @param {Object} options
    * @param {string} options.resource the URL to query
-   * @param {string} options.requestType the type of lookup 'id' or 'email' (for error messages)
    * @param {string} options.value the id or email to lookup
    * @returns {Promise} Resolves with an array of entities found
    */
   _batchedLookup(options) {
-    const {resource, requestType, lookupValue} = options;
+    const {resource, lookupValue} = options;
     const dataPath = 'lookupResult.entities';
     const entitiesFoundPath = 'entitiesFound';
     const entitiesNotFoundPath = 'entitiesNotFound';
@@ -243,7 +242,6 @@ const DSS = WebexPlugin.extend({
       this.batchers[resource] ||
       new DssBatcher({
         resource,
-        requestType,
         dataPath,
         entitiesFoundPath,
         entitiesNotFoundPath,
@@ -258,13 +256,12 @@ const DSS = WebexPlugin.extend({
    * Retrieves detailed information about an entity
    * @param {Object} options
    * @param {UUID} options.id the id of the entity to lookup
-   * @returns {Promise} Resolves with the entity found or rejects if not found
+   * @returns {Promise} Resolves with the entity found or null if not found
    */
   lookupDetail(options: LookupDetailOptions) {
     const {id} = options;
 
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/identity/${id}/detail`;
-    const requestType = 'id';
 
     return this._request({
       dataPath: 'lookupResult.entities',
@@ -276,7 +273,7 @@ const DSS = WebexPlugin.extend({
         return resultArray[0];
       }
 
-      return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
+      return null;
     });
   },
 
@@ -286,7 +283,7 @@ const DSS = WebexPlugin.extend({
    * @param {UUID} options.id the id of the entity to lookup
    * @param {UUID} options.entityProviderType the provider to query (optional)
    * @param {Boolean} options.shouldBatch whether to batch the query, set to false for single immediate result (defaults to true)
-   * @returns {Promise} Resolves with the entity found or rejects if not found
+   * @returns {Promise} Resolves with the entity found or null if not found
    */
   lookup(options: LookupOptions) {
     const {id, entityProviderType, shouldBatch = true} = options;
@@ -294,12 +291,10 @@ const DSS = WebexPlugin.extend({
     const resource = entityProviderType ?
       `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}` :
       `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
-    const requestType = 'id';
 
     if (shouldBatch) {
       return this._batchedLookup({
         resource,
-        requestType,
         lookupValue: id,
       });
     }
@@ -316,7 +311,7 @@ const DSS = WebexPlugin.extend({
         return resultArray[0];
       }
 
-      return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
+      return null;
     });
   },
 
@@ -329,7 +324,6 @@ const DSS = WebexPlugin.extend({
   lookupByEmail(options: LookupByEmailOptions) {
     const {email} = options;
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/emails`;
-    const requestType = 'email';
 
     return this._request({
       dataPath: 'lookupResult.entities',
@@ -343,7 +337,7 @@ const DSS = WebexPlugin.extend({
         return resultArray[0];
       }
 
-      return Promise.reject(new Error(`DSS entity with ${requestType} ${email} was not found`));
+      return null;
     });
   },
 

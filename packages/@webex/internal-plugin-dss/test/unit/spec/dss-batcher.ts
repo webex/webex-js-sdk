@@ -24,7 +24,6 @@ describe('plugin-dss', () => {
       });
       batcher = new DssBatcher({
         resource: 'fakeResource',
-        requestType: 'fakeRequestType',
         dataPath: 'fakeDataPath',
         entitiesFoundPath: 'fakeEntitiesFoundPath',
         entitiesNotFoundPath: 'fakeEntitiesNotFoundPath',
@@ -101,15 +100,16 @@ describe('plugin-dss', () => {
     });
 
     describe('#handleItemFailure', () => {
-      it('rejects defer for item', async () => {
+      it('resolves defer for item with null', async () => {
         const defer = new Defer();
 
         batcher.getDeferredForResponse = sinon.stub().returns(Promise.resolve(defer));
         const result = await batcher.handleItemFailure({requestValue: 'some request'});
+        const deferValue = await defer.promise;
 
         expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([{requestValue: 'some request'}]);
         expect(result).to.be.undefined;
-        await expect(defer.promise).to.be.rejectedWith(Error, 'DSS entity with fakeRequestType some request was not found');
+        expect(deferValue).to.be.null;
       });
     });
 

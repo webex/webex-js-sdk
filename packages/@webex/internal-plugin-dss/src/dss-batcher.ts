@@ -18,12 +18,6 @@ const DssBatcher = Batcher.extend({
       setOnce: true,
       allowNull: false,
     },
-    requestType: {
-      type: 'string',
-      required: true,
-      setOnce: true,
-      allowNull: false,
-    },
     dataPath: {
       type: 'string',
       required: true,
@@ -89,22 +83,18 @@ const DssBatcher = Batcher.extend({
   },
 
   /**
-   * Finds the Defer for the specified item and rejects its promise
-   * Intended to be overridden
+   * Finds the Defer for the specified item and resolves its promise with null
    * @param {Object} item
    * @returns {Promise<undefined>}
    */
   handleItemFailure(item) {
     return this.getDeferredForResponse(item).then((defer) => {
-      defer.reject(
-        new Error(`DSS entity with ${this.requestType} ${item.requestValue} was not found`)
-      );
+      defer.resolve(null);
     });
   },
 
   /**
    * Finds the Defer for the specified item and resolves its promise
-   * Intended to be overridden
    * @param {Object} item
    * @returns {Promise<undefined>}
    */

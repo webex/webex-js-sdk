@@ -236,7 +236,9 @@ describe('plugin-dss', () => {
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with id test id was not found');
+        const result = await promise;
+
+        expect(result).to.be.null;
       });
     });
 
@@ -320,7 +322,9 @@ describe('plugin-dss', () => {
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
+        const result = await promise;
+
+        expect(result).to.be.null;
       });
 
       it('calls _batchedLookup correctly', async () => {
@@ -334,7 +338,6 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/identities',
-            requestType: 'id',
             lookupValue: 'id1',
           },
         ]);
@@ -355,7 +358,6 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
-            requestType: 'id',
             lookupValue: 'id1',
           },
         ]);
@@ -410,7 +412,9 @@ describe('plugin-dss', () => {
             {entitiesFound: [], entitiesNotFound: ['id1']})
         );
 
-        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
+        const result = await promises[0];
+
+        expect(result).to.be.null;
       });
 
       it('Batch of 2 lookups is made after 50 ms and works', async () => {
@@ -471,7 +475,10 @@ describe('plugin-dss', () => {
           createData('randomid1', 0, true, 'lookupResult.entities', ['data2'],
             {entitiesFound: ['id2'], entitiesNotFound: ['id1']})
         );
-        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
+        const result1 = await promises[0];
+
+        expect(result1).to.be.null;
+
         const result2 = await promises[1];
 
         expect(result2).to.equal('data2');
@@ -553,7 +560,9 @@ describe('plugin-dss', () => {
           createData('randomid2', 0, true, 'lookupResult.entities', ['data2'],
             {entitiesFound: ['id2'], entitiesNotFound: []})
         );
-        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
+        const result1 = await promises[0];
+
+        expect(result1).to.be.null;
         const result2 = await promises[1];
 
         expect(result2).to.equal('data2');
@@ -615,7 +624,9 @@ describe('plugin-dss', () => {
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with email email1 was not found');
+        const result = await promise;
+
+        expect(result).to.be.null;
       });
     });
 
@@ -839,7 +850,6 @@ describe('plugin-dss', () => {
 
         const result = await webex.internal.dss._batchedLookup({
           resource,
-          requestType: 'id',
           lookupValue: 'id1',
         });
 
@@ -847,7 +857,6 @@ describe('plugin-dss', () => {
 
         expect(batcher).to.exist;
         expect(batcher.resource).to.equal(resource);
-        expect(batcher.requestType).to.equal('id');
         checkStandardProperties(batcher);
 
         expect(Batcher.prototype.request.getCall(0).args).to.deep.equal(['id1']);
@@ -869,13 +878,11 @@ describe('plugin-dss', () => {
 
         await webex.internal.dss._batchedLookup({
           resource: resource1,
-          requestType: 'idtype1',
           lookupValue: 'id1',
         });
 
         const result = await webex.internal.dss._batchedLookup({
           resource: resource2,
-          requestType: 'idtype2',
           lookupValue: 'id2',
         });
 
@@ -884,7 +891,6 @@ describe('plugin-dss', () => {
 
         expect(batcher).to.exist;
         expect(batcher.resource).to.equal(resource2);
-        expect(batcher.requestType).to.equal('idtype2');
         checkStandardProperties(batcher);
 
         expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
@@ -905,7 +911,6 @@ describe('plugin-dss', () => {
 
         await webex.internal.dss._batchedLookup({
           resource: resource1,
-          requestType: 'idtype1',
           lookupValue: 'id1',
         });
         expect(webex.internal.dss.batchers[resource1]).to.exist;
@@ -913,7 +918,6 @@ describe('plugin-dss', () => {
 
         const result = await webex.internal.dss._batchedLookup({
           resource: resource1,
-          requestType: 'idtype2',
           lookupValue: 'id2',
         });
 
@@ -921,7 +925,6 @@ describe('plugin-dss', () => {
 
         expect(batcher).to.equal(initialBatcher);
         expect(batcher.resource).to.equal(resource1);
-        expect(batcher.requestType).to.equal('idtype1');
         checkStandardProperties(batcher);
 
         expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
