@@ -26,6 +26,7 @@ import {
   _SLIDES_
 } from '../constants';
 import {Reaction} from '../reactions/reactions.type';
+import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 
 /**
  * @class MeetingRequest
@@ -779,7 +780,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {string} options.senderID
    * @returns {Promise}
    */
-  sendReaction({ reactionChannelUrl, reaction, participantId }: { reactionChannelUrl: string, reaction: Reaction, participantId: string }) {
+  sendReaction({ reactionChannelUrl, reaction, participantId }: SendReactionOptions) {
     const uri = reactionChannelUrl;
 
     // @ts-ignore
@@ -789,6 +790,27 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body: {
         sender: {participantId},
         reaction,
+      }
+    });
+  }
+
+  /**
+   * Make a network request to enable or disable reactions.
+   * @param {boolean} options.enable - determines if we need to enable or disable.
+   * @param {locusUrl} options.locusUrl
+   * @returns {Promise}
+   */
+  toggleReactions({ enable, locusUrl, requestingParticipantId }: ToggleReactionsOptions) {
+    const uri = `${locusUrl}/${CONTROLS}`;
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri,
+      body: {
+        reactions: {
+          enabled: enable
+        },
+        requestingParticipantId,
       }
     });
   }

@@ -302,5 +302,24 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.reaction, reaction);
       });
     });
+
+    describe('#toggleReactions', () => {
+      it('sends request to toggleReactions', async () => {
+        const locusUrl = 'locusUrl';
+        const requestingParticipantId = 'requestingParticipantId';
+
+        await meetingsRequest.toggleReactions({
+          enable: true,
+          locusUrl,
+          requestingParticipantId
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'PUT');
+        assert.equal(requestParams.uri, `${locusUrl}/controls`);
+        assert.equal(requestParams.body.reactions.enabled, true);
+        assert.equal(requestParams.body.requestingParticipantId, requestingParticipantId);
+      });
+    });
   });
 });

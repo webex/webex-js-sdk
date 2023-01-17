@@ -5016,6 +5016,70 @@ describe('plugin-meetings', () => {
           });
         });
       });
+      describe('#toggleReactions', () => {
+        it('should have #toggleReactions', () => {
+          assert.exists(meeting.toggleReactions);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.toggleReactions = sinon.stub().returns(Promise.resolve());
+        });
+
+        it('should toggle the reactions with the right data and return a promise', async () => {
+          meeting.locusUrl = 'locusUrl';
+          meeting.locusInfo.controls = {reactions: {enabled: false}};
+
+
+          const togglePromise = meeting.toggleReactions(true);
+
+          assert.exists(togglePromise.then);
+          await togglePromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.toggleReactions, {
+            locusUrl: 'locusUrl',
+            enable: true,
+            requestingParticipantId: meeting.members.selfId,
+          });
+        });
+
+        it('should resolve immediately if already enabled', async () => {
+          meeting.locusUrl = 'locusUrl';
+          meeting.locusInfo.controls = {reactions: {enabled: true}};
+
+          const togglePromise = meeting.toggleReactions(true);
+
+          const response = await togglePromise;
+
+          assert.equal(response, 'Reactions are already enabled.');
+          assert.notCalled(meeting.meetingRequest.toggleReactions);
+        });
+
+        it('should resolve immediately if already disabled', async () => {
+          meeting.locusUrl = 'locusUrl';
+          meeting.locusInfo.controls = {reactions: {enabled: false}};
+
+          const togglePromise = meeting.toggleReactions(false);
+
+          const response = await togglePromise;
+
+          assert.equal(response, 'Reactions are already disabled.');
+          assert.notCalled(meeting.meetingRequest.toggleReactions);
+        });
+
+        it('should toggle reactions on if controls is undefined and enable = true', async () => {
+          meeting.locusUrl = 'locusUrl';
+          meeting.locusInfo.controls = undefined;
+
+          const togglePromise = meeting.toggleReactions(true);
+
+          assert.exists(togglePromise.then);
+          await togglePromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.toggleReactions, {
+            locusUrl: 'locusUrl',
+            enable: true,
+            requestingParticipantId: meeting.members.selfId,
+          });
+        });
+      });
     });
   });
 });
