@@ -72,7 +72,7 @@ MemberUtil.isAssociatedSame = (participant: any, id: string) =>
  * @param {String} status
  * @returns {Boolean}
  */
-MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string) =>
+MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string): boolean =>
   participant &&
   participant.guest &&
   ((participant.devices &&
@@ -82,6 +82,7 @@ MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string) 
     // @ts-ignore
     isGuest &&
     status === _IN_LOBBY_) ||
+    // @ts-ignore
     !status === _IN_MEETING_);
 
 /**

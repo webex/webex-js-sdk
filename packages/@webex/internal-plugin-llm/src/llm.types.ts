@@ -6,4 +6,4 @@ interface ILLMChannel {
   disconnectLLM: () => Promise<void>;
 }
 // eslint-disable-next-line import/prefer-default-export
-export {ILLMChannel};
+export type {ILLMChannel};
