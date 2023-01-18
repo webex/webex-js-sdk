@@ -27,7 +27,7 @@ export default class EmbargoInterceptor extends Interceptor {
       const {device} = this.webex.internal;
       const loggerMessage = [
         'Received `HTTP 451 Unavailable For Legal Reasons`, ',
-        'discarding credentials and device registration'
+        'discarding credentials and device registration',
       ].join('');
 
       if (device) {

@@ -19,7 +19,7 @@ const waitForSpy = (spy, event) => {
           resolve(spy.args[0][0]);
         }
       }, 1000);
-    })
+    }),
   ]);
 };
 
@@ -40,7 +40,7 @@ const waitForStateChange = (meeting, state) => {
           resolve(meeting.locusInfo.parsedLocus.states);
         }
       }, 1000);
-    })
+    }),
   ]);
 };
 
@@ -59,44 +59,46 @@ const waitForCallEnded = (user, email) => {
           clearTimeout(timer);
           clearInterval(interval);
           resolve();
-        }
-        else {
+        } else {
           console.log('MEETING STILL EXISTS!', user.webex.meetings.getAllMeetings());
         }
       }, 3000);
-    })
+    }),
   ]);
 };
 
-const syncAndEndMeeting = (user) => user.webex.meetings.syncMeetings()
-  .then(() => {
-    const promise = [];
-    const meetings = user.webex.meetings.getAllMeetings();
+const syncAndEndMeeting = (user) =>
+  user.webex.meetings
+    .syncMeetings()
+    .then(() => {
+      const promise = [];
+      const meetings = user.webex.meetings.getAllMeetings();
 
-    if (Object.keys(meetings).length === 0) {
-      return Promise.resolve();
-    }
-    Object.keys(meetings)
-      .forEach((key) => {
+      if (Object.keys(meetings).length === 0) {
+        return Promise.resolve();
+      }
+      Object.keys(meetings).forEach((key) => {
         promise.push(meetings[key].leave());
       });
 
-    return Promise.all(promise);
-  })
-  .then(() => new Promise((resolve) => {
-    const interval = setInterval(() => {
-      if (Object.keys(user.webex.meetings.getAllMeetings()).length === 0) {
-        clearInterval(interval);
-        resolve();
-      }
-      else {
-        console.log('End Meetings before test failed');
-      }
-    }, 3000);
-  }))
-  .catch((e) => {
-    console.log('ERROR on syncMeeting', e);
-  });
+      return Promise.all(promise);
+    })
+    .then(
+      () =>
+        new Promise((resolve) => {
+          const interval = setInterval(() => {
+            if (Object.keys(user.webex.meetings.getAllMeetings()).length === 0) {
+              clearInterval(interval);
+              resolve();
+            } else {
+              console.log('End Meetings before test failed');
+            }
+          }, 3000);
+        })
+    )
+    .catch((e) => {
+      console.log('ERROR on syncMeeting', e);
+    });
 
 //
 const waitForEvents = (scopeEvents, timeout = max) => {
@@ -125,11 +127,12 @@ const waitForEvents = (scopeEvents, timeout = max) => {
               obj.user.memberId = value.meeting.locusInfo.parsedLocus.selfId;
             }
             if (obj.event === 'meeting:removed') {
-              console.log(`MEETING:REMOVED ${obj.user.name} ID ${obj.user.meeting.id} correlationID ${obj.user.meeting.correlationId}`);
+              console.log(
+                `MEETING:REMOVED ${obj.user.name} ID ${obj.user.meeting.id} correlationID ${obj.user.meeting.correlationId}`
+              );
               if (obj.user.meeting.id === value.meetingId) {
                 obj.user.meeting = null;
-              }
-              else {
+              } else {
                 console.log('MEETING EXISTING ', obj.user.webex.meetings.getAllMeetings());
                 reject(new Error(`Different Meeting Object ${value}`));
               }
@@ -142,8 +145,7 @@ const waitForEvents = (scopeEvents, timeout = max) => {
 
                 resolve(result);
               }
-            }
-            else if (result.length === scopeEvents.length) {
+            } else if (result.length === scopeEvents.length) {
               resolve(result);
               obj.scope.off(obj.event, handler);
               clearTimeout(timer);
@@ -152,12 +154,11 @@ const waitForEvents = (scopeEvents, timeout = max) => {
 
           obj.scope.on(obj.event, handler);
         });
-      }
-      catch (e) {
+      } catch (e) {
         console.error('waitForEvents', e);
         reject(e);
       }
-    })
+    }),
   ]);
 };
 
@@ -172,25 +173,27 @@ const delayedPromise = (promise) => {
     }),
     new Promise((resolve, reject) => {
       setTimeout(() => {
-        promise.then((res) => {
-          resolve(res);
-          clearTimeout(timer);
-        })
+        promise
+          .then((res) => {
+            resolve(res);
+            clearTimeout(timer);
+          })
           .catch((e) => {
             console.error('delayedPromise', e);
             reject(e);
           });
       }, 2000);
-    })
+    }),
   ]);
 };
 
-const delayedTest = (callback, timeout) => new Promise((resolve) => {
-  setTimeout(() => {
-    callback();
-    resolve();
-  }, timeout);
-});
+const delayedTest = (callback, timeout) =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      callback();
+      resolve();
+    }, timeout);
+  });
 
 const addMedia = (user) => {
   const mediaReadyPromises = {
@@ -209,23 +212,26 @@ const addMedia = (user) => {
 
   user.meeting.on('media:ready', mediaReady);
 
-  return user.meeting.getMediaStreams({
-    sendAudio: true,
-    sendVideo: true,
-    sendShare: false
-  })
-    .then(([localStream, localShare]) => user.meeting.addMedia({
-      mediaSettings: {
-        sendAudio: true,
-        sendVideo: true,
-        sendShare: false,
-        receiveShare: true,
-        receiveAudio: true,
-        receiveVideo: true
-      },
-      localShare,
-      localStream
-    }))
+  return user.meeting
+    .getMediaStreams({
+      sendAudio: true,
+      sendVideo: true,
+      sendShare: false,
+    })
+    .then(([localStream, localShare]) =>
+      user.meeting.addMedia({
+        mediaSettings: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveShare: true,
+          receiveAudio: true,
+          receiveVideo: true,
+        },
+        localShare,
+        localStream,
+      })
+    )
     .then(() => Promise.all(Object.values(mediaReadyPromises).map((defer) => defer.promise)))
     .then(() => {
       assert.exists(user.meeting.mediaProperties.audioTrack, 'audioTrack not present');
@@ -233,11 +239,12 @@ const addMedia = (user) => {
     });
 };
 
-const waitUntil = (waitTime) => new Promise((resolve) => {
-  setTimeout(() => {
-    resolve();
-  }, waitTime);
-});
+const waitUntil = (waitTime) =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, waitTime);
+  });
 
 const flushPromises = () => new Promise(setImmediate);
 
@@ -259,7 +266,10 @@ const getCircularReplacer = () => {
 
 // this function is meant to be used as the "match" callback with waitForEvents()
 // when you want to wait for a particular users's status to reach a certain value
-const checkParticipantUpdatedStatus = (user, expectedStatus) => (event) => !!event.delta.updated.find((member) => user.meeting.members.selfId === member.id && member.status === expectedStatus);
+const checkParticipantUpdatedStatus = (user, expectedStatus) => (event) =>
+  !!event.delta.updated.find(
+    (member) => user.meeting.members.selfId === member.id && member.status === expectedStatus
+  );
 
 export default {
   waitForSpy,
@@ -273,6 +283,5 @@ export default {
   waitUntil,
   delayedTest,
   flushPromises,
-  getCircularReplacer
+  getCircularReplacer,
 };
-

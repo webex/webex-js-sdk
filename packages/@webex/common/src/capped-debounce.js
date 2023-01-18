@@ -31,7 +31,8 @@ export default function debounce(fn, wait, options) {
 
   const {maxCalls, maxWait} = options;
   let count = 0;
-  let maxWaitTimer, waitTimer;
+  let maxWaitTimer;
+  let waitTimer;
 
   return function wrapper() {
     count += 1;

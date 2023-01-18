@@ -20,15 +20,20 @@ module.exports = function injectPackageVersion() {
        */
       CallExpression(path) {
         if (t.isMemberExpression(path.get('callee'))) {
-          if (path.node.callee.object.name === 'WebexPlugin' && path.node.callee.property.name === 'extend') {
+          if (
+            path.node.callee.object.name === 'WebexPlugin' &&
+            path.node.callee.property.name === 'extend'
+          ) {
             const def = path.node.arguments[0];
-            const visited = def.properties.reduce((acc, p) => acc || t.isObjectProperty(p, {key: 'version'}), false);
+            const visited = def.properties.reduce(
+              (acc, p) => acc || t.isObjectProperty(p, {key: 'version'}),
+              false
+            );
 
             if (!visited) {
-              def.properties.push(t.objectProperty(
-                t.identifier('version'),
-                t.stringLiteral(version)
-              ));
+              def.properties.push(
+                t.objectProperty(t.identifier('version'), t.stringLiteral(version))
+              );
             }
           }
         }
@@ -41,7 +46,7 @@ module.exports = function injectPackageVersion() {
         if (path.node.name === 'PACKAGE_VERSION') {
           path.replaceWithSourceString(`\`${version}\``);
         }
-      }
-    }
+      },
+    },
   };
 };

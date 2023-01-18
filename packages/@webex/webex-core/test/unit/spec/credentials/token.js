@@ -24,13 +24,19 @@ describe('webex-core', () => {
       });
 
       function makeToken(options = {}) {
-        return new Token(Object.assign({
-          access_token: 'AT',
-          expires_in: 10000,
-          token_type: 'Fake',
-          refresh_token: 'RT',
-          refresh_token_expires_in: 20000
-        }, options), {parent: webex});
+        return new Token(
+          Object.assign(
+            {
+              access_token: 'AT',
+              expires_in: 10000,
+              token_type: 'Fake',
+              refresh_token: 'RT',
+              refresh_token_expires_in: 20000,
+            },
+            options
+          ),
+          {parent: webex}
+        );
       }
 
       describe('#canAuthorize', () => {
@@ -154,7 +160,10 @@ describe('webex-core', () => {
         it('requires an unexpired access token', () => {
           const token = makeToken({expires: Date.now() - 10000});
 
-          return assert.isRejected(token.downscope('spark:kms'), /cannot downscope expired access token/);
+          return assert.isRejected(
+            token.downscope('spark:kms'),
+            /cannot downscope expired access token/
+          );
         });
 
         it('alphabetizes the requested scope', () => {
@@ -162,7 +171,8 @@ describe('webex-core', () => {
 
           webex.request.returns(Promise.resolve({body: {access_token: 'AT2'}}));
 
-          return token.downscope('b a')
+          return token
+            .downscope('b a')
             .then(() => assert.equal(webex.request.args[0][0].form.scope, 'a b'));
         });
       });
@@ -189,7 +199,7 @@ describe('webex-core', () => {
 
         it('infers token_type from an access token string', () => {
           const t = new Token({
-            access_token: 'Fake AT'
+            access_token: 'Fake AT',
           });
 
           assert.equal(t.access_token, 'AT');
@@ -203,17 +213,17 @@ describe('webex-core', () => {
             expires_in: 6000,
             refresh_token_expires_in: 12000,
             expires: null,
-            refresh_token_expires: null
+            refresh_token_expires: null,
           });
 
           assert.approximately(t.expires, 6000000 + now, 5);
           assert.approximately(t.refresh_token_expires, 12000000 + now, 5);
         });
 
-        it('alphabetizes the token\'s scopes', () => {
+        it("alphabetizes the token's scopes", () => {
           const t = new Token({
             access_token: 'AT',
-            scope: 'b a'
+            scope: 'b a',
           });
 
           assert.equal(t.scope, 'a b');
@@ -222,7 +232,7 @@ describe('webex-core', () => {
         it('it sets a timer to set Token#_isExpired (and therefore Token#isExpired)', () => {
           const t = makeToken({
             // Reminder: expires_in is in seconds, ticks are in miliseconds
-            expires_in: 1
+            expires_in: 1,
           });
 
           assert.isFalse(t.isExpired);
@@ -251,37 +261,39 @@ describe('webex-core', () => {
         browserOnly(it)('refreshes the access_token', () => {
           const token = makeToken();
 
-          webex.config.credentials.refreshCallback = sinon.stub().returns(Promise.resolve({
-            access_token: 'AT2',
-            expires_in: 10000,
-            token_type: 'Fake'
-          }));
+          webex.config.credentials.refreshCallback = sinon.stub().returns(
+            Promise.resolve({
+              access_token: 'AT2',
+              expires_in: 10000,
+              token_type: 'Fake',
+            })
+          );
 
           // FIXME this next line should be necessary. we need a better way to
           // do config
           token.trigger('change:config');
 
-          return token.refresh()
-            .then((token2) => {
-              assert.equal(token2.access_token, 'AT2');
-            });
+          return token.refresh().then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+          });
         });
 
         nodeOnly(it)('refreshes the access_token', () => {
           const token = makeToken();
 
-          webex.request.onCall(0).returns(Promise.resolve({
-            body: {
-              access_token: 'AT2',
-              expires_in: 10000,
-              token_type: 'Fake'
-            }
-          }));
+          webex.request.onCall(0).returns(
+            Promise.resolve({
+              body: {
+                access_token: 'AT2',
+                expires_in: 10000,
+                token_type: 'Fake',
+              },
+            })
+          );
 
-          return token.refresh()
-            .then((token2) => {
-              assert.equal(token2.access_token, 'AT2');
-            });
+          return token.refresh().then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+          });
         });
 
         browserOnly(it)('revokes the previous token when set', () => {
@@ -290,23 +302,28 @@ describe('webex-core', () => {
           sinon.spy(token, 'revoke');
           webex.config.credentials.refreshCallback = sinon.stub();
 
-          webex.config.credentials.refreshCallback.onCall(0).returns(Promise.resolve({
-            access_token: 'AT2',
-            expires_in: 10000,
-            token_type: 'Fake'
-          }));
+          webex.config.credentials.refreshCallback.onCall(0).returns(
+            Promise.resolve({
+              access_token: 'AT2',
+              expires_in: 10000,
+              token_type: 'Fake',
+            })
+          );
 
-          webex.config.credentials.refreshCallback.onCall(1).returns(Promise.resolve({
-            access_token: 'AT3',
-            expires_in: 10000,
-            token_type: 'Fake'
-          }));
+          webex.config.credentials.refreshCallback.onCall(1).returns(
+            Promise.resolve({
+              access_token: 'AT3',
+              expires_in: 10000,
+              token_type: 'Fake',
+            })
+          );
 
           // FIXME this next line should be necessary. we need a better way to
           // do config
           token.trigger('change:config');
 
-          return token.refresh()
+          return token
+            .refresh()
             .then((token2) => {
               assert.isTrue(token.canRefresh);
               assert.notCalled(token.revoke);
@@ -324,23 +341,28 @@ describe('webex-core', () => {
 
           sinon.spy(token, 'revoke');
 
-          webex.request.onCall(0).returns(Promise.resolve({
-            body: {
-              access_token: 'AT2',
-              expires_in: 10000,
-              token_type: 'Fake'
-            }
-          }));
+          webex.request.onCall(0).returns(
+            Promise.resolve({
+              body: {
+                access_token: 'AT2',
+                expires_in: 10000,
+                token_type: 'Fake',
+              },
+            })
+          );
 
-          webex.request.onCall(1).returns(Promise.resolve({
-            body: {
-              access_token: 'AT3',
-              expires_in: 10000,
-              token_type: 'Fake'
-            }
-          }));
+          webex.request.onCall(1).returns(
+            Promise.resolve({
+              body: {
+                access_token: 'AT3',
+                expires_in: 10000,
+                token_type: 'Fake',
+              },
+            })
+          );
 
-          return token.refresh()
+          return token
+            .refresh()
             .then((token2) => {
               assert.isTrue(token.canRefresh);
               assert.notCalled(token.revoke);
@@ -359,8 +381,7 @@ describe('webex-core', () => {
           it('is a noop', () => {
             const token = makeToken({expires: Date.now() - 10000});
 
-            return token.revoke()
-              .then(() => assert.notCalled(webex.request));
+            return token.revoke().then(() => assert.notCalled(webex.request));
           });
         });
 
@@ -370,8 +391,7 @@ describe('webex-core', () => {
 
             token.unset('access_token');
 
-            return token.revoke()
-              .then(() => assert.notCalled(webex.request));
+            return token.revoke().then(() => assert.notCalled(webex.request));
           });
         });
 
@@ -385,23 +405,21 @@ describe('webex-core', () => {
 
             token.unset('access_token');
 
-            return token.revoke()
-              .then(() => assert.notCalled(webex.request));
+            return token.revoke().then(() => assert.notCalled(webex.request));
           });
         });
 
         it('unsets the access_token and related values', () => {
           const token = makeToken();
 
-          return token.revoke()
-            .then(() => {
-              assert.isUndefined(token.access_token);
-              assert.isUndefined(token.expires);
-              assert.isUndefined(token.expires_in);
-              assert.isDefined(token.refresh_token);
-              assert.isDefined(token.refresh_token_expires);
-              assert.isDefined(token.refresh_token_expires_in);
-            });
+          return token.revoke().then(() => {
+            assert.isUndefined(token.access_token);
+            assert.isUndefined(token.expires);
+            assert.isUndefined(token.expires_in);
+            assert.isDefined(token.refresh_token);
+            assert.isDefined(token.refresh_token_expires);
+            assert.isDefined(token.refresh_token_expires_in);
+          });
         });
       });
 

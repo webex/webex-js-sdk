@@ -1,4 +1,3 @@
-
 import {debounce} from 'lodash';
 
 import {
@@ -11,7 +10,7 @@ import {
   DEFAULT_SUBSCRIPTION_TTL,
   APHELEIA_SUBSCRIPTION_UPDATE,
   PRESENCE_UPDATE,
-  ENVELOPE_TYPE
+  ENVELOPE_TYPE,
 } from './constants';
 
 /**
@@ -46,12 +45,15 @@ export default class PresenceWorker {
 
     this.webex = webex;
 
-    const mercury = this.webex.internal.mercury.connected ?
-      Promise.resolve() : this.webex.internal.mercury.connect();
+    const mercury = this.webex.internal.mercury.connected
+      ? Promise.resolve()
+      : this.webex.internal.mercury.connect();
 
     mercury.then(() => {
-      this.webex.internal.mercury.on(APHELEIA_SUBSCRIPTION_UPDATE,
-        this.subscriptionUpdate.bind(this));
+      this.webex.internal.mercury.on(
+        APHELEIA_SUBSCRIPTION_UPDATE,
+        this.subscriptionUpdate.bind(this)
+      );
     });
 
     setInterval(this.groundskeeper.bind(this), GROUNDSKEEPER_INTERVAL);
@@ -67,7 +69,7 @@ export default class PresenceWorker {
 
     this.webex.internal.presence.emitEvent(PRESENCE_UPDATE, {
       type: ENVELOPE_TYPE.SUBSCRIPTION,
-      payload: event.data
+      payload: event.data,
     });
   }
 
@@ -81,8 +83,7 @@ export default class PresenceWorker {
 
     if (this.watchers[id]) {
       this.watchers[id] += 1;
-    }
-    else {
+    } else {
       this.watchers[id] = 1;
     }
 
@@ -98,9 +99,10 @@ export default class PresenceWorker {
     // not in flight or
     // don't already have the presence or
     // presence has gone stale
-    if (!this.flights[id] &&
-        (!this.presences[id] ||
-        this.presences[id] < now - UPDATE_PRESENCE_DELAY)) {
+    if (
+      !this.flights[id] &&
+      (!this.presences[id] || this.presences[id] < now - UPDATE_PRESENCE_DELAY)
+    ) {
       this.fetchers[id] = id;
       this.debouncedFetch();
     }
@@ -133,23 +135,21 @@ export default class PresenceWorker {
     Object.assign(this.flights, boarding);
     this.fetchers = {};
 
+    this.webex.internal.presence.list(Object.keys(boarding)).then((response) => {
+      const now = new Date().getTime();
 
-    this.webex.internal.presence.list(Object.keys(boarding))
-      .then((response) => {
-        const now = new Date().getTime();
+      response.statusList.forEach((presence) => {
+        const id = presence.subject;
 
-        response.statusList.forEach((presence) => {
-          const id = presence.subject;
-
-          delete this.flights[id];
-          this.presences[id] = now;
-        });
-
-        this.webex.internal.presence.emitEvent(PRESENCE_UPDATE, {
-          type: ENVELOPE_TYPE.PRESENCE,
-          payload: response
-        });
+        delete this.flights[id];
+        this.presences[id] = now;
       });
+
+      this.webex.internal.presence.emitEvent(PRESENCE_UPDATE, {
+        type: ENVELOPE_TYPE.PRESENCE,
+        payload: response,
+      });
+    });
   }
 
   debouncedFetch = debounce(this.checkFetchers, FETCH_DELAY);
@@ -192,11 +192,9 @@ export default class PresenceWorker {
 
       if (expiration) {
         // Renew subscription if they're about to expire
-        if (this.watchers[id] &&
-            now > expiration - PREMATURE_EXPIRATION_SUBSCRIPTION_TIME) {
+        if (this.watchers[id] && now > expiration - PREMATURE_EXPIRATION_SUBSCRIPTION_TIME) {
           renewIds.push(id);
-        }
-        else if (now > expiration) {
+        } else if (now > expiration) {
           delete this.subscribers[id];
         }
       }
@@ -228,7 +226,7 @@ export default class PresenceWorker {
     if (trash.length) {
       this.webex.internal.presence.emitEvent(PRESENCE_UPDATE, {
         type: ENVELOPE_TYPE.DELETE,
-        payload: trash
+        payload: trash,
       });
     }
   }
@@ -245,32 +243,26 @@ export default class PresenceWorker {
     const campers = this.checkCampers();
     const renewSubscriptions = this.checkSubscriptions();
 
-    const ids = [
-      ...campers,
-      ...renewSubscriptions
-    ];
+    const ids = [...campers, ...renewSubscriptions];
 
     if (ids.length) {
-      this.webex.internal.presence.subscribe(ids)
-        .then((body) => {
-          const now = new Date().getTime();
+      this.webex.internal.presence.subscribe(ids).then((body) => {
+        const now = new Date().getTime();
 
-          body.responses.forEach((response) => {
-            if (response.responseCode === 200) {
-              const ttl = response.subscriptionTtl * 1000;
+        body.responses.forEach((response) => {
+          if (response.responseCode === 200) {
+            const ttl = response.subscriptionTtl * 1000;
 
-              this.subscribers[response.subject] = now + ttl;
-              this.presences[response.status.subject] = now;
-            }
-            else {
-              // If it errored for any reason, set the ttl so we clean it out eventually
-              this.subscribers[response.subject] = now + DEFAULT_SUBSCRIPTION_TTL;
-            }
-          });
+            this.subscribers[response.subject] = now + ttl;
+            this.presences[response.status.subject] = now;
+          } else {
+            // If it errored for any reason, set the ttl so we clean it out eventually
+            this.subscribers[response.subject] = now + DEFAULT_SUBSCRIPTION_TTL;
+          }
         });
+      });
     }
 
     this.cleanPresences();
   }
 }
-

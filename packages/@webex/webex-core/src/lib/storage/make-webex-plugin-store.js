@@ -28,12 +28,10 @@ function serialize(value) {
     if (isArray(val)) {
       if (val.length === 0) {
         serialized[key] = undefined;
-      }
-      else {
+      } else {
         serialized[key] = val.map(serialize);
       }
-    }
-    else if (isObject(val)) {
+    } else if (isObject(val)) {
       Object.keys(val).forEach((k) => {
         val[k] = serialize(val[k]);
       });
@@ -102,12 +100,11 @@ export default function makeWebexPluginStorage(type, context) {
         defers.get(this).set(key, defer);
       }
 
-      return context.webex[`${type}Storage`].get(context.getNamespace(), key)
-        .then((res) => {
-          defer.resolve();
+      return context.webex[`${type}Storage`].get(context.getNamespace(), key).then((res) => {
+        defer.resolve();
 
-          return res;
-        });
+        return res;
+      });
     }
 
     /**
@@ -129,11 +126,15 @@ export default function makeWebexPluginStorage(type, context) {
      * @returns {Promise}
      */
     waitFor(key) {
-      context.logger.debug(`plugin-storage(${context.getNamespace()}): waiting to init key \`${key}\``);
+      context.logger.debug(
+        `plugin-storage(${context.getNamespace()}): waiting to init key \`${key}\``
+      );
       const defer = defers.get(this).get(key);
 
       if (defer) {
-        context.logger.debug(`plugin-storage(${context.getNamespace()}): already inited \`${key}\``);
+        context.logger.debug(
+          `plugin-storage(${context.getNamespace()}): already inited \`${key}\``
+        );
 
         return defer.promise;
       }
@@ -160,19 +161,22 @@ export default function makeWebexPluginStorage(type, context) {
 
       // Intentionally bypasses this.get so we don't resolve the promise until
       // after the parent value is set.
-      context.webex[`${type}Storage`].get(context.getNamespace(), key)
+      context.webex[`${type}Storage`]
+        .get(context.getNamespace(), key)
         .then((value) => {
-          context.logger.debug(`plugin-storage(${context.getNamespace()}): got \`${key}\` for first time`);
+          context.logger.debug(
+            `plugin-storage(${context.getNamespace()}): got \`${key}\` for first time`
+          );
           if (key === '@') {
             context.parent.set(value);
-          }
-          else if (result(context[key], 'isState')) {
+          } else if (result(context[key], 'isState')) {
             context[key].set(value);
-          }
-          else {
+          } else {
             context.set(key, value);
           }
-          context.logger.debug(`plugin-storage(${context.getNamespace()}): set \`${key}\` for first time`);
+          context.logger.debug(
+            `plugin-storage(${context.getNamespace()}): set \`${key}\` for first time`
+          );
           defer.resolve();
           context.logger.debug(`plugin-storage(${context.getNamespace()}): inited \`${key}\``);
         })
@@ -180,12 +184,21 @@ export default function makeWebexPluginStorage(type, context) {
           // The  next conditional is a bit of an unfortunate solution to deal
           // with circular dependencies in unit tests. It should not effect
           // integration tests or production code.
-          if (reason instanceof NotFoundError || process.env.NODE_ENV !== 'production' && reason.toString().includes('MockNotFoundError')) {
-            context.logger.debug(`plugin-storage(${context.getNamespace()}): no data for \`${key}\`, continuing`);
+          if (
+            reason instanceof NotFoundError ||
+            (process.env.NODE_ENV !== 'production' &&
+              reason.toString().includes('MockNotFoundError'))
+          ) {
+            context.logger.debug(
+              `plugin-storage(${context.getNamespace()}): no data for \`${key}\`, continuing`
+            );
 
             return defer.resolve();
           }
-          context.logger.warn(`plugin-storage(${context.getNamespace()}): failed to init \`${key}\``, reason);
+          context.logger.warn(
+            `plugin-storage(${context.getNamespace()}): failed to init \`${key}\``,
+            reason
+          );
 
           return defer.reject(reason);
         });

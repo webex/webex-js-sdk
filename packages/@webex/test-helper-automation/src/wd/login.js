@@ -19,7 +19,7 @@ const wd = require('wd');
 wd.addPromiseChainMethod('login', function login(user, options) {
   options = options || {};
   defaults(options, {
-    remainingRetries: 3
+    remainingRetries: 3,
   });
 
   if (!user.email) {
@@ -30,15 +30,10 @@ wd.addPromiseChainMethod('login', function login(user, options) {
     throw new Error('`user.password` is required');
   }
 
-  return this
-    .hasElementByCssSelector('#IDToken1[readonly]')
+  return this.hasElementByCssSelector('#IDToken1[readonly]')
     .then((emailAlreadyEntered) => {
       if (!emailAlreadyEntered) {
-        return this
-          .elementById('IDToken1')
-          .sendKeys(user.email)
-          .elementById('IDButton2')
-          .click();
+        return this.elementById('IDToken1').sendKeys(user.email).elementById('IDButton2').click();
       }
 
       return this;

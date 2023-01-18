@@ -17,67 +17,74 @@ describe('plugin-authorization-browser', function () {
     describe.skip('Implicit Grant', () => {
       let browser, user;
 
-      before(() => testUsers.create({count: 1})
-        .then((users) => {
+      before(() =>
+        testUsers.create({count: 1}).then((users) => {
           user = users[0];
-        }));
+        })
+      );
 
-      before(() => createBrowser(pkg)
-        .then((b) => {
+      before(() =>
+        createBrowser(pkg).then((b) => {
           browser = b;
-        }));
+        })
+      );
 
       after(() => browser && browser.printLogs());
 
-      after(() => browser && browser.quit()
-        .catch((reason) => {
-          console.warn(reason);
-        }));
+      after(
+        () =>
+          browser &&
+          browser.quit().catch((reason) => {
+            console.warn(reason);
+          })
+      );
 
-      it('authorizes a user', () => browser
-        .get(`${redirectUri}/${pkg.name}`)
-        .waitForElementByClassName('ready')
-        .title()
+      it('authorizes a user', () =>
+        browser
+          .get(`${redirectUri}/${pkg.name}`)
+          .waitForElementByClassName('ready')
+          .title()
           .should.eventually.become('Authorization Automation Test')
-        .waitForElementByCssSelector('[title="Login with Implicit Grant"]')
+          .waitForElementByCssSelector('[title="Login with Implicit Grant"]')
           .click()
-        .login(user)
-        .waitForElementByClassName('authorization-automation-test')
-        .waitForElementByCssSelector('#ping-complete:not(:empty)')
+          .login(user)
+          .waitForElementByClassName('authorization-automation-test')
+          .waitForElementByCssSelector('#ping-complete:not(:empty)')
           .text()
-            .should.eventually.become('success'));
+          .should.eventually.become('success'));
 
-      it('is still logged in after reloading the page', () => browser
-        .waitForElementById('access-token')
+      it('is still logged in after reloading the page', () =>
+        browser
+          .waitForElementById('access-token')
           .text()
-            .should.eventually.not.be.empty
-        .url()
+          .should.eventually.not.be.empty.url()
           .then((url) => browser.get(url))
-        .sleep(500)
-        .waitForElementById('access-token')
-          .text()
-            .should.eventually.not.be.empty);
+          .sleep(500)
+          .waitForElementById('access-token')
+          .text().should.eventually.not.be.empty);
 
-      it('logs out a user', () => browser
-        .title()
+      it('logs out a user', () =>
+        browser
+          .title()
           .should.eventually.become('Authorization Automation Test')
-        .waitForElementByCssSelector('[title="Logout"]')
+          .waitForElementByCssSelector('[title="Logout"]')
           .click()
-        // We need to revoke three tokens before the window.location assignment.
-        // So far, I haven't found any ques to wait for, so sleep seems to be
-        // the only option.
-        .sleep(3000)
-        .title()
+          // We need to revoke three tokens before the window.location assignment.
+          // So far, I haven't found any ques to wait for, so sleep seems to be
+          // the only option.
+          .sleep(3000)
+          .title()
           .should.eventually.become('Redirect Dispatcher')
-        .get(`${redirectUri}/${pkg.name}`)
-        .title()
+          .get(`${redirectUri}/${pkg.name}`)
+          .title()
           .should.eventually.become('Authorization Automation Test')
-        .waitForElementById('access-token')
+          .waitForElementById('access-token')
           .text()
-            .should.eventually.be.empty
-        .waitForElementByCssSelector('[title="Login with Implicit Grant"]')
+          .should.eventually.be.empty.waitForElementByCssSelector(
+            '[title="Login with Implicit Grant"]'
+          )
           .click()
-        .waitForElementById('IDToken1'));
+          .waitForElementById('IDToken1'));
     });
   });
 });

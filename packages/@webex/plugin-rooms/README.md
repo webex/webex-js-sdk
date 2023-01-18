@@ -29,15 +29,12 @@ npm install --save @webex/plugin-rooms
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.rooms.get(id)
-  .then((room) => {
-    console.log(room);
-  })
-
+webex.rooms.get(id).then((room) => {
+  console.log(room);
+});
 ```
 
 ## Maintainers

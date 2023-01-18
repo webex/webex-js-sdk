@@ -40,16 +40,18 @@ export default class UserUUIDStore {
     }
 
     if (!patterns.email.test(user.emailAddress)) {
-      return Promise.reject(new Error('`user.emailAddress` does not appear to be an email address'));
+      return Promise.reject(
+        new Error('`user.emailAddress` does not appear to be an email address')
+      );
     }
 
     const p1 = this.getById(user.id)
-      .then((u) => usersById.get(this).set(user.id, Object.assign({}, u, user)))
-      .catch(() => usersById.get(this).set(user.id, Object.assign({}, user)));
+      .then((u) => usersById.get(this).set(user.id, {...u, ...user}))
+      .catch(() => usersById.get(this).set(user.id, {...user}));
 
     const p2 = this.getByEmail(user.emailAddress)
-      .then((u) => usersByEmail.get(this).set(user.emailAddress, Object.assign({}, u, user)))
-      .catch(() => usersByEmail.get(this).set(user.emailAddress, Object.assign({}, user)));
+      .then((u) => usersByEmail.get(this).set(user.emailAddress, {...u, ...user}))
+      .catch(() => usersByEmail.get(this).set(user.emailAddress, {...user}));
 
     return Promise.all([p1, p2]);
   }
@@ -85,7 +87,6 @@ export default class UserUUIDStore {
 
     return Promise.reject(new Error('No user found by specified id'));
   }
-
 
   /**
    * Retrieves the specified user object by id from the store

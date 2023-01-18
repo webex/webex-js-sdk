@@ -48,13 +48,16 @@ export default function mixinWebexInternalCorePlugins(State, config, interceptor
 
     if (options.onBeforeLogout) {
       config.onBeforeLogout = config.onBeforeLogout || [];
-      const onBeforeLogout = isArray(options.onBeforeLogout) ? options.onBeforeLogout : [options.onBeforeLogout];
+      const onBeforeLogout = isArray(options.onBeforeLogout)
+        ? options.onBeforeLogout
+        : [options.onBeforeLogout];
 
       onBeforeLogout.forEach((fn) =>
         config.onBeforeLogout.push({
           plugin: name,
-          fn
-        }));
+          fn,
+        })
+      );
     }
 
     // Only mess with the plugin's derived properties if it's an amp-state plugin
@@ -62,7 +65,7 @@ export default function mixinWebexInternalCorePlugins(State, config, interceptor
       const {fn, depList} = State.prototype._derived.ready;
       const def = {
         deps: depList.concat(`${name}.ready`),
-        fn
+        fn,
       };
 
       createDerivedProperty(State.prototype, 'ready', def);
@@ -84,7 +87,7 @@ function createDerivedProperty(modelProto, name, definition) {
   const def = (modelProto._derived[name] = {
     fn: isFunction(definition) ? definition : definition.fn,
     cache: definition.cache !== false,
-    depList: definition.deps || []
+    depList: definition.deps || [],
   });
 
   // add to our shared dependency list
@@ -99,6 +102,6 @@ function createDerivedProperty(modelProto, name, definition) {
     },
     set() {
       throw new TypeError(`\`${name}\` is a derived property, it can't be set directly.`);
-    }
+    },
   });
 }

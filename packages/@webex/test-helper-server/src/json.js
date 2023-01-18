@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 const bodyParser = require(`body-parser`);
 const express = require(`express`);
 const reflect = require(`./reflect`);
@@ -17,7 +16,7 @@ router.use(bodyParser.json());
 
 router.get(`/get`, (req, res) => {
   res.send({
-    isObject: true
+    isObject: true,
   });
 });
 

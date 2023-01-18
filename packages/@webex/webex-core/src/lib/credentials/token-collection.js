@@ -11,7 +11,7 @@ const TokenCollection = AmpCollection.extend({
 
   model: Token,
 
-  namespace: 'Credentials'
+  namespace: 'Credentials',
 });
 
 export default TokenCollection;

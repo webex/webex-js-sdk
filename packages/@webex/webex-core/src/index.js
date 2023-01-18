@@ -13,13 +13,7 @@ import './plugins/logger';
 import './lib/credentials';
 import './lib/services';
 
-export {
-  Credentials,
-  filterScope,
-  grantErrors,
-  sortScope,
-  Token
-} from './lib/credentials';
+export {Credentials, filterScope, grantErrors, sortScope, Token} from './lib/credentials';
 
 export {
   constants as serviceConstants,
@@ -30,7 +24,7 @@ export {
   ServerErrorInterceptor,
   Services,
   ServiceHost,
-  ServiceUrl
+  ServiceUrl,
 } from './lib/services';
 
 export {
@@ -40,14 +34,10 @@ export {
   NotFoundError,
   persist,
   StorageError,
-  waitForValue
+  waitForValue,
 } from './lib/storage';
 
-export {
-  default,
-  registerPlugin,
-  registerInternalPlugin
-} from './webex-core';
+export {default, registerPlugin, registerInternalPlugin} from './webex-core';
 
 export {default as WebexHttpError} from './lib/webex-http-error';
 export {default as StatelessWebexPlugin} from './lib/stateless-webex-plugin';

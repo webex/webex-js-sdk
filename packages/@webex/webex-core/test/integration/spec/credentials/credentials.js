@@ -14,10 +14,11 @@ describe('webex-core', () => {
   describe('Credentials', () => {
     let user;
 
-    before(() => testUsers.create({count: 1})
-      .then(([u]) => {
+    before(() =>
+      testUsers.create({count: 1}).then(([u]) => {
         user = u;
-      }));
+      })
+    );
 
     describe('#config', () => {
       let webex;
@@ -28,15 +29,12 @@ describe('webex-core', () => {
         webex = new WebexCore({
           config: {
             credentials: {
-              authorizationString: `${authorizeUrl}?example=value`
-            }
-          }
+              authorizationString: `${authorizeUrl}?example=value`,
+            },
+          },
         });
 
-        assert.equal(
-          webex.config.credentials.authorizeUrl,
-          authorizeUrl
-        );
+        assert.equal(webex.config.credentials.authorizeUrl, authorizeUrl);
       });
     });
 
@@ -46,7 +44,7 @@ describe('webex-core', () => {
 
       beforeEach('generate the webex instance', () => {
         webex = new WebexCore({
-          credentials: user.token
+          credentials: user.token,
         });
 
         credentials = webex.credentials;
@@ -65,7 +63,7 @@ describe('webex-core', () => {
 
       beforeEach('generate a JWT and Webex Instance', () => {
         webex = new WebexCore({
-          credentials: user.token
+          credentials: user.token,
         });
 
         credentials = webex.credentials;
@@ -85,7 +83,7 @@ describe('webex-core', () => {
 
       beforeEach('define webex', () => {
         webex = new WebexCore({
-          credentials: user.token
+          credentials: user.token,
         });
 
         credentials = webex.credentials;
@@ -102,20 +100,19 @@ describe('webex-core', () => {
     describe('#refresh()', () => {
       nodeOnly(it)('refreshes an access token', () => {
         const webex = new WebexCore({
-          credentials: user.token
+          credentials: user.token,
         });
 
-        return webex.credentials.refresh()
-          .then(() => {
-            assert.isDefined(user.token.access_token);
-            assert.isDefined(webex.credentials.supertoken.access_token);
-            assert.notEqual(webex.credentials.supertoken.access_token, user.token.access_token);
-          });
+        return webex.credentials.refresh().then(() => {
+          assert.isDefined(user.token.access_token);
+          assert.isDefined(webex.credentials.supertoken.access_token);
+          assert.notEqual(webex.credentials.supertoken.access_token, user.token.access_token);
+        });
       });
 
       browserOnly(it)('throws without a refresh callback', () => {
         const webex = new WebexCore({
-          credentials: user.token
+          credentials: user.token,
         });
 
         return assert.isRejected(webex.credentials.refresh());
@@ -126,17 +123,16 @@ describe('webex-core', () => {
           credentials: user.token,
           config: {
             credentials: {
-              refreshCallback
-            }
-          }
+              refreshCallback,
+            },
+          },
         });
 
-        return webex.credentials.refresh()
-          .then(() => {
-            assert.isDefined(user.token.access_token);
-            assert.isDefined(webex.credentials.supertoken.access_token);
-            assert.notEqual(webex.credentials.supertoken.access_token, user.token.access_token);
-          });
+        return webex.credentials.refresh().then(() => {
+          assert.isDefined(user.token.access_token);
+          assert.isDefined(webex.credentials.supertoken.access_token);
+          assert.notEqual(webex.credentials.supertoken.access_token, user.token.access_token);
+        });
       });
     });
   });

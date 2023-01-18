@@ -35,8 +35,8 @@ describe('webex-core', () => {
         it('adds a networkEnd time to options.$timings', () => {
           const options = {
             $timings: {
-              networkStart: Date.now() - 100
-            }
+              networkStart: Date.now() - 100,
+            },
           };
 
           interceptor.onResponse(options);

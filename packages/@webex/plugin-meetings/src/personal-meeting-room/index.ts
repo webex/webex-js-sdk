@@ -6,7 +6,6 @@ import ParameterError from '../common/errors/parameter';
 
 import PersonalMeetingRoomRequest from './request';
 
-
 /**
  * @class PersonalMeetingRoom
  */
@@ -36,7 +35,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {Object}
      * @public
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.pmr = null;
     /**
      * The pmr sip Uri
@@ -44,7 +43,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {String}
      * @public
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.sipUri = null;
     /**
      * The pmr link
@@ -52,7 +51,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {String}
      * @public
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.link = null;
     /**
      * The pmr server object
@@ -60,7 +59,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {Object}
      * @public
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.userId = null;
     /**
      * The pmr name
@@ -68,7 +67,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {String}
      * @public
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.name = null;
     /**
      * The meeting info request server interface
@@ -76,7 +75,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {MeetingInfo}
      * @private
      * @memberof PersonalMeetingRoom
-    */
+     */
     this.meetingInfo = attrs.meetingInfo;
     /**
      * The pmr server request interface
@@ -84,7 +83,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
      * @type {Object}
      * @private
      * @memberof PersonalMeetingRoom
-    */
+     */
     // @ts-ignore
     this.personalMeetingRoomRequest = new PersonalMeetingRoomRequest({}, options);
   }
@@ -98,20 +97,19 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
    * @public
    * @memberof PersonalMeetingRoom
    */
-  public claim(link: string, pin: string, preferred: boolean = true) {
+  public claim(link: string, pin: string, preferred = true) {
     const options = {
       // @ts-ignore
       userId: this.webex.internal.device.userId,
       passcode: pin,
       meetingAddress: link,
-      preferred
+      preferred,
     };
 
     return this.personalMeetingRoomRequest.claimPmr(options).then((pmr) => {
       if (pmr && pmr.body) {
         this.set(pmr.body);
-      }
-      else {
+      } else {
         return Promise.reject(new ParameterError('No PMR body provided. PMR values not updated.'));
       }
 
@@ -143,15 +141,13 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
    */
   public get() {
     const options = {
-      type: _PERSONAL_ROOM_
-
+      type: _PERSONAL_ROOM_,
     };
 
     return this.meetingInfo.fetchMeetingInfo(options).then((pmr) => {
       if (pmr && pmr.body && pmr.body.isPmr) {
         this.set(pmr.body);
-      }
-      else {
+      } else {
         return Promise.reject(new TypeError('The PMR requested is NOT a PMR. PMR values not set.'));
       }
 

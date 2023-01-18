@@ -3,7 +3,6 @@ import ParameterError from '../common/errors/parameter';
 
 import MeetingInfoUtil from './util';
 
-
 /**
  * @class MeetingInfoRequest
  */
@@ -30,10 +29,17 @@ export default class MeetingInfoRequest {
    */
   fetchMeetingInfo(options: any) {
     if (!options || !options.type || !options.destination) {
-      throw new ParameterError('MeetingInfo should be fetched with a type and destination specified, see list of valid types and their corresponding values in constants');
+      throw new ParameterError(
+        'MeetingInfo should be fetched with a type and destination specified, see list of valid types and their corresponding values in constants'
+      );
     }
     const resourceUrl = MeetingInfoUtil.getResourceUrl(options.type, options.destination);
-    const requestParams = MeetingInfoUtil.getRequestParams(resourceUrl, options.type, options.destination, API.LOCUS);
+    const requestParams = MeetingInfoUtil.getRequestParams(
+      resourceUrl,
+      options.type,
+      options.destination,
+      API.LOCUS
+    );
 
     return this.webex.request(requestParams);
   }

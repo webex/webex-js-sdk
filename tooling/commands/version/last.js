@@ -11,5 +11,5 @@ module.exports = {
   builder: {},
   handler: wrapHandler(async () => {
     console.log(await last());
-  })
+  }),
 };

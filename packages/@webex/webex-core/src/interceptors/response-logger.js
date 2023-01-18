@@ -36,12 +36,10 @@ export default class ResponseLoggerInterceptor extends Interceptor {
       logger.info('timestamp (end): ', now.getTime(), now.toISOString());
       if (typeof response.body === 'string' || isBuffer(response.body)) {
         logger.info('Response: ', 'Not printed, it`s probably a file');
-      }
-      else if (typeof response.body === 'object') {
+      } else if (typeof response.body === 'object') {
         try {
           logger.info('Response: ', util.inspect(omit(response.body, 'features'), {depth: null}));
-        }
-        catch (err) {
+        } catch (err) {
           logger.info('Response: ', '[Not Serializable]', err);
         }
       }
@@ -68,8 +66,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
       logger.info('timestamp (end): ', now.getTime(), now.toISOString());
       try {
         logger.error('Response: ', util.inspect(reason.body, {depth: null}));
-      }
-      catch (err) {
+      } catch (err) {
         logger.error('Response: ', reason.body);
       }
     }
@@ -88,8 +85,14 @@ export default class ResponseLoggerInterceptor extends Interceptor {
     const logger = get(this, 'webex.logger', console);
 
     logger.info('Status Code:', response.statusCode);
-    logger.info('WEBEX_TRACKINGID:', get(options, 'headers.trackingid') || get(response, 'headers.trackingid'));
+    logger.info(
+      'WEBEX_TRACKINGID:',
+      get(options, 'headers.trackingid') || get(response, 'headers.trackingid')
+    );
     logger.info('Network duration:', options.$timings.networkEnd - options.$timings.networkStart);
-    logger.info('Processing duration:', options.$timings.requestEnd - options.$timings.requestStart);
+    logger.info(
+      'Processing duration:',
+      options.$timings.requestEnd - options.$timings.requestStart
+    );
   }
 }

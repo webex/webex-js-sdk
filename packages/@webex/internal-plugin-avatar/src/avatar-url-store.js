@@ -102,7 +102,7 @@ export default class AvatarUrlStore {
    * @returns {Promise<true>}
    */
   remove(item) {
-    const sizes = item.size && [item.size] || [40, 50, 80, 110, 135, 192, 640, 1600];
+    const sizes = (item.size && [item.size]) || [40, 50, 80, 110, 135, 192, 640, 1600];
 
     sizes.forEach((one) => urlByUuid.get(this).delete(`${item.uuid} - ${one}`));
 

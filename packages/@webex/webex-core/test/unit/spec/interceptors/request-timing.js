@@ -24,7 +24,7 @@ describe('webex-core', () => {
 
         it('adds a requestStart time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
           interceptor.onRequest(options);
@@ -36,31 +36,29 @@ describe('webex-core', () => {
       describe('.onRequestError()', () => {
         it('adds a requestEnd time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
-          return assert.isRejected(interceptor.onRequestError(options))
-            .then(() => {
-              assert.property(options.$timings, 'requestEnd');
-            });
+          return assert.isRejected(interceptor.onRequestError(options)).then(() => {
+            assert.property(options.$timings, 'requestEnd');
+          });
         });
 
         it('adds a requestFail time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
-          return assert.isRejected(interceptor.onRequestError(options))
-            .then(() => {
-              assert.property(options.$timings, 'requestFail');
-            });
+          return assert.isRejected(interceptor.onRequestError(options)).then(() => {
+            assert.property(options.$timings, 'requestFail');
+          });
         });
       });
 
       describe('.onResponse()', () => {
         it('adds a requestEnd time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
           interceptor.onResponse(options);
@@ -71,24 +69,22 @@ describe('webex-core', () => {
       describe('.onResponseError()', () => {
         it('adds a requestEnd time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
-          return assert.isRejected(interceptor.onResponseError(options))
-            .then(() => {
-              assert.property(options.$timings, 'requestEnd');
-            });
+          return assert.isRejected(interceptor.onResponseError(options)).then(() => {
+            assert.property(options.$timings, 'requestEnd');
+          });
         });
 
         it('adds a requestFail time to options.$timings', () => {
           const options = {
-            $timings: {}
+            $timings: {},
           };
 
-          return assert.isRejected(interceptor.onResponseError(options))
-            .then(() => {
-              assert.property(options.$timings, 'requestFail');
-            });
+          return assert.isRejected(interceptor.onResponseError(options)).then(() => {
+            assert.property(options.$timings, 'requestFail');
+          });
         });
       });
     });

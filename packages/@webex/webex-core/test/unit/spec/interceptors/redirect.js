@@ -7,11 +7,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {
-  RedirectInterceptor,
-  config,
-  Credentials
-} from '@webex/webex-core';
+import {RedirectInterceptor, config, Credentials} from '@webex/webex-core';
 import {cloneDeep} from 'lodash';
 
 describe('webex-core', () => {
@@ -22,10 +18,10 @@ describe('webex-core', () => {
       beforeEach(() => {
         webex = new MockWebex({
           children: {
-            credentials: Credentials
+            credentials: Credentials,
           },
           config: cloneDeep(config),
-          request: sinon.spy()
+          request: sinon.spy(),
         });
 
         interceptor = Reflect.apply(RedirectInterceptor.create, webex, []);
@@ -38,12 +34,15 @@ describe('webex-core', () => {
             headers: {},
             body: {
               errorCode: 2000002,
-              location: 'http://newlocus.example.com'
-            }
+              location: 'http://newlocus.example.com',
+            },
           };
 
           interceptor.onResponse({$redirectCount: 0}, response);
-          sinon.assert.calledWith(webex.request, {$redirectCount: 1, uri: 'http://newlocus.example.com'});
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 1,
+            uri: 'http://newlocus.example.com',
+          });
         });
 
         it('redirects POST requests to new url on locus redirect error', () => {
@@ -52,15 +51,18 @@ describe('webex-core', () => {
             headers: {},
             body: {
               errorCode: 2000002,
-              location: 'http://newlocus.example.com?alternate=true'
+              location: 'http://newlocus.example.com?alternate=true',
             },
             options: {
-              qs: true
-            }
+              qs: true,
+            },
           };
 
           interceptor.onResponse({$redirectCount: 4}, response);
-          sinon.assert.calledWith(webex.request, {$redirectCount: 5, uri: 'http://newlocus.example.com'});
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 5,
+            uri: 'http://newlocus.example.com',
+          });
         });
 
         it('does not redirect on reaching max redirects', () => {
@@ -69,11 +71,11 @@ describe('webex-core', () => {
             headers: {},
             body: {
               errorCode: 2000002,
-              location: 'http://newlocus.example.com?alternate=true'
+              location: 'http://newlocus.example.com?alternate=true',
             },
             options: {
-              qs: true
-            }
+              qs: true,
+            },
           };
 
           assert.isRejected(interceptor.onResponse({$redirectCount: 5}, response));
@@ -85,11 +87,11 @@ describe('webex-core', () => {
             headers: {},
             body: {
               errorCode: 20000,
-              location: 'http://newlocus.example.com?alternate=true'
+              location: 'http://newlocus.example.com?alternate=true',
             },
             options: {
-              qs: true
-            }
+              qs: true,
+            },
           };
 
           assert.equal(interceptor.onResponse({$redirectCount: 5}, response), response);

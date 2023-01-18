@@ -29,67 +29,70 @@ module.exports = function registerAssertions(chai) {
 
     const promise = this.then ? this : this._obj;
 
-    return promise
-      .then(
-        (actual) => {
-          assert(
-            false,
-            'expected #{this} to be rejected but it was fulfilled with #{act}',
-            null,
-            errorLike && errorLike.toString(),
-            actual
-          );
+    return promise.then(
+      (actual) => {
+        assert(
+          false,
+          'expected #{this} to be rejected but it was fulfilled with #{act}',
+          null,
+          errorLike && errorLike.toString(),
+          actual
+        );
 
-          return actual;
-        },
-        // complexity is result of basic ternaries
-        // eslint-disable-next-line complexity
-        function onReject(reason) {
-          if (errorLike) {
-            if (errorLike instanceof Error) {
-              if (!checkError.compatibleInstance(reason, errorLike)) {
-                this.assert(
-                  false,
-                  'expected #{this} to be rejected with #{exp} but was rejected with #{act}',
-                  null,
-                  errorLike.toString(),
-                  reason.toString()
-                );
-              }
-            }
-
-            if (!checkError.compatibleConstructor(reason, errorLike)) {
+        return actual;
+      },
+      // complexity is result of basic ternaries
+      // eslint-disable-next-line complexity
+      function onReject(reason) {
+        if (errorLike) {
+          if (errorLike instanceof Error) {
+            if (!checkError.compatibleInstance(reason, errorLike)) {
               this.assert(
                 false,
                 'expected #{this} to be rejected with #{exp} but was rejected with #{act}',
                 null,
-                errorLike instanceof Error ? errorLike.toString() : errorLike && checkError.getConstructorName(errorLike),
-                reason instanceof Error ? reason.toString() : reason && checkError.getConstructorName(reason)
+                errorLike.toString(),
+                reason.toString()
               );
             }
           }
 
-          if (reason && errMsgMatcher) {
-            let placeholder = 'including';
-
-            if (errMsgMatcher instanceof RegExp) {
-              placeholder = 'matching';
-            }
-
-            if (!checkError.compatibleMessage(reason, errMsgMatcher)) {
-              this.assert(
-                false,
-                `expected #{this} to be be rejected with error ${placeholder} #{exp} but got #{act}`,
-                null,
-                errMsgMatcher,
-                checkError.getMessage(reason)
-              );
-            }
+          if (!checkError.compatibleConstructor(reason, errorLike)) {
+            this.assert(
+              false,
+              'expected #{this} to be rejected with #{exp} but was rejected with #{act}',
+              null,
+              errorLike instanceof Error
+                ? errorLike.toString()
+                : errorLike && checkError.getConstructorName(errorLike),
+              reason instanceof Error
+                ? reason.toString()
+                : reason && checkError.getConstructorName(reason)
+            );
           }
-
-          return reason;
         }
-      );
+
+        if (reason && errMsgMatcher) {
+          let placeholder = 'including';
+
+          if (errMsgMatcher instanceof RegExp) {
+            placeholder = 'matching';
+          }
+
+          if (!checkError.compatibleMessage(reason, errMsgMatcher)) {
+            this.assert(
+              false,
+              `expected #{this} to be be rejected with error ${placeholder} #{exp} but got #{act}`,
+              null,
+              errMsgMatcher,
+              checkError.getMessage(reason)
+            );
+          }
+        }
+
+        return reason;
+      }
+    );
   });
 
   chai.assert.isRejected = function isRejected(promise, errorLike, errMsgMatcher, msg) {
@@ -98,7 +101,10 @@ module.exports = function registerAssertions(chai) {
       errorLike = null;
     }
 
-    return new Assertion(promise, msg, chai.assert.isRejected, true).to.be.rejectedWith(errorLike, errMsgMatcher);
+    return new Assertion(promise, msg, chai.assert.isRejected, true).to.be.rejectedWith(
+      errorLike,
+      errMsgMatcher
+    );
   };
 
   /* eslint no-unused-expressions: [0] */

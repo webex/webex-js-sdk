@@ -28,7 +28,7 @@ const Lyra = WebexPlugin.extend({
   namespace: 'Lyra',
   children: {
     space: Space,
-    device: Device
+    device: Device,
   },
 
   /**
@@ -37,17 +37,17 @@ const Lyra = WebexPlugin.extend({
    * @returns {Promise<Endpoint>}
    */
   getAdvertisedEndpoint(token) {
-    return this.webex.request({
-      method: 'GET',
-      api: 'proximity',
-      resource: '/ultrasound/advertisements',
-      qs: {
-        token
-      }
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'proximity',
+        resource: '/ultrasound/advertisements',
+        qs: {
+          token,
+        },
+      })
       .then((res) => res.body);
-  }
+  },
 });
-
 
 export default Lyra;

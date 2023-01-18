@@ -20,7 +20,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(MembersUtil.generateRaiseHandMemberOptions(memberId, status, locusUrl), {
           memberId,
           raised: status,
-          locusUrl
+          locusUrl,
         });
       });
     });
@@ -29,10 +29,13 @@ describe('plugin-meetings', () => {
         const requestingParticipantId = 'test';
         const locusUrl = 'urlTest1';
 
-        assert.deepEqual(MembersUtil.generateLowerAllHandsMemberOptions(requestingParticipantId, locusUrl), {
-          requestingParticipantId,
-          locusUrl
-        });
+        assert.deepEqual(
+          MembersUtil.generateLowerAllHandsMemberOptions(requestingParticipantId, locusUrl),
+          {
+            requestingParticipantId,
+            locusUrl,
+          }
+        );
       });
     });
   });

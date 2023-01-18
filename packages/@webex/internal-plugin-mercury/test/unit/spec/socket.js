@@ -13,22 +13,23 @@ import {
   // NotFound,
   config,
   ConnectionError,
-  Socket
+  Socket,
 } from '@webex/internal-plugin-mercury';
 import uuid from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 
 describe('plugin-mercury', () => {
   describe('Socket', () => {
-    let clock,
-      mockWebSocket,
-      socket;
+    let clock, mockWebSocket, socket;
 
-    const mockoptions = Object.assign({
-      logger: console,
-      token: 'mocktoken',
-      trackingId: 'mocktrackingid'
-    }, config.mercury);
+    const mockoptions = Object.assign(
+      {
+        logger: console,
+        token: 'mocktoken',
+        trackingId: 'mocktrackingid',
+      },
+      config.mercury
+    );
 
     beforeEach(() => {
       clock = FakeTimers.install({now: Date.now()});
@@ -39,11 +40,14 @@ describe('plugin-mercury', () => {
     });
 
     beforeEach('mock WebSocket and open a Socket', () => {
-      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(() => function (...args) {
-        mockWebSocket = new MockWebSocket(...args);
+      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
+        () =>
+          function (...args) {
+            mockWebSocket = new MockWebSocket(...args);
 
-        return mockWebSocket;
-      });
+            return mockWebSocket;
+          }
+      );
 
       sinon.spy(Socket.prototype, '_ping');
 
@@ -61,11 +65,10 @@ describe('plugin-mercury', () => {
         Socket.prototype._ping.restore();
       }
 
-      return Promise.resolve(socket && socket.close())
-        .then(() => {
-          mockWebSocket = undefined;
-          socket = undefined;
-        });
+      return Promise.resolve(socket && socket.close()).then(() => {
+        mockWebSocket = undefined;
+        socket = undefined;
+      });
     });
 
     describe('#open()', () => {
@@ -75,42 +78,65 @@ describe('plugin-mercury', () => {
         socket = new Socket();
       });
 
-      afterEach(() => socket.close()
-        .catch(() => console.log()));
+      afterEach(() => socket.close().catch(() => console.log()));
 
       it('requires a url', () => assert.isRejected(socket.open(), /`url` is required/));
 
-      it('requires a forceCloseDelay option', () => assert.isRejected(socket.open('ws://example.com'), /missing required property forceCloseDelay/));
+      it('requires a forceCloseDelay option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com'),
+          /missing required property forceCloseDelay/
+        ));
 
-      it('requires a pingInterval option', () => assert.isRejected(socket.open('ws://example.com', {
-        forceCloseDelay: mockoptions.forceCloseDelay
-      }), /missing required property pingInterval/));
+      it('requires a pingInterval option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com', {
+            forceCloseDelay: mockoptions.forceCloseDelay,
+          }),
+          /missing required property pingInterval/
+        ));
 
-      it('requires a pongTimeout option', () => assert.isRejected(socket.open('ws://example.com', {
-        forceCloseDelay: mockoptions.forceCloseDelay,
-        pingInterval: mockoptions.pingInterval
-      }), /missing required property pongTimeout/));
+      it('requires a pongTimeout option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com', {
+            forceCloseDelay: mockoptions.forceCloseDelay,
+            pingInterval: mockoptions.pingInterval,
+          }),
+          /missing required property pongTimeout/
+        ));
 
-      it('requires a token option', () => assert.isRejected(socket.open('ws://example.com', {
-        forceCloseDelay: mockoptions.forceCloseDelay,
-        pingInterval: mockoptions.pingInterval,
-        pongTimeout: mockoptions.pongTimeout
-      }), /missing required property token/));
+      it('requires a token option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com', {
+            forceCloseDelay: mockoptions.forceCloseDelay,
+            pingInterval: mockoptions.pingInterval,
+            pongTimeout: mockoptions.pongTimeout,
+          }),
+          /missing required property token/
+        ));
 
-      it('requires a trackingId option', () => assert.isRejected(socket.open('ws://example.com', {
-        forceCloseDelay: mockoptions.forceCloseDelay,
-        pingInterval: mockoptions.pingInterval,
-        pongTimeout: mockoptions.pongTimeout,
-        token: 'mocktoken'
-      }), /missing required property trackingId/));
+      it('requires a trackingId option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com', {
+            forceCloseDelay: mockoptions.forceCloseDelay,
+            pingInterval: mockoptions.pingInterval,
+            pongTimeout: mockoptions.pongTimeout,
+            token: 'mocktoken',
+          }),
+          /missing required property trackingId/
+        ));
 
-      it('requires a logger option', () => assert.isRejected(socket.open('ws://example.com', {
-        forceCloseDelay: mockoptions.forceCloseDelay,
-        pingInterval: mockoptions.pingInterval,
-        pongTimeout: mockoptions.pongTimeout,
-        token: 'mocktoken',
-        trackingId: 'mocktrackingid'
-      }), /missing required property logger/));
+      it('requires a logger option', () =>
+        assert.isRejected(
+          socket.open('ws://example.com', {
+            forceCloseDelay: mockoptions.forceCloseDelay,
+            pingInterval: mockoptions.pingInterval,
+            pongTimeout: mockoptions.pongTimeout,
+            token: 'mocktoken',
+            trackingId: 'mocktrackingid',
+          }),
+          /missing required property logger/
+        ));
 
       it('accepts a logLevelToken option', () => {
         const promise = socket.open('ws://example.com', {
@@ -120,7 +146,7 @@ describe('plugin-mercury', () => {
           logger: console,
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
-          logLevelToken: 'mocklogleveltoken'
+          logLevelToken: 'mocklogleveltoken',
         });
 
         mockWebSocket.readyState = 1;
@@ -130,9 +156,9 @@ describe('plugin-mercury', () => {
           data: JSON.stringify({
             id: uuid.v4(),
             data: {
-              eventType: 'mercury.buffer_state'
-            }
-          })
+              eventType: 'mercury.buffer_state',
+            },
+          }),
         });
 
         return promise.then(() => {
@@ -196,9 +222,14 @@ describe('plugin-mercury', () => {
         return assert.isRejected(s.open(), /`url` is required/);
       });
 
-      it('cannot be called more than once', () => assert.isRejected(socket.open('ws://example.com'), /Socket#open\(\) can only be called once/));
+      it('cannot be called more than once', () =>
+        assert.isRejected(
+          socket.open('ws://example.com'),
+          /Socket#open\(\) can only be called once/
+        ));
 
-      it('sets the underlying socket\'s binary type', () => assert.equal(socket.binaryType, 'arraybuffer'));
+      it("sets the underlying socket's binary type", () =>
+        assert.equal(socket.binaryType, 'arraybuffer'));
 
       describe('when connection fails because this is a service account', () => {
         it('rejects with a BadRequest', () => {
@@ -214,18 +245,17 @@ describe('plugin-mercury', () => {
 
           mockWebSocket.emit('close', {
             code: 4400,
-            reason: 'Service accounts can\'t use this endpoint'
+            reason: "Service accounts can't use this endpoint",
           });
 
-          return assert.isRejected(promise)
-            .then((reason) => {
-              assert.instanceOf(reason, BadRequest);
-              assert.match(reason.code, 4400);
-              assert.match(reason.reason, /Service accounts can't use this endpoint/);
-              assert.match(reason.message, /Service accounts can't use this endpoint/);
+          return assert.isRejected(promise).then((reason) => {
+            assert.instanceOf(reason, BadRequest);
+            assert.match(reason.code, 4400);
+            assert.match(reason.reason, /Service accounts can't use this endpoint/);
+            assert.match(reason.message, /Service accounts can't use this endpoint/);
 
-              return s.close();
-            });
+            return s.close();
+          });
         });
       });
 
@@ -243,18 +273,17 @@ describe('plugin-mercury', () => {
 
           mockWebSocket.emit('close', {
             code: 4401,
-            reason: 'Authorization Failed'
+            reason: 'Authorization Failed',
           });
 
-          return assert.isRejected(promise)
-            .then((reason) => {
-              assert.instanceOf(reason, NotAuthorized);
-              assert.match(reason.code, 4401);
-              assert.match(reason.reason, /Authorization Failed/);
-              assert.match(reason.message, /Authorization Failed/);
+          return assert.isRejected(promise).then((reason) => {
+            assert.instanceOf(reason, NotAuthorized);
+            assert.match(reason.code, 4401);
+            assert.match(reason.reason, /Authorization Failed/);
+            assert.match(reason.message, /Authorization Failed/);
 
-              return s.close();
-            });
+            return s.close();
+          });
         });
       });
 
@@ -272,18 +301,17 @@ describe('plugin-mercury', () => {
 
           mockWebSocket.emit('close', {
             code: 4403,
-            reason: 'Not entitled'
+            reason: 'Not entitled',
           });
 
-          return assert.isRejected(promise)
-            .then((reason) => {
-              assert.instanceOf(reason, Forbidden);
-              assert.match(reason.code, 4403);
-              assert.match(reason.reason, /Not entitled/);
-              assert.match(reason.message, /Not entitled/);
+          return assert.isRejected(promise).then((reason) => {
+            assert.instanceOf(reason, Forbidden);
+            assert.match(reason.code, 4403);
+            assert.match(reason.reason, /Not entitled/);
+            assert.match(reason.message, /Not entitled/);
 
-              return s.close();
-            });
+            return s.close();
+          });
         });
       });
 
@@ -314,24 +342,23 @@ describe('plugin-mercury', () => {
       // });
 
       describe('when connection fails for non-authorization reasons', () => {
-        it('rejects with the close event\'s reason', () => {
+        it("rejects with the close event's reason", () => {
           const s = new Socket();
           const promise = s.open('ws://example.com', mockoptions);
 
           mockWebSocket.emit('close', {
             code: 4001,
-            reason: 'No'
+            reason: 'No',
           });
 
-          return assert.isRejected(promise)
-            .then((reason) => {
-              assert.instanceOf(reason, ConnectionError);
-              assert.match(reason.code, 4001);
-              assert.match(reason.reason, /No/);
-              assert.match(reason.message, /No/);
+          return assert.isRejected(promise).then((reason) => {
+            assert.instanceOf(reason, ConnectionError);
+            assert.match(reason.code, 4001);
+            assert.match(reason.reason, /No/);
+            assert.match(reason.message, /No/);
 
-              return s.close();
-            });
+            return s.close();
+          });
         });
       });
 
@@ -359,7 +386,7 @@ describe('plugin-mercury', () => {
               logger: console,
               token: 'mocktoken',
               trackingId: 'mocktrackingid',
-              logLevelToken: 'mocklogleveltoken'
+              logLevelToken: 'mocklogleveltoken',
             }).catch((reason) => console.error(reason));
             mockWebSocket.readyState = 1;
             mockWebSocket.emit('open');
@@ -390,13 +417,12 @@ describe('plugin-mercury', () => {
             data: JSON.stringify({
               id: uuid.v4(),
               data: {
-                eventType: 'mercury.buffer_state'
-              }
-            })
+                eventType: 'mercury.buffer_state',
+              },
+            }),
           });
 
-          return promise
-            .then(() => s.close());
+          return promise.then(() => s.close());
         });
 
         it('resolves upon receiving registration status', () => {
@@ -409,31 +435,35 @@ describe('plugin-mercury', () => {
             data: JSON.stringify({
               id: uuid.v4(),
               data: {
-                eventType: 'mercury.registration_status'
-              }
-            })
+                eventType: 'mercury.registration_status',
+              },
+            }),
           });
 
-          return promise
-            .then(() => s.close());
+          return promise.then(() => s.close());
         });
       });
     });
 
     describe('#close()', () => {
-      it('closes the socket', () => socket.close()
-        .then(() => assert.called(mockWebSocket.close)));
+      it('closes the socket', () => socket.close().then(() => assert.called(mockWebSocket.close)));
 
-      it('only accepts valid close codes', () => Promise.all([
-        assert.isRejected(socket.close({code: 1001}), /`options.code` must be 1000 or between 3000 and 4999 \(inclusive\)/),
-        socket.close({code: 1000})
-      ]));
+      it('only accepts valid close codes', () =>
+        Promise.all([
+          assert.isRejected(
+            socket.close({code: 1001}),
+            /`options.code` must be 1000 or between 3000 and 4999 \(inclusive\)/
+          ),
+          socket.close({code: 1000}),
+        ]));
 
-      it('accepts a reason', () => socket.close({
-        code: 3001,
-        reason: 'Custom Normal'
-      })
-        .then(() => assert.calledWith(mockWebSocket.close, 3001, 'Custom Normal')));
+      it('accepts a reason', () =>
+        socket
+          .close({
+            code: 3001,
+            reason: 'Custom Normal',
+          })
+          .then(() => assert.calledWith(mockWebSocket.close, 3001, 'Custom Normal')));
 
       it('can safely be called called multiple times', () => {
         const p1 = socket.close();
@@ -454,32 +484,33 @@ describe('plugin-mercury', () => {
           data: JSON.stringify({
             id: uuid.v4(),
             data: {
-              eventType: 'mercury.buffer_state'
-            }
-          })
+              eventType: 'mercury.buffer_state',
+            },
+          }),
         });
 
-        return promise
-          .then(() => {
-            const spy = sinon.spy();
+        return promise.then(() => {
+          const spy = sinon.spy();
 
-            socket.on('close', spy);
-            mockWebSocket.close = () => new Promise(() => { /* eslint no-inline-comments: [0] */ });
-            mockWebSocket.removeAllListeners('close');
+          socket.on('close', spy);
+          mockWebSocket.close = () =>
+            new Promise(() => {
+              /* eslint no-inline-comments: [0] */
+            });
+          mockWebSocket.removeAllListeners('close');
 
-            const promise = socket.close();
+          const promise = socket.close();
 
-            clock.tick(mockoptions.forceCloseDelay);
+          clock.tick(mockoptions.forceCloseDelay);
 
-            return promise
-              .then(() => {
-                assert.called(spy);
-                assert.calledWith(spy, {
-                  code: 1000,
-                  reason: 'Done (forced)'
-                });
-              });
+          return promise.then(() => {
+            assert.called(spy);
+            assert.calledWith(spy, {
+              code: 1000,
+              reason: 'Done (forced)',
+            });
           });
+        });
       });
 
       it('cancels any outstanding ping/pong timers', () => {
@@ -493,7 +524,7 @@ describe('plugin-mercury', () => {
         clock.tick(2 * mockoptions.pingInterval);
         assert.neverCalledWith(spy, {
           code: 1000,
-          reason: 'Pong not received'
+          reason: 'Pong not received',
         });
         assert.calledOnce(socket._ping);
       });
@@ -504,7 +535,8 @@ describe('plugin-mercury', () => {
         it('fails', () => {
           mockWebSocket.readyState = 0;
 
-          return assert.isRejected(socket.send('test0'), /INVALID_STATE_ERROR/)
+          return assert
+            .isRejected(socket.send('test0'), /INVALID_STATE_ERROR/)
             .then(() => {
               mockWebSocket.readyState = 2;
 
@@ -530,7 +562,7 @@ describe('plugin-mercury', () => {
 
       it('sends JSON.stringifyable object', () => {
         socket.send({
-          json: true
+          json: true,
         });
         assert.calledWith(mockWebSocket.send, '{"json":true}');
       });
@@ -549,39 +581,42 @@ describe('plugin-mercury', () => {
         assert.calledOnce(socket._ping);
         mockWebSocket.emit('close', {
           code: 1000,
-          reason: 'Done'
+          reason: 'Done',
         });
         assert.calledOnce(socket._ping);
         clock.tick(5 * mockoptions.pingInterval);
         assert.neverCalledWith(spy, {
           code: 1000,
-          reason: 'Pong not received'
+          reason: 'Pong not received',
         });
         assert.calledOnce(socket._ping);
       });
 
       describe('when it receives close code 1005', () => {
-        forEach({
-          Replaced: 4000,
-          'Authentication Failed': 1008,
-          'Authentication did not happen within the timeout window of 30000 seconds.': 1008
-        }, (code, reason) => {
-          it(`emits code ${code} for reason ${reason}`, () => {
-            const spy = sinon.spy();
+        forEach(
+          {
+            Replaced: 4000,
+            'Authentication Failed': 1008,
+            'Authentication did not happen within the timeout window of 30000 seconds.': 1008,
+          },
+          (code, reason) => {
+            it(`emits code ${code} for reason ${reason}`, () => {
+              const spy = sinon.spy();
 
-            socket.on('close', spy);
+              socket.on('close', spy);
 
-            mockWebSocket.emit('close', {
-              code: 1005,
-              reason
+              mockWebSocket.emit('close', {
+                code: 1005,
+                reason,
+              });
+              assert.called(spy);
+              assert.calledWith(spy, {
+                code,
+                reason,
+              });
             });
-            assert.called(spy);
-            assert.calledWith(spy, {
-              code,
-              reason
-            });
-          });
-        });
+          }
+        );
       });
     });
 
@@ -597,8 +632,8 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 3,
-            id: 'mockid'
-          })
+            id: 'mockid',
+          }),
         });
 
         assert.called(spy);
@@ -608,15 +643,15 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 3,
-            id: 'mockid'
-          })
+            id: 'mockid',
+          }),
         });
 
         assert.calledWith(spy, {
           data: {
             sequenceNumber: 3,
-            id: 'mockid'
-          }
+            id: 'mockid',
+          },
         });
       });
 
@@ -628,16 +663,16 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 2,
-            id: 'mockid'
-          })
+            id: 'mockid',
+          }),
         });
         assert.notCalled(spy2);
 
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 4,
-            id: 'mockid'
-          })
+            id: 'mockid',
+          }),
         });
         assert.calledOnce(spy2);
         assert.calledWith(spy2, 4, 3);
@@ -648,15 +683,15 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 5,
-            id: 'mockid'
-          })
+            id: 'mockid',
+          }),
         });
         assert.called(socket._acknowledge);
         assert.calledWith(socket._acknowledge, {
           data: {
             sequenceNumber: 5,
-            id: 'mockid'
-          }
+            id: 'mockid',
+          },
         });
       });
 
@@ -669,8 +704,8 @@ describe('plugin-mercury', () => {
           data: JSON.stringify({
             sequenceNumber: 5,
             id: 'mockid1',
-            type: 'pong'
-          })
+            type: 'pong',
+          }),
         });
 
         assert.calledOnce(pongSpy);
@@ -679,8 +714,8 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             sequenceNumber: 6,
-            id: 'mockid2'
-          })
+            id: 'mockid2',
+          }),
         });
 
         assert.calledOnce(pongSpy);
@@ -689,24 +724,30 @@ describe('plugin-mercury', () => {
     });
 
     describe('#_acknowledge', () => {
-      it('requires an event', () => assert.isRejected(socket._acknowledge(), /`event` is required/));
+      it('requires an event', () =>
+        assert.isRejected(socket._acknowledge(), /`event` is required/));
 
-      it('requires a message id', () => assert.isRejected(socket._acknowledge({}), /`event.data.id` is required/));
+      it('requires a message id', () =>
+        assert.isRejected(socket._acknowledge({}), /`event.data.id` is required/));
 
       it('acknowledges the specified message', () => {
         const id = 'mockuuid';
 
-        return socket._acknowledge({
-          data: {
-            type: 'not an ack',
-            id
-          }
-        })
+        return socket
+          ._acknowledge({
+            data: {
+              type: 'not an ack',
+              id,
+            },
+          })
           .then(() => {
-            assert.calledWith(mockWebSocket.send, JSON.stringify({
-              messageId: id,
-              type: 'ack'
-            }));
+            assert.calledWith(
+              mockWebSocket.send,
+              JSON.stringify({
+                messageId: id,
+                type: 'ack',
+              })
+            );
           });
       });
     });
@@ -718,12 +759,15 @@ describe('plugin-mercury', () => {
         id = uuid.v4();
       });
 
-      it('sends a ping up the socket', () => socket._ping(id)
-        .then(() => {
-          assert.calledWith(mockWebSocket.send, JSON.stringify({
-            id,
-            type: 'ping'
-          }));
+      it('sends a ping up the socket', () =>
+        socket._ping(id).then(() => {
+          assert.calledWith(
+            mockWebSocket.send,
+            JSON.stringify({
+              id,
+              type: 'ping',
+            })
+          );
         }));
 
       it('considers the socket closed if no pong is received in an acceptable time period', () => {
@@ -737,7 +781,7 @@ describe('plugin-mercury', () => {
         assert.called(spy);
         assert.calledWith(spy, {
           code: 1000,
-          reason: 'Pong not received'
+          reason: 'Pong not received',
         });
       });
 
@@ -756,13 +800,13 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             type: 'pong',
-            id: 1
-          })
+            id: 1,
+          }),
         });
 
         assert.calledWith(spy, {
           code: 1000,
-          reason: 'Pong mismatch'
+          reason: 'Pong mismatch',
         });
       });
     });

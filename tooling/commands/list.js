@@ -29,13 +29,13 @@ module.exports = {
     fortests: {
       default: false,
       description: 'list packages that should be tested in CI',
-      type: 'boolean'
+      type: 'boolean',
     },
     forpipeline: {
       default: false,
       description: 'list packages that should be tested in a pipeline gating job',
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
   // eslint-disable-next-line complexity
   handler: wrapHandler(async ({fortests, forpipeline}) => {
@@ -47,12 +47,10 @@ module.exports = {
 
       if (!ignoreTooling && changed.includes('tooling')) {
         packages = await list();
-      }
-      else {
+      } else {
         packages = await updated({dependents: true});
       }
-    }
-    else {
+    } else {
       packages = await list();
     }
 
@@ -76,7 +74,7 @@ module.exports = {
         '@webex/internal-plugin-conversation',
         'ciscospark',
         '@webex/plugin-authorization-browser',
-        'samples'
+        'samples',
       ];
 
       packages.sort((a, b) => {
@@ -102,5 +100,5 @@ module.exports = {
     for (const pkg of packages) {
       console.info(pkg);
     }
-  })
+  }),
 };

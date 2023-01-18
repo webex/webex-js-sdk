@@ -3,19 +3,16 @@
   <head>
     <title>Redirect Dispatcher</title>
     <script>
-    try {
-      var state = /state=(.+?)(&.*)?$/.exec(window.location)[1]
-      console.info('state', state);
-      var name = JSON.parse(atob(state)).name;
-      console.info('name', name);
-      window.location.pathname = name;
-    }
-    catch(err) {
-      console.warn(err);
-    }
+      try {
+        var state = /state=(.+?)(&.*)?$/.exec(window.location)[1];
+        console.info('state', state);
+        var name = JSON.parse(atob(state)).name;
+        console.info('name', name);
+        window.location.pathname = name;
+      } catch (err) {
+        console.warn(err);
+      }
     </script>
   </head>
-  <body>
-
-  </body>
+  <body></body>
 </html>

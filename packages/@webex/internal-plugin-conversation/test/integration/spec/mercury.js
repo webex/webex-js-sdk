@@ -14,32 +14,35 @@ describe('plugin-conversation', function () {
   describe('mercury processing', () => {
     let kirk, mccoy, participants, webex;
 
-    before(() => testUsers.create({count: 3})
-      .then((users) => {
+    before(() =>
+      testUsers.create({count: 3}).then((users) => {
         [kirk, mccoy] = participants = users;
 
         webex = new WebexCore({
           credentials: {
-            authorization: mccoy.token
-          }
+            authorization: mccoy.token,
+          },
         });
 
         kirk.webex = new WebexCore({
           credentials: {
-            authorization: kirk.token
-          }
+            authorization: kirk.token,
+          },
         });
 
         return Promise.all([
           webex.internal.mercury.connect(),
-          kirk.webex.internal.mercury.connect()
+          kirk.webex.internal.mercury.connect(),
         ]);
-      }));
+      })
+    );
 
-    after(() => Promise.all([
-      webex && webex.internal.mercury.disconnect(),
-      kirk && kirk.webex.internal.mercury.disconnect()
-    ]));
+    after(() =>
+      Promise.all([
+        webex && webex.internal.mercury.disconnect(),
+        kirk && kirk.webex.internal.mercury.disconnect(),
+      ])
+    );
 
     let conversation;
 
@@ -48,8 +51,9 @@ describe('plugin-conversation', function () {
         return Promise.resolve();
       }
 
-      return webex.internal.conversation.create({participants})
-        .then((c) => { conversation = c; });
+      return webex.internal.conversation.create({participants}).then((c) => {
+        conversation = c;
+      });
     });
 
     describe('when an activity is received', () => {
@@ -63,21 +67,27 @@ describe('plugin-conversation', function () {
           });
         });
 
-        const message = 'Dammit Jim, I\'m a Doctor not a brick-layer!';
+        const message = "Dammit Jim, I'm a Doctor not a brick-layer!";
 
-        webex.internal.conversation.post(conversation, {
-          displayName: message
-        }, {
-          clientTempId
+        webex.internal.conversation.post(
+          conversation,
+          {
+            displayName: message,
+          },
+          {
+            clientTempId,
+          }
+        );
+
+        return promise.then((event) => {
+          assert.isActivity(event.data.activity);
+          assert.isEncryptedActivity(event.data.activity);
+          assert.equal(
+            event.data.activity.encryptionKeyUrl,
+            conversation.defaultActivityEncryptionKeyUrl
+          );
+          assert.equal(event.data.activity.object.displayName, message);
         });
-
-        return promise
-          .then((event) => {
-            assert.isActivity(event.data.activity);
-            assert.isEncryptedActivity(event.data.activity);
-            assert.equal(event.data.activity.encryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
-            assert.equal(event.data.activity.object.displayName, message);
-          });
       });
     });
   });
