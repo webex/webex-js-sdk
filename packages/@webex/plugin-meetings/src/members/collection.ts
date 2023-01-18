@@ -6,7 +6,6 @@ import {MEETINGS} from '../constants';
 export default class MembersCollection {
   members: any;
   namespace = MEETINGS;
-
   /**
    * @param {Object} locus
    * @memberof Members

@@ -1,3 +1,5 @@
+/* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
+
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 // @ts-ignore
@@ -328,8 +330,7 @@ export default class Meetings extends WebexPlugin {
           meeting.locusInfo.initialSetup(data.locus);
         })
         .catch((e) => {
-          // eslint-disable-next-line no-console
-          console.log(e);
+          LoggerProxy.logger.error(e);
         })
         .finally(() => {
           // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
@@ -608,6 +609,11 @@ export default class Meetings extends WebexPlugin {
         LoggerProxy.logger.error(
           `Meetings:index#register --> ERROR, Unable to register, ${error.message}`
         );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
+          reason: error.message,
+          stack: error.stack,
+        });
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
           reason: error.message,
