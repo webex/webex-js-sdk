@@ -581,7 +581,8 @@ export default class Meeting extends StatelessWebexPlugin {
      * All media requests sent out for main video for this meeting have to go through it.
      */
     this.mediaRequestManagers = {
-      audio: new MediaRequestManager((mediaRequests) => {
+      // @ts-ignore - config coming from registerPlugin
+      audio: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
         if (!this.mediaProperties.webrtcMediaConnection) {
           LoggerProxy.logger.warn(
             'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
@@ -594,7 +595,8 @@ export default class Meeting extends StatelessWebexPlugin {
           mediaRequests
         );
       }),
-      video: new MediaRequestManager((mediaRequests) => {
+      // @ts-ignore - config coming from registerPlugin
+      video: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
         if (!this.mediaProperties.webrtcMediaConnection) {
           LoggerProxy.logger.warn(
             'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'

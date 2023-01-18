@@ -279,6 +279,7 @@ module.exports = {
     'tooling/*',
     '**/test/**/*',
     'docs/**',
+    '*.json',
     // Files with decorator
     'authorization.js',
     'kms.js',

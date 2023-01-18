@@ -17,6 +17,10 @@ type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
 
 const maxPayloadBitsPerSecond = 10 * 1000 * 1000; // for now we always send this fixed constant
 
+const degradationPreferences = {
+  maxMacroblocksLimit: Infinity, // no limit
+};
+
 describe('MediaRequestManager', () => {
   const CROSS_PRIORITY_DUPLICATION = true;
   const CROSS_POLICY_DUPLICATION = true;
@@ -33,7 +37,10 @@ describe('MediaRequestManager', () => {
 
   beforeEach(() => {
     sendMediaRequestsCallback = sinon.stub();
-    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback);
+    mediaRequestManager = new MediaRequestManager(
+      degradationPreferences,
+      sendMediaRequestsCallback
+    );
 
     // create some fake receive slots used by the tests
     fakeWcmeSlots = Array(NUM_SLOTS)
@@ -511,5 +518,156 @@ describe('MediaRequestManager', () => {
     assert.calledOnce(fakeReceiveSlots[2].resetSourceState);
     assert.calledOnce(fakeReceiveSlots[3].resetSourceState);
     assert.calledOnce(fakeReceiveSlots[5].resetSourceState);
+  });
+
+  it('re-sends media requests after degradation preferences are set', () => {
+    // set max macroblocks limit
+    mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('can degrade max-fs once when request exceeds max macroblocks limit', () => {
+    // set max macroblocks limit
+    mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+
+    // request 5 "large" 1080p streams
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: fakeReceiveSlots.slice(0, 5),
+        codecInfo: {
+          maxFs: 8192,
+        },
+      },
+      true
+    );
+
+    // check that resulting requests are 5 "medium" 720p streams
+    assert.calledWith(sendMediaRequestsCallback, [
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({
+          csi: 123,
+        }),
+        receiveSlots: fakeWcmeSlots.slice(0, 5),
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 3600,
+            }),
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('can degrade max-fs multiple times when request exceeds max macroblocks limit', () => {
+    // set max macroblocks limit
+    mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+
+    // request 10 "large" 1080p streams
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: fakeReceiveSlots.slice(0, 10),
+        codecInfo: {
+          maxFs: 8192,
+        },
+      },
+      true
+    );
+
+    // check that resulting requests are 10 "small" 360p streams
+    assert.calledWith(sendMediaRequestsCallback, [
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({
+          csi: 123,
+        }),
+        receiveSlots: fakeWcmeSlots.slice(0, 10),
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 920,
+            }),
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('can degrade only the largest max-fs when request exceeds max macroblocks limit', () => {
+    // set max macroblocks limit
+    mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+
+    // request 5 "large" 1080p streams and 5 "small" 360p streams
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: fakeReceiveSlots.slice(0, 5),
+        codecInfo: {
+          maxFs: 8192,
+        },
+      },
+      false
+    );
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 456,
+        },
+        receiveSlots: fakeReceiveSlots.slice(5, 10),
+        codecInfo: {
+          maxFs: 920,
+        },
+      },
+      true
+    );
+
+    // check that resulting requests are 5 "medium" 720p streams and 5 "small" 360p streams
+    assert.calledWith(sendMediaRequestsCallback, [
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({
+          csi: 123,
+        }),
+        receiveSlots: fakeWcmeSlots.slice(0, 5),
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 3600,
+            }),
+          }),
+        ],
+      }),
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({
+          csi: 456,
+        }),
+        receiveSlots: fakeWcmeSlots.slice(5, 10),
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 920,
+            }),
+          }),
+        ],
+      }),
+    ]);
   });
 });
