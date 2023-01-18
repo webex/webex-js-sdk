@@ -38,6 +38,26 @@ export const EVENTS = {
 };
 
 /**
+ * Given a media type, return a simplified version of it.
+ *
+ * @param {String} mediaType - The complex media type (i.e. `video-send-2`).
+ * @returns {string | null} A string of simplified media type or null.
+ */
+const getSimplifiedMediaType = (mediaType) => {
+  if (mediaType.includes('share')) {
+    return STATS.SHARE_CORRELATE;
+  }
+  if (mediaType.includes('audio')) {
+    return STATS.AUDIO_CORRELATE;
+  }
+  if (mediaType.includes('video')) {
+    return STATS.VIDEO_CORRELATE;
+  }
+
+  return null;
+};
+
+/**
  * Stats Analyzer class that will emit events based on detected quality
  *
  * @export
@@ -116,13 +136,13 @@ export class StatsAnalyzer extends EventsScope {
       }
 
       if (mediaType.includes('send')) {
-        this.statsResults.audio.send.meanRemoteJitter = [];
-        this.statsResults.video.send.meanRemoteJitter = [];
-        this.statsResults.share.send.meanRemoteJitter = [];
+        this.statsResults[mediaType].send.meanRemoteJitter = [];
+        this.statsResults[mediaType].send.meanRemoteJitter = [];
+        this.statsResults[mediaType].send.meanRemoteJitter = [];
 
-        this.statsResults.audio.send.meanRoundTripTime = [];
-        this.statsResults.video.send.meanRoundTripTime = [];
-        this.statsResults.share.send.meanRoundTripTime = [];
+        this.statsResults[mediaType].send.meanRoundTripTime = [];
+        this.statsResults[mediaType].send.meanRoundTripTime = [];
+        this.statsResults[mediaType].send.meanRoundTripTime = [];
       }
     });
   }
@@ -266,9 +286,6 @@ export class StatsAnalyzer extends EventsScope {
 
     newMqa.intervalNumber = this.mqaSentCount;
 
-    // DO Deep copy, for some reason it takes the reference all the time rather then old value set
-    this.lastnewMqaSent = cloneDeep(this.statsResults);
-
     this.resetStatsResults();
 
     this.emit(
@@ -279,6 +296,7 @@ export class StatsAnalyzer extends EventsScope {
       EVENTS.MEDIA_QUALITY,
       {
         data: newMqa,
+        // @ts-ignore
         networkType: newMqa.networkType,
       }
     );
@@ -476,7 +494,7 @@ export class StatsAnalyzer extends EventsScope {
    * @param {boolean} isSender
    * @returns {void}
    */
-  filterAndParseGetStatsResults(statsItem, type, isSender) {
+  filterAndParseGetStatsResults(statsItem: any, type: string, isSender: boolean) {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
     statsItem.report.forEach((result) => {
@@ -578,253 +596,262 @@ export class StatsAnalyzer extends EventsScope {
   private compareLastStatsResult() {
     if (this.lastStatsResults !== null && this.meetingMediaStatus) {
       // compare audio stats sent
-      let mediaType = STATS.AUDIO_CORRELATE;
       let currentStats = null;
       let previousStats = null;
 
-      if (this.meetingMediaStatus.expected.sendAudio) {
-        currentStats = this.statsResults[mediaType].send;
-        previousStats = this.lastStatsResults[mediaType].send;
-
-        if (
-          currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
-          currentStats.totalPacketsSent === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
-          );
-        } else {
-          if (
-            currentStats.totalAudioEnergy === previousStats.totalAudioEnergy ||
-            currentStats.totalAudioEnergy === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Energy present`
-            );
-          }
-
-          if (currentStats.audioLevel === 0) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} level is 0 for the user`
-            );
-          }
+      Object.keys(this.statsResults).forEach((mediaType) => {
+        if (!this.lastStatsResults[mediaType]) {
+          return;
         }
 
-        this.emitStartStopEvents(
-          mediaType,
-          previousStats.totalPacketsSent,
-          currentStats.totalPacketsSent,
-          true
-        );
-      }
+        const simplifiedMediaType = getSimplifiedMediaType(mediaType);
 
-      if (this.meetingMediaStatus.expected.receiveAudio) {
-        // compare audio stats received
-        currentStats = this.statsResults[mediaType].recv;
-        previousStats = this.lastStatsResults[mediaType].recv;
+        if (this.meetingMediaStatus.expected.sendAudio && mediaType.includes('audio-send')) {
+          currentStats = this.statsResults[mediaType].send;
+          previousStats = this.lastStatsResults[mediaType].send;
 
-        if (
-          currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
-          currentStats.totalPacketsReceived === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
-          );
-        } else if (
-          currentStats.totalSamplesReceived === previousStats.totalSamplesReceived ||
-          currentStats.totalSamplesReceived === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} samples received`
+          if (
+            currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
+            currentStats.totalPacketsSent === 0
+          ) {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
+            );
+          } else {
+            if (
+              currentStats.totalAudioEnergy === previousStats.totalAudioEnergy ||
+              currentStats.totalAudioEnergy === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Energy present`
+              );
+            }
+
+            if (currentStats.audioLevel === 0) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} level is 0 for the user`
+              );
+            }
+          }
+
+          this.emitStartStopEvents(
+            simplifiedMediaType,
+            previousStats.totalPacketsSent,
+            currentStats.totalPacketsSent,
+            true
           );
         }
 
-        this.emitStartStopEvents(
-          mediaType,
-          previousStats.totalPacketsReceived,
-          currentStats.totalPacketsReceived,
-          false
-        );
-      }
+        if (this.meetingMediaStatus.expected.receiveAudio && mediaType.includes('audio-recv')) {
+          // compare audio stats received
+          currentStats = this.statsResults[mediaType].recv;
+          previousStats = this.lastStatsResults[mediaType].recv;
 
-      mediaType = STATS.VIDEO_CORRELATE;
-      if (this.meetingMediaStatus.expected.sendVideo) {
-        // compare video stats sent
-        currentStats = this.statsResults[mediaType].send;
-        previousStats = this.lastStatsResults[mediaType].send;
-
-        if (
-          currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
-          currentStats.totalPacketsSent === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
-          );
-        } else {
           if (
-            currentStats.framesEncoded === previousStats.framesEncoded ||
-            currentStats.framesEncoded === 0
+            currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
+            currentStats.totalPacketsReceived === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames Encoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
+            );
+          } else if (
+            currentStats.totalSamplesReceived === previousStats.totalSamplesReceived ||
+            currentStats.totalSamplesReceived === 0
+          ) {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} samples received`
             );
           }
 
+          this.emitStartStopEvents(
+            simplifiedMediaType,
+            previousStats.totalPacketsReceived,
+            currentStats.totalPacketsReceived,
+            false
+          );
+        }
+
+        if (this.meetingMediaStatus.expected.sendVideo && mediaType.includes('video-send')) {
+          // compare video stats sent
+          currentStats = this.statsResults[mediaType].send;
+          previousStats = this.lastStatsResults[mediaType].send;
+
           if (
-            this.statsResults.resolutions[mediaType].send.framesSent ===
-              this.lastStatsResults.resolutions[mediaType].send.framesSent ||
-            this.statsResults.resolutions[mediaType].send.framesSent === 0
+            currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
+            currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
             );
+          } else {
+            if (
+              currentStats.framesEncoded === previousStats.framesEncoded ||
+              currentStats.framesEncoded === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Frames Encoded`
+              );
+            }
+
+            if (
+              this.statsResults.resolutions[mediaType].send.framesSent ===
+                this.lastStatsResults.resolutions[mediaType].send.framesSent ||
+              this.statsResults.resolutions[mediaType].send.framesSent === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Frames sent`
+              );
+            }
+          }
+
+          this.emitStartStopEvents(
+            simplifiedMediaType,
+            previousStats.framesSent,
+            currentStats.framesSent,
+            true
+          );
+        }
+
+        if (this.meetingMediaStatus.expected.receiveVideo && mediaType.includes('video-recv')) {
+          // compare video stats received
+
+          currentStats = this.statsResults[mediaType].recv;
+          previousStats = this.lastStatsResults[mediaType].recv;
+
+          if (
+            currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
+            currentStats.totalPacketsReceived === 0
+          ) {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
+            );
+          } else {
+            if (
+              this.statsResults.resolutions[mediaType].recv.framesReceived ===
+                this.lastStatsResults.resolutions[mediaType].recv.framesReceived ||
+              this.statsResults.resolutions[mediaType].recv.framesReceived === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames received`
+              );
+            }
+
+            if (
+              this.statsResults[mediaType].recv.framesDecoded ===
+                this.lastStatsResults[mediaType].recv.framesDecoded ||
+              (this.statsResults.resolutions[mediaType].send &&
+                this.statsResults.resolutions[mediaType].send.framesDecoded === 0)
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames decoded`
+              );
+            }
+
+            if (
+              this.statsResults.resolutions[mediaType].recv.framesDropped -
+                this.lastStatsResults.resolutions[mediaType].recv.framesDropped >
+              10
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} frames are getting dropped`
+              );
+            }
+          }
+
+          this.emitStartStopEvents(
+            simplifiedMediaType,
+            previousStats.framesDecoded,
+            currentStats.framesDecoded,
+            false
+          );
+        }
+
+        if (this.meetingMediaStatus.expected.sendShare && mediaType.includes('video-share-send')) {
+          // compare share stats sent
+
+          currentStats = this.statsResults[mediaType].send;
+          previousStats = this.lastStatsResults[mediaType].send;
+
+          if (
+            currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
+            currentStats.totalPacketsSent === 0
+          ) {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
+            );
+          } else {
+            if (
+              currentStats.framesEncoded === previousStats.framesEncoded ||
+              currentStats.framesEncoded === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames getting encoded`
+              );
+            }
+
+            if (
+              this.statsResults.resolutions[mediaType].send.framesSent ===
+                this.lastStatsResults.resolutions[mediaType].send.framesSent ||
+              this.statsResults.resolutions[mediaType].send.framesSent === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames sent`
+              );
+            }
           }
         }
 
-        this.emitStartStopEvents(
-          mediaType,
-          previousStats.framesSent,
-          currentStats.framesSent,
-          true
-        );
-      }
-
-      if (this.meetingMediaStatus.expected.receiveVideo) {
-        // compare video stats reveived
-
-        currentStats = this.statsResults[mediaType].recv;
-        previousStats = this.lastStatsResults[mediaType].recv;
-
-        if (
-          currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
-          currentStats.totalPacketsReceived === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
-          );
-        } else {
-          if (
-            this.statsResults.resolutions[mediaType].recv.framesReceived ===
-              this.lastStatsResults.resolutions[mediaType].recv.framesReceived ||
-            this.statsResults.resolutions[mediaType].recv.framesReceived === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames received`
-            );
-          }
+        if (this.meetingMediaStatus.expected.sendShare && mediaType.includes('video-share-recv')) {
+          // TODO:need to check receive share value
+          // compare share stats received
+          currentStats = this.statsResults[mediaType].recv;
+          previousStats = this.lastStatsResults[mediaType].recv;
 
           if (
-            this.statsResults[mediaType].recv.framesDecoded ===
-              this.lastStatsResults[mediaType].recv.framesDecoded ||
-            this.statsResults.resolutions[mediaType].send.framesDecoded === 0
+            currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
+            currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames decoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
             );
+          } else {
+            if (
+              this.statsResults.resolutions[mediaType].recv.framesReceived ===
+                this.lastStatsResults.resolutions[mediaType].recv.framesReceived ||
+              this.statsResults.resolutions[mediaType].recv.framesReceived === 0
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames received`
+              );
+            }
+
+            if (
+              this.statsResults[mediaType].recv.framesDecoded ===
+                this.lastStatsResults[mediaType].recv.framesDecoded ||
+              (this.statsResults.resolutions[mediaType].send &&
+                this.statsResults.resolutions[mediaType].send.framesDecoded === 0)
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames decoded`
+              );
+            }
+
+            if (
+              this.statsResults.resolutions[mediaType].recv.framesDropped -
+                this.lastStatsResults.resolutions[mediaType].recv.framesDropped >
+              10
+            ) {
+              LoggerProxy.logger.info(
+                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} frames are getting dropped`
+              );
+            }
           }
 
-          if (
-            this.statsResults.resolutions[mediaType].recv.framesDropped -
-              this.lastStatsResults.resolutions[mediaType].recv.framesDropped >
-            10
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} frames are getting dropped`
-            );
-          }
+          // we are not calling emitStartStopEvents() for sending or receiving share because sharing is often started and stopped
+          // in meetings and this.meetingMediaStatus.expected values can be out of sync with the actual packet flow
+          // so we would send "sharing stopped" events incorrectly
         }
-
-        this.emitStartStopEvents(
-          mediaType,
-          previousStats.framesDecoded,
-          currentStats.framesDecoded,
-          false
-        );
-      }
-
-      mediaType = STATS.SHARE_CORRELATE;
-      if (this.meetingMediaStatus.expected.sendShare) {
-        // compare share stats sent
-
-        currentStats = this.statsResults[mediaType].send;
-        previousStats = this.lastStatsResults[mediaType].send;
-
-        if (
-          currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
-          currentStats.totalPacketsSent === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
-          );
-        } else {
-          if (
-            currentStats.framesEncoded === previousStats.framesEncoded ||
-            currentStats.framesEncoded === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames getting encoded`
-            );
-          }
-
-          if (
-            this.statsResults.resolutions[mediaType].send.framesSent ===
-              this.lastStatsResults.resolutions[mediaType].send.framesSent ||
-            this.statsResults.resolutions[mediaType].send.framesSent === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames sent`
-            );
-          }
-        }
-
-        // TODO:need to check receive share value
-        // compare share stats reveived
-        currentStats = this.statsResults[mediaType].recv;
-        previousStats = this.lastStatsResults[mediaType].recv;
-
-        if (
-          currentStats.totalPacketsReceived === previousStats.totalPacketsReceived ||
-          currentStats.totalPacketsSent === 0
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
-          );
-        } else {
-          if (
-            this.statsResults.resolutions[mediaType].recv.framesReceived ===
-              this.lastStatsResults.resolutions[mediaType].recv.framesReceived ||
-            this.statsResults.resolutions[mediaType].recv.framesReceived === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames received`
-            );
-          }
-
-          if (
-            this.statsResults[mediaType].recv.framesDecoded ===
-              this.lastStatsResults[mediaType].recv.framesDecoded ||
-            this.statsResults.resolutions[mediaType].send.framesDecoded === 0
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames decoded`
-            );
-          }
-
-          if (
-            this.statsResults.resolutions[mediaType].recv.framesDropped -
-              this.lastStatsResults.resolutions[mediaType].recv.framesDropped >
-            10
-          ) {
-            LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} frames are getting dropped`
-            );
-          }
-        }
-
-        // we are not calling emitStartStopEvents() for sending or receiving share because sharing is often started and stopped
-        // in meetings and this.meetingMediaStatus.expected values can be out of sync with the actual packet flow
-        // so we would send "sharing stopped" events incorrectly
-      }
+      });
     }
   }
 
@@ -1278,17 +1305,11 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (result.type === 'remote-inbound-rtp') {
-      let simplifiedMediaType = STATS.AUDIO_CORRELATE;
-
-      if (mediaType.includes('video')) {
-        simplifiedMediaType = STATS.VIDEO_CORRELATE;
-      }
-      if (mediaType.includes('share')) {
-        simplifiedMediaType = STATS.SHARE_CORRELATE;
-      }
+      const simplifiedMediaType = getSimplifiedMediaType(mediaType);
 
       this.networkQualityMonitor.determineUplinkNetworkQuality({
-        mediaType: simplifiedMediaType,
+        mediaType,
+        simplifiedMediaType,
         remoteRtpResults: result,
         statsAnalyzerCurrentStats: this.statsResults,
       });

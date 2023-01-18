@@ -9,6 +9,7 @@ export const emptyMqaInterval = {
     systemAverageCPU: 0,
     systemMaximumCPU: 0,
   },
+  networkType: '',
   intervalNumber: 0,
   videoReceive: [],
   videoTransmit: [],

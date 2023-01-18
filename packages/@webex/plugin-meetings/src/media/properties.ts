@@ -212,7 +212,7 @@ export default class MediaProperties {
    *
    * @returns {Promise<void>}
    */
-  waitForMediaConnectionConnected() {
+  waitForMediaConnectionConnected(): Promise<void> {
     const isConnected = () =>
       this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
 

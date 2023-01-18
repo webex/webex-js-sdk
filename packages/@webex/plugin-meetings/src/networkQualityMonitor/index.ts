@@ -103,10 +103,12 @@ export default class NetworkQualityMonitor extends EventsScope {
    */
   public determineUplinkNetworkQuality({
     mediaType,
+    simplifiedMediaType,
     remoteRtpResults,
     statsAnalyzerCurrentStats,
   }: {
     mediaType: string;
+    simplifiedMediaType: string;
     remoteRtpResults: any;
     statsAnalyzerCurrentStats: object;
   }) {
@@ -114,7 +116,7 @@ export default class NetworkQualityMonitor extends EventsScope {
     const jitterInMilliseconds = remoteRtpResults.jitter * 1000;
     const {currentPacketLossRatio} = statsAnalyzerCurrentStats[mediaType].send;
 
-    this.mediaType = mediaType;
+    this.mediaType = simplifiedMediaType;
 
     const {JITTER, PACKETLOSS, LATENCY} = this.indicatorTypes;
     const {UPLINK} = this.frequencyTypes;
@@ -178,19 +180,19 @@ export default class NetworkQualityMonitor extends EventsScope {
      * https://bugs.webkit.org/show_bug.cgi?id=212668
      */
     // PACKET LOSS
-    this.networkQualityStatus[UPLINK][mediaType][PACKETLOSS] = {
+    this.networkQualityStatus[UPLINK][simplifiedMediaType][PACKETLOSS] = {
       acceptable: determinePacketLoss(),
       value: determineIfUndefined(currentPacketLossRatio),
     };
 
     // LATENCY measured in Round trip time
-    this.networkQualityStatus[UPLINK][mediaType][LATENCY] = {
+    this.networkQualityStatus[UPLINK][simplifiedMediaType][LATENCY] = {
       acceptable: determineLatency(),
       value: determineIfUndefined(remoteRtpResults.roundTripTime),
     };
 
     // JITTER
-    this.networkQualityStatus[UPLINK][mediaType][JITTER] = {
+    this.networkQualityStatus[UPLINK][simplifiedMediaType][JITTER] = {
       acceptable: deterMineJitter(),
       value: determineIfUndefined(remoteRtpResults.jitter),
     };
