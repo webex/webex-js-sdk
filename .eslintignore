@@ -36,3 +36,4 @@ tasks/selenium
 umd/
 webex.min.js
 *.yml
+*.patch

@@ -4,6 +4,7 @@
 
 import querystring from 'querystring';
 
+import uuid from 'uuid';
 import {find, pick, uniq} from 'lodash';
 import {WebexPlugin} from '@webex/webex-core';
 
@@ -187,13 +188,36 @@ const Team = WebexPlugin.extend({
    * Join a team conversation
    * @param {TeamObject} team
    * @param {ConversationObject} conversation
+   * @param {userId} userId
    * @returns {Promise} Resolves with the conversation
    */
-  joinConversation(team, conversation) {
+  joinConversation(team, conversation, userId) {
+    if (!userId) {
+      return Promise.reject(new Error('`userId` is required'));
+    }
+
+    const body = {
+      kmsMessage: {
+        client: {
+          clientId: this.webex.internal.device.url,
+          credential: {
+            bearer: this.webex.credentials.supertoken.access_token,
+            userId,
+          },
+        },
+        method: 'create',
+        requestId: uuid.v4(),
+        resourceUri: conversation.kmsResourceObjectUrl,
+        uri: '/authorizations',
+        userIds: [userId],
+      },
+    };
+
     return this.webex
       .request({
         method: 'POST',
         uri: `${team.url}/conversations/${conversation.id}/participants`,
+        body,
       })
       .then((res) => res.body);
   },
