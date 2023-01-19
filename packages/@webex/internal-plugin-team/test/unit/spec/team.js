@@ -108,5 +108,46 @@ describe('plugin-team', () => {
           .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0));
       });
     });
+
+    describe('#joinConversation', () => {
+      const conversation = {kmsResourceObjectUrl: 'convoKroUrl', id: 'convoId'};
+      const team = {url: 'teamUrl'};
+      const userId = 'userId';
+
+      beforeEach(() => {
+        webex.credentials.supertoken = {access_token: 'fake_token'};
+      });
+
+      it('requires userId to joinConversation', () =>
+        assert.isRejected(webex.internal.team.joinConversation(team, conversation), /`userId` is required/));
+
+      it('makes POST to convo service with correct body kmsMessage', () => {
+        webex.credentials.supertoken = {access_token: 'fake_token'}
+        return webex.internal.team.joinConversation(team, conversation, userId).then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              uri: `${team.url}/conversations/${conversation.id}/participants`,
+              body: {
+                kmsMessage: {
+                  client: {
+                    clientId: webex.internal.device.url,
+                    credential: {
+                      bearer: webex.credentials.supertoken.access_token,
+                      userId,
+                    },
+                  },
+                  method: 'create',
+                  resourceUri: conversation.kmsResourceObjectUrl,
+                  uri: '/authorizations',
+                  userIds: [userId],
+                }
+              },
+            })
+          );
+        })
+      })
+    })
   });
 });

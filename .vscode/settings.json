@@ -22,8 +22,6 @@
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "eslint.format.enable": true,
-  "eslint.eslint.debug": true,
-  "eslint.eslint.alwaysShowStatus": true,
   "breadcrumbs.enabled": false,
   "prettier.bracketSameLine": true,
   "prettier.configPath": ".prettierrc"

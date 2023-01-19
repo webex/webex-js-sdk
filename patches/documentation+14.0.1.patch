@@ -1,0 +1,59 @@
+diff --git a/node_modules/documentation/src/parsers/parse_to_ast.js b/node_modules/documentation/src/parsers/parse_to_ast.js
+index 0eed35d..701f18d 100644
+--- a/node_modules/documentation/src/parsers/parse_to_ast.js
++++ b/node_modules/documentation/src/parsers/parse_to_ast.js
+@@ -3,7 +3,7 @@ import path from 'path';
+ 
+ const TYPESCRIPT_EXTS = {
+   '.ts': ['typescript'],
+-  '.tsx': ['typescript', 'jsx']
++  '.tsx': ['typescript', 'jsx'],
+ };
+ 
+ // this list is roughly the same as the one in prettier
+@@ -14,7 +14,7 @@ export const standardBabelParserPlugins = [
+   'classProperties',
+   'classStaticBlock',
+   'decimal',
+-  ['decorators', { decoratorsBeforeExport: false }],
++  'decorators-legacy',
+   'doExpressions',
+   'exportDefaultFrom',
+   'functionBind',
+@@ -23,11 +23,11 @@ export const standardBabelParserPlugins = [
+   'moduleBlocks',
+   'moduleStringNames',
+   'partialApplication',
+-  ['pipelineOperator', { proposal: 'minimal' }],
++  ['pipelineOperator', {proposal: 'minimal'}],
+   'privateIn',
+-  ['recordAndTuple', { syntaxType: 'hash' }],
++  ['recordAndTuple', {syntaxType: 'hash'}],
+   'throwExpressions',
+-  'v8intrinsic'
++  'v8intrinsic',
+ ];
+ 
+ function getParserOpts(file) {
+@@ -36,8 +36,8 @@ function getParserOpts(file) {
+     sourceType: 'module',
+     plugins: [
+       ...standardBabelParserPlugins,
+-      ...(TYPESCRIPT_EXTS[path.extname(file || '')] || ['flow', 'jsx'])
+-    ]
++      ...(TYPESCRIPT_EXTS[path.extname(file || '')] || ['flow', 'jsx']),
++    ],
+   };
+ }
+ 
+@@ -50,9 +50,7 @@ function getParserOpts(file) {
+  */
+ export function commentToFlow(source) {
+   if (!/@flow/.test(source)) return source;
+-  return source
+-    .replace(/\/\*::([^]+?)\*\//g, '$1')
+-    .replace(/\/\*:\s*([^]+?)\s*\*\//g, ':$1');
++  return source.replace(/\/\*::([^]+?)\*\//g, '$1').replace(/\/\*:\s*([^]+?)\s*\*\//g, ':$1');
+ }
+ 
+ export function parseToAst(source, file) {
