@@ -615,11 +615,6 @@ export default class Meetings extends WebexPlugin {
           stack: error.stack,
         });
 
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
-          reason: error.message,
-          stack: error.stack,
-        });
-
         return Promise.reject(error);
       });
   }
