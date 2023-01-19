@@ -37,3 +37,4 @@ umd/
 webex.min.js
 *.yml
 *.patch
+yarn.lock
