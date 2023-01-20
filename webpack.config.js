@@ -57,7 +57,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         // we don't need to manually rebuild after changing code.
         alias[`./packages/${packageName}`] = path.resolve(
           __dirname,
-          `./packages/${packageName}/src/index`
+          `./packages/${packageName}/src/index.js`
         );
         alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index.js`);
 
