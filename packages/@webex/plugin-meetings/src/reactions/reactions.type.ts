@@ -1,3 +1,5 @@
+import {REACTION_RELAY_TYPES} from './constants';
+
 export type EmoticonData = {
   type: string;
   codepoints?: string;
@@ -38,5 +40,21 @@ export enum SkinToneType {
 }
 
 export type Sender = {
-  participantId: string,
-}
+  participantId: string;
+};
+
+export type RelayEvent = {
+  data: {
+    relayType: (typeof REACTION_RELAY_TYPES)[keyof typeof REACTION_RELAY_TYPES];
+    reaction: Reaction;
+    sender: Sender;
+  };
+};
+
+export type ProcessedReaction = {
+  reaction: Reaction;
+  sender: {
+    id: Sender['participantId'];
+    name: string;
+  };
+};

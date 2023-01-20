@@ -1,5 +1,5 @@
-import { REACTION_RELAY_TYPES } from './constants';
-import { Reaction, Sender } from './reactions.type';
+import {REACTION_RELAY_TYPES} from './constants';
+import {Reaction, Sender, RelayEvent, ProcessedReaction} from './reactions.type';
 import Members from '../members/index';
 
 /**
@@ -11,7 +11,7 @@ import Members from '../members/index';
 export default class Reactions {
   members: Members;
   llm: any;
-  processEvent: any;
+  processEvent: (event: RelayEvent) => void;
 
   /**
    * @param {Members} members
@@ -28,17 +28,18 @@ export default class Reactions {
    * Processes reaction and triggers event
    * @param {Reaction} reactionPayload
    * @param {Sender} senderPayload
-   * @returns {Object}
+   * @returns {ProcessedReaction}
    */
-  private processReaction = (reactionPayload: Reaction, senderPayload: Sender): Object => {
-    const name = this.members.membersCollection.get(senderPayload.participantId).name;
-    const processedReaction: Object = {
+  private processReaction = (reactionPayload: Reaction, senderPayload: Sender) => {
+    const {name} = this.members.membersCollection.get(senderPayload.participantId);
+    const processedReaction: ProcessedReaction = {
       reaction: reactionPayload,
       sender: {
         id: senderPayload.participantId,
         name,
-      }
-    }
+      },
+    };
+
     return processedReaction;
   };
 
@@ -48,9 +49,9 @@ export default class Reactions {
    * @param {Function} callback
    * @returns {void}
    */
-  subscribe(callback: Function) {
-    this.processEvent = (e: any) => {
-      if (e.data.relayType == REACTION_RELAY_TYPES.REACTION) {
+  subscribe(callback: (value: ProcessedReaction) => void) {
+    this.processEvent = (e) => {
+      if (e.data.relayType === REACTION_RELAY_TYPES.REACTION) {
         const processedReaction = this.processReaction(e.data.reaction, e.data.sender);
         callback(processedReaction);
       }
@@ -67,5 +68,3 @@ export default class Reactions {
     this.llm.off('event:relay.event', this.processEvent);
   }
 }
-
-
