@@ -288,7 +288,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_RECORDING: 'meeting:recording:stopped',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
-  MEETING_RECEIVE_REACTION: 'meeting:receiveReaction',
+  MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
   MEETING_ADDED: 'meeting:added',

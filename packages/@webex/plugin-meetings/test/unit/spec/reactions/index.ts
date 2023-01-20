@@ -13,7 +13,7 @@ import Members from '@webex/plugin-meetings/src/members';
 import Reactions from '@webex/plugin-meetings/src/reactions';
 import {REACTION_RELAY_TYPES} from '@webex/plugin-meetings/src/reactions/constants';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   let webex = null;
   let reactions = null;
   let members = null;
@@ -64,7 +64,7 @@ describe('plugin-meetings', () => {
     describe('#subscribe', () => {
       it('should start listening on relay events', () => {
         const fakeCallbackFunction = sinon.stub();
-        reactions.processEvent = fakeCallbackFunction
+        reactions.processEvent = fakeCallbackFunction;
         const spy = sinon.spy(webex.internal.llm, 'on');
 
         reactions.subscribe(fakeCallbackFunction);
@@ -106,21 +106,21 @@ describe('plugin-meetings', () => {
     });
 
     describe('#unsuscribe', () => {
-        it('should stop listening on relay events', () => {
-          reactions.processEvent = sinon.stub();
-          const spy = sinon.spy(webex.internal.llm, 'off');
-  
-          reactions.unsubscribe();
-  
-          assert.calledOnceWithExactly(spy, 'event:relay.event', reactions.processEvent);
-        });
+      it('should stop listening on relay events', () => {
+        reactions.processEvent = sinon.stub();
+        const spy = sinon.spy(webex.internal.llm, 'off');
+
+        reactions.unsubscribe();
+
+        assert.calledOnceWithExactly(spy, 'event:relay.event', reactions.processEvent);
       });
+    });
 
     describe('#processReaction', () => {
-        it('should stop listening on relay events', () => {
-          const result = reactions.processReaction(fakeReactionPayload, fakeSenderPayload);
-          assert.match(result, fakeProcessedReaction);
-        });
+      it('should stop listening on relay events', () => {
+        const result = reactions.processReaction(fakeReactionPayload, fakeSenderPayload);
+        assert.match(result, fakeProcessedReaction);
       });
+    });
   });
 });

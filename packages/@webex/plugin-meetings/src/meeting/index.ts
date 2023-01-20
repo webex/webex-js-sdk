@@ -961,7 +961,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.transcription = undefined;
 
     /**
-     * Meeting transcription object
+     * Meeting reactions object
      * @instance
      * @type {Reaction}
      * @private
@@ -3462,10 +3462,9 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
  * Check if the meeting supports the Reactions
  * @returns {boolean}
- * @throws ReactionsNotSupportedError
  */
   isReactionsSupported() {
-    if (this.locusInfo?.controls?.reactions) {
+    if (this.locusInfo?.controls?.reactions.enabled) {
       return true;
     }
 
@@ -3584,15 +3583,9 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Process reactions
    * @private
-   * @returns {Promise<void>} a promise to process reactions
+   * @returns {<void>} a promise to process reactions
    */
-  private async receiveReaction() {
-    this.reactions = new Reactions(
-      this.members,
-      // @ts-ignore
-      this.webex.internal.llm,
-    );
-
+  private receiveReactions() {
     try {
       this.reactions.subscribe((payload) => {
         Trigger.trigger(
@@ -3601,13 +3594,13 @@ export default class Meeting extends StatelessWebexPlugin {
             file: 'meeting/index',
             function: 'join'
           },
-          EVENT_TRIGGERS.MEETING_RECEIVE_REACTION,
+          EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
           payload
         );
       });
     }
     catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#receiveReaction --> ${error}`);
+      LoggerProxy.logger.error(`Meeting:index#receiveReactions --> ${error}`);
     }
   }
 
@@ -3801,10 +3794,15 @@ export default class Meeting extends StatelessWebexPlugin {
             }
           }
           // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveReaction || options.receiveReaction) {
+          if (this.config.receiveReactions || options.receiveReactions) {
             if (this.isReactionsSupported()) {
-              await this.receiveReaction();
-              LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve reaction!');
+              this.reactions = new Reactions(
+                this.members,
+                // @ts-ignore
+                this.webex.internal.llm,
+              );
+              this.receiveReactions();
+              LoggerProxy.logger.info('Meeting:index#join --> enabled to receive reactions!');
             }
           }
         }

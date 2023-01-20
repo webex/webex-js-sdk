@@ -15,6 +15,7 @@ export default class Reactions {
 
   /**
    * @param {Members} members
+   * @param {any} llm
    * @constructor
    * @memberof Reactions
    */
@@ -24,7 +25,7 @@ export default class Reactions {
   }
 
   /**
-   * processes reaction and triggers event
+   * Processes reaction and triggers event
    * @param {Reaction} reactionPayload
    * @param {Sender} senderPayload
    * @returns {Object}
@@ -42,7 +43,7 @@ export default class Reactions {
   };
 
   /**
-   * Sends reactions data to given callback as it arrives.
+   * Subscribes to send reactions data to given callback as it arrives.
    *
    * @param {Function} callback
    * @returns {void}
@@ -57,6 +58,11 @@ export default class Reactions {
     this.llm.on('event:relay.event', this.processEvent);
   }
 
+  /**
+   * Unsuscribes from event listener to stop sending reactions data as reaction arrives.
+   *
+   * @returns {void}
+   */
   unsubscribe() {
     this.llm.off('event:relay.event', this.processEvent);
   }

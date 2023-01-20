@@ -60,6 +60,7 @@ import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
 import {MeetingInfoV2CaptchaError, MeetingInfoV2PasswordError} from '../../../../src/meeting-info/meeting-info-v2';
+import Reactions from '../../../../src/reactions/index';
 
 const {
   getBrowserName
@@ -766,7 +767,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should throw error', async () => {
+        it("should throw error if request doesn't work", async () => {
           meeting.request = sinon.stub().returns(Promise.reject());
 
           try {
@@ -789,31 +790,44 @@ describe('plugin-meetings', () => {
       });
       describe('#isReactionsSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
-          meeting.locusInfo.controls = {reactions: false};
+          meeting.locusInfo.controls = {reactions: {enabled: false}};
 
           assert.equal(meeting.isReactionsSupported(), false);
         });
-        it('should return true if webex assitant is enabled', () => {
-          meeting.locusInfo.controls = {reactions: true};
+        it('should return true if the feature is not supported for the meeting', () => {
+          meeting.locusInfo.controls = {reactions: {enabled: true}};
 
           assert.equal(meeting.isReactionsSupported(), true);
         });
       });
       describe('#receiveReaction', () => {
         it('should invoke subscribe method to invoke the callback', () => {
-          meeting.receiveReaction().then(() => {
-            assert.calledOnce(meeting.reactions.subscribe);
-          });
+          meeting.webex.internal.llm.on = sinon.stub();
+          meeting.reactions = new Reactions(
+            meeting.members,
+            // @ts-ignore
+            meeting.webex.internal.llm,
+          );
+          meeting.reactions.subscribe = sinon.stub();
+          meeting.receiveReactions();
+          assert.calledOnce(meeting.reactions.subscribe);
         });
 
         it('should throw error', async () => {
-          meeting.request = sinon.stub().returns(Promise.reject());
+          meeting.webex.internal.llm.on = sinon.stub();
+          meeting.reactions = new Reactions(
+            meeting.members,
+            // @ts-ignore
+            meeting.webex.internal.llm,
+          );
+          const e = new Error();
 
+          meeting.reactions.subscribe = sinon.stub().throws(e);
           try {
-            await meeting.receiveReaction();
+            meeting.receiveReactions();
           }
           catch (err) {
-            assert(err, {});
+            assert(err, e);
           }
         });
       });
@@ -878,14 +892,23 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.receiveTranscription);
           });
 
-          it('should invoke `receiveReaction()` if receiveReaction is set to true', async () => {
+          it('should invoke `receiveReactions()` if receiveReactions is set to true', async () => {
             meeting.isReactionsSupported = sinon.stub().returns(true);
-            meeting.receiveReaction = sinon.stub().returns(Promise.resolve());
+            meeting.receiveReactions = sinon.stub();
 
-            await meeting.join({receiveReaction: true});
-            assert.calledOnce(meeting.receiveReaction);
+            await meeting.join({receiveReactions: true});
+            assert.instanceOf(meeting.reactions, Reactions);
+            assert.calledOnce(meeting.receiveReactions);
           });
 
+          it('should not invoke `receiveReactions()` if receiveReactions is set to false', async () => {
+            meeting.isReactionsSupported = sinon.stub().returns(false);
+            meeting.receiveReactions = sinon.stub();
+
+            await meeting.join({receiveReactions: false});
+            assert.notInstanceOf(meeting.reactions, Reactions);
+            assert.notCalled(meeting.receiveReactions);
+          });
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
             sinon.assert.notCalled(meeting.setCorrelationId);
