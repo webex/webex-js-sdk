@@ -85,7 +85,7 @@ import {
   Event as RemoteMediaManagerEvent,
 } from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
-import {SkinTones} from '../reactions/reactions';
+import {SkinTones, Reactions as ReactionData} from '../reactions/reactions';
 import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
 
 import InMeetingActions from './in-meeting-actions';
@@ -2137,7 +2137,16 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           canSendReactions: MeetingUtil.canSendReactions(
             this.inMeetingActions.canSendReactions,
-            payload.info.userDisplayHints
+            payload.info.userDisplayHints,
+            (enabled: boolean) => {
+              if (enabled) {
+                // ensure llm connection is on in case it was turned off
+                this.updateLLMConnection();
+                this.receiveReactions();
+              } else {
+                this.reactions.unsubscribe();
+              }
+            }
           ),
         });
 
@@ -3919,7 +3928,7 @@ export default class Meeting extends StatelessWebexPlugin {
       })
       .then(async (join) => {
         // @ts-ignore - config coming from registerPlugin
-        if (this.config.enableAutomaticLLM) {
+        if (this.config.enableAutomaticLLM || true) {
           await this.updateLLMConnection();
         }
 
@@ -3935,7 +3944,7 @@ export default class Meeting extends StatelessWebexPlugin {
             }
           }
           // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveReactions || options.receiveReactions) {
+          if (this.config.receiveReactions || true) {
             if (this.isReactionsSupported()) {
               this.reactions = new Reactions(
                 this.members,
@@ -6884,7 +6893,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
     const participantId = this.members.selfId;
 
-    const reactionData = Reactions[reactionType];
+    const reactionData = ReactionData[reactionType];
 
     if (!reactionData) {
       return Promise.reject(new Error(`${reactionType} is not a valid reaction.`));

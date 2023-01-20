@@ -7,7 +7,6 @@ import Members from '../members/index';
  * @exports
  * @class Reactions
  */
-
 export default class Reactions {
   members: Members;
   llm: any;

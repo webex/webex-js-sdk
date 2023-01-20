@@ -546,11 +546,21 @@ MeetingUtil.canEnableReactions = (originalValue, displayHints) => {
   return originalValue;
 };
 
-MeetingUtil.canSendReactions = (originalValue, displayHints) => {
+MeetingUtil.canSendReactions = (
+  originalValue: boolean,
+  displayHints: Array<string>,
+  callback: (enabled: boolean) => void
+) => {
   if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
+    // callback for subscribing
+    callback(true);
+
     return true;
   }
   if (displayHints.includes(DISPLAY_HINTS.REACTIONS_INACTIVE)) {
+    // callback for unsubscribing
+    callback(false);
+
     return false;
   }
 
