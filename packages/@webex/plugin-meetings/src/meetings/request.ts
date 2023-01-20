@@ -53,9 +53,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    */
   determineRedirections(responseBody: any) {
     if (responseBody.remoteLocusClusterUrls && responseBody.remoteLocusClusterUrls.length) {
-      // @ts-ignore
       return Promise.all(
         responseBody.remoteLocusClusterUrls.map((url) =>
+          // @ts-ignore
           this.request({
             method: HTTP_VERBS.GET,
             url,

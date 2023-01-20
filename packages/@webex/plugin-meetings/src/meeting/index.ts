@@ -1201,22 +1201,25 @@ export default class Meeting extends StatelessWebexPlugin {
     // we have to pass the wbxappapi hostname as the siteFullName parameter
     const {hostname} = new URL(this.requiredCaptcha.refreshURL);
 
-    return this.meetingRequest
-      .refreshCaptcha({
-        captchaRefreshUrl: `${this.requiredCaptcha.refreshURL}&siteFullName=${hostname}`,
-        captchaId: this.requiredCaptcha.captchaId,
-      })
-      .then((response) => {
-        this.requiredCaptcha.captchaId = response.body.captchaID;
-        this.requiredCaptcha.verificationImageURL = response.body.verificationImageURL;
-        this.requiredCaptcha.verificationAudioURL = response.body.verificationAudioURL;
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error(
-          `Meeting:index#refreshCaptcha --> Error Unable to refresh captcha for ${this.destination} - ${error}`
-        );
-        throw error;
-      });
+    return (
+      this.meetingRequest
+        // @ts-ignore
+        .refreshCaptcha({
+          captchaRefreshUrl: `${this.requiredCaptcha.refreshURL}&siteFullName=${hostname}`,
+          captchaId: this.requiredCaptcha.captchaId,
+        })
+        .then((response) => {
+          this.requiredCaptcha.captchaId = response.body.captchaID;
+          this.requiredCaptcha.verificationImageURL = response.body.verificationImageURL;
+          this.requiredCaptcha.verificationAudioURL = response.body.verificationAudioURL;
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meeting:index#refreshCaptcha --> Error Unable to refresh captcha for ${this.destination} - ${error}`
+          );
+          throw error;
+        })
+    );
   }
 
   /**
@@ -2365,7 +2368,7 @@ export default class Meeting extends StatelessWebexPlugin {
           .catch((error) => {
             // @ts-ignore
             LoggerProxy.logger.error(
-              `Meeting:index#setUpLocusInfoMeetingListener --> REMOTE_RESPONSE. Issue with leave for meeting, meeting still in collection: ${this.meeting}, error: ${error}`
+              `Meeting:index#setUpLocusInfoMeetingListener --> REMOTE_RESPONSE. Issue with leave for meeting, meeting still in collection: ${this}, error: ${error}`
             );
           });
       }
@@ -2400,7 +2403,7 @@ export default class Meeting extends StatelessWebexPlugin {
           .catch((error) => {
             // @ts-ignore
             LoggerProxy.logger.error(
-              `Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. Issue with leave for meeting, meeting still in collection: ${this.meeting}, error: ${error}`
+              `Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. Issue with leave for meeting, meeting still in collection: ${this}, error: ${error}`
             );
           });
       } else {
@@ -2642,6 +2645,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.locusUrl = locusMeetingObject?.url || webexMeetingInfo?.locusUrl || this.locusUrl;
       // @ts-ignore - config coming from registerPlugin
       this.setSipUri(
+        // @ts-ignore
         this.config.experimental.enableUnifiedMeetings
           ? locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipUrl
           : locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipMeetingUri || this.sipUri
@@ -3641,6 +3645,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - fix type
       const {
         body: {webSocketUrl},
+        // @ts-ignore
       } = await this.request({
         method: HTTP_VERBS.POST,
         uri: datachannelUrl,
@@ -3988,28 +3993,31 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (!this.dialInUrl) this.dialInUrl = `dialin:///${uuid.v4()}`;
 
-    return this.meetingRequest
-      .dialIn({
-        correlationId,
-        dialInUrl: this.dialInUrl,
-        locusUrl,
-        clientUrl: this.deviceUrl,
-      })
-      .then((res) => {
-        this.locusInfo.onFullLocus(res.body.locus);
-      })
-      .catch((error) => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
-          correlation_id: this.correlationId,
-          dial_in_url: this.dialInUrl,
-          locus_id: locusUrl.split('/').pop(),
-          client_url: this.deviceUrl,
-          reason: error.error?.message,
-          stack: error.stack,
-        });
+    return (
+      this.meetingRequest
+        // @ts-ignore
+        .dialIn({
+          correlationId,
+          dialInUrl: this.dialInUrl,
+          locusUrl,
+          clientUrl: this.deviceUrl,
+        })
+        .then((res) => {
+          this.locusInfo.onFullLocus(res.body.locus);
+        })
+        .catch((error) => {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
+            correlation_id: this.correlationId,
+            dial_in_url: this.dialInUrl,
+            locus_id: locusUrl.split('/').pop(),
+            client_url: this.deviceUrl,
+            reason: error.error?.message,
+            stack: error.stack,
+          });
 
-        return Promise.reject(error);
-      });
+          return Promise.reject(error);
+        })
+    );
   }
 
   /**
@@ -4026,29 +4034,32 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (!this.dialOutUrl) this.dialOutUrl = `dialout:///${uuid.v4()}`;
 
-    return this.meetingRequest
-      .dialOut({
-        correlationId,
-        dialOutUrl: this.dialOutUrl,
-        phoneNumber,
-        locusUrl,
-        clientUrl: this.deviceUrl,
-      })
-      .then((res) => {
-        this.locusInfo.onFullLocus(res.body.locus);
-      })
-      .catch((error) => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
-          correlation_id: this.correlationId,
-          dial_out_url: this.dialOutUrl,
-          locus_id: locusUrl.split('/').pop(),
-          client_url: this.deviceUrl,
-          reason: error.error?.message,
-          stack: error.stack,
-        });
+    return (
+      this.meetingRequest
+        // @ts-ignore
+        .dialOut({
+          correlationId,
+          dialOutUrl: this.dialOutUrl,
+          phoneNumber,
+          locusUrl,
+          clientUrl: this.deviceUrl,
+        })
+        .then((res) => {
+          this.locusInfo.onFullLocus(res.body.locus);
+        })
+        .catch((error) => {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
+            correlation_id: this.correlationId,
+            dial_out_url: this.dialOutUrl,
+            locus_id: locusUrl.split('/').pop(),
+            client_url: this.deviceUrl,
+            reason: error.error?.message,
+            stack: error.stack,
+          });
 
-        return Promise.reject(error);
-      });
+          return Promise.reject(error);
+        })
+    );
   }
 
   /**
@@ -4752,6 +4763,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // Add ip address info if geo hint is present
       // @ts-ignore fix type
       options.data.intervalMetadata.peerReflexiveIP =
+        // @ts-ignore
         this.webex.meetings.geoHintInfo?.clientAddress ||
         options.data.intervalMetadata.peerReflexiveIP ||
         MQA_STATS.DEFAULT_IP;

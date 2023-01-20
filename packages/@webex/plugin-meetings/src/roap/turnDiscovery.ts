@@ -236,7 +236,7 @@ export default class TurnDiscovery {
    *                                 media connection just after a reconnection
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean) {
+  doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
     // @ts-ignore - fix type
     const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
 
