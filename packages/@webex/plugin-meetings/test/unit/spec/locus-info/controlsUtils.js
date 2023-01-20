@@ -78,5 +78,25 @@ describe('plugin-meetings', () => {
 
       assert.equal(updates.hasEntryExitToneChanged, false);
     });
+
+    it('returns hasBreakoutChanged = true when it has changed', () => {
+      const newControls = {
+        breakout: 'breakout'
+      };
+
+      const {updates} = ControlsUtils.getControls({breakout: 'old breakout'}, newControls);
+
+      assert.equal(updates.hasBreakoutChanged, true);
+    });
+
+    it('returns hasBreakoutChanged = false when it has not changed', () => {
+      const newControls = {
+        breakout: 'breakout'
+      };
+
+      const {updates} = ControlsUtils.getControls({breakout: 'breakout'}, newControls);
+
+      assert.equal(updates.hasBreakoutChanged, false);
+    });
   });
 });

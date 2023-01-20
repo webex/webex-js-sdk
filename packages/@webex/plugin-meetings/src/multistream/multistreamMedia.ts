@@ -48,6 +48,7 @@ export class MultistreamMedia {
     // todo: depending on how muting is done with Local tracks, this code here might need to change...
 
     if (track.kind === 'audio') {
+      // @ts-ignore
       this.meeting.setLocalAudioTrack(track);
       this.meeting.mediaProperties.mediaDirection.sendAudio = true;
 
@@ -56,6 +57,7 @@ export class MultistreamMedia {
         this.meeting.audio ||
         createMuteState(AUDIO, this.meeting, this.meeting.mediaProperties.mediaDirection);
     } else if (track.kind === 'video') {
+      // @ts-ignore
       this.meeting.setLocalVideoTrack(track);
       this.meeting.mediaProperties.mediaDirection.sendVideo = true;
 
@@ -80,9 +82,11 @@ export class MultistreamMedia {
     // muting etc
 
     if (track.kind === 'audio') {
+      // @ts-ignore
       this.meeting.setLocalVideoTrack(null);
       this.meeting.mediaProperties.mediaDirection.sendAudio = false;
     } else if (track.kind === 'video') {
+      // @ts-ignore
       this.meeting.setLocalAudioTrack(null);
       this.meeting.mediaProperties.mediaDirection.sendVideo = false;
     }
