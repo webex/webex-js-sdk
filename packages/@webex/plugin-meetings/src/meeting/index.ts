@@ -2165,7 +2165,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
-    if (datachannelUrl && (this.config.enableAutomaticLLM)) {
+    if (datachannelUrl && this.config.enableAutomaticLLM) {
       // Defer this as updateLLMConnection relies upon this.locusInfo.url which is only set
       // after the MEETING_INFO_UPDATED callback finishes
       defer(() => {
@@ -3607,17 +3607,15 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
- * Check if the meeting supports the Reactions
- * @returns {boolean}
- */
+   * Check if the meeting supports the Reactions
+   * @returns {boolean}
+   */
   isReactionsSupported() {
     if (this.locusInfo?.controls?.reactions.enabled) {
       return true;
     }
 
-    LoggerProxy.logger.error(
-      'Meeting:index#isReactionsSupported --> Reactions is not supported'
-    );
+    LoggerProxy.logger.error('Meeting:index#isReactionsSupported --> Reactions is not supported');
 
     return false;
   }
@@ -3725,8 +3723,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Process reactions
+   *
    * @private
-   * @returns {<void>} a promise to process reactions
+   * @returns {void} a promise to process reactions
    */
   private receiveReactions() {
     try {
@@ -3735,14 +3734,13 @@ export default class Meeting extends StatelessWebexPlugin {
           this,
           {
             file: 'meeting/index',
-            function: 'join'
+            function: 'join',
           },
           EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
           payload
         );
       });
-    }
-    catch (error) {
+    } catch (error) {
       LoggerProxy.logger.error(`Meeting:index#receiveReactions --> ${error}`);
     }
   }
@@ -3942,15 +3940,16 @@ export default class Meeting extends StatelessWebexPlugin {
               this.reactions = new Reactions(
                 this.members,
                 // @ts-ignore
-                this.webex.internal.llm,
+                this.webex.internal.llm
               );
               this.receiveReactions();
               LoggerProxy.logger.info('Meeting:index#join --> enabled to receive reactions!');
             }
           }
-        }
-        else {
-          LoggerProxy.logger.error('Meeting:index#join --> Receving transcription and meeting reactions are not supported on this platform');
+        } else {
+          LoggerProxy.logger.error(
+            'Meeting:index#join --> Receving transcription and meeting reactions are not supported on this platform'
+          );
         }
 
         return join;
