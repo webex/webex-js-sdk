@@ -631,8 +631,8 @@ export default class Meeting extends StatelessWebexPlugin {
         locusUrl: attrs.locus && attrs.locus.url,
         receiveSlotManager: this.receiveSlotManager,
         mediaRequestManagers: this.mediaRequestManagers,
-        // @ts-ignore - Fix type
       },
+      // @ts-ignore - Fix type
       {parent: this.webex}
     );
     /**
@@ -1119,8 +1119,8 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.resolve();
     } catch (err) {
       if (err instanceof MeetingInfoV2PasswordError) {
-        // @ts-ignore
         LoggerProxy.logger.info(
+          // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
         );
 
@@ -1139,8 +1139,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
         throw new PasswordError();
       } else if (err instanceof MeetingInfoV2CaptchaError) {
-        // @ts-ignore
         LoggerProxy.logger.info(
+          // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - captcha required (code=${err?.body?.code}).`
         );
 
@@ -4794,6 +4794,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           seqNum: msg.seqNum,
           memberIds: msg.csis
+            // @ts-ignore
             .map((csi) => this.members.findMemberByCsi(csi)?.id)
             .filter((item) => item !== undefined),
         }

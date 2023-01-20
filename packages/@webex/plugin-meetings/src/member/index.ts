@@ -31,6 +31,7 @@ export default class Member {
   name: any;
   participant: any;
   status: any;
+  supportsBreakouts: boolean;
   type: any;
   namespace = MEETINGS;
 

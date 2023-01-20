@@ -12,8 +12,10 @@ import {CSI, ReceiveSlot} from './receiveSlot';
  * so this manager has a pool in order to re-use the slots that were released earlier.
  */
 export class ReceiveSlotManager {
+  // @ts-ignore
   private allocatedSlots: {[key in MC.MediaType]: ReceiveSlot[]};
 
+  // @ts-ignore
   private freeSlots: {[key in MC.MediaType]: ReceiveSlot[]};
 
   private meeting: Meeting;
@@ -44,6 +46,7 @@ export class ReceiveSlotManager {
    * @param {MC.MediaType} mediaType
    * @returns {Promise<ReceiveSlot>}
    */
+  // @ts-ignore
   async allocateSlot(mediaType: MC.MediaType): Promise<ReceiveSlot> {
     if (!this.meeting?.mediaProperties?.webrtcMediaConnection) {
       return Promise.reject(new Error('Webrtc media connection is missing'));
@@ -67,6 +70,7 @@ export class ReceiveSlotManager {
     const receiveSlot = new ReceiveSlot(
       mediaType,
       wcmeReceiveSlot,
+      // @ts-ignore
       (csi: CSI) => this.meeting.members.findMemberByCsi(csi)?.id
     );
 

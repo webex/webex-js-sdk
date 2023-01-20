@@ -8,10 +8,12 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 
 class FakeSlot extends EventEmitter {
+  // @ts-ignore
   public mediaType: MC.MediaType;
 
   public id: string;
 
+  // @ts-ignore
   constructor(mediaType: MC.MediaType, id: string) {
     super();
     this.mediaType = mediaType;

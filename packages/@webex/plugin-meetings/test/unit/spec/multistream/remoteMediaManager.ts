@@ -17,12 +17,14 @@ import {CSI, ReceiveSlotId} from '@webex/plugin-meetings/src/multistream/receive
 import testUtils from '../../../utils/testUtils';
 
 class FakeSlot extends EventEmitter {
+  // @ts-ignore
   public mediaType: MC.MediaType;
 
   public id: string;
 
   public csi?: number;
 
+  // @ts-ignore
   constructor(mediaType: MC.MediaType, id: string) {
     super();
     this.mediaType = mediaType;

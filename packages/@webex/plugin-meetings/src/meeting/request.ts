@@ -850,6 +850,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   toggleReactions({enable, locusUrl, requestingParticipantId}: ToggleReactionsOptions) {
     const uri = `${locusUrl}/${CONTROLS}`;
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,

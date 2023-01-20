@@ -47,6 +47,7 @@ const CODEC_DEFAULTS = {
   },
 };
 
+// @ts-ignore
 type SendMediaRequestsCallback = (mediaRequests: MC.MediaRequest[]) => void;
 
 export class MediaRequestManager {
@@ -91,6 +92,7 @@ export class MediaRequestManager {
   }
 
   private sendRequests() {
+    // @ts-ignore
     const wcmeMediaRequests: MC.MediaRequest[] = [];
 
     // todo: check how many streams we're asking for and what resolution and introduce some limits (spark-377701)

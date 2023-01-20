@@ -18,6 +18,7 @@
     "removeComments": false,
     "sourceMap": true,
     "target": "ES6",
+    "skipLibCheck": true,
     "lib": [
       "ESNext",
       "DOM"
