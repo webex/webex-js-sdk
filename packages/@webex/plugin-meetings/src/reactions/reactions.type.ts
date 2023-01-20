@@ -5,6 +5,7 @@ export type EmoticonData = {
 };
 
 export type SkinTone = EmoticonData;
+
 export type Reaction = EmoticonData & {
   tone?: SkinTone;
 };

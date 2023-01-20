@@ -64,6 +64,7 @@ describe('plugin-dss', () => {
 
       it('rejects when it cannot authorize', async () => {
         webex.canAuthorize = false;
+        // @ts-ignore
         await expect(webex.internal.dss.register()).to.be.rejectedWith(
           Error,
           'SDK cannot authorize'
