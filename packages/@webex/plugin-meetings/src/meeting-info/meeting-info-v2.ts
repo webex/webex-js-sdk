@@ -19,6 +19,7 @@ export class MeetingInfoV2PasswordError extends Error {
   meetingInfo: any;
   sdkMessage: any;
   wbxAppApiCode: any;
+  body: any;
 
   /**
    *
@@ -70,6 +71,7 @@ export class MeetingInfoV2CaptchaError extends Error {
   isPasswordRequired: any;
   sdkMessage: any;
   wbxAppApiCode: any;
+  body: any;
   /**
    *
    * @constructor

@@ -104,7 +104,7 @@ describe('TurnDiscovery', () => {
 
       // check that TURN_DISCOVERY_REQUEST was sent
       await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-
+      // @ts-ignore
       mockRoapRequest.sendRoap.resetHistory();
 
       // simulate the response
@@ -141,6 +141,7 @@ describe('TurnDiscovery', () => {
       await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0, '');
 
       // the main part of the test is complete now, checking the remaining part of the flow just for completeness
+      // @ts-ignore
       mockRoapRequest.sendRoap.resetHistory();
 
       // simulate the response
@@ -173,7 +174,7 @@ describe('TurnDiscovery', () => {
 
       // check that TURN_DISCOVERY_REQUEST was sent
       await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-
+      // @ts-ignore
       mockRoapRequest.sendRoap.resetHistory();
 
       // simulate the response with some extra headers
@@ -206,7 +207,7 @@ describe('TurnDiscovery', () => {
       const prevConfigValue = testMeeting.config.experimental.enableTurnDiscovery;
 
       testMeeting.config.experimental.enableTurnDiscovery = false;
-
+      // @ts-ignore
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
       const {turnServerInfo, turnDiscoverySkippedReason} = result;
@@ -319,7 +320,7 @@ describe('TurnDiscovery', () => {
 
       // check that TURN_DISCOVERY_REQUEST was sent
       await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-
+      // @ts-ignore
       mockRoapRequest.sendRoap.resetHistory();
 
       // setup the mock so that sending of OK fails

@@ -50,5 +50,5 @@ async function run(options, files) {
 
   return new Promise((resolve) => {
     mocha.run(resolve);
-  });
+  })
 }
