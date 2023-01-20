@@ -95,8 +95,6 @@ export default {
       enableAdhocMeetings: false,
       enableTurnDiscovery: false,
     },
-    // TODO: add more degradation preferences
-    // see https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-377701
     degradationPreferences: {
       maxMacroblocksLimit: 32400,
     },

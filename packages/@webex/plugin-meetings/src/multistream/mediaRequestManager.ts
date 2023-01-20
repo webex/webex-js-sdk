@@ -1,9 +1,11 @@
 /* eslint-disable require-jsdoc */
 import {MediaConnection as MC} from '@webex/internal-media-core';
+import {cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotId} from './receiveSlot';
+import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -106,8 +108,15 @@ export class MediaRequestManager {
   }
 
   private getDegradedClientRequests() {
-    const clientRequests = {...this.clientRequests};
-    const maxFsLimits = [8192, 3600, 920, 240, 60]; // 1080p, 720p, 360p, 180p, 90p
+    const clientRequests = cloneDeep(this.clientRequests);
+    const maxFsLimits = [
+      getMaxFs('best'),
+      getMaxFs('large'),
+      getMaxFs('medium'),
+      getMaxFs('small'),
+      getMaxFs('very small'),
+      getMaxFs('thumbnail'),
+    ];
 
     // reduce max-fs until total macroblocks is below limit
     for (let i = 0; i < maxFsLimits.length; i += 1) {
@@ -121,10 +130,18 @@ export class MediaRequestManager {
           totalMacroblocksRequested += mr.codecInfo.maxFs * mr.receiveSlots.length;
         }
       });
-      if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
+      if (
+        totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit ||
+        i === maxFsLimits.length - 1
+      ) {
         if (i !== 0) {
           LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> too many requests with high max-fs, frame size may be limited`
+            `multistream:mediaRequestManager --> too many requests with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
+          );
+        }
+        if (i === maxFsLimits.length - 1) {
+          LoggerProxy.logger.warn(
+            `multistream:mediaRequestManager --> you are requesting too many streams, consider reducing the number of requests`
           );
         }
         break;
@@ -161,7 +178,7 @@ export class MediaRequestManager {
             new MC.CodecInfo(
               0x80,
               new MC.H264Codec(
-                mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+                mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
                 mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
                 mr.codecInfo.maxWidth,

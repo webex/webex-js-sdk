@@ -2,16 +2,19 @@ import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaR
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
   priority: number;
   receiveSlots: Array<ReceiveSlot>;
+  maxFs: number;
 };
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';
   csi: number;
   receiveSlot: ReceiveSlot;
+  maxFs: number;
 };
 type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
 
@@ -62,7 +65,7 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, commit = false) =>
+  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -75,14 +78,14 @@ describe('MediaRequestManager', () => {
         receiveSlots,
         codecInfo: {
           codec: 'h264',
-          maxFs: ACTIVE_SPEAKER_MAX_FS,
+          maxFs: maxFs,
         },
       },
       commit
     );
 
   // helper function for adding a receiver selected request
-  const addReceiverSelectedRequest = (csi, receiveSlot, commit = false) =>
+  const addReceiverSelectedRequest = (csi, receiveSlot, maxFs, commit = false) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -92,7 +95,7 @@ describe('MediaRequestManager', () => {
         receiveSlots: [receiveSlot],
         codecInfo: {
           codec: 'h264',
-          maxFs: RECEIVER_SELECTED_MAX_FS,
+          maxFs: maxFs,
         },
       },
       commit
@@ -123,7 +126,7 @@ describe('MediaRequestManager', () => {
               sinon.match({
                 payloadType: 0x80,
                 h264: sinon.match({
-                  maxFs: ACTIVE_SPEAKER_MAX_FS,
+                  maxFs: expectedRequest.maxFs,
                 }),
               }),
             ],
@@ -141,7 +144,7 @@ describe('MediaRequestManager', () => {
               sinon.match({
                 payloadType: 0x80,
                 h264: sinon.match({
-                  maxFs: RECEIVER_SELECTED_MAX_FS,
+                  maxFs: expectedRequest.maxFs,
                 }),
               }),
             ],
@@ -281,44 +284,79 @@ describe('MediaRequestManager', () => {
 
   it('keeps adding requests with every call to addRequest()', () => {
     // start with 1 request
-    addReceiverSelectedRequest(100, fakeReceiveSlots[0], true);
+    addReceiverSelectedRequest(100, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, true);
 
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[0]},
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // now add another one
-    addReceiverSelectedRequest(101, fakeReceiveSlots[1], true);
+    addReceiverSelectedRequest(101, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, true);
 
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[0]},
-      {policy: 'receiver-selected', csi: 101, receiveSlot: fakeWcmeSlots[1]},
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 101,
+        receiveSlot: fakeWcmeSlots[1],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // and one more
     addActiveSpeakerRequest(
       1,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      ACTIVE_SPEAKER_MAX_FS,
       true
     );
 
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[0]},
-      {policy: 'receiver-selected', csi: 101, receiveSlot: fakeWcmeSlots[1]},
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 101,
+        receiveSlot: fakeWcmeSlots[1],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
       {
         policy: 'active-speaker',
         priority: 1,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
     ]);
   });
 
   it('cancels the requests correctly when cancelRequest() is called with commit=true', () => {
     const requestIds = [
-      addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]]),
-      addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]]),
-      addReceiverSelectedRequest(100, fakeReceiveSlots[4]),
-      addReceiverSelectedRequest(200, fakeReceiveSlots[5]),
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[0], fakeReceiveSlots[1]],
+        ACTIVE_SPEAKER_MAX_FS
+      ),
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[2], fakeReceiveSlots[3]],
+        ACTIVE_SPEAKER_MAX_FS
+      ),
+      addReceiverSelectedRequest(100, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS),
+      addReceiverSelectedRequest(200, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS),
     ];
 
     // cancel one of the active speaker requests
@@ -326,9 +364,24 @@ describe('MediaRequestManager', () => {
 
     // expect only the 3 remaining requests to be sent out
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]]},
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[4]},
-      {policy: 'receiver-selected', csi: 200, receiveSlot: fakeWcmeSlots[5]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[4],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 200,
+        receiveSlot: fakeWcmeSlots[5],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // cancel one of the receiver selected requests
@@ -336,8 +389,18 @@ describe('MediaRequestManager', () => {
 
     // expect only the 2 remaining requests to be sent out
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]]},
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[4]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[4],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
   });
 
@@ -345,9 +408,10 @@ describe('MediaRequestManager', () => {
     addActiveSpeakerRequest(
       10,
       [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+      ACTIVE_SPEAKER_MAX_FS,
       false
     );
-    addReceiverSelectedRequest(123, fakeReceiveSlots[3], false);
+    addReceiverSelectedRequest(123, fakeReceiveSlots[3], RECEIVER_SELECTED_MAX_FS, false);
 
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
@@ -361,8 +425,14 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 10,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
-      {policy: 'receiver-selected', csi: 123, receiveSlot: fakeWcmeSlots[3]},
+      {
+        policy: 'receiver-selected',
+        csi: 123,
+        receiveSlot: fakeWcmeSlots[3],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
   });
 
@@ -372,11 +442,12 @@ describe('MediaRequestManager', () => {
       addActiveSpeakerRequest(
         250,
         [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+        ACTIVE_SPEAKER_MAX_FS,
         false
       ),
-      addReceiverSelectedRequest(98765, fakeReceiveSlots[3], false),
-      addReceiverSelectedRequest(99999, fakeReceiveSlots[4], false),
-      addReceiverSelectedRequest(88888, fakeReceiveSlots[5], true),
+      addReceiverSelectedRequest(98765, fakeReceiveSlots[3], RECEIVER_SELECTED_MAX_FS, false),
+      addReceiverSelectedRequest(99999, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS, false),
+      addReceiverSelectedRequest(88888, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS, true),
     ];
 
     checkMediaRequestsSent([
@@ -384,10 +455,26 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 250,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
-      {policy: 'receiver-selected', csi: 98765, receiveSlot: fakeWcmeSlots[3]},
-      {policy: 'receiver-selected', csi: 99999, receiveSlot: fakeWcmeSlots[4]},
-      {policy: 'receiver-selected', csi: 88888, receiveSlot: fakeWcmeSlots[5]},
+      {
+        policy: 'receiver-selected',
+        csi: 98765,
+        receiveSlot: fakeWcmeSlots[3],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 99999,
+        receiveSlot: fakeWcmeSlots[4],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 88888,
+        receiveSlot: fakeWcmeSlots[5],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // now cancel 3 of them, but with commit=false => nothing should happen
@@ -401,22 +488,29 @@ describe('MediaRequestManager', () => {
     mediaRequestManager.commit();
 
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 98765, receiveSlot: fakeWcmeSlots[3]},
+      {
+        policy: 'receiver-selected',
+        csi: 98765,
+        receiveSlot: fakeWcmeSlots[3],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
   });
 
   it('sends the wcme media requests when commit() is called', () => {
     // send some requests, all of them with commit=false
-    addReceiverSelectedRequest(123000, fakeReceiveSlots[0], false);
-    addReceiverSelectedRequest(456000, fakeReceiveSlots[1], false);
+    addReceiverSelectedRequest(123000, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(456000, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
     addActiveSpeakerRequest(
       255,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      ACTIVE_SPEAKER_MAX_FS,
       false
     );
     addActiveSpeakerRequest(
       254,
       [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+      ACTIVE_SPEAKER_MAX_FS,
       false
     );
 
@@ -428,33 +522,47 @@ describe('MediaRequestManager', () => {
 
     // check that all requests have been sent out
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 123000, receiveSlot: fakeWcmeSlots[0]},
-      {policy: 'receiver-selected', csi: 456000, receiveSlot: fakeWcmeSlots[1]},
+      {
+        policy: 'receiver-selected',
+        csi: 123000,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 456000,
+        receiveSlot: fakeWcmeSlots[1],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
       {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
       {
         policy: 'active-speaker',
         priority: 254,
         receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
     ]);
   });
 
   it('clears all the requests on reset()', () => {
     // send some requests and commit them one by one
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], true);
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], true);
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, true);
+    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, true);
     addActiveSpeakerRequest(
       255,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      ACTIVE_SPEAKER_MAX_FS,
       true
     );
     addActiveSpeakerRequest(
       254,
       [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+      ACTIVE_SPEAKER_MAX_FS,
       true
     );
 
@@ -464,17 +572,29 @@ describe('MediaRequestManager', () => {
     mediaRequestManager.commit();
 
     checkMediaRequestsSent([
-      {policy: 'receiver-selected', csi: 1500, receiveSlot: fakeWcmeSlots[0]},
-      {policy: 'receiver-selected', csi: 1501, receiveSlot: fakeWcmeSlots[1]},
+      {
+        policy: 'receiver-selected',
+        csi: 1500,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 1501,
+        receiveSlot: fakeWcmeSlots[1],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
       {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
       {
         policy: 'active-speaker',
         priority: 254,
         receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
       },
     ]);
 
@@ -488,18 +608,46 @@ describe('MediaRequestManager', () => {
 
   it('calls resetSourceState() on slots that are stopped being used', () => {
     const requestIds = [
-      addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]]),
-      addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]]),
-      addReceiverSelectedRequest(100, fakeReceiveSlots[4]),
-      addReceiverSelectedRequest(200, fakeReceiveSlots[5]),
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[0], fakeReceiveSlots[1]],
+        ACTIVE_SPEAKER_MAX_FS
+      ),
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[2], fakeReceiveSlots[3]],
+        ACTIVE_SPEAKER_MAX_FS
+      ),
+      addReceiverSelectedRequest(100, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS),
+      addReceiverSelectedRequest(200, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS),
     ];
 
     mediaRequestManager.commit();
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]]},
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3]]},
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[4]},
-      {policy: 'receiver-selected', csi: 200, receiveSlot: fakeWcmeSlots[5]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
+      },
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[4],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 200,
+        receiveSlot: fakeWcmeSlots[5],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // cancel 2 of the requests
@@ -510,8 +658,18 @@ describe('MediaRequestManager', () => {
 
     // expect only the 2 remaining requests to be sent out
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]]},
-      {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[4]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
+        maxFs: ACTIVE_SPEAKER_MAX_FS,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[4],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
     ]);
 
     // and that the receive slots of the 2 cancelled ones had resetSourceState() called
@@ -529,145 +687,91 @@ describe('MediaRequestManager', () => {
   it('can degrade max-fs once when request exceeds max macroblocks limit', () => {
     // set max macroblocks limit
     mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+    sendMediaRequestsCallback.resetHistory();
 
-    // request 5 "large" 1080p streams
-    mediaRequestManager.addRequest(
-      {
-        policyInfo: {
-          policy: 'receiver-selected',
-          csi: 123,
-        },
-        receiveSlots: fakeReceiveSlots.slice(0, 5),
-        codecInfo: {
-          maxFs: 8192,
-        },
-      },
+    // request 3 "large" 1080p streams
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 3), getMaxFs('large'), false);
+
+    // request additional "large" 1080p stream to exceed max macroblocks limit
+    const additionalRequestId = addReceiverSelectedRequest(
+      123,
+      fakeReceiveSlots[3],
+      getMaxFs('large'),
       true
     );
 
-    // check that resulting requests are 5 "medium" 720p streams
-    assert.calledWith(sendMediaRequestsCallback, [
-      sinon.match({
+    // check that resulting requests are 4 "medium" 720p streams
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: fakeWcmeSlots.slice(0, 3),
+        maxFs: getMaxFs('medium'),
+      },
+      {
         policy: 'receiver-selected',
-        policySpecificInfo: sinon.match({
-          csi: 123,
-        }),
-        receiveSlots: fakeWcmeSlots.slice(0, 5),
-        codecInfos: [
-          sinon.match({
-            payloadType: 0x80,
-            h264: sinon.match({
-              maxFs: 3600,
-            }),
-          }),
-        ],
-      }),
+        csi: 123,
+        receiveSlot: fakeWcmeSlots[3],
+        maxFs: getMaxFs('medium'),
+      },
+    ]);
+
+    // cancel additional request
+    mediaRequestManager.cancelRequest(additionalRequestId);
+
+    // check that resulting requests are 3 "large" 1080p streams
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: fakeWcmeSlots.slice(0, 3),
+        maxFs: getMaxFs('large'),
+      },
     ]);
   });
 
   it('can degrade max-fs multiple times when request exceeds max macroblocks limit', () => {
     // set max macroblocks limit
     mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+    sendMediaRequestsCallback.resetHistory();
 
     // request 10 "large" 1080p streams
-    mediaRequestManager.addRequest(
-      {
-        policyInfo: {
-          policy: 'receiver-selected',
-          csi: 123,
-        },
-        receiveSlots: fakeReceiveSlots.slice(0, 10),
-        codecInfo: {
-          maxFs: 8192,
-        },
-      },
-      true
-    );
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
 
     // check that resulting requests are 10 "small" 360p streams
-    assert.calledWith(sendMediaRequestsCallback, [
-      sinon.match({
-        policy: 'receiver-selected',
-        policySpecificInfo: sinon.match({
-          csi: 123,
-        }),
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 10),
-        codecInfos: [
-          sinon.match({
-            payloadType: 0x80,
-            h264: sinon.match({
-              maxFs: 920,
-            }),
-          }),
-        ],
-      }),
+        maxFs: getMaxFs('small'),
+      },
     ]);
   });
 
   it('can degrade only the largest max-fs when request exceeds max macroblocks limit', () => {
     // set max macroblocks limit
     mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+    sendMediaRequestsCallback.resetHistory();
 
     // request 5 "large" 1080p streams and 5 "small" 360p streams
-    mediaRequestManager.addRequest(
-      {
-        policyInfo: {
-          policy: 'receiver-selected',
-          csi: 123,
-        },
-        receiveSlots: fakeReceiveSlots.slice(0, 5),
-        codecInfo: {
-          maxFs: 8192,
-        },
-      },
-      false
-    );
-    mediaRequestManager.addRequest(
-      {
-        policyInfo: {
-          policy: 'receiver-selected',
-          csi: 456,
-        },
-        receiveSlots: fakeReceiveSlots.slice(5, 10),
-        codecInfo: {
-          maxFs: 920,
-        },
-      },
-      true
-    );
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 5), getMaxFs('large'), false);
+    addActiveSpeakerRequest(254, fakeReceiveSlots.slice(5, 10), getMaxFs('small'), true);
 
     // check that resulting requests are 5 "medium" 720p streams and 5 "small" 360p streams
-    assert.calledWith(sendMediaRequestsCallback, [
-      sinon.match({
-        policy: 'receiver-selected',
-        policySpecificInfo: sinon.match({
-          csi: 123,
-        }),
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 5),
-        codecInfos: [
-          sinon.match({
-            payloadType: 0x80,
-            h264: sinon.match({
-              maxFs: 3600,
-            }),
-          }),
-        ],
-      }),
-      sinon.match({
-        policy: 'receiver-selected',
-        policySpecificInfo: sinon.match({
-          csi: 456,
-        }),
+        maxFs: getMaxFs('medium'),
+      },
+      {
+        policy: 'active-speaker',
+        priority: 254,
         receiveSlots: fakeWcmeSlots.slice(5, 10),
-        codecInfos: [
-          sinon.match({
-            payloadType: 0x80,
-            h264: sinon.match({
-              maxFs: 920,
-            }),
-          }),
-        ],
-      }),
+        maxFs: getMaxFs('small'),
+      },
     ]);
   });
 });
