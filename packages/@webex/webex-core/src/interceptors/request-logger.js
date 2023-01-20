@@ -40,14 +40,17 @@ export default class RequestLoggerInterceptor extends Interceptor {
       try {
         // Determine if body is a buffer without relying on Buffer to avoid
         // node/browser conflicts.
-        if (options.body && options.body.length && !isArray(options.body) && !isString(options.body)) {
+        if (
+          options.body &&
+          options.body.length &&
+          !isArray(options.body) &&
+          !isString(options.body)
+        ) {
           logger.info('Request Options:', util.inspect(omit(options, 'body'), {depth: null}));
-        }
-        else {
+        } else {
           logger.info('Request Options:', util.inspect(options, {depth: null}));
         }
-      }
-      catch (e) {
+      } catch (e) {
         logger.warn('Could not stringify request options:', e);
       }
     }

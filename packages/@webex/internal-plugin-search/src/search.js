@@ -25,28 +25,29 @@ const Search = WebexPlugin.extend({
       api: 'argonaut',
       resource: 'directory',
       method: 'POST',
-      body: options
-    })
-      .then((res) => res.body);
+      body: options,
+    }).then((res) => res.body);
   },
 
   @oneFlight
   bindSearchKey() {
-    return this.webex.internal.encryption.kms.createUnboundKeys({count: 1})
-      .then(([key]) => this.webex.internal.encryption.kms.createResource({
-        key,
-        userIds: [this.webex.internal.device.userId]
-      })
-        .then(() => this.webex.internal.device.set('searchEncryptionKeyUrl', key.uri)));
+    return this.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then(([key]) =>
+      this.webex.internal.encryption.kms
+        .createResource({
+          key,
+          userIds: [this.webex.internal.device.userId],
+        })
+        .then(() => this.webex.internal.device.set('searchEncryptionKeyUrl', key.uri))
+    );
   },
 
   /**
-  * Fetches search result activities
-  * @param {Object} options
-  * @param {boolean} options.includeRemoteClusterReferences when true,
-  * includes search results from remote clusters
-  * @returns {Promise<Array>} Resolves with the activities
-  */
+   * Fetches search result activities
+   * @param {Object} options
+   * @param {boolean} options.includeRemoteClusterReferences when true,
+   * includes search results from remote clusters
+   * @returns {Promise<Array>} Resolves with the activities
+   */
   search(options) {
     /* eslint max-nested-callbacks: [0] */
     options = options || {};
@@ -58,14 +59,16 @@ const Search = WebexPlugin.extend({
     }
 
     return promise
-      .then(() => this.webex.request({
-        service: 'argonaut',
-        resource: 'search',
-        method: 'POST',
-        body: Object.assign(options, {
-          searchEncryptionKeyUrl: this.webex.internal.device.searchEncryptionKeyUrl
+      .then(() =>
+        this.webex.request({
+          service: 'argonaut',
+          resource: 'search',
+          method: 'POST',
+          body: Object.assign(options, {
+            searchEncryptionKeyUrl: this.webex.internal.device.searchEncryptionKeyUrl,
+          }),
         })
-      }))
+      )
       .then((res) => {
         const resActivities = get(res, 'body.activities.items', []);
 
@@ -81,15 +84,10 @@ const Search = WebexPlugin.extend({
             );
 
             // Find activities per cluster
-            const bulkActivitiesPromise = this.webex.internal.conversation.bulkActivitiesFetch(
-              clusterActivityUrls,
-              {cluster: editedCluster}
-            )
+            const bulkActivitiesPromise = this.webex.internal.conversation
+              .bulkActivitiesFetch(clusterActivityUrls, {cluster: editedCluster})
               .catch((err) => {
-                this.logger.warn(
-                  'search: error fetching from remote clusters',
-                  err
-                );
+                this.logger.warn('search: error fetching from remote clusters', err);
 
                 return Promise.resolve([]);
               });
@@ -97,8 +95,8 @@ const Search = WebexPlugin.extend({
             promises.push(bulkActivitiesPromise);
           });
 
-          return Promise.all(promises).then(
-            (clusterResults) => clusterResults.reduce(
+          return Promise.all(promises).then((clusterResults) =>
+            clusterResults.reduce(
               (accumulator, clusterResult) => accumulator.concat(clusterResult),
               resActivities
             )
@@ -107,8 +105,7 @@ const Search = WebexPlugin.extend({
 
         return resActivities;
       });
-  }
-
+  },
 });
 
 export default Search;

@@ -28,7 +28,6 @@ npm install --save @webex/plugin-attachment-actions
 
 ## Usage
 
-
 ## Maintainers
 
 This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).

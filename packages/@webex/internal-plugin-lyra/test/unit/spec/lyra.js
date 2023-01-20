@@ -13,8 +13,8 @@ describe('plugin-lyra', () => {
   before(() => {
     webex = new MockWebex({
       children: {
-        lyra: Lyra
-      }
+        lyra: Lyra,
+      },
     });
 
     webex.config.lyra = lyraConfig.lyra;
@@ -26,15 +26,20 @@ describe('plugin-lyra', () => {
 
   describe('lyra', () => {
     describe('#getAdvertisedEndpoint()', () => {
-      it('sends GET request to proximity', () => webex.internal.lyra.getAdvertisedEndpoint('token')
-        .then(() => assert.calledWith(webex.request, sinon.match({
-          method: 'GET',
-          api: 'proximity',
-          resource: '/ultrasound/advertisements',
-          qs: {
-            token: 'token'
-          }
-        }))));
+      it('sends GET request to proximity', () =>
+        webex.internal.lyra.getAdvertisedEndpoint('token').then(() =>
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'GET',
+              api: 'proximity',
+              resource: '/ultrasound/advertisements',
+              qs: {
+                token: 'token',
+              },
+            })
+          )
+        ));
     });
   });
 });

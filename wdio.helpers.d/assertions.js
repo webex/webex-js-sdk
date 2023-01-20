@@ -9,7 +9,7 @@ const addCommand = require('./lib/add-command');
   'getLocationInView',
   'getTagName',
   'getText',
-  'getValue'
+  'getValue',
 ].forEach((getterName) => {
   const asserterName = getterName.replace('get', 'assert');
   const asserterInverseName = getterName.replace('get', 'assertNot');
@@ -18,22 +18,26 @@ const addCommand = require('./lib/add-command');
     const expected = String(args.pop());
     const getter = () => this[getterName](selector, ...args);
 
-    this.waitUntil(() => getter() === expected, 5000, `Timed-out waiting for "$(${selector})" to equal ${expected}, current value is ${getter()}`);
+    this.waitUntil(
+      () => getter() === expected,
+      5000,
+      `Timed-out waiting for "$(${selector})" to equal ${expected}, current value is ${getter()}`
+    );
   });
 
   addCommand(asserterInverseName, function assert(selector, ...args) {
     const expected = String(args.pop());
     const getter = () => this[getterName](selector, ...args);
 
-    this.waitUntil(() => getter() !== expected, 5000, `Timed-out waiting for "$(${selector})" to not equal ${expected}`);
+    this.waitUntil(
+      () => getter() !== expected,
+      5000,
+      `Timed-out waiting for "$(${selector})" to not equal ${expected}`
+    );
   });
 });
 
-[
-  'getSource',
-  'getTitle',
-  'getUrl'
-].forEach((getterName) => {
+['getSource', 'getTitle', 'getUrl'].forEach((getterName) => {
   const asserterName = getterName.replace('get', 'assert');
   const selector = getterName.replace('get', '').toLowerCase();
   const asserterInverseName = getterName.replace('get', 'assertNot');
@@ -41,12 +45,24 @@ const addCommand = require('./lib/add-command');
   addCommand(asserterName, function assert(...args) {
     const expected = args.pop();
 
-    this.waitUntil(() => this[getterName](...args) === expected, 2000, `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[getterName](...args)}"`);
+    this.waitUntil(
+      () => this[getterName](...args) === expected,
+      2000,
+      `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[
+        getterName
+      ](...args)}"`
+    );
   });
 
   addCommand(asserterInverseName, function assert(...args) {
     const expected = args.pop();
 
-    this.waitUntil(() => this[getterName](...args) !== expected, 2000, `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[getterName](...args)}"`);
+    this.waitUntil(
+      () => this[getterName](...args) !== expected,
+      2000,
+      `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[
+        getterName
+      ](...args)}"`
+    );
   });
 });

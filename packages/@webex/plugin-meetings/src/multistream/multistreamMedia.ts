@@ -19,6 +19,7 @@ export class MultistreamMedia {
     this.meeting = meeting;
   }
 
+  // eslint-disable-next-line valid-jsdoc
   /**
    * throws if we don't have a media connection created
    */

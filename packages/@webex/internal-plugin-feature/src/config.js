@@ -3,5 +3,5 @@
  */
 
 export default {
-  feature: {}
+  feature: {},
 };

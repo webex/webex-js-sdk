@@ -42,7 +42,7 @@ const Services = WebexPlugin.extend({
   states: new WeakMap(),
 
   props: {
-    validateDomains: ['boolean', false, true]
+    validateDomains: ['boolean', false, true],
   },
 
   _catalogs: new WeakMap(),
@@ -102,7 +102,7 @@ const Services = WebexPlugin.extend({
    * @returns {boolean} - True if the service exists.
    */
   hasService(serviceName) {
-    return !!(this.get(serviceName));
+    return !!this.get(serviceName);
   },
 
   /**
@@ -113,7 +113,7 @@ const Services = WebexPlugin.extend({
   hasAllowedDomains() {
     const catalog = this._getCatalog();
 
-    return (catalog.getAllowedDomains().length > 0);
+    return catalog.getAllowedDomains().length > 0;
   },
 
   /**
@@ -149,14 +149,13 @@ const Services = WebexPlugin.extend({
   },
 
   /**
- * saves all the services from the pre and post catalog service
- * @param {Object} serviceUrls
- * @returns {void}
- */
+   * saves all the services from the pre and post catalog service
+   * @param {Object} serviceUrls
+   * @returns {void}
+   */
   _updateServiceUrls(serviceUrls) {
     this._serviceUrls = {...this._serviceUrls, ...serviceUrls};
   },
-
 
   /**
    * Update a list of `serviceUrls` to the most current
@@ -171,17 +170,22 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  updateServices({
-    from, query, token, forceRefresh
-  } = {}) {
+  updateServices({from, query, token, forceRefresh} = {}) {
     const catalog = this._getCatalog();
-    let formattedQuery, serviceGroup;
+    let formattedQuery;
+    let serviceGroup;
 
     // map catalog name to service group name.
     switch (from) {
-      case 'limited': serviceGroup = 'preauth'; break;
-      case 'signin': serviceGroup = 'signin'; break;
-      default: serviceGroup = 'postauth'; break;
+      case 'limited':
+        serviceGroup = 'preauth';
+        break;
+      case 'signin':
+        serviceGroup = 'signin';
+        break;
+      default:
+        serviceGroup = 'postauth';
+        break;
     }
 
     // confirm catalog update for group is not in progress.
@@ -195,7 +199,9 @@ const Services = WebexPlugin.extend({
       const queryKey = query && Object.keys(query)[0];
 
       if (!['email', 'emailhash', 'userId', 'orgId', 'mode'].includes(queryKey)) {
-        return Promise.reject(new Error('a query param of email, emailhash, userId, orgId, or mode is required'));
+        return Promise.reject(
+          new Error('a query param of email, emailhash, userId, orgId, or mode is required')
+        );
       }
     }
     // encode email when query key is email
@@ -206,8 +212,7 @@ const Services = WebexPlugin.extend({
 
       if (queryKey === 'email' && query.email) {
         formattedQuery.emailhash = sha256(query.email.toLowerCase()).toString();
-      }
-      else {
+      } else {
         formattedQuery[queryKey] = query[queryKey];
       }
     }
@@ -216,7 +221,7 @@ const Services = WebexPlugin.extend({
       from,
       token,
       query: formattedQuery,
-      forceRefresh
+      forceRefresh,
     })
       .then((serviceHostMap) => {
         catalog.updateServiceUrls(serviceGroup, serviceHostMap);
@@ -260,7 +265,7 @@ const Services = WebexPlugin.extend({
     reqId = 'WEBCLIENT',
     forceRefresh = false,
     activationOptions = {},
-    preloginUserId
+    preloginUserId,
   }) {
     this.logger.info('services: validating a user');
 
@@ -276,18 +281,20 @@ const Services = WebexPlugin.extend({
     if (canAuthorize) {
       return this.updateServices({forceRefresh})
         .then(() => this.webex.credentials.getUserToken())
-        .then((token) => this.sendUserActivation({
-          email,
-          reqId,
-          token: token.toString(),
-          activationOptions,
-          preloginUserId
-        }))
+        .then((token) =>
+          this.sendUserActivation({
+            email,
+            reqId,
+            token: token.toString(),
+            activationOptions,
+            preloginUserId,
+          })
+        )
         .then((userObj) => ({
           activated: true,
           exists: true,
           details: 'user is authorized via a user token',
-          user: userObj
+          user: userObj,
         }));
     }
 
@@ -297,9 +304,7 @@ const Services = WebexPlugin.extend({
 
     // Validate that client authentication details exist.
     if (!client_id || !client_secret) {
-      return Promise.reject(new Error(
-        'client authentication details are not available'
-      ));
+      return Promise.reject(new Error('client authentication details are not available'));
     }
     /* eslint-enable camelcase */
 
@@ -307,61 +312,66 @@ const Services = WebexPlugin.extend({
     let token;
 
     // Begin client authentication user validation.
-    return this.collectPreauthCatalog({email})
-      .then(() => {
-        // Retrieve the service url from the updated catalog. This is required
-        // since `WebexCore` is usually not fully initialized at the time this
-        // request completes.
-        const idbrokerService = this.get('idbroker', true);
+    return (
+      this.collectPreauthCatalog({email})
+        .then(() => {
+          // Retrieve the service url from the updated catalog. This is required
+          // since `WebexCore` is usually not fully initialized at the time this
+          // request completes.
+          const idbrokerService = this.get('idbroker', true);
 
-        // Collect the client auth token.
-        return this.webex.credentials.getClientToken({
-          uri: `${idbrokerService}idb/oauth2/v1/access_token`,
-          scope: 'webexsquare:admin webexsquare:get_conversation Identity:SCIM'
-        });
-      })
-      .then((tokenObj) => {
-        // Generate the token string.
-        token = tokenObj.toString();
-
-        // Collect the signin catalog using the client auth information.
-        return this.collectSigninCatalog({email, token, forceRefresh});
-      })
-      // Validate if collecting the signin catalog failed and populate the RTO
-      // with the appropriate content.
-      .catch((error) => ({
-        exists: (error.name !== 'NotFound'),
-        activated: false,
-        details: (error.name !== 'NotFound') ?
-          'user exists but is not activated' :
-          'user does not exist and is not activated'
-      }))
-      // Validate if the previous promise resolved with an RTO and populate the
-      // new RTO accordingly.
-      .then((rto) => Promise.all([
-        rto || {
-          activated: true,
-          exists: true,
-          details: 'user exists and is activated'
-        },
-        this.sendUserActivation({
-          email,
-          reqId,
-          token,
-          activationOptions,
-          preloginUserId
+          // Collect the client auth token.
+          return this.webex.credentials.getClientToken({
+            uri: `${idbrokerService}idb/oauth2/v1/access_token`,
+            scope: 'webexsquare:admin webexsquare:get_conversation Identity:SCIM',
+          });
         })
-      ]))
-      .then(([rto, user]) => ({...rto, user}))
-      .catch((error) => {
-        const response = {
-          statusCode: error.statusCode,
-          responseText: error.body && error.body.message,
-          body: error.body
-        };
+        .then((tokenObj) => {
+          // Generate the token string.
+          token = tokenObj.toString();
 
-        return Promise.reject(response);
-      });
+          // Collect the signin catalog using the client auth information.
+          return this.collectSigninCatalog({email, token, forceRefresh});
+        })
+        // Validate if collecting the signin catalog failed and populate the RTO
+        // with the appropriate content.
+        .catch((error) => ({
+          exists: error.name !== 'NotFound',
+          activated: false,
+          details:
+            error.name !== 'NotFound'
+              ? 'user exists but is not activated'
+              : 'user does not exist and is not activated',
+        }))
+        // Validate if the previous promise resolved with an RTO and populate the
+        // new RTO accordingly.
+        .then((rto) =>
+          Promise.all([
+            rto || {
+              activated: true,
+              exists: true,
+              details: 'user exists and is activated',
+            },
+            this.sendUserActivation({
+              email,
+              reqId,
+              token,
+              activationOptions,
+              preloginUserId,
+            }),
+          ])
+        )
+        .then(([rto, user]) => ({...rto, user}))
+        .catch((error) => {
+          const response = {
+            statusCode: error.statusCode,
+            responseText: error.body && error.body.message,
+            body: error.body,
+          };
+
+          return Promise.reject(response);
+        })
+    );
   },
 
   /**
@@ -373,17 +383,18 @@ const Services = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'hydra',
-      resource: 'meetingPreferences'
-    }).then((res) => {
-      this.logger.info('services: received user region info');
+      resource: 'meetingPreferences',
+    })
+      .then((res) => {
+        this.logger.info('services: received user region info');
 
-      return res.body;
-    }).catch((err) => {
-      this.logger.info('services: was not able to fetch user login information', err);
-      // resolve successfully even if request failed
-    });
+        return res.body;
+      })
+      .catch((err) => {
+        this.logger.info('services: was not able to fetch user login information', err);
+        // resolve successfully even if request failed
+      });
   },
-
 
   /**
    * Fetches client region info such as countryCode and timezone.
@@ -395,17 +406,19 @@ const Services = WebexPlugin.extend({
       uri: 'https://ds.ciscospark.com/v1/region',
       addAuthHeader: false,
       headers: {
-        'spark-user-agent': null
+        'spark-user-agent': null,
       },
-      timeout: 5000
-    }).then((res) => {
-      this.logger.info('services: received user region info');
+      timeout: 5000,
+    })
+      .then((res) => {
+        this.logger.info('services: received user region info');
 
-      return res.body;
-    }).catch((err) => {
-      this.logger.info('services: was not able to get user region info', err);
-      // resolve successfully even if request failed
-    });
+        return res.body;
+      })
+      .catch((err) => {
+        this.logger.info('services: was not able to get user region info', err);
+        // resolve successfully even if request failed
+      });
   },
 
   /**
@@ -424,48 +437,44 @@ const Services = WebexPlugin.extend({
    * @param {SendUserActivationPTO} - The Parameter transfer object.
    * @returns {LicenseDTO} - The DTO returned from the **License** service.
    */
-  sendUserActivation({
-    email,
-    reqId,
-    token,
-    activationOptions,
-    preloginUserId
-  }) {
+  sendUserActivation({email, reqId, token, activationOptions, preloginUserId}) {
     this.logger.info('services: sending user activation request');
-    let countryCode, timezone;
-
+    let countryCode;
+    let timezone;
 
     // try to fetch client region info first
-    return this.fetchClientRegionInfo()
-      .then((clientRegionInfo) => {
-        if (clientRegionInfo) {
-          ({countryCode, timezone} = clientRegionInfo);
-        }
+    return (
+      this.fetchClientRegionInfo()
+        .then((clientRegionInfo) => {
+          if (clientRegionInfo) {
+            ({countryCode, timezone} = clientRegionInfo);
+          }
 
-        // Send the user activation request to the **License** service.
-        return this.request({
-          service: 'license',
-          resource: 'users/activations',
-          method: 'POST',
-          headers: {
-            accept: 'application/json',
-            authorization: token,
-            'x-prelogin-userid': preloginUserId
-          },
-          body: {
-            email,
-            reqId,
-            countryCode,
-            timeZone: timezone,
-            ...activationOptions
-          },
-          shouldRefreshAccessToken: false
-        });
-      })
-      // On success, return the **License** user object.
-      .then(({body}) => body)
-      // On failure, reject with error from **License**.
-      .catch((error) => Promise.reject(error));
+          // Send the user activation request to the **License** service.
+          return this.request({
+            service: 'license',
+            resource: 'users/activations',
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              authorization: token,
+              'x-prelogin-userid': preloginUserId,
+            },
+            body: {
+              email,
+              reqId,
+              countryCode,
+              timeZone: timezone,
+              ...activationOptions,
+            },
+            shouldRefreshAccessToken: false,
+          });
+        })
+        // On success, return the **License** user object.
+        .then(({body}) => body)
+        // On failure, reject with error from **License**.
+        .catch((error) => Promise.reject(error))
+    );
   },
 
   /**
@@ -479,7 +488,11 @@ const Services = WebexPlugin.extend({
    */
   collectPreauthCatalog(query, forceRefresh = false) {
     if (!query) {
-      return this.updateServices({from: 'limited', query: {mode: 'DEFAULT_BY_PROXIMITY'}, forceRefresh});
+      return this.updateServices({
+        from: 'limited',
+        query: {mode: 'DEFAULT_BY_PROXIMITY'},
+        forceRefresh,
+      });
     }
 
     return this.updateServices({from: 'limited', query, forceRefresh});
@@ -501,7 +514,10 @@ const Services = WebexPlugin.extend({
     }
 
     return this.updateServices({
-      from: 'signin', query: {email}, token, forceRefresh
+      from: 'signin',
+      query: {email},
+      token,
+      forceRefresh,
     });
   },
 
@@ -518,20 +534,19 @@ const Services = WebexPlugin.extend({
 
       // This must be set outside of the setConfig method used to assign the
       // idbroker and identity url values.
-      this.webex.config.credentials.authorizeUrl = authorizationString ?
-        authorizeUrl :
-        `${idbroker.replace(trailingSlashes, '')}/idb/oauth2/v1/authorize`;
-
+      this.webex.config.credentials.authorizeUrl = authorizationString
+        ? authorizeUrl
+        : `${idbroker.replace(trailingSlashes, '')}/idb/oauth2/v1/authorize`;
 
       this.webex.setConfig({
         credentials: {
           idbroker: {
-            url: idbroker.replace(trailingSlashes, '') // remove trailing slash
+            url: idbroker.replace(trailingSlashes, ''), // remove trailing slash
           },
           identity: {
-            url: identity.replace(trailingSlashes, '') // remove trailing slash
-          }
-        }
+            url: identity.replace(trailingSlashes, ''), // remove trailing slash
+          },
+        },
       });
     }
   },
@@ -586,7 +601,9 @@ const Services = WebexPlugin.extend({
     // Save memory by grabbing the catalog after there isn't a priortyURL
     const catalog = this._getCatalog();
 
-    const fetchFromServiceUrl = services.servicesNotNeedValidation.find((service) => service === name);
+    const fetchFromServiceUrl = services.servicesNotNeedValidation.find(
+      (service) => service === name
+    );
 
     if (fetchFromServiceUrl) {
       return Promise.resolve(this._serviceUrls[name]);
@@ -600,21 +617,24 @@ const Services = WebexPlugin.extend({
     }
 
     if (catalog.isReady) {
-      if (url) { return Promise.resolve(url); }
+      if (url) {
+        return Promise.resolve(url);
+      }
 
       this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
-        fields: {service_name: name}
+        fields: {service_name: name},
       });
 
-      return Promise.reject(new Error(
-        `services: service '${name}' was not found in any of the catalogs`
-      ));
+      return Promise.reject(
+        new Error(`services: service '${name}' was not found in any of the catalogs`)
+      );
     }
 
     return new Promise((resolve, reject) => {
       const groupsToCheck = ['preauth', 'signin', 'postauth'];
       const checkCatalog = (catalogGroup) =>
-        catalog.waitForCatalog(catalogGroup, timeout)
+        catalog
+          .waitForCatalog(catalogGroup, timeout)
           .then(() => {
             const scopedPriorityUrl = this.get(name, true);
             const scopedPrioriryUrlObj = this.getServiceFromUrl(url);
@@ -625,15 +645,12 @@ const Services = WebexPlugin.extend({
           })
           .catch(() => undefined);
 
-      Promise.all(groupsToCheck.map((group) => checkCatalog(group)))
-        .then(() => {
-          this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
-            fields: {service_name: name}
-          });
-          reject(new Error(
-            `services: service '${name}' was not found after waiting`
-          ));
+      Promise.all(groupsToCheck.map((group) => checkCatalog(group))).then(() => {
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
+          fields: {service_name: name},
         });
+        reject(new Error(`services: service '${name}' was not found after waiting`));
+      });
     });
   },
 
@@ -646,51 +663,45 @@ const Services = WebexPlugin.extend({
    */
   _formatReceivedHostmap(serviceHostmap) {
     // map the host catalog items to a formatted hostmap
-    const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce(
-      (accumulator, key) => {
-        if (serviceHostmap.hostCatalog[key].length === 0) {
-          return accumulator;
-        }
-
-        const serviceName = serviceHostmap.hostCatalog[key][0].id.split(':')[3];
-        const defaultUrl = serviceHostmap.serviceLinks[serviceName];
-
-        let serviceItem = accumulator.find(
-          (item) => item.name === serviceName
-        );
-
-        if (!serviceItem) {
-          serviceItem = {
-            name: serviceName,
-            defaultUrl,
-            defaultHost: Url.parse(defaultUrl).hostname,
-            hosts: []
-          };
-
-          accumulator.push(serviceItem);
-        }
-
-        serviceItem.hosts.push(
-          // map the default key as a low priority default for cluster matching
-          {
-            host: key,
-            ttl: -1,
-            priority: 10,
-            id: serviceHostmap.hostCatalog[key][0].id,
-            homeCluster: serviceItem.defaultHost === key
-          },
-          // map the rest of the hosts in their proper locations
-          ...serviceHostmap.hostCatalog[key].map(
-            (host) => ({
-              ...host,
-              homeCluster: serviceItem.defaultHost === key
-            })
-          )
-        );
-
+    const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce((accumulator, key) => {
+      if (serviceHostmap.hostCatalog[key].length === 0) {
         return accumulator;
-      }, []
-    );
+      }
+
+      const serviceName = serviceHostmap.hostCatalog[key][0].id.split(':')[3];
+      const defaultUrl = serviceHostmap.serviceLinks[serviceName];
+
+      let serviceItem = accumulator.find((item) => item.name === serviceName);
+
+      if (!serviceItem) {
+        serviceItem = {
+          name: serviceName,
+          defaultUrl,
+          defaultHost: Url.parse(defaultUrl).hostname,
+          hosts: [],
+        };
+
+        accumulator.push(serviceItem);
+      }
+
+      serviceItem.hosts.push(
+        // map the default key as a low priority default for cluster matching
+        {
+          host: key,
+          ttl: -1,
+          priority: 10,
+          id: serviceHostmap.hostCatalog[key][0].id,
+          homeCluster: serviceItem.defaultHost === key,
+        },
+        // map the rest of the hosts in their proper locations
+        ...serviceHostmap.hostCatalog[key].map((host) => ({
+          ...host,
+          homeCluster: serviceItem.defaultHost === key,
+        }))
+      );
+
+      return accumulator;
+    }, []);
 
     // append service links that do not exist in the host catalog
     Object.keys(serviceHostmap.serviceLinks).forEach((key) => {
@@ -701,7 +712,7 @@ const Services = WebexPlugin.extend({
           name: key,
           defaultUrl: serviceHostmap.serviceLinks[key],
           defaultHost: Url.parse(serviceHostmap.serviceLinks[key]).hostname,
-          hosts: []
+          hosts: [],
         });
       }
     });
@@ -761,7 +772,7 @@ const Services = WebexPlugin.extend({
     return {
       name: service.name,
       priorityUrl: service.get(true),
-      defaultUrl: service.get()
+      defaultUrl: service.get(),
     };
   },
 
@@ -774,7 +785,7 @@ const Services = WebexPlugin.extend({
   isServiceUrl(url) {
     const catalog = this._getCatalog();
 
-    return !!(catalog.findServiceUrlFromUrl(url));
+    return !!catalog.findServiceUrlFromUrl(url);
   },
 
   /**
@@ -786,7 +797,7 @@ const Services = WebexPlugin.extend({
   isAllowedDomainUrl(url) {
     const catalog = this._getCatalog();
 
-    return !!(catalog.findAllowedDomain(url));
+    return !!catalog.findAllowedDomain(url);
   },
 
   /**
@@ -820,9 +831,7 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  _fetchNewServiceHostmap({
-    from, query, token, forceRefresh
-  } = {}) {
+  _fetchNewServiceHostmap({from, query, token, forceRefresh} = {}) {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
     const qs = {...query, format: 'hostmap'};
@@ -832,15 +841,17 @@ const Services = WebexPlugin.extend({
     }
 
     const requestObject = {
-      method: 'GET', service, resource, qs
+      method: 'GET',
+      service,
+      resource,
+      qs,
     };
 
     if (token) {
       requestObject.headers = {authorization: token};
     }
 
-    return this.request(requestObject)
-      .then(({body}) => this._formatReceivedHostmap(body));
+    return this.request(requestObject).then(({body}) => this._formatReceivedHostmap(body));
   },
 
   /**
@@ -861,11 +872,10 @@ const Services = WebexPlugin.extend({
       // Check for discovery services.
       if (services.discovery) {
         // Format the discovery configuration into an injectable array.
-        const formattedDiscoveryServices = Object.keys(services.discovery)
-          .map((key) => ({
-            name: key,
-            defaultUrl: services.discovery[key]
-          }));
+        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) => ({
+          name: key,
+          defaultUrl: services.discovery[key],
+        }));
 
         // Inject formatted discovery services into services catalog.
         catalog.updateServiceUrls('discovery', formattedDiscoveryServices);
@@ -873,11 +883,10 @@ const Services = WebexPlugin.extend({
 
       if (services.override) {
         // Format the override configuration into an injectable array.
-        const formattedOverrideServices = Object.keys(services.override)
-          .map((key) => ({
-            name: key,
-            defaultUrl: services.override[key]
-          }));
+        const formattedOverrideServices = Object.keys(services.override).map((key) => ({
+          name: key,
+          defaultUrl: services.override[key],
+        }));
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceUrls('override', formattedOverrideServices);
@@ -907,24 +916,25 @@ const Services = WebexPlugin.extend({
 
     // Init a promise chain. Must be done as a Promise.resolve() to allow
     // credentials#getOrgId() to properly throw.
-    return Promise.resolve()
-      // Get the user's OrgId.
-      .then(() => credentials.getOrgId())
-      // Begin collecting the preauth/limited catalog.
-      .then((orgId) => this.collectPreauthCatalog({orgId}))
-      .then(() => {
-        // Validate if the token is authorized.
-        if (credentials.canAuthorize) {
-          // Attempt to collect the postauth catalog.
-          return this.updateServices()
-            .catch(() => this.logger.warn(
-              'services: cannot retrieve postauth catalog'
-            ));
-        }
+    return (
+      Promise.resolve()
+        // Get the user's OrgId.
+        .then(() => credentials.getOrgId())
+        // Begin collecting the preauth/limited catalog.
+        .then((orgId) => this.collectPreauthCatalog({orgId}))
+        .then(() => {
+          // Validate if the token is authorized.
+          if (credentials.canAuthorize) {
+            // Attempt to collect the postauth catalog.
+            return this.updateServices().catch(() =>
+              this.logger.warn('services: cannot retrieve postauth catalog')
+            );
+          }
 
-        // Return a resolved promise for consistent return value.
-        return Promise.resolve();
-      });
+          // Return a resolved promise for consistent return value.
+          return Promise.resolve();
+        })
+    );
   },
 
   /**
@@ -959,17 +969,16 @@ const Services = WebexPlugin.extend({
           .then(() => {
             catalog.isReady = true;
           })
-          .catch((error) => this.logger.error(
-            `services: failed to init initial services, ${error.message}`
-          ));
-      }
-      else {
+          .catch((error) =>
+            this.logger.error(`services: failed to init initial services, ${error.message}`)
+          );
+      } else {
         const {email} = this.webex.config;
 
         this.collectPreauthCatalog(email ? {email} : undefined);
       }
     });
-  }
+  },
 });
 /* eslint-enable no-underscore-dangle */
 

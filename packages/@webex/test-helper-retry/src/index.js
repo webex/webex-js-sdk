@@ -17,15 +17,22 @@ const backoffPattern = [0, 1000, 2000, 4000, 8000, 16000, 32000, 32000, 32000];
  * @returns {Object}
  */
 function retry(fn) {
-  return backoffPattern.reduce((promise, delay) => promise.catch((err) => new Promise((resolve) => {
-    if (err) {
-      console.error(`###Test error: ${err}. Retrying test in ${delay} seconds`);
-    }
+  return backoffPattern.reduce(
+    (promise, delay) =>
+      promise.catch(
+        (err) =>
+          new Promise((resolve) => {
+            if (err) {
+              console.error(`###Test error: ${err}. Retrying test in ${delay} seconds`);
+            }
 
-    setTimeout(() => {
-      resolve(fn());
-    }, delay);
-  })), Promise.reject());
+            setTimeout(() => {
+              resolve(fn());
+            }, delay);
+          })
+      ),
+    Promise.reject()
+  );
 }
 
 /**

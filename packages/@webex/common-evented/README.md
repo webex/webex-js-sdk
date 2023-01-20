@@ -20,18 +20,17 @@ npm install --save @webex/common-evented
 ## Usage
 
 ```js
-
 const evented = require(`@webex/common-evented`);
 const Events = require(`ampersand-events`);
 
 class X extends Events {
   @evented
-  prop = null
+  prop = null;
 }
 
 const x = new X();
 x.on(`change:prop`, () => {
-  console.log(x.prop)
+  console.log(x.prop);
   // => 6
 });
 x.prop = 6;

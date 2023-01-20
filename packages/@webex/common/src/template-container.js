@@ -18,7 +18,9 @@ function make(...containers) {
 
   const ChildContainer = containers.length > 1 ? make(...containers) : containers[0];
 
-  const name = `(${[TopContainer.name].concat(containers.map((container) => container.name)).join(', ')})`;
+  const name = `(${[TopContainer.name]
+    .concat(containers.map((container) => container.name))
+    .join(', ')})`;
 
   /**
    * Container that wraps an arbitrary set of tupples to their values

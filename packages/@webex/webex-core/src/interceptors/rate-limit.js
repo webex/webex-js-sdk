@@ -23,10 +23,10 @@ export default class RateLimitInterceptor extends Interceptor {
   }
 
   /**
-  * constructor
-  * @param {mixed} args
-  * @returns {Exception}
-  */
+   * constructor
+   * @param {mixed} args
+   * @returns {Exception}
+   */
   constructor(...args) {
     super(...args);
     rateLimitExpiryTime.set(this, new Map());
@@ -52,7 +52,10 @@ export default class RateLimitInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
-    if (reason.statusCode === 429 && (options.uri.includes('idbroker') || options.uri.includes('identity'))) {
+    if (
+      reason.statusCode === 429 &&
+      (options.uri.includes('idbroker') || options.uri.includes('identity'))
+    ) {
       // set the retry after in the map, setting to milliseconds
       this.setRateLimitExpiry(options.uri, this.extractRetryAfterTime(options));
     }

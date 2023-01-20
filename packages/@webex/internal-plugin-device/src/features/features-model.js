@@ -14,7 +14,6 @@ import FeatureCollection from './feature-collection';
  * organize the data retrieved from the **wdm** service on device registration.
  */
 const FeaturesModel = AmpState.extend({
-
   // Ampersand property members.
 
   collections: {
@@ -37,7 +36,7 @@ const FeaturesModel = AmpState.extend({
      *
      * @type {FeatureCollection}
      */
-    user: FeatureCollection
+    user: FeatureCollection,
   },
 
   // Helper method members.
@@ -87,16 +86,11 @@ const FeaturesModel = AmpState.extend({
     eventNames.forEach((eventName) => {
       FEATURE_COLLECTION_NAMES.forEach((collectionName) => {
         this[collectionName].on(eventName, (model, options) => {
-          this.trigger(
-            `change:${collectionName}`,
-            this,
-            this[collectionName],
-            options
-          );
+          this.trigger(`change:${collectionName}`, this, this[collectionName], options);
         });
       });
     });
-  }
+  },
 });
 
 export default FeaturesModel;

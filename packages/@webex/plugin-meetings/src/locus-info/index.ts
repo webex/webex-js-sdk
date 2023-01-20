@@ -19,14 +19,14 @@ import {
 } from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
-import InfoUtils from '../locus-info/infoUtils';
-import FullState from '../locus-info/fullState';
-import SelfUtils from '../locus-info/selfUtils';
-import HostUtils from '../locus-info/hostUtils';
-import ControlsUtils from '../locus-info/controlsUtils';
-import EmbeddedAppsUtils from '../locus-info/embeddedAppsUtils';
-import MediaSharesUtils from '../locus-info/mediaSharesUtils';
-import LocusDeltaParser from '../locus-info/parser';
+import InfoUtils from './infoUtils';
+import FullState from './fullState';
+import SelfUtils from './selfUtils';
+import HostUtils from './hostUtils';
+import ControlsUtils from './controlsUtils';
+import EmbeddedAppsUtils from './embeddedAppsUtils';
+import MediaSharesUtils from './mediaSharesUtils';
+import LocusDeltaParser from './parser';
 
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
@@ -206,6 +206,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const {eventType} = data;
 
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
@@ -256,6 +257,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {object} null
    * @memberof LocusInfo
    */
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   onFullLocus(locus: any, eventType?: string) {
     if (!locus) {
       LoggerProxy.logger.error(
@@ -280,6 +282,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    * @memberof LocusInfo
    */
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||
@@ -373,7 +376,7 @@ export default class LocusInfo extends EventsScope {
           self &&
           participant.identity !== self.identity &&
           (participants.length <= 2 || (participant.type === _USER_ && !participant.removed))
-      // @ts-ignore
+        // @ts-ignore
       ) || this.partner
     );
   }
@@ -420,8 +423,7 @@ export default class LocusInfo extends EventsScope {
             shouldLeave: false,
           }
         );
-      }
-      else if (
+      } else if (
         partner.state === MEETING_STATE.STATES.LEFT &&
         this.parsedLocus.self &&
         (this.parsedLocus.self.state === MEETING_STATE.STATES.DECLINED ||
@@ -444,8 +446,7 @@ export default class LocusInfo extends EventsScope {
               this.parsedLocus.self.joinedWith && this.parsedLocus.self.joinedWith.state !== _LEFT_,
           }
         );
-      }
-      else if (
+      } else if (
         this.parsedLocus.self &&
         this.parsedLocus.self.state === MEETING_STATE.STATES.LEFT &&
         (partner.state === MEETING_STATE.STATES.LEFT ||
@@ -469,8 +470,7 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-    }
-    else if (this.parsedLocus.fullState.type === _MEETING_) {
+    } else if (this.parsedLocus.fullState.type === _MEETING_) {
       if (
         this.fullState &&
         (this.fullState.state === LOCUS.STATE.INACTIVE ||
@@ -495,8 +495,7 @@ export default class LocusInfo extends EventsScope {
             shouldLeave: false,
           }
         );
-      }
-      else if (this.fullState && this.fullState.removed) {
+      } else if (this.fullState && this.fullState.removed) {
         // user has been dropped from a meeting
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
@@ -530,8 +529,7 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-    }
-    else {
+    } else {
       LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Meeting Type is unknown.');
     }
   }
@@ -574,8 +572,7 @@ export default class LocusInfo extends EventsScope {
           canAssignHost: true,
         }
       );
-    }
-    else {
+    } else {
       this.emitScoped(
         {
           file: 'locus-info',
@@ -687,13 +684,11 @@ export default class LocusInfo extends EventsScope {
         if (hasRecordingPausedChanged) {
           if (current.record.paused) {
             state = RECORDING_STATE.PAUSED;
-          }
-          else {
+          } else {
             // state will be `IDLE` if the recording is not active, even when there is a `pause` status change.
             state = current.record.recording ? RECORDING_STATE.RESUMED : RECORDING_STATE.IDLE;
           }
-        }
-        else if (hasRecordingChanged) {
+        } else if (hasRecordingChanged) {
           state = current.record.recording ? RECORDING_STATE.RECORDING : RECORDING_STATE.IDLE;
         }
 
@@ -752,7 +747,7 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
           {
-            entryExitTone
+            entryExitTone,
           }
         );
 
@@ -773,8 +768,7 @@ export default class LocusInfo extends EventsScope {
     if (conversationUrl && !isEqual(this.conversationUrl, conversationUrl)) {
       this.conversationUrl = conversationUrl;
       this.updateMeeting({conversationUrl});
-    }
-    else if (
+    } else if (
       info &&
       info.conversationUrl &&
       !isEqual(this.conversationUrl, info.conversationUrl)
@@ -865,8 +859,7 @@ export default class LocusInfo extends EventsScope {
         );
       }
       this.host = host;
-    }
-    else {
+    } else {
       this.compareAndUpdateFlags.compareSelfAndHost = false;
     }
   }
@@ -1033,8 +1026,7 @@ export default class LocusInfo extends EventsScope {
 
       if (parsedSelves.updates.moderatorChanged) {
         this.compareAndUpdateFlags.compareHostAndSelf = true;
-      }
-      else {
+      } else {
         this.compareAndUpdateFlags.compareHostAndSelf = false;
       }
 
@@ -1204,8 +1196,7 @@ export default class LocusInfo extends EventsScope {
       this.parsedLocus.self = parsedSelves.current;
       // @ts-ignore
       this.self = self;
-    }
-    else {
+    } else {
       this.compareAndUpdateFlags.compareHostAndSelf = false;
     }
   }

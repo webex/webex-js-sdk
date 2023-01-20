@@ -1,5 +1,10 @@
 import {encode, decode} from './base64';
-import {SDK_EVENT, hydraTypes, INTERNAL_US_CLUSTER_NAME, INTERNAL_US_INTEGRATION_CLUSTER_NAME} from './constants';
+import {
+  SDK_EVENT,
+  hydraTypes,
+  INTERNAL_US_CLUSTER_NAME,
+  INTERNAL_US_INTEGRATION_CLUSTER_NAME,
+} from './constants';
 
 const hydraBaseUrl = 'https://api.ciscospark.com/v1';
 
@@ -16,16 +21,12 @@ const isRequired = () => {
  * @param {string} cluster containing the "TYPE" object
  * @returns {string}
  */
-export function constructHydraId(
-  type = isRequired(),
-  id = isRequired(),
-  cluster = 'us'
-) {
+export function constructHydraId(type = isRequired(), id = isRequired(), cluster = 'us') {
   if (!type.toUpperCase) {
     throw Error('"type" must be a string');
   }
 
-  if ((type === hydraTypes.PEOPLE) || (type === hydraTypes.ORGANIZATION)) {
+  if (type === hydraTypes.PEOPLE || type === hydraTypes.ORGANIZATION) {
     // Cluster is always "us" for people and orgs
     return encode(`ciscospark://us/${type.toUpperCase()}/${id}`);
   }
@@ -53,7 +54,7 @@ export function deconstructHydraId(id) {
   return {
     id: payload.pop(),
     type: payload.pop(),
-    cluster: payload.pop()
+    cluster: payload.pop(),
   };
 }
 
@@ -116,8 +117,7 @@ export function buildHydraOrgId(uuid, cluster) {
  * @returns {string}
  */
 export function buildHydraMembershipId(personUUID, spaceUUID, cluster) {
-  return constructHydraId(hydraTypes.MEMBERSHIP,
-    `${personUUID}:${spaceUUID}`, cluster);
+  return constructHydraId(hydraTypes.MEMBERSHIP, `${personUUID}:${spaceUUID}`, cluster);
 }
 
 /**
@@ -129,11 +129,12 @@ export function buildHydraMembershipId(personUUID, spaceUUID, cluster) {
  * @returns {String} string suitable for UUID -> public ID encoding
  */
 export function getHydraClusterString(webex, conversationUrl) {
-  const internalClusterString =
-    webex.internal.services.getClusterId(conversationUrl);
+  const internalClusterString = webex.internal.services.getClusterId(conversationUrl);
 
-  if ((internalClusterString.startsWith(INTERNAL_US_CLUSTER_NAME)) ||
-    (internalClusterString.startsWith(INTERNAL_US_INTEGRATION_CLUSTER_NAME))) {
+  if (
+    internalClusterString.startsWith(INTERNAL_US_CLUSTER_NAME) ||
+    internalClusterString.startsWith(INTERNAL_US_INTEGRATION_CLUSTER_NAME)
+  ) {
     // Original US cluster is simply 'us' for backwards compatibility
     return 'us';
   }
@@ -179,8 +180,7 @@ export function getHydraFiles(activity, cluster) {
 
     // Note: Generated ID is dependent on file order.
     for (let i = 0; i < items.length; i += 1) {
-      const contentId =
-        constructHydraId(hydraTypes.CONTENT, `${activity.id}/${i}`, cluster);
+      const contentId = constructHydraId(hydraTypes.CONTENT, `${activity.id}/${i}`, cluster);
 
       hydraFiles.push(`${hydraBaseUrl}/contents/${contentId}`);
     }

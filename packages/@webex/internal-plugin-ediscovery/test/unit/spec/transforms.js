@@ -22,7 +22,7 @@ describe('EDiscovery Transform Tests', () => {
     ctx.webex.config.ediscovery = config.ediscovery;
     ctx.webex.internal = {
       device: {
-        deviceType: 'FAKE_DEVICE'
+        deviceType: 'FAKE_DEVICE',
       },
       encryption: {
         encryptText: sinon.stub().returns(Promise.resolve(encryptedText)),
@@ -30,9 +30,9 @@ describe('EDiscovery Transform Tests', () => {
         decryptScr: sinon.stub().returns(Promise.resolve(decryptedScr)),
         kms: {
           createUnboundKeys: sinon.stub().returns(Promise.resolve([{userIds: uuid, uri: keyUri}])),
-          createResource: sinon.stub().returns(Promise.resolve())
-        }
-      }
+          createResource: sinon.stub().returns(Promise.resolve()),
+        },
+      },
     };
   });
 
@@ -61,21 +61,20 @@ describe('EDiscovery Transform Tests', () => {
       it('Calls the correct encrypt functions when transforming a report request', () => {
         // body IS a ReportRequest
         object = {body: reportRequest};
-        const result = Transforms.encryptReportRequest(ctx, object)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.encryptText, 4);
-            assert.equal(reportRequest.name, encryptedText);
-            assert.equal(reportRequest.description, '');
-            assert.equal(reportRequest.spaceNames[0], encryptedText);
-            assert.equal(reportRequest.emails[0], encryptedText);
-            assert.equal(reportRequest.emails[1], encryptedText);
-            // unencryptedEmails should be copied from emails before decryption
-            assert.equal(reportRequest.unencryptedEmails[0], 'email1@test.com');
-            assert.equal(reportRequest.unencryptedEmails[1], 'email2@test.com');
-            assert.empty(reportRequest.keywords);
-            // this should be populated by request to kms
-            assert.notEqual(reportRequest.encryptionKeyUrl, '');
-          });
+        const result = Transforms.encryptReportRequest(ctx, object).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.encryptText, 4);
+          assert.equal(reportRequest.name, encryptedText);
+          assert.equal(reportRequest.description, '');
+          assert.equal(reportRequest.spaceNames[0], encryptedText);
+          assert.equal(reportRequest.emails[0], encryptedText);
+          assert.equal(reportRequest.emails[1], encryptedText);
+          // unencryptedEmails should be copied from emails before decryption
+          assert.equal(reportRequest.unencryptedEmails[0], 'email1@test.com');
+          assert.equal(reportRequest.unencryptedEmails[1], 'email2@test.com');
+          assert.empty(reportRequest.keywords);
+          // this should be populated by request to kms
+          assert.notEqual(reportRequest.encryptionKeyUrl, '');
+        });
 
         return result;
       });
@@ -87,16 +86,15 @@ describe('EDiscovery Transform Tests', () => {
         object = {body: {reportRequest}};
         // object to be decrypted must have an encryption key
         reportRequest.encryptionKeyUrl = keyUri;
-        const result = Transforms.decryptReportRequest(ctx, object)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 4);
-            assert.equal(reportRequest.name, decryptedText);
-            assert.equal(reportRequest.description, '');
-            assert.equal(reportRequest.spaceNames[0], decryptedText);
-            assert.equal(reportRequest.emails[0], decryptedText);
-            assert.equal(reportRequest.emails[1], decryptedText);
-            assert.empty(reportRequest.keywords);
-          });
+        const result = Transforms.decryptReportRequest(ctx, object).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 4);
+          assert.equal(reportRequest.name, decryptedText);
+          assert.equal(reportRequest.description, '');
+          assert.equal(reportRequest.spaceNames[0], decryptedText);
+          assert.equal(reportRequest.emails[0], decryptedText);
+          assert.equal(reportRequest.emails[1], decryptedText);
+          assert.empty(reportRequest.keywords);
+        });
 
         return result;
       });
@@ -104,10 +102,9 @@ describe('EDiscovery Transform Tests', () => {
       it('Does not attempt to decrypt a report request if there is no encryption key url', () => {
         // body CONTAINS a ReportRequest
         object = {body: {reportRequest}};
-        const result = Transforms.decryptReportRequest(ctx, object)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-          });
+        const result = Transforms.decryptReportRequest(ctx, object).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+        });
 
         return result;
       });
@@ -136,27 +133,41 @@ describe('EDiscovery Transform Tests', () => {
         contentContainer.containerId = '0';
         contentContainer.containerName = 'spaceName';
         contentContainer.isOneOnOne = false;
-        contentContainer.participants = [{id: uuid, displayName: 'user1'}, {id: uuid, displayName: 'user2'}, {id: uuid, displayName: 'user3'}];
+        contentContainer.participants = [
+          {id: uuid, displayName: 'user1'},
+          {id: uuid, displayName: 'user2'},
+          {id: uuid, displayName: 'user3'},
+        ];
         contentContainer.onBehalfOfUser = uuid;
         contentContainer.encryptionKeyUrl = keyUri;
 
-        ctx.webex.internal.ediscovery = {getContentContainerByContainerId: sinon.stub().returns(Promise.resolve({body: contentContainer}))};
+        ctx.webex.internal.ediscovery = {
+          getContentContainerByContainerId: sinon
+            .stub()
+            .returns(Promise.resolve({body: contentContainer})),
+        };
       });
 
-      afterEach(() => ctx.webex.internal.ediscovery.getContentContainerByContainerId.resetHistory());
+      afterEach(() =>
+        ctx.webex.internal.ediscovery.getContentContainerByContainerId.resetHistory()
+      );
 
       it('Calls the decrypt functions when extension type is customApp', () => {
         object.body.extension = {
-          objectType: 'extension', extensionType: 'customApp', contentUrl: 'encrypted content', displayName: 'encrypted content', webUrl: 'encrypted content', appId: uuid
+          objectType: 'extension',
+          extensionType: 'customApp',
+          contentUrl: 'encrypted content',
+          displayName: 'encrypted content',
+          webUrl: 'encrypted content',
+          appId: uuid,
         };
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.equal(object.body.extension.contentUrl, decryptedText);
-            assert.equal(object.body.extension.webUrl, decryptedText);
-            assert.equal(object.body.extension.appId, uuid);
-            assert.equal(object.body.extension.displayName, decryptedText);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.equal(object.body.extension.contentUrl, decryptedText);
+          assert.equal(object.body.extension.webUrl, decryptedText);
+          assert.equal(object.body.extension.appId, uuid);
+          assert.equal(object.body.extension.displayName, decryptedText);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
@@ -164,26 +175,28 @@ describe('EDiscovery Transform Tests', () => {
       it('Calls the decrypt functions when extension type is customApp along with the verb is update', () => {
         object.body.verb = 'update';
         object.body.extension = {
-          objectType: 'extension', extensionType: 'customApp', contentUrl: 'encrypted content', displayName: 'encrypted content', previous: {contentUrl: 'encrypted content', displayName: 'encrypted content'}
+          objectType: 'extension',
+          extensionType: 'customApp',
+          contentUrl: 'encrypted content',
+          displayName: 'encrypted content',
+          previous: {contentUrl: 'encrypted content', displayName: 'encrypted content'},
         };
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.equal(object.body.extension.contentUrl, decryptedText);
-            assert.equal(object.body.extension.displayName, decryptedText);
-            assert.equal(object.body.extension.previous.contentUrl, decryptedText);
-            assert.equal(object.body.extension.previous.displayName, decryptedText);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.equal(object.body.extension.contentUrl, decryptedText);
+          assert.equal(object.body.extension.displayName, decryptedText);
+          assert.equal(object.body.extension.previous.contentUrl, decryptedText);
+          assert.equal(object.body.extension.previous.displayName, decryptedText);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
 
       it('Calls the correct decrypt functions when transforming post activities', () => {
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.equal(activity.objectDisplayName, decryptedText);
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.equal(activity.objectDisplayName, decryptedText);
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
@@ -191,14 +204,16 @@ describe('EDiscovery Transform Tests', () => {
       it('Creates spaceName from participantDisplayNames for one to one spaces', () => {
         contentContainer.isOneOnOne = true;
         // one to one conversations have only 2 participants
-        contentContainer.participants = [{id: uuid, displayName: 'user1'}, {id: uuid, displayName: 'user2'}];
+        contentContainer.participants = [
+          {id: uuid, displayName: 'user1'},
+          {id: uuid, displayName: 'user2'},
+        ];
         // spacename should be undefined for one on one conversations
         contentContainer.containerName = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.equal(activity.objectDisplayName, decryptedText);
-            assert.equal(activity.spaceName, 'user1 & user2');
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.equal(activity.objectDisplayName, decryptedText);
+          assert.equal(activity.spaceName, 'user1 & user2');
+        });
 
         return result;
       });
@@ -207,12 +222,11 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'add';
         // object display name for add activity is a uuid
         object.body.objectDisplayName = uuid;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, uuid);
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, uuid);
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
@@ -221,66 +235,63 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'leave';
         // object display name for leave activity is a uuid
         object.body.objectDisplayName = uuid;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, uuid);
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, uuid);
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
 
       it('Does not call any decrypt functions if encryption key url is empty', () => {
         object.body.encryptionKeyUrl = '';
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, 'encrypted content');
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, 'encrypted content');
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
 
       it('Does not call any decrypt functions if encryption key url is undefined', () => {
         object.body.encryptionKeyUrl = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, 'encrypted content');
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, 'encrypted content');
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
 
       it('Does not call any decrypt functions if onBehalfOfUser is empty', () => {
         contentContainer.onBehalfOfUser = '';
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, 'encrypted content');
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, 'encrypted content');
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
 
       it('Does not call any decrypt functions if onBehalfOfUser is undefined', () => {
         contentContainer.onBehalfOfUser = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
-            assert.equal(activity.objectDisplayName, 'encrypted content');
-            assert.equal(activity.spaceName, contentContainer.containerName);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 0);
+          assert.equal(activity.objectDisplayName, 'encrypted content');
+          assert.equal(activity.spaceName, contentContainer.containerName);
+        });
 
         return result;
       });
 
       it('Decrypt function throws an exception', () => {
-        ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(new Error('@@@@@@')));
+        ctx.webex.internal.encryption.decryptText = sinon
+          .stub()
+          .returns(Promise.reject(new Error('@@@@@@')));
 
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
@@ -298,14 +309,13 @@ describe('EDiscovery Transform Tests', () => {
         // there should be no other content for a share
         object.body.objectDisplayName = undefined;
         object.body.files = [{displayName: 'file name', scr: 'eyJhbGciOi...'}];
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
-            assert.callCount(ctx.webex.internal.encryption.decryptScr, 1);
-            assert.equal(activity.objectDisplayName, undefined);
-            assert.equal(activity.files[0].displayName, decryptedText);
-            assert.equal(activity.files[0].scr, decryptedScr);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
+          assert.callCount(ctx.webex.internal.encryption.decryptScr, 1);
+          assert.equal(activity.objectDisplayName, undefined);
+          assert.equal(activity.files[0].displayName, decryptedText);
+          assert.equal(activity.files[0].scr, decryptedScr);
+        });
 
         return result;
       });
@@ -314,27 +324,31 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'share';
         // there should be no other content for a share
         object.body.objectDisplayName = undefined;
-        object.body.files = [{displayName: 'file name', scr: 'eyJhbGciOi...', microsoftSharedLinkInfo: {driveId: '1', itemId: '2'}}];
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
-            assert.callCount(ctx.webex.internal.encryption.decryptScr, 1);
-            assert.equal(activity.objectDisplayName, undefined);
-            assert.equal(activity.files[0].displayName, decryptedText);
-            assert.equal(activity.files[0].scr, decryptedScr);
-            assert.equal(activity.files[0].microsoftSharedLinkInfo.driveId, decryptedText);
-            assert.equal(activity.files[0].microsoftSharedLinkInfo.itemId, decryptedText);
-          });
+        object.body.files = [
+          {
+            displayName: 'file name',
+            scr: 'eyJhbGciOi...',
+            microsoftSharedLinkInfo: {driveId: '1', itemId: '2'},
+          },
+        ];
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
+          assert.callCount(ctx.webex.internal.encryption.decryptScr, 1);
+          assert.equal(activity.objectDisplayName, undefined);
+          assert.equal(activity.files[0].displayName, decryptedText);
+          assert.equal(activity.files[0].scr, decryptedScr);
+          assert.equal(activity.files[0].microsoftSharedLinkInfo.driveId, decryptedText);
+          assert.equal(activity.files[0].microsoftSharedLinkInfo.itemId, decryptedText);
+        });
 
         return result;
       });
 
       it('Adds warning to activity if warning found while retrieving space', () => {
         contentContainer.warning = 'warn';
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.equal(activity.warn, contentContainer.warn);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.equal(activity.warn, contentContainer.warn);
+        });
 
         return result;
       });
@@ -343,11 +357,10 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
         object.body.meeting = {title: 'Encrypted Title'};
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
@@ -356,11 +369,10 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
         object.body.recording = {topic: 'Encrypted Topic'};
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
@@ -369,24 +381,26 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'update';
         object.body.spaceInfo = {name: 'Encrypted Name'};
         object.body.objectDisplayName = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
 
       it('Calls the correct decrypt functions when transforming activity.spaceInfo.name with previousValue', () => {
         object.body.verb = 'update';
-        object.body.spaceInfo = {name: 'Encrypted Name', previousName: 'Previous Name', previousEncryptionKeyUrl: keyUri};
+        object.body.spaceInfo = {
+          name: 'Encrypted Name',
+          previousName: 'Previous Name',
+          previousEncryptionKeyUrl: keyUri,
+        };
         object.body.objectDisplayName = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 2);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 2);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
@@ -395,11 +409,10 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'update';
         object.body.spaceInfo = {description: 'Encrypted Description'};
         object.body.objectDisplayName = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 1);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });
@@ -408,11 +421,10 @@ describe('EDiscovery Transform Tests', () => {
         object.body.verb = 'update';
         object.body.spaceInfo = {name: 'Encrypted Name', description: 'Encrypted description'};
         object.body.objectDisplayName = undefined;
-        const result = Transforms.decryptReportContent(ctx, object, reportId)
-          .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, 2);
-            assert.equal(activity.error, undefined);
-          });
+        const result = Transforms.decryptReportContent(ctx, object, reportId).then(() => {
+          assert.callCount(ctx.webex.internal.encryption.decryptText, 2);
+          assert.equal(activity.error, undefined);
+        });
 
         return result;
       });

@@ -14,54 +14,53 @@ describe('webex-core', () => {
       fixture = {
         serviceLinks: {
           'example-service-a-name': 'http://example-service-a.com/',
-          'example-service-b-name': 'http://example-service-b.com/'
+          'example-service-b-name': 'http://example-service-b.com/',
         },
         hostCatalog: {
           'example-service-a': [
             {
               host: 'example-service-a-h1.com',
               id: 'head:group:cluster-a-h1:example-service-a-name',
-              priority: 5
+              priority: 5,
             },
             {
               host: 'example-service-a-h2.com',
               id: 'head:group:cluster-a-h2:example-service-a-name',
-              priority: 3
-            }
+              priority: 3,
+            },
           ],
           'example-service-b': [
             {
               host: 'example-service-b-h1.com',
               id: 'head:group:cluster-b-h1:example-service-b-name',
-              priority: 5
+              priority: 5,
             },
             {
               host: 'example-service-b-h2.com',
               id: 'head:group:cluster-b-h2:example-service-b-name',
-              priority: 3
-            }
+              priority: 3,
+            },
           ],
           'example-service-c': [
             {
               host: 'example-service-c-h1.com',
               id: 'head:group:cluster-c-h1:example-service-a-name',
-              priority: 5
+              priority: 5,
             },
             {
               host: 'example-service-c-h2.com',
               id: 'head:group:cluster-c-h2:example-service-a-name',
-              priority: 3
-            }
-          ]
-        }
+              priority: 3,
+            },
+          ],
+        },
       };
 
-      fixtureHosts = Object.keys(fixture.hostCatalog)
-        .reduce((output, key) => {
-          output.push(...fixture.hostCatalog[key]);
+      fixtureHosts = Object.keys(fixture.hostCatalog).reduce((output, key) => {
+        output.push(...fixture.hostCatalog[key]);
 
-          return output;
-        }, []);
+        return output;
+      }, []);
     });
 
     beforeEach('initialize a service catalog', () => {
@@ -82,7 +81,7 @@ describe('webex-core', () => {
           serviceRegistry.load(
             ServiceRegistry.mapRemoteCatalog({
               catalog: SERVICE_CATALOGS[0],
-              ...fixture
+              ...fixture,
             })
           );
 
@@ -90,7 +89,7 @@ describe('webex-core', () => {
 
           priorityLocalHosts = {
             'example-service-a-name': hostCatalog['example-service-a'][0].host,
-            'example-service-b-name': hostCatalog['example-service-b'][0].host
+            'example-service-b-name': hostCatalog['example-service-b'][0].host,
           };
         });
 
@@ -98,9 +97,9 @@ describe('webex-core', () => {
           const {map} = serviceRegistry;
           const priorityLocalHostsKeys = Object.keys(priorityLocalHosts);
 
-          assert.isTrue(priorityLocalHostsKeys.every(
-            (key) => map[key].includes(priorityLocalHosts[key])
-          ));
+          assert.isTrue(
+            priorityLocalHostsKeys.every((key) => map[key].includes(priorityLocalHosts[key]))
+          );
         });
       });
     });
@@ -110,10 +109,12 @@ describe('webex-core', () => {
       let host;
 
       beforeEach('generate the service host class objects', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         host = serviceRegistry.hosts[0];
 
@@ -124,7 +125,7 @@ describe('webex-core', () => {
           local: true,
           priority: true,
           service: host.service,
-          url: host.url
+          url: host.url,
         };
       });
 
@@ -158,10 +159,12 @@ describe('webex-core', () => {
       let filteredHost;
 
       beforeEach('generate the service host class objects', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 
@@ -172,15 +175,13 @@ describe('webex-core', () => {
           local: true,
           priority: true,
           service: filteredHost.service,
-          url: filteredHost.url
+          url: filteredHost.url,
         };
       });
 
       it('should mark all hosts as failed when called without a filter', () => {
         serviceRegistry.failed();
-        assert.isTrue(serviceRegistry.hosts.every(
-          (failedHost) => failedHost.failed
-        ));
+        assert.isTrue(serviceRegistry.hosts.every((failedHost) => failedHost.failed));
       });
 
       it('should mark the target hosts as failed', () => {
@@ -203,7 +204,7 @@ describe('webex-core', () => {
       beforeEach('generate the service host class objects', () => {
         hostList = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[0],
-          ...fixture
+          ...fixture,
         });
 
         serviceRegistry.load(hostList);
@@ -240,12 +241,12 @@ describe('webex-core', () => {
       beforeEach('generate the service host class objects', () => {
         hostsCustomA = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[0],
-          ...fixture
+          ...fixture,
         });
 
         hostsCustomB = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[1],
-          ...fixture
+          ...fixture,
         });
 
         serviceRegistry.load(hostsCustomA);
@@ -262,37 +263,26 @@ describe('webex-core', () => {
         filteredHosts = serviceRegistry.filterCatalog(SERVICE_CATALOGS[0]);
 
         assert.equal(filteredHosts.length, hostsCustomA.length);
-        assert.isTrue(filteredHosts.every(
-          (host) => host.catalog === SERVICE_CATALOGS[0]
-        ));
+        assert.isTrue(filteredHosts.every((host) => host.catalog === SERVICE_CATALOGS[0]));
       });
 
       it('should return service hosts for an array of catalogs', () => {
-        filteredHosts = serviceRegistry.filterCatalog(
-          [SERVICE_CATALOGS[0], SERVICE_CATALOGS[1]]
-        );
+        filteredHosts = serviceRegistry.filterCatalog([SERVICE_CATALOGS[0], SERVICE_CATALOGS[1]]);
 
-        assert.equal(
-          filteredHosts.length,
-          (hostsCustomA.length + hostsCustomB.length)
-        );
+        assert.equal(filteredHosts.length, hostsCustomA.length + hostsCustomB.length);
 
-        assert.isTrue(filteredHosts.every(
-          (host) => [SERVICE_CATALOGS[0], SERVICE_CATALOGS[1]].includes(
-            host.catalog
+        assert.isTrue(
+          filteredHosts.every((host) =>
+            [SERVICE_CATALOGS[0], SERVICE_CATALOGS[1]].includes(host.catalog)
           )
-        ));
+        );
       });
 
       it('should return only service hosts from valid catalogs', () => {
-        filteredHosts = serviceRegistry.filterCatalog(
-          [SERVICE_CATALOGS[0], 'invalid', -1]
-        );
+        filteredHosts = serviceRegistry.filterCatalog([SERVICE_CATALOGS[0], 'invalid', -1]);
 
         assert.equal(filteredHosts.length, hostsCustomA.length);
-        assert.isTrue(filteredHosts.every(
-          (host) => host.catalog === SERVICE_CATALOGS[0]
-        ));
+        assert.isTrue(filteredHosts.every((host) => host.catalog === SERVICE_CATALOGS[0]));
       });
     });
 
@@ -305,14 +295,14 @@ describe('webex-core', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           })
         );
 
         remoteHosts = fixture.hostCatalog['example-service-c'];
         localHosts = [
           ...fixture.hostCatalog['example-service-a'],
-          ...fixture.hostCatalog['example-service-b']
+          ...fixture.hostCatalog['example-service-b'],
         ];
       });
 
@@ -326,18 +316,14 @@ describe('webex-core', () => {
         filteredHosts = serviceRegistry.filterLocal(true);
 
         assert.equal(filteredHosts.length, localHosts.length);
-        assert.isTrue(filteredHosts.every(
-          (host) => host.local === true
-        ));
+        assert.isTrue(filteredHosts.every((host) => host.local === true));
       });
 
       it('should return only hosts remote hosts when called with false', () => {
         filteredHosts = serviceRegistry.filterLocal(false);
 
         assert.equal(filteredHosts.length, remoteHosts.length);
-        assert.isTrue(filteredHosts.every(
-          (host) => host.local === false
-        ));
+        assert.isTrue(filteredHosts.every((host) => host.local === false));
       });
     });
 
@@ -349,14 +335,14 @@ describe('webex-core', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           })
         );
 
         priorityHosts = [
           fixture.hostCatalog['example-service-a'][0],
           fixture.hostCatalog['example-service-b'][0],
-          fixture.hostCatalog['example-service-c'][0]
+          fixture.hostCatalog['example-service-c'][0],
         ];
       });
 
@@ -401,17 +387,15 @@ describe('webex-core', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           })
         );
 
-        otherHosts = [
-          ...fixture.hostCatalog['example-service-b']
-        ];
+        otherHosts = [...fixture.hostCatalog['example-service-b']];
 
         serviceHosts = [
           ...fixture.hostCatalog['example-service-a'],
-          ...fixture.hostCatalog['example-service-c']
+          ...fixture.hostCatalog['example-service-c'],
         ];
 
         otherServiceName = 'example-service-b-name';
@@ -428,25 +412,17 @@ describe('webex-core', () => {
         filteredHosts = serviceRegistry.filterService(serviceName);
 
         assert.equal(filteredHosts.length, serviceHosts.length);
-        assert.isTrue(filteredHosts.every(
-          (host) => host.service === serviceName
-        ));
+        assert.isTrue(filteredHosts.every((host) => host.service === serviceName));
       });
 
       it('should return all hosts that belong to an array of services', () => {
-        filteredHosts = serviceRegistry.filterService([
-          otherServiceName,
-          serviceName
-        ]);
+        filteredHosts = serviceRegistry.filterService([otherServiceName, serviceName]);
 
-        assert.equal(
-          filteredHosts.length,
-          [...otherHosts, ...serviceHosts].length
+        assert.equal(filteredHosts.length, [...otherHosts, ...serviceHosts].length);
+
+        assert.isTrue(
+          filteredHosts.every((host) => [otherServiceName, serviceName].includes(host.service))
         );
-
-        assert.isTrue(filteredHosts.every(
-          (host) => [otherServiceName, serviceName].includes(host.service)
-        ));
       });
 
       it('should return an empty array when given an invalid service', () => {
@@ -465,7 +441,7 @@ describe('webex-core', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           })
         );
 
@@ -486,15 +462,12 @@ describe('webex-core', () => {
       });
 
       it('should return service hosts for an array of urls', () => {
-        filteredHosts = serviceRegistry.filterUrl([
-          filteredHostA.url,
-          filteredHostB.url
-        ]);
+        filteredHosts = serviceRegistry.filterUrl([filteredHostA.url, filteredHostB.url]);
 
         assert.equal(filteredHosts.length, 2);
-        assert.isTrue(filteredHosts.every(
-          (foundHost) => [filteredHostA, filteredHostB].includes(foundHost)
-        ));
+        assert.isTrue(
+          filteredHosts.every((foundHost) => [filteredHostA, filteredHostB].includes(foundHost))
+        );
       });
 
       it('should return an empty array when given an invalid url', () => {
@@ -508,10 +481,12 @@ describe('webex-core', () => {
       let host;
 
       beforeEach('generate the service host class objects', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         host = serviceRegistry.hosts[0];
 
@@ -522,47 +497,47 @@ describe('webex-core', () => {
           local: true,
           priority: true,
           service: host.service,
-          url: host.url
+          url: host.url,
         };
       });
 
-      it('should call the \'filterActive()\' method with params', () => {
+      it("should call the 'filterActive()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterActive');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterActive, filter.active);
       });
 
-      it('should call the \'filterCatalog()\' method with params', () => {
+      it("should call the 'filterCatalog()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterCatalog');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterCatalog, filter.catalog);
       });
 
-      it('should call the \'filterCluster()\' method with params', () => {
+      it("should call the 'filterCluster()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterCluster');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterCluster, filter.cluster);
       });
 
-      it('should call the \'filterLocal()\' method with params', () => {
+      it("should call the 'filterLocal()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterLocal');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterLocal, filter.local);
       });
 
-      it('should call the \'filterPriority()\' method with params', () => {
+      it("should call the 'filterPriority()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterPriority');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterPriority, filter.priority);
       });
 
-      it('should call the \'filterService()\' method with params', () => {
+      it("should call the 'filterService()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterService');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterService, filter.service);
       });
 
-      it('should call the \'filterUrl()\' method with params', () => {
+      it("should call the 'filterUrl()' method with params", () => {
         sinon.spy(serviceRegistry, 'filterUrl');
         serviceRegistry.find(filter);
         assert.calledWith(serviceRegistry.filterUrl, filter.url);
@@ -584,10 +559,12 @@ describe('webex-core', () => {
 
     describe('#load()', () => {
       it('should amend all provided hosts to the hosts array', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         assert.equal(serviceRegistry.hosts.length, fixtureHosts.length);
       });
@@ -595,7 +572,7 @@ describe('webex-core', () => {
       it('should ignore unloadable hosts', () => {
         const unloadables = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[0],
-          ...fixture
+          ...fixture,
         }).map((unloadable) => ({...unloadable, catalog: 'invalid'}));
 
         serviceRegistry.load(unloadables);
@@ -613,10 +590,12 @@ describe('webex-core', () => {
       let filteredHost;
 
       beforeEach('generate the service host class objects', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 
@@ -627,15 +606,13 @@ describe('webex-core', () => {
           local: true,
           priority: true,
           service: filteredHost.service,
-          url: filteredHost.url
+          url: filteredHost.url,
         };
       });
 
       it('should mark all hosts as replaced when called without params', () => {
         serviceRegistry.replaced();
-        assert.isTrue(serviceRegistry.hosts.every(
-          (replacedHost) => replacedHost.replaced
-        ));
+        assert.isTrue(serviceRegistry.hosts.every((replacedHost) => replacedHost.replaced));
       });
 
       it('should mark the target hosts as replaced', () => {
@@ -655,15 +632,17 @@ describe('webex-core', () => {
       let filteredHost;
 
       beforeEach('generate the service host class objects', () => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 
         filter = {
-          url: filteredHost.url
+          url: filteredHost.url,
         };
 
         serviceRegistry.failed();
@@ -671,9 +650,7 @@ describe('webex-core', () => {
 
       it('should reset all hosts when called withour a filter', () => {
         serviceRegistry.reset();
-        assert.isTrue(serviceRegistry.hosts.every(
-          (resetHost) => resetHost.failed === false
-        ));
+        assert.isTrue(serviceRegistry.hosts.every((resetHost) => resetHost.failed === false));
       });
 
       it('should reset the failed status of the target host', () => {
@@ -683,17 +660,15 @@ describe('webex-core', () => {
 
       it('should not reset the failed status of non-targetted hosts', () => {
         serviceRegistry.reset(filter);
-        assert.isTrue(serviceRegistry.hosts.every(
-          (foundHost) => foundHost.failed || foundHost === filteredHost
-        ));
+        assert.isTrue(
+          serviceRegistry.hosts.every((foundHost) => foundHost.failed || foundHost === filteredHost)
+        );
       });
 
       it('should not reset the replaced status of hosts', () => {
         serviceRegistry.replaced();
         serviceRegistry.reset();
-        assert.isTrue(serviceRegistry.hosts.every(
-          (foundHost) => foundHost.replaced
-        ));
+        assert.isTrue(serviceRegistry.hosts.every((foundHost) => foundHost.replaced));
       });
 
       it('should return the reset host', () => {
@@ -714,43 +689,27 @@ describe('webex-core', () => {
         });
 
         it('should map an index to the matching name', () => {
-          assert.equal(
-            ServiceRegistry.mapCatalogName({id: index, type: SCET.STRING}),
-            name
-          );
+          assert.equal(ServiceRegistry.mapCatalogName({id: index, type: SCET.STRING}), name);
         });
 
         it('should map an index to the matching index', () => {
-          assert.equal(
-            ServiceRegistry.mapCatalogName({id: index, type: SCET.NUMBER}),
-            index
-          );
+          assert.equal(ServiceRegistry.mapCatalogName({id: index, type: SCET.NUMBER}), index);
         });
 
         it('should map a name to the matching index', () => {
-          assert.equal(
-            ServiceRegistry.mapCatalogName({id: name, type: SCET.NUMBER}),
-            index
-          );
+          assert.equal(ServiceRegistry.mapCatalogName({id: name, type: SCET.NUMBER}), index);
         });
 
         it('should map a name to the matching name', () => {
-          assert.equal(
-            ServiceRegistry.mapCatalogName({id: name, type: SCET.STRING}),
-            name
-          );
+          assert.equal(ServiceRegistry.mapCatalogName({id: name, type: SCET.STRING}), name);
         });
 
-        it('should return undefined if an index doesn\'t exist', () => {
-          assert.isUndefined(
-            ServiceRegistry.mapCatalogName({id: -1, type: SCET.NUMBER})
-          );
+        it("should return undefined if an index doesn't exist", () => {
+          assert.isUndefined(ServiceRegistry.mapCatalogName({id: -1, type: SCET.NUMBER}));
         });
 
-        it('should return undefined if a name doesn\'t exist', () => {
-          assert.isUndefined(
-            ServiceRegistry.mapCatalogName({id: 'invalid', type: SCET.NUMBER})
-          );
+        it("should return undefined if a name doesn't exist", () => {
+          assert.isUndefined(ServiceRegistry.mapCatalogName({id: 'invalid', type: SCET.NUMBER}));
         });
       });
 
@@ -758,7 +717,7 @@ describe('webex-core', () => {
         it('should return an array', () => {
           const mappedHosts = ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           });
 
           assert.isArray(mappedHosts);
@@ -767,17 +726,19 @@ describe('webex-core', () => {
         it('should include all provided hosts', () => {
           const mappedHosts = ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
-            ...fixture
+            ...fixture,
           });
 
           assert.equal(mappedHosts.length, fixtureHosts.length);
         });
 
         it('should not map using an invalid catalog name', () => {
-          assert.throws(() => ServiceRegistry.mapRemoteCatalog({
-            catalog: 'invalid',
-            ...fixture
-          }));
+          assert.throws(() =>
+            ServiceRegistry.mapRemoteCatalog({
+              catalog: 'invalid',
+              ...fixture,
+            })
+          );
         });
 
         it('should map catalog indexes to catalog names', () => {
@@ -785,13 +746,10 @@ describe('webex-core', () => {
 
           const mappedHosts = ServiceRegistry.mapRemoteCatalog({
             catalog: catalogIndex,
-            ...fixture
+            ...fixture,
           });
 
-          assert.equal(
-            mappedHosts[0].catalog,
-            SERVICE_CATALOGS[catalogIndex]
-          );
+          assert.equal(mappedHosts[0].catalog, SERVICE_CATALOGS[catalogIndex]);
         });
       });
     });

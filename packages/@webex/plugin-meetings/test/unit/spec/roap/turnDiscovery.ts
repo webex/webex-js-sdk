@@ -25,15 +25,15 @@ describe('TurnDiscovery', () => {
     sinon.stub(Metrics, 'sendBehavioralMetric');
 
     mockRoapRequest = {
-      sendRoap: sinon.fake.resolves({mediaConnections: FAKE_MEDIA_CONNECTIONS_FROM_LOCUS})
+      sendRoap: sinon.fake.resolves({mediaConnections: FAKE_MEDIA_CONNECTIONS_FROM_LOCUS}),
     } as unknown as RoapRequest;
 
     testMeeting = {
       id: 'fake meeting id',
       config: {
         experimental: {
-          enableTurnDiscovery: true
-        }
+          enableTurnDiscovery: true,
+        },
       },
       correlationId: 'fake correlation id',
       selfUrl: 'fake self url',
@@ -56,7 +56,11 @@ describe('TurnDiscovery', () => {
     sinon.restore();
   });
 
-  const checkRoapMessageSent = async (messageType, expectedSeq, expectedMediaId = testMeeting.mediaId) => {
+  const checkRoapMessageSent = async (
+    messageType,
+    expectedSeq,
+    expectedMediaId = testMeeting.mediaId
+  ) => {
     await testUtils.flushPromises();
 
     assert.calledOnce(mockRoapRequest.sendRoap);
@@ -100,14 +104,14 @@ describe('TurnDiscovery', () => {
         testMeeting.isMultistream = enabledMultistream;
 
         const td = new TurnDiscovery(mockRoapRequest);
-  
+
         const result = td.doTurnDiscovery(testMeeting, false);
-  
+
         // check that TURN_DISCOVERY_REQUEST was sent
         await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-  
+
         mockRoapRequest.sendRoap.resetHistory();
-  
+
         // simulate the response
         td.handleTurnDiscoveryResponse({
           headers: [
@@ -116,20 +120,20 @@ describe('TurnDiscovery', () => {
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           ]
         });
-  
+
         await testUtils.flushPromises();
-  
+
         // check that we've sent OK
         await checkRoapMessageSent('OK', 0);
-  
+
         const {turnServerInfo, turnDiscoverySkippedReason} = await result;
-  
+
         assert.deepEqual(turnServerInfo, {
           url: FAKE_TURN_URL,
           username: FAKE_TURN_USERNAME,
           password: FAKE_TURN_PASSWORD
         });
-  
+
         assert.isUndefined(turnDiscoverySkippedReason);
       });
     });
@@ -151,7 +155,7 @@ describe('TurnDiscovery', () => {
           `x-cisco-turn-url=${FAKE_TURN_URL}`,
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
-        ]
+        ],
       });
 
       await testUtils.flushPromises();
@@ -164,7 +168,7 @@ describe('TurnDiscovery', () => {
       assert.deepEqual(turnServerInfo, {
         url: FAKE_TURN_URL,
         username: FAKE_TURN_USERNAME,
-        password: FAKE_TURN_PASSWORD
+        password: FAKE_TURN_PASSWORD,
       });
       assert.isUndefined(turnDiscoverySkippedReason);
     });
@@ -187,7 +191,7 @@ describe('TurnDiscovery', () => {
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           'another-header-at-the-end=12345',
-        ]
+        ],
       });
 
       await testUtils.flushPromises();
@@ -199,7 +203,7 @@ describe('TurnDiscovery', () => {
       assert.deepEqual(turnServerInfo, {
         url: FAKE_TURN_URL,
         username: FAKE_TURN_USERNAME,
-        password: FAKE_TURN_PASSWORD
+        password: FAKE_TURN_PASSWORD,
       });
       assert.isUndefined(turnDiscoverySkippedReason);
     });
@@ -248,10 +252,9 @@ describe('TurnDiscovery', () => {
       assert.notCalled(mockRoapRequest.sendRoap);
       assert.notCalled(Metrics.sendBehavioralMetric);
       testMeeting.webex.meetings.reachability.isAnyClusterReachable = prev;
-
     });
 
-    it('resolves with undefined if we don\'t get a response within 10s', async () => {
+    it("resolves with undefined if we don't get a response within 10s", async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       const promise = td.doTurnDiscovery(testMeeting, false);
@@ -275,7 +278,7 @@ describe('TurnDiscovery', () => {
         headers: [
           `x-cisco-turn-url=${FAKE_TURN_URL}`,
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
-        ]
+        ],
       });
       await testUtils.flushPromises();
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
@@ -308,7 +311,7 @@ describe('TurnDiscovery', () => {
       td.handleTurnDiscoveryResponse({headers: []});
 
       await testUtils.flushPromises();
-      const {turnServerInfo, turnDiscoverySkippedReason}= await turnDiscoveryPromise;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
       assert.isUndefined(turnDiscoverySkippedReason);
@@ -334,7 +337,7 @@ describe('TurnDiscovery', () => {
           `x-cisco-turn-url=${FAKE_TURN_URL}`,
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
-        ]
+        ],
       });
 
       await testUtils.flushPromises();
@@ -351,7 +354,7 @@ describe('TurnDiscovery', () => {
   });
 
   describe('handleTurnDiscoveryResponse', () => {
-    it('doesn\'t do anything if turn discovery was not started', () => {
+    it("doesn't do anything if turn discovery was not started", () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       // there is not much we can check, but we mainly want to make
@@ -361,7 +364,7 @@ describe('TurnDiscovery', () => {
           `x-cisco-turn-url=${FAKE_TURN_URL}`,
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
-        ]
+        ],
       });
 
       assert.notCalled(mockRoapRequest.sendRoap);

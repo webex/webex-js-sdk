@@ -40,12 +40,14 @@ export default class Transcription {
    */
   connect(token: string) {
     this.webSocket.onopen = () => {
-      this.webSocket.send(JSON.stringify({
-        id: uuidv4(),
-        type: 'authorization',
-        data: {token: `Bearer ${token}`},
-        trackingId: `webex-js-sdk_${this.sessionID}${Date.now.toString()}`
-      }));
+      this.webSocket.send(
+        JSON.stringify({
+          id: uuidv4(),
+          type: 'authorization',
+          data: {token: `Bearer ${token}`},
+          trackingId: `webex-js-sdk_${this.sessionID}${Date.now.toString()}`,
+        })
+      );
     };
   }
 
@@ -55,7 +57,7 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  onCloseSocket(callback: Function) {
+  onCloseSocket(callback: any) {
     if (callback) {
       this.webSocket.onclose = (event) => {
         callback(event);
@@ -70,7 +72,7 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  onErrorSocket(callback: Function) {
+  onErrorSocket(callback: any) {
     if (callback) {
       this.webSocket.onerror = (event) => {
         callback(event);
@@ -94,21 +96,20 @@ export default class Transcription {
       }
     }
 
-    return Object.values(this.members.membersCollection.members)
-      .find((member: any) => {
-        const memberCSIs = member.participant.status.csis;
-        let selfIsSpeaking = false;
+    return Object.values(this.members.membersCollection.members).find((member: any) => {
+      const memberCSIs = member.participant.status.csis;
+      let selfIsSpeaking = false;
 
-        for (const csi of csis) {
-          if (memberCSIs.includes(csi)) {
-            this.memberCSIs[csi] = member;
-            selfIsSpeaking = true;
-            break;
-          }
+      for (const csi of csis) {
+        if (memberCSIs.includes(csi)) {
+          this.memberCSIs[csi] = member;
+          selfIsSpeaking = true;
+          break;
         }
+      }
 
-        return selfIsSpeaking;
-      });
+      return selfIsSpeaking;
+    });
   }
 
   /**
@@ -117,8 +118,11 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  subscribe(callback: Function) {
-    let data, csis, speaker, transcription;
+  subscribe(callback: any) {
+    let data;
+    let csis;
+    let speaker;
+    let transcription;
 
     this.webSocket.onmessage = (event) => {
       data = JSON.parse(event.data);
@@ -129,15 +133,13 @@ export default class Transcription {
       this.webSocket.send(JSON.stringify({messageID: data.id, type: 'ack'}));
 
       if (transcription) {
-        callback(
-          {
-            id: data.data?.voiceaPayload?.transcript_id,
-            personID: speaker?.id,
-            transcription,
-            timestamp: data.timestamp,
-            type: data?.data?.voiceaPayload?.type
-          }
-        );
+        callback({
+          id: data.data?.voiceaPayload?.transcript_id,
+          personID: speaker?.id,
+          transcription,
+          timestamp: data.timestamp,
+          type: data?.data?.voiceaPayload?.type,
+        });
       }
     };
   }

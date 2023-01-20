@@ -133,7 +133,7 @@ export default class ServiceHost {
    */
   get active() {
     // Validate that the `ServiceHost` was not marked as failed or replaced.
-    return (!this.failed && !this.replaced);
+    return !this.failed && !this.replaced;
   }
 
   /**
@@ -212,9 +212,9 @@ export default class ServiceHost {
       catalog,
       defaultUri: url,
       hostGroup: Url.parse(url).host,
-      id: (name) ? `poly-head:poly-group:poly-cluster:${name}` : undefined,
+      id: name ? `poly-head:poly-group:poly-cluster:${name}` : undefined,
       priority: 1,
-      uri: Url.parse(url).host
+      uri: Url.parse(url).host,
     });
   }
 
@@ -228,14 +228,7 @@ export default class ServiceHost {
    * @throws - If the parameter transfer object is not valid.
    * @returns {undefined}
    */
-  static validate({
-    catalog,
-    defaultUri,
-    hostGroup,
-    id,
-    priority,
-    uri
-  }) {
+  static validate({catalog, defaultUri, hostGroup, id, priority, uri}) {
     // Generate error-throwing method.
     const throwError = (msg) => {
       throw new Error(`service-host: invalid constructor parameters, ${msg}`);
@@ -243,32 +236,32 @@ export default class ServiceHost {
 
     // Validate the catalog property.
     if (!SERVICE_CATALOGS.includes(catalog)) {
-      throwError('\'catalog\' must be a string');
+      throwError("'catalog' must be a string");
     }
 
     // Validate the `defaultUri` property.
     if (typeof defaultUri !== 'string') {
-      throwError('\'defaultUri\' must be a string');
+      throwError("'defaultUri' must be a string");
     }
 
     // Validate the `hostGroup` property.
     if (typeof hostGroup !== 'string') {
-      throwError('\'hostGroup\' must be a string');
+      throwError("'hostGroup' must be a string");
     }
 
     // Validate the `id` property.
     if (typeof id !== 'string' || id.split(':').length !== 4) {
-      throwError('\'id\' must be a string that contains 3 \':\' characters');
+      throwError("'id' must be a string that contains 3 ':' characters");
     }
 
     // Validate the `priority` property.
     if (typeof priority !== 'number') {
-      throwError('\'priority\' must be a number');
+      throwError("'priority' must be a number");
     }
 
     // Validate the `uri` property.
     if (typeof uri !== 'string') {
-      throwError('\'uri\' must be a string');
+      throwError("'uri' must be a string");
     }
   }
 }

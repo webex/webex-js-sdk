@@ -3,6 +3,5 @@
  */
 
 export default {
-  lyra: {
-  }
+  lyra: {},
 };

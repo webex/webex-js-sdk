@@ -28,8 +28,8 @@ Assuming your source code is in `./src` and you've got code like
  * @returns {boolean}
  */
 exports.fn = function fn() {
-  return true
-}
+  return true;
+};
 ```
 
 The following command will create a run a mocha spec asserting the result of `fn()` is `true`.

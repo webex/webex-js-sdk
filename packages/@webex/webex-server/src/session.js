@@ -14,7 +14,6 @@ import {get} from 'lodash';
 import WebexCore from './webex';
 import MemoryStore from './memory-store';
 
-
 /* eslint-disable camelcase */
 /* eslint-disable no-console */
 // express induces more callbacks than usual
@@ -27,12 +26,14 @@ export default router;
 
 router.use(bodyParser.json());
 router.use(validator());
-router.use(session({
-  resave: true,
-  saveUninitialized: true,
-  secret: 'keyboardcat',
-  store: new MemoryStore()
-}));
+router.use(
+  session({
+    resave: true,
+    saveUninitialized: true,
+    secret: 'keyboardcat',
+    store: new MemoryStore(),
+  })
+);
 
 /**
  * Return the details for a given session
@@ -42,9 +43,7 @@ router.get('/session', (req, res) => {
   const {webex} = req.session;
 
   if (!webex) {
-    res
-      .status(404)
-      .end();
+    res.status(404).end();
 
     return;
   }
@@ -52,7 +51,7 @@ router.get('/session', (req, res) => {
   res
     .status(200)
     .send({
-      webex: webex.serialize()
+      webex: webex.serialize(),
     })
     .end();
 });
@@ -72,40 +71,35 @@ router.put('/session', (req, res, next) => {
   req.checkBody('user.token.token_type').notEmpty();
   req.checkBody('user.token.expires_in').notEmpty();
 
-  req.getValidationResult()
-    .then((result) => {
-      if (!result.isEmpty()) {
-        console.info(result.array());
-        res
-          .status(400)
-          .send(`${result.array()[0].param} is missing`);
+  req.getValidationResult().then((result) => {
+    if (!result.isEmpty()) {
+      console.info(result.array());
+      res.status(400).send(`${result.array()[0].param} is missing`);
 
-        return;
-      }
-      const webex = new WebexCore({
-        credentials: req.body.user.token,
-        config: {
-          credentials: {
-            client_id: req.body.clientId,
-            client_secret: req.body.clientSecret,
-            redirect_uri: req.body.redirectUri,
-            scope: req.body.scope
-          }
-        }
-      });
-
-      req.session.webex = webex;
-
-      webex.internal.mercury.connect()
-        .then(() => res
-          .status(200)
-          .send({webex})
-          .end())
-        .catch((err) => {
-          console.error(err);
-          next(err);
-        });
+      return;
+    }
+    const webex = new WebexCore({
+      credentials: req.body.user.token,
+      config: {
+        credentials: {
+          client_id: req.body.clientId,
+          client_secret: req.body.clientSecret,
+          redirect_uri: req.body.redirectUri,
+          scope: req.body.scope,
+        },
+      },
     });
+
+    req.session.webex = webex;
+
+    webex.internal.mercury
+      .connect()
+      .then(() => res.status(200).send({webex}).end())
+      .catch((err) => {
+        console.error(err);
+        next(err);
+      });
+  });
 });
 
 /**
@@ -118,38 +112,35 @@ router.delete('/session', (req, res, next) => {
     res
       .status(404)
       .send({
-        err: 'no webex instance found for session'
+        err: 'no webex instance found for session',
       })
       .end();
 
     return;
   }
 
-  webex.internal.mercury.disconnect()
+  webex.internal.mercury
+    .disconnect()
     .then(() => {
-      req.session
-        .destroy((err) => {
-          if (err) {
-            next(err);
+      req.session.destroy((err) => {
+        if (err) {
+          next(err);
 
-            return;
-          }
+          return;
+        }
 
-          res
-            .status(204)
-            .end();
-        });
+        res.status(204).end();
+      });
     })
     .catch((err) => {
-      req.session
-        .destroy((err2) => {
-          if (err2) {
-            next(err2);
+      req.session.destroy((err2) => {
+        if (err2) {
+          next(err2);
 
-            return;
-          }
-          next(err);
-        });
+          return;
+        }
+        next(err);
+      });
     });
 });
 
@@ -162,7 +153,7 @@ router.post('/session/invoke/internal/conversation/share', (req, res) => {
     res
       .status(404)
       .send({
-        message: 'No session found - did you forget to hit /session?'
+        message: 'No session found - did you forget to hit /session?',
       })
       .end();
 
@@ -179,18 +170,22 @@ router.post('/session/invoke/internal/conversation/share', (req, res) => {
   });
 
   console.info('invoke: invoking "conversation.share" with arguments\n', util.inspect(req.body));
-  webex.internal.conversation.share(req.body[0], share)
+  webex.internal.conversation
+    .share(req.body[0], share)
     .then((result) => {
       res.status(200).send(result).end();
     })
     .catch((reason) => {
       console.log(reason);
-      res.status(400).send({
-        message: 'An error occured while processing your request',
-        error: reason.toString(),
-        upstreamStatusCode: reason.statusCode,
-        upstreamResponse: reason.body
-      }).end();
+      res
+        .status(400)
+        .send({
+          message: 'An error occured while processing your request',
+          error: reason.toString(),
+          upstreamStatusCode: reason.statusCode,
+          upstreamResponse: reason.body,
+        })
+        .end();
     });
 });
 
@@ -206,7 +201,7 @@ router.post(/^\/session\/invoke\/.*/, (req, res) => {
     res
       .status(404)
       .send({
-        message: 'No session found - did you forget to hit /session?'
+        message: 'No session found - did you forget to hit /session?',
       })
       .end();
 
@@ -237,10 +232,7 @@ router.post(/^\/session\/invoke\/.*/, (req, res) => {
   Reflect.apply(method, context, req.body)
     .then((result) => {
       console.info(`invoke: successfully invoked "${label}"`);
-      res
-        .status(200)
-        .send(result)
-        .end();
+      res.status(200).send(result).end();
     })
     .catch((reason) => {
       console.error({req, err: reason}, `invoke: "${label}" failed with error`);
@@ -250,7 +242,7 @@ router.post(/^\/session\/invoke\/.*/, (req, res) => {
           message: 'An error occured while processing your request',
           error: reason.toString(),
           upstreamStatusCode: reason.statusCode,
-          upstreamResponse: reason.body
+          upstreamResponse: reason.body,
         })
         .end();
     });

@@ -19,7 +19,7 @@ export default class WebexMeetingsError extends Error {
 
     Object.defineProperty(this, 'code', {
       value: code,
-      enumerable: true
+      enumerable: true,
     });
   }
 

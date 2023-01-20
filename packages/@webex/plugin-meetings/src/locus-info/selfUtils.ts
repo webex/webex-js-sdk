@@ -1,3 +1,5 @@
+/* eslint-disable default-param-last */
+
 import {
   _IDLE_,
   _JOINED_,
@@ -10,7 +12,7 @@ import {
   MEDIA_STATE,
   AUDIO,
   VIDEO,
-  MediaContent
+  MediaContent,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -47,9 +49,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       joinedWith,
       pstnDevices,
       // current media stats is for the current device who has joined
-      currentMediaStatus: SelfUtils.getMediaStatus(
-        joinedWith?.mediaSessions
-      ),
+      currentMediaStatus: SelfUtils.getMediaStatus(joinedWith?.mediaSessions),
       creator: self.isCreator, // check if its used,
       selfId: self.id,
       selfIdentity: SelfUtils.getSelfIdentity(self),
@@ -59,22 +59,24 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       isUserUnadmitted: self.state === _IDLE_ && joinedWith?.intent?.type === _WAIT_,
       layout: SelfUtils.getLayout(self),
       canNotViewTheParticipantList: SelfUtils.canNotViewTheParticipantList(self),
-      isSharingBlocked: SelfUtils.isSharingBlocked(self)
+      isSharingBlocked: SelfUtils.isSharingBlocked(self),
     };
   }
 
   return null;
 };
 
-SelfUtils.getLayout = (self) => (Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined);
+SelfUtils.getLayout = (self) =>
+  Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
 
-SelfUtils.getRoles = (self) => (self?.controls?.role?.roles || []).reduce((roles, role) => {
-  if (role.hasRole) {
-    roles.push(role.type);
-  }
+SelfUtils.getRoles = (self) =>
+  (self?.controls?.role?.roles || []).reduce((roles, role) => {
+    if (role.hasRole) {
+      roles.push(role.type);
+    }
 
-  return roles;
-}, []);
+    return roles;
+  }, []);
 
 SelfUtils.canNotViewTheParticipantList = (self) => !!self?.canNotViewTheParticipantList;
 
@@ -88,25 +90,35 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(current);
   updates.isUserAdmitted = SelfUtils.isUserAdmitted(previous, current);
   updates.isMutedByOthersChanged = SelfUtils.mutedByOthersChanged(previous, current);
-  updates.localAudioUnmuteRequestedByServer = SelfUtils.localAudioUnmuteRequestedByServer(previous, current);
-  updates.localAudioUnmuteRequiredByServer = SelfUtils.localAudioUnmuteRequiredByServer(previous, current);
+  updates.localAudioUnmuteRequestedByServer = SelfUtils.localAudioUnmuteRequestedByServer(
+    previous,
+    current
+  );
+  updates.localAudioUnmuteRequiredByServer = SelfUtils.localAudioUnmuteRequiredByServer(
+    previous,
+    current
+  );
   updates.moderatorChanged = SelfUtils.moderatorChanged(previous, current);
   updates.isMediaInactiveOrReleased = SelfUtils.wasMediaInactiveOrReleased(previous, current);
   updates.isUserObserving = SelfUtils.isDeviceObserving(previous, current);
   updates.layoutChanged = SelfUtils.layoutChanged(previous, current);
 
   updates.isMediaInactive = SelfUtils.isMediaInactive(previous, current);
-  updates.audioStateChange = previous?.currentMediaStatus.audio !== current.currentMediaStatus.audio;
-  updates.videoStateChange = previous?.currentMediaStatus.video !== current.currentMediaStatus.video;
-  updates.shareStateChange = previous?.currentMediaStatus.share !== current.currentMediaStatus.share;
+  updates.audioStateChange =
+    previous?.currentMediaStatus.audio !== current.currentMediaStatus.audio;
+  updates.videoStateChange =
+    previous?.currentMediaStatus.video !== current.currentMediaStatus.video;
+  updates.shareStateChange =
+    previous?.currentMediaStatus.share !== current.currentMediaStatus.share;
 
-  updates.canNotViewTheParticipantListChanged = previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
+  updates.canNotViewTheParticipantListChanged =
+    previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
   updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
 
   return {
     previous,
     current,
-    updates
+    updates,
   };
 };
 
@@ -114,7 +126,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
  * Checks if user has joined the meeting
  * @param {Object} self
  * @returns {boolean} isJoined
-*/
+ */
 SelfUtils.isJoined = (self: any) => self?.state === _JOINED_;
 
 /**
@@ -124,7 +136,8 @@ SelfUtils.isJoined = (self: any) => self?.state === _JOINED_;
  * @param {Self} current - Current self state [per event]
  * @returns {boolean} - If the MEeting Layout Controls Layout has changed.
  */
-SelfUtils.layoutChanged = (previous: any, current: any) => current?.layout && previous?.layout !== current?.layout;
+SelfUtils.layoutChanged = (previous: any, current: any) =>
+  current?.layout && previous?.layout !== current?.layout;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
@@ -135,15 +148,12 @@ SelfUtils.isMediaInactive = (previous, current) => {
     current.joinedWith &&
     current.joinedWith.mediaSessions
   ) {
-    const previousMediaStatus = SelfUtils.getMediaStatus(
-      previous.joinedWith.mediaSessions
-    );
-    const currentMediaStatus = SelfUtils.getMediaStatus(
-      current.joinedWith.mediaSessions
-    );
+    const previousMediaStatus = SelfUtils.getMediaStatus(previous.joinedWith.mediaSessions);
+    const currentMediaStatus = SelfUtils.getMediaStatus(current.joinedWith.mediaSessions);
 
     if (
-      previousMediaStatus.audio && currentMediaStatus.audio &&
+      previousMediaStatus.audio &&
+      currentMediaStatus.audio &&
       previousMediaStatus.audio.state !== MEDIA_STATE.inactive &&
       currentMediaStatus.audio.state === MEDIA_STATE.inactive &&
       currentMediaStatus.audio.direction !== MEDIA_STATE.inactive
@@ -152,7 +162,8 @@ SelfUtils.isMediaInactive = (previous, current) => {
     }
 
     if (
-      previousMediaStatus.video && currentMediaStatus.video &&
+      previousMediaStatus.video &&
+      currentMediaStatus.video &&
       previousMediaStatus.video.state !== MEDIA_STATE.inactive &&
       currentMediaStatus.video.state === MEDIA_STATE.inactive &&
       currentMediaStatus.video.direction !== MEDIA_STATE.inactive
@@ -161,7 +172,8 @@ SelfUtils.isMediaInactive = (previous, current) => {
     }
 
     if (
-      previousMediaStatus.share && currentMediaStatus.share &&
+      previousMediaStatus.share &&
+      currentMediaStatus.share &&
       previousMediaStatus.share.state !== MEDIA_STATE.inactive &&
       currentMediaStatus.share.state === MEDIA_STATE.inactive &&
       currentMediaStatus.share.direction !== MEDIA_STATE.inactive
@@ -176,7 +188,13 @@ SelfUtils.isMediaInactive = (previous, current) => {
 };
 
 SelfUtils.getLastModified = (self) => {
-  if (!self || !self.controls || !self.controls.audio || !self.controls.audio.meta || !self.controls.audio.meta.lastModified) {
+  if (
+    !self ||
+    !self.controls ||
+    !self.controls.audio ||
+    !self.controls.audio.meta ||
+    !self.controls.audio.meta.lastModified
+  ) {
     return null;
   }
 
@@ -184,7 +202,13 @@ SelfUtils.getLastModified = (self) => {
 };
 
 SelfUtils.getModifiedBy = (self) => {
-  if (!self || !self.controls || !self.controls.audio || !self.controls.audio.meta || !self.controls.audio.meta.modifiedBy) {
+  if (
+    !self ||
+    !self.controls ||
+    !self.controls.audio ||
+    !self.controls.audio.meta ||
+    !self.controls.audio.meta.modifiedBy
+  ) {
     return null;
   }
 
@@ -227,36 +251,39 @@ SelfUtils.getUnmuteAllowed = (self) => {
   return !self.controls.audio.disallowUnmute;
 };
 
-
 SelfUtils.getLocalAudioUnmuteRequired = (self) => !!self?.controls?.audio?.localAudioUnmuteRequired;
 
 SelfUtils.getStatus = (status) => ({
   audio: status.audioStatus,
   video: status.videoStatus,
-  slides: status.videoSlidesStatus
+  slides: status.videoSlidesStatus,
 });
-
 
 /**
  * @param {Object} oldSelf
  * @param {Object} changedSelf
  * @returns {Boolean}
  */
-SelfUtils.wasMediaInactiveOrReleased = (oldSelf: any = {}, changedSelf: any) => oldSelf.joinedWith && oldSelf.joinedWith.state === _JOINED_ && changedSelf.joinedWith.state === _LEFT_ &&
-(changedSelf.joinedWith.reason === MEETING_END_REASON.INACTIVE || changedSelf.joinedWith.reason === MEETING_END_REASON.MEDIA_RELEASED);
-
-
-/**
- * @param {Object} check
- * @returns {Boolean}
- */
-SelfUtils.isLocusUserUnadmitted = (check: any) => check && check.joinedWith?.intent?.type === _WAIT_ && check.state === _IDLE_;
+SelfUtils.wasMediaInactiveOrReleased = (oldSelf: any = {}, changedSelf: any) =>
+  oldSelf.joinedWith &&
+  oldSelf.joinedWith.state === _JOINED_ &&
+  changedSelf.joinedWith.state === _LEFT_ &&
+  (changedSelf.joinedWith.reason === MEETING_END_REASON.INACTIVE ||
+    changedSelf.joinedWith.reason === MEETING_END_REASON.MEDIA_RELEASED);
 
 /**
  * @param {Object} check
  * @returns {Boolean}
  */
-SelfUtils.isLocusUserAdmitted = (check: any) => check && check.joinedWith?.intent?.type !== _WAIT_ && check.state === _JOINED_;
+SelfUtils.isLocusUserUnadmitted = (check: any) =>
+  check && check.joinedWith?.intent?.type === _WAIT_ && check.state === _IDLE_;
+
+/**
+ * @param {Object} check
+ * @returns {Boolean}
+ */
+SelfUtils.isLocusUserAdmitted = (check: any) =>
+  check && check.joinedWith?.intent?.type !== _WAIT_ && check.state === _JOINED_;
 
 /**
  * @param {Object} self
@@ -276,12 +303,13 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
     return true;
   }
   if (!changedSelf) {
-    throw new ParameterError('New self must be defined to determine if self transitioned moderator status.');
+    throw new ParameterError(
+      'New self must be defined to determine if self transitioned moderator status.'
+    );
   }
 
   return oldSelf.moderator !== changedSelf.moderator;
 };
-
 
 /**
  * @param {Object} oldSelf
@@ -289,7 +317,11 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
  * @returns {Boolean}
  * @throws {Error} if changed self was undefined
  */
-SelfUtils.isDeviceObserving = (oldSelf: any, changedSelf: any) => oldSelf && oldSelf.joinedWith?.intent?.type === _MOVE_MEDIA_ && changedSelf && changedSelf.joinedWith?.intent?.type === _OBSERVE_;
+SelfUtils.isDeviceObserving = (oldSelf: any, changedSelf: any) =>
+  oldSelf &&
+  oldSelf.joinedWith?.intent?.type === _MOVE_MEDIA_ &&
+  changedSelf &&
+  changedSelf.joinedWith?.intent?.type === _OBSERVE_;
 
 /**
  * @param {Object} oldSelf
@@ -303,7 +335,9 @@ SelfUtils.isUserAdmitted = (oldSelf: object, changedSelf: object) => {
     return false;
   }
   if (!changedSelf) {
-    throw new ParameterError('New self must be defined to determine if self transitioned to admitted as guest.');
+    throw new ParameterError(
+      'New self must be defined to determine if self transitioned to admitted as guest.'
+    );
   }
 
   return SelfUtils.isLocusUserUnadmitted(oldSelf) && SelfUtils.isLocusUserAdmitted(changedSelf);
@@ -314,7 +348,7 @@ SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
     throw new ParameterError('New self must be defined to determine if self was muted by others.');
   }
 
-  if (!oldSelf || (oldSelf.remoteMuted === null)) {
+  if (!oldSelf || oldSelf.remoteMuted === null) {
     if (changedSelf.remoteMuted) {
       return true; // this happens when mute on-entry is enabled
     }
@@ -323,25 +357,35 @@ SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
     return false;
   }
 
-  return (changedSelf.remoteMuted !== null) &&
-    ((oldSelf.remoteMuted !== changedSelf.remoteMuted) || (changedSelf.remoteMuted && (oldSelf.unmuteAllowed !== changedSelf.unmuteAllowed)));
+  return (
+    changedSelf.remoteMuted !== null &&
+    (oldSelf.remoteMuted !== changedSelf.remoteMuted ||
+      (changedSelf.remoteMuted && oldSelf.unmuteAllowed !== changedSelf.unmuteAllowed))
+  );
 };
 
 SelfUtils.localAudioUnmuteRequestedByServer = (oldSelf: any = {}, changedSelf: any) => {
   if (!changedSelf) {
-    throw new ParameterError('New self must be defined to determine if self received request to unmute.');
+    throw new ParameterError(
+      'New self must be defined to determine if self received request to unmute.'
+    );
   }
 
   return changedSelf.localAudioUnmuteRequested && !oldSelf.localAudioUnmuteRequested;
 };
 
-
 SelfUtils.localAudioUnmuteRequiredByServer = (oldSelf: any = {}, changedSelf: any) => {
   if (!changedSelf) {
-    throw new ParameterError('New self must be defined to determine if localAudioUnmuteRequired changed.');
+    throw new ParameterError(
+      'New self must be defined to determine if localAudioUnmuteRequired changed.'
+    );
   }
 
-  return !changedSelf.remoteMuted && changedSelf.localAudioUnmuteRequired && (oldSelf.localAudioUnmuteRequired !== changedSelf.localAudioUnmuteRequired);
+  return (
+    !changedSelf.remoteMuted &&
+    changedSelf.localAudioUnmuteRequired &&
+    oldSelf.localAudioUnmuteRequired !== changedSelf.localAudioUnmuteRequired
+  );
 };
 
 /**
@@ -364,15 +408,20 @@ SelfUtils.getMediaStatus = (mediaSessions = []) => {
   const mediaStatus = {
     audio: {},
     video: {},
-    share: {}
+    share: {},
   };
 
-  mediaStatus.audio = mediaSessions.find((media) => media.mediaType === AUDIO && media.mediaContent === MediaContent.main);
-  mediaStatus.video = mediaSessions.find((media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.main);
-  mediaStatus.share = mediaSessions.find((media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.slides);
+  mediaStatus.audio = mediaSessions.find(
+    (media) => media.mediaType === AUDIO && media.mediaContent === MediaContent.main
+  );
+  mediaStatus.video = mediaSessions.find(
+    (media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.main
+  );
+  mediaStatus.share = mediaSessions.find(
+    (media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.slides
+  );
 
   return mediaStatus;
 };
-
 
 export default SelfUtils;

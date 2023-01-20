@@ -14,25 +14,26 @@ describe('plugin-mercury', function () {
 
   let webex;
 
-  beforeEach('create users', () => testUsers.create({count: 1})
-    .then(async (users) => {
+  beforeEach('create users', () =>
+    testUsers.create({count: 1}).then(async (users) => {
       // Pause for 5 seconds for CI
       await new Promise((done) => setTimeout(done, 5000));
 
       webex = new WebexCore({
         credentials: {
-          supertoken: users[0].token
-        }
+          supertoken: users[0].token,
+        },
       });
       sinon.spy(webex.internal.mercury, 'disconnect');
       sinon.spy(webex.internal.device, 'unregister');
 
       return webex.internal.mercury.connect();
-    }));
+    })
+  );
 
   describe('onBeforeLogout()', () => {
-    it('disconnects the web socket', () => webex.logout({noRedirect: true})
-      .then(() => {
+    it('disconnects the web socket', () =>
+      webex.logout({noRedirect: true}).then(() => {
         assert.called(webex.internal.mercury.disconnect);
         assert.isFalse(webex.internal.mercury.connected);
         assert.called(webex.internal.device.unregister);

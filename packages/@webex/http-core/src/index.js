@@ -20,17 +20,12 @@ const protorequest = curry(function protorequest(defaultOptions, options) {
   }
 
   // Hide useless elements from logs
-  [
-    'download',
-    'interceptors',
-    'logger',
-    'upload'
-  ].forEach((prop) => {
+  ['download', 'interceptors', 'logger', 'upload'].forEach((prop) => {
     let descriptor = Reflect.getOwnPropertyDescriptor(options, prop);
 
     descriptor = assign({}, descriptor, {
       enumerable: false,
-      writable: true
+      writable: true,
     });
     Reflect.defineProperty(options, prop, descriptor);
   });
@@ -50,8 +45,8 @@ const defaultOptions = {
   json: true,
   interceptors: [
     // Reminder: this is supposed to be an instantiated interceptor.
-    HttpStatusInterceptor.create()
-  ]
+    HttpStatusInterceptor.create(),
+  ],
 };
 
 export const defaults = protorequest;

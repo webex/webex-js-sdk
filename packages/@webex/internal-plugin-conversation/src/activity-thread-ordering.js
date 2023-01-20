@@ -9,7 +9,7 @@ import {
   NEWER,
   OLDER,
   INITIAL,
-  MID
+  MID,
 } from './activities';
 
 export const defaultMinDisplayableActivities = 20;
@@ -32,7 +32,8 @@ export const setValue = (destination, key, value) => destination.set(key, value)
  */
 export const getValue = (source, key) => source.get(key);
 
-export const getActivityObjectsFromMap = (hashMap) => Array.from(hashMap).map(([, activity]) => activity);
+export const getActivityObjectsFromMap = (hashMap) =>
+  Array.from(hashMap).map(([, activity]) => activity);
 /**
  * creates maps for various activity types and defines handlers for working with stored activities
  * utilizes revealing module pattern to close over state and only expose certain necessary functions for altering state
@@ -53,8 +54,7 @@ export const activityManager = () => {
 
     if (existingReplyHash) {
       setValue(existingReplyHash, replyAct.id, replyAct);
-    }
-    else {
+    } else {
       const replyHash = new Map();
 
       setValue(replyHash, replyAct.id, replyAct);
@@ -98,23 +98,25 @@ export const activityManager = () => {
     reactionHelper(reactionSelfAct, reactionSelfActivityHash);
   };
 
-  const getActivityHandlerByKey = (key) => ({
-    [ACTIVITY_TYPES.REACTION]: handleNewReaction,
-    [ACTIVITY_TYPES.REACTION_SELF]: handleNewReactionSelf,
-    [ACTIVITY_TYPES.EDIT]: handleNewEdit,
-    [ACTIVITY_TYPES.REPLY]: handleNewReply
-  }[key]);
+  const getActivityHandlerByKey = (key) =>
+    ({
+      [ACTIVITY_TYPES.REACTION]: handleNewReaction,
+      [ACTIVITY_TYPES.REACTION_SELF]: handleNewReactionSelf,
+      [ACTIVITY_TYPES.EDIT]: handleNewEdit,
+      [ACTIVITY_TYPES.REPLY]: handleNewReply,
+    }[key]);
 
-  const getActivityByTypeAndParentId = (type, id) => ({
-    [ACTIVITY_TYPES.EDIT]: getValue(editActivityHash, id),
-    [ACTIVITY_TYPES.REPLY]: getValue(replyActivityHash, id),
-    [ACTIVITY_TYPES.REACTION]: getValue(reactionActivityHash, id),
-    [ACTIVITY_TYPES.REACTION_SELF]: getValue(reactionSelfActivityHash, id)
-  }[type]);
+  const getActivityByTypeAndParentId = (type, id) =>
+    ({
+      [ACTIVITY_TYPES.EDIT]: getValue(editActivityHash, id),
+      [ACTIVITY_TYPES.REPLY]: getValue(replyActivityHash, id),
+      [ACTIVITY_TYPES.REACTION]: getValue(reactionActivityHash, id),
+      [ACTIVITY_TYPES.REACTION_SELF]: getValue(reactionSelfActivityHash, id),
+    }[type]);
 
   return {
     getActivityHandlerByKey,
-    getActivityByTypeAndParentId
+    getActivityByTypeAndParentId,
   };
 };
 
@@ -133,8 +135,7 @@ export const bookendManager = () => {
   const setOldestAct = (act) => {
     if (!oldestAct) {
       oldestAct = act;
-    }
-    else if (isNewer(oldestAct, act)) {
+    } else if (isNewer(oldestAct, act)) {
       oldestAct = act;
     }
   };
@@ -142,8 +143,7 @@ export const bookendManager = () => {
   const setNewestAct = (act) => {
     if (!newestAct) {
       newestAct = act;
-    }
-    else if (isNewer(act, newestAct)) {
+    } else if (isNewer(act, newestAct)) {
       newestAct = act;
     }
   };
@@ -161,7 +161,7 @@ export const bookendManager = () => {
   return {
     setBookends,
     getNewestAct,
-    getOldestAct
+    getOldestAct,
   };
 };
 
@@ -204,7 +204,7 @@ export const noMoreActivitiesManager = () => {
     getNoMoreActs,
     checkAndSetNoMoreActs,
     checkAndSetNoNewerActs,
-    checkAndSetNoOlderActs
+    checkAndSetNoOlderActs,
   };
 };
 
@@ -223,7 +223,7 @@ export const rootActivityManager = () => {
 
   return {
     addNewRoot,
-    getRootActivityHash
+    getRootActivityHash,
   };
 };
 
@@ -249,9 +249,7 @@ export const getLoopCounterFailsafe = () => {
  * @returns {object}
  */
 export const getQuery = (type, queryOptions) => {
-  const {
-    newestPublishedDate, oldestPublishedDate, batchSize, activityToSearch = {}
-  } = queryOptions;
+  const {newestPublishedDate, oldestPublishedDate, batchSize, activityToSearch = {}} = queryOptions;
 
   switch (type) {
     case NEWER: {
@@ -266,8 +264,7 @@ export const getQuery = (type, queryOptions) => {
 
       if (searchType === ACTIVITY_TYPES.REPLY || searchType === ACTIVITY_TYPES.EDIT) {
         midDate = activityToSearch.parent.published;
-      }
-      else {
+      } else {
         midDate = activityToSearch.published;
       }
 

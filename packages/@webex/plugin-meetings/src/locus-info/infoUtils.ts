@@ -39,7 +39,12 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
 InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
   const displayHints = {};
 
-  if (info && info.displayHints && info.displayHints[displayHintKey] && info.displayHints[displayHintKey].length > 0) {
+  if (
+    info &&
+    info.displayHints &&
+    info.displayHints[displayHintKey] &&
+    info.displayHints[displayHintKey].length > 0
+  ) {
     info.displayHints[displayHintKey].forEach((key) => {
       displayHints[key] = true;
     });
@@ -79,10 +84,13 @@ InfoUtils.getInfos = (oldInfo, newInfo, roles, isJoined) => {
     current.isLocked = InfoUtils.isLocked(current.policy);
     current.isUnlocked = InfoUtils.isUnlocked(current.policy);
 
-    if (previous && previous.isUnlocked && current.isLocked || !previous && current.isLocked) {
+    if ((previous && previous.isUnlocked && current.isLocked) || (!previous && current.isLocked)) {
       updates.isLocked = current.isLocked;
     }
-    if (previous && previous.isLocked && current.isUnlocked || !previous && current.isUnlocked) {
+    if (
+      (previous && previous.isLocked && current.isUnlocked) ||
+      (!previous && current.isUnlocked)
+    ) {
       updates.isUnlocked = current.isUnlocked;
     }
   }
@@ -90,7 +98,7 @@ InfoUtils.getInfos = (oldInfo, newInfo, roles, isJoined) => {
   return {
     previous,
     current,
-    updates
+    updates,
   };
 };
 

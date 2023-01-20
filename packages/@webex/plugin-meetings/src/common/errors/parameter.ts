@@ -9,12 +9,15 @@ export default class ParameterError extends Error {
   code: number;
 
   /**
-  *
-  * @constructor
-  * @param {String} [message]
-  * @param {Object} [error]
-  */
-  constructor(message: string = MEETINGCONSTANTS.ERROR_DICTIONARY.PARAMETER.MESSAGE, error: any = null) {
+   *
+   * @constructor
+   * @param {String} [message]
+   * @param {Object} [error]
+   */
+  constructor(
+    message: string = MEETINGCONSTANTS.ERROR_DICTIONARY.PARAMETER.MESSAGE,
+    error: any = null
+  ) {
     super(message);
 
     if (Error.captureStackTrace) {

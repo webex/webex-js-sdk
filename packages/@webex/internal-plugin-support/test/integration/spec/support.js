@@ -20,46 +20,46 @@ describe('plugin-support', function () {
 
   let sampleTextOne = 'sample-text-one.txt';
 
-  before('fetch fixtures', () => Promise.all([
-    fh.fetch(sampleTextOne)
-  ])
-    .then((res) => {
-      [
-        sampleTextOne
-      ] = res;
-    }));
+  before('fetch fixtures', () =>
+    Promise.all([fh.fetch(sampleTextOne)]).then((res) => {
+      [sampleTextOne] = res;
+    })
+  );
 
   // Disabled because rackspace is broken
   describe('#submitLogs()', () => {
     describe('when the current user is authorized', () => {
-      before(() => testUsers.create({count: 1})
-        .then((users) => {
+      before(() =>
+        testUsers.create({count: 1}).then((users) => {
           webex = new WebexCore({
             credentials: {
-              authorization: users[0].token
-            }
+              authorization: users[0].token,
+            },
           });
 
           return webex.internal.device.register();
-        }));
-
-      it('uploads logs', () => webex.internal.support.submitLogs({}, sampleTextOne)
-        .then((body) => {
-          assert.isDefined(body);
-          assert.property(body, 'url');
-          assert.property(body, 'userId');
-          assert.equal(body.userId, webex.internal.device.userId);
         })
-        // Atlas has a really unfortunate rate limit in place, so we're going
-        // to rely on hope that enough of the node/browser runs don't get rate
-        // limited to prove this code works.
-        .catch((err) => {
-          if (err instanceof TooManyRequests) {
-            return;
-          }
+      );
 
-          throw err;
-        }));
+      it('uploads logs', () =>
+        webex.internal.support
+          .submitLogs({}, sampleTextOne)
+          .then((body) => {
+            assert.isDefined(body);
+            assert.property(body, 'url');
+            assert.property(body, 'userId');
+            assert.equal(body.userId, webex.internal.device.userId);
+          })
+          // Atlas has a really unfortunate rate limit in place, so we're going
+          // to rely on hope that enough of the node/browser runs don't get rate
+          // limited to prove this code works.
+          .catch((err) => {
+            if (err instanceof TooManyRequests) {
+              return;
+            }
+
+            throw err;
+          }));
     });
   });
 });

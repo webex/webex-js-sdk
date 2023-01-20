@@ -10,14 +10,13 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
-
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
     it('uses correct TURN TLS information on the new connection', async () => {
       Metrics.postEvent = sinon.stub();
 
       const fakeMediaConnection = {
-        initiateOffer: sinon.stub().resolves({})
+        initiateOffer: sinon.stub().resolves({}),
       };
       const fakeMeeting = {
         closePeerConnections: sinon.stub().resolves({}),
@@ -31,10 +30,10 @@ describe('plugin-meetings', () => {
               times: 2,
               backOff: {
                 start: 1000,
-                rate: 2
-              }
-            }
-          }
+                rate: 2,
+              },
+            },
+          },
         },
         mediaProperties: {
           unsetPeerConnection: sinon.stub(),
@@ -46,8 +45,8 @@ describe('plugin-meetings', () => {
               username: 'fake_turn_username',
               password: 'fake_turn_password',
             },
-            turnDiscoverySkippedReason: undefined
-          })
+            turnDiscoverySkippedReason: undefined,
+          }),
         },
         statsAnalyzer: {
           updateMediaConnection: sinon.stub(),
@@ -55,9 +54,9 @@ describe('plugin-meetings', () => {
         webex: {
           meetings: {
             getMeetingByType: sinon.stub().returns(true),
-            syncMeetings: sinon.stub().resolves({})
-          }
-        }
+            syncMeetings: sinon.stub().resolves({}),
+          },
+        },
       };
 
       const rm = new ReconnectionManager(fakeMeeting);
@@ -96,11 +95,11 @@ describe('plugin-meetings', () => {
               times: 2,
               backOff: {
                 start: 1000,
-                rate: 2
-              }
-            }
-          }
-        }
+                rate: 2,
+              },
+            },
+          },
+        },
       });
     });
 
@@ -119,8 +118,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should resolve the deferred promise', () => {
-          reconnectionManager.iceState.resolve =
-            sinon.spy();
+          reconnectionManager.iceState.resolve = sinon.spy();
           const {resolve} = reconnectionManager.iceState;
 
           reconnectionManager.iceReconnected();

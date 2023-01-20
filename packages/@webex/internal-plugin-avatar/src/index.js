@@ -11,7 +11,7 @@ import Avatar from './avatar';
 import config from './config';
 
 registerInternalPlugin('avatar', Avatar, {
-  config
+  config,
 });
 
 export {default} from './avatar';

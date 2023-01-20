@@ -11,6 +11,6 @@ export default {
      * @private
      * @type {string}
      */
-    clientType: 'public'
-  }
+    clientType: 'public',
+  },
 };

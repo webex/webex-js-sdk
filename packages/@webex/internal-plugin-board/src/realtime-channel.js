@@ -12,30 +12,29 @@ const RealtimeChannel = Mercury.extend({
   props: {
     channelId: {
       type: 'string',
-      required: true
+      required: true,
     },
     socketUrl: {
-      type: 'string'
+      type: 'string',
     },
     binding: {
-      type: 'string'
-    }
+      type: 'string',
+    },
   },
 
   session: {
     isSharingMercury: {
       type: 'boolean',
-      default: false
+      default: false,
     },
     socket: {
-      type: 'object'
-    }
+      type: 'object',
+    },
   },
 
   send(data) {
     return this.socket.send(data);
-  }
+  },
 });
 
 export default RealtimeChannel;
-
