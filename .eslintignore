@@ -38,3 +38,6 @@ webex.min.js
 *.yml
 *.patch
 yarn.lock
+*.md
+*.json
+*.html
