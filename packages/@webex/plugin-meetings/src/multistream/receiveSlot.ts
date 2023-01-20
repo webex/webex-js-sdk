@@ -8,6 +8,7 @@ export const ReceiveSlotEvents = {
   SourceUpdate: 'sourceUpdate',
 };
 
+// @ts-ignore
 export type SourceState = MC.SourceState;
 export type CSI = number;
 export type MemberId = string;
@@ -22,18 +23,21 @@ export type FindMemberIdCallback = (csi: CSI) => MemberId | undefined;
  * for example some participant's main video or audio
  */
 export class ReceiveSlot extends EventsScope {
+  // @ts-ignore
   private readonly mcReceiveSlot: MC.ReceiveSlot;
 
   private readonly findMemberIdCallback: FindMemberIdCallback;
 
   public readonly id: ReceiveSlotId;
 
+  // @ts-ignore
   public readonly mediaType: MC.MediaType;
 
   #memberId?: MemberId;
 
   #csi?: CSI;
 
+  // @ts-ignore
   #sourceState: MC.SourceState;
 
   /**
@@ -45,7 +49,9 @@ export class ReceiveSlot extends EventsScope {
    * @param {FindMemberIdCallback} findMemberIdCallback callback for finding memberId for given CSI
    */
   constructor(
+    // @ts-ignore
     mediaType: MC.MediaType,
+    // @ts-ignore
     mcReceiveSlot: MC.ReceiveSlot,
     findMemberIdCallback: FindMemberIdCallback
   ) {
@@ -94,6 +100,7 @@ export class ReceiveSlot extends EventsScope {
 
     this.mcReceiveSlot.on(
       MC.ReceiveSlotEvents.SourceUpdate,
+      // @ts-ignore
       (state: MC.SourceState, csi?: number) => {
         LoggerProxy.logger.log(
           `ReceiveSlot#setupEventListeners --> got source update on receive slot ${this.id}, mediaType=${this.mediaType}, csi=${csi}, state=${state}`
@@ -123,6 +130,7 @@ export class ReceiveSlot extends EventsScope {
   /**
    * The underlying WCME receive slot
    */
+  // @ts-ignore
   get wcmeReceiveSlot(): MC.ReceiveSlot {
     return this.mcReceiveSlot;
   }

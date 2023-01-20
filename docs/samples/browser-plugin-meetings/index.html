@@ -288,6 +288,8 @@
                 </div>
                 <input id="meetings-join-moderator" type="checkbox">
                 <label for="meetings-join-moderator">Join as Moderator</label>
+                <input id="meetings-join-breakout-enabled" type="checkbox">
+                <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
                 <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
               </div>
 
@@ -587,6 +589,15 @@
                 <div id="participant-btn"></div>
               </div>
               <p class="note multistream" id="remote-sources-info"></p>
+            </fieldset>
+          </div>
+          <!-- meetings / breakout sessions -->
+          <div>
+            <fieldset>
+              <legend>Breakout Sessions</legend>
+              <div id="breakouts-list">
+                <div id="breakout-table"></div>
+              </div>
             </fieldset>
           </div>
           <!-- meetings / events published -->

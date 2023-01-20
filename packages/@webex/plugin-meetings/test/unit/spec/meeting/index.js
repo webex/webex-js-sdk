@@ -44,6 +44,9 @@ import Metrics from '@webex/plugin-meetings/src/metrics';
 import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex-errors';
+import LLM from '@webex/internal-plugin-llm';
+import Mercury from '@webex/internal-plugin-mercury';
+import Breakouts from '@webex/plugin-meetings/src/breakouts';
 
 import locus from '../fixture/locus';
 import {
@@ -156,6 +159,8 @@ describe('plugin-meetings', () => {
         meetings: Meetings,
         credentials: Credentials,
         support: Support,
+        llm: LLM,
+        mercury: Mercury,
       },
       config: {
         credentials: {
@@ -180,6 +185,7 @@ describe('plugin-meetings', () => {
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
+    webex.internal.llm.on = sinon.stub();
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
@@ -251,6 +257,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingInfoFailureReason, undefined);
           assert.equal(meeting.destination, testDestination);
           assert.equal(meeting.destinationType, _MEETING_ID_);
+          assert.instanceOf(meeting.breakouts, Breakouts);
         });
       });
       describe('#invite', () => {
@@ -3954,6 +3961,83 @@ describe('plugin-meetings', () => {
           );
           done();
         });
+
+        it('listens to the breakouts changed event', () => {
+          meeting.breakouts.updateBreakoutSessions = sinon.stub();
+
+          const payload = 'payload';
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_MEETING_BREAKOUTS_CHANGED', payload);
+
+          assert.calledOnceWithExactly(meeting.breakouts.updateBreakoutSessions, payload);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+          );
+        });
+      });
+
+      describe('#setUpBreakoutsListener', () => {
+        it('listens to the closing event from breakouts and triggers the closing event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('BREAKOUTS_CLOSING');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_CLOSING
+          );
+        });
+
+        it('listens to the message event from breakouts and triggers the message event', () => {
+          TriggerProxy.trigger.reset();
+
+          const messageEvent = 'message';
+
+          meeting.breakouts.trigger('MESSAGE', messageEvent);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_MESSAGE,
+            messageEvent
+          );
+        });
+
+        it('listens to the members update event from breakouts and triggers the breakouts update event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('MEMBERS_UPDATE');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+          );
+        });
+      });
+
+      describe('#setupLocusControlsListener', () => {
+        it('listens to the locus breakouts update event', () => {
+          const locus = {
+            breakout: 'breakout'
+          };
+
+          meeting.breakouts.updateBreakout = sinon.stub();
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'CONTROLS_MEETING_BREAKOUT_UPDATED', locus);
+
+          assert.calledOnceWithExactly(meeting.breakouts.updateBreakout, locus.breakout);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+          );
+        });
       });
 
       describe('#setUpLocusUrlListener', () => {
@@ -3962,12 +4046,14 @@ describe('plugin-meetings', () => {
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
 
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'LOCUS_INFO_UPDATE_URL',
+          meeting.breakouts.locusUrlUpdate = sinon.stub();
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'LOCUS_INFO_UPDATE_URL', newLocusUrl);
+          assert.calledWith(
+            meeting.members.locusUrlUpdate,
             newLocusUrl
           );
-          assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
+          assert.calledOnceWithExactly(meeting.breakouts.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
