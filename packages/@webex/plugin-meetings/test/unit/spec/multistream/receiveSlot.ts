@@ -1,7 +1,7 @@
 /* eslint-disable require-jsdoc */
 import EventEmitter from 'events';
 
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType, ReceiveSlotEvents as WcmeReceiveSlotEvents} from '@webex/internal-media-core';
 import {ReceiveSlot, ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
@@ -25,7 +25,7 @@ describe('ReceiveSlot', () => {
     fakeStream = {id: 'fake stream'};
     fakeWcmeSlot = new FakeWcmeSlot(fakeStream);
     findMemberIdCallbackStub = sinon.stub();
-    receiveSlot = new ReceiveSlot(MC.MediaType.VideoMain, fakeWcmeSlot, findMemberIdCallbackStub);
+    receiveSlot = new ReceiveSlot(MediaType.VideoMain, fakeWcmeSlot, findMemberIdCallbackStub);
   });
 
   describe('forwards events from underlying wcme receive slot', () => {
@@ -43,7 +43,7 @@ describe('ReceiveSlot', () => {
         eventData = data;
       });
 
-      fakeWcmeSlot.emit(MC.ReceiveSlotEvents.SourceUpdate, 'live', csi);
+      fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
 
       assert.strictEqual(eventEmitted, true);
       assert.deepEqual(eventData, {
@@ -58,7 +58,7 @@ describe('ReceiveSlot', () => {
 
   it('has public properties', () => {
     assert.strictEqual(receiveSlot.id, 'r1');
-    assert.strictEqual(receiveSlot.mediaType, MC.MediaType.VideoMain);
+    assert.strictEqual(receiveSlot.mediaType, MediaType.VideoMain);
   });
 
   it("exposes underlying wcme receive slot's properties", () => {
@@ -76,7 +76,7 @@ describe('ReceiveSlot', () => {
 
     findMemberIdCallbackStub.returns(fakeMemberId);
 
-    fakeWcmeSlot.emit(MC.ReceiveSlotEvents.SourceUpdate, 'live', csi);
+    fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
 
     assert.strictEqual(receiveSlot.memberId, fakeMemberId);
     assert.strictEqual(receiveSlot.csi, csi);
@@ -89,7 +89,7 @@ describe('ReceiveSlot', () => {
 
     findMemberIdCallbackStub.returns(fakeMemberId);
 
-    fakeWcmeSlot.emit(MC.ReceiveSlotEvents.SourceUpdate, 'live', csi);
+    fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
 
     assert.strictEqual(receiveSlot.memberId, fakeMemberId);
     assert.strictEqual(receiveSlot.csi, csi);

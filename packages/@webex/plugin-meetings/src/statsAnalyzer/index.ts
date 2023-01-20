@@ -1,7 +1,7 @@
 /* eslint-disable prefer-destructuring */
 
 import {cloneDeep} from 'lodash';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {ConnectionState} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
 import {
@@ -335,7 +335,7 @@ export class StatsAnalyzer extends EventsScope {
    *
    * @private
    * @memberof StatsAnalyzer
-   * @param {MC.RoapMediaConnection} mediaConnection
+   * @param {RoapMediaConnection} mediaConnection
    * @returns {void}
    */
   updateMediaConnection(mediaConnection: any) {
@@ -347,7 +347,7 @@ export class StatsAnalyzer extends EventsScope {
    *
    * @public
    * @memberof StatsAnalyzer
-   * @param {MC.RoapMediaConnection} mediaConnection
+   * @param {RoapMediaConnection} mediaConnection
    * @returns {Promise}
    */
   public startAnalyzer(mediaConnection: any) {
@@ -820,7 +820,7 @@ export class StatsAnalyzer extends EventsScope {
 
     if (
       this.mediaConnection &&
-      this.mediaConnection.getConnectionState() === MC.ConnectionState.Failed
+      this.mediaConnection.getConnectionState() === ConnectionState.Failed
     ) {
       LoggerProxy.logger.trace(
         'StatsAnalyzer:index#getStatsAndParse --> media connection is in failed state'
