@@ -23,11 +23,13 @@ const MetricsBatcher = Batcher.extend({
   },
 
   prepareRequest(queue) {
-    return Promise.resolve(queue.map((item) => {
-      item.postTime = item.postTime || Date.now();
+    return Promise.resolve(
+      queue.map((item) => {
+        item.postTime = item.postTime || Date.now();
 
-      return item;
-    }));
+        return item;
+      })
+    );
   },
 
   submitHttpRequest(payload) {
@@ -36,8 +38,8 @@ const MetricsBatcher = Batcher.extend({
       service: 'metrics',
       resource: 'metrics',
       body: {
-        metrics: payload
-      }
+        metrics: payload,
+      },
     });
   },
 
@@ -47,38 +49,43 @@ const MetricsBatcher = Batcher.extend({
 
   handleHttpError(reason) {
     if (reason instanceof WebexHttpError.NetworkOrCORSError) {
-      this.logger.warn('metrics-batcher: received network error submitting metrics, reenqueuing payload');
+      this.logger.warn(
+        'metrics-batcher: received network error submitting metrics, reenqueuing payload'
+      );
 
-      return Promise.all(reason.options.body.metrics.map((item) => new Promise((resolve) => {
-        const delay = item[sym].nextDelay;
+      return Promise.all(
+        reason.options.body.metrics.map(
+          (item) =>
+            new Promise((resolve) => {
+              const delay = item[sym].nextDelay;
 
-        if (delay < this.config.batcherRetryPlateau) {
-          item[sym].nextDelay *= 2;
-        }
-        safeSetTimeout(() => {
-          resolve(this.rerequest(item));
-        }, delay);
-      })));
+              if (delay < this.config.batcherRetryPlateau) {
+                item[sym].nextDelay *= 2;
+              }
+              safeSetTimeout(() => {
+                resolve(this.rerequest(item));
+              }, delay);
+            })
+        )
+      );
     }
 
     return Reflect.apply(Batcher.prototype.handleHttpError, this, [reason]);
   },
 
   rerequest(item) {
-    return Promise.all([
-      this.getDeferredForRequest(item),
-      this.prepareItem(item)
-    ])
-      .then(([defer, req]) => {
+    return Promise.all([this.getDeferredForRequest(item), this.prepareItem(item)]).then(
+      ([defer, req]) => {
         this.enqueue(req)
           .then(() => this.bounce())
           .catch((reason) => defer.reject(reason));
-      });
+      }
+    );
   },
 
   fingerprintRequest(item) {
     item[sym] = item[sym] || {
-      nextDelay: 1000
+      nextDelay: 1000,
     };
 
     return Promise.resolve(item[sym]);
@@ -86,7 +93,7 @@ const MetricsBatcher = Batcher.extend({
 
   fingerprintResponse(item) {
     return Promise.resolve(item[sym]);
-  }
+  },
 });
 
 export default MetricsBatcher;

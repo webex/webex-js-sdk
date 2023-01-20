@@ -1,9 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-import {
-  constants,
-  FeatureModel,
-  FeaturesModel
-} from '@webex/internal-plugin-device';
+import {constants, FeatureModel, FeaturesModel} from '@webex/internal-plugin-device';
 import sinon from 'sinon';
 
 import dto from '../wdm-dto';
@@ -17,12 +13,8 @@ describe('plugin-device', () => {
     });
 
     describe('collections', () => {
-      it('should have \'developer\', \'entitlement\' and \'user\' keys', () => {
-        assert.containsAllKeys(featuresModel, [
-          'developer',
-          'entitlement',
-          'user'
-        ]);
+      it("should have 'developer', 'entitlement' and 'user' keys", () => {
+        assert.containsAllKeys(featuresModel, ['developer', 'entitlement', 'user']);
       });
     });
 
@@ -58,7 +50,7 @@ describe('plugin-device', () => {
             key = 'testKey';
             model = new FeatureModel({
               ...dto.features[collectionName][0],
-              key
+              key,
             });
             spy = sinon.spy();
 

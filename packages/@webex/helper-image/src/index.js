@@ -3,18 +3,18 @@
  */
 
 /* eslint no-unused-vars: ["error", { "vars": "local" }] */
-/* global FileReader */
+// eslint-disable-next-line no-redeclare
 
 const {Buffer} = require('safe-buffer');
 const {parse} = require('exifr/dist/lite.umd');
 
 /**
-* Updates the image file with exif information, required to correctly rotate the image activity
-* @param {Object} file
-* @param {Object} options
-* @param {boolean} options.shouldNotAddExifData
-* @returns {Promise<Object>}
-*/
+ * Updates the image file with exif information, required to correctly rotate the image activity
+ * @param {Object} file
+ * @param {Object} options
+ * @param {boolean} options.shouldNotAddExifData
+ * @returns {Promise<Object>}
+ */
 export function updateImageOrientation(file, options = {}) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -26,28 +26,24 @@ export function updateImageOrientation(file, options = {}) {
 
       resolve(buf);
     };
-  })
-    .then((buf) => {
-      if (options.shouldNotAddExifData) {
-        return buf;
-      }
+  }).then((buf) => {
+    if (options.shouldNotAddExifData) {
+      return buf;
+    }
 
-      return readExifData(file, buf);
-    });
+    return readExifData(file, buf);
+  });
 }
 
 /**
-* Adds exif orientation information on the image file
-* @param {Object} file
-* @param {Object} buf
-* @returns {Promise<ExifImage>}
-*/
+ * Adds exif orientation information on the image file
+ * @param {Object} file
+ * @param {Object} buf
+ * @returns {Promise<ExifImage>}
+ */
 export async function readExifData(file, buf) {
   // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
-  if (
-    file &&
-    (file.type === 'image/jpeg' || file.mimeType === 'image/jpeg')
-  ) {
+  if (file && (file.type === 'image/jpeg' || file.mimeType === 'image/jpeg')) {
     const exifData = await parse(buf, {translateValues: false});
 
     if (exifData) {
@@ -68,15 +64,13 @@ export async function readExifData(file, buf) {
 
 /* eslint-disable complexity */
 /**
-* Rotates/flips the image on the canvas as per exif information
-* @param {Object} options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, ctx: canvas context)
-* @param {Object} file
-* @returns {Object}
-*/
+ * Rotates/flips the image on the canvas as per exif information
+ * @param {Object} options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, ctx: canvas context)
+ * @param {Object} file
+ * @returns {Object}
+ */
 export function orient(options, file) {
-  const {
-    width, height, ctx, img, orientation, x, y
-  } = options;
+  const {width, height, ctx, img, orientation, x, y} = options;
 
   if (file && file.orientation && file.orientation !== 1) {
     // explanation of orientation:
@@ -87,27 +81,27 @@ export function orient(options, file) {
         ctx.transform(-1, 0, 0, 1, width, 0);
         break;
       case 3:
-      // rotateImage180
+        // rotateImage180
         ctx.transform(-1, 0, 0, -1, width, height);
         break;
       case 4:
-      // rotate180AndFlipImage
+        // rotate180AndFlipImage
         ctx.transform(1, 0, 0, -1, 0, height);
         break;
       case 5:
-      // rotate90AndFlipImage
+        // rotate90AndFlipImage
         ctx.transform(0, 1, 1, 0, 0, 0);
         break;
       case 6:
-      // rotateImage90
+        // rotateImage90
         ctx.transform(0, 1, -1, 0, height, 0);
         break;
       case 7:
-      // rotateNeg90AndFlipImage
+        // rotateNeg90AndFlipImage
         ctx.transform(0, -1, -1, 0, height, width);
         break;
       case 8:
-      // rotateNeg90
+        // rotateNeg90
         ctx.transform(0, -1, 1, 0, 0, width);
         break;
       default:

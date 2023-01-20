@@ -40,11 +40,7 @@ export default class WebexUserAgentInterceptor extends Interceptor {
    */
   onRequest(options) {
     options.headers = options.headers || {};
-    const {
-      appName,
-      appVersion,
-      appPlatform
-    } = this.webex?.config ?? {};
+    const {appName, appVersion, appPlatform} = this.webex?.config ?? {};
     let sparkUserAgent = `${strings.get(this)}`;
 
     if (appName) {
@@ -61,11 +57,9 @@ export default class WebexUserAgentInterceptor extends Interceptor {
 
     if (
       options.uri &&
-      (
-        options.uri.includes(this.webex.config.credentials.samlUrl) ||
+      (options.uri.includes(this.webex.config.credentials.samlUrl) ||
         options.uri.includes(this.webex.config.credentials.tokenUrl) ||
-        options.uri.includes(this.webex.config.credentials.authorizeUrl)
-      )
+        options.uri.includes(this.webex.config.credentials.authorizeUrl))
     ) {
       return options;
     }

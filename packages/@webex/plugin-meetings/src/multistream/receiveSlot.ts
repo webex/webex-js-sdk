@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {MediaConnection as MC} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';

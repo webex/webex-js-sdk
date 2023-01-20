@@ -22,7 +22,6 @@ import '@webex/internal-plugin-lyra';
 import '@webex/internal-plugin-device';
 import '@webex/plugin-people';
 
-
 import WebexCore from '@webex/webex-core';
 import {merge} from 'lodash';
 

@@ -11,10 +11,7 @@ import {isArray} from 'lodash';
  * @returns {EventEmitter} Returns the source emitter to ease use in promise chains
  */
 export function proxyEvents(emitter, proxy) {
-  [
-    'on',
-    'once'
-  ].forEach((key) => {
+  ['on', 'once'].forEach((key) => {
     proxy[key] = (...args) => {
       emitter[key](...args);
 

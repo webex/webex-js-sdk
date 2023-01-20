@@ -20,8 +20,7 @@ export default class Exception extends Error {
 
     if (this.parse) {
       message = this.parse(...args);
-    }
-    else if (this.constructor.parse) {
+    } else if (this.constructor.parse) {
       message = this.constructor.parse(...args);
     }
 

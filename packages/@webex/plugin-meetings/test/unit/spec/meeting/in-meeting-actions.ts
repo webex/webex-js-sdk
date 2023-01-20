@@ -1,7 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import InMeetingActions from '@webex/plugin-meetings/src/meeting/in-meeting-actions';
 
-
 describe('plugin-meetings', () => {
   describe('in-meeting-actions', () => {
     const checkValues = (actions, expected?) => {
@@ -28,6 +27,8 @@ describe('plugin-meetings', () => {
         isRealTimeTranslationEnabled: null,
         canSelectSpokenLanguages: null,
         waitingForOthersToJoin: null,
+        canEnableReactions: null,
+        canSendReactions: null,
         ...expected
       };
 
@@ -61,7 +62,9 @@ describe('plugin-meetings', () => {
       'canViewCaptionPanel',
       'isRealTimeTranslationEnabled',
       'canSelectSpokenLanguages',
-      'waitingForOthersToJoin'
+      'waitingForOthersToJoin',
+      'canEnableReactions',
+      'canSendReactions'
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

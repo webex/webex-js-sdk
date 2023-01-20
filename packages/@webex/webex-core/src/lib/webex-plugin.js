@@ -5,11 +5,7 @@
 import util from 'util';
 
 import AmpState from 'ampersand-state';
-import {
-  cloneDeep,
-  isObject,
-  omit
-} from 'lodash';
+import {cloneDeep, isObject, omit} from 'lodash';
 
 import {makeWebexPluginStore} from './storage';
 
@@ -22,22 +18,19 @@ const WebexPlugin = AmpState.extend({
       deps: [],
       fn() {
         return makeWebexPluginStore('bounded', this);
-      }
+      },
     },
     unboundedStorage: {
       deps: [],
       fn() {
         return makeWebexPluginStore('unbounded', this);
-      }
+      },
     },
     config: {
-    // figure out why caching config breaks the refresh integration test
-    // but not the refresh automation test.
+      // figure out why caching config breaks the refresh integration test
+      // but not the refresh automation test.
       cache: false,
-      deps: [
-        'webex',
-        'webex.config'
-      ],
+      deps: ['webex', 'webex.config'],
       fn() {
         if (this.webex && this.webex.config) {
           const namespace = this.getNamespace();
@@ -50,24 +43,23 @@ const WebexPlugin = AmpState.extend({
         }
 
         return {};
-      }
+      },
     },
 
     logger: {
-      deps: [
-        'webex',
-        'webex.logger'
-      ],
+      deps: ['webex', 'webex.logger'],
       fn() {
         return this.webex.logger || console;
-      }
+      },
     },
 
     webex: {
       deps: ['parent'],
       fn() {
         if (!this.parent && !this.collection) {
-          throw new Error('Cannot determine `this.webex` without `this.parent` or `this.collection`. Please initialize `this` via `children` or `collection` or set `this.parent` manually');
+          throw new Error(
+            'Cannot determine `this.webex` without `this.parent` or `this.collection`. Please initialize `this` via `children` or `collection` or set `this.parent` manually'
+          );
         }
 
         /* eslint consistent-this: [0] */
@@ -78,13 +70,13 @@ const WebexPlugin = AmpState.extend({
         }
 
         return parent;
-      }
-    }
+      },
+    },
   },
 
   session: {
     parent: {
-      type: 'any'
+      type: 'any',
     },
     /**
      * Indicates this plugin is ready to be used. Defaults to true but can be
@@ -95,8 +87,8 @@ const WebexPlugin = AmpState.extend({
      */
     ready: {
       default: true,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
 
   /**
@@ -148,7 +140,12 @@ const WebexPlugin = AmpState.extend({
     // Propagate change:[attribute] events from children
     this.on('change', (model, options) => {
       if (this.parent) {
-        this.parent.trigger(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, options);
+        this.parent.trigger(
+          `change:${this.getNamespace().toLowerCase()}`,
+          this.parent,
+          this,
+          options
+        );
       }
     });
   },
@@ -161,11 +158,22 @@ const WebexPlugin = AmpState.extend({
    * @returns {Object}
    */
   inspect(depth) {
-    return util.inspect(omit(this.serialize({
-      props: true,
-      session: true,
-      derived: true
-    }), 'boundedStorage', 'unboundedStorage', 'config', 'logger', 'webex', 'parent'), {depth});
+    return util.inspect(
+      omit(
+        this.serialize({
+          props: true,
+          session: true,
+          derived: true,
+        }),
+        'boundedStorage',
+        'unboundedStorage',
+        'config',
+        'logger',
+        'webex',
+        'parent'
+      ),
+      {depth}
+    );
   },
 
   request(...args) {
@@ -200,8 +208,7 @@ const WebexPlugin = AmpState.extend({
     if (isObject(key) || key === null) {
       attrs = key;
       options = value;
-    }
-    else {
+    } else {
       attrs = {};
       attrs[key] = value;
     }
@@ -209,7 +216,7 @@ const WebexPlugin = AmpState.extend({
     options = options || {};
 
     return [attrs, options];
-  }
+  },
 });
 
 export default WebexPlugin;

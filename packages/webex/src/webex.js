@@ -44,7 +44,7 @@ const config = require('./config');
  */
 const Webex = WebexCore.extend({
   webex: true,
-  version: PACKAGE_VERSION
+  version: PACKAGE_VERSION,
 });
 
 /**

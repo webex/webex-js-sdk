@@ -9,7 +9,7 @@ import Feature from './feature';
 import config from './config';
 
 registerInternalPlugin('feature', Feature, {
-  config
+  config,
 });
 
 export {default} from './feature';

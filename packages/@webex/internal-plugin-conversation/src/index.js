@@ -25,7 +25,7 @@ registerInternalPlugin('conversation', Conversation, {
         },
         extract(optionsOrResponse) {
           return Promise.resolve(optionsOrResponse.body);
-        }
+        },
       },
       {
         name: 'transformObject',
@@ -35,7 +35,7 @@ registerInternalPlugin('conversation', Conversation, {
         },
         extract(event) {
           return Promise.resolve(event.activity);
-        }
+        },
       },
       {
         name: 'transformObjectArray',
@@ -44,8 +44,10 @@ registerInternalPlugin('conversation', Conversation, {
           return Promise.resolve(has(response, 'body.multistatus'));
         },
         extract(response) {
-          return Promise.resolve(response.body.multistatus.map((item) => item && item.data && item.data.activity));
-        }
+          return Promise.resolve(
+            response.body.multistatus.map((item) => item && item.data && item.data.activity)
+          );
+        },
       },
       {
         name: 'normalizeConversationListAndBindDecrypters',
@@ -63,7 +65,7 @@ registerInternalPlugin('conversation', Conversation, {
         },
         extract(options) {
           return Promise.resolve(options.body.items);
-        }
+        },
       },
       {
         name: 'transformObjectArray',
@@ -81,7 +83,7 @@ registerInternalPlugin('conversation', Conversation, {
         },
         extract(options) {
           return Promise.resolve(options.body.items);
-        }
+        },
       },
       {
         name: 'transformThreadArray',
@@ -99,36 +101,39 @@ registerInternalPlugin('conversation', Conversation, {
         },
         extract(options) {
           return Promise.resolve(options.body.items);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
         name: 'normalizeConversationListAndBindDecrypters',
         fn(ctx, array) {
-          return Promise.all(array.map((item) => ctx.transform('normalizeObject', item)
-            .then(() => {
-              item.decrypt = function decrypt() {
-                Reflect.deleteProperty(item, 'decrypt');
+          return Promise.all(
+            array.map((item) =>
+              ctx.transform('normalizeObject', item).then(() => {
+                item.decrypt = function decrypt() {
+                  Reflect.deleteProperty(item, 'decrypt');
 
-                return ctx.transform('decryptObject', item);
-              };
+                  return ctx.transform('decryptObject', item);
+                };
 
-              return item;
-            })));
-        }
+                return item;
+              })
+            )
+          );
+        },
       },
       {
         name: 'transformObjectArray',
         fn(ctx, array) {
           return Promise.all(array.map((item) => ctx.transform('transformObject', item)));
-        }
+        },
       },
       {
         name: 'transformThreadArray',
         fn(ctx, array) {
           return Promise.all(array.map((item) => ctx.transform('transformThread', item)));
-        }
+        },
       },
       {
         name: 'transformObject',
@@ -142,10 +147,11 @@ registerInternalPlugin('conversation', Conversation, {
             return Promise.resolve();
           }
 
-          return ctx.transform('normalizeObject', object)
+          return ctx
+            .transform('normalizeObject', object)
             .then(() => ctx.transform('encryptObject', object))
             .then(() => ctx.transform('encryptKmsMessage', object));
-        }
+        },
       },
       {
         name: 'transformObject',
@@ -159,9 +165,10 @@ registerInternalPlugin('conversation', Conversation, {
             return Promise.resolve();
           }
 
-          return ctx.transform('decryptObject', object)
+          return ctx
+            .transform('decryptObject', object)
             .then(() => ctx.transform('normalizeObject', object));
-        }
+        },
       },
       {
         name: 'normalizeObject',
@@ -176,9 +183,9 @@ registerInternalPlugin('conversation', Conversation, {
 
           return Promise.all([
             ctx.transform(`normalize${capitalize(object.objectType)}`, object),
-            ctx.transform('normalizePropContent', object)
+            ctx.transform('normalizePropContent', object),
           ]);
-        }
+        },
       },
       {
         name: 'transformThread',
@@ -188,9 +195,10 @@ registerInternalPlugin('conversation', Conversation, {
             return Promise.resolve();
           }
 
-          return ctx.transform('decryptThread', object)
+          return ctx
+            .transform('decryptThread', object)
             .then(() => ctx.transform('normalizeThread', object));
-        }
+        },
       },
       {
         name: 'normalizePropContent',
@@ -199,17 +207,18 @@ registerInternalPlugin('conversation', Conversation, {
           if (!object.content) {
             return Promise.resolve();
           }
-          const {
-            inboundProcessFunc,
-            allowedInboundTags,
-            allowedInboundStyles
-          } = ctx.webex.config.conversation;
+          const {inboundProcessFunc, allowedInboundTags, allowedInboundStyles} =
+            ctx.webex.config.conversation;
 
-          return htmlFilter(inboundProcessFunc, allowedInboundTags || {}, allowedInboundStyles, object.content)
-            .then((c) => {
-              object.content = c;
-            });
-        }
+          return htmlFilter(
+            inboundProcessFunc,
+            allowedInboundTags || {},
+            allowedInboundStyles,
+            object.content
+          ).then((c) => {
+            object.content = c;
+          });
+        },
       },
       {
         name: 'normalizePropContent',
@@ -219,17 +228,18 @@ registerInternalPlugin('conversation', Conversation, {
             return Promise.resolve();
           }
 
-          const {
-            outboundProcessFunc,
-            allowedOutboundTags,
-            allowedOutboundStyles
-          } = ctx.webex.config.conversation;
+          const {outboundProcessFunc, allowedOutboundTags, allowedOutboundStyles} =
+            ctx.webex.config.conversation;
 
-          return htmlFilterEscape(outboundProcessFunc, allowedOutboundTags || {}, allowedOutboundStyles, object.content)
-            .then((c) => {
-              object.content = c;
-            });
-        }
+          return htmlFilterEscape(
+            outboundProcessFunc,
+            allowedOutboundTags || {},
+            allowedOutboundStyles,
+            object.content
+          ).then((c) => {
+            object.content = c;
+          });
+        },
       },
       {
         name: 'normalizeConversation',
@@ -240,10 +250,14 @@ registerInternalPlugin('conversation', Conversation, {
           conversation.participants.items = conversation.participants.items || [];
 
           return Promise.all([
-            Promise.all(conversation.activities.items.map((item) => ctx.transform('normalizeObject', item))),
-            Promise.all(conversation.participants.items.map((item) => ctx.transform('normalizeObject', item)))
+            Promise.all(
+              conversation.activities.items.map((item) => ctx.transform('normalizeObject', item))
+            ),
+            Promise.all(
+              conversation.participants.items.map((item) => ctx.transform('normalizeObject', item))
+            ),
           ]);
-        }
+        },
       },
       {
         name: 'normalizeActivity',
@@ -251,16 +265,18 @@ registerInternalPlugin('conversation', Conversation, {
           return Promise.all([
             ctx.transform('normalizeObject', activity.actor),
             ctx.transform('normalizeObject', activity.object),
-            ctx.transform('normalizeObject', activity.target)
+            ctx.transform('normalizeObject', activity.target),
           ]);
-        }
+        },
       },
       {
         name: 'normalizeThread',
         fn(ctx, threadActivity) {
           // childActivities are of type Activity
-          return Promise.all(threadActivity.childActivities.map((item) => ctx.transform('normalizeObject', item)));
-        }
+          return Promise.all(
+            threadActivity.childActivities.map((item) => ctx.transform('normalizeObject', item))
+          );
+        },
       },
       {
         name: 'normalizePerson',
@@ -271,8 +287,7 @@ registerInternalPlugin('conversation', Conversation, {
 
           if (patterns.email.test(email)) {
             person.entryEmail = person.emailAddress = email.toLowerCase();
-          }
-          else {
+          } else {
             Reflect.deleteProperty(person, 'entryEmail');
             Reflect.deleteProperty(person, 'emailAddress');
           }
@@ -288,22 +303,23 @@ registerInternalPlugin('conversation', Conversation, {
           }
 
           if (!email) {
-            return Promise.reject(new Error('cannot determine id without an `emailAddress` or `entryUUID` property'));
+            return Promise.reject(
+              new Error('cannot determine id without an `emailAddress` or `entryUUID` property')
+            );
           }
 
-          return ctx.webex.internal.user.asUUID(email)
-            .then((uuid) => {
-              person.entryUUID = person.id = uuid;
+          return ctx.webex.internal.user.asUUID(email).then((uuid) => {
+            person.entryUUID = person.id = uuid;
 
-              return person;
-            });
-        }
-      }
+            return person;
+          });
+        },
+      },
     ]
       .concat(decryptionTransforms)
-      .concat(encryptionTransforms)
+      .concat(encryptionTransforms),
   },
-  config
+  config,
 });
 
 export {default} from './conversation';

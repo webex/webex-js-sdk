@@ -8,7 +8,6 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sha256 from 'crypto-js/sha256';
 
-
 describe('plugin-conversation', () => {
   describe('ShareActivity', () => {
     let shareActivity;
@@ -19,46 +18,31 @@ describe('plugin-conversation', () => {
 
     describe('#_determineContentCategory', () => {
       it('returns "documents" when not all files have a mimeType', () => {
-        const items = [
-          {mimeType: 'image/png'},
-          {}
-        ];
+        const items = [{mimeType: 'image/png'}, {}];
 
         assert.equal(shareActivity._determineContentCategory(items), 'documents');
       });
 
       it('returns "documents" for non-homogenous mimeTypes', () => {
-        const items = [
-          {mimeType: 'image/png'},
-          {mimeType: 'video/h264'}
-        ];
+        const items = [{mimeType: 'image/png'}, {mimeType: 'video/h264'}];
 
         assert.equal(shareActivity._determineContentCategory(items), 'documents');
       });
 
       it('returns "documents" if the potentially homogenous mimeType is not image or video', () => {
-        const items = [
-          {mimeType: 'application/xml'},
-          {mimeType: 'application/xml'}
-        ];
+        const items = [{mimeType: 'application/xml'}, {mimeType: 'application/xml'}];
 
         assert.equal(shareActivity._determineContentCategory(items), 'documents');
       });
 
       it('returns "image" if all mimeTypes are image', () => {
-        const items = [
-          {mimeType: 'image/png'},
-          {mimeType: 'image/jpg'}
-        ];
+        const items = [{mimeType: 'image/png'}, {mimeType: 'image/jpg'}];
 
         assert.equal(shareActivity._determineContentCategory(items), 'images');
       });
 
       it('returns "video" if all mimeTypes are video', () => {
-        const items = [
-          {mimeType: 'video/h264'},
-          {mimeType: 'video/vp8'}
-        ];
+        const items = [{mimeType: 'video/h264'}, {mimeType: 'video/vp8'}];
 
         assert.equal(shareActivity._determineContentCategory(items), 'videos');
       });
@@ -67,12 +51,14 @@ describe('plugin-conversation', () => {
         const items = [
           {
             mimeType: 'image/png',
-            actions: [{
-              mimeType: 'application/x-cisco-webex-whiteboard',
-              type: 'edit',
-              url: 'https://boards.example.com/boards/1'
-            }]
-          }
+            actions: [
+              {
+                mimeType: 'application/x-cisco-webex-whiteboard',
+                type: 'edit',
+                url: 'https://boards.example.com/boards/1',
+              },
+            ],
+          },
         ];
 
         assert.equal(shareActivity._determineContentCategory(items), 'documents');
@@ -81,16 +67,20 @@ describe('plugin-conversation', () => {
     describe('#upload', () => {
       let shareActivityUpload;
       let webex;
-      const fakeURL = 'https://encryption-a.wbx2.com/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9';
+      const fakeURL =
+        'https://encryption-a.wbx2.com/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9';
 
       beforeEach(() => {
         webex = new MockWebex({
-          upload: sinon.stub().returns(Promise.resolve({body: {downloadUrl: fakeURL}}))
+          upload: sinon.stub().returns(Promise.resolve({body: {downloadUrl: fakeURL}})),
         });
 
-        shareActivityUpload = new ShareActivity({}, {
-          parent: webex
-        });
+        shareActivityUpload = new ShareActivity(
+          {},
+          {
+            parent: webex,
+          }
+        );
       });
 
       it('checks whether filehash is sent in body while making a call to /finish API', () => {
@@ -101,15 +91,15 @@ describe('plugin-conversation', () => {
         const inputData = {
           phases: {
             initialize: {
-              fileSize
+              fileSize,
             },
             finalize: {
               body: {
                 fileSize,
-                fileHash
-              }
-            }
-          }
+                fileHash,
+              },
+            },
+          },
         };
 
         spy(inputData);
@@ -147,10 +137,18 @@ describe('plugin-conversation', () => {
 
     describe('#addGif', () => {
       const fakeHappyGif = {
-        name: 'happy gif.gif', url: '/path/gif.gif', height: 200, width: 270, image: {height: 200, width: 270, url: '/path/thumbnailgif.gif'}
+        name: 'happy gif.gif',
+        url: '/path/gif.gif',
+        height: 200,
+        width: 270,
+        image: {height: 200, width: 270, url: '/path/thumbnailgif.gif'},
       };
       const fakeSadGif = {
-        name: 'sad-gif.gif', url: '/path/gif.gif', height: 200, width: 270, image: {height: 200, width: 270, url: '/path/thumbnailgif.gif'}
+        name: 'sad-gif.gif',
+        url: '/path/gif.gif',
+        height: 200,
+        width: 270,
+        image: {height: 200, width: 270, url: '/path/thumbnailgif.gif'},
       };
 
       it('adds gif to empty this.uploads', () => {
@@ -159,7 +157,6 @@ describe('plugin-conversation', () => {
         // check that the gif was added via addGif
         assert.isTrue(shareActivity.uploads.size === 1);
       });
-
 
       it('if the giphy already exists, then do not add to this.uploads', () => {
         shareActivity.uploads.set(fakeHappyGif, {}); // add fake gif preemptively, mocking that we already added a gif

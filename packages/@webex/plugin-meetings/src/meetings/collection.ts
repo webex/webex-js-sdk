@@ -35,7 +35,7 @@ export default class MeetingCollection extends Collection {
   public getByKey(key: string, value: any) {
     if (key && value) {
       // @ts-ignore
-      return find(this.meetings, (meeting) => (meeting[key] === value));
+      return find(this.meetings, (meeting) => meeting[key] === value);
     }
 
     return null;

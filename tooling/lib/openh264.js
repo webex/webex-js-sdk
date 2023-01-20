@@ -41,13 +41,7 @@ function encode(fp) {
  * @param {string} dest
  */
 async function rsync(src, dest) {
-  await spawn('rsync', [
-    '--recursive',
-    '--delete',
-    '--perms',
-    src,
-    dest
-  ]);
+  await spawn('rsync', ['--recursive', '--delete', '--perms', src, dest]);
 }
 
 /**
@@ -63,8 +57,7 @@ async function exists(dir) {
     debug(`${dir} exists`);
 
     return s.isDirectory();
-  }
-  catch (err) {
+  } catch (err) {
     debug(`${dir} does not exist`);
 
     return false;
@@ -86,7 +79,7 @@ async function download() {
  */
 async function inject(browsers) {
   debug('checking if openh264 has been downloaded');
-  if (!await exists(`${PROFILE_DIR}/mac`)) {
+  if (!(await exists(`${PROFILE_DIR}/mac`))) {
     debug('openh264 for mac not found, downloading');
     await download();
   }
@@ -96,8 +89,7 @@ async function inject(browsers) {
 
     if (def.base === 'SauceLabs' || def['sauce:options']) {
       await injectSauce(def);
-    }
-    else {
+    } else {
       await injectLocal(def);
     }
   }
@@ -168,7 +160,9 @@ async function injectSauce(def) {
     const platform = platformToShortName(def.platformName);
 
     if (platform !== 'mac') {
-      throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platformName})`);
+      throw new Error(
+        `No tooling implemented for injecting h264 into ${platform} (${def.platformName})`
+      );
     }
 
     debug(`injecting ${platform} profile into ${def.browserName}`);
@@ -188,5 +182,5 @@ module.exports = {
   download,
   inject,
   platformToShortName,
-  prepareLocalProfile
+  prepareLocalProfile,
 };

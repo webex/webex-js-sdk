@@ -1,10 +1,6 @@
 import {MediaConnection as MC} from '@webex/internal-media-core';
 
-import {
-  MEETINGS,
-  PC_BAIL_TIMEOUT,
-  QUALITY_LEVELS
-} from '../constants';
+import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 /**
@@ -137,7 +133,9 @@ export default class MediaProperties {
    * @returns {void}
    */
   unsetRemoteStream() {
-    LoggerProxy.logger.warn('Media:properties#unsetRemoteStream --> [DEPRECATION WARNING]: unsetRemoteStream has been deprecated after v1.89.3 (use unsetRemoteTracks instead)');
+    LoggerProxy.logger.warn(
+      'Media:properties#unsetRemoteStream --> [DEPRECATION WARNING]: unsetRemoteStream has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
+    );
     // unsets audio and video only
     this.unsetRemoteMedia();
   }
@@ -166,7 +164,9 @@ export default class MediaProperties {
    * @returns {void}
    */
   unsetRemoteStreams() {
-    LoggerProxy.logger.warn('Media:properties#unsetRemoteStreams --> [DEPRECATION WARNING]: unsetRemoteStreams has been deprecated after v1.89.3 (use unsetRemoteTracks instead)');
+    LoggerProxy.logger.warn(
+      'Media:properties#unsetRemoteStreams --> [DEPRECATION WARNING]: unsetRemoteStreams has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
+    );
     this.unsetRemoteStream();
     this.unsetRemoteShare();
   }
@@ -191,7 +191,9 @@ export default class MediaProperties {
    * @returns {void}
    */
   unsetMediaStreams() {
-    LoggerProxy.logger.warn('Media:properties#unsetMediaStreams --> [DEPRECATION WARNING]: unsetMediaStreams has been deprecated after v1.89.3 (use unsetMediaTracks instead)');
+    LoggerProxy.logger.warn(
+      'Media:properties#unsetMediaStreams --> [DEPRECATION WARNING]: unsetMediaStreams has been deprecated after v1.89.3 (use unsetMediaTracks instead)'
+    );
     this.unsetLocalVideoTrack();
     this.unsetRemoteStream();
   }
@@ -211,23 +213,27 @@ export default class MediaProperties {
    * @returns {Promise<void>}
    */
   waitForMediaConnectionConnected() {
-    const isConnected = () => (
-      this.webrtcMediaConnection.getConnectionState() === MC.ConnectionState.Connected
-    );
+    const isConnected = () =>
+      this.webrtcMediaConnection.getConnectionState() === MC.ConnectionState.Connected;
 
     if (isConnected()) {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       let timer;
 
       const connectionStateListener = () => {
-        LoggerProxy.logger.log(`Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`);
+        LoggerProxy.logger.log(
+          `Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
+        );
 
         if (isConnected()) {
           clearTimeout(timer);
-          this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+          this.webrtcMediaConnection.off(
+            MC.Event.CONNECTION_STATE_CHANGED,
+            connectionStateListener
+          );
           resolve();
         }
       };
@@ -257,9 +263,10 @@ export default class MediaProperties {
       const statsResult = await this.webrtcMediaConnection.getStats();
 
       statsResult.forEach((report) => allStatsReports.push(report));
-    }
-    catch (error) {
-      LoggerProxy.logger.warn(`Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`);
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`
+      );
     }
 
     const successfulCandidatePairs = allStatsReports.filter(
@@ -270,10 +277,14 @@ export default class MediaProperties {
 
     // all of the successful pairs should have the same connection type, so just return the type for the first one
     successfulCandidatePairs.some((pair) => {
-      const localCandidate = allStatsReports.find((report) => report.type === 'local-candidate' && report.id === pair.localCandidateId);
+      const localCandidate = allStatsReports.find(
+        (report) => report.type === 'local-candidate' && report.id === pair.localCandidateId
+      );
 
       if (localCandidate === undefined) {
-        LoggerProxy.logger.warn(`Media:properties#getCurrentConnectionType --> failed to find local candidate "${pair.localCandidateId}" in getStats() results`);
+        LoggerProxy.logger.warn(
+          `Media:properties#getCurrentConnectionType --> failed to find local candidate "${pair.localCandidateId}" in getStats() results`
+        );
 
         return false;
       }
@@ -282,8 +293,7 @@ export default class MediaProperties {
 
       if (localCandidate.relayProtocol) {
         connectionType = `TURN-${localCandidate.relayProtocol.toUpperCase()}`;
-      }
-      else {
+      } else {
         connectionType = localCandidate.protocol?.toUpperCase(); // it will be UDP or TCP
       }
 

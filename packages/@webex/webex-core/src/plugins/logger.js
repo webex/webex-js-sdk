@@ -9,7 +9,7 @@ const precedence = {
   warn: ['error', 'log'],
   info: ['log'],
   debug: ['info', 'log'],
-  trace: ['debug', 'info', 'log']
+  trace: ['debug', 'info', 'log'],
 };
 
 /**
@@ -33,7 +33,12 @@ function wrapConsoleMethod(level) {
   return function wrappedConsoleMethod(...args) {
     /* eslint no-invalid-this: [0] */
     /* istanbul ignore if */
-    if (process.env.NODE_ENV === 'test' && this.webex && this.webex.internal.device && this.webex.internal.device.url) {
+    if (
+      process.env.NODE_ENV === 'test' &&
+      this.webex &&
+      this.webex.internal.device &&
+      this.webex.internal.device.url
+    ) {
       args.unshift(this.webex.internal.device.url.slice(-3));
     }
     console[level](...args);
@@ -47,7 +52,7 @@ const Logger = WebexPlugin.extend({
   log: wrapConsoleMethod('log'),
   info: wrapConsoleMethod('info'),
   debug: wrapConsoleMethod('debug'),
-  trace: wrapConsoleMethod('trace')
+  trace: wrapConsoleMethod('trace'),
 });
 
 registerPlugin('logger', Logger);

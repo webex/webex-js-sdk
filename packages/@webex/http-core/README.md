@@ -51,7 +51,6 @@ Curried version of `request()` that produces an http client with overridden defa
 
 Child of `Error` (by way of `Exception` from `@webex/common`). Has subclassed errors for each [official HTTP status code](https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html) (and 429 Too Man Requests).
 
-
 ## Maintainers
 
 This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).

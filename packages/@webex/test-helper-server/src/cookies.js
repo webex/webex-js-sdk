@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 const cookieParser = require(`cookie-parser`);
 const express = require(`express`);
 
@@ -21,8 +20,7 @@ router.get(`/set`, (req, res) => {
 router.get(`/expect`, (req, res) => {
   if (req.cookies.oreo === `double stuf`) {
     res.status(200).send().end();
-  }
-  else {
+  } else {
     res.status(403).send().end();
   }
 });

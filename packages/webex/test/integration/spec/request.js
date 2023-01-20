@@ -14,42 +14,20 @@ describe('webex', function () {
 
   let webex;
 
-  before(() => testUsers.create({count: 1})
-    .then(([user]) => {
+  before(() =>
+    testUsers.create({count: 1}).then(([user]) => {
       webex = new Webex({credentials: user.token});
-    }));
+    })
+  );
 
   describe('Webex', () => {
     describe('#request', () => {
-      it('can make requests', () => webex.request({
-        service: 'hydra',
-        resource: '/ping'
-      })
-        .then((res) => {
-          assert.statusCode(res, 200);
-          assert.property(res.options, 'headers');
-          assert.property(res.options.headers, 'authorization');
-          assert.isDefined(res.options.headers.authorization);
-          assert.isNotNull(res.options.headers.authorization);
-        }));
-
-      it('includes webex in the spark-user-agent header', () => webex.request({
-        service: 'hydra',
-        resource: '/ping'
-      })
-        .then((res) => {
-          assert.property(res, 'options');
-          assert.property(res.options, 'headers');
-          assert.property(res.options.headers, 'spark-user-agent');
-          assert.equal(res.options.headers['spark-user-agent'], `webex/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`);
-        }));
-
-      describe('after registering against wdm', () => {
-        before(() => webex.internal.device.register());
-        it('can make authorized requests', () => webex.request({
-          service: 'hydra',
-          resource: '/ping'
-        })
+      it('can make requests', () =>
+        webex
+          .request({
+            service: 'hydra',
+            resource: '/ping',
+          })
           .then((res) => {
             assert.statusCode(res, 200);
             assert.property(res.options, 'headers');
@@ -58,13 +36,42 @@ describe('webex', function () {
             assert.isNotNull(res.options.headers.authorization);
           }));
 
+      it('includes webex in the spark-user-agent header', () =>
+        webex
+          .request({
+            service: 'hydra',
+            resource: '/ping',
+          })
+          .then((res) => {
+            assert.property(res, 'options');
+            assert.property(res.options, 'headers');
+            assert.property(res.options.headers, 'spark-user-agent');
+            assert.equal(
+              res.options.headers['spark-user-agent'],
+              `webex/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+            );
+          }));
+
+      describe('after registering against wdm', () => {
+        before(() => webex.internal.device.register());
+        it('can make authorized requests', () =>
+          webex
+            .request({
+              service: 'hydra',
+              resource: '/ping',
+            })
+            .then((res) => {
+              assert.statusCode(res, 200);
+              assert.property(res.options, 'headers');
+              assert.property(res.options.headers, 'authorization');
+              assert.isDefined(res.options.headers.authorization);
+              assert.isNotNull(res.options.headers.authorization);
+            }));
+
         it('handles pagination', () => {
           const spy = sinon.spy();
 
-          return Promise.all([
-            webex.rooms.create({title: '1'}),
-            webex.rooms.create({title: '2'})
-          ])
+          return Promise.all([webex.rooms.create({title: '1'}), webex.rooms.create({title: '2'})])
             .then(() => webex.rooms.list({max: 1}))
             .then((rooms) => {
               assert.lengthOf(rooms, 1);
@@ -83,7 +90,7 @@ describe('webex', function () {
                 }
 
                 return Promise.resolve();
-              }(rooms));
+              })(rooms);
             })
             .then(() => {
               assert.isAbove(spy.callCount, 1);

@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {MediaConnection as MC} from '@webex/internal-media-core';
 

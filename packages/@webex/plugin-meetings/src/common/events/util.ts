@@ -9,8 +9,7 @@ EventsUtil.getEventLog = (args) => {
 
   try {
     argString = inspect(args);
-  }
-  catch (e) {
+  } catch (e) {
     LoggerProxy.logger.warn(`Events:util#getEventLog --> ${e}`);
   }
 

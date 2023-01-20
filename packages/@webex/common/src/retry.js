@@ -24,11 +24,11 @@ import backoff from 'backoff';
 export default function retry(...params) {
   let options = params[0] || {};
 
-  options = Object.assign({}, options);
+  options = {...options};
   defaults(options, {
     backoff: true,
     delay: 1,
-    maxAttempts: 3
+    maxAttempts: 3,
   });
 
   let strategyOptions;
@@ -36,13 +36,12 @@ export default function retry(...params) {
   if (options.backoff) {
     strategyOptions = {
       initialDelay: options.delay,
-      maxDelay: options.maxDelay
+      maxDelay: options.maxDelay,
     };
-  }
-  else {
+  } else {
     strategyOptions = {
       initialDelay: 1,
-      maxDelay: 1
+      maxDelay: 1,
     };
   }
 

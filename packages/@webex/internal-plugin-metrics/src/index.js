@@ -10,7 +10,7 @@ import Metrics from './metrics';
 import config from './config';
 
 registerInternalPlugin('metrics', Metrics, {
-  config
+  config,
 });
 
 export {default} from './metrics';

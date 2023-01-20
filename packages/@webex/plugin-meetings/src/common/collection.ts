@@ -42,7 +42,9 @@ export default class Collection {
    * @memberof Collection
    */
   public get(id: string) {
-    return this[this.propertyName] && this[this.propertyName][id] ? this[this.propertyName][id] : null;
+    return this[this.propertyName] && this[this.propertyName][id]
+      ? this[this.propertyName][id]
+      : null;
   }
 
   /**

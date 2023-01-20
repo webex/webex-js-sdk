@@ -13,34 +13,35 @@ import testUsers from '@webex/test-helper-test-users';
 describe('plugin-avatar', () => {
   let mccoy, webex, spock;
 
-  before('create users', () => testUsers.create({count: 2})
-    .then((users) => {
+  before('create users', () =>
+    testUsers.create({count: 2}).then((users) => {
       [spock, mccoy] = users;
 
       webex = new WebexCore({
         credentials: {
-          authorization: spock.token
-        }
+          authorization: spock.token,
+        },
       });
 
       mccoy.webex = new WebexCore({
         credentials: {
-          authorization: mccoy.token
-        }
+          authorization: mccoy.token,
+        },
       });
-    }));
+    })
+  );
 
-  before('register with wdm', () => Promise.all([
-    webex.internal.device.register(),
-    mccoy.webex.internal.device.register()
-  ]));
+  before('register with wdm', () =>
+    Promise.all([webex.internal.device.register(), mccoy.webex.internal.device.register()])
+  );
 
   let sampleImageSmallOnePng = 'sample-image-small-one.png';
 
-  before(() => fh.fetch(sampleImageSmallOnePng)
-    .then((file) => {
+  before(() =>
+    fh.fetch(sampleImageSmallOnePng).then((file) => {
       sampleImageSmallOnePng = file;
-    }));
+    })
+  );
 
   // describe('#setAvatar()', () => {
   //   it('sets a user\'s avatar', () => webex.internal.avatar.setAvatar(sampleImageSmallOnePng)

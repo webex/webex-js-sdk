@@ -9,13 +9,12 @@ import {WebexHttpError} from '@webex/webex-core';
  */
 export default class ServerErrorInterceptor extends Interceptor {
   /**
-  * @returns {HAMessagingInterceptor}
-  */
+   * @returns {HAMessagingInterceptor}
+   */
   static create() {
     // eslint-disable-next-line no-invalid-this
     return new ServerErrorInterceptor({webex: this});
   }
-
 
   /**
    * @see Interceptor#onResponseError
@@ -24,17 +23,23 @@ export default class ServerErrorInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
-    if ((reason instanceof WebexHttpError.InternalServerError || reason instanceof WebexHttpError.BadGateway || reason instanceof WebexHttpError.ServiceUnavailable) && options.uri) {
+    if (
+      (reason instanceof WebexHttpError.InternalServerError ||
+        reason instanceof WebexHttpError.BadGateway ||
+        reason instanceof WebexHttpError.ServiceUnavailable) &&
+      options.uri
+    ) {
       const feature = this.webex.internal.device.features.developer.get('web-high-availability');
 
       if (feature && feature.value) {
         this.webex.internal.metrics.submitClientMetrics('web-ha', {
           fields: {success: false},
-          tags: {action: 'failed', error: reason.message, url: options.uri}
+          tags: {action: 'failed', error: reason.message, url: options.uri},
         });
 
-        return Promise.resolve(this.webex.internal.services.markFailedUrl(options.uri))
-          .then(() => Promise.reject(reason));
+        return Promise.resolve(this.webex.internal.services.markFailedUrl(options.uri)).then(() =>
+          Promise.reject(reason)
+        );
       }
     }
 

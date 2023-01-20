@@ -19,11 +19,11 @@ import Meeting from '../meeting';
  */
 
 /**
-  * @typedef {Object} SeqOptions
-  * @property {String} correlationId
-  * @property {String} mediaId
-  * @property {Number} seq
-  */
+ * @typedef {Object} SeqOptions
+ * @property {String} correlationId
+ * @property {String} mediaId
+ * @property {Number} seq
+ */
 
 /**
  * @class Roap
@@ -81,11 +81,14 @@ export default class Roap extends StatelessWebexPlugin {
   public sendRoapOK(options: any) {
     return Promise.resolve().then(() => {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.getByKey('correlationId', options.correlationId);
+      const meeting = this.webex.meetings.meetingCollection.getByKey(
+        'correlationId',
+        options.correlationId
+      );
       const roapMessage = {
         messageType: ROAP.ROAP_TYPES.OK,
         version: ROAP.ROAP_VERSION,
-        seq: options.seq
+        seq: options.seq,
       };
 
       LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sending with seq ${options.seq}`);
@@ -117,12 +120,46 @@ export default class Roap extends StatelessWebexPlugin {
    */
   public sendRoapAnswer(options: any) {
     // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.getByKey('correlationId', options.correlationId);
+    const meeting = this.webex.meetings.meetingCollection.getByKey(
+      'correlationId',
+      options.correlationId
+    );
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.ANSWER,
       sdps: [options.sdp],
       version: ROAP.ROAP_VERSION,
-      seq: options.seq
+      seq: options.seq,
+    };
+
+    return this.roapRequest.sendRoap({
+      roapMessage,
+      locusSelfUrl: meeting.selfUrl,
+      mediaId: options.mediaId,
+      correlationId: options.correlationId,
+      audioMuted: meeting.isAudioMuted(),
+      videoMuted: meeting.isVideoMuted(),
+      meetingId: meeting.id,
+      preferTranscoding: !meeting.isMultistream,
+    });
+  }
+
+  /**
+   * Sends a ROAP error...
+   * @param {Object} options
+   * @returns {Promise}
+   * @memberof Roap
+   */
+  sendRoapError(options) {
+    // @ts-ignore
+    const meeting = this.webex.meetings.meetingCollection.getByKey(
+      'correlationId',
+      options.correlationId
+    );
+    const roapMessage = {
+      messageType: ROAP.ROAP_TYPES.ERROR,
+      version: ROAP.ROAP_VERSION,
+      errorType: options.errorType,
+      seq: options.seq,
     };
 
     return this.roapRequest
@@ -135,38 +172,11 @@ export default class Roap extends StatelessWebexPlugin {
         videoMuted: meeting.isVideoMuted(),
         meetingId: meeting.id,
         preferTranscoding: !meeting.isMultistream,
-      });
-  }
-
-  /**
-   * Sends a ROAP error...
-   * @param {Object} options
-   * @returns {Promise}
-   * @memberof Roap
-   */
-  sendRoapError(options) {
-    // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.getByKey('correlationId', options.correlationId);
-    const roapMessage = {
-      messageType: ROAP.ROAP_TYPES.ERROR,
-      version: ROAP.ROAP_VERSION,
-      errorType: options.errorType,
-      seq: options.seq
-
-    };
-
-    return this.roapRequest.sendRoap({
-      roapMessage,
-      locusSelfUrl: meeting.selfUrl,
-      mediaId: options.mediaId,
-      correlationId: options.correlationId,
-      audioMuted: meeting.isAudioMuted(),
-      videoMuted: meeting.isVideoMuted(),
-      meetingId: meeting.id,
-      preferTranscoding: !meeting.isMultistream,
-    })
+      })
       .then(() => {
-        LoggerProxy.logger.log(`Roap:index#sendRoapError --> ROAP ERROR sent with seq ${options.seq}`);
+        LoggerProxy.logger.log(
+          `Roap:index#sendRoapError --> ROAP ERROR sent with seq ${options.seq}`
+        );
       });
   }
 
@@ -177,15 +187,13 @@ export default class Roap extends StatelessWebexPlugin {
    * @memberof Roap
    */
   sendRoapMediaRequest(options: any) {
-    const {
-      meeting, seq, sdp, reconnect, tieBreaker
-    } = options;
+    const {meeting, seq, sdp, reconnect, tieBreaker} = options;
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.OFFER,
       sdps: [sdp],
       version: ROAP.ROAP_VERSION,
       seq,
-      tieBreaker
+      tieBreaker,
     };
 
     // When reconnecting, it's important that the first roap message being sent out has empty media id.

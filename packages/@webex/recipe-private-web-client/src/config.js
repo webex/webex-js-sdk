@@ -7,10 +7,10 @@ import LocalStorageStoreAdapter from '@webex/storage-adapter-local-storage';
 
 export default {
   device: {
-    enableInactivityEnforcement: true
+    enableInactivityEnforcement: true,
   },
   storage: {
     boundedAdapter: new LocalStorageStoreAdapter('web-client-internal'),
-    unboundedAdapter: new LocalForageStoreAdapter('web-client-internal')
-  }
+    unboundedAdapter: new LocalForageStoreAdapter('web-client-internal'),
+  },
 };

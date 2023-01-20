@@ -6,5 +6,5 @@ import {MemoryStoreAdapter} from '@webex/webex-core';
 
 export default {
   boundedAdapter: MemoryStoreAdapter,
-  unboundedAdapter: MemoryStoreAdapter
+  unboundedAdapter: MemoryStoreAdapter,
 };

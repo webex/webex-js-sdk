@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {cloneDeep, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
 import {MediaConnection as MC} from '@webex/internal-media-core';
@@ -432,6 +433,7 @@ export class RemoteMediaManager extends EventsScope {
     while (this.slots.video.unused.length < maxNumVideoPanesRequired) {
       // eslint-disable-next-line no-await-in-loop
       this.slots.video.unused.push(
+        // eslint-disable-next-line no-await-in-loop
         await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
       );
     }
@@ -600,6 +602,7 @@ export class RemoteMediaManager extends EventsScope {
       while (numSlotsToCreate > 0) {
         // eslint-disable-next-line no-await-in-loop
         this.slots.video.unused.push(
+          // eslint-disable-next-line no-await-in-loop
           await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
         );
         numSlotsToCreate -= 1;

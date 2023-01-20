@@ -27,7 +27,7 @@ const CalendarCollection = {
    */
   getBy(key, value) {
     if (key && value) {
-      return find(this.items, (item) => (item[key] === value));
+      return find(this.items, (item) => item[key] === value);
     }
 
     return null;
@@ -57,7 +57,6 @@ const CalendarCollection = {
   reset() {
     this.items = {};
   },
-
 
   /**
    * @param {Id} id is the id for the calendar item to be removed
@@ -95,8 +94,7 @@ const CalendarCollection = {
    */
   getAll() {
     return Object.values(this.items);
-  }
-
+  },
 };
 
 export default CalendarCollection;

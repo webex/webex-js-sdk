@@ -14,7 +14,7 @@ const {
   createTestUser,
   removeTestUser,
   createWhistlerTestUser,
-  removeWhistlerTestUser
+  removeWhistlerTestUser,
 } = require('@webex/test-users');
 
 const allUsers = [];
@@ -23,7 +23,10 @@ if (after) {
   after(function () {
     /* eslint no-invalid-this: [0] */
     this.timeout(120000);
-    allUsers.forEach((user) => user.webex && user.webex.internal.mercury && user.webex.internal.mercury.disconnect());
+    allUsers.forEach(
+      (user) =>
+        user.webex && user.webex.internal.mercury && user.webex.internal.mercury.disconnect()
+    );
 
     return _remove(allUsers);
   });
@@ -61,19 +64,20 @@ function _create(options) {
    * @returns {Promise<User>}
    */
   function makeUser() {
-    const config = _.defaults({
-      scopes: process.env.WEBEX_SCOPE
-    }, options.config);
+    const config = _.defaults(
+      {
+        scopes: process.env.WEBEX_SCOPE,
+      },
+      options.config
+    );
 
-    return options.whistler ?
-      createWhistlerTestUser(config)
-        .then((user) => {
+    return options.whistler
+      ? createWhistlerTestUser(config).then((user) => {
           allUsers.push(user);
 
           return user;
-        }) :
-      createTestUser(config)
-        .then((user) => {
+        })
+      : createTestUser(config).then((user) => {
           allUsers.push(user);
 
           return user;
@@ -87,33 +91,32 @@ function _create(options) {
  * @returns {Promise}
  */
 function _remove(users) {
-  return Promise.all(users.map(async (user) => {
-    // Check if user was created using whistler
-    if (user.reservationUrl) {
-      await removeWhistlerTestUser(user)
-        .catch((reason) => {
+  return Promise.all(
+    users.map(async (user) => {
+      // Check if user was created using whistler
+      if (user.reservationUrl) {
+        await removeWhistlerTestUser(user).catch((reason) => {
           console.warn('failed to delete test user', reason);
         });
-    }
-    else {
-      if (user.token && !user.token.authorization) {
-        Reflect.deleteProperty(user, 'token');
+      } else {
+        if (user.token && !user.token.authorization) {
+          Reflect.deleteProperty(user, 'token');
+        }
+
+        await removeTestUser(user).catch((reason) => {
+          console.warn('failed to delete test user', reason);
+        });
       }
 
-      await removeTestUser(user)
-        .catch((reason) => {
-          console.warn('failed to delete test user', reason);
-        });
-    }
-
-    // Edge times out waiting for the delete calls to complete (and test user
-    // deletion isn't really something we need to wait for anyway) so we'll just
-    // give enough time for the requests to go out, then allow the browser to
-    // close, even if the requests haven't returned.
-    return new Promise((resolve) => {
-      setTimeout(resolve, 500);
-    });
-  }));
+      // Edge times out waiting for the delete calls to complete (and test user
+      // deletion isn't really something we need to wait for anyway) so we'll just
+      // give enough time for the requests to go out, then allow the browser to
+      // close, even if the requests haven't returned.
+      return new Promise((resolve) => {
+        setTimeout(resolve, 500);
+      });
+    })
+  );
 }
 
 module.exports = {
@@ -123,5 +126,5 @@ module.exports = {
 
     return _create(options);
   },
-  remove: _remove
+  remove: _remove,
 };

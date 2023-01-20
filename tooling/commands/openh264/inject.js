@@ -13,5 +13,5 @@ module.exports = {
   builder: {},
   handler: wrapHandler(async () => {
     await prepareLocalProfile(platformToShortName(os.platform()));
-  })
+  }),
 };
