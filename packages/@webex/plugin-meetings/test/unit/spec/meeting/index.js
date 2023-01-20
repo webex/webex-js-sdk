@@ -4329,6 +4329,8 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let handleDataChannelUrlChangeSpy;
+        let canEnableReactionsSpy;
+        let canSendReactionsSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -4348,6 +4350,8 @@ describe('plugin-meetings', () => {
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
+          canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
+          canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
         });
 
         afterEach(() => {
@@ -4387,6 +4391,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
+          assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
+          assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,

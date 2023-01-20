@@ -4,6 +4,7 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
+import {DISPLAY_HINTS} from '@webex/plugin-meetings/dist/constants';
 
 describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {
@@ -409,6 +410,20 @@ describe('plugin-meetings', () => {
         it('works as expected', () => {
           assert.deepEqual(MeetingUtil[functionName]([displayHint]), true);
           assert.deepEqual(MeetingUtil[functionName]([]), false);
+        });
+      });
+    });
+
+
+    describe('reactions', () => {
+      describe('canEnableReactions', () => {
+        [[null, DISPLAY_HINTS.ENABLE_REACTIONS, true], [null, DISPLAY_HINTS.DISABLE_REACTIONS, false], [null, undefined, null]].forEach(() => ([originalValue, displayHint, expected]) => {
+          assert.deepEqual(MeetingUtil.canEnableReactions(originalValue, [displayHint]), expected);
+        });
+      });
+      describe('canEnableReactions', () => {
+        [[null, DISPLAY_HINTS.REACTIONS_ACTIVE, true], [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false], [null, undefined, null]].forEach(([originalValue, displayHint, expected]) => {
+          assert.deepEqual(MeetingUtil.canSendReactions(originalValue, [displayHint]), expected);
         });
       });
     });

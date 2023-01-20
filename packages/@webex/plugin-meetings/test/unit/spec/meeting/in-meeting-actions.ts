@@ -27,7 +27,9 @@ describe('plugin-meetings', () => {
         isRealTimeTranslationEnabled: null,
         canSelectSpokenLanguages: null,
         waitingForOthersToJoin: null,
-        ...expected,
+        canEnableReactions: null,
+        canSendReactions: null,
+        ...expected
       };
 
       // Check get retuns all the correct values at once
@@ -61,6 +63,8 @@ describe('plugin-meetings', () => {
       'isRealTimeTranslationEnabled',
       'canSelectSpokenLanguages',
       'waitingForOthersToJoin',
+      'canEnableReactions',
+      'canSendReactions'
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
