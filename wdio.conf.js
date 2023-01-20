@@ -412,8 +412,11 @@ exports.config = {
   onPrepare(config, capabilities) {
     return new Promise((resolve) => {
       webpack(webpackConfig, (err, stats) => {
-        if (err || stats.hasErrors()) {
+        if (err) {
           throw new Error(err.details);
+        }
+        if (stats.hasErrors()) {
+          throw new Error('stats has errors');
         }
         console.log(
           stats.toString({
