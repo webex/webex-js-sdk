@@ -59,7 +59,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
           __dirname,
           `./packages/${packageName}/src/index`
         );
-        alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index.js`);
+        alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index`);
 
         return alias;
       }, {}),

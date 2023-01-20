@@ -416,6 +416,8 @@ exports.config = {
           throw new Error(err.details);
         }
         if (stats.hasErrors()) {
+          const info = stats.toJson();
+          console.error(info.errors);
           throw new Error('stats has errors');
         }
         console.log(
