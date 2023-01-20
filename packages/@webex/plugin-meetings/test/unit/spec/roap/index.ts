@@ -4,12 +4,13 @@ import TurnDiscovery from '@webex/plugin-meetings/src/roap/turnDiscovery';
 
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import Roap from '@webex/plugin-meetings/src/roap/';
+import Meeting from '@webex/plugin-meetings/src/meeting';
 
 describe('Roap', () => {
   describe('doTurnDiscovery', () => {
     it('calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments', async () => {
       const RESULT = {something: 'some value'};
-      const meeting = {id: 'some meeting id'};
+      const meeting = {id: 'some meeting id'} as Meeting;
 
       const doTurnDiscoveryStub = sinon
         .stub(TurnDiscovery.prototype, 'doTurnDiscovery')

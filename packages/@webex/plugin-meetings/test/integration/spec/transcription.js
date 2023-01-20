@@ -1,4 +1,4 @@
-import Transcription from '@webex/plugin-meetings/src/transcription';
+import Transcription from '@webex/plugin-meetings/dist/transcription';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 

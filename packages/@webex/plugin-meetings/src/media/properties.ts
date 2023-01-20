@@ -220,7 +220,7 @@ export default class MediaProperties {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       let timer;
 
       const connectionStateListener = () => {

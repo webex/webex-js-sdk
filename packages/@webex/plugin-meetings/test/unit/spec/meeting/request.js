@@ -190,6 +190,23 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.uri, 'locusUrl/loci/call?alternateRedirect=true');
         assert.equal(requestParams.body.invitee.address, 'sipUrl');
       });
+
+      it('adds deviceCapabilities to request when breakouts are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          breakoutsSupported: true
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED']);
+      });
+
+      it('does not add deviceCapabilities to request when breakouts are not supported', async () => {
+        await meetingsRequest.joinMeeting({});
+
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+      });
     });
 
     describe('#pstn', () => {

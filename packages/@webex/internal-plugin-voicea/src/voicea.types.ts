@@ -82,7 +82,7 @@ interface IVoiceaChannel {
   deregisterEvents: () => undefined | Promise<void>;
 }
 
-export {
+export type {
   AnnouncementPayload,
   CaptionLanguageResponse,
   TranscriptionResponse,

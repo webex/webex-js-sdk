@@ -53,6 +53,7 @@ type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
 
+// @ts-ignore
 type SendMediaRequestsCallback = (mediaRequests: MC.MediaRequest[]) => void;
 
 export class MediaRequestManager {
@@ -152,6 +153,7 @@ export class MediaRequestManager {
   }
 
   private sendRequests() {
+    // @ts-ignore
     const wcmeMediaRequests: MC.MediaRequest[] = [];
 
     const clientRequests = this.getDegradedClientRequests();

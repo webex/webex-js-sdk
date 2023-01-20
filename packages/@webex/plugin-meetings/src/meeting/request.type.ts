@@ -1,3 +1,5 @@
+import {Reaction} from '../reactions/reactions.type';
+
 export type SendReactionOptions = {
   reactionChannelUrl: string;
   reaction: Reaction;

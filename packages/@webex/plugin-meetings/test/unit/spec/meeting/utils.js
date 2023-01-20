@@ -4,6 +4,7 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
+import {DISPLAY_HINTS} from '@webex/plugin-meetings/dist/constants';
 
 describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {
@@ -37,6 +38,7 @@ describe('plugin-meetings', () => {
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
       meeting.updateLLMConnection = sinon.stub();
+      meeting.breakouts = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
@@ -59,6 +61,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
+        assert.calledOnce(meeting.breakouts.cleanUp);
       });
     });
 
@@ -194,6 +197,23 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, true);
       });
+
+      it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
+        const meeting = {
+          meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          breakoutsSupported: true
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.breakoutsSupported, true);
+      });
+
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
         const meeting = {
@@ -409,6 +429,20 @@ describe('plugin-meetings', () => {
         it('works as expected', () => {
           assert.deepEqual(MeetingUtil[functionName]([displayHint]), true);
           assert.deepEqual(MeetingUtil[functionName]([]), false);
+        });
+      });
+    });
+
+
+    describe('reactions', () => {
+      describe('canEnableReactions', () => {
+        [[null, DISPLAY_HINTS.ENABLE_REACTIONS, true], [null, DISPLAY_HINTS.DISABLE_REACTIONS, false], [null, undefined, null]].forEach(() => ([originalValue, displayHint, expected]) => {
+          assert.deepEqual(MeetingUtil.canEnableReactions(originalValue, [displayHint]), expected);
+        });
+      });
+      describe('canEnableReactions', () => {
+        [[null, DISPLAY_HINTS.REACTIONS_ACTIVE, true], [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false], [null, undefined, null]].forEach(([originalValue, displayHint, expected]) => {
+          assert.deepEqual(MeetingUtil.canSendReactions(originalValue, [displayHint]), expected);
         });
       });
     });

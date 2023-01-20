@@ -26,6 +26,7 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
 
   // @ts-ignore
   audioReceiver.streams[0].common.maxRtpJitter =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRtpJitter) * 1000 || 0;
   audioReceiver.streams[0].common.meanRtpJitter =
     mean(statsResults[mediaType][sendrecvType].meanRtpJitter) * 1000 || 0;
@@ -72,6 +73,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent}) 
 
   // @ts-ignore
   audioSender.common.maxRemoteJitter =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
   audioSender.common.meanRemoteJitter =
     mean(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
@@ -96,6 +98,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent}) 
 
   // @ts-ignore
   audioSender.common.maxRoundTripTime =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRoundTripTime) * 1000 || 0;
   audioSender.common.meanRoundTripTime =
     mean(statsResults[mediaType][sendrecvType].meanRoundTripTime) * 1000 || 0;
@@ -152,6 +155,7 @@ export const getVideoReceiverMqa = ({
 
   // @ts-ignore
   videoReceiver.common.maxRemoteJitter =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
   videoReceiver.common.meanRemoteJitter =
     mean(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
@@ -217,6 +221,7 @@ export const getVideoSenderMqa = ({
 
   // @ts-ignore
   videoSender.common.maxRemoteJitter =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
   videoSender.common.meanRemoteJitter =
     mean(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
@@ -239,6 +244,7 @@ export const getVideoSenderMqa = ({
 
   // @ts-ignore
   videoSender.common.maxRoundTripTime =
+    // @ts-ignore
     max(statsResults[mediaType][sendrecvType].meanRoundTripTime) * 1000 || 0;
   videoSender.common.meanRoundTripTime =
     mean(statsResults[mediaType][sendrecvType].meanRoundTripTime) * 1000 || 0;

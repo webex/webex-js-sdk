@@ -107,6 +107,7 @@ describe('plugin-meetings', () => {
       });
 
       Object.assign(webex.internal, {
+        llm: {on: sinon.stub()},
         device: {
           deviceType: 'FAKE_DEVICE',
           register: sinon.stub().returns(Promise.resolve()),

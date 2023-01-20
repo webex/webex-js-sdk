@@ -105,6 +105,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       moveToResource: options.moveToResource,
       preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant,
+      breakoutsSupported: options.breakoutsSupported,
     })
     .then((res) => {
       Metrics.postEvent({
@@ -123,6 +124,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
 };
 
 MeetingUtil.cleanUp = (meeting) => {
+  meeting.breakouts.cleanUp();
+
   // make sure we send last metrics before we close the peerconnection
   const stopStatsAnalyzer = meeting.statsAnalyzer
     ? meeting.statsAnalyzer.stopAnalyzer()
@@ -534,5 +537,27 @@ MeetingUtil.canSelectSpokenLanguages = (displayHints) =>
 
 MeetingUtil.waitingForOthersToJoin = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS);
+
+MeetingUtil.canEnableReactions = (originalValue, displayHints) => {
+  if (displayHints.includes(DISPLAY_HINTS.ENABLE_REACTIONS)) {
+    return true;
+  }
+  if (displayHints.includes(DISPLAY_HINTS.DISABLE_REACTIONS)) {
+    return false;
+  }
+
+  return originalValue;
+};
+
+MeetingUtil.canSendReactions = (originalValue, displayHints) => {
+  if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
+    return true;
+  }
+  if (displayHints.includes(DISPLAY_HINTS.REACTIONS_INACTIVE)) {
+    return false;
+  }
+
+  return originalValue;
+};
 
 export default MeetingUtil;
