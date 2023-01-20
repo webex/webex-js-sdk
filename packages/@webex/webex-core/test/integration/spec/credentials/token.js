@@ -15,10 +15,11 @@ describe('webex-core', () => {
     describe('Token', () => {
       let webex, user;
 
-      before(() => testUsers.create({count: 1})
-        .then(([u]) => {
+      before(() =>
+        testUsers.create({count: 1}).then(([u]) => {
           user = u;
-        }));
+        })
+      );
 
       describe('#downscope()', () => {
         it('retrieves an access token with a subset of scopes', () => {
@@ -26,13 +27,19 @@ describe('webex-core', () => {
           const allScope = webex.credentials.config.scope;
           const apiScope = filterScope('spark:kms', allScope);
 
-          return webex.credentials.supertoken.downscope('spark:kms')
+          return webex.credentials.supertoken
+            .downscope('spark:kms')
             .then((downscopedToken) => downscopedToken.validate())
             .then((details) => assert.deepEqual(details.scope, ['spark:kms']))
             .then(() => webex.credentials.supertoken.downscope(apiScope))
             .then((downscopedToken) => downscopedToken.validate())
             .then((details) => assert.sameMembers(details.scope, apiScope.split(' ')))
-            .then(() => assert.isRejected(webex.credentials.supertoken.downscope(allScope), /token: scope reduction requires a reduced scope/));
+            .then(() =>
+              assert.isRejected(
+                webex.credentials.supertoken.downscope(allScope),
+                /token: scope reduction requires a reduced scope/
+              )
+            );
         });
       });
 
@@ -40,11 +47,10 @@ describe('webex-core', () => {
         nodeOnly(it)('refreshes the token, returning a new Token instance', () => {
           webex = new WebexCore({credentials: user.token});
 
-          return webex.credentials.supertoken.refresh()
-            .then((token2) => {
-              assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
-              assert.equal(token2.refresh_token, webex.credentials.supertoken.refresh_token);
-            });
+          return webex.credentials.supertoken.refresh().then((token2) => {
+            assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
+            assert.equal(token2.refresh_token, webex.credentials.supertoken.refresh_token);
+          });
         });
 
         browserOnly(it)('refreshes the token, returning a new Token instance', () => {
@@ -52,32 +58,30 @@ describe('webex-core', () => {
             credentials: user.token,
             config: {
               credentials: {
-                refreshCallback
-              }
-            }
+                refreshCallback,
+              },
+            },
           });
 
-          return webex.credentials.supertoken.refresh()
-            .then((token2) => {
-              assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
-              assert.equal(token2.refresh_token, webex.credentials.supertoken.refresh_token);
-            });
+          return webex.credentials.supertoken.refresh().then((token2) => {
+            assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
+            assert.equal(token2.refresh_token, webex.credentials.supertoken.refresh_token);
+          });
         });
       });
 
       describe('#validate()', () => {
-        it('shows the token\'s scopes', () => {
+        it("shows the token's scopes", () => {
           webex = new WebexCore({credentials: user.token});
 
-          return webex.credentials.supertoken.validate()
-            .then((details) => {
-              const detailScope = details.scope.sort();
-              const localScope = webex.credentials.config.scope.split(' ').sort();
+          return webex.credentials.supertoken.validate().then((details) => {
+            const detailScope = details.scope.sort();
+            const localScope = webex.credentials.config.scope.split(' ').sort();
 
-              assert.sameMembers(detailScope, localScope);
-              assert.lengthOf(detailScope, localScope.length);
-              assert.equal(details.clientId, webex.credentials.config.client_id);
-            });
+            assert.sameMembers(detailScope, localScope);
+            assert.lengthOf(detailScope, localScope.length);
+            assert.equal(details.clientId, webex.credentials.config.client_id);
+          });
         });
       });
 
@@ -86,12 +90,11 @@ describe('webex-core', () => {
         it('revokes the token', () => {
           webex = new WebexCore({credentials: user.token});
 
-          return webex.credentials.supertoken.revoke()
-            .then(() => {
-              assert.isUndefined(webex.credentials.supertoken.access_token);
-              assert.isDefined(webex.credentials.supertoken.refresh_token);
-              assert.isUndefined(webex.credentials.supertoken.expires_in);
-            });
+          return webex.credentials.supertoken.revoke().then(() => {
+            assert.isUndefined(webex.credentials.supertoken.access_token);
+            assert.isDefined(webex.credentials.supertoken.refresh_token);
+            assert.isUndefined(webex.credentials.supertoken.expires_in);
+          });
         });
       });
     });

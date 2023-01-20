@@ -2,11 +2,9 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
-import LoggerConfig
-  from '@webex/plugin-meetings/src/common/logs/logger-config';
+import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
 import {DISPLAY_HINTS} from '@webex/plugin-meetings/dist/constants';
-
 
 describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {
@@ -19,23 +17,19 @@ describe('plugin-meetings', () => {
         info: sandbox.stub(),
         log: sandbox.stub(),
         error: sandbox.stub(),
-        warn: sandbox.stub()
+        warn: sandbox.stub(),
       };
 
       LoggerConfig.set({
         verboseEvents: true,
-        enable: true
+        enable: true,
       });
       LoggerProxy.set(logger);
 
-      meeting.closeLocalStream = sinon.stub()
-        .returns(Promise.resolve());
-      meeting.closeLocalShare = sinon.stub()
-        .returns(Promise.resolve());
-      meeting.closeRemoteTracks = sinon.stub()
-        .returns(Promise.resolve());
-      meeting.closePeerConnections = sinon.stub()
-        .returns(Promise.resolve());
+      meeting.closeLocalStream = sinon.stub().returns(Promise.resolve());
+      meeting.closeLocalShare = sinon.stub().returns(Promise.resolve());
+      meeting.closeRemoteTracks = sinon.stub().returns(Promise.resolve());
+      meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
 
       meeting.unsetLocalVideoTrack = sinon.stub();
       meeting.unsetLocalShareTrack = sinon.stub();
@@ -71,11 +65,11 @@ describe('plugin-meetings', () => {
 
     describe('logging', () => {
       const fakeDevice = sinon.fake.returns({
-        deviceId: 'device-1'
+        deviceId: 'device-1',
       });
 
       const mockTrack = {
-        getSettings: fakeDevice
+        getSettings: fakeDevice,
       };
 
       it('#log - should log [info, warn, error, log] to console', () => {
@@ -125,10 +119,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should log device settings', () => {
-          const mockDevices = [
-            {deviceId: 'device-1'},
-            {deviceId: 'device-2'}
-          ];
+          const mockDevices = [{deviceId: 'device-1'}, {deviceId: 'device-2'}];
 
           assert(MeetingUtil.handleDeviceLogging, 'is defined');
           MeetingUtil.handleDeviceLogging(mockDevices);
@@ -147,7 +138,9 @@ describe('plugin-meetings', () => {
           locusUrl: 'locusUrl',
           deviceUrl: 'some device url',
           selfId: 'self id',
-          meetingRequest: {remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+          meetingRequest: {
+            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
         };
 
         await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
@@ -159,7 +152,9 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.selfId, 'self id');
         assert.equal(parameter.correlationId, 'correlation id');
         assert.equal(parameter.deviceUrl, 'some device url');
-        assert.deepEqual(parameter.localMedias, [{localSdp: '{"audioMuted":true,"videoMuted":false}', mediaId: '12345'}]);
+        assert.deepEqual(parameter.localMedias, [
+          {localSdp: '{"audioMuted":true,"videoMuted":false}', mediaId: '12345'},
+        ]);
         assert.equal(parameter.preferTranscoding, false);
       });
 
@@ -167,7 +162,9 @@ describe('plugin-meetings', () => {
         const meeting = {
           isMultistream: false,
           mediaId: '12345',
-          meetingRequest: {remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+          meetingRequest: {
+            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
         };
 
         await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
@@ -181,7 +178,13 @@ describe('plugin-meetings', () => {
 
     describe('joinMeeting', () => {
       it('#Should call `meetingRequest.joinMeeting', async () => {
-        const meeting = {meetingJoinUrl: 'meetingJoinUrl', locusUrl: 'locusUrl', meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}};
+        const meeting = {
+          meetingJoinUrl: 'meetingJoinUrl',
+          locusUrl: 'locusUrl',
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
         await MeetingUtil.joinMeeting(meeting, {});
@@ -198,7 +201,9 @@ describe('plugin-meetings', () => {
           isMultistream: true,
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
-          meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -212,7 +217,13 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
-        const meeting = {sipUri: 'sipUri', locusUrl: 'locusUrl', meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}};
+        const meeting = {
+          sipUri: 'sipUri',
+          locusUrl: 'locusUrl',
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
         await MeetingUtil.joinMeeting(meeting, {});
@@ -224,7 +235,13 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
-        const meeting = {meetingNumber: 'meetingNumber', locusUrl: 'locusUrl', meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}};
+        const meeting = {
+          meetingNumber: 'meetingNumber',
+          locusUrl: 'locusUrl',
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
         await MeetingUtil.joinMeeting(meeting, {});
@@ -241,15 +258,9 @@ describe('plugin-meetings', () => {
       it('returns display hints', () => {
         assert.deepEqual(MeetingUtil.getUserDisplayHintsFromLocusInfo(), []);
 
-        assert.deepEqual(
-          MeetingUtil.getUserDisplayHintsFromLocusInfo({}),
-          []
-        );
+        assert.deepEqual(MeetingUtil.getUserDisplayHintsFromLocusInfo({}), []);
 
-        assert.deepEqual(
-          MeetingUtil.getUserDisplayHintsFromLocusInfo({parsedLocus: {}}),
-          []
-        );
+        assert.deepEqual(MeetingUtil.getUserDisplayHintsFromLocusInfo({parsedLocus: {}}), []);
 
         assert.deepEqual(
           MeetingUtil.getUserDisplayHintsFromLocusInfo({parsedLocus: {info: {}}}),
@@ -257,7 +268,9 @@ describe('plugin-meetings', () => {
         );
 
         assert.deepEqual(
-          MeetingUtil.getUserDisplayHintsFromLocusInfo({parsedLocus: {info: {userDisplayHints: []}}}),
+          MeetingUtil.getUserDisplayHintsFromLocusInfo({
+            parsedLocus: {info: {userDisplayHints: []}},
+          }),
           []
         );
 
@@ -265,11 +278,9 @@ describe('plugin-meetings', () => {
           MeetingUtil.getUserDisplayHintsFromLocusInfo({
             parsedLocus: {
               info: {
-                userDisplayHints: [
-                  'HINT_1'
-                ]
-              }
-            }
+                userDisplayHints: ['HINT_1'],
+              },
+            },
           }),
           ['HINT_1']
         );
@@ -306,23 +317,38 @@ describe('plugin-meetings', () => {
 
     describe('canUserLowerSomeoneElsesHand', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserLowerSomeoneElsesHand(['LOWER_SOMEONE_ELSES_HAND']), true);
+        assert.deepEqual(
+          MeetingUtil.canUserLowerSomeoneElsesHand(['LOWER_SOMEONE_ELSES_HAND']),
+          true
+        );
         assert.deepEqual(MeetingUtil.canUserLowerSomeoneElsesHand([]), false);
       });
     });
 
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_TRANSFER_HOST_END_MEETING']), true);
+        assert.deepEqual(
+          MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_TRANSFER_HOST_END_MEETING']),
+          true
+        );
         assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_END_MEETING']), true);
-        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_TRANSFER_HOST_END_MEETING', 'LEAVE_END_MEETING']), true);
+        assert.deepEqual(
+          MeetingUtil.bothLeaveAndEndMeetingAvailable([
+            'LEAVE_TRANSFER_HOST_END_MEETING',
+            'LEAVE_END_MEETING',
+          ]),
+          true
+        );
         assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable([]), false);
       });
     });
 
     describe('canUserLock', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserLock(['LOCK_CONTROL_LOCK', 'LOCK_STATUS_UNLOCKED']), true);
+        assert.deepEqual(
+          MeetingUtil.canUserLock(['LOCK_CONTROL_LOCK', 'LOCK_STATUS_UNLOCKED']),
+          true
+        );
         assert.deepEqual(MeetingUtil.canUserLock(['LOCK_CONTROL_LOCK']), false);
         assert.deepEqual(MeetingUtil.canUserLock(['LOCK_STATUS_UNLOCKED']), false);
         assert.deepEqual(MeetingUtil.canUserLock([]), false);
@@ -331,7 +357,10 @@ describe('plugin-meetings', () => {
 
     describe('canUserUnlock', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserUnlock(['LOCK_CONTROL_UNLOCK', 'LOCK_STATUS_LOCKED']), true);
+        assert.deepEqual(
+          MeetingUtil.canUserUnlock(['LOCK_CONTROL_UNLOCK', 'LOCK_STATUS_LOCKED']),
+          true
+        );
         assert.deepEqual(MeetingUtil.canUserUnlock(['LOCK_CONTROL_UNLOCK']), false);
         assert.deepEqual(MeetingUtil.canUserUnlock(['LOCK_STATUS_LOCKED']), false);
         assert.deepEqual(MeetingUtil.canUserUnlock([]), false);
@@ -358,7 +387,6 @@ describe('plugin-meetings', () => {
         assert.deepEqual(MeetingUtil.canUserResume([]), false);
       });
     });
-
 
     describe('canUserStop', () => {
       it('works as expected', () => {
@@ -409,14 +437,12 @@ describe('plugin-meetings', () => {
         locusInfo = {
           parsedLocus: {
             info: {
-              userDisplayHints: [
-                'RECORDING_CONTROL_START'
-              ]
-            }
-          }
+              userDisplayHints: ['RECORDING_CONTROL_START'],
+            },
+          },
         };
         request = {
-          recordMeeting: sinon.stub().returns(Promise.resolve())
+          recordMeeting: sinon.stub().returns(Promise.resolve()),
         };
       });
 

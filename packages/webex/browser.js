@@ -3,6 +3,6 @@
  */
 
 // eslint-disable-next-line
-var Webex = window.webex = require('webex');
+var Webex = (window.webex = require('webex'));
 
 module.exports = Webex;

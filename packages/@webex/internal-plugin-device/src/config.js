@@ -2,7 +2,6 @@ import {inBrowser, deviceType} from '@webex/common';
 
 export default {
   device: {
-
     /**
      * The duration to wait for the catalog to populate in seconds.
      *
@@ -16,22 +15,22 @@ export default {
      * @type {Object}
      */
     defaults: {
-
       /**
        * The default body configuration of registration requests.
        *
        * @type {Object}
        */
       body: {
-        name: (typeof process.title === 'string' ?
-          process.title.trim() : undefined) ||
-          inBrowser && 'browser' || 'javascript',
+        name:
+          (typeof process.title === 'string' ? process.title.trim() : undefined) ||
+          (inBrowser && 'browser') ||
+          'javascript',
         deviceType: deviceType.WEB,
         model: 'web-js-sdk',
         localizedModel: 'webex-js-sdk',
         systemName: 'WEBEX_JS_SDK',
-        systemVersion: '1.0.0'
-      }
+        systemVersion: '1.0.0',
+      },
     },
 
     /**
@@ -56,6 +55,6 @@ export default {
      *
      * @type {boolean}
      */
-    ephemeralDeviceTTL: 30 * 60
-  }
+    ephemeralDeviceTTL: 30 * 60,
+  },
 };

@@ -20,31 +20,31 @@ describe('plugin-meetings', () => {
       let sandBoxSpy;
 
       const initialConfig = {
-        videoPacketLossRatioThreshold: 9
+        videoPacketLossRatioThreshold: 9,
       };
 
       const defaultStats = {
         internal: {
           video: {
             send: {
-              totalPacketsLostOnReceiver: 10
-            }
-          }
+              totalPacketsLostOnReceiver: 10,
+            },
+          },
         },
         video: {
           send: {
             packetsSent: 2,
             meanRemoteJitter: [],
-            meanRoundTripTime: []
-          }
-        }
+            meanRoundTripTime: [],
+          },
+        },
       };
 
       const statusResult = {
         type: 'remote-inbound-rtp',
         packetsLost: 11,
         rttThreshold: 501,
-        jitterThreshold: 501
+        jitterThreshold: 501,
       };
 
       const sandbox = sinon.createSandbox();
@@ -54,7 +54,10 @@ describe('plugin-meetings', () => {
 
         statsAnalyzer = new StatsAnalyzer(initialConfig, networkQualityMonitor, defaultStats);
 
-        sandBoxSpy = sandbox.spy(statsAnalyzer.networkQualityMonitor, 'determineUplinkNetworkQuality');
+        sandBoxSpy = sandbox.spy(
+          statsAnalyzer.networkQualityMonitor,
+          'determineUplinkNetworkQuality'
+        );
       });
 
       afterEach(() => {
@@ -65,11 +68,13 @@ describe('plugin-meetings', () => {
         await statsAnalyzer.parseGetStatsResult(statusResult, 'video');
 
         assert.calledOnce(statsAnalyzer.networkQualityMonitor.determineUplinkNetworkQuality);
-        assert(sandBoxSpy.calledWith({
-          mediaType: 'video',
-          remoteRtpResults: statusResult,
-          statsAnalyzerCurrentStats: statsAnalyzer.statsResults
-        }));
+        assert(
+          sandBoxSpy.calledWith({
+            mediaType: 'video',
+            remoteRtpResults: statusResult,
+            statsAnalyzerCurrentStats: statsAnalyzer.statsResults,
+          })
+        );
       });
     });
 
@@ -114,7 +119,7 @@ describe('plugin-meetings', () => {
               type: 'outbound-rtp',
               packetsSent: 0,
               bytesSent: 1,
-            }
+            },
           },
           video: {
             receiver: {
@@ -126,8 +131,8 @@ describe('plugin-meetings', () => {
               type: 'outbound-rtp',
               framesSent: 0,
               bytesSent: 1,
-            }
-          }
+            },
+          },
         };
 
         pc = {
@@ -148,9 +153,9 @@ describe('plugin-meetings', () => {
             screenShareVideo: {
               sender: [],
               receiver: [],
-              currentDirection: 'sendrecv'
-            }
-          })
+              currentDirection: 'sendrecv',
+            },
+          }),
         };
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);

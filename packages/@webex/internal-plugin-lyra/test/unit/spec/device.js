@@ -12,9 +12,9 @@ describe('plugin-lyra', () => {
   const lyraSpaceUrl = `https://lyra/api/v1/${lyraSpaceId}`;
   const lyraSpace = {
     identity: {
-      id: lyraSpaceId
+      id: lyraSpaceId,
     },
-    url: lyraSpaceUrl
+    url: lyraSpaceUrl,
   };
 
   let webex;
@@ -22,12 +22,12 @@ describe('plugin-lyra', () => {
   before(() => {
     webex = new MockWebex({
       children: {
-        lyra: Lyra
+        lyra: Lyra,
       },
       device: {
         url: 'deviceUrl',
-        userId: '1234'
-      }
+        userId: '1234',
+      },
     });
 
     webex.config.lyra = lyraConfig.lyra;
@@ -39,19 +39,26 @@ describe('plugin-lyra', () => {
 
   describe('device', () => {
     describe('#putAudioState', () => {
-      it('requires audioState.deviceUrl', () => assert.isRejected(webex.internal.lyra.device.putAudioState(lyraSpace), /audioState.deviceUrl is required/));
+      it('requires audioState.deviceUrl', () =>
+        assert.isRejected(
+          webex.internal.lyra.device.putAudioState(lyraSpace),
+          /audioState.deviceUrl is required/
+        ));
     });
 
     describe('#setVolume', () => {
-      it('defaults to level 0', () => webex.internal.lyra.device.setVolume(lyraSpace)
-        .then(() => {
-          assert.calledWith(webex.request, sinon.match({
-            method: 'POST',
-            uri: `${lyraSpace.url}/audio/volume/actions/set/invoke`,
-            body: {
-              level: 0
-            }
-          }));
+      it('defaults to level 0', () =>
+        webex.internal.lyra.device.setVolume(lyraSpace).then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              uri: `${lyraSpace.url}/audio/volume/actions/set/invoke`,
+              body: {
+                level: 0,
+              },
+            })
+          );
         }));
     });
   });

@@ -20,17 +20,17 @@ describe('plugin-meetings', () => {
     meeting = {
       mediaProperties: {
         audioTrack: 'fake audio track',
-        videoTrack: 'fake video track'
+        videoTrack: 'fake video track',
       },
       remoteMuted: false,
       unmuteAllowed: true,
       locusInfo: {
-        onFullLocus: sinon.stub()
+        onFullLocus: sinon.stub(),
       },
       members: {
         selfId: 'fake self id',
-        muteMember: sinon.stub().resolves()
-      }
+        muteMember: sinon.stub().resolves(),
+      },
     };
     audio = createMuteState(AUDIO, meeting, {sendAudio: true});
     video = createMuteState(VIDEO, meeting, {sendVideo: true});
@@ -128,11 +128,14 @@ describe('plugin-meetings', () => {
       // first we need to mute and make that request last forever
       let serverResponseResolve;
 
-      MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(new Promise((resolve) => {
-        serverResponseResolve = resolve;
-      }));
+      MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(
+        new Promise((resolve) => {
+          serverResponseResolve = resolve;
+        })
+      );
 
-      audio.handleClientRequest(meeting, true)
+      audio
+        .handleClientRequest(meeting, true)
         .then(() => {
           clientPromiseResolved = true;
         })
@@ -236,14 +239,15 @@ describe('plugin-meetings', () => {
 
         let serverResponseResolve;
 
-        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(new Promise((resolve) => {
-          serverResponseResolve = resolve;
-        }));
+        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(
+          new Promise((resolve) => {
+            serverResponseResolve = resolve;
+          })
+        );
 
-        audio.handleClientRequest(meeting, true)
-          .then(() => {
-            clientPromiseResolved = true;
-          });
+        audio.handleClientRequest(meeting, true).then(() => {
+          clientPromiseResolved = true;
+        });
 
         // do a small delay to make sure that the client promise doesn't resolve in that time
         await testUtils.waitUntil(200);
@@ -257,9 +261,11 @@ describe('plugin-meetings', () => {
       });
 
       it('rejects client request promise if server request for local mute fails', async () => {
-        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(new Promise((resolve, reject) => {
-          reject();
-        }));
+        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(
+          new Promise((resolve, reject) => {
+            reject();
+          })
+        );
 
         assert.isRejected(audio.handleClientRequest(meeting, true));
       });
@@ -282,9 +288,11 @@ describe('plugin-meetings', () => {
       it('does not send a server request if client state matches the server', async () => {
         let serverResponseResolve;
 
-        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(new Promise((resolve) => {
-          serverResponseResolve = resolve;
-        }));
+        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(
+          new Promise((resolve) => {
+            serverResponseResolve = resolve;
+          })
+        );
 
         // simulate many client requests, with the last one matching the initial one
         audio.handleClientRequest(meeting, true);
@@ -309,22 +317,22 @@ describe('plugin-meetings', () => {
       it('queues up server requests when multiple client requests are received', async () => {
         let serverResponseResolve;
 
-        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(new Promise((resolve) => {
-          serverResponseResolve = resolve;
-        }));
+        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().returns(
+          new Promise((resolve) => {
+            serverResponseResolve = resolve;
+          })
+        );
 
         let firstClientPromiseResolved = false;
         let secondClientPromiseResolved = false;
 
         // 2 client requests, one after another without waiting for first one to resolve
-        audio.handleClientRequest(meeting, true)
-          .then(() => {
-            firstClientPromiseResolved = true;
-          });
-        audio.handleClientRequest(meeting, false)
-          .then(() => {
-            secondClientPromiseResolved = true;
-          });
+        audio.handleClientRequest(meeting, true).then(() => {
+          firstClientPromiseResolved = true;
+        });
+        audio.handleClientRequest(meeting, false).then(() => {
+          secondClientPromiseResolved = true;
+        });
 
         await testUtils.flushPromises();
 
@@ -351,7 +359,8 @@ describe('plugin-meetings', () => {
       it('rejects client request to unmute if hard mute is used', (done) => {
         audio.handleServerRemoteMuteUpdate(true, false);
 
-        audio.handleClientRequest(meeting, false)
+        audio
+          .handleClientRequest(meeting, false)
           .then(() => {
             done(new Error('expected handleClientRequest to fail, but it did not!'));
           })

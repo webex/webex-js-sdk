@@ -60,7 +60,10 @@ describe('plugin-meetings', () => {
 
     describe('canNotViewTheParticipantList', () => {
       it('should return the correct value', () => {
-        assert.equal(SelfUtils.canNotViewTheParticipantList(self), self.canNotViewTheParticipantList);
+        assert.equal(
+          SelfUtils.canNotViewTheParticipantList(self),
+          self.canNotViewTheParticipantList
+        );
       });
 
       it('should return false if the new self does not have a value', () => {
@@ -90,17 +93,23 @@ describe('plugin-meetings', () => {
       it('get roles works', () => {
         assert.deepEqual(SelfUtils.getRoles(self), ['PRESENTER']);
 
-        assert.deepEqual(SelfUtils.getRoles({
-          controls: {
-            role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: true}]}
-          }
-        }), ['SOME_ARBITRARY_ROLE']);
+        assert.deepEqual(
+          SelfUtils.getRoles({
+            controls: {
+              role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: true}]},
+            },
+          }),
+          ['SOME_ARBITRARY_ROLE']
+        );
 
-        assert.deepEqual(SelfUtils.getRoles({
-          controls: {
-            role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: false}]}
-          }
-        }), []);
+        assert.deepEqual(
+          SelfUtils.getRoles({
+            controls: {
+              role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: false}]},
+            },
+          }),
+          []
+        );
 
         assert.deepEqual(SelfUtils.getRoles({}), []);
         assert.deepEqual(SelfUtils.getRoles(), []);

@@ -19,7 +19,7 @@ export const locusEventKeys = [
   'locus.floor_released',
   'locus.space_users_modified',
   'locus.controls_updated',
-  'locus.participant_controls_updated'
+  'locus.participant_controls_updated',
 ];
 
 export default locusEventKeys;

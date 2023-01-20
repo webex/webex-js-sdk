@@ -15,16 +15,11 @@ import {
   Forbidden,
   NotAuthorized,
   UnknownResponse,
-  ConnectionError
+  ConnectionError,
   // NotFound
 } from './errors';
 
-const normalReconnectReasons = [
-  'idle',
-  'done (forced)',
-  'pong not received',
-  'pong mismatch'
-];
+const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
@@ -32,14 +27,14 @@ const Mercury = WebexPlugin.extend({
   session: {
     connected: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     connecting: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     socket: 'object',
-    localClusterServiceUrls: 'object'
+    localClusterServiceUrls: 'object',
   },
 
   derived: {
@@ -47,8 +42,8 @@ const Mercury = WebexPlugin.extend({
       deps: ['connected'],
       fn() {
         return this.connected;
-      }
-    }
+      },
+    },
   },
 
   @oneFlight
@@ -61,12 +56,13 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
-    return Promise.resolve(this.webex.internal.device.registered || this.webex.internal.device.register())
-      .then(() => {
-        this.logger.info('mercury: connecting');
+    return Promise.resolve(
+      this.webex.internal.device.registered || this.webex.internal.device.register()
+    ).then(() => {
+      this.logger.info('mercury: connecting');
 
-        return this._connectWithBackoff(webSocketUrl);
-      });
+      return this._connectWithBackoff(webSocketUrl);
+    });
   },
 
   @oneFlight
@@ -121,7 +117,8 @@ const Mercury = WebexPlugin.extend({
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
 
-    return this.webex.internal.feature.getFeature('developer', 'web-high-availability')
+    return this.webex.internal.feature
+      .getFeature('developer', 'web-high-availability')
       .then((haMessagingEnabled) => {
         if (haMessagingEnabled) {
           return this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
@@ -138,13 +135,13 @@ const Mercury = WebexPlugin.extend({
         Object.assign(webSocketUrl.query, {
           outboundWireFormat: 'text',
           bufferStates: true,
-          aliasHttpStatus: true
+          aliasHttpStatus: true,
         });
 
         if (webSharedMercury) {
           Object.assign(webSocketUrl.query, {
             mercuryRegistrationStatus: true,
-            isRegistrationRefreshEnabled: true
+            isRegistrationRefreshEnabled: true,
           });
           Reflect.deleteProperty(webSocketUrl.query, 'bufferStates');
         }
@@ -183,7 +180,7 @@ const Mercury = WebexPlugin.extend({
           pongTimeout: this.config.pongTimeout,
           token: token.toString(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
-          logger: this.logger
+          logger: this.logger,
         };
 
         // if the consumer has supplied request options use them
@@ -201,16 +198,17 @@ const Mercury = WebexPlugin.extend({
       .then(() => {
         this.webex.internal.metrics.submitClientMetrics('web-ha-mercury', {
           fields: {
-            success: true
+            success: true,
           },
           tags: {
             action: 'connected',
-            url: attemptWSUrl
-          }
+            url: attemptWSUrl,
+          },
         });
         callback();
 
-        return this.webex.internal.feature.getFeature('developer', 'web-high-availability')
+        return this.webex.internal.feature
+          .getFeature('developer', 'web-high-availability')
           .then((haMessagingEnabled) => {
             if (haMessagingEnabled) {
               return this.webex.internal.device.refresh();
@@ -231,17 +229,17 @@ const Mercury = WebexPlugin.extend({
         // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
         // web socket url and let WDM handle the token checking
         if (reason instanceof UnknownResponse) {
-          this.logger.info('mercury: received unknown response code, refreshing device registration');
+          this.logger.info(
+            'mercury: received unknown response code, refreshing device registration'
+          );
 
-          return this.webex.internal.device.refresh()
-            .then(() => callback(reason));
+          return this.webex.internal.device.refresh().then(() => callback(reason));
         }
         // NotAuthorized implies expired token
         if (reason instanceof NotAuthorized) {
           this.logger.info('mercury: received authorization error, reauthorizing');
 
-          return this.webex.credentials.refresh({force: true})
-            .then(() => callback(reason));
+          return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
         }
         // // NotFound implies expired web socket url
         // else if (reason instanceof NotFound) {
@@ -258,19 +256,22 @@ const Mercury = WebexPlugin.extend({
           return callback(reason);
         }
         if (reason instanceof ConnectionError) {
-          return this.webex.internal.feature.getFeature('developer', 'web-high-availability')
+          return this.webex.internal.feature
+            .getFeature('developer', 'web-high-availability')
             .then((haMessagingEnabled) => {
               if (haMessagingEnabled) {
-                this.logger.info('mercury: received a generic connection error, will try to connect to another datacenter');
+                this.logger.info(
+                  'mercury: received a generic connection error, will try to connect to another datacenter'
+                );
                 this.webex.internal.metrics.submitClientMetrics('web-ha-mercury', {
                   fields: {
-                    success: false
+                    success: false,
                   },
                   tags: {
                     action: 'failed',
                     error: reason.message,
-                    url: attemptWSUrl
-                  }
+                    url: attemptWSUrl,
+                  },
                 });
 
                 return this.webex.internal.services.markFailedUrl(attemptWSUrl);
@@ -299,7 +300,9 @@ const Mercury = WebexPlugin.extend({
 
         this.backoffCall = undefined;
         if (err) {
-          this.logger.info(`mercury: failed to connect after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`);
+          this.logger.info(
+            `mercury: failed to connect after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
+          );
 
           return reject(err);
         }
@@ -315,10 +318,12 @@ const Mercury = WebexPlugin.extend({
         this._attemptConnection(webSocketUrl, callback);
       }, onComplete);
 
-      call.setStrategy(new backoff.ExponentialStrategy({
-        initialDelay: this.config.backoffTimeReset,
-        maxDelay: this.config.backoffTimeMax
-      }));
+      call.setStrategy(
+        new backoff.ExponentialStrategy({
+          initialDelay: this.config.backoffTimeReset,
+          maxDelay: this.config.backoffTimeMax,
+        })
+      );
 
       if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
@@ -334,7 +339,9 @@ const Mercury = WebexPlugin.extend({
           const number = call.getNumRetries();
           const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
-          this.logger.info(`mercury: failed to connect; attempting retry ${number + 1} in ${delay} ms`);
+          this.logger.info(
+            `mercury: failed to connect; attempting retry ${number + 1} in ${delay} ms`
+          );
           /* istanbul ignore if */
           if (process.env.NODE_ENV === 'development') {
             this.logger.debug('mercury: ', err, err.stack);
@@ -354,8 +361,7 @@ const Mercury = WebexPlugin.extend({
   _emit(...args) {
     try {
       this.trigger(...args);
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('mercury: error occurred in event handler', error);
     }
   },
@@ -373,7 +379,7 @@ const Mercury = WebexPlugin.extend({
     if ((this.webex[namespace] || this.webex.internal[namespace])[handlerName]) {
       handlers.push({
         name: handlerName,
-        namespace
+        namespace,
       });
     }
 
@@ -395,8 +401,10 @@ const Mercury = WebexPlugin.extend({
 
       switch (event.code) {
         case 1003:
-        // metric: disconnect
-          this.logger.info(`mercury: Mercury service rejected last message; will not reconnect: ${event.reason}`);
+          // metric: disconnect
+          this.logger.info(
+            `mercury: Mercury service rejected last message; will not reconnect: ${event.reason}`
+          );
           this._emit('offline.permanent', event);
           break;
         case 4000:
@@ -421,8 +429,7 @@ const Mercury = WebexPlugin.extend({
             this._reconnect(socketUrl);
             // metric: disconnect
             // if (reason === done forced) metric: force closure
-          }
-          else {
+          } else {
             this.logger.info('mercury: socket disconnected; will not reconnect');
             this._emit('offline.permanent', event);
           }
@@ -432,8 +439,7 @@ const Mercury = WebexPlugin.extend({
           // unexpected disconnect
           this._emit('offline.permanent', event);
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('mercury: error occurred in close handler', error);
     }
   },
@@ -450,20 +456,29 @@ const Mercury = WebexPlugin.extend({
     this._applyOverrides(data);
 
     return this._getEventHandlers(data.eventType)
-      .reduce((promise, handler) => promise.then(() => {
-        const {namespace, name} = handler;
+      .reduce(
+        (promise, handler) =>
+          promise.then(() => {
+            const {namespace, name} = handler;
 
-        return new Promise((resolve) => resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data)))
-          .catch((reason) => this.logger.error(`mercury: error occurred in autowired event handler for ${data.eventType}`, reason));
-      }), Promise.resolve())
+            return new Promise((resolve) =>
+              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
+            ).catch((reason) =>
+              this.logger.error(
+                `mercury: error occurred in autowired event handler for ${data.eventType}`,
+                reason
+              )
+            );
+          }),
+        Promise.resolve()
+      )
       .then(() => {
         this._emit('event', event.data);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
           this._emit(`event:${namespace}`, envelope);
-        }
-        else {
+        } else {
           this._emit(`event:${namespace}`, envelope);
           this._emit(`event:${data.eventType}`, envelope);
         }
@@ -477,7 +492,7 @@ const Mercury = WebexPlugin.extend({
     this.logger.info('mercury: reconnecting');
 
     return this.connect(webSocketUrl);
-  }
+  },
 });
 
 export default Mercury;

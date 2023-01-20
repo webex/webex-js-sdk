@@ -12,8 +12,8 @@ const namespaces = new WeakMap();
 const loggers = new WeakMap();
 
 /**
-* IndexedDB adapter for webex-core storage layer
-*/
+ * IndexedDB adapter for webex-core storage layer
+ */
 export default class StorageAdapterLocalForage {
   /**
    * @constructs {StorageAdapterLocalForage}
@@ -47,7 +47,7 @@ export default class StorageAdapterLocalForage {
       }
 
       @oneFlight({
-        keyFactory: (key) => key
+        keyFactory: (key) => key,
       })
       /**
        * Removes the specified key
@@ -65,7 +65,7 @@ export default class StorageAdapterLocalForage {
       }
 
       @oneFlight({
-        keyFactory: (key) => key
+        keyFactory: (key) => key,
       })
       /**
        * Retrieves the data at the specified key
@@ -80,25 +80,23 @@ export default class StorageAdapterLocalForage {
 
         loggers.get(this).debug(`storage-adapter-local-forage: reading \`${key_}\``);
 
-        return localforage.getItem(key_)
-          .then((value) => {
-            // if the key does not exist, getItem() will return null
-            if (value === null) {
-              // If we got null, we need to check if it's because the key
-              // doesn't exist or because it has a saved value of null.
-              return localforage.keys()
-                .then((keys) => {
-                  if (keys.includes(key_)) {
-                    return Promise.resolve(value);
-                  }
+        return localforage.getItem(key_).then((value) => {
+          // if the key does not exist, getItem() will return null
+          if (value === null) {
+            // If we got null, we need to check if it's because the key
+            // doesn't exist or because it has a saved value of null.
+            return localforage.keys().then((keys) => {
+              if (keys.includes(key_)) {
+                return Promise.resolve(value);
+              }
 
-                  return Promise.reject(new NotFoundError(`No value found for ${key_}`));
-                });
-            }
+              return Promise.reject(new NotFoundError(`No value found for ${key_}`));
+            });
+          }
 
-            //  even if undefined is saved, null will be returned by getItem()
-            return Promise.resolve(value);
-          });
+          //  even if undefined is saved, null will be returned by getItem()
+          return Promise.resolve(value);
+        });
       }
 
       /**
@@ -122,11 +120,11 @@ export default class StorageAdapterLocalForage {
   }
 
   /**
-  * Returns an adapter bound to the specified namespace
-  * @param {string} namespace
-  * @param {Object} options
-  * @returns {Promise<Bound>}
-  */
+   * Returns an adapter bound to the specified namespace
+   * @param {string} namespace
+   * @param {Object} options
+   * @returns {Promise<Bound>}
+   */
   bind(namespace, options) {
     options = options || {};
     if (!namespace) {

@@ -11,8 +11,8 @@ import ServiceInterceptor from './interceptors/service';
 registerInternalPlugin('services', Services, {
   interceptors: {
     ServiceInterceptor: ServiceInterceptor.create,
-    ServerErrorInterceptor: ServerErrorInterceptor.create
-  }
+    ServerErrorInterceptor: ServerErrorInterceptor.create,
+  },
 });
 
 export {constants};

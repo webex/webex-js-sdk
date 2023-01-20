@@ -31,8 +31,8 @@ export const fetch = (filename) =>
     //   return {...data, type};
     // });
     .then(([{mime: type}, data]) =>
-      (type ? {...data, type} : Promise.reject(new Error('Invalid Media Type'))));
-
+      type ? {...data, type} : Promise.reject(new Error('Invalid Media Type'))
+    );
 
 export const isBufferLike = (file) => isBuffer(file);
 

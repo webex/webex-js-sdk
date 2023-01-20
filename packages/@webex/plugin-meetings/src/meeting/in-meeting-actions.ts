@@ -2,9 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {
-  MEETINGS
-} from '../constants';
+import {MEETINGS} from '../constants';
 
 /**
  * IInMeetingActions
@@ -121,6 +119,12 @@ export default class InMeetingActions implements IInMeetingActions {
     canEnableReactions: this.canEnableReactions,
     canSendReactions: this.canSendReactions,
   });
+
+  /**
+   *
+   * @param actions
+   * @returns
+   */
 
   set = (actions: Partial<IInMeetingActions>) => {
     const old = this.get();

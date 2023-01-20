@@ -4,7 +4,7 @@ const Reactions: Record<ReactionType, Reaction> = {
   smile: {
     type: 'smile',
     codepoints: '1F642',
-    shortcodes: ':slightly_smiling_face:'
+    shortcodes: ':slightly_smiling_face:',
   },
   sad: {
     type: 'sad',
@@ -19,7 +19,7 @@ const Reactions: Record<ReactionType, Reaction> = {
   haha: {
     type: 'haha',
     codepoints: '1F603',
-    shortcodes: ':smiley:'
+    shortcodes: ':smiley:',
   },
   celebrate: {
     type: 'celebrate',
@@ -65,7 +65,7 @@ const Reactions: Record<ReactionType, Reaction> = {
     type: 'slow_down',
     codepoints: '1F422',
     shortcodes: ':turtle:',
-  }
+  },
 };
 
 const SkinTones: Record<SkinToneType, SkinTone> = {
@@ -98,7 +98,7 @@ const SkinTones: Record<SkinToneType, SkinTone> = {
     type: 'dark_skin_tone',
     codepoints: '1F3FF',
     shortcodes: ':skin-tone-6:',
-  }
+  },
 };
 
 export {Reactions, SkinTones};

@@ -14,22 +14,22 @@ describe('plugin-wdm', () => {
     let user;
     let webex;
 
-    before('create users', () => testUsers.create({count: 1})
-      .then(([createdUser]) => {
+    before('create users', () =>
+      testUsers.create({count: 1}).then(([createdUser]) => {
         user = createdUser;
-      }));
+      })
+    );
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({
-        credentials: user.token
+        credentials: user.token,
       });
 
       device = webex.internal.device;
     });
 
     describe('when the plugin is imported', () => {
-      it('should define a \'device\' plugin', () =>
-        assert.isDefined(device));
+      it("should define a 'device' plugin", () => assert.isDefined(device));
 
       it('should contain all common device method members', () => {
         assert.isFunction(device.checkNetworkReachability);

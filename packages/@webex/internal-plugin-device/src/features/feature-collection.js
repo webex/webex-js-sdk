@@ -24,7 +24,7 @@ const FeatureCollection = AmpCollection.extend({
    *
    * @type {Class}
    */
-  model: FeatureModel
+  model: FeatureModel,
 });
 
 export default FeatureCollection;

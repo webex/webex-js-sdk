@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 import bowser from 'bowser';
 import {memoize} from 'lodash';
 import window from 'global/window';
@@ -9,7 +11,7 @@ const mockDetectionObject = {
   /* eslint-enable global-require */
   getBrowserName: () => '',
   getBrowserVersion: () => '',
-  isBrowser: () => false
+  isBrowser: () => false,
 };
 
 const createDetectionObject = (results) => {
@@ -26,11 +28,12 @@ const createDetectionObject = (results) => {
     getOSVersion,
     getBrowserName,
     getBrowserVersion,
-    isBrowser
+    isBrowser,
   };
 };
 
-export default memoize((agent?: any) => (agent || window.navigator?.userAgent ?
-  createDetectionObject(bowser.getParser(agent || window.navigator.userAgent)) :
-  mockDetectionObject
-));
+export default memoize((agent?: any) =>
+  agent || window.navigator?.userAgent
+    ? createDetectionObject(bowser.getParser(agent || window.navigator.userAgent))
+    : mockDetectionObject
+);

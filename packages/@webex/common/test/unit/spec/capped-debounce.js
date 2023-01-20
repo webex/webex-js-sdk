@@ -32,7 +32,10 @@ describe('common', () => {
     });
 
     it('requires a `maxCalls`', () => {
-      assert.throws(cappedDebounce.bind(null, sinon.spy(), 5, {maxWait: 10}), /`options.maxCalls` is required/);
+      assert.throws(
+        cappedDebounce.bind(null, sinon.spy(), 5, {maxWait: 10}),
+        /`options.maxCalls` is required/
+      );
     });
 
     it('returns a function that will execute once it stops being invoked for `wait` ms', () => {

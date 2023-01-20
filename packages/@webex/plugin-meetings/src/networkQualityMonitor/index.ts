@@ -1,16 +1,15 @@
 import EventsScope from '../common/events/events-scope';
 import {EVENT_TRIGGERS, STATS} from '../constants';
 
-
 /**
-  * Meeting - network quality event
-  * Emitted on each interval of retrieving stats Analyzer data
-  * @event network:quality
-  * @type {Object}
-  * @property {string} mediaType {video|audio}
-  * @property {number} networkQualityScore - value determined in determineUplinkNetworkQuality
-  * @memberof NetworkQualityMonitor
-  */
+ * Meeting - network quality event
+ * Emitted on each interval of retrieving stats Analyzer data
+ * @event network:quality
+ * @type {Object}
+ * @property {string} mediaType {video|audio}
+ * @property {number} networkQualityScore - value determined in determineUplinkNetworkQuality
+ * @memberof NetworkQualityMonitor
+ */
 /**
  * NetworkQualityMonitor class that will emit events based on detected quality
  *
@@ -42,19 +41,19 @@ export default class NetworkQualityMonitor extends EventsScope {
     this.indicatorTypes = Object.freeze({
       PACKETLOSS: 'packetLoss',
       LATENCY: 'latency',
-      JITTER: 'jitter'
+      JITTER: 'jitter',
     });
     this.frequencyTypes = Object.freeze({
       UPLINK: 'uplink',
-      DOWNLINK: 'downlink'
+      DOWNLINK: 'downlink',
     });
     this.networkQualityScore = 1;
     this.networkQualityStatus = {
       [this.frequencyTypes.UPLINK]: {
         [STATS.VIDEO_CORRELATE]: {},
         [STATS.AUDIO_CORRELATE]: {},
-        [STATS.SHARE_CORRELATE]: {}
-      }
+        [STATS.SHARE_CORRELATE]: {},
+      },
     };
     this.mediaType = null;
   }
@@ -69,12 +68,12 @@ export default class NetworkQualityMonitor extends EventsScope {
     this.emit(
       {
         file: 'networkQualityMonitor',
-        function: 'emitNetworkQuality'
+        function: 'emitNetworkQuality',
       },
       EVENT_TRIGGERS.NETWORK_QUALITY,
       {
         mediaType: this.mediaType,
-        networkQualityScore: this.networkQualityScore
+        networkQualityScore: this.networkQualityScore,
       }
     );
   }
@@ -91,7 +90,6 @@ export default class NetworkQualityMonitor extends EventsScope {
     this.networkQualityScore = 1;
     this.mediaType = null;
   }
-
 
   /**
    * filter data to determine uplink network quality, invoked on same interval as stats analyzer remote-inbout-rtp
@@ -127,8 +125,7 @@ export default class NetworkQualityMonitor extends EventsScope {
      * @returns {boolean}
      */
     const determinePacketLoss = () => {
-      if (currentPacketLossRatio >
-        this.config.videoPacketLossRatioThreshold) {
+      if (currentPacketLossRatio > this.config.videoPacketLossRatioThreshold) {
         this.networkQualityScore = 0;
 
         return false;
@@ -172,7 +169,8 @@ export default class NetworkQualityMonitor extends EventsScope {
      * @param {(number|undefined)} value
      * @returns {(number|null)}
      */
-    const determineIfUndefined = (value: number | undefined) => (typeof value === 'undefined' ? null : value);
+    const determineIfUndefined = (value: number | undefined) =>
+      typeof value === 'undefined' ? null : value;
 
     /**
      * Values for some browsers specifically Safari will be undefined we explicitly set to null
@@ -182,20 +180,19 @@ export default class NetworkQualityMonitor extends EventsScope {
     // PACKET LOSS
     this.networkQualityStatus[UPLINK][mediaType][PACKETLOSS] = {
       acceptable: determinePacketLoss(),
-      value: determineIfUndefined(currentPacketLossRatio)
+      value: determineIfUndefined(currentPacketLossRatio),
     };
-
 
     // LATENCY measured in Round trip time
     this.networkQualityStatus[UPLINK][mediaType][LATENCY] = {
       acceptable: determineLatency(),
-      value: determineIfUndefined(remoteRtpResults.roundTripTime)
+      value: determineIfUndefined(remoteRtpResults.roundTripTime),
     };
 
     // JITTER
     this.networkQualityStatus[UPLINK][mediaType][JITTER] = {
       acceptable: deterMineJitter(),
-      value: determineIfUndefined(remoteRtpResults.jitter)
+      value: determineIfUndefined(remoteRtpResults.jitter),
     };
 
     this.updateNetworkQualityStatus();

@@ -11,7 +11,7 @@ describe('common-evented', () => {
   describe('@evented()', () => {
     class EventedClass {
       @evented
-        prop = null;
+      prop = null;
     }
 
     Object.assign(EventedClass.prototype, Events);

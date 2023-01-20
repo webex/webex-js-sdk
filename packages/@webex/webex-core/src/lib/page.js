@@ -1,3 +1,5 @@
+/* eslint-disable no-constructor-return */
+
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
@@ -69,12 +71,8 @@ export default class Page {
 
     return linkHeaders.reduce((links, linkHeader) => {
       linkHeader = linkHeader.split(';');
-      const link = linkHeader[0]
-        .replace('<', '')
-        .replace('>', '');
-      const rel = linkHeader[1]
-        .split('=')[1]
-        .replace(/"/g, '');
+      const link = linkHeader[0].replace('<', '').replace('>', '');
+      const rel = linkHeader[1].split('=')[1].replace(/"/g, '');
 
       links[rel] = link;
 
@@ -121,9 +119,10 @@ export default class Page {
    * @returns {Promise<Page>}
    */
   getLink(link) {
-    return this.webex.request({
-      uri: this.links[link]
-    })
+    return this.webex
+      .request({
+        uri: this.links[link],
+      })
       .then((res) => new Page(res, this.webex));
   }
 
@@ -149,12 +148,12 @@ export default class Page {
         i += 1;
         if (i < this.length) {
           return {
-            value: this.items[i]
+            value: this.items[i],
           };
         }
 
         return {done: true};
-      }
+      },
     };
   }
 }

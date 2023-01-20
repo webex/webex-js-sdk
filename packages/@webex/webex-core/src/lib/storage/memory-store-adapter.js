@@ -59,7 +59,7 @@ function _bind(namespace, options = {}) {
       logger.debug(`memory-store-adapter: writing \`${key}\``);
 
       return Promise.resolve(map.set(key, value));
-    }
+    },
   });
 }
 
@@ -73,7 +73,7 @@ export default {
         }
 
         return _bind(namespace, options);
-      }
+      },
     };
-  }
+  },
 };

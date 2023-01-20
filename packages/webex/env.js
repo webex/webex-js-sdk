@@ -11,7 +11,7 @@ if (inBrowser) {
 const Webex = require('webex');
 
 const webex = new Webex({
-  credentials: process.env.WEBEX_ACCESS_TOKEN
+  credentials: process.env.WEBEX_ACCESS_TOKEN,
 });
 
 module.exports = webex;

@@ -13,7 +13,7 @@ import config from './config';
 registerInternalPlugin('device', Device, {
   config,
   interceptors: {
-    DeviceUrlInterceptor: DeviceUrlInterceptor.create
+    DeviceUrlInterceptor: DeviceUrlInterceptor.create,
   },
   /**
    * Unregister the device in the case that the webex instance has logged out.
@@ -22,16 +22,8 @@ registerInternalPlugin('device', Device, {
    */
   onBeforeLogout() {
     return this.unregister();
-  }
+  },
 });
 
 export {default} from './device';
-export {
-  config,
-  constants,
-  DeviceUrlInterceptor,
-  FeatureCollection,
-  FeatureModel,
-  FeaturesModel
-};
-
+export {config, constants, DeviceUrlInterceptor, FeatureCollection, FeatureModel, FeaturesModel};

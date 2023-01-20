@@ -14,7 +14,7 @@ describe('plugin-device', () => {
     });
 
     describe('#constructor()', () => {
-      describe('when the feature includes a \'lastModified\' property', () => {
+      describe("when the feature includes a 'lastModified' property", () => {
         beforeEach('generate the feature model', () => {
           featureModel = new FeatureModel(featureLM);
         });
@@ -27,17 +27,14 @@ describe('plugin-device', () => {
           assert.equal(featureLM.value, featureModel.value);
         });
 
-        it('should assign the \'lastModified\' value as a \'Date\'', () => {
+        it("should assign the 'lastModified' value as a 'Date'", () => {
           assert.instanceOf(featureModel.lastModified, Date);
 
-          assert.equal(
-            featureModel.lastModified.toISOString(),
-            featureLM.lastModified
-          );
+          assert.equal(featureModel.lastModified.toISOString(), featureLM.lastModified);
         });
       });
 
-      describe('when the feature excludes a \'lastModified\' property', () => {
+      describe("when the feature excludes a 'lastModified' property", () => {
         beforeEach('generate the feature model', () => {
           featureModel = new FeatureModel(featureNLM);
         });
@@ -50,7 +47,7 @@ describe('plugin-device', () => {
           assert.equal(featureNLM.value, featureModel.value);
         });
 
-        it('should not assign the \'lastModified\' value', () => {
+        it("should not assign the 'lastModified' value", () => {
           assert.isUndefined(featureModel.lastModified);
         });
       });
@@ -83,8 +80,7 @@ describe('plugin-device', () => {
           it('should set the value to a instance of number', () =>
             assert.typeOf(model.value, 'number'));
 
-          it('should set the type to \'number\'', () =>
-            assert.equal(model.type, 'number'));
+          it("should set the type to 'number'", () => assert.equal(model.type, 'number'));
 
           it('should set the model value to the equivalent Number value', () =>
             assert.equal(model.value, Number(fixture.val)));
@@ -96,11 +92,9 @@ describe('plugin-device', () => {
             model = featureModel.parse(fixture);
           });
 
-          it('should set the value to a boolean true', () =>
-            assert.equal(model.value, true));
+          it('should set the value to a boolean true', () => assert.equal(model.value, true));
 
-          it('should set the type to \'boolean\'', () =>
-            assert.equal(model.type, 'boolean'));
+          it("should set the type to 'boolean'", () => assert.equal(model.type, 'boolean'));
         });
 
         describe('when the value is a True boolean', () => {
@@ -109,11 +103,9 @@ describe('plugin-device', () => {
             model = featureModel.parse(fixture);
           });
 
-          it('should set the value to a boolean true', () =>
-            assert.equal(model.value, true));
+          it('should set the value to a boolean true', () => assert.equal(model.value, true));
 
-          it('should set the type to \'boolean\'', () =>
-            assert.equal(model.type, 'boolean'));
+          it("should set the type to 'boolean'", () => assert.equal(model.type, 'boolean'));
         });
 
         describe('when the value is a false string', () => {
@@ -122,11 +114,9 @@ describe('plugin-device', () => {
             model = featureModel.parse(fixture);
           });
 
-          it('should set the value to a boolean false', () =>
-            assert.equal(model.value, false));
+          it('should set the value to a boolean false', () => assert.equal(model.value, false));
 
-          it('should set the type to \'boolean\'', () =>
-            assert.equal(model.type, 'boolean'));
+          it("should set the type to 'boolean'", () => assert.equal(model.type, 'boolean'));
         });
 
         describe('when the value is a False string', () => {
@@ -135,11 +125,9 @@ describe('plugin-device', () => {
             model = featureModel.parse(fixture);
           });
 
-          it('should set the value to a boolean false', () =>
-            assert.equal(model.value, false));
+          it('should set the value to a boolean false', () => assert.equal(model.value, false));
 
-          it('should set the type to \'boolean\'', () =>
-            assert.equal(model.type, 'boolean'));
+          it("should set the type to 'boolean'", () => assert.equal(model.type, 'boolean'));
         });
 
         describe('when the value is a string', () => {
@@ -151,8 +139,7 @@ describe('plugin-device', () => {
           it('should set the value to a instance of string', () =>
             assert.typeOf(model.value, 'string'));
 
-          it('should set the type to \'string\'', () =>
-            assert.equal(model.type, 'string'));
+          it("should set the type to 'string'", () => assert.equal(model.type, 'string'));
 
           it('should set the model value to the equivalent string value', () =>
             assert.equal(model.value, fixture.val));
@@ -167,8 +154,7 @@ describe('plugin-device', () => {
           it('should set the value to the provided val property', () =>
             assert.equal(model.value, fixture.val));
 
-          it('should set the type to \'string\'', () =>
-            assert.equal(model.type, 'string'));
+          it("should set the type to 'string'", () => assert.equal(model.type, 'string'));
         });
 
         describe('when there is no value', () => {
@@ -177,11 +163,9 @@ describe('plugin-device', () => {
             model = featureModel.parse(fixture);
           });
 
-          it('should set the value to undefined', () =>
-            assert.isUndefined(model.value));
+          it('should set the value to undefined', () => assert.isUndefined(model.value));
 
-          it('should set the type to \'string\'', () =>
-            assert.equal(model.type, 'string'));
+          it("should set the type to 'string'", () => assert.equal(model.type, 'string'));
         });
       });
     });
@@ -189,7 +173,7 @@ describe('plugin-device', () => {
     describe('#serialize()', () => {
       let serialized;
 
-      describe('when the feature includes a \'lastModified\' property', () => {
+      describe("when the feature includes a 'lastModified' property", () => {
         beforeEach('generate the feature model', () => {
           featureModel = new FeatureModel(featureLM);
           serialized = featureModel.serialize();
@@ -203,13 +187,13 @@ describe('plugin-device', () => {
           assert.equal(featureLM.value, serialized.value);
         });
 
-        it('should assign the \'lastModified\' value as a \'string\'', () => {
+        it("should assign the 'lastModified' value as a 'string'", () => {
           assert.typeOf(serialized.lastModified, 'string');
           assert.equal(serialized.lastModified, featureLM.lastModified);
         });
       });
 
-      describe('when the feature excludes a \'lastModified\' property', () => {
+      describe("when the feature excludes a 'lastModified' property", () => {
         beforeEach('generate the feature model', () => {
           featureModel = new FeatureModel(featureNLM);
           serialized = featureModel.serialize();
@@ -223,7 +207,7 @@ describe('plugin-device', () => {
           assert.equal(featureNLM.value, serialized.value);
         });
 
-        it('should not assign the \'lastModified\' value', () => {
+        it("should not assign the 'lastModified' value", () => {
           assert.isUndefined(serialized.lastModified);
         });
       });
@@ -234,7 +218,7 @@ describe('plugin-device', () => {
         let key;
         let value;
 
-        beforeEach('configure feature and set \'key\' and \'value\'', () => {
+        beforeEach("configure feature and set 'key' and 'value'", () => {
           key = 'val';
           value = 'false';
           featureModel = new FeatureModel(featureLM);

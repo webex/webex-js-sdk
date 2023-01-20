@@ -67,8 +67,7 @@ export default function makeWebexStore(type, webex) {
     del(namespace, key) {
       webex.logger.debug(`webex-store: removing ${namespace}:${key}`);
 
-      return this._getBinding(namespace)
-        .then((binding) => binding.del(key));
+      return this._getBinding(namespace).then((binding) => binding.del(key));
     }
 
     /**
@@ -81,8 +80,7 @@ export default function makeWebexStore(type, webex) {
     get(namespace, key) {
       webex.logger.debug(`webex-store: retrieving ${namespace}:${key}`);
 
-      return this._getBinding(namespace)
-        .then((binding) => binding.get(key));
+      return this._getBinding(namespace).then((binding) => binding.get(key));
     }
 
     /**
@@ -124,13 +122,14 @@ export default function makeWebexStore(type, webex) {
           return resolve(binding);
         }
 
-        return resolve(this.adapter.bind(namespace, {logger: webex.logger})
-          .then((_binding) => {
+        return resolve(
+          this.adapter.bind(namespace, {logger: webex.logger}).then((_binding) => {
             webex.logger.debug(`storage: made binding for \`${namespace}\``);
             this.bindings.set(namespace, _binding);
 
             return _binding;
-          }));
+          })
+        );
       });
     }
   }

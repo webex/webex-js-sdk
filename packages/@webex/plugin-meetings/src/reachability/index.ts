@@ -7,11 +7,7 @@
 import _ from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {
-  ICE_GATHERING_STATE,
-  CONNECTION_STATE,
-  REACHABILITY
-} from '../constants';
+import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
 
 import ReachabilityRequest from './request';
 
@@ -54,7 +50,6 @@ export default class Reachability {
     this.clusterLatencyResults = {};
   }
 
-
   /**
    * fetches reachability data
    * @returns {Object} reachability data
@@ -68,9 +63,10 @@ export default class Reachability {
     // Remove stored reachability results to ensure no stale data
     if (window?.localStorage?.removeItem) {
       window.localStorage.removeItem(REACHABILITY.localStorage);
-    }
-    else {
-      LoggerProxy.logger.error('Reachability:index#gatherReachability --> Error in accessing LocalStorage.');
+    } else {
+      LoggerProxy.logger.error(
+        'Reachability:index#gatherReachability --> Error in accessing LocalStorage.'
+      );
 
       return {};
     }
@@ -84,12 +80,15 @@ export default class Reachability {
 
       window.localStorage.setItem(REACHABILITY.localStorage, JSON.stringify(results));
 
-      LoggerProxy.logger.log('Reachability:index#gatherReachability --> Reachability checks completed');
+      LoggerProxy.logger.log(
+        'Reachability:index#gatherReachability --> Reachability checks completed'
+      );
 
       return results;
-    }
-    catch (getClusterError) {
-      LoggerProxy.logger.error(`Reachability:index#gatherReachability --> Error in calling getClusters(): ${getClusterError}`);
+    } catch (getClusterError) {
+      LoggerProxy.logger.error(
+        `Reachability:index#gatherReachability --> Error in calling getClusters(): ${getClusterError}`
+      );
 
       return {};
     }
@@ -109,16 +108,18 @@ export default class Reachability {
       try {
         const reachabilityResults = JSON.parse(reachabilityData);
 
-        reachable = Object.values(reachabilityResults).some((result: any) => result.udp?.reachable === 'true' || result.tcp?.reachable === 'true');
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
+        reachable = Object.values(reachabilityResults).some(
+          (result: any) => result.udp?.reachable === 'true' || result.tcp?.reachable === 'true'
+        );
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+        );
       }
     }
 
     return reachable;
   }
-
 
   /**
    * Generate peerConnection config settings
@@ -128,24 +129,18 @@ export default class Reachability {
    * @memberof Reachability
    */
   private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = _.uniq([
-      ...cluster.udp,
-      ...cluster.tcp
-    ]).map((url) => ({
+    const iceServers = _.uniq([...cluster.udp, ...cluster.tcp]).map((url) => ({
       username: '',
       credential: '',
-      urls: [url]
+      urls: [url],
     }));
 
     return {
-      iceServers: [
-        ...iceServers
-      ],
+      iceServers: [...iceServers],
       iceCandidatePoolSize: '0',
-      iceTransportPolicy: 'all'
+      iceTransportPolicy: 'all',
     };
   }
-
 
   /**
    * Creates an RTCPeerConnection
@@ -164,14 +159,14 @@ export default class Reachability {
       peerConnection.key = key;
 
       return peerConnection;
-    }
-    catch (peerConnectionError) {
-      LoggerProxy.logger.log(`Reachability:index#createPeerConnection --> Error creating peerConnection: ${peerConnectionError}`);
+    } catch (peerConnectionError) {
+      LoggerProxy.logger.log(
+        `Reachability:index#createPeerConnection --> Error creating peerConnection: ${peerConnectionError}`
+      );
 
       return null;
     }
   }
-
 
   /**
    * Gets total elapsed time
@@ -187,7 +182,6 @@ export default class Reachability {
 
     return Date.now() - startTime;
   }
-
 
   /**
    * creates offer and generates localSDP
@@ -209,10 +203,14 @@ export default class Reachability {
       peerConnection.begin = Date.now();
       peerConnection.setLocalDescription(description);
 
-      return this.iceGatheringState(peerConnection, cluster.isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT)
-        .catch((iceGatheringStateError) => {
-          LoggerProxy.logger.log(`Reachability:index#getLocalSDPForClusters --> Error in getLocalSDP : ${iceGatheringStateError}`);
-        });
+      return this.iceGatheringState(
+        peerConnection,
+        cluster.isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT
+      ).catch((iceGatheringStateError) => {
+        LoggerProxy.logger.log(
+          `Reachability:index#getLocalSDPForClusters --> Error in getLocalSDP : ${iceGatheringStateError}`
+        );
+      });
     });
 
     return Promise.all(clusters)
@@ -224,7 +222,6 @@ export default class Reachability {
         return reachabilityLatencyResults;
       });
   }
-
 
   /**
    * Get list of all unreachable clusters
@@ -247,7 +244,6 @@ export default class Reachability {
     return unreachableList;
   }
 
-
   /**
    * Attach an event handler for the icegatheringstatechange
    * event and measure latency.
@@ -264,12 +260,14 @@ export default class Reachability {
         const elapsed = this.getElapsedTime(peerConnection);
 
         // @ts-ignore
-        LoggerProxy.logger.log(`Reachability:index#onIceGatheringStateChange --> Successfully pinged ${peerConnection.key}:`, elapsed);
+        LoggerProxy.logger.log(
+          `Reachability:index#onIceGatheringStateChange --> Successfully pinged ${peerConnection.key}:`,
+          elapsed
+        );
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
   }
-
 
   /**
    * Attach an event handler for the icecandidate
@@ -287,7 +285,10 @@ export default class Reachability {
         const elapsed = this.getElapsedTime(peerConnection);
 
         // @ts-ignore
-        LoggerProxy.logger.log(`Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`, elapsed);
+        LoggerProxy.logger.log(
+          `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
+          elapsed
+        );
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
@@ -310,7 +311,7 @@ export default class Reachability {
         get(target, property) {
           const targetMember = target[property];
 
-          if (typeof (targetMember) === 'function') {
+          if (typeof targetMember === 'function') {
             return targetMember.bind(target);
           }
 
@@ -327,7 +328,7 @@ export default class Reachability {
 
           // pass thru
           return window.Reflect.set(target, property, value);
-        }
+        },
       });
 
       // Using peerConnection proxy so handle functions below
@@ -347,7 +348,6 @@ export default class Reachability {
     });
   }
 
-
   /**
    * Make a log of unreachable clusters.
    * @returns {undefined}
@@ -358,10 +358,11 @@ export default class Reachability {
     const list = this.getUnreachablClusters();
 
     list.forEach((cluster) => {
-      LoggerProxy.logger.log(`Reachability:index#logUnreachableClusters --> No ice candidate for ${cluster}.`);
+      LoggerProxy.logger.log(
+        `Reachability:index#logUnreachableClusters --> No ice candidate for ${cluster}.`
+      );
     });
   }
-
 
   /**
    * Calculates time to establish connection
@@ -378,23 +379,21 @@ export default class Reachability {
 
       if (elapsed === null) {
         latencyResult = {reachable: 'false'};
-      }
-      else {
+      } else {
         latencyResult = {
           reachable: 'true',
-          latencyInMilliseconds: (elapsed).toString()
+          latencyInMilliseconds: elapsed.toString(),
         };
       }
 
       reachabilityMap[clusterId] = {
         udp: latencyResult,
-        tcp: latencyResult
+        tcp: latencyResult,
       };
     });
 
     return reachabilityMap;
   }
-
 
   /**
    * fetches reachability data
@@ -413,20 +412,22 @@ export default class Reachability {
         .then((localSDPData) => {
           if (!localSDPData || !Object.keys(localSDPData).length) {
             // TODO: handle the error condition properly and try retry
-            LoggerProxy.logger.log('Reachability:index#performReachabilityCheck --> Local SDP is empty or has missing elements..returning');
+            LoggerProxy.logger.log(
+              'Reachability:index#performReachabilityCheck --> Local SDP is empty or has missing elements..returning'
+            );
             resolve({});
-          }
-          else {
+          } else {
             resolve(localSDPData);
           }
         })
         .catch((error) => {
-          LoggerProxy.logger.error(`Reachability:index#performReachabilityCheck --> Error in getLocalSDPForClusters: ${error}`);
+          LoggerProxy.logger.error(
+            `Reachability:index#performReachabilityCheck --> Error in getLocalSDPForClusters: ${error}`
+          );
           resolve({});
         });
     });
   }
-
 
   /**
    * Records latency and closes the peerConnection
@@ -446,7 +447,9 @@ export default class Reachability {
     const intialState = {[REACHABLE]: 0, [UNREACHABLE]: 0};
 
     if (peerConnection.connectionState === CLOSED) {
-      LoggerProxy.logger.log(`Reachability:index#setLatencyAndClose --> Attempting to set latency of ${elapsed} on closed peerConnection.`);
+      LoggerProxy.logger.log(
+        `Reachability:index#setLatencyAndClose --> Attempting to set latency of ${elapsed} on closed peerConnection.`
+      );
 
       return;
     }
@@ -461,7 +464,6 @@ export default class Reachability {
     // @ts-ignore
     peerConnection.elapsed = elapsed;
   }
-
 
   /**
    * utility function

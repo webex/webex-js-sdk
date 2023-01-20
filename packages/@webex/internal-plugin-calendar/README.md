@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-calendar
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-calendar';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.calendar.WHATEVER
-
+webex.internal.calendar.WHATEVER;
 ```
 
 ## Maintainers

@@ -25,7 +25,7 @@ When using the phone plugin, this was handled automatically for you via `webex.p
 With the meetings plugin, we provide the same method:
 
 ```js
-webex.meetings.register()
+webex.meetings.register();
 ```
 
 ## Dialing
@@ -56,7 +56,7 @@ await myMeeting.join();
 ### Joining a one-on-one meeting
 
 ```js
-let destination = "testuser@webex.bot";
+let destination = 'testuser@webex.bot';
 
 const myMeeting = await webex.meetings.create(destination);
 
@@ -92,7 +92,7 @@ const mediaSettings = {
   receiveShare: true,
   sendVideo: true,
   sendAudio: true,
-  sendShare: false
+  sendShare: false,
 };
 
 const mediaStreams = await meeting.getMediaStreams(mediaSettings);
@@ -117,7 +117,7 @@ Once you have your local streams and shares, you need to add the media to the me
 const mediaResponse = await meeting.addMedia({
   localShare,
   localStream,
-  mediaSettings
+  mediaSettings,
 });
 ```
 
@@ -130,20 +130,20 @@ Just like the phone plugin, the meeting object will emit events that the develop
 ```js
 myMeeting.on('media:ready', (media) => {
   // Handle media streams
-})
+});
 ```
 
 This event is emitted when a media stream is ready to be rendered. It contains an object with two properties:
 
-* `stream` the actual media stream that can be used in an html srcObject
-* `type` the type of stream that is ready (`local`, `remoteVideo`, etc)
+- `stream` the actual media stream that can be used in an html srcObject
+- `type` the type of stream that is ready (`local`, `remoteVideo`, etc)
 
 ### `media:stopped`
 
 ```js
 myMeeting.on('media:stopped', (media) => {
   // Remove media streams
-})
+});
 ```
 
 This event is emitted when a stream has stopped sending. It has a `type` property to know which media to remove from the DOM.
@@ -197,7 +197,7 @@ With a meeting object, you use these functions:
 const mediaStreams = await meeting.getMediaStreams(mediaSettings);
 const [localStream, localShare] = mediaStreams;
 // Then, update share
-meeting.updateShare({sendShare: true, receiveShare:true, stream: localShare})
+meeting.updateShare({sendShare: true, receiveShare: true, stream: localShare});
 ```
 
 ### Stop Sending Share

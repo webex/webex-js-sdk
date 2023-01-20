@@ -12,10 +12,7 @@ export function sortScope(scope) {
     return '';
   }
 
-  return scope
-    .split(' ')
-    .sort()
-    .join(' ');
+  return scope.split(' ').sort().join(' ');
 }
 
 /**

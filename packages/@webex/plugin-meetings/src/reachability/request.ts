@@ -1,9 +1,5 @@
 import LoggerProxy from '../common/logs/logger-proxy';
-import {
-  HTTP_VERBS,
-  RESOURCE,
-  API
-} from '../constants';
+import {HTTP_VERBS, RESOURCE, API} from '../constants';
 
 export interface ClusterNode {
   isVideoMesh: boolean;
@@ -13,8 +9,8 @@ export interface ClusterNode {
 }
 
 export type ClusterList = {
-  [key:string]: ClusterNode;
-}
+  [key: string]: ClusterNode;
+};
 
 /**
  * @class ReachabilityRequest
@@ -37,41 +33,49 @@ class ReachabilityRequest {
    * @param {boolean} includeVideoMesh whether to include the video mesh clusters in the result or not
    * @returns {Promise}
    */
-  getClusters = (): Promise<ClusterList> => this.webex.request({
-    method: HTTP_VERBS.GET,
-    shouldRefreshAccessToken: false,
-    api: API.CALLIOPEDISCOVERY,
-    resource: RESOURCE.CLUSTERS
-  })
-    .then((res) => {
-      const {clusters} = res.body;
+  getClusters = (): Promise<ClusterList> =>
+    this.webex
+      .request({
+        method: HTTP_VERBS.GET,
+        shouldRefreshAccessToken: false,
+        api: API.CALLIOPEDISCOVERY,
+        resource: RESOURCE.CLUSTERS,
+      })
+      .then((res) => {
+        const {clusters} = res.body;
 
-      Object.keys(clusters).forEach((key) => {
-        clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
+        Object.keys(clusters).forEach((key) => {
+          clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
+        });
+
+        LoggerProxy.logger.log(
+          `Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`
+        );
+
+        return clusters;
       });
-
-      LoggerProxy.logger.log(`Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`);
-
-      return clusters;
-    });
 
   /**
    * gets remote SDP For Clusters
    * @param {Object} localSDPList localSDPs for the cluster
    * @returns {Object}
    */
-  remoteSDPForClusters = (localSDPList: object) => this.webex.request({
-    method: HTTP_VERBS.POST,
-    shouldRefreshAccessToken: false,
-    api: API.CALLIOPEDISCOVERY,
-    resource: RESOURCE.REACHABILITY,
-    body: {offers: localSDPList}
-  })
-    .then((res) => {
-      LoggerProxy.logger.log('Reachability:request#remoteSDPForClusters --> Remote SDPs got succcessfully');
+  remoteSDPForClusters = (localSDPList: object) =>
+    this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        shouldRefreshAccessToken: false,
+        api: API.CALLIOPEDISCOVERY,
+        resource: RESOURCE.REACHABILITY,
+        body: {offers: localSDPList},
+      })
+      .then((res) => {
+        LoggerProxy.logger.log(
+          'Reachability:request#remoteSDPForClusters --> Remote SDPs got succcessfully'
+        );
 
-      return res.body;
-    });
+        return res.body;
+      });
 }
 
 export default ReachabilityRequest;

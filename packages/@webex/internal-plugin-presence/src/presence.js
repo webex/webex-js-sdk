@@ -21,7 +21,7 @@ const Presence = WebexPlugin.extend({
   namespace: 'Presence',
 
   children: {
-    batcher: PresenceBatcher
+    batcher: PresenceBatcher,
   },
 
   session: {
@@ -29,8 +29,8 @@ const Presence = WebexPlugin.extend({
       default() {
         return new PresenceWorker();
       },
-      type: 'any'
-    }
+      type: 'any',
+    },
   },
 
   /**
@@ -62,7 +62,8 @@ const Presence = WebexPlugin.extend({
    * @returns {Promise<boolean>} resolves with true, if successful
    */
   enable() {
-    return this.webex.internal.feature.setFeature(USER, USER_PRESENCE_ENABLED, true)
+    return this.webex.internal.feature
+      .setFeature(USER, USER_PRESENCE_ENABLED, true)
       .then((response) => response.value);
   },
 
@@ -71,7 +72,8 @@ const Presence = WebexPlugin.extend({
    * @returns {Promise<boolean>} resolves with false, if successful
    */
   disable() {
-    return this.webex.internal.feature.setFeature(USER, USER_PRESENCE_ENABLED, false)
+    return this.webex.internal.feature
+      .setFeature(USER, USER_PRESENCE_ENABLED, false)
       .then((response) => response.value);
   },
 
@@ -113,17 +115,18 @@ const Presence = WebexPlugin.extend({
       return Promise.reject(new Error('A person id is required'));
     }
 
-    return this.webex.request({
-      method: 'GET',
-      service: 'apheleia',
-      resource: `compositions?userId=${personId}`
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        service: 'apheleia',
+        resource: `compositions?userId=${personId}`,
+      })
       .then((response) => response.body);
   },
 
   /**
-  * @typedef {Object} PresenceStatusesObject
-  * @property {Array.<PresenceStatusObject>} statusList
+   * @typedef {Object} PresenceStatusesObject
+   * @property {Array.<PresenceStatusObject>} statusList
    */
   /**
    * Gets the current presence statuses of an array of people ids
@@ -135,9 +138,9 @@ const Presence = WebexPlugin.extend({
       return Promise.reject(new Error('An array of person ids is required'));
     }
 
-    return Promise.all(personIds.map((id) =>
-      this.batcher.request(id)))
-      .then((presences) => ({statusList: presences}));
+    return Promise.all(personIds.map((id) => this.batcher.request(id))).then((presences) => ({
+      statusList: presences,
+    }));
   },
 
   /**
@@ -157,8 +160,7 @@ const Presence = WebexPlugin.extend({
     }
     if (Array.isArray(personIds)) {
       subjects = personIds;
-    }
-    else {
+    } else {
       subjects = [personIds];
     }
     // Limit batches to 50 ids per request
@@ -166,19 +168,22 @@ const Presence = WebexPlugin.extend({
       batches.push(subjects.slice(i, i + batchLimit));
     }
 
-    return Promise.all(batches.map((ids) =>
-      this.webex.request({
-        method: 'POST',
-        api: 'apheleia',
-        resource: 'subscriptions',
-        body: {
-          subjects: ids,
-          subscriptionTtl,
-          includeStatus: true
-        }
-      })
-        .then((response) => response.body.responses)))
-      .then((idBatches) => ({responses: [].concat(...idBatches)}));
+    return Promise.all(
+      batches.map((ids) =>
+        this.webex
+          .request({
+            method: 'POST',
+            api: 'apheleia',
+            resource: 'subscriptions',
+            body: {
+              subjects: ids,
+              subscriptionTtl,
+              includeStatus: true,
+            },
+          })
+          .then((response) => response.body.responses)
+      )
+    ).then((idBatches) => ({responses: [].concat(...idBatches)}));
   },
 
   /**
@@ -194,8 +199,7 @@ const Presence = WebexPlugin.extend({
     }
     if (Array.isArray(personIds)) {
       subjects = personIds;
-    }
-    else {
+    } else {
       subjects = [personIds];
     }
 
@@ -206,8 +210,8 @@ const Presence = WebexPlugin.extend({
       body: {
         subjects,
         subscriptionTtl: 0,
-        includeStatus: true
-      }
+        includeStatus: true,
+      },
     });
   },
 
@@ -222,16 +226,17 @@ const Presence = WebexPlugin.extend({
       return Promise.reject(new Error('A status is required'));
     }
 
-    return this.webex.request({
-      method: 'POST',
-      api: 'apheleia',
-      resource: 'events',
-      body: {
-        subject: this.webex.internal.device.userId,
-        eventType: status,
-        ttl
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'apheleia',
+        resource: 'events',
+        body: {
+          subject: this.webex.internal.device.userId,
+          eventType: status,
+          ttl,
+        },
+      })
       .then((response) => response.body);
   },
 
@@ -251,7 +256,7 @@ const Presence = WebexPlugin.extend({
    */
   dequeue(id) {
     return this.worker.dequeue(id);
-  }
+  },
 });
 
 export default Presence;

@@ -13,26 +13,32 @@ describe('plugin-board', () => {
   let webex;
   const encryptedData = 'encryptedData';
   const decryptedText = 'decryptedText';
-  const fakeURL = `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9`;
+  const fakeURL = `${
+    process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+  }/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9`;
   const file = 'dataURL://base64;';
   const boardServiceUrl = 'https://awesome.service.url';
   const boardId = 'boardId';
 
   const mockKey = {
-    uri: `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/keys/7ad503ec-854b-4fce-a7f0-182e1997bdb6`
+    uri: `${
+      process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+    }/encryption/api/v1/keys/7ad503ec-854b-4fce-a7f0-182e1997bdb6`,
   };
 
   const image = {
     height: 900,
     width: 1600,
-    size: 15000
+    size: 15000,
   };
 
   const conversation = {
     id: '7c7e69a0-a086-11e6-8670-d7b4b51d7641',
     defaultActivityEncryptionKeyUrl: fakeURL,
-    kmsResourceObjectUrl: `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/resources/8693f702-2012-40c6-9ec4-f1392f0a620a`,
-    aclUrl: 'https://acl-a.wbx2.com/acl/api/v1/acls/7ca94a30-a086-11e6-b599-d90deb9846ed'
+    kmsResourceObjectUrl: `${
+      process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+    }/encryption/api/v1/resources/8693f702-2012-40c6-9ec4-f1392f0a620a`,
+    aclUrl: 'https://acl-a.wbx2.com/acl/api/v1/acls/7ca94a30-a086-11e6-b599-d90deb9846ed',
   };
 
   const channel = {
@@ -41,13 +47,15 @@ describe('plugin-board', () => {
     aclUrlLink: conversation.aclUrl,
     aclUrl: 'https://acl-a.wbx2.com/acl/api/v1/acls/e2947ee0-972b-11e7-a041-d564bb1fbb45',
     defaultEncryptionKeyUrl: mockKey.uri,
-    kmsResourceUrl: `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/resources/18f7c618-2eff-461e-ac46-819a0fd2b476`,
+    kmsResourceUrl: `${
+      process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+    }/encryption/api/v1/resources/18f7c618-2eff-461e-ac46-819a0fd2b476`,
     kmsMessage: {
       method: 'create',
       uri: '/resources',
       userIds: [conversation.kmsResourceObjectUrl],
-      keyUris: []
-    }
+      keyUris: [],
+    },
   };
 
   const channelRes = {
@@ -57,62 +65,80 @@ describe('plugin-board', () => {
     aclUrl: 'https://acl-a.wbx2.com/acl/api/v1/acls/e2947ee0-972b-11e7-a041-d564bb1fbb45',
     defaultEncryptionKeyUrl: mockKey.uri,
     creatorId: 'c321e329-28d6-4d52-a9d1-374010411530',
-    kmsResourceUrl: `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/resources/18f7c618-2eff-461e-ac46-819a0fd2b476`,
+    kmsResourceUrl: `${
+      process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+    }/encryption/api/v1/resources/18f7c618-2eff-461e-ac46-819a0fd2b476`,
     kmsMessage: {
       status: 201,
       resource: {
-        uri: `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/resources/2853285c-c46b-4b35-9542-9a81d4e3c87f`,
-        keyUris: [`${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/keys/5042787d-510b-46f3-b83c-ea73032de851`],
+        uri: `${
+          process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+        }/encryption/api/v1/resources/2853285c-c46b-4b35-9542-9a81d4e3c87f`,
+        keyUris: [
+          `${
+            process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+          }/encryption/api/v1/keys/5042787d-510b-46f3-b83c-ea73032de851`,
+        ],
         authorizationUris: [
-          `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/authorizations/aHR0cHM6Ly9lbmNyeXB0aW9uLWEud2J4Mi5jb20vZW5jcnlwdGlvbi9hcGkvdjEvcmVzb3VyY2VzLzI3OWIyMjgyLWZmYTItNGM3ZC04NGRmLTRkNDVlZmUzYTMzNQBodHRwczovL2VuY3J5cHRpb24tYS53YngyLmNvbS9lbmNyeXB0aW9uL2FwaS92MS9yZXNvdXJjZXMvMjg1MzI4NWMtYzQ2Yi00YjM1LTk1NDItOWE4MWQ0ZTNjODdm`,
-          `${process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'}/encryption/api/v1/authorizations/YzMyMWUzMjktMjhkNi00ZDUyLWE5ZDEtMzc0MDEwNDExNTMwAGh0dHBzOi8vZW5jcnlwdGlvbi1hLndieDIuY29tL2VuY3J5cHRpb24vYXBpL3YxL3Jlc291cmNlcy8yODUzMjg1Yy1jNDZiLTRiMzUtOTU0Mi05YTgxZDRlM2M4N2Y`
-        ]
-      }
-    }
+          `${
+            process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+          }/encryption/api/v1/authorizations/aHR0cHM6Ly9lbmNyeXB0aW9uLWEud2J4Mi5jb20vZW5jcnlwdGlvbi9hcGkvdjEvcmVzb3VyY2VzLzI3OWIyMjgyLWZmYTItNGM3ZC04NGRmLTRkNDVlZmUzYTMzNQBodHRwczovL2VuY3J5cHRpb24tYS53YngyLmNvbS9lbmNyeXB0aW9uL2FwaS92MS9yZXNvdXJjZXMvMjg1MzI4NWMtYzQ2Yi00YjM1LTk1NDItOWE4MWQ0ZTNjODdm`,
+          `${
+            process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
+          }/encryption/api/v1/authorizations/YzMyMWUzMjktMjhkNi00ZDUyLWE5ZDEtMzc0MDEwNDExNTMwAGh0dHBzOi8vZW5jcnlwdGlvbi1hLndieDIuY29tL2VuY3J5cHRpb24vYXBpL3YxL3Jlc291cmNlcy8yODUzMjg1Yy1jNDZiLTRiMzUtOTU0Mi05YTgxZDRlM2M4N2Y`,
+        ],
+      },
+    },
   };
 
   const data1 = {
     contentUrl: `${channel.channelUrl}/contents/data1`,
     contentId: 'data1',
     type: 'test',
-    data: 'data1'
+    data: 'data1',
   };
 
   const data2 = {
     type: 'test',
-    data: 'data2'
+    data: 'data2',
   };
 
   before(() => {
     webex = new MockWebex({
       children: {
-        board: Board
+        board: Board,
       },
-      request: sinon.stub().returns(Promise.resolve({
-        headers: {},
-        body: ''
-      })),
-      upload: sinon.stub().returns(Promise.resolve({body: {downloadUrl: fakeURL}}))
+      request: sinon.stub().returns(
+        Promise.resolve({
+          headers: {},
+          body: '',
+        })
+      ),
+      upload: sinon.stub().returns(Promise.resolve({body: {downloadUrl: fakeURL}})),
     });
 
     Object.assign(webex.internal, {
       device: {
         deviceType: 'FAKE_DEVICE',
-        getServiceUrl: () => boardServiceUrl
+        getServiceUrl: () => boardServiceUrl,
       },
       encryption: {
         decryptText: sinon.stub().returns(Promise.resolve(decryptedText)),
         encryptText: sinon.stub().returns(Promise.resolve(encryptedData)),
-        encryptBinary: sinon.stub().returns(Promise.resolve({
-          scr: {},
-          cdata: encryptedData
-        })),
-        download: sinon.stub().returns(Promise.resolve({
-          toArrayBuffer: sinon.stub()
-        })),
+        encryptBinary: sinon.stub().returns(
+          Promise.resolve({
+            scr: {},
+            cdata: encryptedData,
+          })
+        ),
+        download: sinon.stub().returns(
+          Promise.resolve({
+            toArrayBuffer: sinon.stub(),
+          })
+        ),
         decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo')),
-        encryptScr: sinon.stub().returns(Promise.resolve('encryptedFoo'))
-      }
+        encryptScr: sinon.stub().returns(Promise.resolve('encryptedFoo')),
+      },
     });
 
     webex.config.board = boardConfig.board;
@@ -123,23 +149,29 @@ describe('plugin-board', () => {
       webex.request.resetHistory();
     });
 
-    it('requests POST all contents to contents', () => webex.internal.board.addContent(channel, [data1, data2])
-      .then(() => {
-        assert.calledWith(webex.request, sinon.match({
-          method: 'POST',
-          uri: `${boardServiceUrl}/channels/${boardId}/contents`,
-          body: [{
-            device: 'FAKE_DEVICE',
-            type: 'STRING',
-            encryptionKeyUrl: mockKey.uri,
-            payload: 'encryptedData'
-          }, {
-            device: 'FAKE_DEVICE',
-            type: 'STRING',
-            encryptionKeyUrl: mockKey.uri,
-            payload: 'encryptedData'
-          }]
-        }));
+    it('requests POST all contents to contents', () =>
+      webex.internal.board.addContent(channel, [data1, data2]).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            method: 'POST',
+            uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+            body: [
+              {
+                device: 'FAKE_DEVICE',
+                type: 'STRING',
+                encryptionKeyUrl: mockKey.uri,
+                payload: 'encryptedData',
+              },
+              {
+                device: 'FAKE_DEVICE',
+                type: 'STRING',
+                encryptionKeyUrl: mockKey.uri,
+                payload: 'encryptedData',
+              },
+            ],
+          })
+        );
       }));
 
     it('sends large data using multiple requests', () => {
@@ -149,19 +181,20 @@ describe('plugin-board', () => {
         largeData.push({data: i});
       }
 
-      return webex.internal.board.addContent(channel, largeData)
-        .then(() => {
-          assert.equal(webex.request.callCount, 3);
-        });
+      return webex.internal.board.addContent(channel, largeData).then(() => {
+        assert.equal(webex.request.callCount, 3);
+      });
     });
   });
 
   describe('#setSnapshotImage()', () => {
     beforeEach(() => {
       webex.request.resetHistory();
-      sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(Promise.resolve({
-        downloadUrl: fakeURL
-      }));
+      sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(
+        Promise.resolve({
+          downloadUrl: fakeURL,
+        })
+      );
       webex.internal.encryption.encryptScr.resetHistory();
     });
 
@@ -170,30 +203,33 @@ describe('plugin-board', () => {
       webex.internal.encryption.encryptScr.resetHistory();
     });
 
-    it('requests PATCH to board service', () => webex.internal.board.setSnapshotImage(channel, image)
-      .then(() => {
-        assert.calledWith(webex.request, sinon.match({
-          method: 'PATCH',
-          uri: channel.channelUrl,
-          body: {
-            image: {
-              url: fakeURL,
-              height: image.height,
-              width: image.width,
-              mimeType: 'image/png',
-              scr: 'encryptedFoo',
-              encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
-              fileSize: image.size
-            }
-          }
-        }));
+    it('requests PATCH to board service', () =>
+      webex.internal.board.setSnapshotImage(channel, image).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            method: 'PATCH',
+            uri: channel.channelUrl,
+            body: {
+              image: {
+                url: fakeURL,
+                height: image.height,
+                width: image.width,
+                mimeType: 'image/png',
+                scr: 'encryptedFoo',
+                encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
+                fileSize: image.size,
+              },
+            },
+          })
+        );
       }));
   });
 
   describe('#createChannel()', () => {
     const channelRequestBody = {
       aclUrlLink: channel.aclUrlLink,
-      kmsMessage: channel.kmsMessage
+      kmsMessage: channel.kmsMessage,
     };
 
     before(() => {
@@ -205,19 +241,24 @@ describe('plugin-board', () => {
 
     after(() => {
       // reset request to its original behavior
-      webex.request.returns(Promise.resolve({
-        headers: {},
-        body: ''
-      }));
+      webex.request.returns(
+        Promise.resolve({
+          headers: {},
+          body: '',
+        })
+      );
     });
 
     it('requests POST to channels service', () => {
-      assert.calledWith(webex.request, sinon.match({
-        method: 'POST',
-        api: 'board',
-        resource: '/channels',
-        body: channelRequestBody
-      }));
+      assert.calledWith(
+        webex.request,
+        sinon.match({
+          method: 'POST',
+          api: 'board',
+          resource: '/channels',
+          body: channelRequestBody,
+        })
+      );
     });
   });
 
@@ -225,9 +266,10 @@ describe('plugin-board', () => {
     it('requests PUT to ACL service to remove the link between conversation and board', () => {
       webex.request.resetHistory();
 
-      return webex.internal.board.deleteChannel(conversation, channel)
-        .then(() => {
-          assert.calledWith(webex.request, sinon.match({
+      return webex.internal.board.deleteChannel(conversation, channel).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
             method: 'PUT',
             uri: `${channel.aclUrl}/links`,
             body: {
@@ -235,40 +277,52 @@ describe('plugin-board', () => {
               linkedAcl: conversation.aclUrl,
               kmsMessage: {
                 method: 'delete',
-                uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({authId: conversation.kmsResourceObjectUrl})}`
+                uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({
+                  authId: conversation.kmsResourceObjectUrl,
+                })}`,
               },
-              aclLinkOperation: 'DELETE'
-            }
-          }));
-        });
+              aclLinkOperation: 'DELETE',
+            },
+          })
+        );
+      });
     });
 
     it('requests locks channel before delete when preventDeleteActiveChannel is enabled', () => {
       webex.request.resetHistory();
 
-      return webex.internal.board.deleteChannel(conversation, channel, {preventDeleteActiveChannel: true})
+      return webex.internal.board
+        .deleteChannel(conversation, channel, {preventDeleteActiveChannel: true})
         .then(() => {
-          assert.calledWith(webex.request, sinon.match({
-            method: 'POST',
-            uri: `${channel.channelUrl}/lock`,
-            qs: {
-              intent: 'delete'
-            }
-          }));
-
-          assert.calledWith(webex.request, sinon.match({
-            method: 'PUT',
-            uri: `${channel.aclUrl}/links`,
-            body: {
-              aclLinkType: 'INCOMING',
-              linkedAcl: conversation.aclUrl,
-              kmsMessage: {
-                method: 'delete',
-                uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({authId: conversation.kmsResourceObjectUrl})}`
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              uri: `${channel.channelUrl}/lock`,
+              qs: {
+                intent: 'delete',
               },
-              aclLinkOperation: 'DELETE'
-            }
-          }));
+            })
+          );
+
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'PUT',
+              uri: `${channel.aclUrl}/links`,
+              body: {
+                aclLinkType: 'INCOMING',
+                linkedAcl: conversation.aclUrl,
+                kmsMessage: {
+                  method: 'delete',
+                  uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({
+                    authId: conversation.kmsResourceObjectUrl,
+                  })}`,
+                },
+                aclLinkOperation: 'DELETE',
+              },
+            })
+          );
         });
     });
   });
@@ -277,16 +331,18 @@ describe('plugin-board', () => {
     it('requests POST with delete lock intent', () => {
       webex.request.resetHistory();
 
-      return webex.internal.board.lockChannelForDeletion(channel)
-        .then(() => {
-          assert.calledWith(webex.request, sinon.match({
+      return webex.internal.board.lockChannelForDeletion(channel).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
             method: 'POST',
             uri: `${channel.channelUrl}/lock`,
             qs: {
-              intent: 'delete'
-            }
-          }));
-        });
+              intent: 'delete',
+            },
+          })
+        );
+      });
     });
   });
 
@@ -294,13 +350,15 @@ describe('plugin-board', () => {
     it('requests POST to keep channel status active', () => {
       webex.request.resetHistory();
 
-      return webex.internal.board.keepActive(channel)
-        .then(() => {
-          assert.calledWith(webex.request, sinon.match({
+      return webex.internal.board.keepActive(channel).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
             method: 'POST',
-            uri: `${channel.channelUrl}/keepAlive`
-          }));
-        });
+            uri: `${channel.channelUrl}/keepAlive`,
+          })
+        );
+      });
     });
   });
 
@@ -312,10 +370,13 @@ describe('plugin-board', () => {
     });
 
     it('requests DELETE contents', () => {
-      assert.calledWith(webex.request, sinon.match({
-        method: 'DELETE',
-        uri: `${boardServiceUrl}/channels/${boardId}/contents`
-      }));
+      assert.calledWith(
+        webex.request,
+        sinon.match({
+          method: 'DELETE',
+          uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+        })
+      );
     });
   });
 
@@ -323,25 +384,31 @@ describe('plugin-board', () => {
     it('requests POST contents with body contains the content to keep', () => {
       webex.request.resetHistory();
 
-      return webex.internal.board.deletePartialContent(channel, [data1])
-        .then(() => {
-          assert.calledWith(webex.request, sinon.match({
+      return webex.internal.board.deletePartialContent(channel, [data1]).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
             method: 'POST',
             uri: `${boardServiceUrl}/channels/${boardId}/contents`,
             qs: {clearBoard: true},
-            body: [{
-              contentId: data1.contentId
-            }]
-          }));
-        });
+            body: [
+              {
+                contentId: data1.contentId,
+              },
+            ],
+          })
+        );
+      });
     });
   });
 
   describe('#_uploadImage()', () => {
     before(() => {
-      sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(Promise.resolve({
-        downloadUrl: fakeURL
-      }));
+      sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(
+        Promise.resolve({
+          downloadUrl: fakeURL,
+        })
+      );
 
       return webex.internal.board._uploadImage(conversation, file);
     });
@@ -373,74 +440,79 @@ describe('plugin-board', () => {
       webex.internal.board._getSpaceUrl.resetHistory();
     });
 
-
     it('uses length for upload filesize', () => {
       const blob = {
         length: 4444,
         size: 3333,
-        byteLength: 2222
+        byteLength: 2222,
       };
 
-      return webex.internal.board._uploadImageToWebexFiles(conversation, blob)
-        .then(() => {
-          assert.calledWith(webex.upload, sinon.match({
+      return webex.internal.board._uploadImageToWebexFiles(conversation, blob).then(() => {
+        assert.calledWith(
+          webex.upload,
+          sinon.match({
             phases: {
               initialize: {
-                fileSize: 4444
+                fileSize: 4444,
               },
               finalize: {
                 body: {
-                  fileSize: 4444
-                }
-              }
-            }
-          }));
-        });
+                  fileSize: 4444,
+                },
+              },
+            },
+          })
+        );
+      });
     });
 
     it('uses size for upload filesize when length is not available', () => {
       const blob = {
         size: 3333,
-        byteLength: 2222
+        byteLength: 2222,
       };
 
-      return webex.internal.board._uploadImageToWebexFiles(conversation, blob)
-        .then(() => {
-          assert.calledWith(webex.upload, sinon.match({
+      return webex.internal.board._uploadImageToWebexFiles(conversation, blob).then(() => {
+        assert.calledWith(
+          webex.upload,
+          sinon.match({
             phases: {
               initialize: {
-                fileSize: 3333
+                fileSize: 3333,
               },
               finalize: {
                 body: {
-                  fileSize: 3333
-                }
-              }
-            }
-          }));
-        });
+                  fileSize: 3333,
+                },
+              },
+            },
+          })
+        );
+      });
     });
 
     it('uses byteLenght for upload filesize when length and size are not available', () => {
       const blob = {
-        byteLength: 2222
+        byteLength: 2222,
       };
 
-      return webex.internal.board._uploadImageToWebexFiles(conversation, blob)
-        .then(() => {
-          assert.calledWith(webex.upload, sinon.match({
+      return webex.internal.board._uploadImageToWebexFiles(conversation, blob).then(() => {
+        assert.calledWith(
+          webex.upload,
+          sinon.match({
             phases: {
               initialize: {
-                fileSize: 2222
+                fileSize: 2222,
               },
               finalize: {
                 body: {
-                  fileSize: 2222
-                }
-              }
-            }
-          }));
-        });
+                  fileSize: 2222,
+                },
+              },
+            },
+          })
+        );
+      });
     });
   });
 
@@ -458,15 +530,18 @@ describe('plugin-board', () => {
     });
 
     it('requests GET to channels service', () => {
-      assert.calledWith(webex.request, sinon.match({
-        method: 'GET',
-        uri: `${boardServiceUrl}/channels/${boardId}`
-      }));
+      assert.calledWith(
+        webex.request,
+        sinon.match({
+          method: 'GET',
+          uri: `${boardServiceUrl}/channels/${boardId}`,
+        })
+      );
     });
 
-    it('requires conversationId', () => assert.isRejected(webex.internal.board.getChannels(), '`conversation` is required'));
+    it('requires conversationId', () =>
+      assert.isRejected(webex.internal.board.getChannels(), '`conversation` is required'));
   });
-
 
   describe('#getContents()', () => {
     beforeEach(() => {
@@ -478,21 +553,25 @@ describe('plugin-board', () => {
       webex.internal.board.decryptContents.restore();
     });
 
-    it('requests GET contents with default page size', () => webex.internal.board.getContents(channel)
-      .then(() => assert.calledWith(webex.request, {
-        uri: `${boardServiceUrl}/channels/${boardId}/contents`,
-        qs: {
-          contentsLimit: boardConfig.board.numberContentsPerPageForGet
-        }
-      })));
+    it('requests GET contents with default page size', () =>
+      webex.internal.board.getContents(channel).then(() =>
+        assert.calledWith(webex.request, {
+          uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+          qs: {
+            contentsLimit: boardConfig.board.numberContentsPerPageForGet,
+          },
+        })
+      ));
 
-    it('requests GET contents with client defined page size', () => webex.internal.board.getContents(channel, {contentsLimit: 25})
-      .then(() => assert.calledWith(webex.request, {
-        uri: `${boardServiceUrl}/channels/${boardId}/contents`,
-        qs: {
-          contentsLimit: 25
-        }
-      })));
+    it('requests GET contents with client defined page size', () =>
+      webex.internal.board.getContents(channel, {contentsLimit: 25}).then(() =>
+        assert.calledWith(webex.request, {
+          uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+          qs: {
+            contentsLimit: 25,
+          },
+        })
+      ));
   });
 
   describe('#register()', () => {
@@ -503,11 +582,14 @@ describe('plugin-board', () => {
     });
 
     it('requests POST data to registration service', () => {
-      assert.calledWith(webex.request, sinon.match({
-        method: 'POST',
-        api: 'board',
-        resource: '/registrations'
-      }));
+      assert.calledWith(
+        webex.request,
+        sinon.match({
+          method: 'POST',
+          api: 'board',
+          resource: '/registrations',
+        })
+      );
     });
   });
 
@@ -516,22 +598,26 @@ describe('plugin-board', () => {
       webex.request.resetHistory();
       webex.internal.mercury.localClusterServiceUrls = {
         mercuryApiServiceClusterUrl: 'https://mercury-api-a5.wbx2.com/v1',
-        mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a5.wbx2.com/v1'
+        mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a5.wbx2.com/v1',
       };
       webex.internal.feature.getFeature.returns(Promise.resolve(true));
     });
 
-    it('requests POST data to registration service', () => webex.internal.board.registerToShareMercury(channel)
-      .then(() => {
-        assert.calledWith(webex.request, sinon.match({
-          method: 'POST',
-          uri: `${channel.channelUrl}/register`,
-          body: {
-            mercuryConnectionServiceClusterUrl: webex.internal.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
-            webSocketUrl: webex.internal.device.webSocketUrl,
-            action: 'ADD'
-          }
-        }));
+    it('requests POST data to registration service', () =>
+      webex.internal.board.registerToShareMercury(channel).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            method: 'POST',
+            uri: `${channel.channelUrl}/register`,
+            body: {
+              mercuryConnectionServiceClusterUrl:
+                webex.internal.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
+              webSocketUrl: webex.internal.device.webSocketUrl,
+              action: 'ADD',
+            },
+          })
+        );
       }));
 
     it('rejects when localClusterServiceUrls is null', () => {

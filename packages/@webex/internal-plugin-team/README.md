@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-team
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-team';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.team.WHATEVER
-
+webex.internal.team.WHATEVER;
 ```
 
 ## Maintainers

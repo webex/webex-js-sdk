@@ -11,8 +11,6 @@ module.exports = {
    * @returns {Object}
    */
   builder(yargs) {
-    return yargs
-      .demandCommand(1)
-      .commandDir('./version');
-  }
+    return yargs.demandCommand(1).commandDir('./version');
+  },
 };
