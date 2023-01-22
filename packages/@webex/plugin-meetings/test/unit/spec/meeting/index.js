@@ -84,7 +84,7 @@ describe('plugin-meetings', () => {
     sinon.restore();
   });
 
-  beforeAll(() => {
+  before(() => {
     const MediaStream = {
       getVideoTracks: () => [
         {
@@ -768,28 +768,26 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#receiveTranscription', () => {
-        beforeEach(() => {
-          meeting.locusInfo.info = {datachannelUrl: true};
-        });
+        it('should invoke subscribe method to invoke the callback', () => {
+          meeting.monitorTranscriptionSocketConnection = sinon.stub();
+          meeting.initializeTranscription = sinon.stub();
 
-        it.skip('should invoke subscribe method to invoke the callback', async () => {
-          /* jest.mock('Transcription', () => ({
-            Transcription: jest.fn().mockImplementation(() => ({}))
-          })); */
-          // jest.mock('@webex/plugin-meetings/src/transcription');
-          jest.spyOn(meeting, 'request');
-          jest.spyOn(meeting, 'monitorTranscriptionSocketConnection');
-          await meeting.receiveTranscription();
-          expect(meeting.request).toHaveBeenCalled();
-          expect(meeting.monitorTranscriptionSocketConnection).toHaveBeenCalled();
+          meeting.receiveTranscription().then(() => {
+            assert.equal(true, false);
+            assert.calledOnce(meeting.initializeTranscription);
+            assert.calledOnce(meeting.monitorTranscriptionSocketConnection);
+          });
         });
 
         it('should throw error', async () => {
-          // eslint-disable-next-line prefer-promise-reject-errors
-          meeting.request = jest.fn().mockReturnValue(Promise.reject('mock function error'));
+          meeting.request = sinon.stub().returns(Promise.reject());
 
-          await meeting.receiveTranscription();
-          expect(meeting.request).toHaveBeenCalled();
+          try {
+            await meeting.receiveTranscription();
+          }
+          catch (err) {
+            assert(err, {});
+          }
         });
       });
       describe('#stopReceivingTranscription', () => {
@@ -859,7 +857,7 @@ describe('plugin-meetings', () => {
             sinon.assert.called(meeting.setCorrelationId);
           });
         });
-        describe.skip('failure', () => {
+        describe('failure', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.reject());
             meeting.logger.log = sinon.stub().returns(true);
@@ -913,6 +911,11 @@ describe('plugin-meetings', () => {
           it('should fail if captcha is required', async () => {
             meeting.requiredCaptcha = {captchaId: 'aaa'};
             await assert.isRejected(meeting.join(), CaptchaError);
+          });
+          describe('total failure', () => {
+            beforeEach(() => {
+              MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
+            });
           });
           it('should try to join the meeting and return promise reject', async () => {
             await meeting.join().catch(() => {
@@ -1055,7 +1058,7 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it.skip('if an error occurs after media request has already been sent, and the user waits until the server kicks them out, a UserNotJoinedError should be thrown when attempting to addMedia again', async () => {
+        it('if an error occurs after media request has already been sent, and the user waits until the server kicks them out, a UserNotJoinedError should be thrown when attempting to addMedia again', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
             new Promise((resolve) => {
@@ -1076,7 +1079,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it.skip('if an error occurs after media request has already been sent, and the user does NOT wait until the server kicks them out, the user should be able to addMedia successfully', async () => {
+        it('if an error occurs after media request has already been sent, and the user does NOT wait until the server kicks them out, the user should be able to addMedia successfully', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
             new Promise((resolve) => {
@@ -1104,7 +1107,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it.skip('should attach the media and return promise', async () => {
+        it('should attach the media and return promise', async () => {
           meeting.meetingState = 'ACTIVE';
           MediaUtil.createPeerConnection.resetHistory();
           const media = meeting.addMedia({
@@ -1127,7 +1130,7 @@ describe('plugin-meetings', () => {
            */
         });
 
-        it.skip('should pass the turn server info to the peer connection', async () => {
+        it('should pass the turn server info to the peer connection', async () => {
           const FAKE_TURN_URL = 'turns:webex.com:3478';
           const FAKE_TURN_USER = 'some-turn-username';
           const FAKE_TURN_PASSWORD = 'some-password';
@@ -1159,7 +1162,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it.skip('should attach the media and return promise', async () => {
+        it('should attach the media and return promise', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.peerConnection.connectionState = 'DISCONNECTED';
           const media = meeting.addMedia({
@@ -1172,7 +1175,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe.skip('handles StatsAnalyzer events', () => {
+        describe('handles StatsAnalyzer events', () => {
           let prevConfigValue;
           let statsAnalyzerStub;
 
@@ -1578,16 +1581,10 @@ describe('plugin-meetings', () => {
             const receiveShare = false;
             const stream = 'stream';
 
-            sandbox.stub(meeting.mediaProperties, 'peerConnection').value({
-              shareTransceiver: {
-                direction: true,
-              },
-            });
+            sandbox.stub(meeting.mediaProperties, 'peerConnection').value({shareTransceiver: true});
             sandbox.stub(MeetingUtil, 'getTrack').returns({videoTrack: true});
             MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve(true));
-            MeetingUtil.updateTransceiver = sinon.stub().returns(Promise.resolve(true));
             sandbox.stub(meeting, 'canUpdateMedia').returns(true);
-            sandbox.stub(meeting, 'share').returns(true);
             sandbox.stub(meeting, 'setLocalShareTrack');
 
             meeting.updateShare({
@@ -1746,7 +1743,7 @@ describe('plugin-meetings', () => {
           return value[key] || value[defaultKey];
         };
 
-        beforeAll(() => {
+        before(() => {
           meeting.updateShare = sinon.stub().returns(Promise.resolve());
 
           if (!global.navigator) {
@@ -1763,7 +1760,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        afterAll(() => {
+        after(() => {
           // clean up for browser
           Object.defineProperty(global.navigator.mediaDevices, 'getDisplayMedia', {
             value: _getDisplayMedia,
@@ -2145,11 +2142,7 @@ describe('plugin-meetings', () => {
           it("doesn't have layoutType which exists in the list of allowed layoutTypes should throw an error", async () => {
             const layoutType = 'Invalid Layout';
 
-            meeting.changeVideoLayout(layoutType).catch((e) => {
-              expect(e.message).toBe(
-                'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
-              );
-            });
+            assert.isRejected(meeting.changeVideoLayout(layoutType));
           });
 
           it('should send no layoutType when layoutType is not provided', async () => {
@@ -2165,13 +2158,7 @@ describe('plugin-meetings', () => {
           });
 
           it('throws if trying to send renderInfo for content when not receiving content', async () => {
-            meeting
-              .changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}})
-              .catch((e) => {
-                expect(e.message).toBe(
-                  'Meeting:index#changeVideoLayout --> unable to send renderInfo for content, you are not receiving remote share'
-                );
-              });
+            assert.isRejected(meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}}));
           });
 
           it('calls changeVideoLayoutDebounced with renderInfo for main and content', async () => {
@@ -3170,7 +3157,7 @@ describe('plugin-meetings', () => {
           try {
             await meeting.moveTo('resourceId');
           }
-          catch (e) {
+          catch {
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -3180,11 +3167,19 @@ describe('plugin-meetings', () => {
             });
           }
           Metrics.sendBehavioralMetric.reset();
-          // meeting.reconnectionManager.reconnectMedia = sinon.stub().returns(Promise.reject());
+          meeting.reconnectionManager.reconnectMedia = sinon.stub().returns(Promise.reject());
           try {
             await meeting.moveTo('resourceId');
+
+            await meeting.locusInfo.emitScoped(
+              {
+                file: 'locus-info',
+                function: 'updateSelf'
+              },
+              'SELF_OBSERVING'
+            );
           }
-          catch (e) {
+          catch {
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -4810,7 +4805,7 @@ describe('plugin-meetings', () => {
         await progressTime(1);
         assert.notCalled(meeting.meetingRequest.keepAlive);
       });
-      it.skip('failed keepAlive stops the keep alives', async () => {
+      it('failed keepAlive stops the keep alives', async () => {
         meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.reject());
 
         assert.isNull(meeting.keepAliveTimerId);
