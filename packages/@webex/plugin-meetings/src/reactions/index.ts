@@ -1,5 +1,6 @@
 import {REACTION_RELAY_TYPES} from './constants';
-import {Reaction, Sender, RelayEvent, ProcessedReaction} from './reactions.type';
+import {Reaction, Sender, RelayEvent, ProcessedReaction, reactionCallback} from './reactions.type';
+// eslint-disable-next-line import/no-cycle
 import Members from '../members/index';
 
 /**
@@ -7,7 +8,6 @@ import Members from '../members/index';
  * @exports
  * @class Reactions
  */
-
 export default class Reactions {
   members: Members;
   llm: any;
@@ -46,10 +46,10 @@ export default class Reactions {
   /**
    * Subscribes to send reactions data to given callback as it arrives.
    *
-   * @param {Function} callback
+   * @param {reactionCallback} callback
    * @returns {void}
    */
-  subscribe(callback: (value: ProcessedReaction) => void) {
+  subscribe(callback: reactionCallback) {
     this.processEvent = (e) => {
       if (e.data.relayType === REACTION_RELAY_TYPES.REACTION) {
         const processedReaction = this.processReaction(e.data.reaction, e.data.sender);

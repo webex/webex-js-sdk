@@ -3803,7 +3803,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Process reactions
    * @private
-   * @returns {<void>} a promise to process reactions
+   * @returns {void} a promise to process reactions
    */
   private receiveReactions() {
     try {

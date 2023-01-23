@@ -58,3 +58,5 @@ export type ProcessedReaction = {
     name: string;
   };
 };
+
+export type reactionCallback = (value: ProcessedReaction) => void;
