@@ -13,7 +13,7 @@ import Members from '@webex/plugin-meetings/src/members';
 import Reactions from '@webex/plugin-meetings/src/reactions';
 import {REACTION_RELAY_TYPES} from '@webex/plugin-meetings/src/reactions/constants';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   let webex = null;
   let reactions = null;
   let members = null;
