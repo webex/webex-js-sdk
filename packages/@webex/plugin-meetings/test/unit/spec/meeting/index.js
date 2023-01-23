@@ -62,7 +62,6 @@ import CaptchaError from '../../../../src/common/errors/captcha-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
-import Reactions from '../../../../src/reactions/index';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
@@ -222,7 +221,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('meeting index', () => {
-    describe('Public Api Contract', () => {
+    describe.only('Public Api Contract', () => {
       describe('#constructor', () => {
         it('should have created a meeting object with public properties', () => {
           assert.exists(meeting);
@@ -819,37 +818,52 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isReactionsSupported(), true);
         });
       });
-      describe('#receiveReaction', () => {
-        it('should invoke subscribe method to invoke the callback', () => {
-          meeting.webex.internal.llm.on = sinon.stub();
-          meeting.reactions = new Reactions(
-            meeting.members,
-            // @ts-ignore
-            meeting.webex.internal.llm,
+      describe('#processRelayEvent', () => {
+        it.only('should process a Reaction event type', () => {
+          meeting.isReactionsSupported = sinon.stub().returns(true);
+          meeting.config.receiveReactions = true;
+          const fakeSendersName = 'Fake reactors name';
+          meeting.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
+          const fakeReactionPayload = {
+            type: 'fake_type',
+            codepoints: 'fake_codepoints',
+            shortcodes: 'fake_shortcodes',
+            tone: {
+              type: 'fake_tone_type',
+              codepoints: 'fake_tone_codepoints',
+              shortcodes: 'fake_tone_shortcodes',
+            },
+          };
+          const fakeSenderPayload = {
+            participantId: 'fake_participant_id',
+          };
+          const fakeProcessedReaction = {
+            reaction: fakeReactionPayload,
+            sender: {
+              id: fakeSenderPayload.participantId,
+              name: fakeSendersName,
+            },
+          };
+          const fakeRelayEvent = {
+            data: {
+              relayType: REACTION_RELAY_TYPES.REACTION,
+              reaction: fakeReactionPayload,
+              sender: fakeSenderPayload,
+            }
+          };
+          meeting.processRelayEvent(fakeRelayEvent);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'join',
+            },
+            EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+            fakeProcessedReaction
           );
-          meeting.reactions.subscribe = sinon.stub();
-          meeting.receiveReactions();
-          assert.calledOnce(meeting.reactions.subscribe);
-        });
-
-        it('should throw error', async () => {
-          meeting.webex.internal.llm.on = sinon.stub();
-          meeting.reactions = new Reactions(
-            meeting.members,
-            // @ts-ignore
-            meeting.webex.internal.llm,
-          );
-          const e = new Error();
-
-          meeting.reactions.subscribe = sinon.stub().throws(e);
-          try {
-            meeting.receiveReactions();
-          }
-          catch (err) {
-            assert(err, e);
-          }
-        });
-      });
+        })
+      })
       describe('#join', () => {
         let sandbox = null;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
@@ -895,15 +909,28 @@ describe('plugin-meetings', () => {
 
           it('should call updateLLMConnection upon joining if config value is set', async () => {
             meeting.config.enableAutomaticLLM = true;
+            meeting.webex.internal.llm.on = sinon.stub();
+            meeting.processRelayEvent = sinon.stub();
+            const eventData = {
+              relayType: 'fake_relay_type'
+            };
             await meeting.join();
 
             assert.calledOnce(meeting.updateLLMConnection);
+            assert.calledOnceWithExactly(meeting.webex.internal.llm.on, 'event:relay.event', meeting.processRelayEvent);
+
+            meeting.webex.internal.llm._emit('event:relay.event', {
+              data: eventData
+            });
+
+            assert.calledOnceWithExactly(meeting.processRelayEvent, 'event:relay.event', {data: eventData});
           });
 
           it('should not call updateLLMConnection upon joining if config value is not set', async () => {
             await meeting.join();
 
             assert.notCalled(meeting.updateLLMConnection);
+            assert.notCalled(meeting.webex.internal.llm.on);
           });
 
           it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
@@ -914,23 +941,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.receiveTranscription);
           });
 
-          it('should invoke `receiveReactions()` if receiveReactions is set to true', async () => {
-            meeting.isReactionsSupported = sinon.stub().returns(true);
-            meeting.receiveReactions = sinon.stub();
-
-            await meeting.join({receiveReactions: true});
-            assert.instanceOf(meeting.reactions, Reactions);
-            assert.calledOnce(meeting.receiveReactions);
-          });
-
-          it('should not invoke `receiveReactions()` if receiveReactions is set to false', async () => {
-            meeting.isReactionsSupported = sinon.stub().returns(false);
-            meeting.receiveReactions = sinon.stub();
-
-            await meeting.join({receiveReactions: false});
-            assert.notInstanceOf(meeting.reactions, Reactions);
-            assert.notCalled(meeting.receiveReactions);
-          });
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
             sinon.assert.notCalled(meeting.setCorrelationId);

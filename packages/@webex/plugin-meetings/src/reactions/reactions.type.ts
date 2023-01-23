@@ -1,5 +1,3 @@
-import {REACTION_RELAY_TYPES} from './constants';
-
 export type EmoticonData = {
   type: string;
   codepoints?: string;
@@ -43,14 +41,6 @@ export type Sender = {
   participantId: string;
 };
 
-export type RelayEvent = {
-  data: {
-    relayType: (typeof REACTION_RELAY_TYPES)[keyof typeof REACTION_RELAY_TYPES];
-    reaction: Reaction;
-    sender: Sender;
-  };
-};
-
 export type ProcessedReaction = {
   reaction: Reaction;
   sender: {
@@ -58,5 +48,3 @@ export type ProcessedReaction = {
     name: string;
   };
 };
-
-export type reactionCallback = (value: ProcessedReaction) => void;
