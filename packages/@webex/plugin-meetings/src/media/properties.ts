@@ -1,4 +1,4 @@
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {ConnectionState, Event} from '@webex/internal-media-core';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -214,7 +214,7 @@ export default class MediaProperties {
    */
   waitForMediaConnectionConnected() {
     const isConnected = () =>
-      this.webrtcMediaConnection.getConnectionState() === MC.ConnectionState.Connected;
+      this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
 
     if (isConnected()) {
       return Promise.resolve();
@@ -230,20 +230,17 @@ export default class MediaProperties {
 
         if (isConnected()) {
           clearTimeout(timer);
-          this.webrtcMediaConnection.off(
-            MC.Event.CONNECTION_STATE_CHANGED,
-            connectionStateListener
-          );
+          this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
           resolve();
         }
       };
 
       timer = setTimeout(() => {
-        this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+        this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
         reject();
       }, PC_BAIL_TIMEOUT);
 
-      this.webrtcMediaConnection.on(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+      this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
     });
   }
 
