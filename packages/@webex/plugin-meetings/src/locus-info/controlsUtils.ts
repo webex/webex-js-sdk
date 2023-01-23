@@ -92,6 +92,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.entryExitTone, current?.entryExitTone) &&
         (previous?.entryExitTone || current?.entryExitTone)
       ),
+
+      hasBreakoutChanged: !isEqual(previous?.breakout, current?.breakout),
     },
   };
 };

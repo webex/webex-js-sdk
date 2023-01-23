@@ -53,6 +53,7 @@
     "@webex/plugin-people": "workspace:^",
     "@webex/plugin-rooms": "workspace:^",
     "@webex/webex-core": "workspace:^",
+    "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
     "btoa": "^1.2.1",
     "dotenv": "^4.0.0",
