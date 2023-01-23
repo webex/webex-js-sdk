@@ -221,7 +221,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('meeting index', () => {
-    describe.only('Public Api Contract', () => {
+    describe('Public Api Contract', () => {
       describe('#constructor', () => {
         it('should have created a meeting object with public properties', () => {
           assert.exists(meeting);
@@ -819,7 +819,7 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#processRelayEvent', () => {
-        it.only('should process a Reaction event type', () => {
+        it('should process a Reaction event type', () => {
           meeting.isReactionsSupported = sinon.stub().returns(true);
           meeting.config.receiveReactions = true;
           const fakeSendersName = 'Fake reactors name';
