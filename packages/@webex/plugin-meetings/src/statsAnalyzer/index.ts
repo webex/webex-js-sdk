@@ -57,6 +57,22 @@ const getSimplifiedMediaType = (mediaType) => {
   return null;
 };
 
+const emptySender = {
+  trackLabel: '',
+  maxPacketLossRatio: 0,
+  availableBandwidth: 0,
+  bytesSent: 0,
+  meanRemoteJitter: [],
+  meanRoundTripTime: [],
+};
+
+const emptyReceiver = {
+  availableBandwidth: 0,
+  bytesReceived: 0,
+  meanRtpJitter: [],
+  meanRoundTripTime: [],
+};
+
 /**
  * Stats Analyzer class that will emit events based on detected quality
  *
@@ -394,21 +410,9 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (isSender && !this.statsResults[type].send) {
-      this.statsResults[type].send = {
-        trackLabel: '',
-        maxPacketLossRatio: 0,
-        availableBandwidth: 0,
-        bytesSent: 0,
-        meanRemoteJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults[type].send = cloneDeep(emptySender);
     } else if (!isSender && !this.statsResults[type].recv) {
-      this.statsResults[type].recv = {
-        availableBandwidth: 0,
-        bytesReceived: 0,
-        meanRtpJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults[type].recv = cloneDeep(emptyReceiver);
     }
 
     if (!this.statsResults.resolutions[type]) {
@@ -416,21 +420,9 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (isSender && !this.statsResults.resolutions[type].send) {
-      this.statsResults.resolutions[type].send = {
-        trackLabel: '',
-        maxPacketLossRatio: 0,
-        availableBandwidth: 0,
-        bytesSent: 0,
-        meanRemoteJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults.resolutions[type].send = cloneDeep(emptySender);
     } else if (!isSender && !this.statsResults.resolutions[type].recv) {
-      this.statsResults.resolutions[type].recv = {
-        availableBandwidth: 0,
-        bytesReceived: 0,
-        meanRtpJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults.resolutions[type].recv = cloneDeep(emptyReceiver);
     }
 
     if (!this.statsResults.internal[type]) {
@@ -438,21 +430,9 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (isSender && !this.statsResults.internal[type].send) {
-      this.statsResults.internal[type].send = {
-        trackLabel: '',
-        maxPacketLossRatio: 0,
-        availableBandwidth: 0,
-        bytesSent: 0,
-        meanRemoteJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults.internal[type].send = cloneDeep(emptySender);
     } else if (!isSender && !this.statsResults.internal[type].recv) {
-      this.statsResults.internal[type].recv = {
-        availableBandwidth: 0,
-        bytesReceived: 0,
-        meanRtpJitter: [],
-        meanRoundTripTime: [],
-      };
+      this.statsResults.internal[type].recv = cloneDeep(emptyReceiver);
     }
 
     switch (getStatsResult.type) {
