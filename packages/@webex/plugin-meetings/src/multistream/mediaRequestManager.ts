@@ -131,21 +131,17 @@ export class MediaRequestManager {
           totalMacroblocksRequested += mr.codecInfo.maxFs * mr.receiveSlots.length;
         }
       });
-      if (
-        totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit ||
-        i === maxFsLimits.length - 1
-      ) {
+      if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
         if (i !== 0) {
           LoggerProxy.logger.warn(
             `multistream:mediaRequestManager --> too many requests with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
           );
         }
-        if (i === maxFsLimits.length - 1) {
-          LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> you are requesting too many streams, consider reducing the number of requests`
-          );
-        }
         break;
+      } else if (i === maxFsLimits.length - 1) {
+        LoggerProxy.logger.warn(
+          `multistream:mediaRequestManager --> even with frame size limited to ${maxFsLimits[i]} you are still requesting too many streams, consider reducing the number of requests`
+        );
       }
     }
 
