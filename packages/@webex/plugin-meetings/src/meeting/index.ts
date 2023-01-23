@@ -4012,9 +4012,12 @@ export default class Meeting extends StatelessWebexPlugin {
               LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve transcription!');
             }
           }
-          // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveReactions || options.receiveReactions) {
-            if (this.isReactionsSupported()) {
+          if (
+            // @ts-ignore - config coming from registerPlugin
+            (this.config.receiveReactions || options.receiveReactions) &&
+            this.isReactionsSupported()
+          ) {
+            if (!this.reactions) {
               this.reactions = new Reactions(
                 this.members,
                 // @ts-ignore
