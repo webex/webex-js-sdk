@@ -16,7 +16,7 @@ require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
-const generateTestUsers = (options) => testUser.create({count: options.count})
+const generateTestUsers = (options) => testUser.create({count: options.count, config: options.config, whistler: options.whistler})
   .then(async (userSet) => {
     if (userSet.length !== options.count) {
       return Promise.reject(new Error('Test users not created'));

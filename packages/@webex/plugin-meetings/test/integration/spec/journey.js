@@ -4,8 +4,7 @@
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
-
-import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
+import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
 
 import DEFAULT_RESOLUTIONS from '../../../src/config';
 import testUtils from '../../utils/testUtils';
@@ -22,7 +21,10 @@ skipInNode(describe)('plugin-meetings', () => {
   describe('journey', () => {
     before(() => webexTestUsers.generateTestUsers({
       count: 3,
-      whistler: process.env.WHISTLER || process.env.JENKINS
+      whistler: process.env.WHISTLER || process.env.JENKINS,
+      config: {
+        orgId: '586a2968-a793-4914-b194-5ebffff2c88b',
+      },
     })
       .then((users) => {
         userSet = users;
@@ -40,6 +42,10 @@ skipInNode(describe)('plugin-meetings', () => {
       })
       .then(() => Promise.all([testUtils.syncAndEndMeeting(alice),
         testUtils.syncAndEndMeeting(bob)]))
+      .then(() => {
+        console.log('### TEST DEVICE RECEIVED ORG ID', alice.webex.internal.device.orgId);
+        console.log('### TEST WHISTLER', {whistler: process.env.WHISTLER || process.env.JENKINS});
+      })
       .catch((error) => {
         throw error;
       }));

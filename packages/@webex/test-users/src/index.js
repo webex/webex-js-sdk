@@ -153,6 +153,7 @@ function requestWithAuth(options) {
  * @returns {Promise.<TestUserObject>}
  */
 export function createTestUser(options = {}) {
+  console.log('### TEST - using cig');
   const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
   const idbrokerUrl = options.idbrokerUrl || process.env.IDBROKER_BASE_URL;
@@ -196,6 +197,8 @@ export function createTestUser(options = {}) {
     scopes: options.scope || process.env.WEBEX_SCOPE,
     type: options.type
   };
+
+  console.log('### TEST - BODY', JSON.stringify(body));
 
   return requestWithAuth({
     method: 'POST',
