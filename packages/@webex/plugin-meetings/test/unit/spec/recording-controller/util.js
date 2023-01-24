@@ -1,5 +1,5 @@
 import RecordingUtil from '@webex/plugin-meetings/src/recording-controller/util';
-import RecordingAction from '@Webex/plugin-meetings/src/recording-controller/enums';
+import RecordingAction from '@webex/plugin-meetings/src/recording-controller/enums';
 import { assert } from 'chai';
 
 describe('plugin-meetings', () => {
