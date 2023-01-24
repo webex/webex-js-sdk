@@ -56,7 +56,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
 }
 
 type Options = {
-  resolution?: RemoteVideoResolution; // applies only to groups of type MC.MediaType.VideoMain and MC.MediaType.VideoSlides
+  resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
 };
 
 export type RemoteMediaId = string;

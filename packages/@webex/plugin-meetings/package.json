@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "^1.32.0",
+    "@webex/internal-media-core": "1.32.1",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-llm": "workspace:^",

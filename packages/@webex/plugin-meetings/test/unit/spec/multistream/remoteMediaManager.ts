@@ -1,7 +1,7 @@
 /* eslint-disable require-jsdoc */
 import EventEmitter from 'events';
 
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 import {
   Configuration,
   Event,
@@ -17,15 +17,13 @@ import {CSI, ReceiveSlotId} from '@webex/plugin-meetings/src/multistream/receive
 import testUtils from '../../../utils/testUtils';
 
 class FakeSlot extends EventEmitter {
-  // @ts-ignore
-  public mediaType: MC.MediaType;
+  public mediaType: MediaType;
 
   public id: string;
 
   public csi?: number;
 
-  // @ts-ignore
-  constructor(mediaType: MC.MediaType, id: string) {
+  constructor(mediaType: MediaType, id: string) {
     super();
     this.mediaType = mediaType;
     this.id = id;
@@ -117,12 +115,12 @@ describe('RemoteMediaManager', () => {
   let fakeVideoSlot;
 
   beforeEach(() => {
-    fakeAudioSlot = new FakeSlot(MC.MediaType.AudioMain, 'fake audio slot');
-    fakeVideoSlot = new FakeSlot(MC.MediaType.VideoMain, 'fake video slot');
+    fakeAudioSlot = new FakeSlot(MediaType.AudioMain, 'fake audio slot');
+    fakeVideoSlot = new FakeSlot(MediaType.VideoMain, 'fake video slot');
 
     fakeReceiveSlotManager = {
       allocateSlot: sinon.stub().callsFake((mediaType) => {
-        if (mediaType === MC.MediaType.AudioMain) {
+        if (mediaType === MediaType.AudioMain) {
           return Promise.resolve(fakeAudioSlot);
         }
 
@@ -178,8 +176,8 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.start();
 
       // check that the 2nd start() creates slots and media requests and is not a no-op
-      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.AudioMain);
-      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
 
       assert.called(fakeMediaRequestManagers.audio.addRequest);
       assert.called(fakeMediaRequestManagers.video.addRequest);
@@ -225,7 +223,7 @@ describe('RemoteMediaManager', () => {
       await testUtils.flushPromises();
 
       assert.callCount(fakeReceiveSlotManager.allocateSlot, 5);
-      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.AudioMain);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
 
       assert.isNotNull(createdAudioGroup);
       if (createdAudioGroup) {
@@ -233,7 +231,7 @@ describe('RemoteMediaManager', () => {
         assert.isTrue(
           createdAudioGroup
             .getRemoteMedia()
-            .every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain)
+            .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
         );
         assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
       }
@@ -281,7 +279,7 @@ describe('RemoteMediaManager', () => {
       // even though our "big one" layout is not the default one, the remote media manager should still
       // preallocate enough video receive slots for it up front
       assert.callCount(fakeReceiveSlotManager.allocateSlot, 99);
-      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
     });
 
     it('starts with the initial layout', async () => {
@@ -513,7 +511,7 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.setLayout('Stage');
 
       assert.callCount(fakeReceiveSlotManager.allocateSlot, 9);
-      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
     });
 
     it('releases slots when switching to layout that requires less active speaker slots', async () => {
@@ -540,7 +538,7 @@ describe('RemoteMediaManager', () => {
       fakeReceiveSlotManager.releaseSlot.getCalls().forEach((call) => {
         const slot = call.args[0];
 
-        assert.strictEqual(slot.mediaType, MC.MediaType.VideoMain);
+        assert.strictEqual(slot.mediaType, MediaType.VideoMain);
       });
     });
 
@@ -622,7 +620,7 @@ describe('RemoteMediaManager', () => {
           slotCounter += 1;
           const newSlotId = `fake video slot ${slotCounter}`;
 
-          fakeSlots[newSlotId] = new FakeSlot(MC.MediaType.VideoMain, newSlotId);
+          fakeSlots[newSlotId] = new FakeSlot(MediaType.VideoMain, newSlotId);
           return fakeSlots[newSlotId];
         });
 
@@ -1125,7 +1123,7 @@ describe('RemoteMediaManager', () => {
 
       // new slot should be allocated
       assert.calledOnce(fakeReceiveSlotManager.allocateSlot);
-      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
 
       // and a media request sent out
       assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
@@ -1154,7 +1152,7 @@ describe('RemoteMediaManager', () => {
 
       // new slot should be allocated
       assert.calledOnce(fakeReceiveSlotManager.allocateSlot);
-      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
 
       // but no media requests sent out
       assert.notCalled(fakeMediaRequestManagers.video.addRequest);
@@ -1183,7 +1181,7 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.start();
       await remoteMediaManager.setLayout('Stage');
 
-      const fakeNewSlot = new FakeSlot(MC.MediaType.VideoMain, 'fake video slot');
+      const fakeNewSlot = new FakeSlot(MediaType.VideoMain, 'fake video slot');
       const fakeRequestId = 'fake request id';
 
       fakeReceiveSlotManager.allocateSlot.resolves(fakeNewSlot);

@@ -1,7 +1,7 @@
 /* eslint-disable require-jsdoc */
 import EventEmitter from 'events';
 
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
@@ -16,7 +16,7 @@ describe('RemoteMedia', () => {
   beforeEach(() => {
     fakeStream = {id: 'fake stream'};
     fakeReceiveSlot = new EventEmitter();
-    fakeReceiveSlot.mediaType = MC.MediaType.AudioMain;
+    fakeReceiveSlot.mediaType = MediaType.AudioMain;
     fakeReceiveSlot.memberId = '12345678';
     fakeReceiveSlot.csi = 999;
     fakeReceiveSlot.sourceState = 'avatar';

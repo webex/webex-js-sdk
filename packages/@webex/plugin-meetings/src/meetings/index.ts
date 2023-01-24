@@ -4,7 +4,7 @@ import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {setLogger} from '@webex/internal-media-core';
 
 import 'webrtc-adapter';
 
@@ -461,7 +461,7 @@ export default class Meetings extends WebexPlugin {
       LoggerProxy.set(this.webex.logger);
 
       mediaLogger = new MediaLogger();
-      MC.setLogger(mediaLogger);
+      setLogger(mediaLogger);
 
       /**
        * The MeetingInfo object to interact with server

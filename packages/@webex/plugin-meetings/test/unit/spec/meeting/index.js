@@ -22,7 +22,7 @@ import {
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
 } from '@webex/plugin-meetings/src/constants';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {ConnectionState, Event, Errors, ErrorType, RemoteTrackType} from '@webex/internal-media-core';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -959,7 +959,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           fakeMediaConnection = {
             close: sinon.stub(),
-            getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             initiateOffer: sinon.stub().resolves({}),
             on: sinon.stub(),
           };
@@ -1207,7 +1207,7 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           fakeMediaConnection.getConnectionState = sinon
             .stub()
-            .returns(MC.ConnectionState.Connecting);
+            .returns(ConnectionState.Connecting);
           const clock = sinon.useFakeTimers();
           const media = meeting.addMedia({
             mediaSettings: {},
@@ -3538,19 +3538,19 @@ describe('plugin-meetings', () => {
 
         it('should register for all the correct RoapMediaConnection events', () => {
           meeting.setupMediaConnectionListeners();
-          assert.isFunction(eventListeners[MC.Event.ROAP_STARTED]);
-          assert.isFunction(eventListeners[MC.Event.ROAP_DONE]);
-          assert.isFunction(eventListeners[MC.Event.ROAP_FAILURE]);
-          assert.isFunction(eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]);
-          assert.isFunction(eventListeners[MC.Event.REMOTE_TRACK_ADDED]);
-          assert.isFunction(eventListeners[MC.Event.CONNECTION_STATE_CHANGED]);
+          assert.isFunction(eventListeners[Event.ROAP_STARTED]);
+          assert.isFunction(eventListeners[Event.ROAP_DONE]);
+          assert.isFunction(eventListeners[Event.ROAP_FAILURE]);
+          assert.isFunction(eventListeners[Event.ROAP_MESSAGE_TO_SEND]);
+          assert.isFunction(eventListeners[Event.REMOTE_TRACK_ADDED]);
+          assert.isFunction(eventListeners[Event.CONNECTION_STATE_CHANGED]);
         });
 
         it('should trigger a media:ready event when REMOTE_TRACK_ADDED is fired', () => {
           meeting.setupMediaConnectionListeners();
-          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({
+          eventListeners[Event.REMOTE_TRACK_ADDED]({
             track: 'track',
-            type: MC.RemoteTrackType.AUDIO,
+            type: RemoteTrackType.AUDIO,
           });
           assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
@@ -3558,9 +3558,9 @@ describe('plugin-meetings', () => {
             stream: true,
           });
 
-          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({
+          eventListeners[Event.REMOTE_TRACK_ADDED]({
             track: 'track',
-            type: MC.RemoteTrackType.VIDEO,
+            type: RemoteTrackType.VIDEO,
           });
           assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
@@ -3568,9 +3568,9 @@ describe('plugin-meetings', () => {
             stream: true,
           });
 
-          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({
+          eventListeners[Event.REMOTE_TRACK_ADDED]({
             track: 'track',
-            type: MC.RemoteTrackType.SCREENSHARE_VIDEO,
+            type: RemoteTrackType.SCREENSHARE_VIDEO,
           });
           assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
@@ -3620,51 +3620,51 @@ describe('plugin-meetings', () => {
           };
 
           it('should send metrics for SdpOfferCreationError error', () => {
-            const fakeError = new MC.Errors.SdpOfferCreationError(fakeErrorMessage, {
+            const fakeError = new Errors.SdpOfferCreationError(fakeErrorMessage, {
               name: fakeErrorName,
               cause: {name: fakeRootCauseName},
             });
 
-            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+            eventListeners[Event.ROAP_FAILURE](fakeError);
 
             checkMetricSent(eventType.LOCAL_SDP_GENERATED);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
-              MC.Errors.ErrorCode.SdpOfferCreationError,
+              Errors.ErrorCode.SdpOfferCreationError,
               fakeErrorMessage,
               fakeRootCauseName
             );
           });
 
           it('should send metrics for SdpOfferHandlingError error', () => {
-            const fakeError = new MC.Errors.SdpOfferHandlingError(fakeErrorMessage, {
+            const fakeError = new Errors.SdpOfferHandlingError(fakeErrorMessage, {
               name: fakeErrorName,
               cause: {name: fakeRootCauseName},
             });
 
-            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+            eventListeners[Event.ROAP_FAILURE](fakeError);
 
             checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
-              MC.Errors.ErrorCode.SdpOfferHandlingError,
+              Errors.ErrorCode.SdpOfferHandlingError,
               fakeErrorMessage,
               fakeRootCauseName
             );
           });
 
           it('should send metrics for SdpAnswerHandlingError error', () => {
-            const fakeError = new MC.Errors.SdpAnswerHandlingError(fakeErrorMessage, {
+            const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
               name: fakeErrorName,
               cause: {name: fakeRootCauseName},
             });
 
-            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+            eventListeners[Event.ROAP_FAILURE](fakeError);
 
             checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
-              MC.Errors.ErrorCode.SdpAnswerHandlingError,
+              Errors.ErrorCode.SdpAnswerHandlingError,
               fakeErrorMessage,
               fakeRootCauseName
             );
@@ -3672,15 +3672,15 @@ describe('plugin-meetings', () => {
 
           it('should send metrics for SdpError error', () => {
             // SdpError is usually without a cause
-            const fakeError = new MC.Errors.SdpError(fakeErrorMessage, {name: fakeErrorName});
+            const fakeError = new Errors.SdpError(fakeErrorMessage, {name: fakeErrorName});
 
-            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+            eventListeners[Event.ROAP_FAILURE](fakeError);
 
             checkMetricSent(eventType.LOCAL_SDP_GENERATED);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
-              MC.Errors.ErrorCode.SdpError,
+              Errors.ErrorCode.SdpError,
               fakeErrorMessage,
               fakeErrorName
             );
@@ -3688,24 +3688,24 @@ describe('plugin-meetings', () => {
 
           it('should send metrics for IceGatheringError error', () => {
             // IceGatheringError is usually without a cause
-            const fakeError = new MC.Errors.IceGatheringError(fakeErrorMessage, {
+            const fakeError = new Errors.IceGatheringError(fakeErrorMessage, {
               name: fakeErrorName,
             });
 
-            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+            eventListeners[Event.ROAP_FAILURE](fakeError);
 
             checkMetricSent(eventType.LOCAL_SDP_GENERATED);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
-              MC.Errors.ErrorCode.IceGatheringError,
+              Errors.ErrorCode.IceGatheringError,
               fakeErrorMessage,
               fakeErrorName
             );
           });
         });
 
-        describe('handles MC.Event.ROAP_MESSAGE_TO_SEND correctly', () => {
+        describe('handles Event.ROAP_MESSAGE_TO_SEND correctly', () => {
           let sendRoapOKStub;
           let sendRoapMediaRequestStub;
           let sendRoapAnswerStub;
@@ -3723,7 +3723,7 @@ describe('plugin-meetings', () => {
           });
 
           it('handles OK message correctly', () => {
-            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {messageType: 'OK', seq: 1},
             });
 
@@ -3742,7 +3742,7 @@ describe('plugin-meetings', () => {
           });
 
           it('handles OFFER message correctly', () => {
-            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
                 messageType: 'OFFER',
                 seq: 1,
@@ -3768,7 +3768,7 @@ describe('plugin-meetings', () => {
           });
 
           it('handles ANSWER message correctly', () => {
-            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
                 messageType: 'ANSWER',
                 seq: 10,
@@ -3795,7 +3795,7 @@ describe('plugin-meetings', () => {
           it('sends metrics if fails to send roap ANSWER message', async () => {
             sendRoapAnswerStub.rejects(new Error('sending answer failed'));
 
-            await eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+            await eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
                 messageType: 'ANSWER',
                 seq: 10,
@@ -3817,9 +3817,9 @@ describe('plugin-meetings', () => {
             );
           });
 
-          [MC.ErrorType.CONFLICT, MC.ErrorType.DOUBLECONFLICT].forEach((errorType) =>
+          [ErrorType.CONFLICT, ErrorType.DOUBLECONFLICT].forEach((errorType) =>
             it(`handles ERROR message indicating glare condition correctly (errorType=${errorType})`, () => {
-              eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+              eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
                 roapMessage: {
                   messageType: 'ERROR',
                   seq: 10,
@@ -3850,11 +3850,11 @@ describe('plugin-meetings', () => {
           );
 
           it('handles ERROR message indicating other errors correctly', () => {
-            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
                 messageType: 'ERROR',
                 seq: 10,
-                errorType: MC.ErrorType.FAILED,
+                errorType: ErrorType.FAILED,
                 tieBreaker: 12345,
               },
             });
@@ -3864,7 +3864,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(sendRoapErrorStub);
             assert.calledWith(sendRoapErrorStub, {
               seq: 10,
-              errorType: MC.ErrorType.FAILED,
+              errorType: ErrorType.FAILED,
               mediaId: meeting.mediaId,
               correlationId: meeting.correlationId,
             });

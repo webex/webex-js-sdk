@@ -1,5 +1,10 @@
 /* eslint-disable valid-jsdoc */
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {
+  MediaType,
+  ReceiveSlot as WcmeReceiveSlot,
+  ReceiveSlotEvents as WcmeReceiveSlotEvents,
+  SourceState,
+} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -8,8 +13,7 @@ export const ReceiveSlotEvents = {
   SourceUpdate: 'sourceUpdate',
 };
 
-// @ts-ignore
-export type SourceState = MC.SourceState;
+export type {SourceState} from '@webex/internal-media-core';
 export type CSI = number;
 export type MemberId = string;
 export type ReceiveSlotId = string;
@@ -23,36 +27,31 @@ export type FindMemberIdCallback = (csi: CSI) => MemberId | undefined;
  * for example some participant's main video or audio
  */
 export class ReceiveSlot extends EventsScope {
-  // @ts-ignore
-  private readonly mcReceiveSlot: MC.ReceiveSlot;
+  private readonly mcReceiveSlot: WcmeReceiveSlot;
 
   private readonly findMemberIdCallback: FindMemberIdCallback;
 
   public readonly id: ReceiveSlotId;
 
-  // @ts-ignore
-  public readonly mediaType: MC.MediaType;
+  public readonly mediaType: MediaType;
 
   #memberId?: MemberId;
 
   #csi?: CSI;
 
-  // @ts-ignore
-  #sourceState: MC.SourceState;
+  #sourceState: SourceState;
 
   /**
    * constructor - don't use it directly, you should always use meeting.receiveSlotManager.allocateSlot()
    * to create any receive slots
    *
-   * @param {MC.MediaType} mediaType
-   * @param {MC.ReceiveSlot} mcReceiveSlot
+   * @param {MediaType} mediaType
+   * @param {ReceiveSlot} mcReceiveSlot
    * @param {FindMemberIdCallback} findMemberIdCallback callback for finding memberId for given CSI
    */
   constructor(
-    // @ts-ignore
-    mediaType: MC.MediaType,
-    // @ts-ignore
-    mcReceiveSlot: MC.ReceiveSlot,
+    mediaType: MediaType,
+    mcReceiveSlot: WcmeReceiveSlot,
     findMemberIdCallback: FindMemberIdCallback
   ) {
     super();
@@ -99,9 +98,8 @@ export class ReceiveSlot extends EventsScope {
     };
 
     this.mcReceiveSlot.on(
-      MC.ReceiveSlotEvents.SourceUpdate,
-      // @ts-ignore
-      (state: MC.SourceState, csi?: number) => {
+      WcmeReceiveSlotEvents.SourceUpdate,
+      (state: SourceState, csi?: number) => {
         LoggerProxy.logger.log(
           `ReceiveSlot#setupEventListeners --> got source update on receive slot ${this.id}, mediaType=${this.mediaType}, csi=${csi}, state=${state}`
         );
@@ -130,8 +128,7 @@ export class ReceiveSlot extends EventsScope {
   /**
    * The underlying WCME receive slot
    */
-  // @ts-ignore
-  get wcmeReceiveSlot(): MC.ReceiveSlot {
+  get wcmeReceiveSlot(): WcmeReceiveSlot {
     return this.mcReceiveSlot;
   }
 

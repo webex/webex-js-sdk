@@ -1402,12 +1402,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.18.9, @babel/runtime@npm:^7.7.2, @babel/runtime@npm:^7.8.4":
+"@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.7.2, @babel/runtime@npm:^7.8.4":
   version: 7.20.7
   resolution: "@babel/runtime@npm:7.20.7"
   dependencies:
     regenerator-runtime: "npm:^0.13.11"
   checksum: b22b904439569fa3b28627fc398d9bb9619f14bc9165cdf63ab5fa248660a10104ae81514607cbe55e4e26fe0d4048a89263f47f1f3da1e37f8e670b95acf244
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.18.9":
+  version: 7.20.13
+  resolution: "@babel/runtime@npm:7.20.13"
+  dependencies:
+    regenerator-runtime: "npm:^0.13.11"
+  checksum: 0e09b4915318248aeeccdf6dc6a8ccdeedbe4b7187fa4159eaa569c4a407c36f3b8689296296b25246671987efe2253dd6e3bab63a40deedcdbd49b8845204e6
   languageName: node
   linkType: hard
 
@@ -4061,9 +4070,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:^1.32.0":
-  version: 1.32.0
-  resolution: "@webex/internal-media-core@npm:1.32.0"
+"@webex/internal-media-core@npm:1.32.1":
+  version: 1.32.1
+  resolution: "@webex/internal-media-core@npm:1.32.1"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:1.20.0"
@@ -4075,7 +4084,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.1"
     xstate: "npm:^4.30.6"
-  checksum: 482ef890a0508339b130292cfe01f035899565f140ec0397afc0bb965a89dfd8f9aad70ab70221f852f369b324e2abdb682717b6853221c874f2a7b8e63e58e2
+  checksum: 215b924e4c2291ba5a2bb471f16a2469c5080f2b09e892131d4005a9ef0d98d7701686cd3b3b07040a2968e06312307b59e85fbda7625ece90ccaf8668c536fa
   languageName: node
   linkType: hard
 
@@ -4655,7 +4664,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:^1.32.0"
+    "@webex/internal-media-core": "npm:1.32.1"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"

@@ -1,4 +1,4 @@
-import * as internalMediaModule from '@webex/plugin-meetings/src/media/internal-media-core-wrapper';
+import * as internalMediaModule from '@webex/internal-media-core';
 import Media from '@webex/plugin-meetings/src/media/index';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';

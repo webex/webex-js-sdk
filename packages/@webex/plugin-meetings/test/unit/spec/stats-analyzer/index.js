@@ -2,7 +2,7 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {ConnectionState} from '@webex/internal-media-core';
 
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
@@ -136,7 +136,7 @@ describe('plugin-meetings', () => {
         };
 
         pc = {
-          getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
+          getConnectionState: sinon.stub().returns(ConnectionState.Connected),
           getTransceiverStats: sinon.stub().resolves({
             audio: {
               sender: [fakeStats.audio.sender],
