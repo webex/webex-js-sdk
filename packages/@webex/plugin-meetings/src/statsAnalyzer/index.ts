@@ -37,26 +37,6 @@ export const EVENTS = {
   REMOTE_MEDIA_STOPPED: 'REMOTE_MEDIA_STOPPED',
 };
 
-/**
- * Given a media type, return a simplified version of it.
- *
- * @param {String} mediaType - The complex media type (i.e. `video-send-2`).
- * @returns {string | null} A string of simplified media type or null.
- */
-const getSimplifiedMediaType = (mediaType) => {
-  if (mediaType.includes('share')) {
-    return STATS.SHARE_CORRELATE;
-  }
-  if (mediaType.includes('audio')) {
-    return STATS.AUDIO_CORRELATE;
-  }
-  if (mediaType.includes('video')) {
-    return STATS.VIDEO_CORRELATE;
-  }
-
-  return null;
-};
-
 const emptySender = {
   trackLabel: '',
   maxPacketLossRatio: 0,
@@ -86,7 +66,6 @@ export class StatsAnalyzer extends EventsScope {
   lastEmittedStartStopEvent: any;
   lastMqaDataSent: any;
   lastStatsResults: any;
-  localMQEStats: any;
   meetingMediaStatus: any;
   mqaInterval: NodeJS.Timeout;
   mqaSentCount: any;
@@ -120,20 +99,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastMqaDataSent = {
       resolutions: {},
     };
-    this.lastEmittedStartStopEvent = {
-      audio: {
-        local: undefined,
-        remote: undefined,
-      },
-      video: {
-        local: undefined,
-        remote: undefined,
-      },
-      share: {
-        local: undefined,
-        remote: undefined,
-      },
-    };
+    this.lastEmittedStartStopEvent = {};
   }
 
   /**
@@ -147,17 +113,10 @@ export class StatsAnalyzer extends EventsScope {
     Object.keys(this.statsResults).forEach((mediaType) => {
       if (mediaType.includes('recv')) {
         this.statsResults[mediaType].recv.meanRtpJitter = [];
-        this.statsResults[mediaType].recv.meanRtpJitter = [];
-        this.statsResults[mediaType].recv.meanRtpJitter = [];
       }
 
       if (mediaType.includes('send')) {
         this.statsResults[mediaType].send.meanRemoteJitter = [];
-        this.statsResults[mediaType].send.meanRemoteJitter = [];
-        this.statsResults[mediaType].send.meanRemoteJitter = [];
-
-        this.statsResults[mediaType].send.meanRoundTripTime = [];
-        this.statsResults[mediaType].send.meanRoundTripTime = [];
         this.statsResults[mediaType].send.meanRoundTripTime = [];
       }
     });
@@ -186,7 +145,7 @@ export class StatsAnalyzer extends EventsScope {
     const newMqa = cloneDeep(emptyMqaInterval);
 
     Object.keys(this.statsResults).forEach((mediaType) => {
-      if (mediaType.includes('audio-send')) {
+      if (mediaType.includes('audio-send') || mediaType.includes('audio-share-send')) {
         const audioSender = cloneDeep(emptyAudioTransmit);
 
         getAudioSenderMqa({
@@ -196,7 +155,7 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioTransmit.push(audioSender);
-      } else if (mediaType.includes('audio-recv')) {
+      } else if (mediaType.includes('audio-recv') || mediaType.includes('audio-share-recv')) {
         const audioReceiver = cloneDeep(emptyAudioReceive);
 
         getAudioReceiverMqa({
@@ -206,7 +165,7 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioReceive.push(audioReceiver);
-      } else if (mediaType.includes('video-send')) {
+      } else if (mediaType.includes('video-send') || mediaType.includes('video-share-send')) {
         const videoSender = cloneDeep(emptyVideoTransmit);
 
         getVideoSenderMqa({
@@ -216,47 +175,7 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoTransmit.push(videoSender);
-      } else if (mediaType.includes('video-recv')) {
-        const videoReceiver = cloneDeep(emptyVideoReceive);
-
-        getVideoReceiverMqa({
-          videoReceiver,
-          statsResults: this.statsResults,
-          lastMqaDataSent: this.lastMqaDataSent,
-          mediaType,
-        });
-        newMqa.videoReceive.push(videoReceiver);
-      } else if (mediaType.includes('audio-share-send')) {
-        const audioSender = cloneDeep(emptyAudioTransmit);
-
-        getAudioSenderMqa({
-          audioSender,
-          statsResults: this.statsResults,
-          lastMqaDataSent: this.lastMqaDataSent,
-          mediaType,
-        });
-        newMqa.audioTransmit.push(audioSender);
-      } else if (mediaType.includes('audio-share-recv')) {
-        const audioReceiver = cloneDeep(emptyAudioReceive);
-
-        getAudioReceiverMqa({
-          audioReceiver,
-          statsResults: this.statsResults,
-          lastMqaDataSent: this.lastMqaDataSent,
-          mediaType,
-        });
-        newMqa.audioReceive.push(audioReceiver);
-      } else if (mediaType.includes('video-share-send')) {
-        const videoSender = cloneDeep(emptyVideoTransmit);
-
-        getVideoSenderMqa({
-          videoSender,
-          statsResults: this.statsResults,
-          lastMqaDataSent: this.lastMqaDataSent,
-          mediaType,
-        });
-        newMqa.videoTransmit.push(videoSender);
-      } else if (mediaType.includes('video-share-recv')) {
+      } else if (mediaType.includes('video-recv') || mediaType.includes('video-share-recv')) {
         const videoReceiver = cloneDeep(emptyVideoReceive);
 
         getVideoReceiverMqa({
@@ -274,27 +193,19 @@ export class StatsAnalyzer extends EventsScope {
     // Adding peripheral information
     newMqa.intervalMetadata.peripherals = [];
 
-    let audioTrackLabel = _UNKNOWN_;
-    let videoTrackLabel = _UNKNOWN_;
-
-    // Find track labels
-    Object.keys(this.statsResults).forEach((mediaType) => {
-      if (mediaType.includes('video-send') && this.statsResults[mediaType].trackLabel) {
-        videoTrackLabel = this.statsResults[mediaType].trackLabel;
-      } else if (mediaType.includes('audio-send') && this.statsResults[mediaType].trackLabel) {
-        audioTrackLabel = this.statsResults[mediaType].trackLabel;
-      }
-    });
-
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
-    newMqa.intervalMetadata.peripherals.push({
-      information: audioTrackLabel,
-      name: MEDIA_DEVICES.MICROPHONE,
-    });
-    newMqa.intervalMetadata.peripherals.push({
-      information: videoTrackLabel,
-      name: MEDIA_DEVICES.CAMERA,
-    });
+    if (this.statsResults['audio-send']) {
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults['audio-send']?.trackLabel,
+        name: MEDIA_DEVICES.MICROPHONE,
+      });
+    }
+    if (this.statsResults['video-send']) {
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults['video-send']?.trackLabel,
+        name: MEDIA_DEVICES.CAMERA,
+      });
+    }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
 
@@ -526,7 +437,11 @@ export class StatsAnalyzer extends EventsScope {
     currentValue: number,
     isLocal: boolean
   ) => {
-    if (mediaType !== 'audio' && mediaType !== 'video' && mediaType !== 'share') {
+    if (
+      !mediaType.includes('audio') &&
+      !mediaType.includes('video') &&
+      !mediaType.includes('share')
+    ) {
       throw new Error(`Unsupported mediaType: ${mediaType}`);
     }
 
@@ -534,6 +449,10 @@ export class StatsAnalyzer extends EventsScope {
     if (previousValue === undefined) previousValue = 0;
     // eslint-disable-next-line no-param-reassign
     if (currentValue === undefined) currentValue = 0;
+
+    if (!this.lastEmittedStartStopEvent[mediaType]) {
+      this.lastEmittedStartStopEvent[mediaType] = {};
+    }
 
     const lastEmittedEvent = isLocal
       ? this.lastEmittedStartStopEvent[mediaType].local
@@ -584,8 +503,6 @@ export class StatsAnalyzer extends EventsScope {
           return;
         }
 
-        const simplifiedMediaType = getSimplifiedMediaType(mediaType);
-
         if (this.meetingMediaStatus.expected.sendAudio && mediaType.includes('audio-send')) {
           currentStats = this.statsResults[mediaType].send;
           previousStats = this.lastStatsResults[mediaType].send;
@@ -595,7 +512,7 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
             );
           } else {
             if (
@@ -603,19 +520,19 @@ export class StatsAnalyzer extends EventsScope {
               currentStats.totalAudioEnergy === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Energy present`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Energy present`
               );
             }
 
             if (currentStats.audioLevel === 0) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} level is 0 for the user`
+                `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} level is 0 for the user`
               );
             }
           }
 
           this.emitStartStopEvents(
-            simplifiedMediaType,
+            mediaType,
             previousStats.totalPacketsSent,
             currentStats.totalPacketsSent,
             true
@@ -632,19 +549,19 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsReceived === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
             );
           } else if (
             currentStats.totalSamplesReceived === previousStats.totalSamplesReceived ||
             currentStats.totalSamplesReceived === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} samples received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} samples received`
             );
           }
 
           this.emitStartStopEvents(
-            simplifiedMediaType,
+            mediaType,
             previousStats.totalPacketsReceived,
             currentStats.totalPacketsReceived,
             false
@@ -661,7 +578,7 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
             );
           } else {
             if (
@@ -669,7 +586,7 @@ export class StatsAnalyzer extends EventsScope {
               currentStats.framesEncoded === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Frames Encoded`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames Encoded`
               );
             }
 
@@ -679,13 +596,13 @@ export class StatsAnalyzer extends EventsScope {
               this.statsResults.resolutions[mediaType].send.framesSent === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} Frames sent`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames sent`
               );
             }
           }
 
           this.emitStartStopEvents(
-            simplifiedMediaType,
+            mediaType,
             previousStats.framesSent,
             currentStats.framesSent,
             true
@@ -703,7 +620,7 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsReceived === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
             );
           } else {
             if (
@@ -712,7 +629,7 @@ export class StatsAnalyzer extends EventsScope {
               this.statsResults.resolutions[mediaType].recv.framesReceived === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames received`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames received`
               );
             }
 
@@ -723,7 +640,7 @@ export class StatsAnalyzer extends EventsScope {
                 this.statsResults.resolutions[mediaType].send.framesDecoded === 0)
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames decoded`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames decoded`
               );
             }
 
@@ -733,13 +650,13 @@ export class StatsAnalyzer extends EventsScope {
               10
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} frames are getting dropped`
+                `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} frames are getting dropped`
               );
             }
           }
 
           this.emitStartStopEvents(
-            simplifiedMediaType,
+            mediaType,
             previousStats.framesDecoded,
             currentStats.framesDecoded,
             false
@@ -757,7 +674,7 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
             );
           } else {
             if (
@@ -765,7 +682,7 @@ export class StatsAnalyzer extends EventsScope {
               currentStats.framesEncoded === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames getting encoded`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames getting encoded`
               );
             }
 
@@ -775,7 +692,7 @@ export class StatsAnalyzer extends EventsScope {
               this.statsResults.resolutions[mediaType].send.framesSent === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames sent`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames sent`
               );
             }
           }
@@ -792,7 +709,7 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalPacketsSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} RTP packets received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets received`
             );
           } else {
             if (
@@ -801,7 +718,7 @@ export class StatsAnalyzer extends EventsScope {
               this.statsResults.resolutions[mediaType].recv.framesReceived === 0
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames received`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames received`
               );
             }
 
@@ -812,7 +729,7 @@ export class StatsAnalyzer extends EventsScope {
                 this.statsResults.resolutions[mediaType].send.framesDecoded === 0)
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> No ${simplifiedMediaType} frames decoded`
+                `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames decoded`
               );
             }
 
@@ -822,7 +739,7 @@ export class StatsAnalyzer extends EventsScope {
               10
             ) {
               LoggerProxy.logger.info(
-                `StatsAnalyzer:index#compareLastStatsResult --> ${simplifiedMediaType} frames are getting dropped`
+                `StatsAnalyzer:index#compareLastStatsResult --> ${mediaType} frames are getting dropped`
               );
             }
           }
@@ -861,30 +778,43 @@ export class StatsAnalyzer extends EventsScope {
     LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Collecting Stats');
 
     return this.mediaConnection.getTransceiverStats().then((transceiverStats) => {
-      transceiverStats.video.senders.forEach((sender, i) =>
-        this.filterAndParseGetStatsResults(sender, `video-send-${i}`, true)
-      );
       transceiverStats.video.receivers.forEach((receiver, i) =>
         this.filterAndParseGetStatsResults(receiver, `video-recv-${i}`, false)
-      );
-      transceiverStats.audio.senders.forEach((sender, i) =>
-        this.filterAndParseGetStatsResults(sender, `audio-send-${i}`, true)
       );
       transceiverStats.audio.receivers.forEach((receiver, i) =>
         this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
       );
-      transceiverStats.screenShareVideo.senders.forEach((sender, i) =>
-        this.filterAndParseGetStatsResults(sender, `video-share-send-${i}`, true)
-      );
       transceiverStats.screenShareVideo.receivers.forEach((receiver, i) =>
         this.filterAndParseGetStatsResults(receiver, `video-share-recv-${i}`, false)
-      );
-      transceiverStats.screenShareAudio.senders.forEach((sender, i) =>
-        this.filterAndParseGetStatsResults(sender, `audio-share-send-${i}`, true)
       );
       transceiverStats.screenShareAudio.receivers.forEach((receiver, i) =>
         this.filterAndParseGetStatsResults(receiver, `audio-share-recv-${i}`, false)
       );
+
+      transceiverStats.video.senders.forEach((sender, i) => {
+        if (i > 0) {
+          throw new Error('Stats Analyzer does not support multiple senders.');
+        }
+        this.filterAndParseGetStatsResults(sender, 'video-send', true);
+      });
+      transceiverStats.audio.senders.forEach((sender, i) => {
+        if (i > 0) {
+          throw new Error('Stats Analyzer does not support multiple senders.');
+        }
+        this.filterAndParseGetStatsResults(sender, 'audio-send', true);
+      });
+      transceiverStats.screenShareVideo.senders.forEach((sender, i) => {
+        if (i > 0) {
+          throw new Error('Stats Analyzer does not support multiple senders.');
+        }
+        this.filterAndParseGetStatsResults(sender, 'video-share-send', true);
+      });
+      transceiverStats.screenShareAudio.senders.forEach((sender, i) => {
+        if (i > 0) {
+          throw new Error('Stats Analyzer does not support multiple senders.');
+        }
+        this.filterAndParseGetStatsResults(sender, 'audio-share-send', true);
+      });
 
       this.compareLastStatsResult();
 
@@ -1285,11 +1215,8 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (result.type === 'remote-inbound-rtp') {
-      const simplifiedMediaType = getSimplifiedMediaType(mediaType);
-
       this.networkQualityMonitor.determineUplinkNetworkQuality({
         mediaType,
-        simplifiedMediaType,
         remoteRtpResults: result,
         statsAnalyzerCurrentStats: this.statsResults,
       });

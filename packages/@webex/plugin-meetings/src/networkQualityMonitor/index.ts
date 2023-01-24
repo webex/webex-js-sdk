@@ -1,5 +1,5 @@
 import EventsScope from '../common/events/events-scope';
-import {EVENT_TRIGGERS, STATS} from '../constants';
+import {EVENT_TRIGGERS} from '../constants';
 
 /**
  * Meeting - network quality event
@@ -49,11 +49,7 @@ export default class NetworkQualityMonitor extends EventsScope {
     });
     this.networkQualityScore = 1;
     this.networkQualityStatus = {
-      [this.frequencyTypes.UPLINK]: {
-        [STATS.VIDEO_CORRELATE]: {},
-        [STATS.AUDIO_CORRELATE]: {},
-        [STATS.SHARE_CORRELATE]: {},
-      },
+      [this.frequencyTypes.UPLINK]: {},
     };
     this.mediaType = null;
   }
@@ -103,12 +99,10 @@ export default class NetworkQualityMonitor extends EventsScope {
    */
   public determineUplinkNetworkQuality({
     mediaType,
-    simplifiedMediaType,
     remoteRtpResults,
     statsAnalyzerCurrentStats,
   }: {
     mediaType: string;
-    simplifiedMediaType: string;
     remoteRtpResults: any;
     statsAnalyzerCurrentStats: object;
   }) {
@@ -116,7 +110,7 @@ export default class NetworkQualityMonitor extends EventsScope {
     const jitterInMilliseconds = remoteRtpResults.jitter * 1000;
     const {currentPacketLossRatio} = statsAnalyzerCurrentStats[mediaType].send;
 
-    this.mediaType = simplifiedMediaType;
+    this.mediaType = mediaType;
 
     const {JITTER, PACKETLOSS, LATENCY} = this.indicatorTypes;
     const {UPLINK} = this.frequencyTypes;
@@ -174,25 +168,29 @@ export default class NetworkQualityMonitor extends EventsScope {
     const determineIfUndefined = (value: number | undefined) =>
       typeof value === 'undefined' ? null : value;
 
+    if (!this.networkQualityStatus[UPLINK][mediaType]) {
+      this.networkQualityStatus[UPLINK][mediaType] = {};
+    }
+
     /**
      * Values for some browsers specifically Safari will be undefined we explicitly set to null
      * https://bugs.webkit.org/show_bug.cgi?id=206645
      * https://bugs.webkit.org/show_bug.cgi?id=212668
      */
     // PACKET LOSS
-    this.networkQualityStatus[UPLINK][simplifiedMediaType][PACKETLOSS] = {
+    this.networkQualityStatus[UPLINK][mediaType][PACKETLOSS] = {
       acceptable: determinePacketLoss(),
       value: determineIfUndefined(currentPacketLossRatio),
     };
 
     // LATENCY measured in Round trip time
-    this.networkQualityStatus[UPLINK][simplifiedMediaType][LATENCY] = {
+    this.networkQualityStatus[UPLINK][mediaType][LATENCY] = {
       acceptable: determineLatency(),
       value: determineIfUndefined(remoteRtpResults.roundTripTime),
     };
 
     // JITTER
-    this.networkQualityStatus[UPLINK][simplifiedMediaType][JITTER] = {
+    this.networkQualityStatus[UPLINK][mediaType][JITTER] = {
       acceptable: deterMineJitter(),
       value: determineIfUndefined(remoteRtpResults.jitter),
     };
