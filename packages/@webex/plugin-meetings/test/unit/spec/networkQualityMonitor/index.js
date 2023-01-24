@@ -24,8 +24,7 @@ describe('plugin-meetings', () => {
     };
 
     const configObject = {
-      mediaType: 'video-send-1',
-      simplifiedMediaType: 'video',
+      mediaType: 'video-send',
       remoteRtpResults: {
         id: 'RTCRemoteInboundRtpVideoStream_2411086660',
         timestamp: 1624472676193.79,
@@ -43,12 +42,12 @@ describe('plugin-meetings', () => {
         roundTripTimeMeasurements: 14,
       },
       statsAnalyzerCurrentStats: {
-        'video-send-1': {
+        'video-send': {
           send: {
             currentPacketLossRatio: 8,
           },
         },
-        'audio-send-1': {
+        'audio-send': {
           send: {
             currentPacketLossRatio: 10,
           },
@@ -84,7 +83,7 @@ describe('plugin-meetings', () => {
           }),
           sinon.match(EVENT_TRIGGERS.NETWORK_QUALITY),
           sinon.match({
-            mediaType: 'video',
+            mediaType: 'video-send',
             networkQualityScore: 0,
           })
         )
