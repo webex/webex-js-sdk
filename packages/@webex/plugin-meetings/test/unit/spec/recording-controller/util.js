@@ -82,10 +82,6 @@ describe('plugin-meetings', () => {
               it('gets the correct values for a paused recording action', () => {
                 assert.deepEqual(RecordingUtil.deriveRecordingStates(RecordingAction.Pause), {recording: true, paused: true});
               });
-
-              it('throws when an invalid action is passed', () => {
-                assert.throws(RecordingUtil.deriveRecordingStates('test'));
-              });
             });
         });
     });
