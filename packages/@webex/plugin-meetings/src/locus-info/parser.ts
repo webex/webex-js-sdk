@@ -397,6 +397,7 @@ export default class Parser {
     const {isLoci} = Parser;
     // @ts-ignore
     const setStatus = (status) => {
+      // @ts-ignore
       this.status = status;
     };
 

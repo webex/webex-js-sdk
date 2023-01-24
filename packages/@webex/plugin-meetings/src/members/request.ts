@@ -140,6 +140,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
       !options.locusUrl ||
       !options.memberId ||
       !options.url ||
+      // @ts-ignore
       (!options.tones && options.tones !== 0)
     ) {
       throw new ParameterError(

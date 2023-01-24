@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.37.2](https://github.com/webex/webex-js-sdk/compare/v2.37.1...v2.37.2) (2023-01-17)
+
+
+### Bug Fixes
+
+* **plugin-conversation:** Send kms on join ([#2568](https://github.com/webex/webex-js-sdk/issues/2568)) ([0960a66](https://github.com/webex/webex-js-sdk/commit/0960a66830559d01656b04cfc0642e7ff820e041))
+
+### [2.37.1](https://github.com/webex/webex-js-sdk/compare/v2.37.0...v2.37.1) (2023-01-17)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix broken api documentation ([#2561](https://github.com/webex/webex-js-sdk/issues/2561)) ([60e0abf](https://github.com/webex/webex-js-sdk/commit/60e0abf71efaf1665a64cdbcaa7dae2ef19e94b8))
+
 ## [2.37.0](https://github.com/webex/webex-js-sdk/compare/v2.36.1...v2.37.0) (2023-01-12)
 
 

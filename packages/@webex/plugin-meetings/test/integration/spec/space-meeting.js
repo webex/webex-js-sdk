@@ -2,7 +2,7 @@
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode, jenkinsOnly} from '@webex/test-helper-mocha';
 import {patterns} from '@webex/common';
-import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
+import MeetingInfoUtil from '@webex/plugin-meetings/dist/meeting-info/utilv2';
 
 import CMR from '../../utils/cmr';
 import testUtils from '../../utils/testUtils';

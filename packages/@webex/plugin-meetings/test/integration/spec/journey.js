@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 
-import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
+import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
 
 import DEFAULT_RESOLUTIONS from '../../../src/config';
 import testUtils from '../../utils/testUtils';

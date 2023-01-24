@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-team-memberships",
-  "version": "2.37.0",
+  "version": "2.37.2",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

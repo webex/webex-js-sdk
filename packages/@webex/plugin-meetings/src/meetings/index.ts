@@ -221,6 +221,7 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       this.meetingCollection.getByKey(
         CORRELATION_ID,
+        // @ts-ignore
         MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
       ) ||
       this.meetingCollection.getByKey(
@@ -440,11 +441,14 @@ export default class Meetings extends WebexPlugin {
        */
       // @ts-ignore
       this.meetingInfo = this.config.experimental.enableUnifiedMeetings
-        ? new MeetingInfoV2(this.webex)
-        : new MeetingInfo(this.webex);
+        ? // @ts-ignore
+          new MeetingInfoV2(this.webex)
+        : // @ts-ignore
+          new MeetingInfo(this.webex);
       // @ts-ignore
       this.personalMeetingRoom = new PersonalMeetingRoom(
         {meetingInfo: this.meetingInfo},
+        // @ts-ignore
         {parent: this.webex}
       );
 
@@ -554,6 +558,7 @@ export default class Meetings extends WebexPlugin {
         // @ts-ignore
         .then(() =>
           LoggerProxy.logger.info(
+            // @ts-ignore
             `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
           )
         )
@@ -607,8 +612,8 @@ export default class Meetings extends WebexPlugin {
 
     this.stopListeningForEvents();
 
-    // @ts-ignore
     return (
+      // @ts-ignore
       this.webex.internal.mercury
         .disconnect()
         // @ts-ignore

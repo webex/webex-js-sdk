@@ -261,6 +261,7 @@ export default class Reachability {
 
         // @ts-ignore
         LoggerProxy.logger.log(
+          // @ts-ignore
           `Reachability:index#onIceGatheringStateChange --> Successfully pinged ${peerConnection.key}:`,
           elapsed
         );
@@ -284,8 +285,8 @@ export default class Reachability {
       if (e.candidate && String(e.candidate.type).toLowerCase() === SERVER_REFLEXIVE) {
         const elapsed = this.getElapsedTime(peerConnection);
 
-        // @ts-ignore
         LoggerProxy.logger.log(
+          // @ts-ignore
           `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
           elapsed
         );

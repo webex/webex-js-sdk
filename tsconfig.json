@@ -5,6 +5,8 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "alwaysStrict": true,
+    "preserveSymlinks": true,
+    "experimentalDecorators": true,
     "declaration": true,
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -16,7 +18,12 @@
     "removeComments": false,
     "sourceMap": true,
     "target": "ES6",
-    "lib": ["ESNext", "DOM"]
+    "lib": [
+      "ESNext",
+      "DOM"
+    ]
   },
-  "include": ["./packages/**/*.*"]
+  "include": [
+    "./packages/**/*.*"
+  ]
 }

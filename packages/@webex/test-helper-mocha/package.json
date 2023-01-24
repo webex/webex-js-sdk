@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-mocha",
-  "version": "2.37.0",
+  "version": "2.37.2",
   "description": "Helpers for controlling where tests run",
   "license": "MIT",
   "main": "dist/index.js",
