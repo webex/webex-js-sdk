@@ -110,6 +110,7 @@ describe('TurnDiscovery', () => {
         // check that TURN_DISCOVERY_REQUEST was sent
         await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
 
+        // @ts-ignore
         mockRoapRequest.sendRoap.resetHistory();
 
         // simulate the response
