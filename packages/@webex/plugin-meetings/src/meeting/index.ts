@@ -86,7 +86,13 @@ import {
   Event as RemoteMediaManagerEvent,
 } from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
-import {Reaction, ReactionType, SkinToneType, ProcessedReaction} from '../reactions/reactions.type';
+import {
+  Reaction,
+  ReactionType,
+  SkinToneType,
+  ProcessedReaction,
+  RelayEvent,
+} from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
 
 import InMeetingActions from './in-meeting-actions';
@@ -3792,11 +3798,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Callback called when a relay event is received from meeting LLM Connection
-   * @param {any} e Event object coming from LLM Connection
+   * @param {RelayEvent} e Event object coming from LLM Connection
    * @private
    * @returns {void}
    */
-  private processRelayEvent = (e: any): void => {
+  private processRelayEvent = (e: RelayEvent): void => {
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
         if (

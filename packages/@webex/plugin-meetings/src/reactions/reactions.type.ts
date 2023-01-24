@@ -1,3 +1,5 @@
+import {REACTION_RELAY_TYPES} from './constants';
+
 export type EmoticonData = {
   type: string;
   codepoints?: string;
@@ -47,4 +49,14 @@ export type ProcessedReaction = {
     id: Sender['participantId'];
     name: string;
   };
+};
+
+type RelayEventData = {
+  relayType: (typeof REACTION_RELAY_TYPES)['REACTION'];
+  reaction: Reaction;
+  sender: Sender;
+};
+
+export type RelayEvent = {
+  data: RelayEventData;
 };
