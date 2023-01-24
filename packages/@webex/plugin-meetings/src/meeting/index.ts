@@ -38,6 +38,7 @@ import Members from '../members/index';
 import MeetingUtil from './util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
+import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import ReconnectionError from '../common/errors/reconnection';
@@ -93,11 +94,17 @@ import {
   Event as RemoteMediaManagerEvent,
 } from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
-import {SkinTones, Reactions} from '../reactions/reactions';
-import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
+import {
+  Reaction,
+  ReactionType,
+  SkinToneType,
+  ProcessedReaction,
+  RelayEvent,
+} from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
 
 import InMeetingActions from './in-meeting-actions';
+import {REACTION_RELAY_TYPES} from '../reactions/constants';
 
 const {isBrowser} = BrowserDetection();
 
@@ -3677,6 +3684,20 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Check if the meeting supports the Reactions
+   * @returns {boolean}
+   */
+  isReactionsSupported() {
+    if (this.locusInfo?.controls?.reactions.enabled) {
+      return true;
+    }
+
+    LoggerProxy.logger.error('Meeting:index#isReactionsSupported --> Reactions is not supported');
+
+    return false;
+  }
+
+  /**
    * Monitor the Low-Latency Mercury (LLM) web socket connection on `onError` and `onClose` states
    * @private
    * @returns {void}
@@ -3776,6 +3797,44 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     }
   }
+
+  /**
+   * Callback called when a relay event is received from meeting LLM Connection
+   * @param {RelayEvent} e Event object coming from LLM Connection
+   * @private
+   * @returns {void}
+   */
+  private processRelayEvent = (e: RelayEvent): void => {
+    switch (e.data.relayType) {
+      case REACTION_RELAY_TYPES.REACTION:
+        if (
+          // @ts-ignore - config coming from registerPlugin
+          (this.config.receiveReactions || options.receiveReactions) &&
+          this.isReactionsSupported()
+        ) {
+          const {name} = this.members.membersCollection.get(e.data.sender.participantId);
+          const processedReaction: ProcessedReaction = {
+            reaction: e.data.reaction,
+            sender: {
+              id: e.data.sender.participantId,
+              name,
+            },
+          };
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'join',
+            },
+            EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+            processedReaction
+          );
+        }
+        break;
+      default:
+        break;
+    }
+  };
 
   /**
    * stop recieving Transcription by closing
@@ -3953,6 +4012,9 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+          LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
         return join;
@@ -4032,6 +4094,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       // @ts-ignore - Fix type
       await this.webex.internal.llm.disconnectLLM();
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
 
     if (!isJoined) {

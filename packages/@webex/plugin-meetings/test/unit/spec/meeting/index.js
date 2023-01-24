@@ -47,7 +47,7 @@ import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-
+import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
   UserNotJoinedError,
@@ -786,7 +786,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should throw error', async () => {
+        it("should throw error if request doesn't work", async () => {
           meeting.request = sinon.stub().returns(Promise.reject());
 
           try {
@@ -806,6 +806,64 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.transcription.closeSocket);
         });
       });
+      describe('#isReactionsSupported', () => {
+        it('should return false if the feature is not supported for the meeting', () => {
+          meeting.locusInfo.controls = {reactions: {enabled: false}};
+
+          assert.equal(meeting.isReactionsSupported(), false);
+        });
+        it('should return true if the feature is not supported for the meeting', () => {
+          meeting.locusInfo.controls = {reactions: {enabled: true}};
+
+          assert.equal(meeting.isReactionsSupported(), true);
+        });
+      });
+      describe('#processRelayEvent', () => {
+        it('should process a Reaction event type', () => {
+          meeting.isReactionsSupported = sinon.stub().returns(true);
+          meeting.config.receiveReactions = true;
+          const fakeSendersName = 'Fake reactors name';
+          meeting.members.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
+          const fakeReactionPayload = {
+            type: 'fake_type',
+            codepoints: 'fake_codepoints',
+            shortcodes: 'fake_shortcodes',
+            tone: {
+              type: 'fake_tone_type',
+              codepoints: 'fake_tone_codepoints',
+              shortcodes: 'fake_tone_shortcodes',
+            },
+          };
+          const fakeSenderPayload = {
+            participantId: 'fake_participant_id',
+          };
+          const fakeProcessedReaction = {
+            reaction: fakeReactionPayload,
+            sender: {
+              id: fakeSenderPayload.participantId,
+              name: fakeSendersName,
+            },
+          };
+          const fakeRelayEvent = {
+            data: {
+              relayType: REACTION_RELAY_TYPES.REACTION,
+              reaction: fakeReactionPayload,
+              sender: fakeSenderPayload,
+            }
+          };
+          meeting.processRelayEvent(fakeRelayEvent);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'join',
+            },
+            EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+            fakeProcessedReaction
+          );
+        })
+      })
       describe('#join', () => {
         let sandbox = null;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
@@ -851,15 +909,20 @@ describe('plugin-meetings', () => {
 
           it('should call updateLLMConnection upon joining if config value is set', async () => {
             meeting.config.enableAutomaticLLM = true;
+            meeting.webex.internal.llm.on = sinon.stub();
+            meeting.processRelayEvent = sinon.stub();
             await meeting.join();
 
             assert.calledOnce(meeting.updateLLMConnection);
+            assert.calledOnceWithExactly(meeting.webex.internal.llm.on, 'event:relay.event', meeting.processRelayEvent);
           });
 
           it('should not call updateLLMConnection upon joining if config value is not set', async () => {
+            meeting.webex.internal.llm.on = sinon.stub();
             await meeting.join();
 
             assert.notCalled(meeting.updateLLMConnection);
+            assert.notCalled(meeting.webex.internal.llm.on);
           });
 
           it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {

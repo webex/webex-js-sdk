@@ -1,3 +1,5 @@
+import {REACTION_RELAY_TYPES} from './constants';
+
 export type EmoticonData = {
   type: string;
   codepoints?: string;
@@ -36,3 +38,25 @@ export enum SkinToneType {
   medium_dark = 'medium_dark',
   dark = 'dark',
 }
+
+export type Sender = {
+  participantId: string;
+};
+
+export type ProcessedReaction = {
+  reaction: Reaction;
+  sender: {
+    id: Sender['participantId'];
+    name: string;
+  };
+};
+
+type RelayEventData = {
+  relayType: (typeof REACTION_RELAY_TYPES)['REACTION'];
+  reaction: Reaction;
+  sender: Sender;
+};
+
+export type RelayEvent = {
+  data: RelayEventData;
+};
