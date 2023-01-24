@@ -184,6 +184,7 @@ export default class TurnDiscovery {
         audioMuted: meeting.isAudioMuted(),
         videoMuted: meeting.isVideoMuted(),
         meetingId: meeting.id,
+        preferTranscoding: !meeting.isMultistream,
       })
       .then(({mediaConnections}) => {
         if (mediaConnections) {
@@ -216,6 +217,7 @@ export default class TurnDiscovery {
       audioMuted: meeting.isAudioMuted(),
       videoMuted: meeting.isVideoMuted(),
       meetingId: meeting.id,
+      preferTranscoding: !meeting.isMultistream,
     });
   }
 
