@@ -4005,7 +4005,7 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
           // @ts-ignore - Fix type
-          await this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
           LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
@@ -4087,7 +4087,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - Fix type
       await this.webex.internal.llm.disconnectLLM();
       // @ts-ignore - Fix type
-      await this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
 
     if (!isJoined) {

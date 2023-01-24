@@ -47,7 +47,7 @@ import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-
+import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
   UserNotJoinedError,
@@ -823,7 +823,7 @@ describe('plugin-meetings', () => {
           meeting.isReactionsSupported = sinon.stub().returns(true);
           meeting.config.receiveReactions = true;
           const fakeSendersName = 'Fake reactors name';
-          meeting.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
+          meeting.members.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
           const fakeReactionPayload = {
             type: 'fake_type',
             codepoints: 'fake_codepoints',
@@ -911,22 +911,14 @@ describe('plugin-meetings', () => {
             meeting.config.enableAutomaticLLM = true;
             meeting.webex.internal.llm.on = sinon.stub();
             meeting.processRelayEvent = sinon.stub();
-            const eventData = {
-              relayType: 'fake_relay_type'
-            };
             await meeting.join();
 
             assert.calledOnce(meeting.updateLLMConnection);
             assert.calledOnceWithExactly(meeting.webex.internal.llm.on, 'event:relay.event', meeting.processRelayEvent);
-
-            meeting.webex.internal.llm._emit('event:relay.event', {
-              data: eventData
-            });
-
-            assert.calledOnceWithExactly(meeting.processRelayEvent, 'event:relay.event', {data: eventData});
           });
 
           it('should not call updateLLMConnection upon joining if config value is not set', async () => {
+            meeting.webex.internal.llm.on = sinon.stub();
             await meeting.join();
 
             assert.notCalled(meeting.updateLLMConnection);
