@@ -3,7 +3,6 @@
  */
 
 /* eslint-env: browser */
-/* global FileReader */
 
 /**
  * Ensures the provider buffer is, indeed, an ArrayBuffer; converts File and

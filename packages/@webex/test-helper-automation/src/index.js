@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 /* istanbul ignore next */
 if (typeof Promise === 'undefined') {
   // eslint-disable-next-line global-require
@@ -52,16 +51,19 @@ module.exports = {
       build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${pkg.name}-${Date.now()}`,
       name: `${pkg.name} (automation)`,
       public: 'team',
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
     });
 
-    const browser = process.env.SC_TUNNEL_IDENTIFIER ? wd.promiseChainRemote('ondemand.saucelabs.com', 80) : wd.promiseChainRemote();
+    const browser = process.env.SC_TUNNEL_IDENTIFIER
+      ? wd.promiseChainRemote('ondemand.saucelabs.com', 80)
+      : wd.promiseChainRemote();
 
-    return browser.init(browserDef)
+    return browser
+      .init(browserDef)
       .setImplicitWaitTimeout(10000)
       .setWindowSize(1600, 1200)
       .then(() => browser);
   },
 
-  wd
+  wd,
 };

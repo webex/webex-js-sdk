@@ -6,6 +6,6 @@ export default {
   presence: {
     batcherWait: 50,
     batcherMaxCalls: 50,
-    batcherMaxWait: 150
-  }
+    batcherMaxWait: 150,
+  },
 };

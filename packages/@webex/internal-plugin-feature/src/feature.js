@@ -19,7 +19,11 @@ const Feature = WebexPlugin.extend({
    */
   getFeature(keyType, key, options) {
     if (keyType !== 'developer' && keyType !== 'user' && keyType !== 'entitlement') {
-      return Promise.reject(new Error('Invalid feature keyType provided. Only `developer`, `user`, and `entitlement` feature toggles are permitted.'));
+      return Promise.reject(
+        new Error(
+          'Invalid feature keyType provided. Only `developer`, `user`, and `entitlement` feature toggles are permitted.'
+        )
+      );
     }
 
     options = options || {};
@@ -59,7 +63,11 @@ const Feature = WebexPlugin.extend({
    * @returns {undefined}
    */
   listen() {
-    this.listenTo(this.webex.internal.mercury, 'event:featureToggle_update', this.handleFeatureUpdate);
+    this.listenTo(
+      this.webex.internal.mercury,
+      'event:featureToggle_update',
+      this.handleFeatureUpdate
+    );
   },
 
   /**
@@ -82,10 +90,9 @@ const Feature = WebexPlugin.extend({
       body: {
         key,
         mutable: true,
-        val: value
-      }
-    })
-      .then((res) => this.webex.internal.device.features[keyType].add(res.body, {merge: true}));
+        val: value,
+      },
+    }).then((res) => this.webex.internal.device.features[keyType].add(res.body, {merge: true}));
   },
 
   /**
@@ -105,23 +112,34 @@ const Feature = WebexPlugin.extend({
       method: 'POST',
       api: 'feature',
       resource: `features/users/${this.webex.internal.device.userId}/toggles`,
-      body: featureList
-    })
-      .then((res) => {
-        const partitionedToggles = partition(res.body.featureToggles, {type: 'USER'});
+      body: featureList,
+    }).then((res) => {
+      const partitionedToggles = partition(res.body.featureToggles, {type: 'USER'});
 
-        this.webex.internal.device.features.user.add(partitionedToggles[0], {merge: true});
-        this.webex.internal.device.features.developer.add(partitionedToggles[1], {merge: true});
-      });
+      this.webex.internal.device.features.user.add(partitionedToggles[0], {merge: true});
+      this.webex.internal.device.features.developer.add(partitionedToggles[1], {merge: true});
+    });
   },
 
   initialize(...args) {
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
 
-    this.listenToAndRun(this.webex, 'change:internal.device.features.developer', this.trigger.bind(this, 'change:developer'));
-    this.listenToAndRun(this.webex, 'change:internal.device.features.entitlement', this.trigger.bind(this, 'change:entitlement'));
-    this.listenToAndRun(this.webex, 'change:internal.device.features.user', this.trigger.bind(this, 'change:user'));
-  }
+    this.listenToAndRun(
+      this.webex,
+      'change:internal.device.features.developer',
+      this.trigger.bind(this, 'change:developer')
+    );
+    this.listenToAndRun(
+      this.webex,
+      'change:internal.device.features.entitlement',
+      this.trigger.bind(this, 'change:entitlement')
+    );
+    this.listenToAndRun(
+      this.webex,
+      'change:internal.device.features.user',
+      this.trigger.bind(this, 'change:user')
+    );
+  },
 });
 
 export default Feature;

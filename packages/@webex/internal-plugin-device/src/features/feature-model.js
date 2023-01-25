@@ -20,7 +20,6 @@ import {FEATURE_TYPES} from '../constants';
  * **WDM** service upon registration.
  */
 const FeatureModel = AmpState.extend({
-
   idAttribute: 'key', // needed by Ampersand to determine unique item
 
   // Ampersand property members.
@@ -67,7 +66,7 @@ const FeatureModel = AmpState.extend({
      *
      * @type {any}
      */
-    value: 'any'
+    value: 'any',
   },
 
   /**
@@ -82,11 +81,7 @@ const FeatureModel = AmpState.extend({
   constructor(attrs, options = {}) {
     defaults(options, {parse: true});
 
-    return Reflect.apply(
-      AmpState.prototype.constructor,
-      this,
-      [attrs, options]
-    );
+    return Reflect.apply(AmpState.prototype.constructor, this, [attrs, options]);
   },
 
   // Ampsersand method members.
@@ -150,7 +145,7 @@ const FeatureModel = AmpState.extend({
     // Validate that the overloaded class member returned an object with the
     // `lastModified` key-value pair and instance it as an ISO string.
     if (attrs.lastModified) {
-      attrs.lastModified = (new Date(attrs.lastModified).toISOString());
+      attrs.lastModified = new Date(attrs.lastModified).toISOString();
     }
 
     return attrs;
@@ -179,8 +174,7 @@ const FeatureModel = AmpState.extend({
     if (isObject(key) || key === null) {
       attrs = key;
       optns = value;
-    }
-    else {
+    } else {
       attrs = {};
       attrs[key] = value;
       optns = options;
@@ -189,7 +183,7 @@ const FeatureModel = AmpState.extend({
     attrs = this.parse(attrs, optns);
 
     return Reflect.apply(AmpState.prototype.set, this, [attrs, optns]);
-  }
+  },
 });
 
 export default FeatureModel;

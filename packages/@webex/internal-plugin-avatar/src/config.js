@@ -28,6 +28,6 @@ export default {
      * Max width for thumbnails generated when sharing an image
      * @type {number}
      */
-    thumbnailMaxWidth: 640
-  }
+    thumbnailMaxWidth: 640,
+  },
 };

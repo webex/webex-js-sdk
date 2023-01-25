@@ -4,7 +4,6 @@
 
 import {Interceptor} from '@webex/http-core';
 
-
 /**
  * Allows the user of the SDK to set default options that apply every http request made by the SDK
  * For example a default timeout could be set for all requests like this :

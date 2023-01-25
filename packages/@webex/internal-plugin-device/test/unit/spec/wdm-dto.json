@@ -50,26 +50,20 @@
   },
   "creationTime": "2020-01-01T12:12:12.000Z",
   "modificationTime": "2020-01-01T12:12:12.000Z",
-  "deviceSettings": {
-
-  },
+  "deviceSettings": {},
   "deviceSettingsString": "{}",
   "showSupportText": false,
   "reportingSiteUrl": "www.example.com/report",
   "reportingSiteDesc": "Example Description",
   "isDeviceManaged": false,
-  "trainSiteNames": [
-
-  ],
+  "trainSiteNames": [],
   "clientSecurityPolicy": "on",
   "intranetInactivityCheckUrl": "www.example-intranet.com/spark_session_check.json",
   "blockExternalCommunications": false,
   "clientMessagingGiphy": "ALLOW",
   "clientMessagingLinkPreview": "ALLOW",
   "ecmEnabledForAllUsers": false,
-  "ecmSupportedStorageProviders": [
-
-  ],
+  "ecmSupportedStorageProviders": [],
   "defaultEcmMicrosoftCloud": "GLOBAL",
   "ecmMicrosoftTenant": "",
   "ecmScreenCaptureFeatureAllowed": true,
@@ -88,9 +82,7 @@
     "mobileAutoLockIdleTimeout": 0,
     "disableMeetingScheduling": false,
     "ecmEnabledForAllUsers": false,
-    "ecmSupportedStorageProviders": [
-
-    ],
+    "ecmSupportedStorageProviders": [],
     "defaultEcmMicrosoftCloud": "GLOBAL",
     "ecmMicrosoftTenant": "",
     "restrictAccountsToEmailDomain": false,

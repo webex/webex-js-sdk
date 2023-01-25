@@ -13,7 +13,7 @@ export default class Collection {
    * @param {String} property
    * @memberof Collection
    */
-  constructor(property) {
+  constructor(property: string) {
     if (!property || !isString(property)) {
       throw new ParameterError('Collection expects a string to use as a property name.');
     }
@@ -41,8 +41,10 @@ export default class Collection {
    * @public
    * @memberof Collection
    */
-  get(id) {
-    return this[this.propertyName] && this[this.propertyName][id] ? this[this.propertyName][id] : null;
+  public get(id: string) {
+    return this[this.propertyName] && this[this.propertyName][id]
+      ? this[this.propertyName][id]
+      : null;
   }
 
   /**
@@ -52,7 +54,7 @@ export default class Collection {
    * @public
    * @memberof Collection
    */
-  set(id, value) {
+  public set(id: string, value: any) {
     this[this.propertyName][id] = value;
 
     return this.get(id);
@@ -65,7 +67,7 @@ export default class Collection {
    * @public
    * @memberof Collection
    */
-  delete(id) {
+  public delete(id: string) {
     delete this[this.propertyName][id];
   }
 
@@ -74,7 +76,7 @@ export default class Collection {
    * @public
    * @memberof Collection
    */
-  getAll() {
+  public getAll() {
     return this[this.propertyName];
   }
 
@@ -84,7 +86,7 @@ export default class Collection {
    * @public
    * @memberof Collection
    */
-  setAll(set) {
+  public setAll(set: object) {
     this[this.propertyName] = set;
 
     return this.getAll();

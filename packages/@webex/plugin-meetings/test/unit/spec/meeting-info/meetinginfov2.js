@@ -12,11 +12,15 @@ import {
   _PERSONAL_ROOM_,
   _CONVERSATION_URL_,
   _SIP_URI_,
-  WBXAPPAPI_SERVICE
+  WBXAPPAPI_SERVICE,
 } from '@webex/plugin-meetings/src/constants';
 
 import Meetings from '@webex/plugin-meetings/src/meetings';
-import MeetingInfo, {MeetingInfoV2PasswordError, MeetingInfoV2CaptchaError, MeetingInfoV2AdhocMeetingError} from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
+import MeetingInfo, {
+  MeetingInfoV2PasswordError,
+  MeetingInfoV2CaptchaError,
+  MeetingInfoV2AdhocMeetingError,
+} from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
@@ -32,16 +36,15 @@ describe('plugin-meetings', () => {
         {
           id: '344ea183-9d5d-4e77-aed',
           emailAddress: 'testUser1@cisco.com',
-          entryUUID: '344ea183-9d5d-4e77-'
-
+          entryUUID: '344ea183-9d5d-4e77-',
         },
         {
           id: '40b446fe-175c-4628-8a9d',
           emailAddress: 'testUser2@cisco.com',
-          entryUUID: '40b446fe-175c-4628'
-        }
-      ]
-    }
+          entryUUID: '40b446fe-175c-4628',
+        },
+      ],
+    },
   };
   let webex;
   let meetingInfo = null;
@@ -59,31 +62,32 @@ describe('plugin-meetings', () => {
         children: {
           device: Device,
           mercury: Mercury,
-          meetings: Meetings
-        }
+          meetings: Meetings,
+        },
       });
 
       webex.meetings.preferredWebexSite = 'go.webex.com';
-      webex.config.meetings = {experimental: {enableUnifiedMeetings: true, enableAdhocMeetings: true}};
+      webex.config.meetings = {
+        experimental: {enableUnifiedMeetings: true, enableAdhocMeetings: true},
+      };
 
       Object.assign(webex.internal, {
         device: {
           deviceType: 'FAKE_DEVICE',
           register: sinon.stub().returns(Promise.resolve()),
           unregister: sinon.stub().returns(Promise.resolve()),
-          userId: '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e'
+          userId: '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e',
         },
         mercury: {
           connect: sinon.stub().returns(Promise.resolve()),
           disconnect: sinon.stub().returns(Promise.resolve()),
           on: () => {},
-          off: () => {}
+          off: () => {},
         },
         conversation: {
-          get: sinon.stub().returns(Promise.resolve(conversation))
-        }
+          get: sinon.stub().returns(Promise.resolve(conversation)),
+        },
       });
-
 
       meetingInfo = new MeetingInfo(webex);
     });
@@ -93,17 +97,22 @@ describe('plugin-meetings', () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
-        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(Promise.resolve({type: 'MEETING_ID', destination: '123456'}));
+        sinon
+          .stub(MeetingInfoUtil, 'getDestinationType')
+          .returns(Promise.resolve({type: 'MEETING_ID', destination: '123456'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
           type: _MEETING_ID_,
-          destination: '1234323'
+          destination: '1234323',
         });
 
         assert.calledWith(webex.request, {
-          method: 'POST', service: WBXAPPAPI_SERVICE, resource: 'meetingInfo', body: {meetingKey: '1234323'}
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {meetingKey: '1234323'},
         });
         assert.deepEqual(result, requestResponse);
 
@@ -115,16 +124,21 @@ describe('plugin-meetings', () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
-        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(Promise.resolve({type: 'MEETING_ID', destination: '123456'}));
+        sinon
+          .stub(MeetingInfoUtil, 'getDestinationType')
+          .returns(Promise.resolve({type: 'MEETING_ID', destination: '123456'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
-          type: _PERSONAL_ROOM_
+          type: _PERSONAL_ROOM_,
         });
 
         assert.calledWith(webex.request, {
-          method: 'POST', service: WBXAPPAPI_SERVICE, resource: 'meetingInfo', body: {meetingKey: '1234323'}
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {meetingKey: '1234323'},
         });
         assert.deepEqual(result, requestResponse);
 
@@ -136,20 +150,28 @@ describe('plugin-meetings', () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
-        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(Promise.resolve({type: _SIP_URI_, destination: 'example@something.webex.com'}));
+        sinon
+          .stub(MeetingInfoUtil, 'getDestinationType')
+          .returns(Promise.resolve({type: _SIP_URI_, destination: 'example@something.webex.com'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         sinon.stub(MeetingInfoUtil, 'getDirectMeetingInfoURI').returns('https://example.com');
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo(
-          'example@something.webex.com',
-          _SIP_URI_,
-        );
+        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', _SIP_URI_);
 
-        assert.calledWith(MeetingInfoUtil.getDestinationType, {destination: 'example@something.webex.com', type: _SIP_URI_, webex});
-        assert.calledWith(MeetingInfoUtil.getDirectMeetingInfoURI, {destination: 'example@something.webex.com', type: _SIP_URI_});
+        assert.calledWith(MeetingInfoUtil.getDestinationType, {
+          destination: 'example@something.webex.com',
+          type: _SIP_URI_,
+          webex,
+        });
+        assert.calledWith(MeetingInfoUtil.getDirectMeetingInfoURI, {
+          destination: 'example@something.webex.com',
+          type: _SIP_URI_,
+        });
         assert.calledWith(webex.request, {
-          method: 'POST', uri: 'https://example.com', body: {meetingKey: '1234323'}
+          method: 'POST',
+          uri: 'https://example.com',
+          body: {meetingKey: '1234323'},
         });
         assert.deepEqual(result, requestResponse);
 
@@ -163,7 +185,10 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {id: '999', code: 'aabbcc11'});
+        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+          id: '999',
+          code: 'aabbcc11',
+        });
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -175,14 +200,14 @@ describe('plugin-meetings', () => {
             meetingKey: '1234323',
             password: 'abc',
             captchaID: '999',
-            captchaVerifyCode: 'aabbcc11'
-          }
+            captchaVerifyCode: 'aabbcc11',
+          },
         });
         assert.deepEqual(result, requestResponse);
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(
           Metrics.sendBehavioralMetric,
-          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
         );
       });
 
@@ -223,10 +248,12 @@ describe('plugin-meetings', () => {
         webex.request = sinon.stub().rejects({statusCode: 403, body: {code: 400000}});
         try {
           await meetingInfo.createAdhocSpaceMeeting('conversationUrl');
-        }
-        catch (err) {
+        } catch (err) {
           assert.instanceOf(err, MeetingInfoV2AdhocMeetingError);
-          assert.deepEqual(err.message, 'Failed starting the adhoc meeting, Please contact support team , code=400000');
+          assert.deepEqual(
+            err.message,
+            'Failed starting the adhoc meeting, Please contact support team , code=400000'
+          );
           assert.equal(err.wbxAppApiCode, 400000);
         }
       });
@@ -234,18 +261,19 @@ describe('plugin-meetings', () => {
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};
 
-        webex.request = sinon.stub().rejects({statusCode: 403, body: {code: 403000, data: {meetingInfo: FAKE_MEETING_INFO}}});
+        webex.request = sinon
+          .stub()
+          .rejects({statusCode: 403, body: {code: 403000, data: {meetingInfo: FAKE_MEETING_INFO}}});
 
         try {
-          await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {id: '999', code: 'aabbcc11'});
+          await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+            id: '999',
+            code: 'aabbcc11',
+          });
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
-        }
-        catch (err) {
+        } catch (err) {
           assert(Metrics.sendBehavioralMetric.calledOnce);
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR,
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR);
           assert.instanceOf(err, MeetingInfoV2PasswordError);
           assert.deepEqual(err.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(err.wbxAppApiCode, 403000);
@@ -254,34 +282,34 @@ describe('plugin-meetings', () => {
 
       describe('should throw MeetingInfoV2CaptchaError for 423 response', () => {
         const runTest = async (wbxAppApiCode, expectedIsPasswordRequired) => {
-          webex.request = sinon.stub().rejects(
-            {
-              statusCode: 423,
-              body: {
-                code: wbxAppApiCode,
-                captchaID: 'fake_captcha_id',
-                verificationImageURL: 'fake_image_url',
-                verificationAudioURL: 'fake_audio_url',
-                refreshURL: 'fake_refresh_url'
-              }
-            }
-          );
+          webex.request = sinon.stub().rejects({
+            statusCode: 423,
+            body: {
+              code: wbxAppApiCode,
+              captchaID: 'fake_captcha_id',
+              verificationImageURL: 'fake_image_url',
+              verificationAudioURL: 'fake_audio_url',
+              refreshURL: 'fake_refresh_url',
+            },
+          });
           try {
-            await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {id: '999', code: 'aabbcc11'});
+            await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+              id: '999',
+              code: 'aabbcc11',
+            });
             assert.fail('fetchMeetingInfo should have thrown, but has not done that');
-          }
-          catch (err) {
+          } catch (err) {
             assert(Metrics.sendBehavioralMetric.calledOnce);
             assert.calledWith(
               Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.VERIFY_CAPTCHA_ERROR,
+              BEHAVIORAL_METRICS.VERIFY_CAPTCHA_ERROR
             );
             assert.instanceOf(err, MeetingInfoV2CaptchaError);
             assert.deepEqual(err.captchaInfo, {
               captchaId: 'fake_captcha_id',
               verificationImageURL: 'fake_image_url',
               verificationAudioURL: 'fake_audio_url',
-              refreshURL: 'fake_refresh_url'
+              refreshURL: 'fake_refresh_url',
             });
             assert.equal(err.wbxAppApiCode, wbxAppApiCode);
             assert.equal(err.isPasswordRequired, expectedIsPasswordRequired);
@@ -302,7 +330,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-
     describe('createAdhocSpaceMeeting', () => {
       it('Make a request to /instantSpace when conversationUrl', async () => {
         const conversationUrl = 'https://conversationUrl/xxx';
@@ -310,18 +337,21 @@ describe('plugin-meetings', () => {
 
         invitee.push({
           email: conversation.participants.items[0].emailAddress,
-          ciUserUuid: conversation.participants.items[0].entryUUID
+          ciUserUuid: conversation.participants.items[0].entryUUID,
         });
 
         invitee.push({
           email: conversation.participants.items[1].emailAddress,
-          ciUserUuid: conversation.participants.items[1].entryUUID
+          ciUserUuid: conversation.participants.items[1].entryUUID,
         });
 
         await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
-        assert.calledWith(webex.internal.conversation.get, {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true});
+        assert.calledWith(
+          webex.internal.conversation.get,
+          {url: conversationUrl},
+          {includeParticipants: true, disableTransform: true}
+        );
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -331,14 +361,11 @@ describe('plugin-meetings', () => {
             spaceUrl: conversation.url,
             keyUrl: conversation.encryptionKeyUrl,
             kroUrl: conversation.kmsResourceObjectUrl,
-            invitees: invitee
-          }
+            invitees: invitee,
+          },
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);
-        assert.calledWith(
-          Metrics.sendBehavioralMetric,
-          BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS,
-        );
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
       });
     });
   });

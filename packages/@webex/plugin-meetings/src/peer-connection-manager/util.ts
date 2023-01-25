@@ -1,4 +1,4 @@
-import { parse } from '@webex/ts-sdp';
+import {parse} from '@webex/ts-sdp';
 
 interface IPeerConnectionUtils {
   convertCLineToIpv4: (sdp: string) => string;
@@ -98,7 +98,9 @@ PeerConnectionUtils.adjustH264Profile = (sdp: string, maxFsValue: number) => {
                 // Object.keys returns keys as strings, so we need to parse it to an int again and then convert to hex
                 const newLevelIdHex = parseInt(newLevelId, 10).toString(16);
 
-                return `${stuffBeforeProfileLevelId}profile-level-id=${profile}${newLevelIdHex};max-mbps=${maxFsValue * framesPerSecond}${stuffAfterProfileLevelId}`;
+                return `${stuffBeforeProfileLevelId}profile-level-id=${profile}${newLevelIdHex};max-mbps=${
+                  maxFsValue * framesPerSecond
+                }${stuffAfterProfileLevelId}`;
               }
 
               throw new Error(`unsupported maxFsValue: ${maxFsValue}`);

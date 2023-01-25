@@ -24,12 +24,11 @@ function prepareOptions(options) {
   }
 
   if (isBuffer(options.body)) {
-    return detect(options.body)
-      .then((type) => {
-        options.headers['content-type'] = type;
+    return detect(options.body).then((type) => {
+      options.headers['content-type'] = type;
 
-        return options;
-      });
+      return options;
+    });
   }
 
   return Promise.resolve(options);
@@ -54,24 +53,28 @@ function doRequest(options) {
 
         // I'm not sure why this line is necessary. request seems to be creating
         // buffers that aren't Buffers.
-        if (options.responseType === 'buffer' && response.body.type === 'Buffer' && !isBuffer(response.body)) {
+        if (
+          options.responseType === 'buffer' &&
+          response.body.type === 'Buffer' &&
+          !isBuffer(response.body)
+        ) {
           response.body = Buffer.from(response.body);
         }
 
         if (isBuffer(response.body) && !response.body.type) {
-          resolve(detect(response.body)
-            .then((type) => {
+          resolve(
+            detect(response.body).then((type) => {
               response.body.type = type;
 
               return response;
-            }));
+            })
+          );
 
           return;
         }
 
         resolve(response);
-      }
-      else {
+      } else {
         // Make a network error behave like a browser network error.
         resolve({
           statusCode: 0,
@@ -79,7 +82,7 @@ function doRequest(options) {
           headers: options.headers,
           method: options.method,
           url: options.url,
-          body: error
+          body: error,
         });
       }
     });
@@ -102,6 +105,5 @@ function doRequest(options) {
  * @returns {Promise}
  */
 export default function _request(options) {
-  return prepareOptions(options)
-    .then(doRequest);
+  return prepareOptions(options).then(doRequest);
 }

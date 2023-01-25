@@ -1,9 +1,9 @@
 const glob = require('glob');
-const webexPackagesPath = glob.sync(`packages/@webex/**/*/package.json`)
-const webexPackages = webexPackagesPath.map(file => ({
+const webexPackagesPath = glob.sync(`packages/@webex/**/*/package.json`);
+const webexPackages = webexPackagesPath.map((file) => ({
   filename: file,
-  type: 'json'
-}))
+  type: 'json',
+}));
 
 module.exports = {
   releaseCommitMessageFormat: 'chore(release): v{{currentTag}} [skip ci]',
@@ -16,16 +16,16 @@ module.exports = {
   bumpFiles: [
     {
       filename: 'package.json',
-      type: 'json'
+      type: 'json',
     },
     {
       filename: 'package-lock.json',
-      type: 'json'
+      type: 'json',
     },
     {
       filename: 'packages/webex/package.json',
-      type: 'json'
+      type: 'json',
     },
-    ...webexPackages
-  ]
-}
+    ...webexPackages,
+  ],
+};

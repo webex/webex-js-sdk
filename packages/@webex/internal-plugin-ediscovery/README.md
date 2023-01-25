@@ -23,19 +23,17 @@ npm install --save @webex/internal-plugin-ediscovery
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-ediscovery';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.plugin.ediscovery.WHATEVER
-
+webex.internal.plugin.ediscovery.WHATEVER;
 ```
 
 ## Tests
 
-Run the ediscovery from the top level using 
+Run the ediscovery from the top level using
 
 > yarn run test --packages @webex/internal-plugin-ediscovery
 
@@ -50,7 +48,6 @@ Run the following command
 Run the following command
 
 > yarn run test --packages @webex/internal-plugin-ediscovery --grep "test name" --karmaDebug --browsers=Chrome
-
 
 ## Maintainers
 

@@ -10,24 +10,27 @@ describe('plugin-meetings', () => {
           sites: [
             {
               siteUrl: 'site1-example.webex.com',
-              default: false
+              default: false,
             },
             {
               siteUrl: 'site2-example.webex.com',
-              default: false
+              default: false,
             },
             {
               siteUrl: 'go.webex.com',
-              default: true
+              default: true,
             },
             {
               siteUrl: 'site3-example.webex.com',
-              default: false
-            }
-          ]
+              default: false,
+            },
+          ],
         };
 
-        assert.equal(MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences), 'go.webex.com');
+        assert.equal(
+          MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences),
+          'go.webex.com'
+        );
       });
 
       it('should work fine if no default true site', () => {
@@ -35,16 +38,16 @@ describe('plugin-meetings', () => {
           sites: [
             {
               siteUrl: 'site1-example.webex.com',
-              default: false
+              default: false,
             },
             {
               siteUrl: 'site2-example.webex.com',
-              default: false
+              default: false,
             },
             {
               siteUrl: 'site3-example.webex.com',
-              default: false
-            }
+              default: false,
+            },
           ],
         };
 
@@ -61,4 +64,3 @@ describe('plugin-meetings', () => {
     });
   });
 });
-

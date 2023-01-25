@@ -6,11 +6,12 @@ import {camelCase, capitalize, curry} from 'lodash';
 
 import toArray from './to-array';
 
-const decryptTextProp = curry((name, ctx, key, object) => ctx.transform('decryptTextProp', name, key, object));
+const decryptTextProp = curry((name, ctx, key, object) =>
+  ctx.transform('decryptTextProp', name, key, object)
+);
 
 // eslint-disable-next-line import/prefer-default-export
 export const transforms = toArray('inbound', {
-
   /**
    * This function is used recursively to decrypt various properties on conversations, activities, etc
    * @param   {Object} ctx    An object containing a webex instance and a transform
@@ -61,12 +62,15 @@ export const transforms = toArray('inbound', {
     }
     const {decryptionFailureMessage} = ctx.webex.internal.conversation.config;
 
-    return ctx.transform('decryptPropCardItem', 0, key, [object.inputs])
+    return ctx
+      .transform('decryptPropCardItem', 0, key, [object.inputs])
       .then((inputs) => {
         object.inputs = JSON.parse(inputs[0]); // eslint-disable-line no-param-reassign
       })
       .catch((reason) => {
-        ctx.webex.logger.warn(`plugin-conversation: failed to decrypt attachmentAction.inputs: ${reason}`);
+        ctx.webex.logger.warn(
+          `plugin-conversation: failed to decrypt attachmentAction.inputs: ${reason}`
+        );
         object.inputs = decryptionFailureMessage; // eslint-disable-line no-param-reassign
 
         return Promise.resolve(decryptionFailureMessage);
@@ -87,7 +91,9 @@ export const transforms = toArray('inbound', {
       return Promise.resolve();
     }
 
-    return Promise.all(object.reactions.map((reaction) => ctx.transform('decryptPropDisplayName', key, reaction)));
+    return Promise.all(
+      object.reactions.map((reaction) => ctx.transform('decryptPropDisplayName', key, reaction))
+    );
   },
 
   /**
@@ -106,7 +112,9 @@ export const transforms = toArray('inbound', {
       return Promise.resolve();
     }
 
-    return Promise.all(object.reactions.map((reaction) => ctx.transform('decryptPropDisplayName', key, reaction)));
+    return Promise.all(
+      object.reactions.map((reaction) => ctx.transform('decryptPropDisplayName', key, reaction))
+    );
   },
 
   /**
@@ -123,28 +131,30 @@ export const transforms = toArray('inbound', {
   },
 
   /**
- * Decrypt an individual threadObject
- * @param   {Object} ctx      An object containing a webex instance and a transform
- * @param   {Object} threadObject An instance of a Webex threadObject (the objects returned by the /conversation/api/v1/threads api)
- * @returns {Promise}         Returns a ctx.transform promise
- */
+   * Decrypt an individual threadObject
+   * @param   {Object} ctx      An object containing a webex instance and a transform
+   * @param   {Object} threadObject An instance of a Webex threadObject (the objects returned by the /conversation/api/v1/threads api)
+   * @returns {Promise}         Returns a ctx.transform promise
+   */
   decryptThread(ctx, threadObject) {
     let promises = [];
 
     if (threadObject.childActivities && Array.isArray(threadObject.childActivities)) {
-      promises = threadObject.childActivities.map((child) => ctx.transform('decryptObject', null, child));
+      promises = threadObject.childActivities.map((child) =>
+        ctx.transform('decryptObject', null, child)
+      );
     }
 
     return Promise.all(promises);
   },
 
   /**
- * Decrypt an individual meeting container activity
- * @param   {Object} ctx      An object containing a webex instance and a transform
- * @param   {object} key      KMS encryption key url
- * @param   {Object} meetingContainerActivity An instance of a Webex meeting container activity
- * @returns {Promise}         Returns a ctx.transform promise
- */
+   * Decrypt an individual meeting container activity
+   * @param   {Object} ctx      An object containing a webex instance and a transform
+   * @param   {object} key      KMS encryption key url
+   * @param   {Object} meetingContainerActivity An instance of a Webex meeting container activity
+   * @returns {Promise}         Returns a ctx.transform promise
+   */
   decryptMeetingcontainer(ctx, key, meetingContainerActivity) {
     const promises = [];
 
@@ -155,10 +165,14 @@ export const transforms = toArray('inbound', {
     }
 
     if (meetingContainerActivity.extensions) {
-      const itemsToDecrypt = meetingContainerActivity.extensions.items.filter((item) => item.data.objectType === 'recording');
+      const itemsToDecrypt = meetingContainerActivity.extensions.items.filter(
+        (item) => item.data.objectType === 'recording'
+      );
 
       itemsToDecrypt.forEach((itemToDecrypt) => {
-        promises.push(ctx.transform('decryptPropTopic', itemToDecrypt.encryptionKeyUrl, itemToDecrypt.data));
+        promises.push(
+          ctx.transform('decryptPropTopic', itemToDecrypt.encryptionKeyUrl, itemToDecrypt.data)
+        );
       });
     }
 
@@ -178,22 +192,33 @@ export const transforms = toArray('inbound', {
     const promises = [];
 
     if (conversation.activities.items) {
-      promises.push(Promise.all(conversation.activities.items.map((item) => ctx.transform('decryptObject', null, item))));
+      promises.push(
+        Promise.all(
+          conversation.activities.items.map((item) => ctx.transform('decryptObject', null, item))
+        )
+      );
     }
 
     const usableKey = conversation.encryptionKeyUrl || key;
     const {decryptionFailureMessage} = ctx.webex.internal.conversation.config;
 
     if (usableKey) {
-      promises.push(ctx.transform('decryptPropDisplayName', usableKey, conversation)
-        .catch((error) => {
-          ctx.webex.logger.warn('plugin-conversation: failed to decrypt display name of ', conversation.url, error);
+      promises.push(
+        ctx.transform('decryptPropDisplayName', usableKey, conversation).catch((error) => {
+          ctx.webex.logger.warn(
+            'plugin-conversation: failed to decrypt display name of ',
+            conversation.url,
+            error
+          );
           Promise.resolve(decryptionFailureMessage);
-        }));
+        })
+      );
       promises.push(ctx.transform('decryptPropContent', usableKey, conversation));
     }
     if (conversation.avatarEncryptionKeyUrl) {
-      promises.push(ctx.transform('decryptObject', conversation.avatarEncryptionKeyUrl, conversation.avatar));
+      promises.push(
+        ctx.transform('decryptObject', conversation.avatarEncryptionKeyUrl, conversation.avatar)
+      );
     }
     // TODO (holsted 04/06/19): This was deprecated in favor of .previousValue below. I wanted to remove this entirely
     // but I wasn't sure if some open source use cases may be reading from cached conversations or not so leaving it for now.
@@ -226,7 +251,9 @@ export const transforms = toArray('inbound', {
     // iterate and recursively decrypt over children objects
 
     if (activity.children && Array.isArray(activity.children)) {
-      promises = activity.children.map((child) => ctx.transform('decryptObject', keyUrl, child.activity));
+      promises = activity.children.map((child) =>
+        ctx.transform('decryptObject', keyUrl, child.activity)
+      );
     }
 
     promises.push(ctx.transform('decryptObject', keyUrl, activity.object));
@@ -247,20 +274,22 @@ export const transforms = toArray('inbound', {
   },
 
   /**
-* Decrypts a comment...
-* @param {Object} ctx An object containing a webex instance and transform prop
-* @param {String} key KMS key
-* @param {Object} comment A comment object with a displayName and content (encrypted)
-* @returns {Promise} Returns the results of Promise.all on two transforms
-*/
+   * Decrypts a comment...
+   * @param {Object} ctx An object containing a webex instance and transform prop
+   * @param {String} key KMS key
+   * @param {Object} comment A comment object with a displayName and content (encrypted)
+   * @returns {Promise} Returns the results of Promise.all on two transforms
+   */
   decryptComment(ctx, key, comment) {
     const promises = [
       ctx.transform('decryptPropDisplayName', key, comment),
-      ctx.transform('decryptPropContent', key, comment)
+      ctx.transform('decryptPropContent', key, comment),
     ];
 
     if (comment.cards && Array.isArray(comment.cards)) {
-      comment.cards.map((item, index) => promises.push(ctx.transform('decryptPropCardItem', index, key, comment.cards)));
+      comment.cards.map((item, index) =>
+        promises.push(ctx.transform('decryptPropCardItem', index, key, comment.cards))
+      );
     }
 
     return Promise.all(promises);
@@ -300,7 +329,9 @@ export const transforms = toArray('inbound', {
     promises.push(ctx.transform('decryptComment', key, content));
 
     if (content.links && content.links.items && Array.isArray(content.links.items)) {
-      content.links.items.forEach((item) => promises.push(ctx.transform('decryptObject', key, item)));
+      content.links.items.forEach((item) =>
+        promises.push(ctx.transform('decryptObject', key, item))
+      );
     }
 
     return Promise.all(promises);
@@ -334,9 +365,7 @@ export const transforms = toArray('inbound', {
    * @returns {Promise}      Returns the result of Promise.all
    */
   decryptEvent(ctx, key, event) {
-    const promises = [
-      ctx.transform('decryptPropDisplayName', key, event)
-    ];
+    const promises = [ctx.transform('decryptPropDisplayName', key, event)];
 
     if (event.location && event.location.split('.').length === 5) {
       promises.push(ctx.transform('decryptPropLocation', key, event));
@@ -359,11 +388,14 @@ export const transforms = toArray('inbound', {
     }
 
     return Promise.all([
-      file.transcodedCollection && Promise.all(file.transcodedCollection.items.map((item) => ctx.transform('decryptObject', key, item))),
+      file.transcodedCollection &&
+        Promise.all(
+          file.transcodedCollection.items.map((item) => ctx.transform('decryptObject', key, item))
+        ),
       ctx.transform('decryptPropScr', key, file),
       ctx.transform('decryptPropDisplayName', key, file),
       ctx.transform('decryptPropContent', key, file),
-      file.image && ctx.transform('decryptPropScr', key, file.image)
+      file.image && ctx.transform('decryptPropScr', key, file.image),
     ]);
   },
 
@@ -377,7 +409,7 @@ export const transforms = toArray('inbound', {
   decryptLink(ctx, key, link) {
     return Promise.all([
       ctx.transform('decryptPropSslr', key, link),
-      ctx.transform('decryptPropDisplayName', key, link)
+      ctx.transform('decryptPropDisplayName', key, link),
     ]);
   },
 
@@ -389,7 +421,9 @@ export const transforms = toArray('inbound', {
    * @returns {Promise}                  Returns the result of Promise.all
    */
   decryptTranscodedContent(ctx, key, transcodedContent) {
-    return Promise.all(transcodedContent.files.items.map((item) => ctx.transform('decryptFile', key, item)));
+    return Promise.all(
+      transcodedContent.files.items.map((item) => ctx.transform('decryptFile', key, item))
+    );
   },
 
   /**
@@ -417,7 +451,8 @@ export const transforms = toArray('inbound', {
     }
     const {decryptionFailureMessage} = ctx.webex.internal.conversation.config;
 
-    return ctx.webex.internal.encryption.decryptText(key, object[name])
+    return ctx.webex.internal.encryption
+      .decryptText(key, object[name])
       .then((plaintext) => {
         if (ctx.webex.config.conversation.keepEncryptedProperties) {
           const encryptedPropName = camelCase(`encrypted_${name}`);
@@ -436,20 +471,28 @@ export const transforms = toArray('inbound', {
   },
 
   /**
-* Decrypting an element in an Array.
-* @param {Object} ctx An object containing a webex instance and transform prop
-* @param {Integer} index Property of an object to be decrypted
-* @param {String} key KMS key
-* @param {Array} array An array of Strings to be decrypted
-* @returns {Promise} Returns a lonely Promise
-*/
+   * Decrypting an element in an Array.
+   * @param {Object} ctx An object containing a webex instance and transform prop
+   * @param {Integer} index Property of an object to be decrypted
+   * @param {String} key KMS key
+   * @param {Array} array An array of Strings to be decrypted
+   * @returns {Promise} Returns a lonely Promise
+   */
   decryptPropCardItem(ctx, index, key, array) {
-    if (!Number.isInteger(index) || !array || !Array.isArray(array) || index < 0 || index >= array.length || !(array[index] instanceof String || typeof array[index] === 'string')) {
+    if (
+      !Number.isInteger(index) ||
+      !array ||
+      !Array.isArray(array) ||
+      index < 0 ||
+      index >= array.length ||
+      !(array[index] instanceof String || typeof array[index] === 'string')
+    ) {
       return Promise.resolve();
     }
     const {decryptionFailureMessage} = ctx.webex.internal.conversation.config;
 
-    return ctx.webex.internal.encryption.decryptText(key, array[index])
+    return ctx.webex.internal.encryption
+      .decryptText(key, array[index])
       .then((plaintext) => {
         array[index] = plaintext; // eslint-disable-line no-param-reassign
       })
@@ -468,10 +511,9 @@ export const transforms = toArray('inbound', {
    * @returns {Promise}       Returns a promise
    */
   decryptPropScr(ctx, key, object) {
-    return ctx.webex.internal.encryption.decryptScr(key, object.scr)
-      .then((scr) => {
-        object.scr = scr; // eslint-disable-line no-param-reassign
-      });
+    return ctx.webex.internal.encryption.decryptScr(key, object.scr).then((scr) => {
+      object.scr = scr; // eslint-disable-line no-param-reassign
+    });
   },
 
   /**
@@ -482,10 +524,9 @@ export const transforms = toArray('inbound', {
    * @returns {Promise}       Returns a promise
    */
   decryptPropSslr(ctx, key, object) {
-    return ctx.webex.internal.encryption.decryptScr(key, object.sslr)
-      .then((sslr) => {
-        object.sslr = sslr; // eslint-disable-line no-param-reassign
-      });
+    return ctx.webex.internal.encryption.decryptScr(key, object.sslr).then((sslr) => {
+      object.sslr = sslr; // eslint-disable-line no-param-reassign
+    });
   },
 
   decryptPropDisplayName: decryptTextProp('displayName'),
@@ -496,5 +537,5 @@ export const transforms = toArray('inbound', {
 
   decryptPropLocation: decryptTextProp('location'),
 
-  decryptPropTopic: decryptTextProp('topic')
+  decryptPropTopic: decryptTextProp('topic'),
 });

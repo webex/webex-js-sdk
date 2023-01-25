@@ -9,14 +9,28 @@ import hmacSHA256 from 'crypto-js/hmac-sha256';
 import hex from 'crypto-js/enc-hex';
 import {proxyEvents, tap} from '@webex/common';
 import {Page, WebexPlugin} from '@webex/webex-core';
-import {cloneDeep, cloneDeepWith, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {
+  cloneDeep,
+  cloneDeepWith,
+  defaults,
+  isArray,
+  isObject,
+  isString,
+  last,
+  map,
+  merge,
+  omit,
+  pick,
+  uniq,
+} from 'lodash';
 import {readExifData} from '@webex/helper-image';
 import uuid from 'uuid';
 
 import {InvalidUserCreation} from './convo-error';
 import ShareActivity from './share-activity';
 import {
-  minBatchSize, defaultMinDisplayableActivities,
+  minBatchSize,
+  defaultMinDisplayableActivities,
   getLoopCounterFailsafe,
   batchSizeIncrementCount,
   getActivityObjectsFromMap,
@@ -24,7 +38,7 @@ import {
   noMoreActivitiesManager,
   getQuery,
   rootActivityManager,
-  activityManager
+  activityManager,
 } from './activity-thread-ordering';
 import {
   ACTIVITY_TYPES,
@@ -36,23 +50,25 @@ import {
   createReplyActivity,
   createEditActivity,
   createReplyEditActivity,
-  OLDER, MID, INITIAL, NEWER,
-  getPublishedDate, sortActivitiesByPublishedDate,
-  sanitizeActivity
+  OLDER,
+  MID,
+  INITIAL,
+  NEWER,
+  getPublishedDate,
+  sortActivitiesByPublishedDate,
+  sanitizeActivity,
 } from './activities';
 import {
   DEFAULT_CLUSTER,
   DEFAULT_CLUSTER_SERVICE,
   ENCRYPTION_KEY_URL_MISMATCH,
   KEY_ALREADY_ROTATED,
-  KEY_ROTATION_REQUIRED
+  KEY_ROTATION_REQUIRED,
 } from './constants';
-
 
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
-  process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER ||
-  `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
+  process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 
 const idToUrl = new Map();
 
@@ -62,7 +78,7 @@ const getConvoLimit = (options = {}) => {
   if (options.conversationsLimit) {
     limit = {
       value: options.conversationsLimit,
-      name: 'conversationsLimit'
+      name: 'conversationsLimit',
     };
   }
 
@@ -79,8 +95,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {String} url of the conversation
    */
   getUrlFromClusterId({cluster = 'us', id} = {}) {
-    let clusterId =
-      cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
+    let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
 
     // Determine if cluster has service name (non-US clusters from hydra do not)
     if (clusterId.split(':').length < 4) {
@@ -88,8 +103,7 @@ const Conversation = WebexPlugin.extend({
       clusterId = `${cluster}:${CLUSTER_SERVICE}`;
     }
 
-    const {url} = this.webex.internal.services
-      .getServiceFromClusterId({clusterId}) || {};
+    const {url} = this.webex.internal.services.getServiceFromClusterId({clusterId}) || {};
 
     if (!url) {
       throw Error(`Could not find service for cluster [${cluster}]`);
@@ -106,7 +120,7 @@ const Conversation = WebexPlugin.extend({
    */
   acknowledge(conversation, object, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(object)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -118,10 +132,9 @@ const Conversation = WebexPlugin.extend({
       object: {
         objectType: 'activity',
         id: object.id,
-        url: object.url
-      }
-    })
-      .then((a) => this.submit(a));
+        url: object.url,
+      },
+    }).then((a) => this.submit(a));
   },
 
   /**
@@ -135,26 +148,24 @@ const Conversation = WebexPlugin.extend({
    */
   add(conversation, participant, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
-    return this.webex.internal.user.asUUID(participant, {create: true})
-      .then((id) => this.prepare(activity, {
+    return this.webex.internal.user.asUUID(participant, {create: true}).then((id) =>
+      this.prepare(activity, {
         verb: 'add',
         target: this.prepareConversation(convoWithUrl),
         object: {
           id,
-          objectType: 'person'
+          objectType: 'person',
         },
         kmsMessage: {
           method: 'create',
           uri: '/authorizations',
           resourceUri: '<KRO>',
-          userIds: [
-            id
-          ]
-        }
-      })
-        .then((a) => this.submit(a)));
+          userIds: [id],
+        },
+      }).then((a) => this.submit(a))
+    );
   },
 
   /**
@@ -181,11 +192,16 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('`params.participants` is required'));
     }
 
-    return Promise.all(params.participants.map((participant) => this.webex.internal.user.asUUID(participant, {create: true})
-      // eslint-disable-next-line arrow-body-style
-      .catch((err) => {
-        return options.allowPartialCreation ? undefined : Promise.reject(err);
-      })))
+    return Promise.all(
+      params.participants.map((participant) =>
+        this.webex.internal.user
+          .asUUID(participant, {create: true})
+          // eslint-disable-next-line arrow-body-style
+          .catch((err) => {
+            return options.allowPartialCreation ? undefined : Promise.reject(err);
+          })
+      )
+    )
       .then((participants) => {
         participants.unshift(this.webex.internal.device.userId);
         participants = uniq(participants);
@@ -216,12 +232,11 @@ const Conversation = WebexPlugin.extend({
           return c;
         }
 
-        return this.webex.internal.conversation.share(c, params.files)
-          .then((a) => {
-            c.activities.items.push(a);
+        return this.webex.internal.conversation.share(c, params.files).then((a) => {
+          c.activities.items.push(a);
 
-            return c;
-          });
+          return c;
+        });
       });
   },
 
@@ -236,7 +251,8 @@ const Conversation = WebexPlugin.extend({
     // not using webex.internal.encryption.getKey() because the JWK it returns does not have a 'k'
     // property. we need jwk.k to correctly generate the HMAC
 
-    return this.webex.internal.encryption.unboundedStorage.get(parent.encryptionKeyUrl)
+    return this.webex.internal.encryption.unboundedStorage
+      .get(parent.encryptionKeyUrl)
       .then((keyString) => {
         const key = JSON.parse(keyString);
         // when we stringify this object, keys must be in this order to generate same HMAC as
@@ -278,7 +294,7 @@ const Conversation = WebexPlugin.extend({
    */
   sendReaction(conversation, reactionPayload) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(reactionPayload)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -286,9 +302,8 @@ const Conversation = WebexPlugin.extend({
 
     return this.prepare(reactionPayload, {
       target: this.prepareConversation(convoWithUrl),
-      object: pick(reactionPayload, 'id', 'url', 'objectType')
-    })
-      .then((act) => this.submit(act));
+      object: pick(reactionPayload, 'id', 'url', 'objectType'),
+    }).then((act) => this.submit(act));
   },
 
   /**
@@ -302,14 +317,14 @@ const Conversation = WebexPlugin.extend({
       actor: {objectType: 'person', id: this.webex.internal.device.userId},
       object: {
         id: reactionId,
-        objectType: 'activity'
+        objectType: 'activity',
       },
       objectType: 'activity',
       target: {
         id: conversation.id,
-        objectType: 'conversation'
+        objectType: 'conversation',
       },
-      verb: 'delete'
+      verb: 'delete',
     };
 
     return this.sendReaction(conversation, deleteReactionPayload);
@@ -328,25 +343,24 @@ const Conversation = WebexPlugin.extend({
         actor: {objectType: 'person', id: this.webex.internal.device.userId},
         target: {
           id: conversation.id,
-          objectType: 'conversation'
+          objectType: 'conversation',
         },
         verb: 'add',
         objectType: 'activity',
         parent: {
           type: 'reaction',
-          id: activity.id
+          id: activity.id,
         },
         object: {
           objectType: 'reaction2',
           displayName,
-          hmac
-        }
+          hmac,
+        },
       };
 
       return this.sendReaction(conversation, addReactionPayload);
     });
   },
-
 
   /**
    * delete content
@@ -357,7 +371,7 @@ const Conversation = WebexPlugin.extend({
    */
   delete(conversation, object, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(object)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -375,12 +389,13 @@ const Conversation = WebexPlugin.extend({
       request.target.kmsResourceObjectUrl = object.object.kmsResourceObjectUrl;
       request.kmsMessage = {
         method: 'delete',
-        uri: `<KRO>/authorizations?${querystring.stringify({authId: convoWithUrl.kmsResourceObjectUrl})}`
+        uri: `<KRO>/authorizations?${querystring.stringify({
+          authId: convoWithUrl.kmsResourceObjectUrl,
+        })}`,
       };
     }
 
-    return this.prepare(activity, request)
-      .then((a) => this.submit(a));
+    return this.prepare(activity, request).then((a) => this.submit(a));
   },
 
   /**
@@ -400,11 +415,9 @@ const Conversation = WebexPlugin.extend({
 
     if (isEncrypted) {
       promise = this.webex.internal.encryption.download(item.scr, item.options);
-    }
-    else if (item.scr && item.scr.loc) {
+    } else if (item.scr && item.scr.loc) {
       promise = this._downloadUnencryptedFile(item.scr.loc, options);
-    }
-    else {
+    } else {
       promise = this._downloadUnencryptedFile(item.url, options);
     }
 
@@ -446,11 +459,10 @@ const Conversation = WebexPlugin.extend({
   _downloadUnencryptedFile(uri, options = {}) {
     Object.assign(options, {
       uri,
-      responseType: 'buffer'
+      responseType: 'buffer',
     });
 
-    const promise = this.request(options)
-      .then((res) => res.body);
+    const promise = this.request(options).then((res) => res.body);
 
     proxyEvents(options.download, promise);
 
@@ -469,7 +481,7 @@ const Conversation = WebexPlugin.extend({
     const activity = {
       actor,
       objectType: 'activity',
-      verb
+      verb,
     };
 
     if (!actor) {
@@ -479,7 +491,7 @@ const Conversation = WebexPlugin.extend({
     if (isString(actor)) {
       activity.actor = {
         objectType: 'person',
-        id: actor
+        id: actor,
       };
     }
 
@@ -495,20 +507,20 @@ const Conversation = WebexPlugin.extend({
   },
 
   /**
-  * Gets an array of activities with an array of activity URLS
-  * @param {Array} activityUrls
-  * @param {Object} options
-  * @param {String} options.cluster cluster where the activities are located
-  * @param {String} options.url base convo url where the activities are located
-  * @returns {Promise<Object>} Resolves with the activities
-  */
+   * Gets an array of activities with an array of activity URLS
+   * @param {Array} activityUrls
+   * @param {Object} options
+   * @param {String} options.cluster cluster where the activities are located
+   * @param {String} options.url base convo url where the activities are located
+   * @returns {Promise<Object>} Resolves with the activities
+   */
   bulkActivitiesFetch(activityUrls, options = {}) {
-    let cluster, url;
+    let cluster;
+    let url;
 
     if (typeof options === 'string') {
       cluster = options;
-    }
-    else {
+    } else {
       ({cluster, url} = options);
     }
 
@@ -516,45 +528,42 @@ const Conversation = WebexPlugin.extend({
     const params = {
       method: 'POST',
       body: {
-        activityUrls
-      }
+        activityUrls,
+      },
     };
 
     if (url) {
       const uri = `${url}/${resource}`;
 
       Object.assign(params, {
-        uri
+        uri,
       });
-    }
-    else if (cluster) {
+    } else if (cluster) {
       const uri = `${this.getUrlFromClusterId({cluster})}/${resource}`;
 
       Object.assign(params, {
-        uri
+        uri,
       });
-    }
-    else {
+    } else {
       Object.assign(params, {
         api: 'conversation',
-        resource
+        resource,
       });
     }
 
-    return this.webex.request(params)
-      .then((res) => {
-        const activitiesArr = [];
+    return this.webex.request(params).then((res) => {
+      const activitiesArr = [];
 
-        if (res.body.multistatus) {
-          res.body.multistatus.forEach((statusData) => {
-            if (statusData.status === '200' && statusData.data && statusData.data.activity) {
-              activitiesArr.push(statusData.data.activity);
-            }
-          });
-        }
+      if (res.body.multistatus) {
+        res.body.multistatus.forEach((statusData) => {
+          if (statusData.status === '200' && statusData.data && statusData.data.activity) {
+            activitiesArr.push(statusData.data.activity);
+          }
+        });
+      }
 
-        return activitiesArr;
-      });
+      return activitiesArr;
+    });
   },
 
   /**
@@ -572,27 +581,27 @@ const Conversation = WebexPlugin.extend({
 
     try {
       uri = !user ? this.getConvoUrl(conversation) : '';
-    }
-    catch (err) {
+    } catch (err) {
       return Promise.reject(Error(err));
     }
 
     const params = {
-      qs: Object.assign({
+      qs: {
         uuidEntryFormat: true,
         personRefresh: true,
         activitiesLimit: 0,
         includeConvWithDeletedUserUUID: false,
-        includeParticipants: false
-      }, omit(options, 'id', 'user', 'url')),
-      disableTransform: options.disableTransform
+        includeParticipants: false,
+        ...omit(options, 'id', 'user', 'url'),
+      },
+      disableTransform: options.disableTransform,
     };
 
     // Default behavior is to set includeParticipants=false,
     // which makes the payload lighter by removing participant info.
     // If the caller explicitly sets the participantAckFilter or
     // participantsLimit, we don't want that default setting.
-    if (('participantAckFilter' in options) || ('participantsLimit' in options)) {
+    if ('participantAckFilter' in options || 'participantsLimit' in options) {
       delete params.qs.includeParticipants;
     }
 
@@ -601,21 +610,22 @@ const Conversation = WebexPlugin.extend({
         if (userId) {
           Object.assign(params, {
             service: 'conversation',
-            resource: `conversations/user/${userId}`
+            resource: `conversations/user/${userId}`,
           });
-        }
-        else {
+        } else {
           params.uri = uri;
         }
 
         return this.request(params);
       })
-      .then(tap(({body}) => {
-        const {id, url} = body;
+      .then(
+        tap(({body}) => {
+          const {id, url} = body;
 
-        this._recordUUIDs(body);
-        idToUrl.set(id, url);
-      }))
+          this._recordUUIDs(body);
+          idToUrl.set(id, url);
+        })
+      )
       .then((res) => res.body);
   },
 
@@ -631,10 +641,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   leave(conversation, participant, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve()
       .then(() => {
@@ -642,19 +649,20 @@ const Conversation = WebexPlugin.extend({
           participant = this.webex.internal.device.userId;
         }
 
-        return this.webex.internal.user.asUUID(participant)
-          .then((id) => this.prepare(activity, {
+        return this.webex.internal.user.asUUID(participant).then((id) =>
+          this.prepare(activity, {
             verb: 'leave',
             target: this.prepareConversation(convoWithUrl),
             object: {
               id,
-              objectType: 'person'
+              objectType: 'person',
             },
             kmsMessage: {
               method: 'delete',
-              uri: `<KRO>/authorizations?${querystring.stringify({authId: id})}`
-            }
-          }));
+              uri: `<KRO>/authorizations?${querystring.stringify({authId: id})}`,
+            },
+          })
+        );
       })
       .then((a) => this.submit(a));
   },
@@ -677,15 +685,14 @@ const Conversation = WebexPlugin.extend({
       resource: options.summary ? 'conversationsSummary' : 'conversations',
       qs: omit(options, ['deferDecrypt', 'summary']),
       deferDecrypt: options.deferDecrypt,
-      limit: getConvoLimit(options)
-    })
-      .then((results) => {
-        for (const convo of results) {
-          idToUrl.set(convo.id, convo.url);
-        }
+      limit: getConvoLimit(options),
+    }).then((results) => {
+      for (const convo of results) {
+        idToUrl.set(convo.id, convo.url);
+      }
 
-        return results;
-      });
+      return results;
+    });
   },
 
   /**
@@ -709,41 +716,39 @@ const Conversation = WebexPlugin.extend({
 
       // Go get the next page of results
       return this.request({
-        url: options.page.links.next
+        url: options.page.links.next,
       }).then((res) => ({page: new Page(res, this.webex)}));
     }
 
     // No page - so this is the first request to kick off the pagination process
-    const queryOptions = Object.assign({
+    const queryOptions = {
       personRefresh: true,
       uuidEntryFormat: true,
       activitiesLimit: 0,
       participantsLimit: 0,
-      paginate: true
-    }, omit(options, ['deferDecrypt', 'url']));
+      paginate: true,
+      ...omit(options, ['deferDecrypt', 'url']),
+    };
 
     const reqOptions = {
       qs: queryOptions,
       deferDecrypt: options.deferDecrypt,
-      limit: getConvoLimit(options)
+      limit: getConvoLimit(options),
     };
 
     // if options.url is present we likely received one or more additional urls due to federation. In this case
     // we need to initialize pagination against that url instead of the default home cluster
     if (options.url) {
       reqOptions.uri = `${options.url}/conversations`;
-    }
-    else {
+    } else {
       reqOptions.service = 'conversation';
       reqOptions.resource = 'conversations';
     }
 
-
     return this.request(reqOptions).then((res) => {
       const response = {
-        page: new Page(res, this.webex)
+        page: new Page(res, this.webex),
       };
-
 
       if (res.body && res.body.additionalUrls) {
         response.additionalUrls = res.body.additionalUrls;
@@ -764,15 +769,14 @@ const Conversation = WebexPlugin.extend({
       service: 'conversation',
       resource: 'conversations/left',
       qs: options,
-      limit: getConvoLimit(options)
-    })
-      .then((results) => {
-        for (const convo of results) {
-          idToUrl.set(convo.id, convo.url);
-        }
+      limit: getConvoLimit(options),
+    }).then((results) => {
+      for (const convo of results) {
+        idToUrl.set(convo.id, convo.url);
+      }
 
-        return results;
-      });
+      return results;
+    });
   },
 
   /**
@@ -807,7 +811,7 @@ const Conversation = WebexPlugin.extend({
     const params = {
       method: 'GET',
       url: `${conversationUrl}/parents`,
-      qs: query
+      qs: query,
     };
 
     const response = await this.request(params);
@@ -827,7 +831,12 @@ const Conversation = WebexPlugin.extend({
     const {conversationUrl, activityParentId, query} = options;
     const {activityType} = query;
 
-    const initialResponse = await this.listChildActivitiesByParentId(conversationUrl, activityParentId, activityType, query);
+    const initialResponse = await this.listChildActivitiesByParentId(
+      conversationUrl,
+      activityParentId,
+      activityType,
+      query
+    );
 
     let page = new Page(initialResponse, this.webex);
 
@@ -861,12 +870,12 @@ const Conversation = WebexPlugin.extend({
   async listChildActivitiesByParentId(conversationUrl, activityParentId, activityType, query = {}) {
     const finalQuery = {
       ...query,
-      activityType
+      activityType,
     };
     const params = {
       method: 'GET',
       url: `${conversationUrl}/parents/${activityParentId}`,
-      qs: finalQuery
+      qs: finalQuery,
     };
 
     return this.request(params);
@@ -883,10 +892,14 @@ const Conversation = WebexPlugin.extend({
     const {body} = await this.request({
       method: 'GET',
       url: `${conversationUrl}/activities/${activityParentId}`,
-      qs: query
+      qs: query,
     });
 
-    const reactionObjects = body.children ? body.children.filter((child) => child.type === 'reactionSelfSummary' || child.type === 'reactionSummary') : [];
+    const reactionObjects = body.children
+      ? body.children.filter(
+          (child) => child.type === 'reactionSelfSummary' || child.type === 'reactionSummary'
+        )
+      : [];
 
     return reactionObjects;
   },
@@ -900,7 +913,7 @@ const Conversation = WebexPlugin.extend({
     return this._list({
       service: 'conversation',
       resource: 'mentions',
-      qs: omit(options, 'mentions')
+      qs: omit(options, 'mentions'),
     });
   },
 
@@ -911,9 +924,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   muteMentions(conversation, activity) {
-    return this.tag(conversation, {
-      tags: ['MENTION_NOTIFICATIONS_OFF']
-    }, activity);
+    return this.tag(
+      conversation,
+      {
+        tags: ['MENTION_NOTIFICATIONS_OFF'],
+      },
+      activity
+    );
   },
 
   /**
@@ -923,9 +940,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   muteMessages(conversation, activity) {
-    return this.tag(conversation, {
-      tags: ['MESSAGE_NOTIFICATIONS_OFF']
-    }, activity);
+    return this.tag(
+      conversation,
+      {
+        tags: ['MESSAGE_NOTIFICATIONS_OFF'],
+      },
+      activity
+    );
   },
 
   /**
@@ -935,9 +956,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   ignore(conversation, activity) {
-    return this.tag(conversation, {
-      tags: ['IGNORED']
-    }, activity);
+    return this.tag(
+      conversation,
+      {
+        tags: ['IGNORED'],
+      },
+      activity
+    );
   },
 
   /**
@@ -948,22 +973,18 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   cardAction(conversation, inputs, parentActivity, activity = {}) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     activity.parent = {
       id: parentActivity.id,
-      type: 'cardAction'
+      type: 'cardAction',
     };
 
     return this.prepare(activity, {
       verb: 'cardAction',
       target: this.prepareConversation(convoWithUrl),
-      object: Object.assign({objectType: 'submit'}, inputs)
-    })
-      .then((a) => this.submit(a));
+      object: {objectType: 'submit', ...inputs},
+    }).then((a) => this.submit(a));
   },
 
   /**
@@ -977,105 +998,122 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   post(conversation, message, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     if (isString(message)) {
       message = {
-        displayName: message
+        displayName: message,
       };
     }
 
     return this.prepare(activity, {
       verb: 'post',
       target: this.prepareConversation(convoWithUrl),
-      object: Object.assign({objectType: 'comment'}, message)
-    })
-      .then((a) => this.submit(a));
+      object: {objectType: 'comment', ...message},
+    }).then((a) => this.submit(a));
   },
 
   prepareConversation(conversation) {
-    return defaults(pick(conversation, 'id', 'url', 'objectType', 'defaultActivityEncryptionKeyUrl', 'kmsResourceObjectUrl'), {
-      objectType: 'conversation'
-    });
+    return defaults(
+      pick(
+        conversation,
+        'id',
+        'url',
+        'objectType',
+        'defaultActivityEncryptionKeyUrl',
+        'kmsResourceObjectUrl'
+      ),
+      {
+        objectType: 'conversation',
+      }
+    );
   },
 
   prepare(activity, params) {
     params = params || {};
     activity = activity || {};
 
-    return Promise.resolve(activity.prepare ? activity.prepare(params) : activity)
-      .then((act) => {
-        defaults(act, {
-          verb: params.verb,
-          kmsMessage: params.kmsMessage,
-          objectType: 'activity',
-          clientTempId: uuid.v4(),
-          actor: this.webex.internal.device.userId
-        });
-
-        // Workaround because parent is a reserved props in Ampersand
-        if ((activity.parentActivityId && activity.activityType) || (activity.parent && activity.parent.id && activity.parent.type)) {
-          act.parent = {
-            id: activity.parentActivityId || activity.parent.id,
-            type: activity.activityType || activity.parent.type
-          };
-        }
-
-        if (isString(act.actor)) {
-          act.actor = {
-            objectType: 'person',
-            id: act.actor
-          };
-        }
-
-        ['actor', 'object'].forEach((key) => {
-          if (params[key]) {
-            act[key] = act[key] || {};
-            defaults(act[key], params[key]);
-          }
-        });
-
-        if (params.target) {
-          merge(act, {
-            target: pick(params.target, 'id', 'url', 'objectType', 'kmsResourceObjectUrl', 'defaultActivityEncryptionKeyUrl')
-          });
-        }
-
-        ['object', 'target'].forEach((key) => {
-          if (act[key] && act[key].url && !act[key].id) {
-            act[key].id = act[key].url.split('/').pop();
-          }
-        });
-
-        ['actor', 'object', 'target'].forEach((key) => {
-          if (act[key] && !act[key].objectType) {
-            // Reminder: throwing here because it's the only way to get out of
-            // this loop in event of an error.
-            throw new Error(`\`act.${key}.objectType\` must be defined`);
-          }
-        });
-
-        if (act.object && act.object.content && !act.object.displayName) {
-          return Promise.reject(new Error('Cannot submit activity object with `content` but no `displayName`'));
-        }
-
-        return act;
+    return Promise.resolve(activity.prepare ? activity.prepare(params) : activity).then((act) => {
+      defaults(act, {
+        verb: params.verb,
+        kmsMessage: params.kmsMessage,
+        objectType: 'activity',
+        clientTempId: uuid.v4(),
+        actor: this.webex.internal.device.userId,
       });
+
+      // Workaround because parent is a reserved props in Ampersand
+      if (
+        (activity.parentActivityId && activity.activityType) ||
+        (activity.parent && activity.parent.id && activity.parent.type)
+      ) {
+        act.parent = {
+          id: activity.parentActivityId || activity.parent.id,
+          type: activity.activityType || activity.parent.type,
+        };
+      }
+
+      if (isString(act.actor)) {
+        act.actor = {
+          objectType: 'person',
+          id: act.actor,
+        };
+      }
+
+      ['actor', 'object'].forEach((key) => {
+        if (params[key]) {
+          act[key] = act[key] || {};
+          defaults(act[key], params[key]);
+        }
+      });
+
+      if (params.target) {
+        merge(act, {
+          target: pick(
+            params.target,
+            'id',
+            'url',
+            'objectType',
+            'kmsResourceObjectUrl',
+            'defaultActivityEncryptionKeyUrl'
+          ),
+        });
+      }
+
+      ['object', 'target'].forEach((key) => {
+        if (act[key] && act[key].url && !act[key].id) {
+          act[key].id = act[key].url.split('/').pop();
+        }
+      });
+
+      ['actor', 'object', 'target'].forEach((key) => {
+        if (act[key] && !act[key].objectType) {
+          // Reminder: throwing here because it's the only way to get out of
+          // this loop in event of an error.
+          throw new Error(`\`act.${key}.objectType\` must be defined`);
+        }
+      });
+
+      if (act.object && act.object.content && !act.object.displayName) {
+        return Promise.reject(
+          new Error('Cannot submit activity object with `content` but no `displayName`')
+        );
+      }
+
+      return act;
+    });
   },
 
   /**
- * Get a subset of threads for a user.
- * @param {Object} options
- * @returns {Promise<Array<Activity>>}
- */
+   * Get a subset of threads for a user.
+   * @param {Object} options
+   * @returns {Promise<Array<Activity>>}
+   */
   async listThreads(options) {
     return this._list({
       service: 'conversation',
       resource: 'threads',
-      qs: omit(options, 'showAllTypes')
+      qs: omit(options, 'showAllTypes'),
     });
   },
 
@@ -1085,8 +1123,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   processActivityEvent(event) {
-    return this.webex.transform('inbound', event)
-      .then(() => event);
+    return this.webex.transform('inbound', event).then(() => event);
   },
 
   /**
@@ -1095,8 +1132,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   processInmeetingchatEvent(event) {
-    return this.webex.transform('inbound', event)
-      .then(() => event);
+    return this.webex.transform('inbound', event).then(() => event);
   },
 
   /**
@@ -1106,14 +1142,18 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   removeAllMuteTags(conversation, activity) {
-    return this.untag(conversation, {
-      tags: [
-        'MENTION_NOTIFICATIONS_OFF',
-        'MENTION_NOTIFICATIONS_ON',
-        'MESSAGE_NOTIFICATIONS_OFF',
-        'MESSAGE_NOTIFICATIONS_ON'
-      ]
-    }, activity);
+    return this.untag(
+      conversation,
+      {
+        tags: [
+          'MENTION_NOTIFICATIONS_OFF',
+          'MENTION_NOTIFICATIONS_ON',
+          'MESSAGE_NOTIFICATIONS_OFF',
+          'MESSAGE_NOTIFICATIONS_ON',
+        ],
+      },
+      activity
+    );
   },
 
   /**
@@ -1144,10 +1184,7 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('Room avatars must be less than 1MB'));
     }
 
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve()
       .then(() => {
@@ -1157,7 +1194,7 @@ const Conversation = WebexPlugin.extend({
         activity.add(avatar, uploadOptions);
 
         return this.prepare(activity, {
-          target: this.prepareConversation(convoWithUrl)
+          target: this.prepareConversation(convoWithUrl),
         });
       })
       .then((a) => {
@@ -1179,9 +1216,7 @@ const Conversation = WebexPlugin.extend({
    * @param {Object} conversations If this is a team, the list of conversations in the team
    * @returns {String} url for the specific convo
    */
-  getConvoUrl({
-    id, url, cluster, conversations, generalConversationUuid
-  }) {
+  getConvoUrl({id, url, cluster, conversations, generalConversationUuid}) {
     if (generalConversationUuid) {
       // This is a Team
       // Because Convo doesn't have an endpoint for the team URL
@@ -1201,9 +1236,7 @@ const Conversation = WebexPlugin.extend({
       if (cluster) {
         return this.getUrlFromClusterId({cluster, id});
       }
-      this.logger.warn(
-        'You should be using the `url` instead of the `id` property'
-      );
+      this.logger.warn('You should be using the `url` instead of the `id` property');
       const relatedUrl = idToUrl.get(id);
 
       if (!relatedUrl) {
@@ -1228,11 +1261,8 @@ const Conversation = WebexPlugin.extend({
     if (!conversation.id) {
       if (conversation.url) {
         conversation.id = conversation.url.split('/').pop();
-      }
-      else {
-        return Promise.reject(
-          new Error('conversation: could not identify conversation')
-        );
+      } else {
+        return Promise.reject(new Error('conversation: could not identify conversation'));
       }
     }
 
@@ -1240,8 +1270,7 @@ const Conversation = WebexPlugin.extend({
 
     if (options.typing) {
       eventType = 'status.start_typing';
-    }
-    else {
+    } else {
       eventType = 'status.stop_typing';
     }
 
@@ -1251,9 +1280,9 @@ const Conversation = WebexPlugin.extend({
       method: 'POST',
       body: {
         conversationId: conversation.id,
-        eventType
+        eventType,
       },
-      url: `${url}/${resource}`
+      url: `${url}/${resource}`,
     };
 
     return this.request(params);
@@ -1269,26 +1298,21 @@ const Conversation = WebexPlugin.extend({
     if (isArray(activity)) {
       activity = {
         object: {
-          files: activity
-        }
+          files: activity,
+        },
       };
     }
 
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     if (!(activity instanceof ShareActivity)) {
       activity = ShareActivity.create(convoWithUrl, activity, this.webex);
     }
 
     return this.prepare(activity, {
-      target: this.prepareConversation(convoWithUrl)
-    })
-      .then((a) => this.submit(a));
+      target: this.prepareConversation(convoWithUrl),
+    }).then((a) => this.submit(a));
   },
-
 
   /**
    * Submits an activity to the conversation service
@@ -1303,15 +1327,15 @@ const Conversation = WebexPlugin.extend({
       method: 'POST',
       body: activity,
       qs: {
-        personRefresh: true
+        personRefresh: true,
       },
-      url: `${url}/${resource}`
+      url: `${url}/${resource}`,
     };
 
     if (activity.verb === 'share') {
       Object.assign(params.qs, {
         transcode: true,
-        async: false
+        async: false,
       });
     }
     /**
@@ -1323,7 +1347,12 @@ const Conversation = WebexPlugin.extend({
     const customActivityCopy = (value) => {
       const {files} = params.body.object;
 
-      if (files && value && files.items.length > 0 && value.constructor === files.items[0].scr.constructor) {
+      if (
+        files &&
+        value &&
+        files.items.length > 0 &&
+        value.constructor === files.items[0].scr.constructor
+      ) {
         const copySrc = cloneDeep(value);
 
         copySrc.toJWE = value.toJWE;
@@ -1344,22 +1373,24 @@ const Conversation = WebexPlugin.extend({
         if (error.body && error.body.errorCode === KEY_ROTATION_REQUIRED) {
           cloneActivity.body.target.defaultActivityEncryptionKeyUrl = null;
           this.request(cloneActivity);
-        }
-        else if (
+        } else if (
           error.body &&
-    (error.body.errorCode === KEY_ALREADY_ROTATED || error.body.errorCode === ENCRYPTION_KEY_URL_MISMATCH)
+          (error.body.errorCode === KEY_ALREADY_ROTATED ||
+            error.body.errorCode === ENCRYPTION_KEY_URL_MISMATCH)
         ) {
           // handle when key need to update
-          this.webex.request({
-            method: 'GET',
-            api: 'conversation',
-            resource: `conversations/${params.body.target.id}`
-          }).then((res) => {
-            cloneActivity.body.target.defaultActivityEncryptionKeyUrl = res.body.defaultActivityEncryptionkeyUrl;
-            this.request(cloneActivity);
-          });
-        }
-        else {
+          this.webex
+            .request({
+              method: 'GET',
+              api: 'conversation',
+              resource: `conversations/${params.body.target.id}`,
+            })
+            .then((res) => {
+              cloneActivity.body.target.defaultActivityEncryptionKeyUrl =
+                res.body.defaultActivityEncryptionkeyUrl;
+              this.request(cloneActivity);
+            });
+        } else {
           throw error;
         }
       });
@@ -1371,10 +1402,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   unassign(conversation, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb: 'unassign',
@@ -1382,11 +1410,10 @@ const Conversation = WebexPlugin.extend({
       object: {
         objectType: 'content',
         files: {
-          items: []
-        }
-      }
-    })
-      .then((a) => this.submit(a));
+          items: [],
+        },
+      },
+    }).then((a) => this.submit(a));
   },
 
   /**
@@ -1396,9 +1423,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   unmuteMentions(conversation, activity) {
-    return this.tag(conversation, {
-      tags: ['MENTION_NOTIFICATIONS_ON']
-    }, activity);
+    return this.tag(
+      conversation,
+      {
+        tags: ['MENTION_NOTIFICATIONS_ON'],
+      },
+      activity
+    );
   },
 
   /**
@@ -1408,9 +1439,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   unmuteMessages(conversation, activity) {
-    return this.tag(conversation, {
-      tags: ['MESSAGE_NOTIFICATIONS_ON']
-    }, activity);
+    return this.tag(
+      conversation,
+      {
+        tags: ['MESSAGE_NOTIFICATIONS_ON'],
+      },
+      activity
+    );
   },
 
   /**
@@ -1420,9 +1455,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise} Resolves with the created activity
    */
   unignore(conversation, activity) {
-    return this.untag(conversation, {
-      tags: ['IGNORED']
-    }, activity);
+    return this.untag(
+      conversation,
+      {
+        tags: ['IGNORED'],
+      },
+      activity
+    );
   },
 
   /**
@@ -1437,17 +1476,13 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('`object` must be an object'));
     }
 
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb: 'update',
       target: this.prepareConversation(convoWithUrl),
-      object
-    })
-      .then((a) => this.submit(a));
+      object,
+    }).then((a) => this.submit(a));
   },
 
   /**
@@ -1460,16 +1495,12 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   updateKey(conversation, key, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.get(convoWithUrl, {
       activitiesLimit: 0,
-      includeParticipants: true
-    })
-      .then((c) => this._updateKey(c, key, activity));
+      includeParticipants: true,
+    }).then((c) => this._updateKey(c, key, activity));
   },
 
   /**
@@ -1483,52 +1514,44 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   _updateKey(conversation, key, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve(
       key || this.webex.internal.encryption.kms.createUnboundKeys({count: 1})
-    )
-      .then((keys) => {
-        const k = isArray(keys) ? keys[0] : keys;
-        const params = {
-          verb: 'updateKey',
-          target: this.prepareConversation(convoWithUrl),
-          object: {
-            defaultActivityEncryptionKeyUrl: k.uri,
-            objectType: 'conversation'
-          }
+    ).then((keys) => {
+      const k = isArray(keys) ? keys[0] : keys;
+      const params = {
+        verb: 'updateKey',
+        target: this.prepareConversation(convoWithUrl),
+        object: {
+          defaultActivityEncryptionKeyUrl: k.uri,
+          objectType: 'conversation',
+        },
+      };
+
+      // Reminder: the kmsResourceObjectUrl is only usable if there is
+      // defaultActivityEncryptionKeyUrl.
+      // Valid defaultActivityEncryptionKeyUrl start with 'kms:'
+      if (
+        convoWithUrl.kmsResourceObjectUrl &&
+        convoWithUrl.kmsResourceObjectUrl.startsWith('kms:')
+      ) {
+        params.kmsMessage = {
+          method: 'update',
+          resourceUri: '<KRO>',
+          uri: k.uri,
         };
+      } else {
+        params.kmsMessage = {
+          method: 'create',
+          uri: '/resources',
+          userIds: map(convoWithUrl.participants.items, 'id'),
+          keyUris: [k.uri],
+        };
+      }
 
-        // Reminder: the kmsResourceObjectUrl is only usable if there is
-        // defaultActivityEncryptionKeyUrl.
-        // Valid defaultActivityEncryptionKeyUrl start with 'kms:'
-        if (
-          convoWithUrl.kmsResourceObjectUrl &&
-          convoWithUrl.kmsResourceObjectUrl.startsWith('kms:')
-        ) {
-          params.kmsMessage = {
-            method: 'update',
-            resourceUri: '<KRO>',
-            uri: k.uri
-          };
-        }
-        else {
-          params.kmsMessage = {
-            method: 'create',
-            uri: '/resources',
-            userIds: map(convoWithUrl.participants.items, 'id'),
-            keyUris: [
-              k.uri
-            ]
-          };
-        }
-
-        return this.prepare(activity, params)
-          .then((a) => this.submit(a));
-      });
+      return this.prepare(activity, params).then((a) => this.submit(a));
+    });
   },
 
   /**
@@ -1544,10 +1567,9 @@ const Conversation = WebexPlugin.extend({
       resource: 'conversations',
       body: payload,
       qs: {
-        forceCreate: options.allowPartialCreation
-      }
-    })
-      .then((res) => res.body);
+        forceCreate: options.allowPartialCreation,
+      },
+    }).then((res) => res.body);
   },
 
   /**
@@ -1592,13 +1614,11 @@ const Conversation = WebexPlugin.extend({
 
     // Wait for the postauth catalog to update and then try to retrieve the
     // conversation service url again.
-    return this.webex.internal.waitForCatalog('postauth')
+    return this.webex.internal
+      .waitForCatalog('postauth')
       .then(() => this.webex.internal.services.get('conversation'))
       .catch((error) => {
-        this.logger.warn(
-          'conversation: unable to get conversation url',
-          error.message
-        );
+        this.logger.warn('conversation: unable to get conversation url', error.message);
 
         return Promise.reject(error);
       });
@@ -1611,29 +1631,30 @@ const Conversation = WebexPlugin.extend({
    */
   _inferConversationUrl(conversation) {
     if (conversation.id) {
-      return this.webex.internal.feature.getFeature('developer', 'web-high-availability')
+      return this.webex.internal.feature
+        .getFeature('developer', 'web-high-availability')
         .then((haMessagingEnabled) => {
           if (haMessagingEnabled) {
             // recompute conversation URL each time as the host may have changed
             // since last usage
-            return this.getConversationUrl()
-              .then((url) => {
-                conversation.url = `${url}/conversations/${conversation.id}`;
+            return this.getConversationUrl().then((url) => {
+              conversation.url = `${url}/conversations/${conversation.id}`;
 
-                return conversation;
-              });
+              return conversation;
+            });
           }
           if (!conversation.url) {
-            return this.getConversationUrl()
-              .then((url) => {
-                conversation.url = `${url}/conversations/${conversation.id}`;
-                /* istanbul ignore else */
-                if (process.env.NODE_ENV !== 'production') {
-                  this.logger.warn('conversation: inferred conversation url from conversation id; please pass whole conversation objects to Conversation methods');
-                }
+            return this.getConversationUrl().then((url) => {
+              conversation.url = `${url}/conversations/${conversation.id}`;
+              /* istanbul ignore else */
+              if (process.env.NODE_ENV !== 'production') {
+                this.logger.warn(
+                  'conversation: inferred conversation url from conversation id; please pass whole conversation objects to Conversation methods'
+                );
+              }
 
-                return conversation;
-              });
+              return conversation;
+            });
           }
 
           return Promise.resolve(conversation);
@@ -1657,10 +1678,9 @@ const Conversation = WebexPlugin.extend({
 
     return this._list({
       qs: omit(options, 'resource'),
-      url: `${url}/${resource}`
+      url: `${url}/${resource}`,
     });
   },
-
 
   /**
    * common interface for facade of generator functions
@@ -1688,10 +1708,7 @@ const Conversation = WebexPlugin.extend({
    * jumpToActivity - gets searched-for activity and surrounding activities
    */
   listActivitiesThreadOrdered(options) {
-    const {
-      conversationUrl,
-      conversationId
-    } = options;
+    const {conversationUrl, conversationId} = options;
 
     if (!conversationUrl && !conversationId) {
       throw new Error('must provide a conversation URL or conversation ID');
@@ -1723,7 +1740,10 @@ const Conversation = WebexPlugin.extend({
       }
 
       const searchOptions = {
-        ...baseOptions, url: newUrl, queryType: MID, search: searchObject
+        ...baseOptions,
+        url: newUrl,
+        queryType: MID,
+        search: searchObject,
       };
 
       threadOrderer = this._listActivitiesThreadOrdered(searchOptions);
@@ -1732,7 +1752,7 @@ const Conversation = WebexPlugin.extend({
 
       return {
         done: true,
-        value: searchResults
+        value: searchResults,
       };
     };
 
@@ -1744,11 +1764,12 @@ const Conversation = WebexPlugin.extend({
       const {value = []} = await threadOrderer.next(olderOptions);
 
       const oldestInBatch = value[0] && value[0].activity;
-      const moreActivitiesExist = oldestInBatch && getActivityType(oldestInBatch) !== ACTIVITY_TYPES.CREATE;
+      const moreActivitiesExist =
+        oldestInBatch && getActivityType(oldestInBatch) !== ACTIVITY_TYPES.CREATE;
 
       return {
         done: !moreActivitiesExist,
-        value
+        value,
       };
     };
 
@@ -1763,22 +1784,22 @@ const Conversation = WebexPlugin.extend({
 
       return {
         done: !value.length,
-        value
+        value,
       };
     };
 
     return {
       jumpToActivity,
       getNewer,
-      getOlder
+      getOlder,
     };
   },
 
   /**
-    * Represents reactions to messages
-    * @typedef {object} Reaction
-    * @property {object} activity reaction2summary server activity object
-    */
+   * Represents reactions to messages
+   * @typedef {object} Reaction
+   * @property {object} activity reaction2summary server activity object
+   */
 
   /**
    * Represents a root (parent, with or without children) activity, along with any replies and reactions
@@ -1804,34 +1825,30 @@ const Conversation = WebexPlugin.extend({
    *
    * @returns {void}
    */
-  async* _listActivitiesThreadOrdered(options = {}) {
+  async *_listActivitiesThreadOrdered(options = {}) {
     // ***********************************************
     // INSTANCE STATE VARIABLES
     // variables that will be used for the life of the generator
     // ***********************************************
 
-    let {
-      minActivities = defaultMinDisplayableActivities,
-      queryType = INITIAL
-    } = options;
+    let {minActivities = defaultMinDisplayableActivities, queryType = INITIAL} = options;
 
     // must fetch initially before getting newer activities!
     if (queryType === NEWER) {
       queryType = INITIAL;
     }
 
-    const {
-      url: convoUrl,
-      search = {},
-      includeChildren
-    } = options;
+    const {url: convoUrl, search = {}, includeChildren} = options;
 
     // manage oldest, newest activities (ie bookends)
     const {setBookends, getNewestAct, getOldestAct} = bookendManager();
 
     // default batch should be equal to minActivities when fetching back in time, but halved when fetching newer due to subsequent child fetches filling up the minActivities count
     // reduces server RTs when fetching older activities
-    const defaultBatchSize = (queryType === INITIAL || queryType === OLDER) ? minActivities : Math.max(minBatchSize, Math.ceil(minActivities / 2));
+    const defaultBatchSize =
+      queryType === INITIAL || queryType === OLDER
+        ? minActivities
+        : Math.max(minBatchSize, Math.ceil(minActivities / 2));
     let batchSize = defaultBatchSize;
 
     // exposes activity states and handlers with simple getters
@@ -1853,22 +1870,19 @@ const Conversation = WebexPlugin.extend({
 
       // used to determine if we should continue to fetch older activities
       // must be set per iteration, as querying newer activities is still valid when all end of convo has been reached
-      const {
-        getNoMoreActs,
-        checkAndSetNoMoreActs,
-        checkAndSetNoOlderActs,
-        checkAndSetNoNewerActs
-      } = noMoreActivitiesManager();
+      const {getNoMoreActs, checkAndSetNoMoreActs, checkAndSetNoOlderActs, checkAndSetNoNewerActs} =
+        noMoreActivitiesManager();
 
-      const getActivityHandlerByType = (type) => ({
-        [ACTIVITY_TYPES.ROOT]: addNewRoot,
-        [ACTIVITY_TYPES.REPLY]: getActivityHandlerByKey(ACTIVITY_TYPES.REPLY),
-        [ACTIVITY_TYPES.EDIT]: getActivityHandlerByKey(ACTIVITY_TYPES.EDIT),
-        [ACTIVITY_TYPES.REACTION]: getActivityHandlerByKey(ACTIVITY_TYPES.REACTION),
-        [ACTIVITY_TYPES.REACTION_SELF]: getActivityHandlerByKey(ACTIVITY_TYPES.REACTION_SELF),
-        [ACTIVITY_TYPES.TOMBSTONE]: addNewRoot,
-        [ACTIVITY_TYPES.CREATE]: addNewRoot
-      }[type]);
+      const getActivityHandlerByType = (type) =>
+        ({
+          [ACTIVITY_TYPES.ROOT]: addNewRoot,
+          [ACTIVITY_TYPES.REPLY]: getActivityHandlerByKey(ACTIVITY_TYPES.REPLY),
+          [ACTIVITY_TYPES.EDIT]: getActivityHandlerByKey(ACTIVITY_TYPES.EDIT),
+          [ACTIVITY_TYPES.REACTION]: getActivityHandlerByKey(ACTIVITY_TYPES.REACTION),
+          [ACTIVITY_TYPES.REACTION_SELF]: getActivityHandlerByKey(ACTIVITY_TYPES.REACTION_SELF),
+          [ACTIVITY_TYPES.TOMBSTONE]: addNewRoot,
+          [ACTIVITY_TYPES.CREATE]: addNewRoot,
+        }[type]);
 
       const handleNewActivity = (activity) => {
         const actType = getActivityType(activity);
@@ -1906,12 +1920,13 @@ const Conversation = WebexPlugin.extend({
         handleNewActivities(activities);
       };
 
-      const getQueryResponseHandler = (type) => ({
-        [OLDER]: handleOlderQuery,
-        [NEWER]: handleNewerQuery,
-        [MID]: handleSearch,
-        [INITIAL]: handleOlderQuery
-      }[type]);
+      const getQueryResponseHandler = (type) =>
+        ({
+          [OLDER]: handleOlderQuery,
+          [NEWER]: handleNewerQuery,
+          [MID]: handleSearch,
+          [INITIAL]: handleOlderQuery,
+        }[type]);
 
       // ***********************************************
       // INNER LOOP
@@ -1930,7 +1945,7 @@ const Conversation = WebexPlugin.extend({
           conversationUrl: convoUrl,
           limit: batchSize,
           includeChildren,
-          ...query
+          ...query,
         };
 
         // request activities in batches
@@ -1953,10 +1968,7 @@ const Conversation = WebexPlugin.extend({
         }
 
         // we dont always need to fetch for parents
-        const [
-          allBatchActivities,
-          parents = {}
-        ] = await Promise.all($fetchRequests);
+        const [allBatchActivities, parents = {}] = await Promise.all($fetchRequests);
 
         // use query type to decide how to handle response
         const handler = getQueryResponseHandler(queryType);
@@ -1968,11 +1980,7 @@ const Conversation = WebexPlugin.extend({
           do this by checking the hash for each of the above parent IDs
           fetch children when we have a parent whose ID is represented in the parent ID lists
         */
-        const {
-          reply: replyIds = [],
-          edit: editIds = [],
-          reaction: reactionIds = []
-        } = parents;
+        const {reply: replyIds = [], edit: editIds = [], reaction: reactionIds = []} = parents;
 
         // if no parent IDs returned, do nothing
         if (replyIds.length || editIds.length || reactionIds.length) {
@@ -1985,11 +1993,16 @@ const Conversation = WebexPlugin.extend({
 
             const childFetchOptions = {
               conversationUrl: convoUrl,
-              activityParentId: actId
+              activityParentId: actId,
             };
 
             if (reactionIds.includes(actId)) {
-              $reactionFetches.push(this.getReactionSummaryByParentId(convoUrl, actId, {activityType: 'reactionSummary', includeChildren: true}));
+              $reactionFetches.push(
+                this.getReactionSummaryByParentId(convoUrl, actId, {
+                  activityType: 'reactionSummary',
+                  includeChildren: true,
+                })
+              );
             }
             if (replyIds.includes(actId)) {
               childFetchOptions.query = {activityType: 'reply'};
@@ -2005,14 +2018,19 @@ const Conversation = WebexPlugin.extend({
           const [reactions, replies, edits] = await Promise.all([
             Promise.all($reactionFetches),
             Promise.all($replyFetches),
-            Promise.all($editFetches)
+            Promise.all($editFetches),
           ]);
 
           // new reactions may have come in that also need their reactions fetched
           const newReplyReactions = await Promise.all(
             replies
               .filter((reply) => replyIds.includes(reply.id))
-              .map((reply) => this.getReactionSummaryByParentId(convoUrl, reply.id, {activityType: 'reactionSummary', includeChildren: true}))
+              .map((reply) =>
+                this.getReactionSummaryByParentId(convoUrl, reply.id, {
+                  activityType: 'reactionSummary',
+                  includeChildren: true,
+                })
+              )
           );
 
           const allReactions = [...reactions, ...newReplyReactions];
@@ -2060,13 +2078,12 @@ const Conversation = WebexPlugin.extend({
         // we're still building our activity list - derive new query from prior query and start loop again
         if (queryType === INITIAL) {
           query = getQuery(OLDER, {oldestPublishedDate: currentOldestPublishedDate, batchSize});
-        }
-        else {
+        } else {
           query = getQuery(queryType, {
             batchSize,
             activityToSearch: search,
             oldestPublishedDate: currentOldestPublishedDate,
-            newestPublishedDate: currentNewestPublishedDate
+            newestPublishedDate: currentNewestPublishedDate,
           });
         }
 
@@ -2087,7 +2104,9 @@ const Conversation = WebexPlugin.extend({
           return replies;
         }
 
-        const sortedReplies = sortActivitiesByPublishedDate(getActivityObjectsFromMap(repliesByParentId));
+        const sortedReplies = sortActivitiesByPublishedDate(
+          getActivityObjectsFromMap(repliesByParentId)
+        );
 
         sortedReplies.forEach((replyActivity) => {
           const replyId = replyActivity.id;
@@ -2097,20 +2116,26 @@ const Conversation = WebexPlugin.extend({
 
           const latestActivity = edit || replyActivity;
           // hash of root activities (in case of plain reply) and the reply activity (in case of edit)
-          const allRelevantActivitiesArr = [...getActivityObjectsFromMap(getRootActivityHash()), ...getActivityObjectsFromMap(repliesByParentId)];
+          const allRelevantActivitiesArr = [
+            ...getActivityObjectsFromMap(getRootActivityHash()),
+            ...getActivityObjectsFromMap(repliesByParentId),
+          ];
           const allRelevantActivities = allRelevantActivitiesArr.reduce((hashMap, act) => {
             hashMap[act.id] = act;
 
             return hashMap;
           }, {});
 
-          const finalReply = this._createParsedServerActivity(latestActivity, allRelevantActivities);
+          const finalReply = this._createParsedServerActivity(
+            latestActivity,
+            allRelevantActivities
+          );
 
           const fullReply = {
             id: replyId,
             activity: finalReply,
             reaction,
-            reactionSelf
+            reactionSelf,
           };
 
           const sanitizedFullReply = sanitizeActivity(fullReply);
@@ -2121,7 +2146,9 @@ const Conversation = WebexPlugin.extend({
         return replies;
       };
 
-      const orderedRoots = sortActivitiesByPublishedDate(getActivityObjectsFromMap(getRootActivityHash()));
+      const orderedRoots = sortActivitiesByPublishedDate(
+        getActivityObjectsFromMap(getRootActivityHash())
+      );
 
       orderedRoots.forEach((rootActivity) => {
         const rootId = rootActivity.id;
@@ -2131,13 +2158,15 @@ const Conversation = WebexPlugin.extend({
         const reactionSelf = getActivityByTypeAndParentId(ACTIVITY_TYPES.REACTION_SELF, rootId);
 
         const latestActivity = edit || rootActivity;
-        const finalActivity = this._createParsedServerActivity(latestActivity, {[rootId]: rootActivity});
+        const finalActivity = this._createParsedServerActivity(latestActivity, {
+          [rootId]: rootActivity,
+        });
 
         const fullRoot = {
           id: rootId,
           activity: finalActivity,
           reaction,
-          reactionSelf
+          reactionSelf,
         };
 
         const sanitizedFullRoot = sanitizeActivity(fullRoot);
@@ -2159,10 +2188,9 @@ const Conversation = WebexPlugin.extend({
           activityToSearch: search,
           oldestPublishedDate: currentOldestPublishedDate,
           newestPublishedDate: currentNewestPublishedDate,
-          batchSize
+          batchSize,
         });
-      }
-      else {
+      } else {
         return;
       }
     }
@@ -2183,10 +2211,10 @@ const Conversation = WebexPlugin.extend({
    */
 
   /**
-    * hashmap of server activities, keyed by id
-    * @typedef {object} ActivityHash
-    * @property {Object}
-    */
+   * hashmap of server activities, keyed by id
+   * @typedef {object} ActivityHash
+   * @property {Object}
+   */
 
   /**
    * extends a given server object with fields that point to their parent activities from the hashmap passed in
@@ -2198,7 +2226,9 @@ const Conversation = WebexPlugin.extend({
     const isOrphan = getIsActivityOrphaned(activity, allActivitiesHash);
 
     if (isOrphan) {
-      throw new Error('activity has a parent that cannot be found in allActivitiesHash! please handle this as necessary');
+      throw new Error(
+        'activity has a parent that cannot be found in allActivitiesHash! please handle this as necessary'
+      );
     }
 
     const activityType = determineActivityType(activity, allActivitiesHash);
@@ -2230,12 +2260,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Array<Conversation>>}
    */
   async _list(options) {
-    options.qs = Object.assign({
+    options.qs = {
       personRefresh: true,
       uuidEntryFormat: true,
       activitiesLimit: 0,
-      participantsLimit: 0
-    }, options.qs);
+      participantsLimit: 0,
+      ...options.qs,
+    };
 
     const res = await this.request(options);
 
@@ -2243,8 +2274,7 @@ const Conversation = WebexPlugin.extend({
 
     if (!res.body || !res.body.items || res.body.items.length === 0) {
       list = [];
-    }
-    else {
+    } else {
       list = res.body.items.slice(0);
       if (last(list).published < list[0].published) {
         list.reverse();
@@ -2263,9 +2293,7 @@ const Conversation = WebexPlugin.extend({
       // This won't get us the exact limit but it will retrieve something
       // from every cluster listed.
       if (options.limit) {
-        limit = Math.floor(
-          (options.limit.value - list.length) / res.body.additionalUrls.length
-        );
+        limit = Math.floor((options.limit.value - list.length) / res.body.additionalUrls.length);
       }
 
       // If the limit is 0 for some reason,
@@ -2274,7 +2302,7 @@ const Conversation = WebexPlugin.extend({
         const results = await Promise.all(
           res.body.additionalUrls.map((host) => {
             const url = `${host}/${options.resource}`;
-            const newOptions = Object.assign({}, options, {uri: url, url});
+            const newOptions = {...options, uri: url, url};
 
             if (options.limit) {
               newOptions.qs[newOptions.limit.name] = limit;
@@ -2309,19 +2337,23 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Conversation>}
    */
   _maybeCreateOneOnOneThenPost(params, options) {
-    return this.get(defaults({
-      // the use of uniq in Conversation#create guarantees participant[1] will
-      // always be the other user
-      user: params.participants[1]
-    }), Object.assign(options, {includeConvWithDeletedUserUUID: true, includeParticipants: true}))
+    return this.get(
+      defaults({
+        // the use of uniq in Conversation#create guarantees participant[1] will
+        // always be the other user
+        user: params.participants[1],
+      }),
+      Object.assign(options, {includeConvWithDeletedUserUUID: true, includeParticipants: true})
+    )
       .then((conversation) => {
         if (params.comment || params.html) {
-          return this.post(conversation, {content: params.html, displayName: params.comment})
-            .then((activity) => {
+          return this.post(conversation, {content: params.html, displayName: params.comment}).then(
+            (activity) => {
               conversation.activities.items.push(activity);
 
               return conversation;
-            });
+            }
+          );
         }
 
         return conversation;
@@ -2343,17 +2375,15 @@ const Conversation = WebexPlugin.extend({
   _prepareConversationForCreation(params) {
     const payload = {
       activities: {
-        items: [
-          this.expand('create')
-        ]
+        items: [this.expand('create')],
       },
       objectType: 'conversation',
       kmsMessage: {
         method: 'create',
         uri: '/resources',
         userIds: cloneDeep(params.participants),
-        keyUris: []
-      }
+        keyUris: [],
+      },
     };
 
     if (params.displayName) {
@@ -2365,32 +2395,40 @@ const Conversation = WebexPlugin.extend({
     }
 
     params.participants.forEach((participant) => {
-      payload.activities.items.push(this.expand('add', {
-        objectType: 'person',
-        id: participant
-      }));
+      payload.activities.items.push(
+        this.expand('add', {
+          objectType: 'person',
+          id: participant,
+        })
+      );
     });
 
     if (params.comment) {
-      payload.activities.items.push(this.expand('post', {
-        objectType: 'comment',
-        content: params.html,
-        displayName: params.comment
-      }));
+      payload.activities.items.push(
+        this.expand('post', {
+          objectType: 'comment',
+          content: params.html,
+          displayName: params.comment,
+        })
+      );
     }
 
     if (!params.isDefaultClassification && params.classificationId) {
-      payload.activities.items.push(this.expand('update', {
-        objectType: 'classification',
-        classificationId: params.classificationId,
-        effectiveDate: params.effectiveDate
-      }));
+      payload.activities.items.push(
+        this.expand('update', {
+          objectType: 'classification',
+          classificationId: params.classificationId,
+          effectiveDate: params.effectiveDate,
+        })
+      );
     }
 
     if (params.favorite) {
-      payload.activities.items.push(this.expand('favorite', {
-        objectType: 'conversation'
-      }));
+      payload.activities.items.push(
+        this.expand('favorite', {
+          objectType: 'conversation',
+        })
+      );
     }
 
     return payload;
@@ -2406,68 +2444,59 @@ const Conversation = WebexPlugin.extend({
       return Promise.resolve(conversation);
     }
 
-    return Promise.all(conversation.participants.items.map((participant) => {
-      // ROOMs or LYRA_SPACEs do not have email addresses, so there's no point attempting to
-      // record their UUIDs.
-      if (participant.type === 'ROOM' || participant.type === 'LYRA_SPACE') {
-        return Promise.resolve();
-      }
+    return Promise.all(
+      conversation.participants.items.map((participant) => {
+        // ROOMs or LYRA_SPACEs do not have email addresses, so there's no point attempting to
+        // record their UUIDs.
+        if (participant.type === 'ROOM' || participant.type === 'LYRA_SPACE') {
+          return Promise.resolve();
+        }
 
-      return this.webex.internal.user.recordUUID(participant)
-        .catch((err) => this.logger.warn('Could not record uuid', err));
-    }));
-  }
+        return this.webex.internal.user
+          .recordUUID(participant)
+          .catch((err) => this.logger.warn('Could not record uuid', err));
+      })
+    );
+  },
 });
 
-[
-  'favorite',
-  'hide',
-  'lock',
-  'mute',
-  'unfavorite',
-  'unhide',
-  'unlock',
-  'unmute'
-].forEach((verb) => {
+['favorite', 'hide', 'lock', 'mute', 'unfavorite', 'unhide', 'unlock', 'unmute'].forEach((verb) => {
   Conversation.prototype[verb] = function submitSimpleActivity(conversation, activity) {
-    const convoWithUrl =
-      this.prepareConversation(
-        Object.assign(
-          {}, conversation, {url: this.getConvoUrl(conversation)}
-        )
-      );
+    const convoWithUrl = this.prepareConversation({
+      ...conversation,
+      url: this.getConvoUrl(conversation),
+    });
 
     return this.prepare(activity, {
       verb,
       object: convoWithUrl,
-      target: convoWithUrl
-    })
-      .then((a) => this.submit(a));
+      target: convoWithUrl,
+    }).then((a) => this.submit(a));
   };
 });
 
-[
-  'assignModerator',
-  'unassignModerator'
-].forEach((verb) => {
-  Conversation.prototype[verb] = function submitModerationChangeActivity(conversation, moderator, activity) {
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+['assignModerator', 'unassignModerator'].forEach((verb) => {
+  Conversation.prototype[verb] = function submitModerationChangeActivity(
+    conversation,
+    moderator,
+    activity
+  ) {
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.all([
       convoWithUrl,
-      moderator ? this.webex.internal.user.asUUID(moderator) : this.webex.internal.device.userId
+      moderator ? this.webex.internal.user.asUUID(moderator) : this.webex.internal.device.userId,
     ])
-      .then(([c, userId]) => this.prepare(activity, {
-        verb,
-        target: this.prepareConversation(c),
-        object: {
-          id: userId,
-          objectType: 'person'
-        }
-      }))
+      .then(([c, userId]) =>
+        this.prepare(activity, {
+          verb,
+          target: this.prepareConversation(c),
+          object: {
+            id: userId,
+            objectType: 'person',
+          },
+        })
+      )
       .then((a) => this.submit(a));
   };
 });
@@ -2479,56 +2508,44 @@ const Conversation = WebexPlugin.extend({
  * @param {Activity} activity
  * @returns {Promise<Activity>}
  */
-[
-  'setSpaceProperty',
-  'unsetSpaceProperty'
-].forEach((fnName) => {
+['setSpaceProperty', 'unsetSpaceProperty'].forEach((fnName) => {
   const verb = fnName.startsWith('set') ? 'set' : 'unset';
 
-  Conversation.prototype[fnName] = function submitSpacePropertyActivity(conversation, tag, activity) {
+  Conversation.prototype[fnName] = function submitSpacePropertyActivity(
+    conversation,
+    tag,
+    activity
+  ) {
     if (!isString(tag)) {
       return Promise.reject(new Error('`tag` must be a string'));
     }
 
-    const convoWithUrl =
-      Object.assign(
-        {}, conversation, {url: this.getConvoUrl(conversation)}
-      );
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb,
       target: this.prepareConversation(convoWithUrl),
       object: {
         tags: [tag],
-        objectType: 'spaceProperty'
-      }
-    })
-      .then((a) => this.submit(a));
+        objectType: 'spaceProperty',
+      },
+    }).then((a) => this.submit(a));
   };
 });
 
-[
-  'tag',
-  'untag'
-].forEach((verb) => {
+['tag', 'untag'].forEach((verb) => {
   Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
     if (!isObject(object)) {
       return Promise.reject(new Error('`object` must be an object'));
     }
 
-    const c =
-      this.prepareConversation(
-        Object.assign(
-          {}, conversation, {url: this.getConvoUrl(conversation)}
-        )
-      );
+    const c = this.prepareConversation({...conversation, url: this.getConvoUrl(conversation)});
 
     return this.prepare(activity, {
       verb,
       target: c,
-      object: Object.assign(c, object)
-    })
-      .then((a) => this.submit(a));
+      object: Object.assign(c, object),
+    }).then((a) => this.submit(a));
   };
 });
 

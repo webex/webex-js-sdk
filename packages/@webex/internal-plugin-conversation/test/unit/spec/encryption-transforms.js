@@ -7,7 +7,6 @@ import {assert} from '@webex/test-helper-chai';
 
 import {transforms} from '@webex/internal-plugin-conversation/src/encryption-transforms';
 
-
 describe('plugin-conversation', () => {
   describe('encryption transforms', () => {
     describe('encryptActivity()', () => {
@@ -15,23 +14,26 @@ describe('plugin-conversation', () => {
         const transform = transforms.find((t) => t.name === 'encryptActivity');
 
         const ctx = {
-          transform
+          transform,
         };
         const key = null;
         const activity = {
           object: {
-            created: 'True'
+            created: 'True',
           },
           objectType: 'activity',
-          verb: 'update'
+          verb: 'update',
         };
 
         // should just resolve immediately and return nothing
-        transform.fn(ctx, key, activity).then((result) => {
-          assert.equal(undefined, result, 'should just return nothing');
-        }).catch(() => {
-          assert.equal(false, true, 'something unexpected happened');
-        });
+        transform
+          .fn(ctx, key, activity)
+          .then((result) => {
+            assert.equal(undefined, result, 'should just return nothing');
+          })
+          .catch(() => {
+            assert.equal(false, true, 'something unexpected happened');
+          });
       });
 
       it('does transfom when created is not True', async () => {
@@ -39,15 +41,15 @@ describe('plugin-conversation', () => {
         const transformStub = sinon.stub().resolves();
 
         const ctx = {
-          transform: transformStub
+          transform: transformStub,
         };
         const key = null;
         const activity = {
           object: {
-            created: 'false'
+            created: 'false',
           },
           objectType: 'activity',
-          verb: 'update'
+          verb: 'update',
         };
 
         // should go through the promise chain and last thing called is prepareActivityKmsMessage
@@ -59,28 +61,32 @@ describe('plugin-conversation', () => {
         const transform = transforms.find((t) => t.name === 'prepareActivityKmsMessage');
 
         const ctx = {
-          transform
+          transform,
         };
         const key = null;
         const activity = {
           object: {
-            created: 'false'
+            created: 'false',
           },
           target: {
             defaultActivityEncryptionKeyUrl: 'fakeEncryptionKey',
-            kmsResourceObjectUrl: 'meetingContainerKRO'
+            kmsResourceObjectUrl: 'meetingContainerKRO',
           },
           objectType: 'activity',
           verb: 'delete',
           kmsMessage: {
             uri: '<KRO>/authorizations?authId=123',
-            method: 'delete'
-          }
+            method: 'delete',
+          },
         };
 
         transform.fn(ctx, key, activity);
 
-        assert.equal(activity.kmsMessage.uri, 'meetingContainerKRO/authorizations?authId=123', 'did not properly transform KRO for delete meeting container activity');
+        assert.equal(
+          activity.kmsMessage.uri,
+          'meetingContainerKRO/authorizations?authId=123',
+          'did not properly transform KRO for delete meeting container activity'
+        );
       });
     });
   });

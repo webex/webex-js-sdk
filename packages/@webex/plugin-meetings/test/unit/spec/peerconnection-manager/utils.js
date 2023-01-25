@@ -4,22 +4,23 @@ import PeerConnectionUtils from '@webex/plugin-meetings/src/peer-connection-mana
 import {
   SDP_MULTIPLE_VIDEO_CODECS,
   SDP_MULTIPLE_VIDEO_CODECS_WITH_LOWERED_H264_PROFILE_LEVEL,
-  SDP_MULTIPLE_VIDEO_CODECS_WITH_MAX_FS
+  SDP_MULTIPLE_VIDEO_CODECS_WITH_MAX_FS,
 } from './utils.test-fixtures';
 
 describe('Peerconnection Manager', () => {
   describe('Utils', () => {
     describe('convertCLineToIpv4', () => {
       it('changes ipv6 to ipv4 default', () => {
-        const localSdp = 'v=0\r\n' +
+        const localSdp =
+          'v=0\r\n' +
           'm=video 5004 UDP/TLS/RTP/SAVPF 102 127 97 99\r\n' +
           'c=IN IP6 2607:fb90:d27c:b314:211a:32dd:c47f:ffe\r\n' +
           'a=rtpmap:127 H264/90000\r\n';
-        const resultSdp = 'v=0\r\n' +
+        const resultSdp =
+          'v=0\r\n' +
           'm=video 5004 UDP/TLS/RTP/SAVPF 102 127 97 99\r\n' +
           'c=IN IP4 0.0.0.0\r\n' +
           'a=rtpmap:127 H264/90000\r\n';
-
 
         const temp = PeerConnectionUtils.convertCLineToIpv4(localSdp);
 

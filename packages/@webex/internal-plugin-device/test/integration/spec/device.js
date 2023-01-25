@@ -17,21 +17,21 @@ describe('plugin-device', () => {
     let user;
     let webex;
 
-    beforeEach('create test users and webex instance',
-      () => testUsers.create({count: 1})
-        .then(([createdUser]) => {
-          user = createdUser;
+    beforeEach('create test users and webex instance', () =>
+      testUsers.create({count: 1}).then(([createdUser]) => {
+        user = createdUser;
 
-          webex = new WebexCore({
-            credentials: user.token
-          });
+        webex = new WebexCore({
+          credentials: user.token,
+        });
 
-          device = webex.internal.device;
-        }));
+        device = webex.internal.device;
+      })
+    );
 
-    afterEach('unregister the device and remove test users',
-      () => device.unregister()
-        .then(() => testUsers.remove([user])));
+    afterEach('unregister the device and remove test users', () =>
+      device.unregister().then(() => testUsers.remove([user]))
+    );
 
     describe('events', () => {
       describe('when a meeting is started', () => {
@@ -40,11 +40,11 @@ describe('plugin-device', () => {
           webex.trigger('meeting started');
         });
 
-        it('should set \'isInMeeting\' to \'true\'', () => {
+        it("should set 'isInMeeting' to 'true'", () => {
           assert.isTrue(device.isInMeeting);
         });
 
-        it('should call \'resetLogoutTimer()\'', () => {
+        it("should call 'resetLogoutTimer()'", () => {
           assert.called(device.resetLogoutTimer);
         });
       });
@@ -56,11 +56,11 @@ describe('plugin-device', () => {
           webex.trigger('meeting ended');
         });
 
-        it('should set \'isInMeeting\' to \'false\'', () => {
+        it("should set 'isInMeeting' to 'false'", () => {
           assert.isFalse(device.isInMeeting);
         });
 
-        it('should call \'resetLogoutTimer()\'', () => {
+        it("should call 'resetLogoutTimer()'", () => {
           assert.called(device.resetLogoutTimer);
         });
       });
@@ -90,13 +90,13 @@ describe('plugin-device', () => {
           services.updateServices();
         });
 
-        describe('when the \'wdm\' service does exist after wait', () => {
+        describe("when the 'wdm' service does exist after wait", () => {
           it('should return a resolved promise', () => {
             assert.isFulfilled(device.canRegister());
           });
         });
 
-        describe('when the \'wdm\' service does not exist after wait', () => {
+        describe("when the 'wdm' service does not exist after wait", () => {
           beforeEach('remove wdm service', () => {
             services.get = sinon.stub().returns(undefined);
             services.waitForCatalog = sinon.stub().resolves();
@@ -129,14 +129,16 @@ describe('plugin-device', () => {
     describe('#clear()', () => {
       beforeEach('append a feature', () => {
         device.features.set({
-          developer: [{
-            key: 'console',
-            type: 'boolean',
-            val: 'true',
-            value: true,
-            mutable: true,
-            lastModified: '2015-06-29T20:02:48.033Z'
-          }]
+          developer: [
+            {
+              key: 'console',
+              type: 'boolean',
+              val: 'true',
+              value: true,
+              mutable: true,
+              lastModified: '2015-06-29T20:02:48.033Z',
+            },
+          ],
         });
       });
 
@@ -172,14 +174,13 @@ describe('plugin-device', () => {
           device.isReachabilityChecked = false;
         });
 
-        it('should set the in-network property to false',
-          () => device.checkNetworkReachability()
-            .then(() => {
-              assert.isFalse(device.isInNetwork);
-            }));
+        it('should set the in-network property to false', () =>
+          device.checkNetworkReachability().then(() => {
+            assert.isFalse(device.isInNetwork);
+          }));
 
-        it('should return a resolved promise',
-          () => assert.isFulfilled(device.checkNetworkReachability()));
+        it('should return a resolved promise', () =>
+          assert.isFulfilled(device.checkNetworkReachability()));
 
         describe('when the device has inactivity enforcement', () => {
           let logoutTimer;
@@ -190,8 +191,9 @@ describe('plugin-device', () => {
             device.intranetInactivityCheckUrl = undefined;
           });
 
-          it('should not reset the logout timer',
-            () => device.checkNetworkReachability()
+          it('should not reset the logout timer', () =>
+            device
+              .checkNetworkReachability()
               .then(() => assert.equal(device.logoutTimer, logoutTimer)));
         });
       });
@@ -213,17 +215,19 @@ describe('plugin-device', () => {
             device.request = sinon.stub().resolves({});
           });
 
-          it('should call \'resetLogoutTimer()\'', () => {
+          it("should call 'resetLogoutTimer()'", () => {
             device.isReachabilityChecked = false;
 
-            return device.checkNetworkReachability()
+            return device
+              .checkNetworkReachability()
               .then(() => assert.called(device.resetLogoutTimer));
           });
 
           it('should set the reachability check to true', () => {
             device.isReachabilityChecked = false;
 
-            return device.checkNetworkReachability()
+            return device
+              .checkNetworkReachability()
               .then(() => assert.isTrue(device.isReachabilityChecked));
           });
 
@@ -232,12 +236,11 @@ describe('plugin-device', () => {
 
             assert.isFalse(device.isInNetwork);
 
-            return device.checkNetworkReachability()
-              .then(() => assert.isTrue(device.isInNetwork));
+            return device.checkNetworkReachability().then(() => assert.isTrue(device.isInNetwork));
           });
 
-          it('should return a resolved promise',
-            () => assert.isFulfilled(device.checkNetworkReachability()));
+          it('should return a resolved promise', () =>
+            assert.isFulfilled(device.checkNetworkReachability()));
         });
 
         describe('when the network is not reachable', () => {
@@ -249,16 +252,16 @@ describe('plugin-device', () => {
           it('should set the reachability check to true', () => {
             device.isReachabilityChecked = false;
 
-            return device.checkNetworkReachability()
+            return device
+              .checkNetworkReachability()
               .then(() => assert.isTrue(device.isReachabilityChecked));
           });
 
-          it('should set the in-network property to false',
-            () => device.checkNetworkReachability()
-              .then(() => assert.isFalse(device.isInNetwork)));
+          it('should set the in-network property to false', () =>
+            device.checkNetworkReachability().then(() => assert.isFalse(device.isInNetwork)));
 
-          it('should return a resolved promise',
-            () => assert.isFulfilled(device.checkNetworkReachability()));
+          it('should return a resolved promise', () =>
+            assert.isFulfilled(device.checkNetworkReachability()));
         });
       });
     });
@@ -280,33 +283,25 @@ describe('plugin-device', () => {
         describe('when the device is registered', () => {
           beforeEach('register the device', () => device.register());
 
-          it('should resolve the promise with the websocket url',
-            () => device.getWebSocketUrl(wait)
-              .then((url) => {
-                assert.isDefined(url);
-                assert.isTrue(services.isServiceUrl(url));
-                assert.include(url, 'mercury');
-              }));
+          it('should resolve the promise with the websocket url', () =>
+            device.getWebSocketUrl(wait).then((url) => {
+              assert.isDefined(url);
+              assert.isTrue(services.isServiceUrl(url));
+              assert.include(url, 'mercury');
+            }));
         });
 
         describe('when the device is not registered', () => {
           describe('when the device successfully registers', () => {
-            it('should resolve the promise with the websocket url',
-              () => Promise.all([
-                device.getWebSocketUrl(wait),
-                device.register()
-              ])
-                .then(([url]) => {
-                  assert.isTrue(services.isServiceUrl(url));
-                  assert.include(
-                    services.getServiceFromUrl(url).name,
-                    'mercury'
-                  );
-                }));
+            it('should resolve the promise with the websocket url', () =>
+              Promise.all([device.getWebSocketUrl(wait), device.register()]).then(([url]) => {
+                assert.isTrue(services.isServiceUrl(url));
+                assert.include(services.getServiceFromUrl(url).name, 'mercury');
+              }));
           });
 
-          it('should return a rejected promise if the device never registers',
-            () => assert.isRejected(device.getWebSocketUrl(wait)));
+          it('should return a rejected promise if the device never registers', () =>
+            assert.isRejected(device.getWebSocketUrl(wait)));
         });
       });
 
@@ -321,13 +316,12 @@ describe('plugin-device', () => {
           beforeEach('register the device', () => device.register());
 
           describe('when the priority host can be mapped', () => {
-            it('should resolve the promise with the websocket url',
-              () => device.getWebSocketUrl(wait)
-                .then((url) => {
-                  assert.isDefined(url);
-                  assert.isTrue(services.isServiceUrl(url));
-                  assert.include(url, 'mercury');
-                }));
+            it('should resolve the promise with the websocket url', () =>
+              device.getWebSocketUrl(wait).then((url) => {
+                assert.isDefined(url);
+                assert.isTrue(services.isServiceUrl(url));
+                assert.include(url, 'mercury');
+              }));
           });
 
           describe('when the priority host cannot be mapped', () => {
@@ -336,14 +330,14 @@ describe('plugin-device', () => {
               services.convertUrlToPriorityHostUrl.returns(undefined);
             });
 
-            it('should return a rejected promise',
-              () => assert.isRejected(device.getWebSocketUrl(wait)));
+            it('should return a rejected promise', () =>
+              assert.isRejected(device.getWebSocketUrl(wait)));
           });
         });
 
         describe('when the device is not registered', () => {
-          it('should return a rejected promise',
-            () => assert.isRejected(device.getWebSocketUrl(wait)));
+          it('should return a rejected promise', () =>
+            assert.isRejected(device.getWebSocketUrl(wait)));
         });
       });
     });
@@ -355,7 +349,7 @@ describe('plugin-device', () => {
         spy = sinon.spy();
       });
 
-      it('should trigger a \'meeting started\' event', () => {
+      it("should trigger a 'meeting started' event", () => {
         webex.on('meeting started', spy);
         device.meetingStarted();
         assert.called(spy);
@@ -389,7 +383,7 @@ describe('plugin-device', () => {
         spy = sinon.spy();
       });
 
-      it('should trigger a \'meeting ended\' event', () => {
+      it("should trigger a 'meeting ended' event", () => {
         webex.on('meeting ended', spy);
         device.meetingEnded();
         assert.called(spy);
@@ -405,8 +399,8 @@ describe('plugin-device', () => {
           body: {
             exampleKey: 'exampleValue',
             services: [],
-            serviceHostMap: []
-          }
+            serviceHostMap: [],
+          },
         };
 
         spy = sinon.spy();
@@ -417,12 +411,12 @@ describe('plugin-device', () => {
         assert.equal(device.exampleKey, customResponse.body.exampleKey);
       });
 
-      it('should not set a \'services\' property', () => {
+      it("should not set a 'services' property", () => {
         device.processRegistrationSuccess(customResponse);
         assert.isUndefined(device.services);
       });
 
-      it('should not set a \'serviceHostMap\' property', () => {
+      it("should not set a 'serviceHostMap' property", () => {
         device.processRegistrationSuccess(customResponse);
         assert.isUndefined(device.serviceHostMap);
       });
@@ -455,8 +449,8 @@ describe('plugin-device', () => {
             device.register = sinon.spy();
           });
 
-          it('should attempt to register', () => device.refresh()
-            .then(() => assert.called(device.register)));
+          it('should attempt to register', () =>
+            device.refresh().then(() => assert.called(device.register)));
         });
 
         describe('when the device is registered', () => {
@@ -465,16 +459,13 @@ describe('plugin-device', () => {
           beforeEach('register the device', () => {
             exampleResponse = {
               body: {
-                exampleKey: 'example response value'
-              }
+                exampleKey: 'example response value',
+              },
             };
 
-            return device.register()
-              .then(() => {
-                device.request = sinon.stub().returns(Promise.resolve(
-                  {...exampleResponse}
-                ));
-              });
+            return device.register().then(() => {
+              device.request = sinon.stub().returns(Promise.resolve({...exampleResponse}));
+            });
           });
 
           describe('when the device is ephemeral', () => {
@@ -482,12 +473,15 @@ describe('plugin-device', () => {
               device.config.ephemeral = true;
             });
 
-            it('should set the ttl property to the config values',
-              () => device.refresh()
+            it('should set the ttl property to the config values', () =>
+              device
+                .refresh()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'body.ttl', device.config.ephemeralDeviceTTL
-                  ))));
+                  assert.calledWith(
+                    device.request,
+                    sinon.match.hasNested('body.ttl', device.config.ephemeralDeviceTTL)
+                  )
+                ));
           });
 
           describe('when the refresh request is sent', () => {
@@ -496,52 +490,54 @@ describe('plugin-device', () => {
 
             beforeEach('configure device plugin', () => {
               customHeaders = {
-                testHeader: 'example header value'
+                testHeader: 'example header value',
               };
 
               customBody = {
-                testBody: 'example body value'
+                testBody: 'example body value',
               };
             });
 
             it('should allow for custom header key:values', () => {
               device.config.headers = {...customHeaders};
 
-              return device.refresh()
+              return device
+                .refresh()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'headers.testHeader', customHeaders.testHeader
-                  )));
+                  assert.calledWith(
+                    device.request,
+                    sinon.match.hasNested('headers.testHeader', customHeaders.testHeader)
+                  )
+                );
             });
 
             it('should allow for custom body key:values', () => {
               device.config.body = {...customBody};
 
-              return device.refresh()
+              return device
+                .refresh()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'body.testBody', customBody.testBody
-                  )));
+                  assert.calledWith(
+                    device.request,
+                    sinon.match.hasNested('body.testBody', customBody.testBody)
+                  )
+                );
             });
 
-            it('should use the device\'s url property', () => {
+            it("should use the device's url property", () => {
               device.config.body = {...customBody};
 
-              return device.refresh()
-                .then(() =>
-                  assert.calledWith(device.request, sinon.match.has(
-                    'uri', device.url
-                  )));
+              return device
+                .refresh()
+                .then(() => assert.calledWith(device.request, sinon.match.has('uri', device.url)));
             });
 
             it('should send a PUT request', () => {
               device.config.body = {...customBody};
 
-              return device.refresh()
-                .then(() =>
-                  assert.calledWith(device.request, sinon.match.has(
-                    'method', 'PUT'
-                  )));
+              return device
+                .refresh()
+                .then(() => assert.calledWith(device.request, sinon.match.has('method', 'PUT')));
             });
           });
 
@@ -550,12 +546,10 @@ describe('plugin-device', () => {
               device.processRegistrationSuccess = sinon.stub();
             });
 
-            it('should return a resolved promise',
-              () => assert.isFulfilled(device.refresh()));
+            it('should return a resolved promise', () => assert.isFulfilled(device.refresh()));
 
-            it('should call \'processRegistrationSuccess()\'',
-              () => device.refresh()
-                .then(() => assert.called(device.processRegistrationSuccess)));
+            it("should call 'processRegistrationSuccess()'", () =>
+              device.refresh().then(() => assert.called(device.processRegistrationSuccess)));
           });
 
           describe('when the device fails to refresh', () => {
@@ -573,9 +567,9 @@ describe('plugin-device', () => {
                     options: {
                       url: device.url,
                       headers: {
-                        trackingId: 'tid'
-                      }
-                    }
+                        trackingId: 'tid',
+                      },
+                    },
                   })
                 );
               });
@@ -584,12 +578,11 @@ describe('plugin-device', () => {
                 device.request = request;
               });
 
-              it('should clear the current device', () => device.refresh()
-                .then(() => assert.isUndefined(device.url)));
+              it('should clear the current device', () =>
+                device.refresh().then(() => assert.isUndefined(device.url)));
 
               it('should attempt to register a new device', () =>
-                device.refresh()
-                  .then(() => assert.called(device.register)));
+                device.refresh().then(() => assert.called(device.register)));
             });
 
             describe('when the device was found', () => {
@@ -604,9 +597,9 @@ describe('plugin-device', () => {
                     options: {
                       url: device.url,
                       headers: {
-                        trackingId: 'tid'
-                      }
-                    }
+                        trackingId: 'tid',
+                      },
+                    },
                   })
                 );
               });
@@ -615,36 +608,32 @@ describe('plugin-device', () => {
                 device.request = request;
               });
 
-              it('should return a rejected promise',
-                () => assert.isRejected(device.refresh()));
+              it('should return a rejected promise', () => assert.isRejected(device.refresh()));
             });
           });
         });
       });
 
       describe('when the device cannot register', () => {
-        beforeEach('setup \'canRegister()\' stub', () => {
-          device.canRegister = sinon.stub().rejects(
-            new Error()
-          );
+        beforeEach("setup 'canRegister()' stub", () => {
+          device.canRegister = sinon.stub().rejects(new Error());
         });
 
-        it('should return a rejected promise',
-          () => assert.isRejected(device.refresh()));
+        it('should return a rejected promise', () => assert.isRejected(device.refresh()));
       });
     });
 
     describe('#register()', () => {
       describe('when the device can register', () => {
         describe('when the device is already registered', () => {
-          beforeEach('setup \'register()\' spy and register', () => {
+          beforeEach("setup 'register()' spy and register", () => {
             device.refresh = sinon.spy();
 
             return device.register();
           });
 
-          it('should attempt to refresh', () => device.register()
-            .then(() => assert.called(device.refresh)));
+          it('should attempt to refresh', () =>
+            device.register().then(() => assert.called(device.refresh)));
         });
 
         describe('when the device is not already registered', () => {
@@ -653,13 +642,11 @@ describe('plugin-device', () => {
           beforeEach('setup stubs and scoped variables', () => {
             exampleResponse = {
               body: {
-                exampleKey: 'example response value'
-              }
+                exampleKey: 'example response value',
+              },
             };
 
-            device.request = sinon.stub().returns(Promise.resolve(
-              {...exampleResponse}
-            ));
+            device.request = sinon.stub().returns(Promise.resolve({...exampleResponse}));
           });
 
           describe('when the registration request is sent', () => {
@@ -668,73 +655,75 @@ describe('plugin-device', () => {
 
             beforeEach('configure device plugin', () => {
               customHeaders = {
-                testHeader: 'example header value'
+                testHeader: 'example header value',
               };
 
               customBody = {
-                testBody: 'example body value'
+                testBody: 'example body value',
               };
             });
 
             it('should allow for custom header key:values', () => {
               device.config.headers = {...customHeaders};
 
-              return device.register()
+              return device
+                .register()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'headers.testHeader', customHeaders.testHeader
-                  )));
+                  assert.calledWith(
+                    device.request,
+                    sinon.match.hasNested('headers.testHeader', customHeaders.testHeader)
+                  )
+                );
             });
 
             it('should allow for custom body key:values', () => {
               device.config.body = {...customBody};
 
-              return device.register()
+              return device
+                .register()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'body.testBody', customBody.testBody
-                  )));
+                  assert.calledWith(
+                    device.request,
+                    sinon.match.hasNested('body.testBody', customBody.testBody)
+                  )
+                );
             });
 
-            it('should use the \'wdm\' service', () => {
+            it("should use the 'wdm' service", () => {
               device.config.body = {...customBody};
 
-              return device.register()
-                .then(() =>
-                  assert.calledWith(device.request, sinon.match.has(
-                    'service', 'wdm'
-                  )));
+              return device
+                .register()
+                .then(() => assert.calledWith(device.request, sinon.match.has('service', 'wdm')));
             });
 
-            it('should use the \'devices\' resource', () => {
+            it("should use the 'devices' resource", () => {
               device.config.body = {...customBody};
 
-              return device.register()
+              return device
+                .register()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.has(
-                    'resource', 'devices'
-                  )));
+                  assert.calledWith(device.request, sinon.match.has('resource', 'devices'))
+                );
             });
 
             it('should send a POST request', () => {
               device.config.body = {...customBody};
 
-              return device.register()
-                .then(() =>
-                  assert.calledWith(device.request, sinon.match.has(
-                    'method', 'POST'
-                  )));
+              return device
+                .register()
+                .then(() => assert.calledWith(device.request, sinon.match.has('method', 'POST')));
             });
 
             it('should set TTL if configured as ephemeral', () => {
               device.config.ephemeral = true;
               device.config.ephemeralDeviceTTL = 3600;
 
-              return device.register()
+              return device
+                .register()
                 .then(() =>
-                  assert.calledWith(device.request, sinon.match.hasNested(
-                    'body.ttl', 3600
-                  )));
+                  assert.calledWith(device.request, sinon.match.hasNested('body.ttl', 3600))
+                );
             });
           });
 
@@ -743,12 +732,10 @@ describe('plugin-device', () => {
               device.processRegistrationSuccess = sinon.stub();
             });
 
-            it('should return a resolved promise',
-              () => assert.isFulfilled(device.register()));
+            it('should return a resolved promise', () => assert.isFulfilled(device.register()));
 
-            it('should call \'processRegistrationSuccess()\'',
-              () => device.register()
-                .then(() => assert.called(device.processRegistrationSuccess)));
+            it("should call 'processRegistrationSuccess()'", () =>
+              device.register().then(() => assert.called(device.processRegistrationSuccess)));
           });
 
           describe('when the device fails to register', () => {
@@ -759,28 +746,24 @@ describe('plugin-device', () => {
                   options: {
                     url: 'http://not-a-url.com/resource',
                     headers: {
-                      trackingId: 'tid'
-                    }
-                  }
+                      trackingId: 'tid',
+                    },
+                  },
                 })
               );
             });
 
-            it('should return a rejected promise',
-              () => assert.isRejected(device.register()));
+            it('should return a rejected promise', () => assert.isRejected(device.register()));
           });
         });
       });
 
       describe('when the device cannot register', () => {
-        beforeEach('setup \'canRegister()\' stub', () => {
-          device.canRegister = sinon.stub().rejects(
-            new Error()
-          );
+        beforeEach("setup 'canRegister()' stub", () => {
+          device.canRegister = sinon.stub().rejects(new Error());
         });
 
-        it('should return a rejected promise',
-          () => assert.isRejected(device.register()));
+        it('should return a rejected promise', () => assert.isRejected(device.register()));
       });
     });
 
@@ -804,7 +787,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the user is not in a meeting', () => {
-          beforeEach('setup the \'setLogoutTimer()\' spy', () => {
+          beforeEach("setup the 'setLogoutTimer()' spy", () => {
             device.setLogoutTimer = sinon.stub();
           });
 
@@ -816,10 +799,7 @@ describe('plugin-device', () => {
             it('should set the logout timer to the in-network duration', () => {
               device.resetLogoutTimer();
 
-              assert.calledWith(
-                device.setLogoutTimer,
-                device.intranetInactivityCheckUrl
-              );
+              assert.calledWith(device.setLogoutTimer, device.intranetInactivityCheckUrl);
             });
           });
 
@@ -831,10 +811,7 @@ describe('plugin-device', () => {
             it('should set the logout timer to the intranet duration', () => {
               device.resetLogoutTimer();
 
-              assert.calledWith(
-                device.setLogoutTimer,
-                device.intranetInactivityDuration
-              );
+              assert.calledWith(device.setLogoutTimer, device.intranetInactivityDuration);
             });
           });
         });
@@ -848,33 +825,31 @@ describe('plugin-device', () => {
         describe('when the unregistration request is sent', () => {
           let url;
 
-          beforeEach('setup the \'request()\' stub', () => {
+          beforeEach("setup the 'request()' stub", () => {
             device.request = sinon.stub().resolves();
             url = device.url;
           });
 
-          it('should use the device\'s url property', () => device.unregister()
-            .then(() =>
-              assert.calledWith(device.request, sinon.match.has(
-                'uri', url
-              ))));
+          it("should use the device's url property", () =>
+            device
+              .unregister()
+              .then(() => assert.calledWith(device.request, sinon.match.has('uri', url))));
 
-          it('should send a DELETE request', () => device.unregister()
-            .then(() =>
-              assert.calledWith(device.request, sinon.match.has(
-                'method', 'DELETE'
-              ))));
+          it('should send a DELETE request', () =>
+            device
+              .unregister()
+              .then(() => assert.calledWith(device.request, sinon.match.has('method', 'DELETE'))));
         });
 
         describe('when the device unregistration request is successful', () => {
-          it('should clear the device url', () => device.unregister()
-            .then(() => assert.isUndefined(device.url)));
+          it('should clear the device url', () =>
+            device.unregister().then(() => assert.isUndefined(device.url)));
         });
 
         describe('when the device unregistration request fails', () => {
           let request;
 
-          beforeEach('setup the \'request\' stub', () => {
+          beforeEach("setup the 'request' stub", () => {
             request = device.request;
 
             device.request = sinon.stub().rejects(
@@ -883,9 +858,9 @@ describe('plugin-device', () => {
                 options: {
                   url: device.url,
                   headers: {
-                    trackingId: 'tid'
-                  }
-                }
+                    trackingId: 'tid',
+                  },
+                },
               })
             );
           });
@@ -894,14 +869,12 @@ describe('plugin-device', () => {
             device.request = request;
           });
 
-          it('returns a rejected promise',
-            () => assert.isRejected(device.unregister()));
+          it('returns a rejected promise', () => assert.isRejected(device.unregister()));
         });
       });
 
       describe('when the device is not registered', () => {
-        it('should return a resolved promise',
-          () => assert.isFulfilled(device.unregister()));
+        it('should return a resolved promise', () => assert.isFulfilled(device.unregister()));
       });
     });
 
@@ -909,23 +882,21 @@ describe('plugin-device', () => {
       describe('when the device is registered', () => {
         beforeEach('register the device', () => device.register());
 
-        it('should return a resolved promise',
-          () => assert.isFulfilled(device.waitForRegistration()));
+        it('should return a resolved promise', () =>
+          assert.isFulfilled(device.waitForRegistration()));
       });
 
       describe('when the device is not registered', () => {
         describe('when the device registers', () => {
-          it('should return a resolved promise once registered',
-            () => Promise.all([
-              device.waitForRegistration(),
-              device.register()
-            ])
-              .then(() => assert.isTrue(device.registered)));
+          it('should return a resolved promise once registered', () =>
+            Promise.all([device.waitForRegistration(), device.register()]).then(() =>
+              assert.isTrue(device.registered)
+            ));
         });
 
         describe('when the device does not register', () => {
-          it('should return a rejected promise',
-            () => assert.isRejected(device.waitForRegistration()));
+          it('should return a rejected promise', () =>
+            assert.isRejected(device.waitForRegistration()));
         });
       });
     });

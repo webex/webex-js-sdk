@@ -1,4 +1,3 @@
-
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import {jenkinsOnly} from '@webex/test-helper-mocha';
@@ -22,16 +21,16 @@ assert.isTestUser = (user) => {
 
 jenkinsOnly(describe)('test-users-whistler', () => {
   describe('createWhistlerTestUser()', () => {
-    it('creates a test user', () => createWhistlerTestUser()
-      .then((u) => {
+    it('creates a test user', () =>
+      createWhistlerTestUser().then((u) => {
         assert.isTestUser(u);
         assert.hasAccessToken(u);
       }));
   });
 
   describe('removeWhistlerTestUser()', () => {
-    it('removes the specified test user', () => createWhistlerTestUser()
-      .then(async (u) => {
+    it('removes the specified test user', () =>
+      createWhistlerTestUser().then(async (u) => {
         const res = await removeWhistlerTestUser(u);
 
         assert.equal(res.statusCode, 204);

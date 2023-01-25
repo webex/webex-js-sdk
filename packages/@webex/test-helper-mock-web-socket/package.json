@@ -1,21 +1,25 @@
 {
-    "name": "@webex/test-helper-mock-web-socket",
-    "version": "2.33.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/test-helper-mock-web-socket",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "sinon": "^9.2.4"
-    }
+  "name": "@webex/test-helper-mock-web-socket",
+  "version": "2.37.2",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/test-helper-mock-web-socket"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "sinon": "^9.2.4"
+  }
 }

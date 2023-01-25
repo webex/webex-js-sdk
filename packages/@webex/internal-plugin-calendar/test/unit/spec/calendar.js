@@ -8,7 +8,13 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import btoa from 'btoa';
 import sinon from 'sinon';
 
-import {CALENDAR_REGISTERED, CALENDAR_UPDATED, CALENDAR_DELETE, CALENDAR_CREATE, CALENDAR_UNREGISTERED} from '../../../src/constants';
+import {
+  CALENDAR_REGISTERED,
+  CALENDAR_UPDATED,
+  CALENDAR_DELETE,
+  CALENDAR_CREATE,
+  CALENDAR_UNREGISTERED,
+} from '../../../src/constants';
 
 describe('internal-plugin-calendar', () => {
   describe('Calendar Apis', () => {
@@ -17,14 +23,14 @@ describe('internal-plugin-calendar', () => {
     beforeEach(async () => {
       webex = new MockWebex({
         children: {
-          calendar: Calendar
-        }
+          calendar: Calendar,
+        },
       });
 
       webex.canAuthorize = true;
       webex.internal.device = {
         register: sinon.stub().returns(Promise.resolve()),
-        unregister: sinon.stub().returns(Promise.resolve())
+        unregister: sinon.stub().returns(Promise.resolve()),
       };
       webex.internal.mercury = {
         connect: sinon.stub().returns(Promise.resolve()),
@@ -40,7 +46,7 @@ describe('internal-plugin-calendar', () => {
             callback({data: {calendarMeetingExternal: {id: 'calendarId1'}}});
           }
         }),
-        off: sinon.spy()
+        off: sinon.spy(),
       };
     });
 
@@ -108,14 +114,25 @@ describe('internal-plugin-calendar', () => {
 
       describe('#syncCalendar()', () => {
         it('should sync from calendar service', async () => {
-          webex.request = sinon.stub().returns(Promise.resolve({body: {items: [{id: 'calendar1'}, {id: 'calendar2'}]}})); webex.request = sinon.stub().returns(
+          webex.request = sinon
+            .stub()
+            .returns(Promise.resolve({body: {items: [{id: 'calendar1'}, {id: 'calendar2'}]}}));
+          webex.request = sinon.stub().returns(
             Promise.resolve({
               body: {
                 items: [
-                  {id: 'calendar1', encryptedNotes: 'notes1', encryptedParticipants: ['participant1']},
-                  {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
-                ]
-              }
+                  {
+                    id: 'calendar1',
+                    encryptedNotes: 'notes1',
+                    encryptedParticipants: ['participant1'],
+                  },
+                  {
+                    id: 'calendar2',
+                    encryptedNotes: 'notes2',
+                    encryptedParticipants: ['participant2'],
+                  },
+                ],
+              },
             })
           );
           await webex.internal.calendar.syncCalendar({fromDate: 'xx-xx', toDate: 'xx-nn'});
@@ -123,7 +140,7 @@ describe('internal-plugin-calendar', () => {
             method: 'GET',
             service: 'calendar',
             resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
+            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
           });
           assert.equal(webex.internal.calendar.getAll().length, 2);
           assert.equal(webex.internal.calendar.getAll()[0].id, 'calendar1');
@@ -136,10 +153,18 @@ describe('internal-plugin-calendar', () => {
             Promise.resolve({
               body: {
                 items: [
-                  {id: 'calendar1', encryptedNotes: 'notes1', encryptedParticipants: ['participant1']},
-                  {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
-                ]
-              }
+                  {
+                    id: 'calendar1',
+                    encryptedNotes: 'notes1',
+                    encryptedParticipants: ['participant1'],
+                  },
+                  {
+                    id: 'calendar2',
+                    encryptedNotes: 'notes2',
+                    encryptedParticipants: ['participant2'],
+                  },
+                ],
+              },
             })
           );
           const res = await webex.internal.calendar.list({fromDate: 'xx-xx', toDate: 'xx-nn'});
@@ -149,7 +174,7 @@ describe('internal-plugin-calendar', () => {
             method: 'GET',
             service: 'calendar',
             resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
+            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
           });
         });
 
@@ -157,31 +182,39 @@ describe('internal-plugin-calendar', () => {
           const webexRequestStub = sinon.stub();
 
           // calendar list stub
-          webexRequestStub.withArgs({
-            method: 'GET',
-            service: 'calendar',
-            resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
-          }).returns(
-            Promise.resolve({
-              body: {
-                items: [
-                  {id: 'calendar1', encryptedParticipants: ['participant1']},
-                  {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
-                ]
-              }
+          webexRequestStub
+            .withArgs({
+              method: 'GET',
+              service: 'calendar',
+              resource: 'calendarEvents',
+              qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
             })
-          );
+            .returns(
+              Promise.resolve({
+                body: {
+                  items: [
+                    {id: 'calendar1', encryptedParticipants: ['participant1']},
+                    {
+                      id: 'calendar2',
+                      encryptedNotes: 'notes2',
+                      encryptedParticipants: ['participant2'],
+                    },
+                  ],
+                },
+              })
+            );
           // getNotes stub
-          webexRequestStub.withArgs({
-            method: 'GET',
-            service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`
-          }).returns(
-            Promise.resolve({
-              body: null
+          webexRequestStub
+            .withArgs({
+              method: 'GET',
+              service: 'calendar',
+              resource: `calendarEvents/${btoa('calendar1')}/notes`,
             })
-          );
+            .returns(
+              Promise.resolve({
+                body: null,
+              })
+            );
 
           // Assign webexRequestStub to webex.request
           webex.request = webexRequestStub;
@@ -191,18 +224,18 @@ describe('internal-plugin-calendar', () => {
           assert.equal(res.length, 2);
           assert.deepEqual(res, [
             {id: 'calendar1', encryptedNotes: null, encryptedParticipants: ['participant1']},
-            {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
+            {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']},
           ]);
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
             resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
+            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
           });
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`
+            resource: `calendarEvents/${btoa('calendar1')}/notes`,
           });
         });
 
@@ -210,33 +243,41 @@ describe('internal-plugin-calendar', () => {
           const webexRequestStub = sinon.stub();
 
           // calendar list stub
-          webexRequestStub.withArgs({
-            method: 'GET',
-            service: 'calendar',
-            resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
-          }).returns(
-            Promise.resolve({
-              body: {
-                items: [
-                  {id: 'calendar1', encryptedParticipants: ['participant1']},
-                  {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
-                ]
-              }
+          webexRequestStub
+            .withArgs({
+              method: 'GET',
+              service: 'calendar',
+              resource: 'calendarEvents',
+              qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
             })
-          );
+            .returns(
+              Promise.resolve({
+                body: {
+                  items: [
+                    {id: 'calendar1', encryptedParticipants: ['participant1']},
+                    {
+                      id: 'calendar2',
+                      encryptedNotes: 'notes2',
+                      encryptedParticipants: ['participant2'],
+                    },
+                  ],
+                },
+              })
+            );
           // getNotes stub
-          webexRequestStub.withArgs({
-            method: 'GET',
-            service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`
-          }).returns(
-            Promise.resolve({
-              body: {
-                encryptedNotes: 'notes1'
-              }
+          webexRequestStub
+            .withArgs({
+              method: 'GET',
+              service: 'calendar',
+              resource: `calendarEvents/${btoa('calendar1')}/notes`,
             })
-          );
+            .returns(
+              Promise.resolve({
+                body: {
+                  encryptedNotes: 'notes1',
+                },
+              })
+            );
 
           // Assign webexRequestStub to webex.request
           webex.request = webexRequestStub;
@@ -246,18 +287,18 @@ describe('internal-plugin-calendar', () => {
           assert.equal(res.length, 2);
           assert.deepEqual(res, [
             {id: 'calendar1', encryptedNotes: 'notes1', encryptedParticipants: ['participant1']},
-            {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']}
+            {id: 'calendar2', encryptedNotes: 'notes2', encryptedParticipants: ['participant2']},
           ]);
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
             resource: 'calendarEvents',
-            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'}
+            qs: {fromDate: 'xx-xx', toDate: 'xx-nn'},
           });
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`
+            resource: `calendarEvents/${btoa('calendar1')}/notes`,
           });
         });
       });
@@ -269,8 +310,8 @@ describe('internal-plugin-calendar', () => {
           webex.request = sinon.stub().returns(
             Promise.resolve({
               body: {
-                encryptedNotes: 'notes1'
-              }
+                encryptedNotes: 'notes1',
+              },
             })
           );
 
@@ -280,7 +321,7 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa(id)}/notes`
+            resource: `calendarEvents/${btoa(id)}/notes`,
           });
         });
       });
@@ -292,8 +333,8 @@ describe('internal-plugin-calendar', () => {
           webex.request = sinon.stub().returns(
             Promise.resolve({
               body: {
-                encryptedParticipants: ['participant1']
-              }
+                encryptedParticipants: ['participant1'],
+              },
             })
           );
 
@@ -303,7 +344,7 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa(id)}/participants`
+            resource: `calendarEvents/${btoa(id)}/participants`,
           });
         });
       });

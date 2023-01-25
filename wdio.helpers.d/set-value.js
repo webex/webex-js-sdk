@@ -4,6 +4,7 @@ const addCommand = require('./lib/add-command');
  * Helper. Runs in the browser context.
  * @param {string} selector
  * @param {string} token
+ * @returns {null}
  */
 function setValueInDOMHelper(selector, token) {
   /* eslint-env browser */

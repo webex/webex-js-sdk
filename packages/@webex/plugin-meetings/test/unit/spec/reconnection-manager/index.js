@@ -2,6 +2,7 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import Media from '@webex/plugin-meetings/src/media/index';
 
 import ReconnectionManager from '../../../../src/reconnection-manager';
 
@@ -11,6 +12,67 @@ chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
+  describe('ReconnectionManager.reconnectMedia', () => {
+    it('uses correct TURN TLS information on reInitiatePeerconnection', async () => {
+      const fakeMeeting = {
+        setRemoteStream: sinon.stub().resolves({}),
+        config: {
+          reconnection: {
+            enabled: true,
+            detection: true,
+            iceReconnectionTimeout: 10000,
+            retry: {
+              times: 2,
+              backOff: {
+                start: 1000,
+                rate: 2,
+              },
+            },
+          },
+        },
+        mediaProperties: {
+          unsetPeerConnection: sinon.stub(),
+          reInitiatePeerconnection: sinon.stub().resolves({}),
+          peerConnection: sinon.stub(),
+        },
+        roap: {
+          doTurnDiscovery: sinon.stub().resolves({
+            turnServerInfo: {
+              url: 'fake_turn_url',
+              username: 'fake_turn_username',
+              password: 'fake_turn_password',
+            },
+            turnDiscoverySkippedReason: undefined,
+          }),
+          sendRoapMediaRequest: sinon.stub().resolves({}),
+        },
+        statsAnalyzer: {
+          updatePeerconnection: sinon.stub().returns(Promise.resolve()),
+        },
+        webex: {
+          meetings: {
+            getMeetingByType: sinon.stub().returns(true),
+            syncMeetings: sinon.stub().resolves({}),
+          },
+        },
+      };
+
+      Media.attachMedia = sinon.stub().resolves({});
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      rm.iceState.disconnected = true;
+
+      await rm.reconnectMedia();
+
+      assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
+      assert.calledOnce(fakeMeeting.mediaProperties.reInitiatePeerconnection);
+      assert.calledWith(fakeMeeting.mediaProperties.reInitiatePeerconnection, {
+        url: 'fake_turn_url',
+        username: 'fake_turn_username',
+        password: 'fake_turn_password',
+      });
+    });
+  });
   /**
    * Currently, testing dependent classes that aren't available at the top
    * level causes testing errors in CI based around related files. Skipping this here until a solution
@@ -30,11 +92,11 @@ describe('plugin-meetings', () => {
               times: 2,
               backOff: {
                 start: 1000,
-                rate: 2
-              }
-            }
-          }
-        }
+                rate: 2,
+              },
+            },
+          },
+        },
       });
     });
 
@@ -53,8 +115,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should resolve the deferred promise', () => {
-          reconnectionManager.iceState.resolve =
-            sinon.spy();
+          reconnectionManager.iceState.resolve = sinon.spy();
           const {resolve} = reconnectionManager.iceState;
 
           reconnectionManager.iceReconnected();

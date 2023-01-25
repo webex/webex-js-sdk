@@ -1,39 +1,43 @@
 {
-    "name": "@webex/internal-plugin-lyra",
-    "version": "2.33.0",
-    "description": "",
-    "license": "MIT",
-    "author": "Tran Tu <tratu@cisco.com>",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-lyra",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@ciscospark/test-users-legacy": "^1.2.0",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/test-helper-retry": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "@webex/common": "workspace:^",
-        "@webex/internal-plugin-conversation": "workspace:^",
-        "@webex/internal-plugin-encryption": "workspace:^",
-        "@webex/internal-plugin-feature": "workspace:^",
-        "@webex/internal-plugin-locus": "workspace:^",
-        "@webex/internal-plugin-lyra": "workspace:^",
-        "@webex/internal-plugin-mercury": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "bowser": "^2.11.0",
-        "uuid": "^3.3.2"
-    }
+  "name": "@webex/internal-plugin-lyra",
+  "version": "2.37.2",
+  "description": "",
+  "license": "MIT",
+  "author": "Tran Tu <tratu@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-lyra"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@ciscospark/test-users-legacy": "^1.2.0",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-retry": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/internal-plugin-conversation": "workspace:^",
+    "@webex/internal-plugin-encryption": "workspace:^",
+    "@webex/internal-plugin-feature": "workspace:^",
+    "@webex/internal-plugin-locus": "workspace:^",
+    "@webex/internal-plugin-lyra": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "bowser": "^2.11.0",
+    "uuid": "^3.3.2"
+  }
 }

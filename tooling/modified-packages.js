@@ -20,7 +20,12 @@ const fileToPackage = (d) => {
     return d[0];
   }
 
-  if (d.startsWith('docs') || d.startsWith('documentation') || d.startsWith('.github') || d.endsWith('.md')) {
+  if (
+    d.startsWith('docs') ||
+    d.startsWith('documentation') ||
+    d.startsWith('.github') ||
+    d.endsWith('.md')
+  ) {
     return 'docs';
   }
 
@@ -49,7 +54,10 @@ const updated = async ({dependents, npm} = {}) => {
     let transitive = new Set([...changedPackages]);
 
     for (const packageName of changedPackages) {
-      transitive = new Set([...transitive, ...await listDependents(packageName, {includeTransitive: true})]);
+      transitive = new Set([
+        ...transitive,
+        ...(await listDependents(packageName, {includeTransitive: true})),
+      ]);
     }
 
     return Array.from(transitive);
@@ -59,9 +67,7 @@ const updated = async ({dependents, npm} = {}) => {
 };
 
 const modified = async (argv) => {
-  let changedPackages = argv.integration ?
-    await updated({dependents: true}) :
-    await updated();
+  let changedPackages = argv.integration ? await updated({dependents: true}) : await updated();
 
   changedPackages = changedPackages
     .filter((packageName) => !packageName.includes('samples'))
@@ -72,9 +78,11 @@ const modified = async (argv) => {
     .filter((packageName) => !packageName.includes('xunit-with-logs'))
     .filter((packageName) => !packageName.includes('docs'));
 
-  console.log(argv.glob ?
-    `packages/{${changedPackages}}` :
-    `${changedPackages.join(argv.singleLine ? ' ' : '\n')}`);
+  console.log(
+    argv.glob
+      ? `packages/{${changedPackages}}`
+      : `${changedPackages.join(argv.singleLine ? ' ' : '\n')}`
+  );
 };
 
 modified(
@@ -83,19 +91,18 @@ modified(
       alias: 'integration',
       describe: 'Grab packages for integration environment',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     })
     .options('g', {
       alias: 'glob',
       describe: 'Modify reponse for CircleCI split testing',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     })
     .options('single-line', {
       alias: 'singleLine',
       describe: 'Log results in a single line',
       default: false,
-      type: 'boolean'
-    })
-    .argv
+      type: 'boolean',
+    }).argv
 );

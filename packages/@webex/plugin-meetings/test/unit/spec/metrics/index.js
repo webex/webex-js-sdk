@@ -10,7 +10,6 @@ import {assert} from '@webex/test-helper-chai';
 
 import metrics from '@webex/plugin-meetings/src/metrics';
 
-
 /**
  * Meeting can only run in a browser, so we can only send metrics for
  * browser usage.
@@ -23,7 +22,7 @@ browserOnly(describe)('Meeting metrics', () => {
     clientRegion: 'US-WEST',
     countryCode: 'US',
     regionCode: 'US-WEST',
-    timezone: 'America/Los_Angeles'
+    timezone: 'America/Los_Angeles',
   };
 
   beforeEach(() => {
@@ -31,16 +30,16 @@ browserOnly(describe)('Meeting metrics', () => {
     mockSubmitMetric = sandbox.stub();
     webex = new MockWebex({
       children: {
-        metrics: Metrics
-      }
+        metrics: Metrics,
+      },
     });
 
     webex.version = '1.2.3';
     webex.credentials.getOrgId = sinon.fake.returns('7890');
     webex.credentials.config = {
       _values: {
-        clientId: 'mock-client-id'
-      }
+        clientId: 'mock-client-id',
+      },
     };
     webex.config.metrics.type = ['behavioral'];
     webex.internal.metrics.submitClientMetrics = mockSubmitMetric;
@@ -55,7 +54,7 @@ browserOnly(describe)('Meeting metrics', () => {
     it('should create payload with masked IPv4', () => {
       geoHintInfo.clientAddress = '128.0.0.1';
       webex.meetings = {
-        geoHintInfo
+        geoHintInfo,
       };
       metrics.initialSetup({}, webex);
       const payload = metrics.initPayload('myMetric', {}, {clientType: 'TEAMS_CLIENT'});
@@ -71,7 +70,7 @@ browserOnly(describe)('Meeting metrics', () => {
     it('should create payload with masked IPv6', () => {
       geoHintInfo.clientAddress = '2001:0db8:0000:08d3:0000:0000:0070:0000';
       webex.meetings = {
-        geoHintInfo
+        geoHintInfo,
       };
       metrics.initialSetup({}, webex);
       const payload = metrics.initPayload('myIPv6Metric', {}, {clientType: 'TEAMS_CLIENT'});
@@ -98,19 +97,15 @@ browserOnly(describe)('Meeting metrics', () => {
 
       metrics.sendBehavioralMetric('myMetric', fields, metricTags);
 
-      assert.calledWithMatch(
-        mockSubmitMetric,
-        'myMetric',
-        {
-          type: ['behavioral'],
-          fields: {
-            value: 567
-          },
-          tags: {
-            test: true
-          }
-        }
-      );
+      assert.calledWithMatch(mockSubmitMetric, 'myMetric', {
+        type: ['behavioral'],
+        fields: {
+          value: 567,
+        },
+        tags: {
+          test: true,
+        },
+      });
     });
   });
 });

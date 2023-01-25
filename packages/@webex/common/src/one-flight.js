@@ -28,11 +28,7 @@ export default function oneFlight(...params) {
 
   const options = params[0] || {};
 
-  const {
-    cacheFailures,
-    cacheSuccesses,
-    keyFactory
-  } = options;
+  const {cacheFailures, cacheSuccesses, keyFactory} = options;
 
   return oneFlightDecorator;
 

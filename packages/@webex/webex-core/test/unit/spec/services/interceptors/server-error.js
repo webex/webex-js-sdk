@@ -1,10 +1,7 @@
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import {
-  ServerErrorInterceptor,
-  WebexHttpError
-} from '@webex/webex-core';
+import {ServerErrorInterceptor, WebexHttpError} from '@webex/webex-core';
 
 const {assert} = chai;
 
@@ -40,9 +37,9 @@ describe('webex-core', () => {
             options: {
               url: 'http://not-a-url.com/',
               headers: {
-                trackingId: 'tid'
-              }
-            }
+                trackingId: 'tid',
+              },
+            },
           });
 
           interceptor.webex = {
@@ -50,41 +47,32 @@ describe('webex-core', () => {
               device: {
                 features: {
                   developer: {
-                    get: sinon.stub()
-                  }
-                }
+                    get: sinon.stub(),
+                  },
+                },
               },
               metrics: {
-                submitClientMetrics: sinon.spy()
+                submitClientMetrics: sinon.spy(),
               },
               services: {
-                markFailedUrl: sinon.stub()
-              }
-            }
+                markFailedUrl: sinon.stub(),
+              },
+            },
           };
 
           get = interceptor.webex.internal.device.features.developer.get;
-          markFailedUrl = interceptor
-            .webex
-            .internal
-            .services
-            .markFailedUrl;
-          submitClientMetrics = interceptor
-            .webex
-            .internal
-            .metrics
-            .submitClientMetrics;
+          markFailedUrl = interceptor.webex.internal.services.markFailedUrl;
+          submitClientMetrics = interceptor.webex.internal.metrics.submitClientMetrics;
 
           markFailedUrl.returns();
         });
 
-        it('should get the feature \'web-high-availability\'', (done) => {
-          interceptor.onResponseError(options, reason)
-            .catch(() => {
-              assert.calledWith(get, 'web-high-availability');
+        it("should get the feature 'web-high-availability'", (done) => {
+          interceptor.onResponseError(options, reason).catch(() => {
+            assert.calledWith(get, 'web-high-availability');
 
-              done();
-            });
+            done();
+          });
         });
 
         describe('when the web-ha feature is enabled', () => {
@@ -93,30 +81,26 @@ describe('webex-core', () => {
           });
 
           it('should submit appropriate client metrics', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch(() => {
-                assert.calledWith(submitClientMetrics,
-                  'web-ha',
-                  {
-                    fields: {success: false},
-                    tags: {
-                      action: 'failed',
-                      error: reason.message,
-                      url: options.uri
-                    }
-                  });
-
-                done();
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(submitClientMetrics, 'web-ha', {
+                fields: {success: false},
+                tags: {
+                  action: 'failed',
+                  error: reason.message,
+                  url: options.uri,
+                },
               });
+
+              done();
+            });
           });
 
           it('should mark a url as failed', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch(() => {
-                assert.calledWith(markFailedUrl, options.uri);
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(markFailedUrl, options.uri);
 
-                done();
-              });
+              done();
+            });
           });
 
           it('should mark a url as failed for a 503', (done) => {
@@ -126,26 +110,24 @@ describe('webex-core', () => {
               options: {
                 url: 'http://not-a-url.com/',
                 headers: {
-                  trackingId: 'tid'
-                }
-              }
+                  trackingId: 'tid',
+                },
+              },
             });
 
-            interceptor.onResponseError(options, reason)
-              .catch(() => {
-                assert.calledWith(markFailedUrl, options.uri);
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(markFailedUrl, options.uri);
 
-                done();
-              });
+              done();
+            });
           });
 
           it('should return a rejected promise with a reason', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch((error) => {
-                assert.instanceOf(error, WebexHttpError.InternalServerError);
+            interceptor.onResponseError(options, reason).catch((error) => {
+              assert.instanceOf(error, WebexHttpError.InternalServerError);
 
-                done();
-              });
+              done();
+            });
           });
         });
 
@@ -155,30 +137,27 @@ describe('webex-core', () => {
           });
 
           it('should return a rejected promise with the reason', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch((error) => {
-                assert.instanceOf(error, WebexHttpError.InternalServerError);
+            interceptor.onResponseError(options, reason).catch((error) => {
+              assert.instanceOf(error, WebexHttpError.InternalServerError);
 
-                done();
-              });
+              done();
+            });
           });
 
           it('should not attempt to submit client metrics', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch(() => {
-                assert.notCalled(submitClientMetrics);
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.notCalled(submitClientMetrics);
 
-                done();
-              });
+              done();
+            });
           });
 
           it('should not attempt to mark a url as failed', (done) => {
-            interceptor.onResponseError(options, reason)
-              .catch(() => {
-                assert.notCalled(markFailedUrl);
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.notCalled(markFailedUrl);
 
-                done();
-              });
+              done();
+            });
           });
         });
       });
@@ -190,12 +169,11 @@ describe('webex-core', () => {
         });
 
         it('should return a rejected promise with the reason', (done) => {
-          interceptor.onResponseError(options, reason)
-            .catch((error) => {
-              assert.deepEqual(error, reason);
+          interceptor.onResponseError(options, reason).catch((error) => {
+            assert.deepEqual(error, reason);
 
-              done();
-            });
+            done();
+          });
         });
       });
 
@@ -207,19 +185,18 @@ describe('webex-core', () => {
             options: {
               url: 'http://not-a-url.com/',
               headers: {
-                trackingId: 'tid'
-              }
-            }
+                trackingId: 'tid',
+              },
+            },
           });
         });
 
         it('should return a rejected promise with the reason', (done) => {
-          interceptor.onResponseError(options, reason)
-            .catch((error) => {
-              assert.instanceOf(error, WebexHttpError.InternalServerError);
+          interceptor.onResponseError(options, reason).catch((error) => {
+            assert.instanceOf(error, WebexHttpError.InternalServerError);
 
-              done();
-            });
+            done();
+          });
         });
       });
     });

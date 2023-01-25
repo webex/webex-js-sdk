@@ -2,21 +2,19 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {
-  capitalize,
-  curry,
-  get,
-  has,
-  isArray
-} from 'lodash';
+import {capitalize, curry, get, has, isArray} from 'lodash';
 
 import toArray from './to-array';
 
 const KEY = Symbol('KEY');
 
-const encryptTextProp = curry((name, ctx, key, object) => ctx.transform('encryptTextProp', name, key, object));
+const encryptTextProp = curry((name, ctx, key, object) =>
+  ctx.transform('encryptTextProp', name, key, object)
+);
 
-const encryptJsonProp = curry((name, ctx, key, object) => ctx.transform('encryptJsonProp', name, key, object));
+const encryptJsonProp = curry((name, ctx, key, object) =>
+  ctx.transform('encryptJsonProp', name, key, object)
+);
 
 // eslint-disable-next-line import/prefer-default-export
 export const transforms = toArray('outbound', {
@@ -50,32 +48,37 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    return Promise.resolve(key || ctx.webex.internal.encryption.kms.createUnboundKeys({count: 1}))
-      .then((keys) => {
-        const k = isArray(keys) ? keys[0] : keys;
+    return Promise.resolve(
+      key || ctx.webex.internal.encryption.kms.createUnboundKeys({count: 1})
+    ).then((keys) => {
+      const k = isArray(keys) ? keys[0] : keys;
 
-        if (has(conversation, 'kmsMessage.keyUris') && !conversation.kmsMessage.keyUris.includes(k.uri)) {
-          conversation.kmsMessage.keyUris.push(k.uri);
-        }
+      if (
+        has(conversation, 'kmsMessage.keyUris') &&
+        !conversation.kmsMessage.keyUris.includes(k.uri)
+      ) {
+        conversation.kmsMessage.keyUris.push(k.uri);
+      }
 
-        return Promise.all([
-          // too many implicit returns on the same line is difficult to interpret
-          // eslint-disable-next-line arrow-body-style
-          has(conversation, 'activities.items') && conversation.activities.items.reduce((p, activity) => {
+      return Promise.all([
+        // too many implicit returns on the same line is difficult to interpret
+        // eslint-disable-next-line arrow-body-style
+        has(conversation, 'activities.items') &&
+          conversation.activities.items.reduce((p, activity) => {
             // eslint-disable-next-line max-nested-callbacks
             return p.then(() => ctx.transform('encryptObject', k, activity));
           }, Promise.resolve()),
-          ctx.transform('encryptPropDisplayName', k, conversation)
-        ])
-          .then(() => {
-            conversation.encryptionKeyUrl = k.uri || k;
-            // we only want to set the defaultActivityEncryptionKeyUrl if we've
-            // bound a new key
-            if (!key) {
-              conversation.defaultActivityEncryptionKeyUrl = conversation.defaultActivityEncryptionKeyUrl || k.uri || k;
-            }
-          });
+        ctx.transform('encryptPropDisplayName', k, conversation),
+      ]).then(() => {
+        conversation.encryptionKeyUrl = k.uri || k;
+        // we only want to set the defaultActivityEncryptionKeyUrl if we've
+        // bound a new key
+        if (!key) {
+          conversation.defaultActivityEncryptionKeyUrl =
+            conversation.defaultActivityEncryptionKeyUrl || k.uri || k;
+        }
       });
+    });
   },
 
   encryptActivity(ctx, key, activity) {
@@ -84,16 +87,16 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    return ctx.transform(`encrypt${capitalize(activity.verb)}Activity`, key, activity)
-      .then(() => {
-        key = key || activity[KEY];
+    return ctx.transform(`encrypt${capitalize(activity.verb)}Activity`, key, activity).then(() => {
+      key = key || activity[KEY];
 
-        return ctx.transform('prepareActivityKmsMessage', key, activity);
-      });
+      return ctx.transform('prepareActivityKmsMessage', key, activity);
+    });
   },
 
   encryptVerbActivity(ctx, key, activity) {
-    return ctx.transform('maybeEncryptTarget', key, activity)
+    return ctx
+      .transform('maybeEncryptTarget', key, activity)
       .then(() => {
         key = key || activity[KEY];
       })
@@ -107,7 +110,8 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    if (has(activity, 'target.defaultActivityEncryptionKeyUrl') &&
+    if (
+      has(activity, 'target.defaultActivityEncryptionKeyUrl') &&
       activity.target.defaultActivityEncryptionKeyUrl &&
       has(activity, 'target.kmsResourceObjectUrl')
     ) {
@@ -119,34 +123,42 @@ export const transforms = toArray('outbound', {
     const conversationUrl = activity.target && activity.target.url;
 
     if (!conversationUrl) {
-      return Promise.reject(new Error('Cannot determine encryption key for activity\'s conversation; no key url or conversation url provided'));
+      return Promise.reject(
+        new Error(
+          "Cannot determine encryption key for activity's conversation; no key url or conversation url provided"
+        )
+      );
     }
 
-    return ctx.webex.internal.conversation.get({url: conversationUrl})
-      .then((conversation) => {
-        if (!conversation.defaultActivityEncryptionKeyUrl) {
-          return ctx.webex.internal.conversation.updateKey(conversation)
-            .then((updateKeyActivity) => {
-              if (updateKeyActivity.kmsMessage.resource) {
-                activity.target.kmsResourceObjectUrl = updateKeyActivity.kmsMessage.resource.uri;
-              }
-              activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl = updateKeyActivity.object.defaultActivityEncryptionKeyUrl;
-            });
-        }
+    return ctx.webex.internal.conversation.get({url: conversationUrl}).then((conversation) => {
+      if (!conversation.defaultActivityEncryptionKeyUrl) {
+        return ctx.webex.internal.conversation.updateKey(conversation).then((updateKeyActivity) => {
+          if (updateKeyActivity.kmsMessage.resource) {
+            activity.target.kmsResourceObjectUrl = updateKeyActivity.kmsMessage.resource.uri;
+          }
+          activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl =
+            updateKeyActivity.object.defaultActivityEncryptionKeyUrl;
+        });
+      }
 
-        if (!activity.target.defaultActivityEncryptionKeyUrl) {
-          ctx.webex.logger.warn('plugin-conversation: downloaded conversation to determine its defaultActivityEncryptionKeyUrl; make sure to pass all encryption related properties when calling Webex.conversation methods.');
-        }
+      if (!activity.target.defaultActivityEncryptionKeyUrl) {
+        ctx.webex.logger.warn(
+          'plugin-conversation: downloaded conversation to determine its defaultActivityEncryptionKeyUrl; make sure to pass all encryption related properties when calling Webex.conversation methods.'
+        );
+      }
 
-        if (!activity.target.kmsResourceObjectUrl) {
-          ctx.webex.logger.warn('plugin-conversation: downloaded conversation to determine its kmsResourceObjectUrl; make sure to pass all encryption related properties when calling Webex.conversation methods.');
-        }
+      if (!activity.target.kmsResourceObjectUrl) {
+        ctx.webex.logger.warn(
+          'plugin-conversation: downloaded conversation to determine its kmsResourceObjectUrl; make sure to pass all encryption related properties when calling Webex.conversation methods.'
+        );
+      }
 
-        activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl = conversation.defaultActivityEncryptionKeyUrl;
-        activity.target.kmsResourceObjectUrl = conversation.kmsResourceObjectUrl;
+      activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl =
+        conversation.defaultActivityEncryptionKeyUrl;
+      activity.target.kmsResourceObjectUrl = conversation.kmsResourceObjectUrl;
 
-        return Promise.resolve();
-      });
+      return Promise.resolve();
+    });
   },
 
   prepareActivityKmsMessage(ctx, key, activity) {
@@ -155,11 +167,19 @@ export const transforms = toArray('outbound', {
         key = get(activity, 'target.defaultActivityEncryptionKeyUrl');
       }
 
-      if (!key && activity.verb === 'updateKey' && has(activity, 'object.defaultActivityEncryptionKeyUrl')) {
+      if (
+        !key &&
+        activity.verb === 'updateKey' &&
+        has(activity, 'object.defaultActivityEncryptionKeyUrl')
+      ) {
         key = get(activity, 'object.defaultActivityEncryptionKeyUrl');
       }
 
-      if (!key && activity.verb === 'leave' && has(activity, 'target.defaultActivityEncryptionKeyUrl')) {
+      if (
+        !key &&
+        activity.verb === 'leave' &&
+        has(activity, 'target.defaultActivityEncryptionKeyUrl')
+      ) {
         key = get(activity, 'target.defaultActivityEncryptionKeyUrl');
       }
 
@@ -190,12 +210,11 @@ export const transforms = toArray('outbound', {
   encryptVerbActivityWithKey: {
     direction: 'outbound',
     fn(ctx, key, activity) {
-      return ctx.transform('encryptVerbActivity', key, activity)
-        .then(() => {
-          key = key || activity[KEY];
-          activity.encryptionKeyUrl = key.uri || key;
-        });
-    }
+      return ctx.transform('encryptVerbActivity', key, activity).then(() => {
+        key = key || activity[KEY];
+        activity.encryptionKeyUrl = key.uri || key;
+      });
+    },
   },
 
   encryptAddActivity: {
@@ -206,48 +225,48 @@ export const transforms = toArray('outbound', {
       }
 
       return ctx.transform('encryptVerbActivity', key, activity);
-    }
+    },
   },
 
   encryptAssignActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivityWithKey'
+    alias: 'encryptVerbActivityWithKey',
   },
 
   encryptCreateActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivity'
+    alias: 'encryptVerbActivity',
   },
 
   encryptPostActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivityWithKey'
+    alias: 'encryptVerbActivityWithKey',
   },
 
   encryptShareActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivityWithKey'
+    alias: 'encryptVerbActivityWithKey',
   },
 
   encryptCardactionActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivityWithKey'
+    alias: 'encryptVerbActivityWithKey',
   },
 
   encryptUpdateActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivityWithKey'
+    alias: 'encryptVerbActivityWithKey',
   },
 
   encryptUpdateKeyActivity: {
     direction: 'outbound',
-    alias: 'encryptVerbActivity'
+    alias: 'encryptVerbActivity',
   },
 
   encryptComment(ctx, key, comment) {
     return Promise.all([
       ctx.transform('encryptPropDisplayName', key, comment),
-      ctx.transform('encryptPropContent', key, comment)
+      ctx.transform('encryptPropContent', key, comment),
     ]);
   },
 
@@ -269,7 +288,7 @@ export const transforms = toArray('outbound', {
       ctx.transform('encryptPropScr', key, file),
       ctx.transform('encryptPropDisplayName', key, file),
       ctx.transform('encryptPropContent', key, file),
-      file.image && ctx.transform('encryptPropScr', key, file.image)
+      file.image && ctx.transform('encryptPropScr', key, file.image),
     ]);
   },
 
@@ -295,10 +314,9 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    return ctx.webex.internal.encryption.encryptScr(key, object.scr)
-      .then((scr) => {
-        object.scr = scr;
-      });
+    return ctx.webex.internal.encryption.encryptScr(key, object.scr).then((scr) => {
+      object.scr = scr;
+    });
   },
 
   encryptJsonProp(ctx, name, key, object) {
@@ -306,7 +324,8 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    return ctx.webex.internal.encryption.encryptText(key.uri || key, JSON.stringify(object[name]))
+    return ctx.webex.internal.encryption
+      .encryptText(key.uri || key, JSON.stringify(object[name]))
       .then((ciphertext) => {
         object[name] = ciphertext;
       });
@@ -317,9 +336,10 @@ export const transforms = toArray('outbound', {
       return Promise.resolve();
     }
 
-    return ctx.webex.internal.encryption.encryptText(key.uri || key, object[name])
+    return ctx.webex.internal.encryption
+      .encryptText(key.uri || key, object[name])
       .then((ciphertext) => {
         object[name] = ciphertext;
       });
-  }
+  },
 });

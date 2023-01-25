@@ -32,11 +32,10 @@ wd.addPromiseChainMethod('submitPassword', function submitPassword(user, options
   }
 
   options = options || {
-    remainingRetries: 3
+    remainingRetries: 3,
   };
 
-  return this
-    .elementById('IDToken2')
+  return this.elementById('IDToken2')
     .sendKeys(user.password)
     .elementById('Button1')
     .click()
@@ -46,10 +45,9 @@ wd.addPromiseChainMethod('submitPassword', function submitPassword(user, options
         if (options.remainingRetries > 0) {
           options.remainingRetries -= 1;
 
-          return delay(1000)
-            .then(() => {
-              this.submitPassword(user, options);
-            });
+          return delay(1000).then(() => {
+            this.submitPassword(user, options);
+          });
         }
         throw new Error('Failed to login after several attempts');
       }

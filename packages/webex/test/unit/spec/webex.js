@@ -29,7 +29,7 @@ describe('webex', () => {
 
       const fedramp = {
         hydra: 'https://api-usgov.webex.com/v1',
-        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1'
+        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
       };
 
       it('is set false by default', () => {
@@ -40,11 +40,11 @@ describe('webex', () => {
       it('sets correct services when fedramp is true', () => {
         webex = Webex.init({
           config: {
-            fedramp: true
+            fedramp: true,
           },
           credentials: {
-            access_token: 'Bearer 1234'
-          }
+            access_token: 'Bearer 1234',
+          },
         });
 
         assert.property(webex.config, 'fedramp');

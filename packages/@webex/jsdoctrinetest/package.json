@@ -1,45 +1,49 @@
 {
-    "name": "@webex/jsdoctrinetest",
-    "version": "2.33.0",
-    "description": "",
-    "license": "MIT",
-    "contributors": [
-        "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-        "Bernie Zang <nzang@cisco.com>",
-        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-        "Moriah Maney <momaney@cisco.com>"
-    ],
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/jsdoctrinetest",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "keywords": [
-        "api",
-        "cisco",
-        "sdk",
-        "web",
-        "webex",
-        "jsdoc",
-        "doctrine"
-    ],
-    "devDependencies": {
-        "@babel/generator": "^7.14.9",
-        "@babel/template": "^7.14.5",
-        "@babel/traverse": "^7.14.9",
-        "@babel/types": "^7.14.9"
-    },
-    "dependencies": {
-        "@webex/test-helper-chai": "workspace:^",
-        "babylon": "^6.18.0",
-        "doctrine": "^2.1.0",
-        "lodash": "^4.17.21"
-    }
+  "name": "@webex/jsdoctrinetest",
+  "version": "2.37.2",
+  "description": "",
+  "license": "MIT",
+  "contributors": [
+    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+    "Bernie Zang <nzang@cisco.com>",
+    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+    "Moriah Maney <momaney@cisco.com>"
+  ],
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/jsdoctrinetest"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "keywords": [
+    "api",
+    "cisco",
+    "sdk",
+    "web",
+    "webex",
+    "jsdoc",
+    "doctrine"
+  ],
+  "devDependencies": {
+    "@babel/generator": "^7.14.9",
+    "@babel/template": "^7.14.5",
+    "@babel/traverse": "^7.14.9",
+    "@babel/types": "^7.14.9"
+  },
+  "dependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "babylon": "^6.18.0",
+    "doctrine": "^2.1.0",
+    "lodash": "^4.17.21"
+  }
 }

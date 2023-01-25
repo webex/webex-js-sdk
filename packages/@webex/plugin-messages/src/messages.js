@@ -8,27 +8,21 @@ import {
   buildHydraPersonId,
   buildHydraRoomId,
   createEventEnvelope,
-  getHydraClusterString
+  getHydraClusterString,
 } from '@webex/common';
-import {
-  Page,
-  WebexPlugin
-} from '@webex/webex-core';
+import {Page, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, isArray} from 'lodash';
 
 const verbToType = {
-  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.SHARE]:
-    SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED,
-  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.POST]:
-    SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED,
-  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.DELETE]:
-    SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED
+  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.SHARE]: SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED,
+  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.POST]: SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED,
+  [SDK_EVENT.INTERNAL.ACTIVITY_VERB.DELETE]: SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED,
 };
 
 const getRoomType = (roomTags) =>
-  (roomTags.includes(SDK_EVENT.INTERNAL.ACTIVITY_TAG.ONE_ON_ONE) ?
-    SDK_EVENT.EXTERNAL.SPACE_TYPE.DIRECT :
-    SDK_EVENT.EXTERNAL.SPACE_TYPE.GROUP);
+  roomTags.includes(SDK_EVENT.INTERNAL.ACTIVITY_TAG.ONE_ON_ONE)
+    ? SDK_EVENT.EXTERNAL.SPACE_TYPE.DIRECT
+    : SDK_EVENT.EXTERNAL.SPACE_TYPE.GROUP;
 
 /**
  * @typedef {Object} MessageObject
@@ -100,18 +94,18 @@ const Messages = WebexPlugin.extend({
    */
   listen() {
     // Create a common envelope that we will wrap all events in
-    return createEventEnvelope(this.webex,
-      SDK_EVENT.EXTERNAL.RESOURCE.MESSAGES)
-      .then((envelope) => {
+    return createEventEnvelope(this.webex, SDK_EVENT.EXTERNAL.RESOURCE.MESSAGES).then(
+      (envelope) => {
         this.eventEnvelope = envelope;
 
         // Register to listen to events
         return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury,
-            SDK_EVENT.INTERNAL.WEBEX_ACTIVITY,
-            (event) => this.onWebexApiEvent(event));
+          this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+            this.onWebexApiEvent(event)
+          );
         });
-      });
+      }
+    );
   },
 
   /**
@@ -143,12 +137,17 @@ const Messages = WebexPlugin.extend({
     let key = 'body';
 
     if (message.file) {
-      this.logger.warn('Supplying a single `file` property is deprecated; please supply a `files` array');
+      this.logger.warn(
+        'Supplying a single `file` property is deprecated; please supply a `files` array'
+      );
       message.files = [message.file];
       Reflect.deleteProperty(message, 'file');
     }
 
-    if (isArray(message.files) && message.files.reduce((type, file) => type || typeof file !== 'string', false)) {
+    if (
+      isArray(message.files) &&
+      message.files.reduce((type, file) => type || typeof file !== 'string', false)
+    ) {
       key = 'formData';
     }
 
@@ -156,11 +155,10 @@ const Messages = WebexPlugin.extend({
       method: 'POST',
       service: 'hydra',
       resource: 'messages',
-      [key]: message
+      [key]: message,
     };
 
-    return this.request(options)
-      .then((res) => res.body);
+    return this.request(options).then((res) => res.body);
   },
 
   /**
@@ -194,9 +192,8 @@ const Messages = WebexPlugin.extend({
 
     return this.request({
       service: 'hydra',
-      resource: `messages/${id}`
-    })
-      .then((res) => res.body.items || res.body);
+      resource: `messages/${id}`,
+    }).then((res) => res.body.items || res.body);
   },
 
   /**
@@ -242,9 +239,8 @@ const Messages = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'messages',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -293,17 +289,16 @@ const Messages = WebexPlugin.extend({
     return this.request({
       method: 'DELETE',
       service: 'hydra',
-      resource: `messages/${id}`
-    })
-      .then((res) => {
-        // Firefox has some issues with 204s and/or DELETE. This should move to
-        // http-core
-        if (res.statusCode === 204) {
-          return undefined;
-        }
+      resource: `messages/${id}`,
+    }).then((res) => {
+      // Firefox has some issues with 204s and/or DELETE. This should move to
+      // http-core
+      if (res.statusCode === 204) {
+        return undefined;
+      }
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -335,8 +330,7 @@ const Messages = WebexPlugin.extend({
       return;
     }
 
-    this.getMessageEvent(activity, type)
-      .then(this.fire(type));
+    this.getMessageEvent(activity, type).then(this.fire(type));
   },
 
   /**
@@ -354,7 +348,7 @@ const Messages = WebexPlugin.extend({
       id,
       actor: {entryUUID: actorId, emailAddress},
       object: {id: objectId},
-      target: {id: roomId, url: roomUrl, tags: roomTags}
+      target: {id: roomId, url: roomUrl, tags: roomTags},
     } = activity;
 
     const cluster = getHydraClusterString(this.webex, roomUrl);
@@ -374,18 +368,17 @@ const Messages = WebexPlugin.extend({
           personEmail: emailAddress || actorId,
           personId,
           roomId: buildHydraRoomId(roomId, cluster),
-          roomType: getRoomType(roomTags)
-        }
+          roomType: getRoomType(roomTags),
+        },
       });
     }
 
-    return this.get(buildHydraMessageId(id, cluster))
-      .then((data) => ({
-        ...combinedEvent,
-        actorId: data.personId,
-        data
-      }));
-  }
+    return this.get(buildHydraMessageId(id, cluster)).then((data) => ({
+      ...combinedEvent,
+      actorId: data.personId,
+      data,
+    }));
+  },
 });
 
 export default Messages;

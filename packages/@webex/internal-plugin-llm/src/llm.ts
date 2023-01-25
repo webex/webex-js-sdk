@@ -1,3 +1,5 @@
+/* eslint-disable consistent-return */
+
 import Mercury from '@webex/internal-plugin-mercury';
 import {LoggerProxy} from '@webex/plugin-meetings';
 
@@ -48,7 +50,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @type {Boolean}
    * @public
    */
-  private registered: boolean = false;
+  private registered = false;
 
   private webSocketUrl?: string;
 

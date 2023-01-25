@@ -5,7 +5,6 @@
 import {assert} from '@webex/test-helper-chai';
 import {make} from '@webex/common';
 
-
 describe('common', () => {
   describe('TemplateContainer', () => {
     describe('make()', () => {

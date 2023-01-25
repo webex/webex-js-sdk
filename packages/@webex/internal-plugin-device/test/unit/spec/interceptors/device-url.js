@@ -21,19 +21,19 @@ describe('plugin-device', () => {
         resource: '/example/resource/',
         service: 'example',
         serviceUrl: 'https://www.example-service.com/',
-        uri: 'https://www.example-uri.com/'
+        uri: 'https://www.example-uri.com/',
       };
 
       interceptor.webex = {
         internal: {
           device: {
-            url: fixture.uri
+            url: fixture.uri,
           },
           services: {
             waitForService: sinon.stub().resolves(fixture.serviceUrl),
-            getServiceFromUrl: sinon.stub().returns({name: fixture.service})
-          }
-        }
+            getServiceFromUrl: sinon.stub().returns({name: fixture.service}),
+          },
+        },
       };
 
       waitForService = interceptor.webex.internal.services.waitForService;
@@ -48,12 +48,13 @@ describe('plugin-device', () => {
           interceptor.webex.internal.device.url = undefined;
           options = {
             headers: {
-              'cisco-device-url': fixture.url
+              'cisco-device-url': fixture.url,
             },
-            ...options
+            ...options,
           };
 
-          return interceptor.onRequest({...options})
+          return interceptor
+            .onRequest({...options})
             .then((results) => assert.deepEqual(results, options));
         });
 
@@ -62,12 +63,13 @@ describe('plugin-device', () => {
             interceptor.webex.internal.device.url = undefined;
             options = {
               headers: {
-                'cisco-device-url': undefined
+                'cisco-device-url': undefined,
               },
-              ...options
+              ...options,
             };
 
-            return interceptor.onRequest({...options})
+            return interceptor
+              .onRequest({...options})
               .then((results) => assert.deepEqual(results, options));
           });
         });
@@ -75,12 +77,13 @@ describe('plugin-device', () => {
         describe('when service does not exist', () => {
           it('should return the options', () => {
             interceptor.webex.internal.device.url = 'http://device-url.com/';
-            interceptor.webex.internal.services.waitForService =
-              sinon.stub().resolves('http://example-url.com/');
-            interceptor.webex.internal.services.getServiceFromUrl =
-              sinon.stub().returns();
+            interceptor.webex.internal.services.waitForService = sinon
+              .stub()
+              .resolves('http://example-url.com/');
+            interceptor.webex.internal.services.getServiceFromUrl = sinon.stub().returns();
 
-            return interceptor.onRequest({...options})
+            return interceptor
+              .onRequest({...options})
               .then((results) => assert.deepEqual(results, options));
           });
         });
@@ -90,71 +93,50 @@ describe('plugin-device', () => {
         it('when only the service property is provided', () => {
           options.service = fixture.service;
 
-          interceptor.onRequest(options)
-            .then((results) => {
-              assert.calledWith(
-                waitForService,
-                {
-                  service: options.service,
-                  url: undefined
-                }
-              );
-              assert.calledWith(
-                getServiceFromUrl,
-                fixture.serviceUrl
-              );
-              assert.isDefined(options.headers['cisco-device-url']);
-              assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          interceptor.onRequest(options).then((results) => {
+            assert.calledWith(waitForService, {
+              service: options.service,
+              url: undefined,
             });
+            assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+            assert.isDefined(options.headers['cisco-device-url']);
+            assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          });
         });
 
         it('when only the uri property is provided', () => {
           options = {
             uri: fixture.uri,
-            ...options
+            ...options,
           };
 
-          interceptor.onRequest(options)
-            .then((results) => {
-              assert.calledWith(
-                waitForService,
-                {
-                  service: undefined,
-                  url: options.uri
-                }
-              );
-              assert.calledWith(
-                getServiceFromUrl,
-                fixture.serviceUrl
-              );
-              assert.isDefined(results.headers['cisco-device-url']);
-              assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          interceptor.onRequest(options).then((results) => {
+            assert.calledWith(waitForService, {
+              service: undefined,
+              url: options.uri,
             });
+            assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+            assert.isDefined(results.headers['cisco-device-url']);
+            assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          });
         });
 
         it('when both the service and uri properties are provided', () => {
           options = {
             services: fixture.service,
             uri: fixture.uri,
-            ...options
+            ...options,
           };
 
-          interceptor.onRequest(options)
-            .then((results) => {
-              assert.calledWith(
-                waitForService,
-                {
-                  service: options.service,
-                  url: options.uri
-                }
-              );
-              assert.calledWith(
-                getServiceFromUrl,
-                fixture.serviceUrl
-              );
-              assert.isDefined(results.headers['cisco-device-url']);
-              assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          interceptor.onRequest(options).then((results) => {
+            assert.calledWith(waitForService, {
+              service: options.service,
+              url: options.uri,
             });
+            assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+            assert.isDefined(results.headers['cisco-device-url']);
+            assert.equal(results.headers['cisco-device-url'], fixture.uri);
+          });
         });
 
         describe('does not add cisco-device-url due to invalid service name', () => {
@@ -164,24 +146,17 @@ describe('plugin-device', () => {
             options = {
               services: fixture.service,
               uri: fixture.uri,
-              ...options
+              ...options,
             };
 
-            interceptor.onRequest(options)
-              .then((results) => {
-                assert.calledWith(
-                  waitForService,
-                  {
-                    service: options.service,
-                    url: options.uri
-                  }
-                );
-                assert.calledWith(
-                  getServiceFromUrl,
-                  fixture.serviceUrl
-                );
-                assert.isUndefined(results.headers);
+            interceptor.onRequest(options).then((results) => {
+              assert.calledWith(waitForService, {
+                service: options.service,
+                url: options.uri,
               });
+              assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+              assert.isUndefined(results.headers);
+            });
           });
 
           it('service is `oauth` returns the original object', () => {
@@ -190,24 +165,17 @@ describe('plugin-device', () => {
             options = {
               services: fixture.service,
               uri: fixture.uri,
-              ...options
+              ...options,
             };
 
-            interceptor.onRequest(options)
-              .then((results) => {
-                assert.calledWith(
-                  waitForService,
-                  {
-                    service: options.service,
-                    url: options.uri
-                  }
-                );
-                assert.calledWith(
-                  getServiceFromUrl,
-                  fixture.serviceUrl
-                );
-                assert.isUndefined(results.headers);
+            interceptor.onRequest(options).then((results) => {
+              assert.calledWith(waitForService, {
+                service: options.service,
+                url: options.uri,
               });
+              assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+              assert.isUndefined(results.headers);
+            });
           });
 
           it('service is `saml` returns the original object', () => {
@@ -216,27 +184,19 @@ describe('plugin-device', () => {
             options = {
               services: fixture.service,
               uri: fixture.uri,
-              ...options
+              ...options,
             };
 
-            interceptor.onRequest(options)
-              .then((results) => {
-                assert.calledWith(
-                  waitForService,
-                  {
-                    service: options.service,
-                    url: options.uri
-                  }
-                );
-                assert.calledWith(
-                  getServiceFromUrl,
-                  fixture.serviceUrl
-                );
-                assert.isUndefined(results.headers);
+            interceptor.onRequest(options).then((results) => {
+              assert.calledWith(waitForService, {
+                service: options.service,
+                url: options.uri,
               });
+              assert.calledWith(getServiceFromUrl, fixture.serviceUrl);
+              assert.isUndefined(results.headers);
+            });
           });
         });
-
 
         describe('waitForService returns a rejection', () => {
           beforeEach(() => {

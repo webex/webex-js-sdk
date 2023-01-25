@@ -11,5 +11,5 @@ module.exports = {
   builder: {},
   handler: wrapHandler(async () => {
     await download();
-  })
+  }),
 };

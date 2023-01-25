@@ -21,39 +21,48 @@ describe('plugin-team', () => {
       webex = new MockWebex({
         children: {
           team: Team,
-          user: User
-        }
+          user: User,
+        },
       });
 
       webex.internal.user.recordUUID = sinon.spy();
     });
 
     describe('#create()', () => {
-      it('requires a displayName', () => assert.isRejected(webex.internal.team.create({}), /`params.displayName` is required/));
+      it('requires a displayName', () =>
+        assert.isRejected(webex.internal.team.create({}), /`params.displayName` is required/));
 
-      it('requires a participants attribute', () => assert.isRejected(webex.internal.team.create({displayName: 'test'}), /`params.participants` is required/));
+      it('requires a participants attribute', () =>
+        assert.isRejected(
+          webex.internal.team.create({displayName: 'test'}),
+          /`params.participants` is required/
+        ));
 
-      it('requires a participants array', () => assert.isRejected(webex.internal.team.create({displayName: 'test', participants: []}), /`params.participants` is required/));
+      it('requires a participants array', () =>
+        assert.isRejected(
+          webex.internal.team.create({displayName: 'test', participants: []}),
+          /`params.participants` is required/
+        ));
     });
 
     describe('#createConversation()', () => {
       const url = TEAM_URL;
       const displayName = TEAM_DISPLAY_NAME;
 
-      it('requires a URL',
-        () => assert.isRejected(
+      it('requires a URL', () =>
+        assert.isRejected(
           webex.internal.team.createConversation({}, {}),
           /`team.url` is required/
         ));
 
-      it('requires a displayName',
-        () => assert.isRejected(
+      it('requires a displayName', () =>
+        assert.isRejected(
           webex.internal.team.createConversation({url}, {}),
           /`params.displayName` is required/
         ));
 
-      it('requires a team object with a general conversation',
-        () => assert.isRejected(
+      it('requires a team object with a general conversation', () =>
+        assert.isRejected(
           webex.internal.team.createConversation({url}, {displayName}),
           /`team.generalConversationUuid` must be present/
         ));
@@ -61,40 +70,84 @@ describe('plugin-team', () => {
 
     describe('#get()', () => {
       it('requires a team url', () =>
-        assert.isRejected(
-          webex.internal.team.get({}),
-          /`team.url` is required/
-        ));
+        assert.isRejected(webex.internal.team.get({}), /`team.url` is required/));
     });
 
     describe('#listConversations()', () => {
       it('requires a team url', () =>
-        assert.isRejected(
-          webex.internal.team.listConversations({}),
-          /`team.url` is required/
-        ));
+        assert.isRejected(webex.internal.team.listConversations({}), /`team.url` is required/));
     });
 
     describe('#prepareTeamConversation()', () => {
-      it('requires a KRO', () => assert.isRejected(webex.internal.team._prepareTeamConversation({}), /Team general conversation must have a KRO/));
+      it('requires a KRO', () =>
+        assert.isRejected(
+          webex.internal.team._prepareTeamConversation({}),
+          /Team general conversation must have a KRO/
+        ));
     });
 
     describe('#recordUUIDs', () => {
-      it('resolves if there are no teamMembers', () => webex.internal.team._recordUUIDs({})
-        .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0)));
+      it('resolves if there are no teamMembers', () =>
+        webex.internal.team
+          ._recordUUIDs({})
+          .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0)));
 
-      it('resolves if there isn\'t teamMembers.items', () => webex.internal.team._recordUUIDs({teamMembers: {}})
-        .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0)));
+      it("resolves if there isn't teamMembers.items", () =>
+        webex.internal.team
+          ._recordUUIDs({teamMembers: {}})
+          .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0)));
 
       it('resolves if there is a LYRA_SPACE user', () => {
         const user = {
           id: uuid.v4(),
-          type: 'LYRA_SPACE'
+          type: 'LYRA_SPACE',
         };
 
-        return webex.internal.team._recordUUIDs({teamMembers: {[user.id]: user}})
+        return webex.internal.team
+          ._recordUUIDs({teamMembers: {[user.id]: user}})
           .then(() => assert.equal(webex.internal.user.recordUUID.callCount, 0));
       });
     });
+
+    describe('#joinConversation', () => {
+      const conversation = {kmsResourceObjectUrl: 'convoKroUrl', id: 'convoId'};
+      const team = {url: 'teamUrl'};
+      const userId = 'userId';
+
+      beforeEach(() => {
+        webex.credentials.supertoken = {access_token: 'fake_token'};
+      });
+
+      it('requires userId to joinConversation', () =>
+        assert.isRejected(webex.internal.team.joinConversation(team, conversation), /`userId` is required/));
+
+      it('makes POST to convo service with correct body kmsMessage', () => {
+        webex.credentials.supertoken = {access_token: 'fake_token'}
+        return webex.internal.team.joinConversation(team, conversation, userId).then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              uri: `${team.url}/conversations/${conversation.id}/participants`,
+              body: {
+                kmsMessage: {
+                  client: {
+                    clientId: webex.internal.device.url,
+                    credential: {
+                      bearer: webex.credentials.supertoken.access_token,
+                      userId,
+                    },
+                  },
+                  method: 'create',
+                  resourceUri: conversation.kmsResourceObjectUrl,
+                  uri: '/authorizations',
+                  userIds: [userId],
+                }
+              },
+            })
+          );
+        })
+      })
+    })
   });
 });

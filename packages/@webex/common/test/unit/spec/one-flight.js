@@ -31,20 +31,16 @@ describe('common', () => {
 
         spy() {
           return true;
-        }
+        },
       });
 
       const c = new C();
 
       sinon.spy(c, 'spy');
 
-      return Promise.all([
-        c.funcC1(),
-        c.funcC2()
-      ])
-        .then(() => {
-          assert.calledTwice(c.spy);
-        });
+      return Promise.all([c.funcC1(), c.funcC2()]).then(() => {
+        assert.calledTwice(c.spy);
+      });
     });
 
     it('returns existing promise on a function called twice with undefined keyFactory', () => {
@@ -61,20 +57,16 @@ describe('common', () => {
 
         spy() {
           return true;
-        }
+        },
       });
 
       const c = new C();
 
       sinon.spy(c, 'spy');
 
-      return Promise.all([
-        c.funcC1(),
-        c.funcC1()
-      ])
-        .then(() => {
-          assert.calledOnce(c.spy);
-        });
+      return Promise.all([c.funcC1(), c.funcC1()]).then(() => {
+        assert.calledOnce(c.spy);
+      });
     });
 
     it('ensures a given function may only be invoked once until completion', () => {
@@ -89,16 +81,12 @@ describe('common', () => {
           });
         },
 
-        spy: sinon.spy()
+        spy: sinon.spy(),
       });
 
       const c = new C();
 
-      return Promise.all([
-        c.funcC(),
-        c.funcC()
-      ])
-        .then(() => assert.calledOnce(c.spy));
+      return Promise.all([c.funcC(), c.funcC()]).then(() => assert.calledOnce(c.spy));
     });
 
     it('handles complex event scenarios', () => {
@@ -109,7 +97,7 @@ describe('common', () => {
       // supertoken
       const D = AmpState.extend({
         props: {
-          d1: 'number'
+          d1: 'number',
         },
 
         funcD() {
@@ -118,17 +106,17 @@ describe('common', () => {
               resolve(new D());
             });
           });
-        }
+        },
       });
 
       // authorization
       const C = AmpState.extend({
         dataTypes: {
-          d: makeStateDataType(D, 'd').dataType
+          d: makeStateDataType(D, 'd').dataType,
         },
 
         props: {
-          d: makeStateDataType(D, 'd').prop
+          d: makeStateDataType(D, 'd').prop,
         },
 
         @oneFlight
@@ -136,41 +124,37 @@ describe('common', () => {
           return new Promise((resolve) => {
             const {d} = this;
 
-            this.unset([
-              'd1',
-              'd2',
-              'd3'
-            ]);
+            this.unset(['d1', 'd2', 'd3']);
             this.spy();
-            resolve(d.funcD()
-              .then((dd) => {
-                this.set('d1', dd);
+            resolve(
+              d
+                .funcD()
+                .then((dd) => {
+                  this.set('d1', dd);
 
-                return Promise.all([
-                  dd.funcD(),
-                  dd.funcD()
-                ]);
-              })
-              .then(([dd2, dd3]) => {
-                this.set({
-                  d2: dd2,
-                  d3: dd3
-                });
-              }));
+                  return Promise.all([dd.funcD(), dd.funcD()]);
+                })
+                .then(([dd2, dd3]) => {
+                  this.set({
+                    d2: dd2,
+                    d3: dd3,
+                  });
+                })
+            );
           });
         },
 
-        spy: sinon.spy()
+        spy: sinon.spy(),
       });
 
       // credentials
       const B = AmpState.extend({
         dataTypes: {
-          c: makeStateDataType(C, 'c').dataType
+          c: makeStateDataType(C, 'c').dataType,
         },
 
         props: {
-          c: makeStateDataType(C, 'c').prop
+          c: makeStateDataType(C, 'c').prop,
         },
 
         @oneFlight
@@ -185,23 +169,23 @@ describe('common', () => {
           return new Promise((resolve) => {
             process.nextTick(() => resolve(this.c.funcC()));
           });
-        }
+        },
       });
 
       // webex
       const A = AmpState.extend({
         dataTypes: {
-          b: makeStateDataType(B, 'b').dataType
+          b: makeStateDataType(B, 'b').dataType,
         },
 
         props: {
-          b: makeStateDataType(B, 'b').prop
+          b: makeStateDataType(B, 'b').prop,
         },
 
         @oneFlight
         funcA() {
           return this.b.funcB1();
-        }
+        },
       });
 
       const d = new D();
@@ -221,8 +205,7 @@ describe('common', () => {
 
       return new Promise((resolve) => {
         setTimeout(resolve, 500);
-      })
-        .then(() => assert.calledOnce(a.b.c.spy));
+      }).then(() => assert.calledOnce(a.b.c.spy));
     });
   });
 });

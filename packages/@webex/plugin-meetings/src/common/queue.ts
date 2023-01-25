@@ -23,7 +23,7 @@ export default class SimpleQueue {
    * @param {object} item
    * @returns {undefined}
    */
-  enqueue(item) {
+  enqueue(item: object) {
     this.queue.push(item);
   }
 
@@ -48,4 +48,3 @@ export default class SimpleQueue {
     return this.queue.length;
   }
 }
-

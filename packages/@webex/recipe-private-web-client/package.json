@@ -1,43 +1,47 @@
 {
-    "name": "@webex/recipe-private-web-client",
-    "version": "2.33.0",
-    "description": "This is a plugin recipe for the Cisco Webex JS SDK. This recipe uses internal APIs to provide the features needed by the Cisco Webex Teams Client. There is no guarantee of non-breaking changes. Non-Cisco engineers should stick to the `webex` package.",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/recipe-private-web-client",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "dependencies": {
-        "@webex/internal-plugin-avatar": "workspace:^",
-        "@webex/internal-plugin-board": "workspace:^",
-        "@webex/internal-plugin-calendar": "workspace:^",
-        "@webex/internal-plugin-conversation": "workspace:^",
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/internal-plugin-encryption": "workspace:^",
-        "@webex/internal-plugin-feature": "workspace:^",
-        "@webex/internal-plugin-flag": "workspace:^",
-        "@webex/internal-plugin-lyra": "workspace:^",
-        "@webex/internal-plugin-mercury": "workspace:^",
-        "@webex/internal-plugin-metrics": "workspace:^",
-        "@webex/internal-plugin-presence": "workspace:^",
-        "@webex/internal-plugin-search": "workspace:^",
-        "@webex/internal-plugin-support": "workspace:^",
-        "@webex/internal-plugin-team": "workspace:^",
-        "@webex/internal-plugin-user": "workspace:^",
-        "@webex/plugin-authorization-browser-first-party": "workspace:^",
-        "@webex/plugin-logger": "workspace:^",
-        "@webex/plugin-people": "workspace:^",
-        "@webex/storage-adapter-local-forage": "workspace:^",
-        "@webex/storage-adapter-local-storage": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "lodash": "^4.17.21"
-    }
+  "name": "@webex/recipe-private-web-client",
+  "version": "2.37.2",
+  "description": "This is a plugin recipe for the Cisco Webex JS SDK. This recipe uses internal APIs to provide the features needed by the Cisco Webex Teams Client. There is no guarantee of non-breaking changes. Non-Cisco engineers should stick to the `webex` package.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/recipe-private-web-client"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/internal-plugin-avatar": "workspace:^",
+    "@webex/internal-plugin-board": "workspace:^",
+    "@webex/internal-plugin-calendar": "workspace:^",
+    "@webex/internal-plugin-conversation": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-encryption": "workspace:^",
+    "@webex/internal-plugin-feature": "workspace:^",
+    "@webex/internal-plugin-flag": "workspace:^",
+    "@webex/internal-plugin-lyra": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/internal-plugin-metrics": "workspace:^",
+    "@webex/internal-plugin-presence": "workspace:^",
+    "@webex/internal-plugin-search": "workspace:^",
+    "@webex/internal-plugin-support": "workspace:^",
+    "@webex/internal-plugin-team": "workspace:^",
+    "@webex/internal-plugin-user": "workspace:^",
+    "@webex/plugin-authorization-browser-first-party": "workspace:^",
+    "@webex/plugin-logger": "workspace:^",
+    "@webex/plugin-people": "workspace:^",
+    "@webex/storage-adapter-local-forage": "workspace:^",
+    "@webex/storage-adapter-local-storage": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "lodash": "^4.17.21"
+  }
 }

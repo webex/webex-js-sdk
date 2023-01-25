@@ -1,11 +1,15 @@
 {
   "name": "@webex/common-timers",
-  "version": "2.33.0",
+  "version": "2.37.2",
   "description": "Timer wrappers to prevent wedging a process open",
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/common-timers",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/common-timers"
+  },
   "engines": {
     "node": ">=14"
   },
