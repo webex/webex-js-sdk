@@ -92,7 +92,7 @@ export default {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: false,
       enableAdhocMeetings: false,
-      enableTurnDiscovery: false,
+      enableTurnDiscovery: true,
     },
   },
 };
