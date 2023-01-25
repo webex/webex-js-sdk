@@ -496,23 +496,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     });
   }
 
-  /**
-   * Make a network request to record: start, stop, resume, or pause
-   * @param {Object} options
-   * @param {Object} options.body
-   * @param {String} options.uri
-   * @param {String} options.method
-   * @returns {Promise}
-   */
-  recordMeeting(options: {uri: string; body: object; method: string}): Promise<any> {
-    // @ts-ignore
-    return this.request({
-      method: options.method,
-      body: options.body,
-      uri: options.uri,
-    });
-  }
-
   lockMeeting(options) {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {

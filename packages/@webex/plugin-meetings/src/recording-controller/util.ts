@@ -13,6 +13,10 @@ const canUserResume = (displayHints: Array<string>): boolean =>
 const canUserStop = (displayHints: Array<string>): boolean =>
   displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
 
+const extractLocusId = (url: string) => {
+  return url.split('/').pop();
+};
+
 const deriveRecordingStates = (action: RecordingAction): {recording: boolean; paused: boolean} => {
   let recording;
   let paused;
@@ -50,4 +54,5 @@ export default {
   canUserResume,
   canUserStop,
   deriveRecordingStates,
+  extractLocusId,
 };

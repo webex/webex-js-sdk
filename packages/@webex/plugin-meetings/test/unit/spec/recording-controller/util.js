@@ -83,6 +83,12 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(RecordingUtil.deriveRecordingStates(RecordingAction.Pause), {recording: true, paused: true});
               });
             });
+
+            describe('extractLocusId', () => {
+              it('gets the correct id from the url param', () => {
+                assert(RecordingUtil.extractLocusId('test/id'), 'id');
+              });
+            });
         });
     });
 });

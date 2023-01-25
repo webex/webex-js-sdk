@@ -1,8 +1,6 @@
 import PermissionError from '../common/errors/permission';
 import {CONTROLS, HTTP_VERBS} from '../constants';
-import LocusInfo from '../locus-info';
 import MeetingRequest from '../meeting/request';
-import MeetingUtil from '../meeting/util';
 import RecordingAction from './enums';
 import Util from './util';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -21,13 +19,14 @@ export default class RecordingController {
    * @memberof RecordingController
    */
   private request: MeetingRequest;
+
   /**
    * @instance
-   * @type {MeetingRequest}
+   * @type {Array}
    * @private
-   * @memberof RecordingController
+   * @memberof RecordingInfo
    */
-  private info: LocusInfo;
+  private displayHints: Array<string> = [];
 
   /**
    * @instance
@@ -63,12 +62,11 @@ export default class RecordingController {
 
   /**
    * @param {MeetingRequest} request
-   * @param {LocusInfo} info
    * @constructor
    * @memberof RecordingController
    */
-  constructor(request: MeetingRequest, info: LocusInfo) {
-    this.initialize(request, info);
+  constructor(request: MeetingRequest) {
+    this.initialize(request);
   }
 
   /**
@@ -78,36 +76,127 @@ export default class RecordingController {
    * @private
    * @memberof RecordingController
    */
-  private initialize(request: MeetingRequest, info: LocusInfo) {
+  private initialize(request: MeetingRequest) {
     this.request = request;
-    this.info = info;
-    this.extract(info);
   }
 
   /**
-   * @param {LocusInfo} info
+   * @param {Object} options
    * @returns {void}
    * @public
    * @memberof RecordingController
    */
-  public set(info: LocusInfo) {
-    this.extract(info);
+  public set(options: {
+    serviceUrl?: string;
+    sessionId: string;
+    locusUrl: string;
+    displayHints?: Array<string>;
+  }) {
+    this.extract(options);
   }
 
   /**
-   * @param {LocusInfo} info
+   * @param {string} url
+   * @returns {void}
+   * @public
+   * @memberof RecordingController
+   */
+  public setLocusUrl(url: string) {
+    this.locusUrl = url;
+    this.locusId = Util.extractLocusId(this.locusUrl);
+  }
+
+  /**
+   * @param {Array} hints
+   * @returns {void}
+   * @public
+   * @memberof RecordingController
+   */
+  public setDisplayHints(hints: Array<string>) {
+    this.displayHints = hints;
+  }
+
+  /**
+   * @param {string} id
+   * @returns {void}
+   * @public
+   * @memberof RecordingController
+   */
+  public setSessionId(id: string) {
+    this.sessionId = id;
+  }
+
+  /**
+   * @param {string} url
+   * @returns {void}
+   * @public
+   * @memberof RecordingController
+   */
+  public setServiceUrl(url: string) {
+    this.serviceUrl = url;
+  }
+
+  /**
+   * @returns {string}
+   * @public
+   * @memberof RecordingController
+   */
+  public getLocusUrl() {
+    return this.locusUrl;
+  }
+
+  /**
+   * @returns {string}
+   * @public
+   * @memberof RecordingController
+   */
+  public getLocusId() {
+    return this.locusId;
+  }
+
+  /**
+   * @returns {string}
+   * @public
+   * @memberof RecordingController
+   */
+  public getSessionId() {
+    return this.sessionId;
+  }
+
+  /**
+   * @returns {string}
+   * @public
+   * @memberof RecordingController
+   */
+  public getServiceUrl() {
+    return this.serviceUrl;
+  }
+
+  /**
+   * @returns {Array}
+   * @public
+   * @memberof RecordingController
+   */
+  public getDisplayHints() {
+    return this.displayHints;
+  }
+
+  /**
+   * @param {Object} options
    * @returns {void}
    * @private
    * @memberof RecordingController
    */
-  private extract(info: LocusInfo) {
-    this.serviceUrl = info?.services?.record?.url;
-    this.sessionId = info?.fullState?.sessionId;
-    this.locusUrl = info?.url;
-    this.locusId = info?.url?.split('/').pop();
-    LoggerProxy.logger.log(
-      `RecordingController:index#extract --> [${this.serviceUrl}, ${this.sessionId}, ${this.locusUrl}, ${this.locusId}]`
-    );
+  private extract(options: {
+    serviceUrl?: string;
+    sessionId: string;
+    locusUrl: string;
+    displayHints?: Array<string>;
+  }) {
+    this.setServiceUrl(options.serviceUrl);
+    this.setSessionId(options.sessionId);
+    this.setDisplayHints(options.displayHints);
+    this.setLocusUrl(options.locusUrl);
   }
 
   /**
@@ -117,7 +206,8 @@ export default class RecordingController {
    * @returns {Promise}
    */
   private recordingService(action: RecordingAction): Promise<any> {
-    return this.request.recordMeeting({
+    // @ts-ignore
+    return this.request.request({
       body: {
         meetingInfo: {
           locusSessionId: this.sessionId,
@@ -142,7 +232,8 @@ export default class RecordingController {
 
     LoggerProxy.logger.log(`RecordingController:index#recordingControls --> ${record}`);
 
-    return this.request.recordMeeting({
+    // @ts-ignore
+    return this.request.request({
       uri: `${this.locusUrl}/${CONTROLS}`,
       body: {
         record,
@@ -163,7 +254,7 @@ export default class RecordingController {
     );
 
     // assumes action is proper cased (i.e., Example)
-    if (Util?.[`canUser${action}`](MeetingUtil.getUserDisplayHintsFromLocusInfo(this.info))) {
+    if (Util?.[`canUser${action}`](this.displayHints)) {
       if (this.serviceUrl) {
         return this.recordingService(action);
       }

@@ -906,7 +906,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @public
      * @memberof Meeting
      */
-    this.recordingController = new RecordingController(this.meetingRequest, this.locusInfo);
+    this.recordingController = new RecordingController(this.meetingRequest);
 
     /**
      * Promise that exists if joining, and resolves upon method completion.
@@ -1298,6 +1298,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusFullStateListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.FULL_STATE_MEETING_STATE_CHANGE, (payload) => {
+      this.recordingController.setSessionId(payload?.sessionId);
       Trigger.trigger(
         this,
         {
@@ -2014,7 +2015,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.members.locusUrlUpdate(payload);
       this.locusUrl = payload;
       this.locusId = this.locusUrl?.split('/').pop();
-      this.recordingController.set(this.locusInfo);
+      this.recordingController.setLocusUrl(this.locusUrl);
     });
   }
 
@@ -2028,8 +2029,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpLocusServicesListener() {
-    this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, () => {
-      this.recordingController.set(this.locusInfo);
+    this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
+      this.recordingController.setServiceUrl(payload?.services?.record?.url);
     });
   }
 
@@ -2105,6 +2106,8 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(payload.info.userDisplayHints),
         });
+
+        this.recordingController.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {
           Trigger.trigger(

@@ -3584,7 +3584,7 @@ describe('plugin-meetings', () => {
           const newLocusUrl = 'newLocusUrl/12345';
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
-          meeting.recordingController = {set: sinon.stub().returns(undefined)};
+          meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -3592,7 +3592,7 @@ describe('plugin-meetings', () => {
             newLocusUrl
           );
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
-          assert.calledWith(meeting.recordingController.set, meeting.locusInfo);
+          assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
@@ -3602,21 +3602,22 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusServicesListener', () => {
         it('listens to the locus services update event', (done) => {
           const newLocusServices = {
-            links: {
               services: {
-                record: 'url',
+                record: {
+                  url: 'url',
+                }
               },
-            },
           };
 
-          meeting.recordingController = {set: sinon.stub().returns(undefined)};
+          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined)};
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
             'LINKS_SERVICES',
             newLocusServices
           );
-          assert.calledWith(meeting.recordingController.set, meeting.locusInfo);
+
+          assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
           done();
         });
       });
