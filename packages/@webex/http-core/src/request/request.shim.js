@@ -22,7 +22,15 @@ import detect from '../lib/detect';
  */
 export default function _request(options) {
   return new Promise((resolve) => {
-    const params = pick(options, 'method', 'uri', 'withCredentials', 'headers', 'timeout', 'responseType');
+    const params = pick(
+      options,
+      'method',
+      'uri',
+      'withCredentials',
+      'headers',
+      'timeout',
+      'responseType'
+    );
 
     // Set `response` to `true` to approximate an `HttpResponse` object
     params.response = true;
@@ -37,7 +45,9 @@ export default function _request(options) {
     setPayload(params, options);
     setQs(params, options);
 
-    options.logger.debug(`start http ${options.method ? options.method : 'request'} to ${options.uri}`);
+    options.logger.debug(
+      `start http ${options.method ? options.method : 'request'} to ${options.uri}`
+    );
 
     const x = xhr(params, (error, response) => {
       /* istanbul ignore next */
@@ -48,43 +58,48 @@ export default function _request(options) {
       /* istanbul ignore else */
       if (response) {
         if (response.statusCode >= 400) {
-          options.logger.warn(`http ${options.method ? options.method : 'request'} to ${options.uri} result: ${response.statusCode}`);
-        }
-        else {
-          options.logger.debug(`http ${options.method ? options.method : 'request'} to ${options.uri} result: ${response.statusCode}`);
+          options.logger.warn(
+            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+              response.statusCode
+            }`
+          );
+        } else {
+          options.logger.debug(
+            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+              response.statusCode
+            }`
+          );
         }
         response.options = options;
         processResponseJson(response, params);
         resolve(response);
-      }
-      else {
+      } else {
         resolve({
           statusCode: 0,
           options,
           headers: options.headers,
           method: options.method,
           url: options.uri,
-          body: error
+          body: error,
         });
       }
     });
 
     x.onprogress = options.download.emit.bind(options.download, 'progress');
-  })
-    .catch((error) => {
-      options.logger.warn(error);
+  }).catch((error) => {
+    options.logger.warn(error);
 
-      /* eslint arrow-body-style: [0] */
-      /* istanbul ignore next */
-      return {
-        statusCode: 0,
-        options,
-        headers: options.headers,
-        method: options.method,
-        url: options.uri,
-        body: error
-      };
-    });
+    /* eslint arrow-body-style: [0] */
+    /* istanbul ignore next */
+    return {
+      statusCode: 0,
+      options,
+      headers: options.headers,
+      method: options.method,
+      url: options.uri,
+      body: error,
+    };
+  });
 
   /**
    * @param {Object} params
@@ -121,8 +136,7 @@ export default function _request(options) {
     if (o.auth) {
       if (o.auth.bearer) {
         params.headers.authorization = `Bearer ${o.auth.bearer}`;
-      }
-      else {
+      } else {
         const user = o.auth.user || o.auth.username;
         const pass = o.auth.pass || o.auth.password;
 
@@ -157,7 +171,7 @@ export default function _request(options) {
       // raynos/xhr defaults withCredentials to true if cors is true, so we need
       // to make it explicitly false by default
       withCredentials: false,
-      timeout: 0
+      timeout: 0,
     };
 
     defaults(params, pick(o, Object.keys(defs)), defs);
@@ -184,7 +198,7 @@ export default function _request(options) {
   async function setContentType(params, o) {
     if (o.body instanceof Blob || o.body instanceof ArrayBuffer) {
       o.json = params.json = false;
-      params.headers['content-type'] = params.headers['content-type'] || await detect(o.body);
+      params.headers['content-type'] = params.headers['content-type'] || (await detect(o.body));
     }
   }
 
@@ -238,8 +252,7 @@ export default function _request(options) {
     if (value.name) {
       value.filename = value.name;
       form.append(key, value, value.name);
-    }
-    else {
+    } else {
       form.append(key, value);
     }
   }
@@ -253,13 +266,11 @@ export default function _request(options) {
   function setPayload(params, o) {
     if ((!('json' in o) || o.json === true) && o.body) {
       params.json = o.body;
-    }
-    else if (o.form) {
+    } else if (o.form) {
       params.headers['Content-Type'] = 'application/x-www-form-urlencoded';
       params.body = qs.stringify(o.form);
       Reflect.deleteProperty(params, 'json');
-    }
-    else if (o.formData) {
+    } else if (o.formData) {
       params.body = Object.keys(o.formData).reduce((fd, key) => {
         const value = o.formData[key];
 
@@ -267,8 +278,7 @@ export default function _request(options) {
 
         return fd;
       }, new FormData());
-    }
-    else {
+    } else {
       params.body = o.body;
       Reflect.deleteProperty(params, 'json');
     }
@@ -286,8 +296,7 @@ export default function _request(options) {
     if (!params.json && typeof response.body !== 'object') {
       try {
         response.body = JSON.parse(response.body);
-      }
-      catch (e) {
+      } catch (e) {
         /* eslint no-empty: [0] */
       }
     }

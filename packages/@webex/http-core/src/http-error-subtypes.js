@@ -182,6 +182,6 @@ export default function makeSubTypes(Base) {
       statusCode = parseInt(statusCode, 10);
 
       return Base[statusCode] || Base;
-    }
+    },
   });
 }

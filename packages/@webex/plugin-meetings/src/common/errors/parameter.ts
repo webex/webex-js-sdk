@@ -1,4 +1,4 @@
-import * as MEETINGCONSTANTS  from '../../constants';
+import * as MEETINGCONSTANTS from '../../constants';
 
 /**
  * Extended Error object for general parameter errors
@@ -7,13 +7,17 @@ export default class ParameterError extends Error {
   sdkMessage: string;
   error: null;
   code: number;
+
   /**
-  *
-  * @constructor
-  * @param {String} [message]
-  * @param {Object} [error]
-  */
-  constructor(message = MEETINGCONSTANTS.ERROR_DICTIONARY.PARAMETER.MESSAGE, error = null) {
+   *
+   * @constructor
+   * @param {String} [message]
+   * @param {Object} [error]
+   */
+  constructor(
+    message: string = MEETINGCONSTANTS.ERROR_DICTIONARY.PARAMETER.MESSAGE,
+    error: any = null
+  ) {
     super(message);
 
     if (Error.captureStackTrace) {

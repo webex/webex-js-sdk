@@ -50,7 +50,7 @@ export default class StatelessWebexPlugin {
    * @private
    * @type {boolean}
    */
-    ready = true;
+  ready = true;
 
   /**
    * Constructor. One of attrs.webex or options.parent is required
@@ -63,7 +63,9 @@ export default class StatelessWebexPlugin {
     let webex = attrs.webex || options.parent;
 
     if (!webex) {
-      throw new Error('One of `attrs.webex` or `options.parent` must be supplied when initializing a StatelessWebexPlugin');
+      throw new Error(
+        'One of `attrs.webex` or `options.parent` must be supplied when initializing a StatelessWebexPlugin'
+      );
     }
 
     while (webex.parent || webex.collection) {

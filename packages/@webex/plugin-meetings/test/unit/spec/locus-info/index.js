@@ -277,6 +277,25 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should update the breakout state', () => {
+        locusInfo.emitScoped = sinon.stub();
+        newControls.breakout = 'new breakout';
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED,
+          {
+            breakout: 'new breakout'
+          }
+        );
+      });
+
       it('should update the transcript state', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
@@ -664,6 +683,41 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger SELF_MEETING_BREAKOUTS_CHANGED when breakouts changed', () => {
+        locusInfo.self = self;
+        const selfWithBreakoutsChanged = cloneDeep(self);
+
+        selfWithBreakoutsChanged.controls.breakout.sessions.active[0].name = 'new name';
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(selfWithBreakoutsChanged, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED,
+          {
+            breakoutSessions: {
+              active: [{
+                name: 'new name',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              }],
+              allowed: [{
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              }]
+            }
+          }
+        );
+      });
+
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED if muted and disallowUnmute changed', () => {
         locusInfo.self = self;
         const selfWithMutedByOthersAndDissalowUnmute = cloneDeep(self);
@@ -967,8 +1021,7 @@ describe('plugin-meetings', () => {
 
         if (expected) {
           assert.calledWith(...expectedArgs);
-        }
-        else {
+        } else {
           assert.neverCalledWith(...expectedArgs);
         }
         locusInfo.emitScoped.resetHistory();
@@ -1146,6 +1199,55 @@ describe('plugin-meetings', () => {
         locusInfo.handleLocusDelta(fakeLocus, fakeMeeting);
 
         assert.isFunction(locusParser.onDeltaAction);
+      });
+
+      it('#updateLocusInfo ignores breakout LEFT message', () => {
+        const newLocus = {
+          self: {
+            reason: 'MOVED',
+            state: 'LEFT'
+          }
+        };
+
+        locusInfo.updateControls = sinon.stub();
+        locusInfo.updateConversationUrl = sinon.stub();
+        locusInfo.updateCreated = sinon.stub();
+        locusInfo.updateFullState = sinon.stub();
+        locusInfo.updateHostInfo = sinon.stub();
+        locusInfo.updateMeetingInfo = sinon.stub();
+        locusInfo.updateMediaShares = sinon.stub();
+        locusInfo.updateParticipantsUrl = sinon.stub();
+        locusInfo.updateReplace = sinon.stub();
+        locusInfo.updateSelf = sinon.stub();
+        locusInfo.updateLocusUrl = sinon.stub();
+        locusInfo.updateAclUrl = sinon.stub();
+        locusInfo.updateBasequence = sinon.stub();
+        locusInfo.updateSequence = sinon.stub();
+        locusInfo.updateMemberShip = sinon.stub();
+        locusInfo.updateIdentifiers = sinon.stub();
+        locusInfo.updateEmbeddedApps = sinon.stub();
+        locusInfo.compareAndUpdate = sinon.stub();
+
+        locusInfo.updateLocusInfo(newLocus);
+
+        assert.notCalled(locusInfo.updateControls);
+        assert.notCalled(locusInfo.updateConversationUrl);
+        assert.notCalled(locusInfo.updateCreated);
+        assert.notCalled(locusInfo.updateFullState);
+        assert.notCalled(locusInfo.updateHostInfo);
+        assert.notCalled(locusInfo.updateMeetingInfo);
+        assert.notCalled(locusInfo.updateMediaShares);
+        assert.notCalled(locusInfo.updateParticipantsUrl);
+        assert.notCalled(locusInfo.updateReplace);
+        assert.notCalled(locusInfo.updateSelf);
+        assert.notCalled(locusInfo.updateLocusUrl);
+        assert.notCalled(locusInfo.updateAclUrl);
+        assert.notCalled(locusInfo.updateBasequence);
+        assert.notCalled(locusInfo.updateSequence);
+        assert.notCalled(locusInfo.updateMemberShip);
+        assert.notCalled(locusInfo.updateIdentifiers);
+        assert.notCalled(locusInfo.updateEmbeddedApps);
+        assert.notCalled(locusInfo.compareAndUpdate);
       });
 
       it('onFullLocus() updates the working-copy of locus parser', () => {

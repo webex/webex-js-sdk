@@ -29,7 +29,7 @@ const KMS = WebexPlugin.extend({
   namespace: 'Encryption',
 
   children: {
-    batcher: KMSBatcher
+    batcher: KMSBatcher,
   },
 
   /**
@@ -41,9 +41,7 @@ const KMS = WebexPlugin.extend({
    * @param {string} options.keyUri
    * @returns {Promise<Key>}
    */
-  bindKey({
-    kro, kroUri, key, keyUri
-  }) {
+  bindKey({kro, kroUri, key, keyUri}) {
     kroUri = kroUri || kro.uri;
     keyUri = keyUri || key.uri;
 
@@ -62,13 +60,12 @@ const KMS = WebexPlugin.extend({
     return this.request({
       method: 'update',
       resourceUri: kroUri,
-      uri: keyUri
-    })
-      .then((res) => {
-        this.logger.info('kms: bound key to resource');
+      uri: keyUri,
+    }).then((res) => {
+      this.logger.info('kms: bound key to resource');
 
-        return res.key;
-      });
+      return res.key;
+    });
   },
 
   /**
@@ -80,9 +77,7 @@ const KMS = WebexPlugin.extend({
    * @param {Array<Keys>} options.keys
    * @returns {Promise<KMSResourceObject>}
    */
-  createResource({
-    userIds, keyUris, key, keys
-  }) {
+  createResource({userIds, keyUris, key, keys}) {
     keyUris = keyUris || [];
     /* istanbul ignore if */
     if (keys) {
@@ -109,13 +104,12 @@ const KMS = WebexPlugin.extend({
       method: 'create',
       uri: '/resources',
       userIds,
-      keyUris
-    })
-      .then((res) => {
-        this.logger.info('kms: created resource');
+      keyUris,
+    }).then((res) => {
+      this.logger.info('kms: created resource');
 
-        return res.resource;
-      });
+      return res.resource;
+    });
   },
 
   /**
@@ -127,9 +121,7 @@ const KMS = WebexPlugin.extend({
    * @param {string} options.kroUri
    * @returns {Promise<KMSAuthorizationObject>}
    */
-  addAuthorization({
-    userIds, authIds, kro, kroUri
-  }) {
+  addAuthorization({userIds, authIds, kro, kroUri}) {
     userIds = userIds || [];
     kroUri = kroUri || kro.uri;
 
@@ -153,13 +145,12 @@ const KMS = WebexPlugin.extend({
       method: 'create',
       uri: '/authorizations',
       resourceUri: kroUri,
-      userIds
-    })
-      .then((res) => {
-        this.logger.info('kms: added authorization');
+      userIds,
+    }).then((res) => {
+      this.logger.info('kms: added authorization');
 
-        return res.authorizations;
-      });
+      return res.authorizations;
+    });
   },
 
   /**
@@ -178,13 +169,12 @@ const KMS = WebexPlugin.extend({
 
     return this.request({
       method: 'retrieve',
-      uri: `${kroUri}/authorizations`
-    })
-      .then((res) => {
-        this.logger.info('kms: retrieved authorization list');
+      uri: `${kroUri}/authorizations`,
+    }).then((res) => {
+      this.logger.info('kms: retrieved authorization list');
 
-        return res.authorizations;
-      });
+      return res.authorizations;
+    });
   },
 
   /**
@@ -196,9 +186,7 @@ const KMS = WebexPlugin.extend({
    * @param {string} options.kroUri
    * @returns {Promise<KMSAuthorizationObject>}
    */
-  removeAuthorization({
-    authId, userId, kro, kroUri
-  }) {
+  removeAuthorization({authId, userId, kro, kroUri}) {
     authId = authId || userId;
     kroUri = kroUri || kro.uri;
 
@@ -216,13 +204,12 @@ const KMS = WebexPlugin.extend({
 
     return this.request({
       method: 'delete',
-      uri: `${kroUri}/authorizations?${querystring.stringify({authId})}`
-    })
-      .then((res) => {
-        this.logger.info('kms: removed authorization');
+      uri: `${kroUri}/authorizations?${querystring.stringify({authId})}`,
+    }).then((res) => {
+      this.logger.info('kms: removed authorization');
 
-        return res.authorizations;
-      });
+      return res.authorizations;
+    });
   },
 
   /**
@@ -242,21 +229,20 @@ const KMS = WebexPlugin.extend({
     return this.request({
       method: 'create',
       uri: '/keys',
-      count
-    })
-      .then((res) => {
-        this.logger.info('kms: received unbound keys');
+      count,
+    }).then((res) => {
+      this.logger.info('kms: received unbound keys');
 
-        return Promise.all(res.keys.map(this.asKey));
-      });
+      return Promise.all(res.keys.map(this.asKey));
+    });
   },
 
   /**
-  * @typedef {Object} FetchPublicKeyResponse
-  * @property {number} status 200,400(Bad Request: Request payload missing info),404(Not Found: HSM Public Key not found),501(Not Implemented: This KMS does not support BYOK),502(Bad Gateway: KMS could not communicate with HSM)
-  * @property {UUID} requestId this is should be unique, used for debug.
-  * @property {string} publicKey
-  */
+   * @typedef {Object} FetchPublicKeyResponse
+   * @property {number} status 200,400(Bad Request: Request payload missing info),404(Not Found: HSM Public Key not found),501(Not Implemented: This KMS does not support BYOK),502(Bad Gateway: KMS could not communicate with HSM)
+   * @property {UUID} requestId this is should be unique, used for debug.
+   * @property {string} publicKey
+   */
   /**
    * get public key from kms
    * @param {Object} options
@@ -269,22 +255,21 @@ const KMS = WebexPlugin.extend({
     return this.request({
       method: 'retrieve',
       uri: '/publicKey',
-      assignedOrgId
-    })
-      .then((res) => {
-        this.logger.info('kms: received public key');
+      assignedOrgId,
+    }).then((res) => {
+      this.logger.info('kms: received public key');
 
-        return res.publicKey;
-      });
+      return res.publicKey;
+    });
   },
 
   /**
-  * @typedef {Object} UploadCmkResponse
-  * @property {number} status
-  * @property {UUID} requestId
-  * @property {string} uri
-  * @property {string} keysState
-  */
+   * @typedef {Object} UploadCmkResponse
+   * @property {number} status
+   * @property {UUID} requestId
+   * @property {string} uri
+   * @property {string} keysState
+   */
   /**
    * upload master key for one org.
    * @param {Object} options
@@ -300,7 +285,7 @@ const KMS = WebexPlugin.extend({
       uri: '/cmk',
       assignedOrgId,
       customerMasterKey,
-      requestId: uuid.v4()
+      requestId: uuid.v4(),
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 
@@ -321,7 +306,7 @@ const KMS = WebexPlugin.extend({
       method: 'retrieve',
       uri: '/cmk',
       assignedOrgId,
-      requestId: uuid.v4()
+      requestId: uuid.v4(),
     }).then((res) => {
       this.logger.info('kms: finish to get all customer master keys');
 
@@ -330,11 +315,11 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
-  * @typedef {Object} ActivateCmkResponse
-  * @property {number} status
-  * @property {UUID} requestId
-  * @property {Array<CMK>} customerMasterKeys
-  */
+   * @typedef {Object} ActivateCmkResponse
+   * @property {number} status
+   * @property {UUID} requestId
+   * @property {Array<CMK>} customerMasterKeys
+   */
   /**
    *
    * @typedef {Object} CMK
@@ -364,7 +349,7 @@ const KMS = WebexPlugin.extend({
       uri: keyId,
       keyState,
       assignedOrgId,
-      requestId: uuid.v4()
+      requestId: uuid.v4(),
     }).then((res) => {
       this.logger.info('kms: finish to change the customer master key state to {}', keyState);
 
@@ -385,7 +370,7 @@ const KMS = WebexPlugin.extend({
       method: 'delete',
       uri: '/cmk',
       assignedOrgId,
-      requestId: uuid.v4()
+      requestId: uuid.v4(),
     }).then((res) => {
       this.logger.info('kms: finish to delete all customer master keys');
 
@@ -407,7 +392,7 @@ const KMS = WebexPlugin.extend({
       uri: 'default',
       keyState: 'ACTIVE',
       assignedOrgId,
-      requestId: uuid.v4()
+      requestId: uuid.v4(),
     }).then((res) => {
       this.logger.info('kms: finish to return to global master key');
 
@@ -427,7 +412,7 @@ const KMS = WebexPlugin.extend({
   // request. as such, we need the batcher to group requests, but one flight to
   // make sure we don't make the same request multiple times.
   @oneFlight({
-    keyFactory: ({uri, onBehalfOf}) => `${uri}/${onBehalfOf}`
+    keyFactory: ({uri, onBehalfOf}) => `${uri}/${onBehalfOf}`,
   })
   fetchKey({uri, onBehalfOf}) {
     /* istanbul ignore if */
@@ -437,15 +422,17 @@ const KMS = WebexPlugin.extend({
 
     this.logger.info('kms: fetching key');
 
-    return this.request({
-      method: 'retrieve',
-      uri
-    }, {onBehalfOf})
-      .then((res) => {
-        this.logger.info('kms: fetched key');
+    return this.request(
+      {
+        method: 'retrieve',
+        uri,
+      },
+      {onBehalfOf}
+    ).then((res) => {
+      this.logger.info('kms: fetched key');
 
-        return this.asKey(res.key);
-      });
+      return this.asKey(res.key);
+    });
   },
 
   /**
@@ -455,7 +442,7 @@ const KMS = WebexPlugin.extend({
   ping() {
     return this.request({
       method: 'update',
-      uri: '/ping'
+      uri: '/ping',
     });
   },
 
@@ -465,12 +452,11 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<Key>}
    */
   asKey(key) {
-    return jose.JWK.asKey(key.jwk)
-      .then((jwk) => {
-        key.jwk = jwk;
+    return jose.JWK.asKey(key.jwk).then((jwk) => {
+      key.jwk = jwk;
 
-        return key;
-      });
+      return key;
+    });
   },
 
   /**
@@ -482,8 +468,8 @@ const KMS = WebexPlugin.extend({
   prepareRequest(payload, onBehalfOf) {
     const isECDHRequest = payload.method === 'create' && payload.uri.includes('/ecdhe');
 
-    return Promise.resolve(isECDHRequest ? partialContexts.get(this) : this._getContext())
-      .then((context) => {
+    return Promise.resolve(isECDHRequest ? partialContexts.get(this) : this._getContext()).then(
+      (context) => {
         this.logger.info(`kms: wrapping ${isECDHRequest ? 'ephemeral key' : 'kms'} request`);
         const req = new Request(payload);
         let requestContext = context;
@@ -492,16 +478,19 @@ const KMS = WebexPlugin.extend({
           requestContext = this._contextOnBehalfOf(context, onBehalfOf);
         }
 
-        return req.wrap(requestContext, {serverKey: isECDHRequest})
-          .then(() => {
-            /* istanbul ignore else */
-            if (process.env.NODE_ENV !== 'production') {
-              this.logger.info('kms: request payload', util.inspect(omit(JSON.parse(JSON.stringify(req)), 'wrapped'), {depth: null}));
-            }
+        return req.wrap(requestContext, {serverKey: isECDHRequest}).then(() => {
+          /* istanbul ignore else */
+          if (process.env.NODE_ENV !== 'production') {
+            this.logger.info(
+              'kms: request payload',
+              util.inspect(omit(JSON.parse(JSON.stringify(req)), 'wrapped'), {depth: null})
+            );
+          }
 
-            return req;
-          });
-      });
+          return req;
+        });
+      }
+    );
   },
 
   /**
@@ -512,25 +501,35 @@ const KMS = WebexPlugin.extend({
   processKmsMessageEvent(event) {
     this.logger.info('kms: received kms message');
 
-    return Promise.all(event.encryption.kmsMessages.map((kmsMessage, index) => this._isECDHEMessage(kmsMessage)
-      .then((isECDHMessage) => {
-        this.logger.info(`kms: received ${isECDHMessage ? 'ecdhe' : 'normal'} message`);
-        const res = new Response(kmsMessage);
+    return Promise.all(
+      event.encryption.kmsMessages.map((kmsMessage, index) =>
+        this._isECDHEMessage(kmsMessage).then((isECDHMessage) => {
+          this.logger.info(`kms: received ${isECDHMessage ? 'ecdhe' : 'normal'} message`);
+          const res = new Response(kmsMessage);
 
-        return Promise.resolve(isECDHMessage ? partialContexts.get(this) : contexts.get(this))
-          // eslint-disable-next-line max-nested-callbacks
-          .then((context) => res.unwrap(context))
-          // eslint-disable-next-line max-nested-callbacks
-          .then(() => {
-            if (process.env.NODE_ENV !== 'production') {
-              this.logger.info('kms: response payload', util.inspect(omit(JSON.parse(JSON.stringify(res)), 'wrapped'), {depth: null}));
-            }
-          })
-          // eslint-disable-next-line max-nested-callbacks
-          .then(() => { event.encryption.kmsMessages[index] = res; })
-          // eslint-disable-next-line max-nested-callbacks
-          .then(() => res);
-      })))
+          return (
+            Promise.resolve(isECDHMessage ? partialContexts.get(this) : contexts.get(this))
+              // eslint-disable-next-line max-nested-callbacks
+              .then((context) => res.unwrap(context))
+              // eslint-disable-next-line max-nested-callbacks
+              .then(() => {
+                if (process.env.NODE_ENV !== 'production') {
+                  this.logger.info(
+                    'kms: response payload',
+                    util.inspect(omit(JSON.parse(JSON.stringify(res)), 'wrapped'), {depth: null})
+                  );
+                }
+              })
+              // eslint-disable-next-line max-nested-callbacks
+              .then(() => {
+                event.encryption.kmsMessages[index] = res;
+              })
+              // eslint-disable-next-line max-nested-callbacks
+              .then(() => res)
+          );
+        })
+      )
+    )
       .then(() => this.batcher.processKmsMessageEvent(event))
       .catch((reason) => {
         this.logger.error('kms: decrypt failed', reason.stack);
@@ -548,7 +547,8 @@ const KMS = WebexPlugin.extend({
   decryptKmsMessage(kmsMessage) {
     const res = new Response(kmsMessage);
 
-    return contexts.get(this)
+    return contexts
+      .get(this)
       .then((context) => res.unwrap(context))
       .then(() => res.body);
   },
@@ -559,18 +559,17 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<boolean>}
    */
   _isECDHEMessage(kmsMessage) {
-    return this._getKMSStaticPubKey()
-      .then((kmsStaticPubKey) => {
-        const fields = kmsMessage.split('.');
+    return this._getKMSStaticPubKey().then((kmsStaticPubKey) => {
+      const fields = kmsMessage.split('.');
 
-        if (fields.length !== 3) {
-          return false;
-        }
+      if (fields.length !== 3) {
+        return false;
+      }
 
-        const header = JSON.parse(jose.util.base64url.decode(fields[0]));
+      const header = JSON.parse(jose.util.base64url.decode(fields[0]));
 
-        return header.kid === kmsStaticPubKey.kid;
-      });
+      return header.kid === kmsStaticPubKey.kid;
+    });
   },
 
   /**
@@ -586,69 +585,80 @@ const KMS = WebexPlugin.extend({
 
     // Note: this should only happen when we're using the async kms batcher;
     // once we implement the sync batcher, this'll need to be smarter.
-    return this.webex.internal.mercury.connect()
-      .then(() => this.prepareRequest(payload, onBehalfOf))
-      .then((req) => {
-        req[TIMEOUT_SYMBOL] = timeout;
+    return (
+      this.webex.internal.mercury
+        .connect()
+        .then(() => this.prepareRequest(payload, onBehalfOf))
+        .then((req) => {
+          req[TIMEOUT_SYMBOL] = timeout;
 
-        return this.batcher.request(req);
-      })
-      // High complexity is due to attempt at test mode resiliency
-      // eslint-disable-next-line complexity
-      .catch((reason) => {
-        if (process.env.NODE_ENV === 'test' && (reason.status === 403 || reason.statusCode === 403) && reason.message.match(/Failed to resolve authorization token in KmsMessage request for user/)) {
-          this.logger.warn('kms: rerequested key due to test-mode kms auth failure');
+          return this.batcher.request(req);
+        })
+        // High complexity is due to attempt at test mode resiliency
+        // eslint-disable-next-line complexity
+        .catch((reason) => {
+          if (
+            process.env.NODE_ENV === 'test' &&
+            (reason.status === 403 || reason.statusCode === 403) &&
+            reason.message.match(
+              /Failed to resolve authorization token in KmsMessage request for user/
+            )
+          ) {
+            this.logger.warn('kms: rerequested key due to test-mode kms auth failure');
 
-          return this.request(payload, {onBehalfOf});
-        }
-
-        // KMS Error. Notify the user
-        if (reason instanceof KMSError) {
-          this.webex.trigger('client:InvalidRequestError');
-
-          return Promise.reject(reason);
-        }
-
-        // Ideally, most or all of the code below would go in kms-batcher, but
-        // but batching needs at least one more round of refactoring for that to
-        // work.
-        if (!reason.statusCode && !reason.status) {
-          /* istanbul ignore else */
-          if (process.env.NODE_ENV !== 'production') {
-            /* istanbul ignore next: reason.stack vs stack difficult to control in test */
-            this.logger.info('kms: request error', reason.stack || reason);
+            return this.request(payload, {onBehalfOf});
           }
 
-          consoleDebug(`timeout ${timeout}`);
-          timeout *= 2;
-
-          if (timeout >= this.config.ecdhMaxTimeout) {
-            this.logger.info('kms: exceeded maximum KMS request retries');
+          // KMS Error. Notify the user
+          if (reason instanceof KMSError) {
+            this.webex.trigger('client:InvalidRequestError');
 
             return Promise.reject(reason);
           }
 
-          // Peek ahead to make sure we don't reset the timeout if the next timeout
-          // will exceed the maximum timeout for renegotiating ECDH keys.
-          const nextTimeout = timeout * 2;
-
-          if (timeout >= this.config.kmsMaxTimeout && nextTimeout < this.config.ecdhMaxTimeout) {
-            this.logger.info('kms: exceeded maximum KMS request retries; negotiating new ecdh key');
-
+          // Ideally, most or all of the code below would go in kms-batcher, but
+          // but batching needs at least one more round of refactoring for that to
+          // work.
+          if (!reason.statusCode && !reason.status) {
             /* istanbul ignore else */
             if (process.env.NODE_ENV !== 'production') {
-              this.logger.info('kms: timeout/maxtimeout', timeout, this.config.kmsMaxTimeout);
+              /* istanbul ignore next: reason.stack vs stack difficult to control in test */
+              this.logger.info('kms: request error', reason.stack || reason);
             }
 
-            contexts.delete(this);
-            timeout = 0;
+            consoleDebug(`timeout ${timeout}`);
+            timeout *= 2;
+
+            if (timeout >= this.config.ecdhMaxTimeout) {
+              this.logger.info('kms: exceeded maximum KMS request retries');
+
+              return Promise.reject(reason);
+            }
+
+            // Peek ahead to make sure we don't reset the timeout if the next timeout
+            // will exceed the maximum timeout for renegotiating ECDH keys.
+            const nextTimeout = timeout * 2;
+
+            if (timeout >= this.config.kmsMaxTimeout && nextTimeout < this.config.ecdhMaxTimeout) {
+              this.logger.info(
+                'kms: exceeded maximum KMS request retries; negotiating new ecdh key'
+              );
+
+              /* istanbul ignore else */
+              if (process.env.NODE_ENV !== 'production') {
+                this.logger.info('kms: timeout/maxtimeout', timeout, this.config.kmsMaxTimeout);
+              }
+
+              contexts.delete(this);
+              timeout = 0;
+            }
+
+            return this.request(payload, {timeout, onBehalfOf});
           }
 
-          return this.request(payload, {timeout, onBehalfOf});
-        }
-
-        return Promise.reject(reason);
-      });
+          return Promise.reject(reason);
+        })
+    );
   },
 
   /**
@@ -656,8 +666,7 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<string>}
    */
   _getAuthorization() {
-    return this.webex.credentials.getUserToken('spark:kms')
-      .then((token) => token.access_token);
+    return this.webex.credentials.getUserToken('spark:kms').then((token) => token.access_token);
   },
 
   @oneFlight
@@ -679,15 +688,11 @@ const KMS = WebexPlugin.extend({
       });
     }
 
-    return Promise.all([
-      promise,
-      this._getAuthorization()
-    ])
-      .then(([context, authorization]) => {
-        context.clientInfo.credential.bearer = authorization;
+    return Promise.all([promise, this._getAuthorization()]).then(([context, authorization]) => {
+      context.clientInfo.credential.bearer = authorization;
 
-        return context;
-      });
+      return context;
+    });
   },
 
   /**
@@ -697,8 +702,7 @@ const KMS = WebexPlugin.extend({
   _getKMSCluster() {
     this.logger.info('kms: retrieving KMS cluster');
 
-    return this._getKMSDetails()
-      .then(({kmsCluster}) => kmsCluster);
+    return this._getKMSDetails().then(({kmsCluster}) => kmsCluster);
   },
 
   /**
@@ -710,10 +714,11 @@ const KMS = WebexPlugin.extend({
 
     if (!details) {
       this.logger.info('kms: fetching KMS details');
-      details = this.webex.request({
-        service: 'encryption',
-        resource: `/kms/${this.webex.internal.device.userId}`
-      })
+      details = this.webex
+        .request({
+          service: 'encryption',
+          resource: `/kms/${this.webex.internal.device.userId}`,
+        })
         .then((res) => {
           this.logger.info('kms: fetched KMS details');
           const {body} = res;
@@ -741,8 +746,7 @@ const KMS = WebexPlugin.extend({
   _getKMSStaticPubKey() {
     this.logger.info('kms: retrieving KMS static public key');
 
-    return this._getKMSDetails()
-      .then(({rsaPublicKey}) => rsaPublicKey);
+    return this._getKMSDetails().then(({rsaPublicKey}) => rsaPublicKey);
   },
 
   /**
@@ -755,19 +759,19 @@ const KMS = WebexPlugin.extend({
 
     return Promise.all([
       this._getKMSStaticPubKey().then(validateKMS(this.config.caroots)),
-      this._getAuthorization()
+      this._getAuthorization(),
     ])
       .then(([kmsStaticPubKey, authorization]) => {
         context.clientInfo = {
           clientId: this.webex.internal.device.url,
           credential: {
             userId: this.webex.internal.device.userId,
-            bearer: authorization
-          }
+            bearer: authorization,
+          },
         };
 
         context.serverInfo = {
-          key: kmsStaticPubKey
+          key: kmsStaticPubKey,
         };
 
         this.logger.info('kms: creating local ephemeral key');
@@ -786,7 +790,7 @@ const KMS = WebexPlugin.extend({
         return this.request({
           uri: `${cluster}/ecdhe`,
           method: 'create',
-          jwk: localECDHKey.toJSON()
+          jwk: localECDHKey.toJSON(),
         });
       })
       .then((res) => {
@@ -828,14 +832,14 @@ const KMS = WebexPlugin.extend({
       credential: {
         userId: onBehalfOf,
         onBehalfOf, // Supports running onBehalfOf self. i.e. A CO which calls onBehalfOf with CO.id.
-        bearer: originalContext.clientInfo.credential.bearer
-      }
+        bearer: originalContext.clientInfo.credential.bearer,
+      },
     };
     context.serverInfo = originalContext.serverInfo;
     context.ephemeralKey = originalContext.ephemeralKey;
 
     return context;
-  }
+  },
 });
 
 export default KMS;

@@ -1,3 +1,4 @@
+// @ts-ignore - Types not available for @webex/common
 import {Defer} from '@webex/common';
 
 import Metrics from '../metrics';
@@ -6,6 +7,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ROAP} from '../constants';
 
 import RoapRequest from './request';
+import Meeting from '../meeting';
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
@@ -46,7 +48,6 @@ export default class TurnDiscovery {
     };
   }
 
-
   /**
    * waits for TURN_DISCOVERY_RESPONSE message to arrive
    *
@@ -54,22 +55,30 @@ export default class TurnDiscovery {
    * @private
    * @memberof Roap
    */
-  waitForTurnDiscoveryResponse() {
+  private waitForTurnDiscoveryResponse() {
     if (!this.defer) {
-      LoggerProxy.logger.warn('Roap:turnDiscovery#waitForTurnDiscoveryResponse --> TURN discovery is not in progress');
+      LoggerProxy.logger.warn(
+        'Roap:turnDiscovery#waitForTurnDiscoveryResponse --> TURN discovery is not in progress'
+      );
 
-      return Promise.reject(new Error('waitForTurnDiscoveryResponse() called before sendRoapTurnDiscoveryRequest()'));
+      return Promise.reject(
+        new Error('waitForTurnDiscoveryResponse() called before sendRoapTurnDiscoveryRequest()')
+      );
     }
 
     const {defer} = this;
 
     this.responseTimer = setTimeout(() => {
-      LoggerProxy.logger.warn(`Roap:turnDiscovery#waitForTurnDiscoveryResponse --> timeout! no response arrived within ${TURN_DISCOVERY_TIMEOUT} seconds`);
+      LoggerProxy.logger.warn(
+        `Roap:turnDiscovery#waitForTurnDiscoveryResponse --> timeout! no response arrived within ${TURN_DISCOVERY_TIMEOUT} seconds`
+      );
 
       defer.reject(new Error('Timed out waiting for TURN_DISCOVERY_RESPONSE'));
     }, TURN_DISCOVERY_TIMEOUT * 1000);
 
-    LoggerProxy.logger.info('Roap:turnDiscovery#waitForTurnDiscoveryResponse --> waiting for TURN_DISCOVERY_RESPONSE...');
+    LoggerProxy.logger.info(
+      'Roap:turnDiscovery#waitForTurnDiscoveryResponse --> waiting for TURN_DISCOVERY_RESPONSE...'
+    );
 
     return defer.promise;
   }
@@ -82,11 +91,14 @@ export default class TurnDiscovery {
    * @public
    * @memberof Roap
    */
-  handleTurnDiscoveryResponse(roapMessage) {
+  public handleTurnDiscoveryResponse(roapMessage: object) {
+    // @ts-ignore - Fix missing type
     const {headers} = roapMessage;
 
     if (!this.defer) {
-      LoggerProxy.logger.warn('Roap:turnDiscovery#handleTurnDiscoveryResponse --> unexpected TURN discovery response');
+      LoggerProxy.logger.warn(
+        'Roap:turnDiscovery#handleTurnDiscoveryResponse --> unexpected TURN discovery response'
+      );
 
       return;
     }
@@ -103,7 +115,9 @@ export default class TurnDiscovery {
       // check if it matches any of our expected headers
       expectedHeaders.forEach((expectedHeader) => {
         if (receivedHeader.startsWith(`${expectedHeader.headerName}=`)) {
-          this.turnInfo[expectedHeader.field] = receivedHeader.substring(expectedHeader.headerName.length + 1);
+          this.turnInfo[expectedHeader.field] = receivedHeader.substring(
+            expectedHeader.headerName.length + 1
+          );
           foundHeaders += 1;
         }
       });
@@ -113,11 +127,18 @@ export default class TurnDiscovery {
     this.responseTimer = undefined;
 
     if (foundHeaders !== expectedHeaders.length) {
-      LoggerProxy.logger.warn(`Roap:turnDiscovery#handleTurnDiscoveryResponse --> missing some headers, received: ${JSON.stringify(headers)}`);
-      this.defer.reject(new Error(`TURN_DISCOVERY_RESPONSE missing some headers: ${JSON.stringify(headers)}`));
-    }
-    else {
-      LoggerProxy.logger.info(`Roap:turnDiscovery#handleTurnDiscoveryResponse --> received a valid response, url=${this.turnInfo.url}`);
+      LoggerProxy.logger.warn(
+        `Roap:turnDiscovery#handleTurnDiscoveryResponse --> missing some headers, received: ${JSON.stringify(
+          headers
+        )}`
+      );
+      this.defer.reject(
+        new Error(`TURN_DISCOVERY_RESPONSE missing some headers: ${JSON.stringify(headers)}`)
+      );
+    } else {
+      LoggerProxy.logger.info(
+        `Roap:turnDiscovery#handleTurnDiscoveryResponse --> received a valid response, url=${this.turnInfo.url}`
+      );
       this.defer.resolve();
     }
   }
@@ -131,9 +152,11 @@ export default class TurnDiscovery {
    * @private
    * @memberof Roap
    */
-  sendRoapTurnDiscoveryRequest(meeting, isReconnecting) {
+  sendRoapTurnDiscoveryRequest(meeting: Meeting, isReconnecting: boolean) {
     if (this.defer) {
-      LoggerProxy.logger.warn('Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress');
+      LoggerProxy.logger.warn(
+        'Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress'
+      );
 
       return Promise.resolve();
     }
@@ -146,17 +169,22 @@ export default class TurnDiscovery {
       seq: TURN_DISCOVERY_SEQ,
     };
 
-    LoggerProxy.logger.info('Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> sending TURN_DISCOVERY_REQUEST');
+    LoggerProxy.logger.info(
+      'Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> sending TURN_DISCOVERY_REQUEST'
+    );
 
     return this.roapRequest
       .sendRoap({
         roapMessage,
         correlationId: meeting.correlationId,
+        // @ts-ignore - Fix missing type
         locusSelfUrl: meeting.selfUrl,
+        // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
         audioMuted: meeting.isAudioMuted(),
         videoMuted: meeting.isVideoMuted(),
-        meetingId: meeting.id
+        meetingId: meeting.id,
+        preferTranscoding: !meeting.isMultistream,
       })
       .then(({mediaConnections}) => {
         if (mediaConnections) {
@@ -172,7 +200,7 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @returns {Promise}
    */
-  sendRoapOK(meeting) {
+  sendRoapOK(meeting: Meeting) {
     LoggerProxy.logger.info('Roap:turnDiscovery#sendRoapOK --> sending OK');
 
     return this.roapRequest.sendRoap({
@@ -181,12 +209,15 @@ export default class TurnDiscovery {
         version: ROAP.ROAP_VERSION,
         seq: TURN_DISCOVERY_SEQ,
       },
+      // @ts-ignore - fix type
       locusSelfUrl: meeting.selfUrl,
+      // @ts-ignore - fix type
       mediaId: meeting.mediaId,
       correlationId: meeting.correlationId,
       audioMuted: meeting.isAudioMuted(),
       videoMuted: meeting.isVideoMuted(),
-      meetingId: meeting.id
+      meetingId: meeting.id,
+      preferTranscoding: !meeting.isMultistream,
     });
   }
 
@@ -207,16 +238,26 @@ export default class TurnDiscovery {
    *                                 media connection just after a reconnection
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting, isReconnecting) {
+  doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
+    // @ts-ignore - fix type
     const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
 
     if (isAnyClusterReachable) {
-      LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery');
-      return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'reachability'});
+      LoggerProxy.logger.info(
+        'Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery'
+      );
+
+      return Promise.resolve({
+        turnServerInfo: undefined,
+        turnDiscoverySkippedReason: 'reachability',
+      });
     }
 
+    // @ts-ignore - fix type
     if (!meeting.config.experimental.enableTurnDiscovery) {
-      LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it');
+      LoggerProxy.logger.info(
+        'Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it'
+      );
 
       return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
     }
@@ -233,17 +274,16 @@ export default class TurnDiscovery {
       })
       .catch((e) => {
         // we catch any errors and resolve with no turn information so that the normal call join flow can continue without TURN
-        LoggerProxy.logger.info(`Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN: ${e}`);
-
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.TURN_DISCOVERY_FAILURE,
-          {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusUrl.split('/').pop(),
-            reason: e.message,
-            stack: e.stack
-          }
+        LoggerProxy.logger.info(
+          `Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN: ${e}`
         );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_FAILURE, {
+          correlation_id: meeting.correlationId,
+          locus_id: meeting.locusUrl.split('/').pop(),
+          reason: e.message,
+          stack: e.stack,
+        });
 
         return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
       });

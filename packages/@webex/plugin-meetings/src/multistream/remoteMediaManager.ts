@@ -1,6 +1,7 @@
+/* eslint-disable valid-jsdoc */
 import {cloneDeep, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -464,7 +465,8 @@ export class RemoteMediaManager extends EventsScope {
     while (this.slots.video.unused.length < maxNumVideoPanesRequired) {
       // eslint-disable-next-line no-await-in-loop
       this.slots.video.unused.push(
-        await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
+        // eslint-disable-next-line no-await-in-loop
+        await this.receiveSlotManager.allocateSlot(MediaType.VideoMain)
       );
     }
   }
@@ -509,7 +511,7 @@ export class RemoteMediaManager extends EventsScope {
     // create the audio receive slots
     for (let i = 0; i < this.config.audio.numOfActiveSpeakerStreams; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const slot = await this.receiveSlotManager.allocateSlot(MC.MediaType.AudioMain);
+      const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
 
       this.slots.audio.push(slot);
     }
@@ -532,13 +534,13 @@ export class RemoteMediaManager extends EventsScope {
   private async createScreenShareReceiveSlots() {
     if (this.config.screenShare.audio) {
       this.slots.screenShare.audio = await this.receiveSlotManager.allocateSlot(
-        MC.MediaType.AudioSlides
+        MediaType.AudioSlides
       );
     }
 
     if (this.config.screenShare.video) {
       this.slots.screenShare.video = await this.receiveSlotManager.allocateSlot(
-        MC.MediaType.VideoSlides
+        MediaType.VideoSlides
       );
     }
   }
@@ -560,6 +562,7 @@ export class RemoteMediaManager extends EventsScope {
       );
     }
   }
+
   /**
    * Goes over all receiver-selected slots and keeps only the ones that are required by a given layout,
    * the rest are all moved to the "unused" list
@@ -664,7 +667,8 @@ export class RemoteMediaManager extends EventsScope {
       while (numSlotsToCreate > 0) {
         // eslint-disable-next-line no-await-in-loop
         this.slots.video.unused.push(
-          await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
+          // eslint-disable-next-line no-await-in-loop
+          await this.receiveSlotManager.allocateSlot(MediaType.VideoMain)
         );
         numSlotsToCreate -= 1;
       }
@@ -885,7 +889,7 @@ export class RemoteMediaManager extends EventsScope {
 
     this.currentLayout.memberVideoPanes.push(newPane);
 
-    const receiveSlot = await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const receiveSlot = await this.receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     this.slots.video.receiverSelected.push(receiveSlot);
 

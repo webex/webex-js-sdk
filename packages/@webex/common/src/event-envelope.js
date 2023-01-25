@@ -12,21 +12,26 @@ import {SDK_EVENT} from './constants';
  */
 export function createEventEnvelope(webex, resource) {
   return ensureMyIdIsAvailable(webex)
-    .then(() => Promise.resolve({
-      createdBy: webex.internal.me.id,
-      orgId: webex.internal.me.orgId,
-      resource,
-      // id -- webhook id concept does not correlate to SDK socket event
-      // name -- webhook name concept does not correlate to SDK socket event
-      // targetUrl -- targetUrl concept does not correlate to SDK socket event
-      // secret -- secret concept does not correlate to SDK socket event
-      ownedBy: SDK_EVENT.EXTERNAL.OWNER.CREATOR,
-      status: SDK_EVENT.EXTERNAL.STATUS.ACTIVE,
-      created: new Date().toISOString(),
-      data: {}
-    })).catch((e) => {
-      Promise.reject(new Error(`Unable to get person info for ${resource} \
-event envelope: ${e.message}`));
+    .then(() =>
+      Promise.resolve({
+        createdBy: webex.internal.me.id,
+        orgId: webex.internal.me.orgId,
+        resource,
+        // id -- webhook id concept does not correlate to SDK socket event
+        // name -- webhook name concept does not correlate to SDK socket event
+        // targetUrl -- targetUrl concept does not correlate to SDK socket event
+        // secret -- secret concept does not correlate to SDK socket event
+        ownedBy: SDK_EVENT.EXTERNAL.OWNER.CREATOR,
+        status: SDK_EVENT.EXTERNAL.STATUS.ACTIVE,
+        created: new Date().toISOString(),
+        data: {},
+      })
+    )
+    .catch((e) => {
+      Promise.reject(
+        new Error(`Unable to get person info for ${resource} \
+event envelope: ${e.message}`)
+      );
     });
 }
 
@@ -37,14 +42,13 @@ event envelope: ${e.message}`));
  */
 export async function ensureMyIdIsAvailable(webex) {
   // If we don't have it, save info about our user
-  if (('me' in webex.internal)) {
+  if ('me' in webex.internal) {
     return Promise.resolve();
   }
 
-  return webex.people.get('me')
-    .then((person) => {
-      webex.internal.me = person;
+  return webex.people.get('me').then((person) => {
+    webex.internal.me = person;
 
-      return Promise.resolve();
-    });
+    return Promise.resolve();
+  });
 }

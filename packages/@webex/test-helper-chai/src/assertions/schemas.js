@@ -24,17 +24,12 @@ module.exports = function schemas(chai) {
       'expires_in',
       'refresh_token',
       'refresh_token_expires',
-      'refresh_token_expires_in'
+      'refresh_token_expires_in',
     ]);
   });
 
   Assertion.addProperty('Activity', function () {
-    assert.properties(this._obj, [
-      'url',
-      'id',
-      'object',
-      'actor'
-    ]);
+    assert.properties(this._obj, ['url', 'id', 'object', 'actor']);
 
     assert.equal(this._obj.objectType, 'activity');
   });
@@ -42,12 +37,12 @@ module.exports = function schemas(chai) {
   Assertion.addProperty('FileItem', function () {
     assert.property(this._obj, 'displayName', 'The file has a display name');
     assert.property(this._obj, 'scr', 'The file has an scr');
-    assert.property(this._obj.scr, 'loc', 'The file\'s scr has an loc');
+    assert.property(this._obj.scr, 'loc', "The file's scr has an loc");
   });
 
   Assertion.addProperty('ThumbnailItem', function () {
     assert.property(this._obj, 'scr', 'The thumbnail has an scr');
-    assert.property(this._obj.scr, 'loc', 'The thumbnail\'s scr has an loc');
+    assert.property(this._obj.scr, 'loc', "The thumbnail's scr has an loc");
     assert.property(this._obj, 'height', 'The thumbnail has a width');
     assert.property(this._obj, 'width', 'The thumbnail has a width');
   });
@@ -101,7 +96,10 @@ module.exports = function schemas(chai) {
     assert.isConversation(this._obj);
     assert.property(this._obj, 'team');
 
-    assert.ok(this._obj.tags.includes('OPEN') || this._obj.tags.includes('TEAM'), 'Conversation must have `OPEN` or `TEAM` tag');
+    assert.ok(
+      this._obj.tags.includes('OPEN') || this._obj.tags.includes('TEAM'),
+      'Conversation must have `OPEN` or `TEAM` tag'
+    );
 
     assert.property(this._obj, 'encryptedDisplayName');
     assert.property(this._obj, 'displayName');
@@ -138,7 +136,7 @@ module.exports = function schemas(chai) {
       'personEmail',
       'isModerator',
       'isMonitor',
-      'created'
+      'created',
     ]);
 
     assert.isHydraID(this._obj.id);
@@ -149,13 +147,7 @@ module.exports = function schemas(chai) {
   });
 
   Assertion.addProperty('Message', function () {
-    assert.properties(this._obj, [
-      'id',
-      'personId',
-      'personEmail',
-      'roomId',
-      'created'
-    ]);
+    assert.properties(this._obj, ['id', 'personId', 'personEmail', 'roomId', 'created']);
 
     assert.isString(this._obj.id);
     assert.isHydraID(this._obj.personId);
@@ -182,11 +174,7 @@ module.exports = function schemas(chai) {
   });
 
   Assertion.addProperty('Person', function () {
-    assert.properties(this._obj, [
-      'id',
-      'emails',
-      'created'
-    ]);
+    assert.properties(this._obj, ['id', 'emails', 'created']);
 
     assert.isHydraID(this._obj.id);
     assert.isArray(this._obj.emails);
@@ -205,11 +193,7 @@ module.exports = function schemas(chai) {
   });
 
   Assertion.addProperty('Room', function () {
-    assert.properties(this._obj, [
-      'id',
-      'title',
-      'created'
-    ]);
+    assert.properties(this._obj, ['id', 'title', 'created']);
 
     assert.isHydraID(this._obj.id);
     assert.isString(this._obj.title);
@@ -217,11 +201,7 @@ module.exports = function schemas(chai) {
   });
 
   Assertion.addProperty('Team', function () {
-    assert.properties(this._obj, [
-      'id',
-      'name',
-      'created'
-    ]);
+    assert.properties(this._obj, ['id', 'name', 'created']);
 
     assert.isHydraID(this._obj.id);
     assert.isString(this._obj.name);
@@ -235,7 +215,7 @@ module.exports = function schemas(chai) {
       'personId',
       'personEmail',
       'isModerator',
-      'created'
+      'created',
     ]);
 
     assert.isHydraID(this._obj.id);
@@ -252,14 +232,7 @@ module.exports = function schemas(chai) {
   });
 
   Assertion.addProperty('Webhook', function () {
-    assert.properties(this._obj, [
-      'id',
-      'resource',
-      'event',
-      'filter',
-      'targetUrl',
-      'name'
-    ]);
+    assert.properties(this._obj, ['id', 'resource', 'event', 'filter', 'targetUrl', 'name']);
 
     assert.isHydraID(this._obj.id);
     assert.isString(this._obj.resource);
@@ -294,6 +267,6 @@ module.exports = function schemas(chai) {
     'Team',
     'TeamMembership',
     'TeamRoom',
-    'Webhook'
+    'Webhook',
   ]);
 };

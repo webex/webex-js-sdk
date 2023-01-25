@@ -28,28 +28,32 @@ import WebexCore from '@webex/webex-core';
 const webex = new WebexCore();
 
 // Namespace.
-webex.internal.device
+webex.internal.device;
 
 // Register the device.
-webex.internal.device.register()
+webex.internal.device
+  .register()
   .then(() => {}) // On successful registration.
   .catch(() => {}); // On failed registration.
 
 // Refresh the device.
-webex.internal.device.refresh()
+webex.internal.device
+  .refresh()
   .then(() => {}) // On successful refresh.
   .catch(() => {}); // On failed refresh.
 
 // Unregister the device.
-webex.internal.device.unregister()
+webex.internal.device
+  .unregister()
   .then(() => {}) // On successful unregistration.
   .catch(() => {}); // On failed unregistration.
 
 // Get the current web socket url. Accepts a boolean to enable waiting for the
 // url to populate.
-webex.internal.device.getWebSocketUrl(true)
+webex.internal.device
+  .getWebSocketUrl(true)
   .then((url) => {}) // Resolves to the url when it is retrievable.
-  .catch(() => {}) // Rejects when the url is not available.
+  .catch(() => {}); // Rejects when the url is not available.
 
 // Commonly referenced properties.
 

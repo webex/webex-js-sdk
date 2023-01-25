@@ -34,19 +34,17 @@ export default class AuthInterceptor extends Interceptor {
       return Promise.resolve(options);
     }
 
-    return this.requiresCredentials(options)
-      .then((requires) => {
-        if (!requires) {
-          return options;
-        }
+    return this.requiresCredentials(options).then((requires) => {
+      if (!requires) {
+        return options;
+      }
 
-        return this.webex.credentials.getUserToken()
-          .then((token) => {
-            options.headers.authorization = token.toString();
+      return this.webex.credentials.getUserToken().then((token) => {
+        options.headers.authorization = token.toString();
 
-            return options;
-          });
+        return options;
       });
+    });
   }
 
   /**
@@ -77,26 +75,26 @@ export default class AuthInterceptor extends Interceptor {
 
     // Unique validation for the u2c service.
     if ((service && service === 'u2c') || (name && name === 'u2c')) {
-      if (
-        (resource && resource.includes('limited')) ||
-        (uri && uri.includes('limited'))
-      ) {
+      if ((resource && resource.includes('limited')) || (uri && uri.includes('limited'))) {
         return Promise.resolve(false);
       }
 
       return Promise.resolve(true);
     }
 
-
     // Validate that the allowed domains can be utilized.
-    if (services.validateDomains &&
+    if (
+      services.validateDomains &&
       services.hasAllowedDomains() &&
-      (uri && services.isAllowedDomainUrl(uri))) {
+      uri &&
+      services.isAllowedDomainUrl(uri)
+    ) {
       return Promise.resolve(true);
     }
 
     // Perform an additional validation in case the service does not exist yet.
-    return services.waitForService({name: service, url: uri})
+    return services
+      .waitForService({name: service, url: uri})
       .then((detectedUrl) => {
         // Validate that the url exists in the catalog.
         if (services.getServiceFromUrl(detectedUrl)) {
@@ -123,23 +121,21 @@ export default class AuthInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
-    return this.shouldAttemptReauth(reason, options)
-      .then((shouldAttemptReauth) => {
-        if (shouldAttemptReauth) {
-          this.webex.logger.info('auth: received 401, attempting to reauthenticate');
+    return this.shouldAttemptReauth(reason, options).then((shouldAttemptReauth) => {
+      if (shouldAttemptReauth) {
+        this.webex.logger.info('auth: received 401, attempting to reauthenticate');
 
-          if (reason.options.headers) {
-            Reflect.deleteProperty(reason.options.headers, 'authorization');
-          }
-
-          if (this.webex.credentials.canRefresh) {
-            return this.webex.credentials.refresh()
-              .then(() => this.replay(options));
-          }
+        if (reason.options.headers) {
+          Reflect.deleteProperty(reason.options.headers, 'authorization');
         }
 
-        return Promise.reject(reason);
-      });
+        if (this.webex.credentials.canRefresh) {
+          return this.webex.credentials.refresh().then(() => this.replay(options));
+        }
+      }
+
+      return Promise.reject(reason);
+    });
   }
 
   /**
@@ -150,15 +146,18 @@ export default class AuthInterceptor extends Interceptor {
   replay(options) {
     if (options.replayCount) {
       options.replayCount += 1;
-    }
-    else {
+    } else {
       options.replayCount = 1;
     }
 
     if (options.replayCount > this.webex.config.maxAuthenticationReplays) {
-      this.webex.logger.error(`auth: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`);
+      this.webex.logger.error(
+        `auth: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
+      );
 
-      return Promise.reject(new Error(`Failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`));
+      return Promise.reject(
+        new Error(`Failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`)
+      );
     }
 
     this.webex.logger.info(`auth: replaying request ${options.replayCount} time`);

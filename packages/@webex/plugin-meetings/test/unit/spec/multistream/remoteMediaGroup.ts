@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 import {RemoteMediaGroup} from '@webex/plugin-meetings/src/multistream/remoteMediaGroup';
 import {RemoteMedia} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
@@ -8,11 +8,11 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 
 class FakeSlot extends EventEmitter {
-  public mediaType: MC.MediaType;
+  public mediaType: MediaType;
 
   public id: string;
 
-  constructor(mediaType: MC.MediaType, id: string) {
+  constructor(mediaType: MediaType, id: string) {
     super();
     this.mediaType = mediaType;
     this.id = id;
@@ -49,7 +49,7 @@ describe('RemoteMediaGroup', () => {
 
     fakeReceiveSlots = Array(NUM_SLOTS)
       .fill(null)
-      .map((_, index) => new FakeSlot(MC.MediaType.VideoMain, `fake receive slot ${index}`));
+      .map((_, index) => new FakeSlot(MediaType.VideoMain, `fake receive slot ${index}`));
   });
 
   const getLastActiveSpeakerRequestId = () =>
@@ -368,7 +368,7 @@ describe('RemoteMediaGroup', () => {
 
       const unpinnedRemoteMediaFromGroup = group.getRemoteMedia('all')[0];
       const otherRemoteMedia = new RemoteMedia(
-        new FakeSlot(MC.MediaType.VideoMain, 'other slot') as unknown as ReceiveSlot,
+        new FakeSlot(MediaType.VideoMain, 'other slot') as unknown as ReceiveSlot,
         fakeMediaRequestManager
       );
 

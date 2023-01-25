@@ -27,64 +27,62 @@ describe('plugin-messages', function () {
   let actor;
   let actorEU;
 
-
-  before(() => Promise.all([
-    testUsers.create({count: 1}),
-    testUsers.create({count: 1, config: {orgId: process.env.EU_PRIMARY_ORG_ID}})
-  ])
-    .then(([user, usersEU]) => {
+  before(() =>
+    Promise.all([
+      testUsers.create({count: 1}),
+      testUsers.create({count: 1, config: {orgId: process.env.EU_PRIMARY_ORG_ID}}),
+    ]).then(([user, usersEU]) => {
       [actor] = user;
       [actorEU] = usersEU;
 
       webex = new WebexCore({credentials: actor.token});
       webexEU = new WebexCore({credentials: actorEU.token});
 
-      webex.people.get('me')
-        .then((person) => {
-          actor = person;
-        });
+      webex.people.get('me').then((person) => {
+        actor = person;
+      });
 
-      webexEU.people.get('me')
-        .then((person) => {
-          actorEU = person;
-        });
-    }));
+      webexEU.people.get('me').then((person) => {
+        actorEU = person;
+      });
+    })
+  );
 
   describe('#messages', () => {
     let room;
     let roomEU;
 
-    before(() => Promise.all([
-      webex.rooms.create({title: 'Webex Test Room'}),
-      webexEU.rooms.create({title: 'Webex Test Room for EU'})
-    ])
-      .then(([r, rEU]) => {
+    before(() =>
+      Promise.all([
+        webex.rooms.create({title: 'Webex Test Room'}),
+        webexEU.rooms.create({title: 'Webex Test Room for EU'}),
+      ]).then(([r, rEU]) => {
         room = r;
         roomEU = rEU;
         const text = 'First Message';
 
-        webex.messages.create({
-          roomId: room.id,
-          text
-        })
+        webex.messages
+          .create({
+            roomId: room.id,
+            text,
+          })
           .then((message) => {
             validateMessage(message, text);
           });
 
-        webexEU.messages.create({
-          roomId: roomEU.id,
-          text
-        })
+        webexEU.messages
+          .create({
+            roomId: roomEU.id,
+            text,
+          })
           .then((message) => {
             validateMessage(message, text);
           });
-      }));
+      })
+    );
 
     // eslint-disable-next-line consistent-return
-    after(() => Promise.all([
-      webex.rooms.remove(room),
-      webexEU.rooms.remove(roomEU)
-    ]));
+    after(() => Promise.all([webex.rooms.remove(room), webexEU.rooms.remove(roomEU)]));
 
     afterEach(() => webex.messages.stopListening());
 
@@ -103,18 +101,20 @@ describe('plugin-messages', function () {
 
         const text = 'A test message';
 
-        return webex.messages.listen()
-          .then(() => webex.messages.create({
-            roomId: room.id,
-            text
-          })
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              text,
+            })
             .then(async (m) => {
               message = m;
               validateMessage(message, text);
               const event = await created;
 
               validateMessageEvent(event, message, actor);
-            }));
+            })
+        );
       });
 
       it('posts a message by an EU user in a room and validates the messages:created event', () => {
@@ -131,21 +131,23 @@ describe('plugin-messages', function () {
 
         const text = 'A test message';
 
-        return webexEU.messages.listen()
-          .then(() => webexEU.messages.create({
-            roomId: roomEU.id,
-            text
-          })
+        return webexEU.messages.listen().then(() =>
+          webexEU.messages
+            .create({
+              roomId: roomEU.id,
+              text,
+            })
             .then(async (m) => {
               message = m;
               validateMessage(message, text);
               const event = await created;
 
               validateMessageEvent(event, message, actorEU);
-            }));
+            })
+        );
       });
 
-      it('posts a file to a room by specifying the file\'s url and validates the event', () => {
+      it("posts a file to a room by specifying the file's url and validates the event", () => {
         const created = new Promise((resolve) => {
           webex.messages.on('created', (event) => {
             debug('message created event called');
@@ -153,24 +155,26 @@ describe('plugin-messages', function () {
           });
         });
 
-        return webex.messages.listen()
-          .then(() => webex.messages.create({
-            roomId: room.id,
-            files: [KNOWN_HOSTED_IMAGE_URL]
-          })
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              files: [KNOWN_HOSTED_IMAGE_URL],
+            })
             .then(async (message) => {
               validateMessage(message);
               const event = await created;
 
               validateMessageEvent(event, message, actor);
-            }));
+            })
+        );
       });
 
       let blob, buffer;
       const text = 'A File';
 
-      browserOnly(before)(() => fh.fetch('sample-image-small-one.png')
-        .then((file) => {
+      browserOnly(before)(() =>
+        fh.fetch('sample-image-small-one.png').then((file) => {
           blob = file;
 
           return new Promise((resolve) => {
@@ -183,46 +187,58 @@ describe('plugin-messages', function () {
             };
             fileReader.readAsArrayBuffer(blob);
           });
-        }));
+        })
+      );
 
-      nodeOnly(before)(() => fh.fetchWithoutMagic('sample-image-small-one.png')
-        .then((file) => {
+      nodeOnly(before)(() =>
+        fh.fetchWithoutMagic('sample-image-small-one.png').then((file) => {
           buffer = file;
-        }));
+        })
+      );
 
-      browserOnly(it)('posts a file to a room by directly supplying its blob and validates the event', () => {
-        const created = new Promise((resolve) => {
-          webex.messages.on('created', (event) => {
-            debug('message created event called');
-            resolve(event);
+      browserOnly(it)(
+        'posts a file to a room by directly supplying its blob and validates the event',
+        () => {
+          const created = new Promise((resolve) => {
+            webex.messages.on('created', (event) => {
+              debug('message created event called');
+              resolve(event);
+            });
           });
-        });
 
-        return webex.messages.listen()
-          .then(() => webex.messages.create({
-            roomId: room.id,
-            files: [blob],
-            text
-          })
-            .then(async (message) => {
-              validateMessage(message);
-              const event = await created;
+          return webex.messages.listen().then(() =>
+            webex.messages
+              .create({
+                roomId: room.id,
+                files: [blob],
+                text,
+              })
+              .then(async (message) => {
+                validateMessage(message);
+                const event = await created;
 
-              validateMessageEvent(event, message, actor);
-            }));
-      });
+                validateMessageEvent(event, message, actor);
+              })
+          );
+        }
+      );
 
       // Disabling it gating pipelines because it failes a lot and we get
       // mostly adequate coverage via blob upload
-      flaky(it, process.env.SKIP_FLAKY_TESTS)('posts a file to a room by directly supplying its buffer and validates the event', () => webex.messages.create({
-        roomId: room.id,
-        files: [buffer]
-      })
-        .then((message) => {
-          validateMessage(message, '', 1);
-        }));
+      flaky(it, process.env.SKIP_FLAKY_TESTS)(
+        'posts a file to a room by directly supplying its buffer and validates the event',
+        () =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              files: [buffer],
+            })
+            .then((message) => {
+              validateMessage(message, '', 1);
+            })
+      );
 
-      it('posts a file with a message to a room by specifying the file\'s url and validates the event', () => {
+      it("posts a file with a message to a room by specifying the file's url and validates the event", () => {
         const created = new Promise((resolve) => {
           webex.messages.on('created', (event) => {
             debug('message created event called');
@@ -230,12 +246,13 @@ describe('plugin-messages', function () {
           });
         });
 
-        return webex.messages.listen()
-          .then(() => webex.messages.create({
-            roomId: room.id,
-            files: [KNOWN_HOSTED_IMAGE_URL],
-            text
-          })
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              files: [KNOWN_HOSTED_IMAGE_URL],
+              text,
+            })
             .then(async (message) => {
               validateMessage(message);
               let event = await created;
@@ -257,7 +274,8 @@ describe('plugin-messages', function () {
               }
 
               validateMessageEvent(event, message, actor);
-            }));
+            })
+        );
       });
 
       it('posts a message to a card to a room validates the event', () => {
@@ -275,23 +293,24 @@ describe('plugin-messages', function () {
             body: [
               {
                 type: 'TextBlock',
-                text: 'Here is an image'
+                text: 'Here is an image',
               },
               {
                 type: 'Image',
                 url: KNOWN_HOSTED_IMAGE_URL,
-                size: 'small'
-              }
-            ]
-          }
+                size: 'small',
+              },
+            ],
+          },
         };
 
-        return webex.messages.listen()
-          .then(() => webex.messages.create({
-            roomId: room.id,
-            text,
-            attachments: [attachment]
-          })
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              text,
+              attachments: [attachment],
+            })
             .then(async (message) => {
               // // Assert that the message shape is valid and contains attachment data.
               validateMessage(message, text, 0, attachment);
@@ -314,7 +333,8 @@ describe('plugin-messages', function () {
               }
 
               validateMessageEvent(event, message, actor);
-            }));
+            })
+        );
       });
     });
 
@@ -322,14 +342,17 @@ describe('plugin-messages', function () {
       let message;
       const text = 'This message will be deleted';
 
-      beforeEach(() => webex.messages.create({
-        roomId: room.id,
-        text
-      })
-        .then((m) => {
-          message = m;
-          validateMessage(m, text);
-        }));
+      beforeEach(() =>
+        webex.messages
+          .create({
+            roomId: room.id,
+            text,
+          })
+          .then((m) => {
+            message = m;
+            validateMessage(m, text);
+          })
+      );
 
       it('deletes a single message and validates the message:deleted event', () => {
         const deleted = new Promise((resolve) => {
@@ -339,8 +362,9 @@ describe('plugin-messages', function () {
           });
         });
 
-        return webex.messages.listen()
-          .then(() => webex.messages.remove(message)
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .remove(message)
             .then((body) => {
               assert.notOk(body);
 
@@ -351,7 +375,8 @@ describe('plugin-messages', function () {
               const event = await deleted;
 
               validateMessageEvent(event, message, actor);
-            }));
+            })
+        );
       });
     });
 
@@ -365,39 +390,50 @@ describe('plugin-messages', function () {
         webex.messages.off('created');
         webex.messages.off('deleted');
 
-        return webex.messages.create({
-          roomId: room.id,
-          text
-        })
+        return webex.messages
+          .create({
+            roomId: room.id,
+            text,
+          })
           .then((m) => {
             message = m;
             validateMessage(message, text);
           });
       });
 
-      it('returns a single message', () => webex.messages.get(message)
-        .then((m) => {
+      it('returns a single message', () =>
+        webex.messages.get(message).then((m) => {
           assert.isMessage(m);
           assert.deepEqual(m, message);
         }));
     });
 
-
     describe('#list()', () => {
-      before(() => webex.rooms.create({
-        title: 'Room List Test'
-      })
-        .then((r) => {
-          room = r;
-        }));
+      before(() =>
+        webex.rooms
+          .create({
+            title: 'Room List Test',
+          })
+          .then((r) => {
+            room = r;
+          })
+      );
 
-      before(() => [1, 2, 3].reduce((promise, value) => promise.then(() => webex.messages.create({
-        roomId: room.id,
-        text: `message: ${value}`
-      })), Promise.resolve()));
+      before(() =>
+        [1, 2, 3].reduce(
+          (promise, value) =>
+            promise.then(() =>
+              webex.messages.create({
+                roomId: room.id,
+                text: `message: ${value}`,
+              })
+            ),
+          Promise.resolve()
+        )
+      );
 
-      it('returns all messages for a room', () => webex.messages.list({roomId: room.id})
-        .then((messages) => {
+      it('returns all messages for a room', () =>
+        webex.messages.list({roomId: room.id}).then((messages) => {
           assert.isDefined(messages);
           assert.lengthOf(messages, 3);
           for (const message of messages) {
@@ -408,7 +444,8 @@ describe('plugin-messages', function () {
       it('returns a bounded set of messages for a room', () => {
         const spy = sinon.spy();
 
-        return webex.messages.list({roomId: room.id, max: 2})
+        return webex.messages
+          .list({roomId: room.id, max: 2})
           .then((messages) => {
             assert.lengthOf(messages, 2);
 
@@ -422,7 +459,7 @@ describe('plugin-messages', function () {
               }
 
               return Promise.resolve();
-            }(messages));
+            })(messages);
           })
           .then(() => {
             assert.calledThrice(spy);
@@ -432,12 +469,15 @@ describe('plugin-messages', function () {
       describe('when a message is threaded', () => {
         let parentId;
 
-        before(() => webex.rooms.create({
-          title: 'Room List Test'
-        })
-          .then((r) => {
-            room = r;
-          }));
+        before(() =>
+          webex.rooms
+            .create({
+              title: 'Room List Test',
+            })
+            .then((r) => {
+              room = r;
+            })
+        );
 
         before(() => {
           const createdParent = new Promise((resolve) => {
@@ -447,11 +487,12 @@ describe('plugin-messages', function () {
             });
           });
 
-          return webex.messages.listen()
-            .then(() => webex.messages.create({
-              roomId: room.id,
-              text: 'This is the parent message'
-            })
+          return webex.messages.listen().then(() =>
+            webex.messages
+              .create({
+                roomId: room.id,
+                text: 'This is the parent message',
+              })
               .then(async (message) => {
                 parentId = message.id;
 
@@ -466,22 +507,24 @@ describe('plugin-messages', function () {
                   });
                 });
 
-                return webex.messages.create({
-                  roomId: room.id,
-                  text: 'This is the reply',
-                  parentId
-                })
+                return webex.messages
+                  .create({
+                    roomId: room.id,
+                    text: 'This is the reply',
+                    parentId,
+                  })
                   .then(async (message2) => {
                     validateMessage(message2);
                     const event2 = await createdReply;
 
                     return Promise.resolve(validateMessageEvent(event2, message2, actor));
                   });
-              }));
+              })
+          );
         });
 
-        it('returns all messages for a room', () => webex.messages.list({roomId: room.id})
-          .then((messages) => {
+        it('returns all messages for a room', () =>
+          webex.messages.list({roomId: room.id}).then((messages) => {
             assert.isDefined(messages);
             assert.lengthOf(messages.items, 2);
             for (const message of messages.items) {
@@ -492,8 +535,8 @@ describe('plugin-messages', function () {
             }
           }));
 
-        it('returns only the replies for particular message thread', () => webex.messages.list({roomId: room.id, parentId})
-          .then((messages) => {
+        it('returns only the replies for particular message thread', () =>
+          webex.messages.list({roomId: room.id, parentId}).then((messages) => {
             assert.lengthOf(messages.items, 1);
             const message = messages.items[0];
 
@@ -504,7 +547,6 @@ describe('plugin-messages', function () {
     });
   });
 });
-
 
 /**
  * Validate a Message object.
@@ -572,30 +614,21 @@ function validateAdaptiveCard(message, attachment) {
  * @returns {void}
  */
 function validateMessageEvent(event, message, actor) {
-  assert.equal(event.resource, SDK_EVENT.EXTERNAL.RESOURCE.MESSAGES,
-    'not a message event');
+  assert.equal(event.resource, SDK_EVENT.EXTERNAL.RESOURCE.MESSAGES, 'not a message event');
   assert.isDefined(event.event, 'message event type not set');
   assert.isDefined(event.created, 'event listener created date not set');
-  assert.equal(event.createdBy, actor.id,
-    'event listener createdBy not set to our actor');
-  assert.equal(event.orgId, actor.orgId,
-    'event listener orgId not === to our actor\'s');
+  assert.equal(event.createdBy, actor.id, 'event listener createdBy not set to our actor');
+  assert.equal(event.orgId, actor.orgId, "event listener orgId not === to our actor's");
   assert.equal(event.ownedBy, 'creator', 'event listener not owned by creator');
   assert.equal(event.status, 'active', 'event listener status not active');
-  assert.equal(event.actorId, actor.id,
-    'event actorId not equal to our actor\'s id');
+  assert.equal(event.actorId, actor.id, "event actorId not equal to our actor's id");
 
   // Ensure event data matches data returned from function call
-  assert.equal(event.data.id, message.id,
-    'event/message.id not equal');
-  assert.equal(event.data.roomId, message.roomId,
-    'event/message.roomId not equal');
-  assert.equal(event.data.personId, message.personId,
-    'event/message.personId not equal');
-  assert.equal(event.data.personEmail, message.personEmail,
-    'event/message.personEmail not equal');
-  assert.equal(event.data.roomType, message.roomType,
-    'event/message.roomType not equal');
+  assert.equal(event.data.id, message.id, 'event/message.id not equal');
+  assert.equal(event.data.roomId, message.roomId, 'event/message.roomId not equal');
+  assert.equal(event.data.personId, message.personId, 'event/message.personId not equal');
+  assert.equal(event.data.personEmail, message.personEmail, 'event/message.personEmail not equal');
+  assert.equal(event.data.roomType, message.roomType, 'event/message.roomType not equal');
   if (event.event === SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED) {
     return;
   }
@@ -605,14 +638,19 @@ function validateMessageEvent(event, message, actor) {
   if (message.files) {
     assert.isArray(event.data.files, 'event.data.files is not array');
     assert.isArray(message.files, 'message.files is not array');
-    assert.equal(event.data.files.length, message.files.length,
-      'event/message file arrays are different lengths');
+    assert.equal(
+      event.data.files.length,
+      message.files.length,
+      'event/message file arrays are different lengths'
+    );
     for (let i = 0; i < message.files.length; i += 1) {
       // The gateway returned by the API is apialpha.ciscospark.com
       // The gateway returned in the event is api.ciscospark.com -- expected?
-      assert.equal(event.data.files[i].substr(event.data.files[i].lastIndexOf('/') + 1),
+      assert.equal(
+        event.data.files[i].substr(event.data.files[i].lastIndexOf('/') + 1),
         message.files[i].substr(message.files[i].lastIndexOf('/') + 1),
-        'event/message file urls do not match');
+        'event/message file urls do not match'
+      );
     }
   }
   if (message.attachments) {

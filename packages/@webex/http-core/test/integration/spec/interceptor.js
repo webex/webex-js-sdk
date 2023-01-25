@@ -13,15 +13,21 @@ describe('http-core', () => {
   describe('interceptor', () => {
     let webex;
 
-    before('create users', () => testUsers.create({count: 1})
-      .then(([user]) => new Promise((resolve) => {
-        setTimeout(() => resolve(user), 3000);
-      }))
-      .then((user) => {
-        webex = new WebexCore({credentials: user.token});
-      })
-      .then(() => webex.internal.device.register())
-      .then(() => webex.internal.services.waitForCatalog('postauth', 10)));
+    before('create users', () =>
+      testUsers
+        .create({count: 1})
+        .then(
+          ([user]) =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve(user), 3000);
+            })
+        )
+        .then((user) => {
+          webex = new WebexCore({credentials: user.token});
+        })
+        .then(() => webex.internal.device.register())
+        .then(() => webex.internal.services.waitForCatalog('postauth', 10))
+    );
 
     describe('logOptions', () => {
       let flagged;
@@ -46,10 +52,11 @@ describe('http-core', () => {
       it('calls logger plugin', () => {
         const spy = sinon.spy(webex.logger, 'info');
 
-        return webex.request({
-          service: 'hydra',
-          resource: 'people/me'
-        })
+        return webex
+          .request({
+            service: 'hydra',
+            resource: 'people/me',
+          })
           .then(() => {
             assert.called(spy);
           });

@@ -21,11 +21,12 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<Array>} spaces
    */
   list() {
-    return this.webex.request({
-      method: 'GET',
-      api: 'lyra',
-      resource: '/spaces'
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'lyra',
+        resource: '/spaces',
+      })
       .then((res) => res.body.items);
   },
 
@@ -37,17 +38,18 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<LyraSpace>} response body
    */
   get(space = {}) {
-    const spaceId = space.id || space.identity && space.identity.id;
+    const spaceId = space.id || (space.identity && space.identity.id);
 
     if (!spaceId) {
       return Promise.reject(new Error('space.id is required'));
     }
 
-    return this.webex.request({
-      method: 'GET',
-      api: 'lyra',
-      resource: `/spaces/${spaceId}`
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'lyra',
+        resource: `/spaces/${spaceId}`,
+      })
       .then((res) => res.body);
   },
 
@@ -62,15 +64,16 @@ const Space = WebexPlugin.extend({
    * @returns {Promise}
    */
   join(space, options) {
-    options = Object.assign({
-      passType: 'MANUAL'
-    }, options);
+    options = {
+      passType: 'MANUAL',
+      ...options,
+    };
 
     const body = {
       pass: {
-        type: options.passType
+        type: options.passType,
       },
-      deviceUrl: this.webex.internal.device.url
+      deviceUrl: this.webex.internal.device.url,
     };
 
     if (options.data) {
@@ -87,7 +90,7 @@ const Space = WebexPlugin.extend({
       return this.webex.request({
         method: 'PUT',
         uri: options.uri,
-        body
+        body,
       });
     }
 
@@ -95,7 +98,7 @@ const Space = WebexPlugin.extend({
       method: 'PUT',
       api: 'lyra',
       resource: `${space.url}/occupants/@me`,
-      body
+      body,
     });
   },
 
@@ -113,7 +116,7 @@ const Space = WebexPlugin.extend({
 
     if (!options.removeAllDevices) {
       const params = {
-        deviceUrl: base64.toBase64Url(this.webex.internal.device.url)
+        deviceUrl: base64.toBase64Url(this.webex.internal.device.url),
       };
 
       uri += `?${querystring.stringify(params)}`;
@@ -122,7 +125,7 @@ const Space = WebexPlugin.extend({
     return this.webex.request({
       method: 'DELETE',
       api: 'lyra',
-      resource: uri
+      resource: uri,
     });
   },
 
@@ -136,17 +139,16 @@ const Space = WebexPlugin.extend({
   verifyOccupant(space, occupantId) {
     const body = {
       pass: {
-        type: 'VERIFICATION'
-      }
+        type: 'VERIFICATION',
+      },
     };
 
     return this.webex.request({
       method: 'PUT',
       uri: `${space.url}/occupants/${occupantId}`,
-      body
+      body,
     });
   },
-
 
   /**
    * Gets the state of bindings in this Lyra space
@@ -155,10 +157,11 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<LyraBindings>} bindings response body
    */
   getCurrentBindings(space) {
-    return this.webex.request({
-      method: 'GET',
-      uri: `${space.url}/bindings`
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        uri: `${space.url}/bindings`,
+      })
       .then((res) => res.body);
   },
 
@@ -176,7 +179,7 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<LyraBindings>} bindings response body
    */
   bindConversation(space = {}, conversation = {}, options = {}) {
-    const spaceId = space.id || space.identity && space.identity.id;
+    const spaceId = space.id || (space.identity && space.identity.id);
 
     if (!space.url) {
       return Promise.reject(new Error('space.url is required'));
@@ -199,22 +202,21 @@ const Space = WebexPlugin.extend({
         method: 'create',
         uri: '/authorizations',
         resourceUri: `${conversation.kmsResourceObjectUrl}`,
-        userIds: [spaceId]
+        userIds: [spaceId],
       },
-      conversationUrl: conversation.url
+      conversationUrl: conversation.url,
     };
 
     const request = {
       method: 'POST',
-      body
+      body,
     };
 
     // if options.uri is available use it, since that would have the
     // complete lyra service URL
     if (options.uri) {
       request.uri = options.uri;
-    }
-    else {
+    } else {
       request.api = 'lyra';
       request.resource = `${space.url}/bindings`;
     }
@@ -246,8 +248,8 @@ const Space = WebexPlugin.extend({
       api: 'lyra',
       resource,
       body: {
-        bindingCleanupAfterCall: true
-      }
+        bindingCleanupAfterCall: true,
+      },
     });
   },
 
@@ -266,7 +268,7 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<LyraBindings>} bindings response body
    */
   unbindConversation(space = {}, conversation = {}, options = {}) {
-    const spaceId = space.id || space.identity && space.identity.id;
+    const spaceId = space.id || (space.identity && space.identity.id);
 
     if (!space.url) {
       return Promise.reject(new Error('space.url is required'));
@@ -287,29 +289,30 @@ const Space = WebexPlugin.extend({
     const parameters = {
       kmsMessage: {
         method: 'delete',
-        uri: `${conversation.kmsResourceObjectUrl}/authorizations?${querystring.stringify({authId: spaceId})}`
+        uri: `${conversation.kmsResourceObjectUrl}/authorizations?${querystring.stringify({
+          authId: spaceId,
+        })}`,
       },
-      conversationUrl: base64.toBase64Url(conversation.url)
+      conversationUrl: base64.toBase64Url(conversation.url),
     };
 
-    return this.webex.internal.encryption.kms.prepareRequest(parameters.kmsMessage)
-      .then((req) => {
-        parameters.kmsMessage = req.wrapped;
-        // if options.uri is available use it, since that would have the
-        // complete lyra service URL
-        if (options.uri) {
-          return this.webex.request({
-            method: 'DELETE',
-            uri: `${options.uri}?${querystring.stringify(parameters)}`
-          });
-        }
-
+    return this.webex.internal.encryption.kms.prepareRequest(parameters.kmsMessage).then((req) => {
+      parameters.kmsMessage = req.wrapped;
+      // if options.uri is available use it, since that would have the
+      // complete lyra service URL
+      if (options.uri) {
         return this.webex.request({
           method: 'DELETE',
-          api: 'lyra',
-          resource: `${space.url}/bindings?${querystring.stringify(parameters)}`
+          uri: `${options.uri}?${querystring.stringify(parameters)}`,
         });
+      }
+
+      return this.webex.request({
+        method: 'DELETE',
+        api: 'lyra',
+        resource: `${space.url}/bindings?${querystring.stringify(parameters)}`,
       });
+    });
   },
 
   /**
@@ -323,7 +326,7 @@ const Space = WebexPlugin.extend({
    * @returns {Promise<LyraBindings>} bindings response body
    */
   deleteBinding(space = {}, options = {}) {
-    const spaceId = space.id || space.identity && space.identity.id;
+    const spaceId = space.id || (space.identity && space.identity.id);
 
     if (!space.url) {
       return Promise.reject(new Error('space.url is required'));
@@ -344,20 +347,21 @@ const Space = WebexPlugin.extend({
     const parameters = {
       kmsMessage: {
         method: 'delete',
-        uri: `${options.kmsResourceObjectUrl}/authorizations?${querystring.stringify({authId: spaceId})}`
-      }
+        uri: `${options.kmsResourceObjectUrl}/authorizations?${querystring.stringify({
+          authId: spaceId,
+        })}`,
+      },
     };
 
-    return this.webex.internal.encryption.kms.prepareRequest(parameters.kmsMessage)
-      .then((req) => {
-        parameters.kmsMessage = req.wrapped;
+    return this.webex.internal.encryption.kms.prepareRequest(parameters.kmsMessage).then((req) => {
+      parameters.kmsMessage = req.wrapped;
 
-        return this.webex.request({
-          method: 'DELETE',
-          uri: `${space.url}/bindings/${options.bindingId}?${querystring.stringify(parameters)}`
-        });
+      return this.webex.request({
+        method: 'DELETE',
+        uri: `${space.url}/bindings/${options.bindingId}?${querystring.stringify(parameters)}`,
       });
-  }
+    });
+  },
 });
 
 export default Space;

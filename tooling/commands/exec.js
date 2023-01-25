@@ -21,5 +21,5 @@ module.exports = {
       debug(`running ${cmd} ${args.join(' ')} in ${packageName}`);
       await spawn(packageName, cmd, args);
     }
-  })
+  }),
 };

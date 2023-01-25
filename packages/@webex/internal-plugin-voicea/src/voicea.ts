@@ -13,7 +13,9 @@ import {
 import {millisToMinutesAndSeconds} from './utils';
 
 /**
- * VoiceaChannel to hold single instance of LLM
+ * @description VoiceaChannel to hold single instance of LLM
+ * @export
+ * @class VoiceaChannel
  */
 export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   namespace = VOICEA;
@@ -24,14 +26,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private areCaptionsEnabled: boolean;
 
-  private isTranscribingEnabled: boolean;
-
-  private hasSubscribedToEvents: boolean = false;
+  private hasSubscribedToEvents = false;
 
   private vmcDeviceId?: string;
 
+  /**
+   * @param {Object} e
+   * @returns {undefined}
+   */
+
   private eventProcessor = (e) => {
-    e;
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
@@ -49,21 +53,25 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
     }
   };
+
   /**
    * Listen to websocket messages
+   * @returns {undefined}
    */
   private listenToEvents() {
     if (!this.hasSubscribedToEvents) {
+      // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
       this.hasSubscribedToEvents = true;
     }
   }
 
+  // @ts-ignore
   public deregisterEvents() {
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
-    this.isTranscribingEnabled = false;
     this.vmcDeviceId = undefined;
+    // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
   }
@@ -77,7 +85,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = 1;
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
-    this.isTranscribingEnabled = false;
     this.vmcDeviceId = undefined;
   }
 
@@ -236,14 +243,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   private sendAnnouncement = (): void => {
+    // @ts-ignore
     if (this.hasVoiceaJoined || !this.webex.internal.llm.isConnected()) return;
 
     this.listenToEvents();
-
+    // @ts-ignore
     this.webex.internal.llm.socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
+        // @ts-ignore
         route: this.webex.internal.llm.getBinding(),
       },
       headers: {},
@@ -265,8 +274,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   public setSpokenLanguage = (languageCode: string): Promise<void> =>
+    // @ts-ignore
     this.request({
       method: 'PUT',
+      // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
         languageCode,
@@ -289,11 +300,14 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   public requestLanguage = (languageCode: string): void => {
+    // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
+    // @ts-ignore
     this.webex.internal.llm.socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
+        // @ts-ignore
         route: this.webex.internal.llm.getBinding(),
       },
       headers: {
@@ -318,9 +332,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public turnOnCaptions = async (): undefined | Promise<void> => {
     if (this.hasVoiceaJoined && this.areCaptionsEnabled) return undefined;
-
+    // @ts-ignore
+    // eslint-disable-next-line newline-before-return
     return this.request({
       method: 'PUT',
+      // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
         transcribe: {caption: true},
@@ -345,24 +361,15 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   public toggleTranscribing = async (activate: boolean): undefined | Promise<void> => {
-    if (this.isTranscribingEnabled === activate) return undefined;
-
+    // @ts-ignore
     return this.request({
       method: 'PUT',
+      // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
         transcribe: {transcribing: activate},
       },
     }).then(() => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'toggleTranscribing',
-        },
-        activate ? EVENT_TRIGGERS.TRANSCRIBING_ON : EVENT_TRIGGERS.TRANSCRIBING_OFF
-      );
-      this.isTranscribingEnabled = activate;
       if (activate && !this.areCaptionsEnabled && !this.hasVoiceaJoined) this.turnOnCaptions();
     });
   };

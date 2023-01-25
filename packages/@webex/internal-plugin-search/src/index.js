@@ -1,15 +1,14 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-encryption';
 
 import {registerInternalPlugin} from '@webex/webex-core';
 import {has} from 'lodash';
 
 import Search from './search';
 import config from './config';
-
-import '@webex/internal-plugin-conversation';
-import '@webex/internal-plugin-encryption';
 
 registerInternalPlugin('search', Search, {
   config,
@@ -41,14 +40,14 @@ registerInternalPlugin('search', Search, {
         },
         extract(options) {
           return Promise.resolve(options.body);
-        }
+        },
       },
       {
         name: 'transformObjectArray',
         direction: 'inbound',
         test(ctx, response) {
-          return Promise.resolve(has(response, 'body.activities.items[0].objectType'))
-            .then((res) => {
+          return Promise.resolve(has(response, 'body.activities.items[0].objectType')).then(
+            (res) => {
               if (!res) {
                 return Promise.resolve(false);
               }
@@ -64,26 +63,28 @@ registerInternalPlugin('search', Search, {
               }
 
               return Promise.resolve(false);
-            });
+            }
+          );
         },
         extract(response) {
           return Promise.resolve(response.body.activities.items);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
         name: 'encryptSearchQuery',
         direction: 'outbound',
         fn(ctx, object) {
-          return ctx.webex.internal.encryption.encryptText(object.searchEncryptionKeyUrl, object.query)
+          return ctx.webex.internal.encryption
+            .encryptText(object.searchEncryptionKeyUrl, object.query)
             .then((q) => {
               object.query = q;
             });
-        }
-      }
-    ]
-  }
+        },
+      },
+    ],
+  },
 });
 
 export {default} from './search';

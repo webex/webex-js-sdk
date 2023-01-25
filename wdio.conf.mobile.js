@@ -14,35 +14,35 @@ require('dotenv').config({path: '.env.default'});
 
 // Alias @webex packages
 require('@babel/register')({
-  only: [
-    './packages/**/*.js',
-    './docs/samples/**/*.js'
-  ],
+  only: ['./packages/**/*.js', './docs/samples/**/*.js'],
   sourceMaps: true,
   plugins: [
-    ['module-resolver', {
-      alias: glob
-        .sync('**/package.json', {cwd: './packages'})
-        .map((p) => path.dirname(p))
-        .reduce((alias, packageName) => {
-          alias[`${packageName}`] = path.resolve(
-            __dirname,
-            `./packages/${packageName}/src/index.js`
-          );
+    [
+      'module-resolver',
+      {
+        alias: glob
+          .sync('**/package.json', {cwd: './packages'})
+          .map((p) => path.dirname(p))
+          .reduce((alias, packageName) => {
+            alias[`${packageName}`] = path.resolve(
+              __dirname,
+              `./packages/${packageName}/src/index.js`
+            );
 
-          return alias;
-        }, {})
-    }]
-  ]
+            return alias;
+          }, {}),
+      },
+    ],
+  ],
 });
 
 const webpackConfig = require('./webpack.config')();
 
 const PORT = process.env.PORT || 8000;
 const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
-const LOCALHOST_ALIAS = CI ?
-  process.env.LOCALHOST_ALIAS || 'local.localhost' :
-  os.networkInterfaces().en0.find((elm) => elm.family === 'IPv4').address;
+const LOCALHOST_ALIAS = CI
+  ? process.env.LOCALHOST_ALIAS || 'local.localhost'
+  : os.networkInterfaces().en0.find((elm) => elm.family === 'IPv4').address;
 
 exports.config = {
   //
@@ -79,14 +79,10 @@ exports.config = {
   // directory is where your package.json resides, so `wdio` will be called from there.
   //
   featureFlags: {
-    specFiltering: true
+    specFiltering: true,
   },
-  specs: [
-    './docs/samples/**/test/wdio/spec/**/*.js'
-  ],
-  suites: [
-    './docs/samples/**/test/wdio/spec/**/*.js'
-  ],
+  specs: ['./docs/samples/**/test/wdio/spec/**/*.js'],
+  suites: ['./docs/samples/**/test/wdio/spec/**/*.js'],
   //
   // ============
   // Capabilities
@@ -113,95 +109,99 @@ exports.config = {
   // If just Safari run Safari + Chrome
   // If not Safari run Firefox + Chrome
   // eslint-disable-next-line no-nested-ternary
-  capabilities: CI ? {
-    browserChrome: {
-      capabilities: {
-        platformName: 'Android',
-        browserName: 'Chrome',
-        'goog:chromeOptions': {
-          args: [
-            '--disable-features=WebRtcHideLocalIpsWithMdns',
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
+  capabilities: CI
+    ? {
+        browserChrome: {
+          capabilities: {
+            platformName: 'Android',
+            browserName: 'Chrome',
+            'goog:chromeOptions': {
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream',
+              ],
+            },
+            'appium:deviceName': 'Google Pixel 3 XL GoogleAPI Emulator',
+            'appium:platformVersion': '11.0',
+            'sauce:options': {
+              appiumVersion: '1.20.2',
+            },
+          },
         },
-        'appium:deviceName': 'Google Pixel 3 XL GoogleAPI Emulator',
-        'appium:platformVersion': '11.0',
-        'sauce:options': {
-          appiumVersion: '1.20.2'
-        }
+        browserFirefox: {
+          capabilities: {
+            platformName: 'iOS',
+            browserName: 'Safari',
+            'appium:deviceName': 'iPad Simulator',
+            'appium:platformVersion': '15.0',
+            'sauce:options': {
+              appiumVersion: '1.22.0',
+            },
+          },
+        },
       }
-    },
-    browserFirefox: {
-      capabilities: {
-        platformName: 'iOS',
-        browserName: 'Safari',
-        'appium:deviceName': 'iPad Simulator',
-        'appium:platformVersion': '15.0',
-        'sauce:options': {
-          appiumVersion: '1.22.0'
-        }
+    : !process.env.IOS && !process.env.ANDROID
+    ? {
+        browserChrome: {
+          capabilities: {
+            platformName: 'Android',
+            browserName: 'chrome',
+            'goog:chromeOptions': {
+              androidPackage: 'com.android.chrome',
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream',
+              ],
+            },
+          },
+        },
+        browserFirefox: {
+          capabilities: {
+            browserName: 'safari',
+            platformName: 'ios',
+          },
+        },
       }
-    }
-  } : (!process.env.IOS && !process.env.ANDROID) ? {
-    browserChrome: {
-      capabilities: {
-        platformName: 'Android',
-        browserName: 'chrome',
-        'goog:chromeOptions': {
-          androidPackage: 'com.android.chrome',
-          args: [
-            '--disable-features=WebRtcHideLocalIpsWithMdns',
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
-        }
-      }
-    },
-    browserFirefox: {
-      capabilities: {
-        browserName: 'safari',
-        platformName: 'ios'
-      }
-    }
-  } : {
-    browserChrome: {
-      capabilities: {
-        browserName: 'chrome',
-        'goog:chromeOptions': {
-          args: [
-            '--disable-features=WebRtcHideLocalIpsWithMdns',
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
-        }
-      }
-    },
-    ...(process.env.IOS && {
-      browserFirefox: {
-        capabilities: {
-          browserName: 'safari',
-          platformName: 'ios'
-        }
-      }
-    }),
-    ...(process.env.ANDROID && {
-      browserFirefox: {
-        capabilities: {
-          platformName: 'Android',
-          browserName: 'chrome',
-          'goog:chromeOptions': {
-            androidPackage: 'com.android.chrome',
-            args: [
-              '--disable-features=WebRtcHideLocalIpsWithMdns',
-              '--use-fake-device-for-media-stream',
-              '--use-fake-ui-for-media-stream'
-            ]
-          }
-        }
-      }
-    })
-  },
+    : {
+        browserChrome: {
+          capabilities: {
+            browserName: 'chrome',
+            'goog:chromeOptions': {
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream',
+              ],
+            },
+          },
+        },
+        ...(process.env.IOS && {
+          browserFirefox: {
+            capabilities: {
+              browserName: 'safari',
+              platformName: 'ios',
+            },
+          },
+        }),
+        ...(process.env.ANDROID && {
+          browserFirefox: {
+            capabilities: {
+              platformName: 'Android',
+              browserName: 'chrome',
+              'goog:chromeOptions': {
+                androidPackage: 'com.android.chrome',
+                args: [
+                  '--disable-features=WebRtcHideLocalIpsWithMdns',
+                  '--use-fake-device-for-media-stream',
+                  '--use-fake-ui-for-media-stream',
+                ],
+              },
+            },
+          },
+        }),
+      },
   //
   // ===================
   // Test Configurations
@@ -271,36 +271,40 @@ exports.config = {
   // Services take over a specific job you don't want to take care of. They enhance
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
-  services: CI ? [
-    ['sauce', {
-      sauceConnect: true,
-      sauceConnectOpts: {
-        noSslBumpDomains: [
-          'idbroker.webex.com',
-          'idbrokerbts.webex.com',
-          '127.0.0.1',
-          'localhost',
-          '*.wbx2.com',
-          '*.ciscospark.com',
-          LOCALHOST_ALIAS
+  services: CI
+    ? [
+        [
+          'sauce',
+          {
+            sauceConnect: true,
+            sauceConnectOpts: {
+              noSslBumpDomains: [
+                'idbroker.webex.com',
+                'idbrokerbts.webex.com',
+                '127.0.0.1',
+                'localhost',
+                '*.wbx2.com',
+                '*.ciscospark.com',
+                LOCALHOST_ALIAS,
+              ],
+              tunnelDomains: ['127.0.0.1', 'localhost', LOCALHOST_ALIAS],
+              logfile: './sauce.log',
+              tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
+            },
+          },
         ],
-        tunnelDomains: [
-          '127.0.0.1',
-          'localhost',
-          LOCALHOST_ALIAS
+      ]
+    : [
+        [
+          'selenium-standalone',
+          {
+            installArgs: {
+              // Latest Version of Selenium
+              version: '3.141.59',
+            },
+          },
         ],
-        logfile: './sauce.log',
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4()
-      }
-    }]
-  ] : [
-    ['selenium-standalone', {
-      installArgs: {
-        // Latest Version of Selenium
-        version: '3.141.59'
-      }
-    }]
-  ],
+      ],
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
@@ -315,9 +319,12 @@ exports.config = {
   // see also: http://webdriver.io/guide/testrunner/reporters.html
   reporters: [
     'spec',
-    ['junit', {
-      outputDir: './reports/junit/wdio'
-    }]
+    [
+      'junit',
+      {
+        outputDir: './reports/junit/wdio',
+      },
+    ],
   ],
   //
   // Options to be passed to Mocha.
@@ -326,7 +333,7 @@ exports.config = {
     // reminder: mocha-steps seems to make tests flaky on Sauce Labs
     require: ['@babel/register'],
     timeout: 80000,
-    ui: 'bdd'
+    ui: 'bdd',
   },
   //
   // =====
@@ -348,11 +355,13 @@ exports.config = {
         throw new Error(err.details);
       }
 
-      console.log(stats.toString({
-        colors: true,
-        modules: false,
-        warnings: false
-      }));
+      console.log(
+        stats.toString({
+          colors: true,
+          modules: false,
+          warnings: false,
+        })
+      );
 
       createServer((request, response) =>
         // You pass two more arguments for config and middleware
@@ -360,11 +369,11 @@ exports.config = {
         handler(request, response, {
           public: './docs',
           cleanUrls: true,
-          trailingSlash: true
-        }))
-        .listen(PORT, () => {
-          console.info(`Static Sever running at http://${LOCALHOST_ALIAS}:${PORT}\n`);
-        });
+          trailingSlash: true,
+        })
+      ).listen(PORT, () => {
+        console.info(`Static Sever running at http://${LOCALHOST_ALIAS}:${PORT}\n`);
+      });
     });
   },
   /**
@@ -396,7 +405,7 @@ exports.config = {
     //   browser.maximizeWindow();
     // }
     browser.url(this.baseUrl);
-  }
+  },
   //
   /**
    * Hook that gets executed before the suite starts

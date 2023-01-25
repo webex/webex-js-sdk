@@ -12,6 +12,8 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import createEffectsState from '@webex/plugin-meetings/src/meeting/effectsState';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import LLM from '@webex/internal-plugin-llm';
+import Mercury from '@webex/internal-plugin-mercury';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -20,7 +22,7 @@ describe('plugin-meetings', () => {
     error: () => {},
     warn: () => {},
     trace: () => {},
-    debug: () => {}
+    debug: () => {},
   };
 
   beforeEach(() => {
@@ -34,8 +36,8 @@ describe('plugin-meetings', () => {
     writable: true,
     value: {
       getSupportedConstraints: sinon.stub().returns({
-        sampleRate: true
-      })
+        sampleRate: true,
+      }),
     },
   });
   LoggerConfig.set({verboseEvents: true, enable: false});
@@ -51,8 +53,8 @@ describe('plugin-meetings', () => {
     readyState: 'live',
     enabled: true,
     getSettings: () => ({
-      sampleRate: 48000
-    })
+      sampleRate: 48000,
+    }),
   });
 
   class FakeMediaStream {
@@ -85,7 +87,7 @@ describe('plugin-meetings', () => {
         connect: () => undefined,
         mediaStream: {
           getAudioTracks() {
-          // eslint-disable-next-line no-undef
+            // eslint-disable-next-line no-undef
             return [new MediaStreamTrack()];
           },
         },
@@ -96,7 +98,7 @@ describe('plugin-meetings', () => {
       return {
         stream: {
           getAudioTracks() {
-          // eslint-disable-next-line no-undef
+            // eslint-disable-next-line no-undef
             return [new MediaStreamTrack()];
           },
         },
@@ -112,7 +114,7 @@ describe('plugin-meetings', () => {
     }
 
     connect() {
-    /* placeholder method */
+      /* placeholder method */
     }
   }
 
@@ -128,7 +130,7 @@ describe('plugin-meetings', () => {
 
     getSettings() {
       return {
-        sampleRate: 48000
+        sampleRate: 48000,
       };
     }
   }
@@ -157,15 +159,17 @@ describe('plugin-meetings', () => {
   beforeEach(() => {
     webex = new MockWebex({
       children: {
-        meetings: Meetings
+        meetings: Meetings,
+        llm: LLM,
+        mercury: Mercury,
       }
     });
     meeting = new Meeting(
       {
-        userId: uuid1
+        userId: uuid1,
       },
       {
-        parent: webex
+        parent: webex,
       }
     );
 
@@ -179,9 +183,11 @@ describe('plugin-meetings', () => {
     sinon.replace(meeting, 'addMedia', () => {
       sinon.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
       sinon.stub(meeting.mediaProperties, 'mediaDirection').value({
-        receiveAudio: true
+        receiveAudio: true,
       });
-      sinon.stub(meeting.mediaProperties, 'webrtcMediaConnection').value({updateSendReceiveOptions: sinon.stub()});
+      sinon
+        .stub(meeting.mediaProperties, 'webrtcMediaConnection')
+        .value({updateSendReceiveOptions: sinon.stub()});
     });
   });
 
@@ -200,10 +206,7 @@ describe('plugin-meetings', () => {
         assert.equal(effects.state.bnr.enabled, BNR_STATUS.ENABLED);
 
         assert(Metrics.sendBehavioralMetric.calledOnce);
-        assert.calledWith(
-          Metrics.sendBehavioralMetric,
-          BEHAVIORAL_METRICS.ENABLE_BNR_SUCCESS,
-        );
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ENABLE_BNR_SUCCESS);
       });
 
       it('does resolve request if bnr is already enabled', async () => {
@@ -213,12 +216,14 @@ describe('plugin-meetings', () => {
       });
 
       it('if called twice, does bnr effect enable on audio track for the first request and resolves second', async () => {
-        Promise.all([effects.handleClientRequest(true, meeting), effects.handleClientRequest(true, meeting)])
-          .then((resolveFirst, resolveSecond) => {
-            assert.isTrue(resolveFirst);
-            assert.isTrue(resolveSecond);
-            assert.calledOnce(MediaUtil.createMediaStream);
-          });
+        Promise.all([
+          effects.handleClientRequest(true, meeting),
+          effects.handleClientRequest(true, meeting),
+        ]).then((resolveFirst, resolveSecond) => {
+          assert.isTrue(resolveFirst);
+          assert.isTrue(resolveSecond);
+          assert.calledOnce(MediaUtil.createMediaStream);
+        });
       });
 
       it('should throw error for inappropriate sample rate and send error metrics', async () => {
@@ -227,8 +232,8 @@ describe('plugin-meetings', () => {
           stop: () => {},
           readyState: 'live',
           getSettings: () => ({
-            sampleRate: 49000
-          })
+            sampleRate: 49000,
+          }),
         });
 
         sinon.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack1());
@@ -237,16 +242,12 @@ describe('plugin-meetings', () => {
         MediaUtil.createMediaStream = sinon.stub().returns(new MediaStream([fakeMediaTrack1()]));
         try {
           await effects.handleClientRequest(true, meeting);
-        }
-        catch (err) {
+        } catch (err) {
           assert(Metrics.sendBehavioralMetric.calledOnce);
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE, {
-              reason: err.message,
-              stack: err.stack
-            }
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE, {
+            reason: err.message,
+            stack: err.stack,
+          });
           assert.equal(err.message, 'Sample rate of 49000 is not supported.');
         }
       });
@@ -265,25 +266,18 @@ describe('plugin-meetings', () => {
         assert.equal(effects.state.bnr.enabled, BNR_STATUS.NOT_ENABLED);
 
         assert(Metrics.sendBehavioralMetric.calledOnce);
-        assert.calledWith(
-          Metrics.sendBehavioralMetric,
-          BEHAVIORAL_METRICS.DISABLE_BNR_SUCCESS,
-        );
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.DISABLE_BNR_SUCCESS);
       });
 
       it('reject request for disable bnr if not enabled', async () => {
         try {
           await effects.handleClientRequest(false, meeting);
-        }
-        catch (e) {
+        } catch (e) {
           assert.equal(e.message, 'Can not disable as BNR is not enabled');
           assert.equal(effects.state.bnr.enabled, BNR_STATUS.ENABLED);
 
           assert(Metrics.sendBehavioralMetric.calledOnce);
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE,
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE);
         }
       });
     });

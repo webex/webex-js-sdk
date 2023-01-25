@@ -17,8 +17,8 @@ describe('webex-core', () => {
     before('initialize webex', () => {
       webex = new MockWebex({
         children: {
-          services: Services
-        }
+          services: Services,
+        },
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
@@ -93,10 +93,9 @@ describe('webex-core', () => {
       it('successfully resolves with undefined if fetch request failed', () => {
         webex.request = sinon.stub().returns(Promise.reject());
 
-        return assert.isFulfilled(services.fetchClientRegionInfo())
-          .then((r) => {
-            assert.isUndefined(r);
-          });
+        return assert.isFulfilled(services.fetchClientRegionInfo()).then((r) => {
+          assert.isUndefined(r);
+        });
       });
     });
 
@@ -111,7 +110,7 @@ describe('webex-core', () => {
         assert.calledWith(webex.request, {
           method: 'GET',
           service: 'hydra',
-          resource: 'meetingPreferences'
+          resource: 'meetingPreferences',
         });
         assert.isDefined(res);
         assert.equal(res, userPreferences);
@@ -125,7 +124,7 @@ describe('webex-core', () => {
         assert.calledWith(webex.request, {
           method: 'GET',
           service: 'hydra',
-          resource: 'meetingPreferences'
+          resource: 'meetingPreferences',
         });
         assert.isUndefined(res);
       });
@@ -141,78 +140,117 @@ describe('webex-core', () => {
             'example-a': 'https://example-a.com/api/v1',
             'example-b': 'https://example-b.com/api/v1',
             'example-c': 'https://example-c.com/api/v1',
-            'example-d': 'https://example-d.com/api/v1'
+            'example-d': 'https://example-d.com/api/v1',
           },
           hostCatalog: {
             'example-a.com': [
               {
-                host: 'example-a-1.com', ttl: -1, priority: 5, id: '0:0:0:example-a'
+                host: 'example-a-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:example-a',
               },
               {
-                host: 'example-a-2.com', ttl: -1, priority: 3, id: '0:0:0:example-a'
+                host: 'example-a-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:example-a',
               },
               {
-                host: 'example-a-3.com', ttl: -1, priority: 1, id: '0:0:0:example-a-x'
-              }
+                host: 'example-a-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:example-a-x',
+              },
             ],
             'example-b.com': [
               {
-                host: 'example-b-1.com', ttl: -1, priority: 5, id: '0:0:0:example-b'
+                host: 'example-b-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:example-b',
               },
               {
-                host: 'example-b-2.com', ttl: -1, priority: 3, id: '0:0:0:example-b'
+                host: 'example-b-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:example-b',
               },
               {
-                host: 'example-b-3.com', ttl: -1, priority: 1, id: '0:0:0:example-b-x'
-              }
+                host: 'example-b-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:example-b-x',
+              },
             ],
             'example-c.com': [
               {
-                host: 'example-c-1.com', ttl: -1, priority: 5, id: '0:0:0:example-c'
+                host: 'example-c-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:example-c',
               },
               {
-                host: 'example-c-2.com', ttl: -1, priority: 3, id: '0:0:0:example-c'
+                host: 'example-c-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:example-c',
               },
               {
-                host: 'example-c-3.com', ttl: -1, priority: 1, id: '0:0:0:example-c-x'
-              }
+                host: 'example-c-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:example-c-x',
+              },
             ],
             'example-d.com': [
               {
-                host: 'example-c-1.com', ttl: -1, priority: 5, id: '0:0:0:example-d'
+                host: 'example-c-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:example-d',
               },
               {
-                host: 'example-c-2.com', ttl: -1, priority: 3, id: '0:0:0:example-d'
+                host: 'example-c-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:example-d',
               },
               {
-                host: 'example-c-3.com', ttl: -1, priority: 1, id: '0:0:0:example-d-x'
-              }
-            ]
+                host: 'example-c-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:example-d-x',
+              },
+            ],
           },
-          format: 'hostmap'
+          format: 'hostmap',
         };
       });
 
       it('creates a formmatted host map that contains the same amount of entries as the original received hostmap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert(Object.keys(serviceHostmap.serviceLinks).length >=
-          formattedHM.length, 'length is not equal or less than');
+        assert(
+          Object.keys(serviceHostmap.serviceLinks).length >= formattedHM.length,
+          'length is not equal or less than'
+        );
       });
 
       it.skip('creates an array of equal or less length of hostMap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert(Object.keys(serviceHostmap.hostCatalog).length >=
-          formattedHM.length, 'length is not equal or less than');
+        assert(
+          Object.keys(serviceHostmap.hostCatalog).length >= formattedHM.length,
+          'length is not equal or less than'
+        );
       });
 
       it('creates an array with matching url data', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         formattedHM.forEach((entry) => {
-          assert.equal(serviceHostmap.serviceLinks[entry.name],
-            entry.defaultUrl);
+          assert.equal(serviceHostmap.serviceLinks[entry.name], entry.defaultUrl);
         });
       });
 
@@ -221,8 +259,11 @@ describe('webex-core', () => {
 
         formattedHM.forEach((service) => {
           service.hosts.forEach((host) => {
-            assert.hasAllKeys(host,
-              ['homeCluster', 'host', 'id', 'priority', 'ttl'], `${service.name} has an invalid host shape`);
+            assert.hasAllKeys(
+              host,
+              ['homeCluster', 'host', 'id', 'priority', 'ttl'],
+              `${service.name} has an invalid host shape`
+            );
           });
         });
       });
@@ -231,8 +272,9 @@ describe('webex-core', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         formattedHM.forEach((service) => {
-          const foundServiceKey = Object.keys(serviceHostmap.serviceLinks)
-            .find((key) => service.name === key);
+          const foundServiceKey = Object.keys(serviceHostmap.serviceLinks).find(
+            (key) => service.name === key
+          );
 
           assert.isDefined(foundServiceKey);
         });
@@ -251,8 +293,10 @@ describe('webex-core', () => {
       it('creates an array with matching names', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert.hasAllKeys(serviceHostmap.serviceLinks,
-          formattedHM.map((item) => item.name));
+        assert.hasAllKeys(
+          serviceHostmap.serviceLinks,
+          formattedHM.map((item) => item.name)
+        );
       });
     });
 
@@ -260,13 +304,13 @@ describe('webex-core', () => {
       // updateCredentialsConfig must remove `/` if exist. so expected serviceList must be.
       const expectedServiceList = {
         idbroker: 'https://idbroker.webex.com',
-        identity: 'https://identity.webex.com'
+        identity: 'https://identity.webex.com',
       };
 
       beforeEach('get services list', async () => {
         const servicesList = {
           idbroker: 'https://idbroker.webex.com',
-          identity: 'https://identity.webex.com/'
+          identity: 'https://identity.webex.com/',
         };
 
         catalog.list = sinon.stub().returns(servicesList);

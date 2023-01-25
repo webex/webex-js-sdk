@@ -8,11 +8,11 @@ const Flag = WebexPlugin.extend({
   namespace: 'Flag',
 
   /**
-  * Archive a flag
-  * @param {Object} flag
-  * @param {Object} options
-  * @returns {Promise<Object>} Resolves with the flag archival
-  */
+   * Archive a flag
+   * @param {Object} flag
+   * @param {Object} options
+   * @returns {Promise<Object>} Resolves with the flag archival
+   */
   archive(flag, options) {
     if (!flag.url) {
       return Promise.reject(new Error('`flag.url` is required'));
@@ -23,20 +23,19 @@ const Flag = WebexPlugin.extend({
       uri: flag.url,
       options,
       body: {
-        state: 'archived'
-      }
+        state: 'archived',
+      },
     };
 
-    return this.webex.request(params)
-      .then((res) => res.body);
+    return this.webex.request(params).then((res) => res.body);
   },
 
   /**
-  * Flags an activity
-  * @param {Object} activity
-  * @param {Object} options
-  * @returns {Promise<Object>} Resolves with the flag creation
-  */
+   * Flags an activity
+   * @param {Object} activity
+   * @param {Object} options
+   * @returns {Promise<Object>} Resolves with the flag creation
+   */
   create(activity, options) {
     if (!activity.url) {
       return Promise.reject(new Error('`activity.url` is required'));
@@ -50,19 +49,18 @@ const Flag = WebexPlugin.extend({
       body: {
         'conversation-url': activity.target.url,
         'flag-item': activity.url,
-        state: 'flagged'
-      }
+        state: 'flagged',
+      },
     };
 
-    return this.webex.request(params)
-      .then((res) => res.body);
+    return this.webex.request(params).then((res) => res.body);
   },
 
   /**
-  * Gets a list of Flags for a user
-  * @param {Object} options
-  * @returns {Promise} Resolves with the fetched flags
-  */
+   * Gets a list of Flags for a user
+   * @param {Object} options
+   * @returns {Promise} Resolves with the fetched flags
+   */
   list(options) {
     options = options || {};
     const params = {
@@ -71,20 +69,19 @@ const Flag = WebexPlugin.extend({
       resource: '/flags',
       options,
       qs: {
-        state: 'flagged'
-      }
+        state: 'flagged',
+      },
     };
 
-    return this.webex.request(params)
-      .then((res) => res.body.items);
+    return this.webex.request(params).then((res) => res.body.items);
   },
 
   /**
-  * Gets an array of activities where the status is 200
-  * @param {Object} flags
-  * @returns {Promise<Object>} Resolves with the activities
-  * TODO: this should be implemented as a batched request when migrating to the modular sdk
-  */
+   * Gets an array of activities where the status is 200
+   * @param {Object} flags
+   * @returns {Promise<Object>} Resolves with the activities
+   * TODO: this should be implemented as a batched request when migrating to the modular sdk
+   */
   async mapToActivities(flags) {
     const mapUrlActivities = new Map();
 
@@ -102,11 +99,8 @@ const Flag = WebexPlugin.extend({
           mapUrlActivities.set(url, activities);
         }
         activities.push(activity);
-      }
-      else {
-        this.logger.warn(
-          `The activity URL has a strange format (${activity}). Ignoring it.`
-        );
+      } else {
+        this.logger.warn(`The activity URL has a strange format (${activity}). Ignoring it.`);
       }
     }
 
@@ -116,8 +110,8 @@ const Flag = WebexPlugin.extend({
           method: 'POST',
           url: `${convoUrl}/bulk_activities_fetch`,
           body: {
-            activityUrls
-          }
+            activityUrls,
+          },
         };
 
         const res = await this.webex.request(params);
@@ -136,11 +130,11 @@ const Flag = WebexPlugin.extend({
   },
 
   /**
-  * Delete a flag
-  * @param {Object} flag
-  * @param {Object} options
-  * @returns {Promise<Object>} Resolves with the flag deletion
-  */
+   * Delete a flag
+   * @param {Object} flag
+   * @param {Object} options
+   * @returns {Promise<Object>} Resolves with the flag deletion
+   */
   delete(flag, options) {
     if (!flag.url) {
       return Promise.reject(new Error('`flag.url` is required'));
@@ -149,19 +143,18 @@ const Flag = WebexPlugin.extend({
     const params = {
       method: 'DELETE',
       options,
-      uri: flag.url
+      uri: flag.url,
     };
 
-    return this.request(params)
-      .then((res) => res.body);
+    return this.request(params).then((res) => res.body);
   },
 
   /**
-  * UnFlags an activity
-  * @param {Object} flag
-  * @param {Object} options
-  * @returns {Promise<Object>} Resolves with the flag removal
-  */
+   * UnFlags an activity
+   * @param {Object} flag
+   * @param {Object} options
+   * @returns {Promise<Object>} Resolves with the flag removal
+   */
   unflag(flag, options) {
     if (!flag.url) {
       return Promise.reject(new Error('`flag.url` is required'));
@@ -172,14 +165,12 @@ const Flag = WebexPlugin.extend({
       uri: flag.url,
       options,
       body: {
-        state: 'unflagged'
-      }
+        state: 'unflagged',
+      },
     };
 
-    return this.webex.request(params)
-      .then((res) => res.body);
-  }
-
+    return this.webex.request(params).then((res) => res.body);
+  },
 });
 
 export default Flag;

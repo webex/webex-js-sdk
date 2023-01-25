@@ -16,9 +16,17 @@ const redirectUri = process.env.WEBEX_REDIRECT_URI || process.env.REDIRECT_URI;
 // for test users in EU (Federation) and US
 // Also try US user with Federation enabled
 const runs = [
-  {it: 'with EU user with Federation enabled', EUUser: true, attrs: {config: {credentials: {federation: true}}}},
+  {
+    it: 'with EU user with Federation enabled',
+    EUUser: true,
+    attrs: {config: {credentials: {federation: true}}},
+  },
   {it: 'with US user without Federation enabled', EUUser: false, attrs: {}},
-  {it: 'with US user with Federation enabled', EUUser: false, attrs: {config: {credentials: {federation: true}}}}
+  {
+    it: 'with US user with Federation enabled',
+    EUUser: false,
+    attrs: {config: {credentials: {federation: true}}},
+  },
 ];
 
 runs.forEach((run) => {
@@ -35,98 +43,108 @@ runs.forEach((run) => {
           testUserParm.config = {orgId: process.env.EU_PRIMARY_ORG_ID};
         }
 
-        before(() => testUsers.create(testUserParm)
-          .then((users) => {
+        before(() =>
+          testUsers.create(testUserParm).then((users) => {
             user = users[0];
-          }));
+          })
+        );
 
-        before(() => createBrowser(pkg)
-          .then((b) => {
+        before(() =>
+          createBrowser(pkg).then((b) => {
             browser = b;
-          }));
+          })
+        );
 
         after(() => browser && browser.printLogs());
 
-        after(() => browser && browser.quit()
-          .catch((reason) => {
-            console.warn(reason);
-          }));
+        after(
+          () =>
+            browser &&
+            browser.quit().catch((reason) => {
+              console.warn(reason);
+            })
+        );
 
-        it('authorizes a user', () => browser
-          .get(`${redirectUri}/${pkg.name}`)
-          .waitForElementByClassName('ready')
-          .title()
+        it('authorizes a user', () =>
+          browser
+            .get(`${redirectUri}/${pkg.name}`)
+            .waitForElementByClassName('ready')
+            .title()
             .should.eventually.become('Authorization Automation Test')
-          .waitForElementByCssSelector('[title="Login with Authorization Code Grant"]')
+            .waitForElementByCssSelector('[title="Login with Authorization Code Grant"]')
             .click()
-          .login(user)
-          .waitForElementByClassName('authorization-automation-test')
-          .waitForElementById('refresh-token')
+            .login(user)
+            .waitForElementByClassName('authorization-automation-test')
+            .waitForElementById('refresh-token')
             .text()
-              .should.eventually.not.be.empty
-          .waitForElementByCssSelector('#ping-complete:not(:empty)')
+            .should.eventually.not.be.empty.waitForElementByCssSelector(
+              '#ping-complete:not(:empty)'
+            )
             .text()
-              .should.eventually.become('success'));
+            .should.eventually.become('success'));
 
-        it('is still logged in after reloading the page', () => browser
-          .waitForElementById('access-token')
+        it('is still logged in after reloading the page', () =>
+          browser
+            .waitForElementById('access-token')
             .text()
-              .should.eventually.not.be.empty
-          .get(`${redirectUri}/${pkg.name}`)
-          .sleep(500)
-          .waitForElementById('access-token')
-            .text()
-              .should.eventually.not.be.empty);
+            .should.eventually.not.be.empty.get(`${redirectUri}/${pkg.name}`)
+            .sleep(500)
+            .waitForElementById('access-token')
+            .text().should.eventually.not.be.empty);
 
-        it('refreshes the user\'s access token', () => {
+        it("refreshes the user's access token", () => {
           let accessToken = '';
 
-          return browser
-            .waitForElementByCssSelector('#access-token:not(:empty)')
+          return (
+            browser
+              .waitForElementByCssSelector('#access-token:not(:empty)')
               .text()
-                .then((text) => {
-                  accessToken = text;
-                  assert.isString(accessToken);
-                  assert.isAbove(accessToken.length, 0);
+              .then((text) => {
+                accessToken = text;
+                assert.isString(accessToken);
+                assert.isAbove(accessToken.length, 0);
 
-                  return browser;
-                })
-            .waitForElementByCssSelector('[title="Refresh Access Token"]')
+                return browser;
+              })
+              .waitForElementByCssSelector('[title="Refresh Access Token"]')
               .click()
-            // Not thrilled by a sleep, but we just need to give the button click
-            // enough time to clear the #access-token box
-            .sleep(500)
-            .waitForElementByCssSelector('#access-token:not(:empty)')
+              // Not thrilled by a sleep, but we just need to give the button click
+              // enough time to clear the #access-token box
+              .sleep(500)
+              .waitForElementByCssSelector('#access-token:not(:empty)')
               .text()
-                .then((text) => {
-                  assert.isString(text);
-                  assert.isAbove(text.length, 0);
-                  assert.notEqual(text, accessToken);
+              .then((text) => {
+                assert.isString(text);
+                assert.isAbove(text.length, 0);
+                assert.notEqual(text, accessToken);
 
-                  return browser;
-                });
+                return browser;
+              })
+          );
         });
 
-        it('logs out a user', () => browser
-          .title()
+        it('logs out a user', () =>
+          browser
+            .title()
             .should.eventually.become('Authorization Automation Test')
-          .waitForElementByCssSelector('[title="Logout"]')
+            .waitForElementByCssSelector('[title="Logout"]')
             .click()
-          // We need to revoke three tokens before the window.location assignment.
-          // So far, I haven't found any ques to wait for, so sleep seems to be
-          // the only option.
-          .sleep(3000)
-          .title()
+            // We need to revoke three tokens before the window.location assignment.
+            // So far, I haven't found any ques to wait for, so sleep seems to be
+            // the only option.
+            .sleep(3000)
+            .title()
             .should.eventually.become('Redirect Dispatcher')
-          .get(`${redirectUri}/${pkg.name}`)
-          .title()
+            .get(`${redirectUri}/${pkg.name}`)
+            .title()
             .should.eventually.become('Authorization Automation Test')
-          .waitForElementById('access-token')
+            .waitForElementById('access-token')
             .text()
-              .should.eventually.be.empty
-          .waitForElementByCssSelector('[title="Login with Authorization Code Grant"]')
+            .should.eventually.be.empty.waitForElementByCssSelector(
+              '[title="Login with Authorization Code Grant"]'
+            )
             .click()
-          .waitForElementById('IDToken1'));
+            .waitForElementById('IDToken1'));
       });
     });
   });

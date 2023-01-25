@@ -5,7 +5,7 @@ import Meetings from './meetings';
 import config from './config';
 
 registerPlugin('meetings', Meetings, {
-  config
+  config,
 });
 
 export default Meetings;

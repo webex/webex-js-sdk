@@ -13,7 +13,7 @@ import {
   buildHydraRoomId,
   getHydraClusterString,
   getHydraRoomType,
-  deconstructHydraId
+  deconstructHydraId,
 } from '@webex/common';
 import {WebexPlugin, Page} from '@webex/webex-core';
 import {cloneDeep} from 'lodash';
@@ -86,18 +86,18 @@ const Memberships = WebexPlugin.extend({
    */
   listen() {
     // Create a common envelope that we will wrap all events in
-    return createEventEnvelope(this.webex,
-      SDK_EVENT.EXTERNAL.RESOURCE.MEMBERSHIPS)
-      .then((envelope) => {
+    return createEventEnvelope(this.webex, SDK_EVENT.EXTERNAL.RESOURCE.MEMBERSHIPS).then(
+      (envelope) => {
         this.eventEnvelope = envelope;
 
         // Register to listen to events
         return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury,
-            SDK_EVENT.INTERNAL.WEBEX_ACTIVITY,
-            (event) => this.onWebexApiEvent(event));
+          this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+            this.onWebexApiEvent(event)
+          );
         });
-      });
+      }
+    );
   },
 
   /**
@@ -134,9 +134,8 @@ const Memberships = WebexPlugin.extend({
       method: 'POST',
       service: 'hydra',
       resource: 'memberships',
-      body: membership
-    })
-      .then((res) => res.body);
+      body: membership,
+    }).then((res) => res.body);
   },
 
   /**
@@ -170,9 +169,8 @@ const Memberships = WebexPlugin.extend({
 
     return this.request({
       service: 'hydra',
-      resource: `memberships/${id}`
-    })
-      .then((res) => res.body.items || res.body);
+      resource: `memberships/${id}`,
+    }).then((res) => res.body.items || res.body);
   },
 
   /**
@@ -215,9 +213,8 @@ const Memberships = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'memberships',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -251,15 +248,15 @@ const Memberships = WebexPlugin.extend({
     const deconstructedId = deconstructHydraId(options.roomId);
     const conversation = {
       id: deconstructedId.id,
-      cluster: deconstructedId.cluster
+      cluster: deconstructedId.cluster,
     };
 
-    return ensureMyIdIsAvailable(this.webex)
-      .then(() => this.webex.internal.services.waitForCatalog('postauth')
-        .then(() => this.webex.internal.conversation.get(conversation,
-          {
+    return ensureMyIdIsAvailable(this.webex).then(() =>
+      this.webex.internal.services.waitForCatalog('postauth').then(() =>
+        this.webex.internal.conversation
+          .get(conversation, {
             participantAckFilter: 'all', // show lastAck info for each participant
-            activitiesLimit: 0 // don't send the whole history of activity
+            activitiesLimit: 0, // don't send the whole history of activity
           })
           .then((resp) => {
             try {
@@ -275,31 +272,28 @@ const Memberships = WebexPlugin.extend({
               for (let i = 0; i < participants.length; i += 1) {
                 const participant = participants[i];
                 const participantInfo = {
-                  id: buildHydraMembershipId(participant.entryUUID, roomUUID,
-                    conversation.cluster),
+                  id: buildHydraMembershipId(participant.entryUUID, roomUUID, conversation.cluster),
                   roomId,
                   personId: buildHydraPersonId(participant.entryUUID),
-                  personEmail: participant.entryEmailAddress ||
-                    participant.entryEmail,
+                  personEmail: participant.entryEmailAddress || participant.entryEmail,
                   personDisplayName: participant.displayName,
-                  personOrgId: buildHydraOrgId(participant.orgId,
-                    conversation.cluster),
+                  personOrgId: buildHydraOrgId(participant.orgId, conversation.cluster),
                   isMonitor: false, // deprecated, but included for completeness
-                  roomType
+                  roomType,
                   // created is not available in the conversations payload
                 };
 
-                if ((isRoomHidden) && (participantInfo.personId === myId)) {
+                if (isRoomHidden && participantInfo.personId === myId) {
                   participantInfo.isRoomHidden = isRoomHidden;
                 }
 
                 if ('roomProperties' in participant) {
                   if ('lastSeenActivityDate' in participant.roomProperties) {
-                    participantInfo.lastSeenId =
-                      buildHydraMessageId(participant.roomProperties.lastSeenActivityUUID,
-                        conversation.cluster);
-                    participantInfo.lastSeenDate =
-                      participant.roomProperties.lastSeenActivityDate;
+                    participantInfo.lastSeenId = buildHydraMessageId(
+                      participant.roomProperties.lastSeenActivityUUID,
+                      conversation.cluster
+                    );
+                    participantInfo.lastSeenDate = participant.roomProperties.lastSeenActivityDate;
                   }
                   if ('isModerator' in participant.roomProperties) {
                     participantInfo.isModerator = participant.roomProperties.isModerator;
@@ -310,11 +304,12 @@ const Memberships = WebexPlugin.extend({
               }
 
               return Promise.resolve(lastReadInfo);
-            }
-            catch (e) {
+            } catch (e) {
               return Promise.reject(e);
             }
-          })));
+          })
+      )
+    );
   },
 
   /**
@@ -358,17 +353,16 @@ const Memberships = WebexPlugin.extend({
     return this.request({
       method: 'DELETE',
       service: 'hydra',
-      resource: `memberships/${id}`
-    })
-      .then((res) => {
-        // Firefox has some issues with 204s and/or DELETE. This should move to
-        // http-core
-        if (res.statusCode === 204) {
-          return undefined;
-        }
+      resource: `memberships/${id}`,
+    }).then((res) => {
+      // Firefox has some issues with 204s and/or DELETE. This should move to
+      // http-core
+      if (res.statusCode === 204) {
+        return undefined;
+      }
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -440,9 +434,8 @@ const Memberships = WebexPlugin.extend({
       method: 'PUT',
       service: 'hydra',
       resource: `memberships/${id}`,
-      body: membership
-    })
-      .then((res) => res.body);
+      body: membership,
+    }).then((res) => res.body);
   },
 
   /**
@@ -457,30 +450,29 @@ const Memberships = WebexPlugin.extend({
    */
   updateLastSeen(message) {
     const activity = {
-      id: deconstructHydraId(message.id).id
+      id: deconstructHydraId(message.id).id,
     };
     const deconstructedId = deconstructHydraId(message.roomId);
     const conversation = {
       id: deconstructedId.id,
-      cluster: deconstructedId.cluster
+      cluster: deconstructedId.cluster,
     };
 
-    return this.webex.internal.services.waitForCatalog('postauth')
-      .then(() => this.webex.internal.conversation.acknowledge(conversation, activity)
-        .then((ack) => ({
-          lastSeenId: buildHydraMessageId(ack.object.id, conversation.cluster),
-          id: buildHydraMembershipId(ack.actor.entryUUID,
-            ack.target.id, conversation.cluster),
-          personId: buildHydraPersonId(ack.actor.entryUUID, conversation.cluster),
-          personEmail: ack.actor.emailAddress || ack.actor.entryEmail,
-          personDisplayName: ack.actor.displayName,
-          personOrgId: buildHydraOrgId(ack.actor.orgId, conversation.cluster),
-          roomId: buildHydraRoomId(ack.target.id, conversation.cluster),
-          roomType: getHydraRoomType(ack.target.tags),
-          isRoomHidden: false, // any activity unhides a space.
-          isMonitor: false, // deprecated, returned for back compat
-          created: ack.published
-        })));
+    return this.webex.internal.services.waitForCatalog('postauth').then(() =>
+      this.webex.internal.conversation.acknowledge(conversation, activity).then((ack) => ({
+        lastSeenId: buildHydraMessageId(ack.object.id, conversation.cluster),
+        id: buildHydraMembershipId(ack.actor.entryUUID, ack.target.id, conversation.cluster),
+        personId: buildHydraPersonId(ack.actor.entryUUID, conversation.cluster),
+        personEmail: ack.actor.emailAddress || ack.actor.entryEmail,
+        personDisplayName: ack.actor.displayName,
+        personOrgId: buildHydraOrgId(ack.actor.orgId, conversation.cluster),
+        roomId: buildHydraRoomId(ack.target.id, conversation.cluster),
+        roomType: getHydraRoomType(ack.target.tags),
+        isRoomHidden: false, // any activity unhides a space.
+        isMonitor: false, // deprecated, returned for back compat
+        created: ack.published,
+      }))
+    );
   },
 
   /**
@@ -498,16 +490,16 @@ const Memberships = WebexPlugin.extend({
     /* eslint-disable no-case-declarations */
     switch (activity.verb) {
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.CREATE:
-        const membershipCreatedEventDataArray =
-          activity.object.participants.items.map((participant) => {
+        const membershipCreatedEventDataArray = activity.object.participants.items.map(
+          (participant) => {
             const output = cloneDeep(activity);
 
             output.target = cloneDeep(activity.object);
             output.object = cloneDeep(participant);
 
-            return this.getMembershipEvent(output,
-              SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED);
-          });
+            return this.getMembershipEvent(output, SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED);
+          }
+        );
 
         membershipCreatedEventDataArray.forEach((data) => {
           if (data) {
@@ -518,8 +510,10 @@ const Memberships = WebexPlugin.extend({
         break;
 
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.ADD:
-        const membershipCreatedEventData =
-          this.getMembershipEvent(activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED);
+        const membershipCreatedEventData = this.getMembershipEvent(
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED
+        );
 
         if (membershipCreatedEventData) {
           debug(`membership "created" payload: \
@@ -529,8 +523,10 @@ const Memberships = WebexPlugin.extend({
         break;
 
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.LEAVE:
-        const membershipDeletedEventData =
-          this.getMembershipEvent(activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED);
+        const membershipDeletedEventData = this.getMembershipEvent(
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED
+        );
 
         if (membershipDeletedEventData) {
           debug(`membership "deleted" payload: \
@@ -542,8 +538,10 @@ const Memberships = WebexPlugin.extend({
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.ADD_MODERATOR:
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.REMOVE_MODERATOR:
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.HIDE:
-        const membershipUpdatedEventData =
-          this.getMembershipEvent(activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED);
+        const membershipUpdatedEventData = this.getMembershipEvent(
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED
+        );
 
         if (membershipUpdatedEventData) {
           debug(`membership "updated" payload: \
@@ -553,8 +551,10 @@ const Memberships = WebexPlugin.extend({
         break;
 
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.ACKNOWLEDGE:
-        const membershipSeenEventData =
-          this.getMembershipEvent(activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.SEEN);
+        const membershipSeenEventData = this.getMembershipEvent(
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.SEEN
+        );
 
         if (membershipSeenEventData) {
           debug(`membership "updated" payload: \
@@ -581,9 +581,10 @@ const Memberships = WebexPlugin.extend({
   getMembershipEvent(activity, event) {
     try {
       const sdkEvent = cloneDeep(this.eventEnvelope);
-      const cluster = (activity.verb !== SDK_EVENT.INTERNAL.ACTIVITY_VERB.HIDE) ?
-        getHydraClusterString(this.webex, activity.target.url) :
-        getHydraClusterString(this.webex, activity.url);
+      const cluster =
+        activity.verb !== SDK_EVENT.INTERNAL.ACTIVITY_VERB.HIDE
+          ? getHydraClusterString(this.webex, activity.target.url)
+          : getHydraClusterString(this.webex, activity.url);
       let member;
       let space;
 
@@ -594,18 +595,16 @@ const Memberships = WebexPlugin.extend({
         sdkEvent.data.roomId = buildHydraRoomId(activity.target.id, cluster);
         sdkEvent.data.roomType = getHydraRoomType(activity.target.tags);
         sdkEvent.data.isRoomHidden = false; // any activity unhides a space.
-      }
-      else {
+      } else {
         sdkEvent.data.roomId = buildHydraRoomId(activity.object.id, cluster);
         sdkEvent.data.roomType = SDK_EVENT.EXTERNAL.SPACE_TYPE.DIRECT;
         // currently hidden attribute is only set on 1-1
         sdkEvent.data.isRoomHidden = true;
       }
       if (activity.verb !== SDK_EVENT.INTERNAL.ACTIVITY_VERB.ACKNOWLEDGE) {
-        if ((activity.object.roomProperties) && (activity.object.roomProperties.isModerator)) {
+        if (activity.object.roomProperties && activity.object.roomProperties.isModerator) {
           sdkEvent.data.isModerator = true;
-        }
-        else {
+        } else {
           sdkEvent.data.isModerator = false;
         }
       }
@@ -620,38 +619,36 @@ const Memberships = WebexPlugin.extend({
         space = SDK_EVENT.INTERNAL.ACTIVITY_FIELD.TARGET;
         // And the "object" is the message that was last seen
         sdkEvent.data.lastSeenId = buildHydraMessageId(activity.object.id, cluster);
-      }
-      else if (activity.verb === SDK_EVENT.INTERNAL.ACTIVITY_VERB.HIDE) {
+      } else if (activity.verb === SDK_EVENT.INTERNAL.ACTIVITY_VERB.HIDE) {
         // For a hide activity the person is also the "actor"
         member = SDK_EVENT.INTERNAL.ACTIVITY_FIELD.ACTOR;
         // But the space is now the "object"
         space = SDK_EVENT.INTERNAL.ACTIVITY_FIELD.OBJECT;
-      }
-      else {
+      } else {
         // For most memberships events the person is the 'object"
         member = SDK_EVENT.INTERNAL.ACTIVITY_FIELD.OBJECT;
         // and the space is the "target"
         space = SDK_EVENT.INTERNAL.ACTIVITY_FIELD.TARGET;
       }
 
-      sdkEvent.data.id = buildHydraMembershipId(activity[member].entryUUID,
-        activity[space].id, cluster);
+      sdkEvent.data.id = buildHydraMembershipId(
+        activity[member].entryUUID,
+        activity[space].id,
+        cluster
+      );
       sdkEvent.data.personId = buildHydraPersonId(activity[member].entryUUID, cluster);
-      sdkEvent.data.personEmail =
-        activity[member].emailAddress || activity[member].entryEmail;
+      sdkEvent.data.personEmail = activity[member].emailAddress || activity[member].entryEmail;
       sdkEvent.data.personDisplayName = activity[member].displayName;
       sdkEvent.data.personOrgId = buildHydraOrgId(activity[member].orgId, cluster);
 
       return sdkEvent;
-    }
-    catch (e) {
+    } catch (e) {
       this.webex.logger.error(`Unable to generate SDK event from mercury \
 'socket activity for memberships:${event} event: ${e.message}`);
 
       return null;
     }
-  }
-
+  },
 });
 
 export default Memberships;

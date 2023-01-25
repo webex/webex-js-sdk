@@ -8,7 +8,7 @@ import People from './people';
 import config from './config';
 
 registerPlugin('people', People, {
-  config
+  config,
 });
 
 export {default} from './people';

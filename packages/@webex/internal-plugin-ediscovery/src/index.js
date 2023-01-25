@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable */
 
 import '@webex/internal-plugin-encryption';
 import '@webex/internal-plugin-conversation';
@@ -24,7 +25,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'decryptReportRequestArray',
@@ -34,17 +35,21 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'encryptReportRequest',
         direction: 'outbound',
         test(ctx, object) {
-          return Promise.resolve(has(object, 'body.keywords') || has(object, 'body.spaceNames') || has(object, 'body.emails'));
+          return Promise.resolve(
+            has(object, 'body.keywords') ||
+              has(object, 'body.spaceNames') ||
+              has(object, 'body.emails')
+          );
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'decryptReportContent',
@@ -54,7 +59,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'decryptReportContentArray',
@@ -64,7 +69,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'decryptReportContentContainer',
@@ -74,7 +79,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
+        },
       },
       {
         name: 'decryptReportContentContainerArray',
@@ -84,8 +89,8 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         },
         extract(object) {
           return Promise.resolve(object);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
@@ -93,7 +98,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
         direction: 'inbound',
         fn(ctx, object) {
           return Transforms.decryptReportRequest(ctx, object);
-        }
+        },
       },
       {
         name: 'decryptReportRequestArray',
@@ -103,22 +108,24 @@ registerInternalPlugin('ediscovery', EDiscovery, {
             return Promise.resolve();
           }
 
-          return Promise.all(object.body.map((item) => ctx.transform('decryptReportRequest', {body: item})));
-        }
+          return Promise.all(
+            object.body.map((item) => ctx.transform('decryptReportRequest', {body: item}))
+          );
+        },
       },
       {
         name: 'encryptReportRequest',
         direction: 'outbound',
         fn(ctx, object) {
           return Transforms.encryptReportRequest(ctx, object);
-        }
+        },
       },
       {
         name: 'decryptReportContent',
         direction: 'inbound',
         fn(ctx, object, reportId) {
           return Transforms.decryptReportContent(ctx, object, reportId);
-        }
+        },
       },
       {
         name: 'decryptReportContentArray',
@@ -129,15 +136,19 @@ registerInternalPlugin('ediscovery', EDiscovery, {
           }
 
           // Always use the report url as this'll resolve correctly for remote reports
-          return Promise.all(object.body.map((item) => ctx.transform('decryptReportContent', {body: item}, object.options.uri)));
-        }
+          return Promise.all(
+            object.body.map((item) =>
+              ctx.transform('decryptReportContent', {body: item}, object.options.uri)
+            )
+          );
+        },
       },
       {
         name: 'decryptReportContentContainer',
         direction: 'inbound',
         fn(ctx, object) {
           return Transforms.decryptReportContentContainer(ctx, object);
-        }
+        },
       },
       {
         name: 'decryptReportContentContainerArray',
@@ -147,11 +158,13 @@ registerInternalPlugin('ediscovery', EDiscovery, {
             return Promise.resolve();
           }
 
-          return Promise.all(object.body.map((item) => ctx.transform('decryptReportContentContainer', {body: item})));
-        }
-      }
-    ]
-  }
+          return Promise.all(
+            object.body.map((item) => ctx.transform('decryptReportContentContainer', {body: item}))
+          );
+        },
+      },
+    ],
+  },
 });
 
 export default EDiscovery;

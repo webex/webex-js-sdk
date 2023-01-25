@@ -11,14 +11,15 @@ describe('plugin-device', () => {
     let user;
     let webex;
 
-    before('create users', () => testUsers.create({count: 1})
-      .then(([createdUser]) => {
+    before('create users', () =>
+      testUsers.create({count: 1}).then(([createdUser]) => {
         user = createdUser;
-      }));
+      })
+    );
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({
-        credentials: user.token
+        credentials: user.token,
       });
 
       device = webex.internal.device;
@@ -32,11 +33,10 @@ describe('plugin-device', () => {
       });
 
       it('unregisters the device', () =>
-        webex.logout({noRedirect: true})
-          .then(() => {
-            assert.called(device.unregister);
-            assert.isFalse(device.registered);
-          }));
+        webex.logout({noRedirect: true}).then(() => {
+          assert.called(device.unregister);
+          assert.isFalse(device.registered);
+        }));
     });
   });
 });

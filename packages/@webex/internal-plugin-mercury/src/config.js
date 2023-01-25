@@ -29,6 +29,6 @@ export default {
      * discarding it
      * @type {[type]}
      */
-    forceCloseDelay: process.env.MERCURY_FORCE_CLOSE_DELAY || 2000
-  }
+    forceCloseDelay: process.env.MERCURY_FORCE_CLOSE_DELAY || 2000,
+  },
 };

@@ -29,9 +29,9 @@ function setHandler(scope, map, type, fn) {
 function noop() {}
 
 /**
-  * Mock of WebSocket Class
-  * @returns {MockWebSocket}
-  */
+ * Mock of WebSocket Class
+ * @returns {MockWebSocket}
+ */
 export default class MockWebSocket extends EventEmitter {
   constructor(url, protocol = [], options = {}) {
     super();
@@ -86,7 +86,7 @@ export default class MockWebSocket extends EventEmitter {
     this.readyState = 4;
     this.onclose({
       code,
-      reason
+      reason,
     });
   }
 
@@ -98,9 +98,9 @@ export default class MockWebSocket extends EventEmitter {
         data: JSON.stringify({
           id: 'mockid',
           data: {
-            eventType: 'mercury.buffer_state'
-          }
-        })
+            eventType: 'mercury.buffer_state',
+          },
+        }),
       });
     });
   }
@@ -108,8 +108,7 @@ export default class MockWebSocket extends EventEmitter {
   send(obj) {
     try {
       obj = JSON.parse(obj);
-    }
-    catch (e) {
+    } catch (e) {
       // ignore
     }
     if (obj.type === 'ping') {
@@ -118,8 +117,8 @@ export default class MockWebSocket extends EventEmitter {
           data: JSON.stringify({
             id: obj.id,
             type: 'pong',
-            sequenceNumber: this.sequenceNumber
-          })
+            sequenceNumber: this.sequenceNumber,
+          }),
         });
       });
     }

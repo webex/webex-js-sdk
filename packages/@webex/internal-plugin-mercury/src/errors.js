@@ -17,11 +17,11 @@ export class ConnectionError extends Exception {
   parse(event = {}) {
     Object.defineProperties(this, {
       code: {
-        value: event.code
+        value: event.code,
       },
       reason: {
-        value: event.reason
-      }
+        value: event.reason,
+      },
     });
 
     return event.reason;
@@ -32,14 +32,16 @@ export class ConnectionError extends Exception {
  * thrown for CloseCode 4400
  */
 export class UnknownResponse extends ConnectionError {
-  static defaultMessage = 'UnknownResponse is produced by IE when we receive a 4XXX. You probably want to treat this like a NotFound';
+  static defaultMessage =
+    'UnknownResponse is produced by IE when we receive a 4XXX. You probably want to treat this like a NotFound';
 }
 
 /**
  * thrown for CloseCode 4400
  */
 export class BadRequest extends ConnectionError {
-  static defaultMessage = 'BadRequest usually implies an attempt to use service account credentials';
+  static defaultMessage =
+    'BadRequest usually implies an attempt to use service account credentials';
 }
 
 /**

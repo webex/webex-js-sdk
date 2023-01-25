@@ -11,9 +11,13 @@ describe('http-core', () => {
       let interceptor;
 
       beforeEach(() => {
-        interceptor = Reflect.apply(HttpStatusInterceptor.create, {
-          sessionId: 'mock-webex_uuid'
-        }, []);
+        interceptor = Reflect.apply(
+          HttpStatusInterceptor.create,
+          {
+            sessionId: 'mock-webex_uuid',
+          },
+          []
+        );
       });
 
       describe('#onResponse', () => {
@@ -21,21 +25,20 @@ describe('http-core', () => {
           const response = {
             statusCode: 404,
             body: {
-              errorCode: 2000002
-            }
+              errorCode: 2000002,
+            },
           };
 
-          return interceptor.onResponse({}, response)
-            .then((result) => {
-              assert.equal(result, response);
-            });
+          return interceptor.onResponse({}, response).then((result) => {
+            assert.equal(result, response);
+          });
         });
         it('rejects when locus redirect is not intended', () => {
           const response = {
             statusCode: 404,
             body: {
-              errorCode: 2000001
-            }
+              errorCode: 2000001,
+            },
           };
 
           assert.isRejected(interceptor.onResponse({}, response));

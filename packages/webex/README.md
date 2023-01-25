@@ -1,11 +1,11 @@
 # Webex
 
-
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
 # The Cisco Webex JS SDK
 
 > Upgrading from CiscoSpark to Webex?
+>
 > - [Follow this short guide.](../../../UPGRADING.md)
 > - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/the-new-cisco-webex-for-developers-is-here---what-developers-need-to-know-from-our-rebrand)
 
@@ -13,8 +13,8 @@
 - [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
   - [Install](#install)
   - [Usage](#usage)
-      - [_A note on browser usage_](#a-note-on-browser-usage)
-      - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
+    - [_A note on browser usage_](#a-note-on-browser-usage)
+    - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [API](#api)
   - [Maintainers](#maintainers)
   - [Contribute](#contribute)

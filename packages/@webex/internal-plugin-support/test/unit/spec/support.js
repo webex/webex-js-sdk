@@ -16,8 +16,8 @@ describe('plugin-support', function () {
   beforeEach(() => {
     webex = new MockWebex({
       children: {
-        support: Support
-      }
+        support: Support,
+      },
     });
 
     webex.internal.device.userId = 'user-abc-123';
@@ -29,18 +29,20 @@ describe('plugin-support', function () {
       const result = webex.internal.support._constructFileMetadata({});
 
       assert.equal(result.length, 3);
-      assert.deepEqual(result, [{
-        key: 'trackingId',
-        value: 'mock-webex_88888888-4444-4444-4444-aaaaaaaaaaaa'
-      },
-      {
-        key: 'userId',
-        value: webex.internal.device.userId
-      },
-      {
-        key: 'orgId',
-        value: webex.internal.device.orgId
-      }]);
+      assert.deepEqual(result, [
+        {
+          key: 'trackingId',
+          value: 'mock-webex_88888888-4444-4444-4444-aaaaaaaaaaaa',
+        },
+        {
+          key: 'userId',
+          value: webex.internal.device.userId,
+        },
+        {
+          key: 'orgId',
+          value: webex.internal.device.orgId,
+        },
+      ]);
     });
 
     it('does not send sessionId key if sessionId is not defined', () => {
@@ -65,6 +67,14 @@ describe('plugin-support', function () {
       const result = webex.internal.support._constructFileMetadata({});
 
       assert.isTrue(result.filter((r) => r.key === 'orgId').length === 0);
+    });
+
+    it('sends surveySessionId if specified in metadata', () => {
+      const surveySessionId = 'survey-session-id';
+      const result = webex.internal.support._constructFileMetadata({surveySessionId});
+      const found = result.find((attr) => attr.key === 'surveySessionId');
+
+      assert.equal(found?.value, surveySessionId);
     });
   });
 

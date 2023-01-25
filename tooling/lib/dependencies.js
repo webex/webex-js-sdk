@@ -13,7 +13,6 @@ const {read} = require('../util/package');
 
 const path = require('path');
 
-
 const _list = require('../lib/package').list;
 
 /**
@@ -38,15 +37,12 @@ exports.list = async function list(packageName, {includeTransitive = true, local
   }
 
   if (localOnly) {
-    return Array
-      .from(deps)
+    return Array.from(deps)
       .filter((d) => packages.has(d))
       .sort();
   }
 
-  return Array
-    .from(deps)
-    .sort();
+  return Array.from(deps).sort();
 };
 
 const tree = new Map();
@@ -56,10 +52,13 @@ const tree = new Map();
  */
 async function buildLocalDepTree() {
   for (const packageName of await _list()) {
-    tree.set(packageName, await exports.list(packageName, {
-      includeTransitive: false,
-      localOnly: true
-    }));
+    tree.set(
+      packageName,
+      await exports.list(packageName, {
+        includeTransitive: false,
+        localOnly: true,
+      })
+    );
   }
 }
 
@@ -131,8 +130,7 @@ exports.listVersions = async function listVersions(packageName, options) {
       try {
         // eslint-disable-next-line global-require
         acc[dep] = require(path.resolve(process.cwd(), `./packages/${dep}/package.json`)).version;
-      }
-      catch (err) {
+      } catch (err) {
         // eslint-disable-next-line no-console
         debug(err);
         throw new Error(`Failed to determine version for ${dep}, Is it missing from package.json?`);
@@ -201,8 +199,7 @@ function listEntryPoints(pkg) {
 
   debug(paths);
 
-  return paths
-    .map((p) => path.resolve('packages', pkg.name, p));
+  return paths.map((p) => path.resolve('packages', pkg.name, p));
 }
 
 const visited = new Map();
@@ -220,26 +217,27 @@ function walk(entrypoint) {
       // eslint-disable-next-line no-sync
       const requires = detective(fs.readFileSync(entrypoint));
 
-      visited.set(entrypoint, requires.reduce((acc, dep) => {
-        debug(`found ${dep}`);
-        if (dep.startsWith('.')) {
-          debug(`${dep} is relative, descending`);
-          const next = walk(path.resolve(path.dirname(entrypoint), dep));
+      visited.set(
+        entrypoint,
+        requires.reduce((acc, dep) => {
+          debug(`found ${dep}`);
+          if (dep.startsWith('.')) {
+            debug(`${dep} is relative, descending`);
+            const next = walk(path.resolve(path.dirname(entrypoint), dep));
 
-          acc = new Set([...acc, ...next]);
-        }
-        else if (!builtins.includes(dep)) {
-          debug(`found dependency ${dep}`);
-          acc.add(requireToPackage(dep));
-        }
+            acc = new Set([...acc, ...next]);
+          } else if (!builtins.includes(dep)) {
+            debug(`found dependency ${dep}`);
+            acc.add(requireToPackage(dep));
+          }
 
-        return acc;
-      }, new Set()));
+          return acc;
+        }, new Set())
+      );
     }
 
     return visited.get(entrypoint);
-  }
-  catch (err) {
+  } catch (err) {
     if (err.code === 'EISDIR') {
       return walk(path.resolve(entrypoint, 'index.js'));
     }

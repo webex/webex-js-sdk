@@ -17,13 +17,13 @@ browserOnly(describe)('plugin-authorization-browser', () => {
         const userId = uuid.v4();
         const displayName = `test-${userId}`;
 
-        return createUser({displayName, userId})
-          .then(({jwt}) => {
-            const webex = new WebexCore();
+        return createUser({displayName, userId}).then(({jwt}) => {
+          const webex = new WebexCore();
 
-            return webex.authorization.requestAccessTokenFromJwt({jwt})
-              .then(() => assert.isTrue(webex.canAuthorize));
-          });
+          return webex.authorization
+            .requestAccessTokenFromJwt({jwt})
+            .then(() => assert.isTrue(webex.canAuthorize));
+        });
       });
 
       it('should call services#initServiceCatalogs()', () => {
@@ -39,37 +39,36 @@ browserOnly(describe)('plugin-authorization-browser', () => {
       });
     });
 
-    describe.skip('\'#refresh', () => {
+    describe.skip("'#refresh", () => {
       describe('when used with an appid access token', () => {
         it('refreshes the access token', () => {
           const userId = uuid.v4();
           const displayName = `test-${userId}`;
 
-          return createUser({displayName, userId})
-            .then(({jwt}) => {
-              const webex = new WebexCore({
-                config: {
-                  credentials: {
-                    jwtRefreshCallback() {
-                      return createUser({displayName, userId})
-                        .then(({jwt}) => jwt);
-                    }
-                  }
-                }
-              });
-              let token;
-
-              return webex.authorization.requestAccessTokenFromJwt({jwt})
-                .then(() => {
-                  token = webex.credentials.supertoken.access_token;
-                  assert.isTrue(webex.canAuthorize);
-                })
-                .then(() => webex.refresh())
-                .then(() => {
-                  assert.isTrue(webex.canAuthorize);
-                  assert.notEqual(webex.credentials.supertoken.access_token, token);
-                });
+          return createUser({displayName, userId}).then(({jwt}) => {
+            const webex = new WebexCore({
+              config: {
+                credentials: {
+                  jwtRefreshCallback() {
+                    return createUser({displayName, userId}).then(({jwt}) => jwt);
+                  },
+                },
+              },
             });
+            let token;
+
+            return webex.authorization
+              .requestAccessTokenFromJwt({jwt})
+              .then(() => {
+                token = webex.credentials.supertoken.access_token;
+                assert.isTrue(webex.canAuthorize);
+              })
+              .then(() => webex.refresh())
+              .then(() => {
+                assert.isTrue(webex.canAuthorize);
+                assert.notEqual(webex.credentials.supertoken.access_token, token);
+              });
+          });
         });
       });
     });

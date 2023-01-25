@@ -3,11 +3,7 @@
  */
 
 import {has} from 'lodash';
-import {
-  cappedDebounce,
-  Defer,
-  tap
-} from '@webex/common';
+import {cappedDebounce, Defer, tap} from '@webex/common';
 
 import WebexPlugin from './webex-plugin';
 import WebexHttpError from './webex-http-error';
@@ -22,14 +18,14 @@ const Batcher = WebexPlugin.extend({
       type: 'object',
       default() {
         return new Map();
-      }
+      },
     },
     queue: {
       type: 'array',
       default() {
         return [];
-      }
-    }
+      },
+    },
   },
 
   derived: {
@@ -37,10 +33,10 @@ const Batcher = WebexPlugin.extend({
       fn() {
         return cappedDebounce((...args) => this.executeQueue(...args), this.config.batcherWait, {
           maxCalls: this.config.batcherMaxCalls,
-          maxWait: this.config.batcherMaxWait
+          maxWait: this.config.batcherMaxWait,
         });
-      }
-    }
+      },
+    },
   },
 
   /**
@@ -113,25 +109,30 @@ const Batcher = WebexPlugin.extend({
     const queue = this.queue.splice(0, this.config.batcherMaxCalls);
 
     return new Promise((resolve) => {
-      resolve(this.prepareRequest(queue)
-        .then((payload) => this.submitHttpRequest(payload)
-          .then((res) => this.handleHttpSuccess(res)))
-        .catch((reason) => {
-          if (reason instanceof WebexHttpError) {
-            return this.handleHttpError(reason);
-          }
+      resolve(
+        this.prepareRequest(queue)
+          .then((payload) =>
+            this.submitHttpRequest(payload).then((res) => this.handleHttpSuccess(res))
+          )
+          .catch((reason) => {
+            if (reason instanceof WebexHttpError) {
+              return this.handleHttpError(reason);
+            }
 
-          return Promise.all(queue.map((item) => this.getDeferredForRequest(item)
-            .then((defer) => {
-              defer.reject(reason);
-            })));
-        }));
-    })
-      .catch((reason) => {
-        this.logger.error(process.env.NODE_ENV === 'production' ? reason : reason.stack);
+            return Promise.all(
+              queue.map((item) =>
+                this.getDeferredForRequest(item).then((defer) => {
+                  defer.reject(reason);
+                })
+              )
+            );
+          })
+      );
+    }).catch((reason) => {
+      this.logger.error(process.env.NODE_ENV === 'production' ? reason : reason.stack);
 
-        return Promise.reject(reason);
-      });
+      return Promise.reject(reason);
+    });
   },
 
   /**
@@ -162,7 +163,9 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    return Promise.all((res.body && res.body.items || res.body).map((item) => this.acceptItem(item)));
+    return Promise.all(
+      ((res.body && res.body.items) || res.body).map((item) => this.acceptItem(item))
+    );
   },
 
   /**
@@ -176,10 +179,13 @@ const Batcher = WebexPlugin.extend({
   handleHttpError(reason) {
     if (reason instanceof WebexHttpError) {
       if (has(reason, 'options.body.map')) {
-        return Promise.all(reason.options.body.map((item) => this.getDeferredForRequest(item)
-          .then((defer) => {
-            defer.reject(reason);
-          })));
+        return Promise.all(
+          reason.options.body.map((item) =>
+            this.getDeferredForRequest(item).then((defer) => {
+              defer.reject(reason);
+            })
+          )
+        );
       }
     }
     this.logger.error('http error handler called without a WebexHttpError object', reason);
@@ -193,14 +199,13 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<undefined>}
    */
   acceptItem(item) {
-    return this.didItemFail(item)
-      .then((didFail) => {
-        if (didFail) {
-          return this.handleItemFailure(item);
-        }
+    return this.didItemFail(item).then((didFail) => {
+      if (didFail) {
+        return this.handleItemFailure(item);
+      }
 
-        return this.handleItemSuccess(item);
-      });
+      return this.handleItemSuccess(item);
+    });
   },
 
   /**
@@ -221,10 +226,9 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<undefined>}
    */
   handleItemFailure(item) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.reject(item);
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.reject(item);
+    });
   },
 
   /**
@@ -234,10 +238,9 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<undefined>}
    */
   handleItemSuccess(item) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.resolve(item);
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.resolve(item);
+    });
   },
 
   /**
@@ -246,17 +249,16 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<Defer>}
    */
   getDeferredForRequest(item) {
-    return this.fingerprintRequest(item)
-      .then((idx) => {
-        const defer = this.deferreds.get(idx);
+    return this.fingerprintRequest(item).then((idx) => {
+      const defer = this.deferreds.get(idx);
 
-        /* istanbul ignore if */
-        if (!defer) {
-          throw new Error('Could not find pending request for received response');
-        }
+      /* istanbul ignore if */
+      if (!defer) {
+        throw new Error('Could not find pending request for received response');
+      }
 
-        return defer;
-      });
+      return defer;
+    });
   },
 
   /**
@@ -265,17 +267,16 @@ const Batcher = WebexPlugin.extend({
    * @returns {Promise<Defer>}
    */
   getDeferredForResponse(item) {
-    return this.fingerprintResponse(item)
-      .then((idx) => {
-        const defer = this.deferreds.get(idx);
+    return this.fingerprintResponse(item).then((idx) => {
+      const defer = this.deferreds.get(idx);
 
-        /* istanbul ignore if */
-        if (!defer) {
-          throw new Error('Could not find pending request for received response');
-        }
+      /* istanbul ignore if */
+      if (!defer) {
+        throw new Error('Could not find pending request for received response');
+      }
 
-        return defer;
-      });
+      return defer;
+    });
   },
 
   /**
@@ -300,7 +301,7 @@ const Batcher = WebexPlugin.extend({
   // eslint-disable-next-line no-unused-vars
   fingerprintResponse(item) {
     throw new Error('fingerprintResponse() must be implemented');
-  }
+  },
 });
 
 export default Batcher;

@@ -19,11 +19,12 @@ describe('webex', function () {
     nodeOnly(describe)('when WEBEX_ACCESS_TOKEN is set', () => {
       let initialEnvToken;
 
-      before(() => testUsers.create({count: 1})
-        .then(([user]) => {
+      before(() =>
+        testUsers.create({count: 1}).then(([user]) => {
           initialEnvToken = process.env.WEBEX_ACCESS_TOKEN;
           process.env.WEBEX_ACCESS_TOKEN = user.token.access_token;
-        }));
+        })
+      );
 
       after(() => {
         process.env.WEBEX_ACCESS_TOKEN = initialEnvToken;
@@ -35,8 +36,9 @@ describe('webex', function () {
 
         assert.isTrue(webex.canAuthorize);
 
-        return new Promise((resolve) => webex.once('ready', resolve))
-          .then(() => assert.isTrue(webex.canAuthorize));
+        return new Promise((resolve) => webex.once('ready', resolve)).then(() =>
+          assert.isTrue(webex.canAuthorize)
+        );
       });
     });
   });

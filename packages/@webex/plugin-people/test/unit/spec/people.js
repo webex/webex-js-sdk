@@ -13,13 +13,14 @@ describe('plugin-people', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          people: People
-        }
+          people: People,
+        },
       });
     });
 
     describe('#get()', () => {
-      it('requires a person parameter', () => assert.isRejected(webex.people.get(), /A person with an id is required/));
+      it('requires a person parameter', () =>
+        assert.isRejected(webex.people.get(), /A person with an id is required/));
     });
   });
 });
