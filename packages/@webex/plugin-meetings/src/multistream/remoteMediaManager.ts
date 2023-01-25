@@ -1,7 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import {cloneDeep, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -434,7 +434,7 @@ export class RemoteMediaManager extends EventsScope {
       // eslint-disable-next-line no-await-in-loop
       this.slots.video.unused.push(
         // eslint-disable-next-line no-await-in-loop
-        await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
+        await this.receiveSlotManager.allocateSlot(MediaType.VideoMain)
       );
     }
   }
@@ -478,7 +478,7 @@ export class RemoteMediaManager extends EventsScope {
     // create the audio receive slots
     for (let i = 0; i < this.config.audio.numOfActiveSpeakerStreams; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const slot = await this.receiveSlotManager.allocateSlot(MC.MediaType.AudioMain);
+      const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
 
       this.slots.audio.push(slot);
     }
@@ -603,7 +603,7 @@ export class RemoteMediaManager extends EventsScope {
         // eslint-disable-next-line no-await-in-loop
         this.slots.video.unused.push(
           // eslint-disable-next-line no-await-in-loop
-          await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain)
+          await this.receiveSlotManager.allocateSlot(MediaType.VideoMain)
         );
         numSlotsToCreate -= 1;
       }
@@ -781,7 +781,7 @@ export class RemoteMediaManager extends EventsScope {
 
     this.currentLayout.memberVideoPanes.push(newPane);
 
-    const receiveSlot = await this.receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const receiveSlot = await this.receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     this.slots.video.receiverSelected.push(receiveSlot);
 

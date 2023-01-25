@@ -1,5 +1,12 @@
 /* eslint-disable require-jsdoc */
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {
+  MediaRequest as WcmeMediaRequest,
+  Policy,
+  ActiveSpeakerInfo,
+  ReceiverSelectedInfo,
+  CodecInfo as WcmeCodecInfo,
+  H264Codec,
+} from '@webex/internal-media-core';
 import {cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -53,8 +60,7 @@ type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
 
-// @ts-ignore
-type SendMediaRequestsCallback = (mediaRequests: MC.MediaRequest[]) => void;
+type SendMediaRequestsCallback = (mediaRequests: WcmeMediaRequest[]) => void;
 
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
@@ -149,8 +155,7 @@ export class MediaRequestManager {
   }
 
   private sendRequests() {
-    // @ts-ignore
-    const wcmeMediaRequests: MC.MediaRequest[] = [];
+    const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
     const clientRequests = this.getDegradedClientRequests();
     const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
@@ -158,24 +163,24 @@ export class MediaRequestManager {
     // map all the client media requests to wcme media requests
     Object.values(clientRequests).forEach((mr) => {
       wcmeMediaRequests.push(
-        new MC.MediaRequest(
+        new WcmeMediaRequest(
           mr.policyInfo.policy === 'active-speaker'
-            ? MC.Policy.ActiveSpeaker
-            : MC.Policy.ReceiverSelected,
+            ? Policy.ActiveSpeaker
+            : Policy.ReceiverSelected,
           mr.policyInfo.policy === 'active-speaker'
-            ? new MC.ActiveSpeakerInfo(
+            ? new ActiveSpeakerInfo(
                 mr.policyInfo.priority,
                 mr.policyInfo.crossPriorityDuplication,
                 mr.policyInfo.crossPolicyDuplication,
                 mr.policyInfo.preferLiveVideo
               )
-            : new MC.ReceiverSelectedInfo(mr.policyInfo.csi),
+            : new ReceiverSelectedInfo(mr.policyInfo.csi),
           mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
           maxPayloadBitsPerSecond,
           mr.codecInfo && [
-            new MC.CodecInfo(
+            new WcmeCodecInfo(
               0x80,
-              new MC.H264Codec(
+              new H264Codec(
                 mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
                 mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,

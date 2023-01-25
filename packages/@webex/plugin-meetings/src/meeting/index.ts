@@ -2,7 +2,15 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {Media as WebRTCMedia, MediaConnection as MC} from '@webex/internal-media-core';
+import {
+  ConnectionState,
+  Errors,
+  ErrorType,
+  Event,
+  Media as WebRTCMedia,
+  MediaType,
+  RemoteTrackType,
+} from '@webex/internal-media-core';
 
 import {
   MeetingNotActiveError,
@@ -30,6 +38,7 @@ import Members from '../members/index';
 import MeetingUtil from './util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
+import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import ReconnectionError from '../common/errors/reconnection';
@@ -85,11 +94,17 @@ import {
   Event as RemoteMediaManagerEvent,
 } from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
-import {SkinTones, Reactions} from '../reactions/reactions';
-import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
+import {
+  Reaction,
+  ReactionType,
+  SkinToneType,
+  ProcessedReaction,
+  RelayEvent,
+} from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
 
 import InMeetingActions from './in-meeting-actions';
+import {REACTION_RELAY_TYPES} from '../reactions/constants';
 
 const {isBrowser} = BrowserDetection();
 
@@ -602,10 +617,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
           return;
         }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(
-          MC.MediaType.AudioMain,
-          mediaRequests
-        );
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.AudioMain, mediaRequests);
       }),
       // @ts-ignore - config coming from registerPlugin
       video: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
@@ -616,10 +628,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
           return;
         }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(
-          MC.MediaType.VideoMain,
-          mediaRequests
-        );
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.VideoMain, mediaRequests);
       }),
     };
     /**
@@ -3677,6 +3686,20 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Check if the meeting supports the Reactions
+   * @returns {boolean}
+   */
+  isReactionsSupported() {
+    if (this.locusInfo?.controls?.reactions.enabled) {
+      return true;
+    }
+
+    LoggerProxy.logger.error('Meeting:index#isReactionsSupported --> Reactions is not supported');
+
+    return false;
+  }
+
+  /**
    * Monitor the Low-Latency Mercury (LLM) web socket connection on `onError` and `onClose` states
    * @private
    * @returns {void}
@@ -3776,6 +3799,44 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     }
   }
+
+  /**
+   * Callback called when a relay event is received from meeting LLM Connection
+   * @param {RelayEvent} e Event object coming from LLM Connection
+   * @private
+   * @returns {void}
+   */
+  private processRelayEvent = (e: RelayEvent): void => {
+    switch (e.data.relayType) {
+      case REACTION_RELAY_TYPES.REACTION:
+        if (
+          // @ts-ignore - config coming from registerPlugin
+          (this.config.receiveReactions || options.receiveReactions) &&
+          this.isReactionsSupported()
+        ) {
+          const {name} = this.members.membersCollection.get(e.data.sender.participantId);
+          const processedReaction: ProcessedReaction = {
+            reaction: e.data.reaction,
+            sender: {
+              id: e.data.sender.participantId,
+              name,
+            },
+          };
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'join',
+            },
+            EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+            processedReaction
+          );
+        }
+        break;
+      default:
+        break;
+    }
+  };
 
   /**
    * stop recieving Transcription by closing
@@ -3953,6 +4014,9 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+          LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
         return join;
@@ -4032,6 +4096,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       // @ts-ignore - Fix type
       await this.webex.internal.llm.disconnectLLM();
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
 
     if (!isJoined) {
@@ -4494,7 +4560,7 @@ export default class Meeting extends StatelessWebexPlugin {
       Metrics.sendBehavioralMetric(metricName, data, metadata);
     };
 
-    if (error instanceof MC.Errors.SdpOfferCreationError) {
+    if (error instanceof Errors.SdpOfferCreationError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
 
       Metrics.postEvent({
@@ -4508,8 +4574,8 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       });
     } else if (
-      error instanceof MC.Errors.SdpOfferHandlingError ||
-      error instanceof MC.Errors.SdpAnswerHandlingError
+      error instanceof Errors.SdpOfferHandlingError ||
+      error instanceof Errors.SdpAnswerHandlingError
     ) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
 
@@ -4523,8 +4589,8 @@ export default class Meeting extends StatelessWebexPlugin {
           ],
         },
       });
-    } else if (error instanceof MC.Errors.SdpError) {
-      // this covers also the case of MC.Errors.IceGatheringError which extends MC.Errors.SdpError
+    } else if (error instanceof Errors.SdpError) {
+      // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
       sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.id);
 
       Metrics.postEvent({
@@ -4541,19 +4607,19 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   setupMediaConnectionListeners = () => {
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_STARTED, () => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_STARTED, () => {
       this.isRoapInProgress = true;
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_DONE, () => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_DONE, () => {
       this.mediaNegotiatedEvent();
       this.isRoapInProgress = false;
       this.processNextQueuedMediaUpdate();
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_FAILURE, this.handleRoapFailure);
+    this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_FAILURE, this.handleRoapFailure);
 
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_MESSAGE_TO_SEND, (event) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_MESSAGE_TO_SEND, (event) => {
       const LOG_HEADER = 'Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND -->';
 
       switch (event.roapMessage.messageType) {
@@ -4635,8 +4701,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
         case 'ERROR':
           if (
-            event.roapMessage.errorType === MC.ErrorType.CONFLICT ||
-            event.roapMessage.errorType === MC.ErrorType.DOUBLECONFLICT
+            event.roapMessage.errorType === ErrorType.CONFLICT ||
+            event.roapMessage.errorType === ErrorType.DOUBLECONFLICT
           ) {
             Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_GLARE_CONDITION, {
               correlation_id: this.correlationId,
@@ -4668,7 +4734,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     // eslint-disable-next-line no-param-reassign
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.REMOTE_TRACK_ADDED, (event) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.REMOTE_TRACK_ADDED, (event) => {
       LoggerProxy.logger.log(
         `Meeting:index#setupMediaConnectionListeners --> REMOTE_TRACK_ADDED event received for webrtcMediaConnection: ${JSON.stringify(
           event
@@ -4681,15 +4747,15 @@ export default class Meeting extends StatelessWebexPlugin {
       let eventType;
 
       switch (event.type) {
-        case MC.RemoteTrackType.AUDIO:
+        case RemoteTrackType.AUDIO:
           eventType = EVENT_TYPES.REMOTE_AUDIO;
           this.mediaProperties.setRemoteAudioTrack(event.track);
           break;
-        case MC.RemoteTrackType.VIDEO:
+        case RemoteTrackType.VIDEO:
           eventType = EVENT_TYPES.REMOTE_VIDEO;
           this.mediaProperties.setRemoteVideoTrack(event.track);
           break;
-        case MC.RemoteTrackType.SCREENSHARE_VIDEO:
+        case RemoteTrackType.SCREENSHARE_VIDEO:
           if (event.track) {
             eventType = EVENT_TYPES.REMOTE_SHARE;
             this.mediaProperties.setRemoteShare(event.track);
@@ -4722,7 +4788,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.CONNECTION_STATE_CHANGED, (event) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
       const connectionFailed = () => {
         // we know the media connection failed and browser will not attempt to recover it any more
         // so reset the timer as it's not needed anymore, we want to reconnect immediately
@@ -4755,10 +4821,10 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#setupMediaConnectionListeners --> connection state changed to ${event.state}`
       );
       switch (event.state) {
-        case MC.ConnectionState.Connecting:
+        case ConnectionState.Connecting:
           Metrics.postEvent({event: eventType.ICE_START, meeting: this});
           break;
-        case MC.ConnectionState.Connected:
+        case ConnectionState.Connected:
           Metrics.postEvent({event: eventType.ICE_END, meeting: this});
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
@@ -4767,7 +4833,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
           break;
-        case MC.ConnectionState.Disconnected:
+        case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
           this.reconnectionManager.waitForIceReconnect().catch(() => {
             LoggerProxy.logger.info(
@@ -4777,7 +4843,7 @@ export default class Meeting extends StatelessWebexPlugin {
             connectionFailed();
           });
           break;
-        case MC.ConnectionState.Failed:
+        case ConnectionState.Failed:
           connectionFailed();
           break;
         default:
@@ -4785,7 +4851,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ACTIVE_SPEAKERS_CHANGED, (msg) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.ACTIVE_SPEAKERS_CHANGED, (msg) => {
       Trigger.trigger(
         this,
         {
@@ -4804,7 +4870,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.mediaProperties.webrtcMediaConnection.on(
-      MC.Event.VIDEO_SOURCES_COUNT_CHANGED,
+      Event.VIDEO_SOURCES_COUNT_CHANGED,
       (numTotalSources, numLiveSources) => {
         Trigger.trigger(
           this,
@@ -4822,7 +4888,7 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     this.mediaProperties.webrtcMediaConnection.on(
-      MC.Event.AUDIO_SOURCES_COUNT_CHANGED,
+      Event.AUDIO_SOURCES_COUNT_CHANGED,
       (numTotalSources, numLiveSources) => {
         Trigger.trigger(
           this,
@@ -5183,7 +5249,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this
           );
 
-          if (error instanceof MC.Errors.SdpError) {
+          if (error instanceof Errors.SdpError) {
             this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
           }
 

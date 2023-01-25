@@ -47,6 +47,7 @@ describe('TurnDiscovery', () => {
       }),
       updateMediaConnections: sinon.stub(),
       webex: {meetings: {reachability: {isAnyClusterReachable: () => false}}},
+      isMultistream: false
     };
   });
 
@@ -75,6 +76,7 @@ describe('TurnDiscovery', () => {
       audioMuted: testMeeting.isAudioMuted(),
       videoMuted: testMeeting.isVideoMuted(),
       meetingId: testMeeting.id,
+      preferTranscoding: !testMeeting.isMultistream
     });
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {
@@ -97,39 +99,44 @@ describe('TurnDiscovery', () => {
   };
 
   describe('doTurnDiscovery', () => {
-    it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK', async () => {
-      const td = new TurnDiscovery(mockRoapRequest);
+    [false, true].forEach(function (enabledMultistream ) {
+      it('sends TURN_DISCOVERY_REQUEST'+  (enabledMultistream ? ' when enable Multistream':'') + ', waits for response and sends OK', async () => {
+        testMeeting.isMultistream = enabledMultistream;
 
-      const result = td.doTurnDiscovery(testMeeting, false);
+        const td = new TurnDiscovery(mockRoapRequest);
 
-      // check that TURN_DISCOVERY_REQUEST was sent
-      await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-      // @ts-ignore
-      mockRoapRequest.sendRoap.resetHistory();
+        const result = td.doTurnDiscovery(testMeeting, false);
 
-      // simulate the response
-      td.handleTurnDiscoveryResponse({
-        headers: [
-          `x-cisco-turn-url=${FAKE_TURN_URL}`,
-          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
-          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
-        ],
+        // check that TURN_DISCOVERY_REQUEST was sent
+        await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+
+        // @ts-ignore
+        mockRoapRequest.sendRoap.resetHistory();
+
+        // simulate the response
+        td.handleTurnDiscoveryResponse({
+          headers: [
+            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+            `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+          ]
+        });
+
+        await testUtils.flushPromises();
+
+        // check that we've sent OK
+        await checkRoapMessageSent('OK', 0);
+
+        const {turnServerInfo, turnDiscoverySkippedReason} = await result;
+
+        assert.deepEqual(turnServerInfo, {
+          url: FAKE_TURN_URL,
+          username: FAKE_TURN_USERNAME,
+          password: FAKE_TURN_PASSWORD
+        });
+
+        assert.isUndefined(turnDiscoverySkippedReason);
       });
-
-      await testUtils.flushPromises();
-
-      // check that we've sent OK
-      await checkRoapMessageSent('OK', 0);
-
-      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
-
-      assert.deepEqual(turnServerInfo, {
-        url: FAKE_TURN_URL,
-        username: FAKE_TURN_USERNAME,
-        password: FAKE_TURN_PASSWORD,
-      });
-
-      assert.isUndefined(turnDiscoverySkippedReason);
     });
 
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
