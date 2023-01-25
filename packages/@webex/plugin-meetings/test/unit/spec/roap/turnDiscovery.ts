@@ -46,7 +46,7 @@ describe('TurnDiscovery', () => {
         testMeeting.roapSeq = newSeq;
       }),
       updateMediaConnections: sinon.stub(),
-      webex: {meetings: {reachability: {isAnyClusterReachable: () => false}}},
+      webex: {meetings: {reachability: {isAnyClusterReachable: () => Promise.resolve(false)}}},
       isMultistream: false
     };
   });
@@ -244,7 +244,7 @@ describe('TurnDiscovery', () => {
 
     it('resolves with undefined when cluster is reachable', async () => {
       const prev = testMeeting.webex.meetings.reachability.isAnyClusterReachable;
-      testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => true;
+      testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => Promise.resolve(true);
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
       const {turnServerInfo, turnDiscoverySkippedReason} = result;
@@ -275,6 +275,8 @@ describe('TurnDiscovery', () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
+      await testUtils.flushPromises();
+
       // simulate the response without the password
       td.handleTurnDiscoveryResponse({
         headers: [
@@ -294,6 +296,8 @@ describe('TurnDiscovery', () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
+      await testUtils.flushPromises();
+
       // simulate the response without the headers
       td.handleTurnDiscoveryResponse({});
 
@@ -308,6 +312,8 @@ describe('TurnDiscovery', () => {
     it('resolves with undefined if the response has empty headers array', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
+
+      await testUtils.flushPromises();
 
       // simulate the response without the headers
       td.handleTurnDiscoveryResponse({headers: []});
@@ -324,6 +330,8 @@ describe('TurnDiscovery', () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
+
+      await testUtils.flushPromises();
 
       // check that TURN_DISCOVERY_REQUEST was sent
       await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);

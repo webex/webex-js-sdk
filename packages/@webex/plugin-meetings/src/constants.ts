@@ -850,6 +850,7 @@ export const RESOURCE = {
 
 export const REACHABILITY = {
   localStorage: 'reachability.result',
+  namespace: 'Reachability',
 };
 
 export const ROAP = {
