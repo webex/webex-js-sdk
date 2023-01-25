@@ -364,11 +364,11 @@ class Transforms {
 
         // Decrypt encrypted text map if present
         if (activity.encryptedTextKeyValues !== undefined) {
-          activity.encryptedTextKeyValues.forEach((encryptedData, key) => {
+          for (const [key, value] of Object.entries(activity.encryptedTextKeyValues)) {
             promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-              [activity.encryptionKeyUrl, encryptedData])
+              [activity.encryptionKeyUrl, value])
               .then((decryptedMessage) => {
-                activity.encryptedTextKeyValues.set(key, decryptedMessage);
+                activity.encryptedTextKeyValues[key] = decryptedMessage;
               })
               .catch((reason) => {
                 ctx.webex.logger.error(`Decrypt activity.encryptedTextKeyValues error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
@@ -376,7 +376,7 @@ class Transforms {
 
                 return Promise.resolve(object);
               }));
-          });
+          }
         }
 
         // Decrypt meeting title if present

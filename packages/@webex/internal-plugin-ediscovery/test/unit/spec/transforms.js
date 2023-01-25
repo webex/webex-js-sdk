@@ -420,17 +420,18 @@ describe('EDiscovery Transform Tests', () => {
       it('Calls the correct decrypt functions when transforming activity.encryptedTextKeyValues', () => {
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
-        object.body.encryptedTextKeyValues = new Map();
-        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
-        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
-        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, object.body.encryptedTextKeyValues.size);
+            assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
             assert.equal(activity.error, undefined);
-            for (const value of object.body.encryptedTextKeyValues.values()) {
-              assert.equal(value, decryptedText);
-            }
+            assert.equal(object.body.encryptedTextKeyValues.CallingLineId, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.CallingNumber, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.RedirectingNumber, decryptedText);
           });
 
         return result;
@@ -440,17 +441,18 @@ describe('EDiscovery Transform Tests', () => {
         contentContainer.onBehalfOfUser = undefined;
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
-        object.body.encryptedTextKeyValues = new Map();
-        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
-        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
-        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
-            assert.callCount(ctx.webex.internal.encryption.decryptText, object.body.encryptedTextKeyValues.size);
+            assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
             assert.equal(activity.error, undefined);
-            for (const value of object.body.encryptedTextKeyValues.values()) {
-              assert.equal(value, decryptedText);
-            }
+            assert.equal(object.body.encryptedTextKeyValues.CallingLineId, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.CallingNumber, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.RedirectingNumber, decryptedText);
           });
 
         return result;
@@ -460,10 +462,11 @@ describe('EDiscovery Transform Tests', () => {
         ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(new Error('Failed to acquire a key')));
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
-        object.body.encryptedTextKeyValues = new Map();
-        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
-        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
-        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
             assert.fail('Decrypt did not fail as expected');
