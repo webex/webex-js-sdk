@@ -95,5 +95,8 @@ export default {
       enableAdhocMeetings: false,
       enableTurnDiscovery: false,
     },
+    degradationPreferences: {
+      maxMacroblocksLimit: 32400,
+    },
   },
 };
