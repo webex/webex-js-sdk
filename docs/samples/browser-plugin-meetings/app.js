@@ -1001,22 +1001,17 @@ function getMediaDevices() {
 async function publishTracks(meeting) {
   const [localStream] = currentMediaStreams;
 
-  // todo: screen share once it's supported (SPARK-377812)
+  // ignoring screen share here, as it can only be started once you're in the meeting via startScreenShare()
 
   if (localStream) {
     const localAudioTracks = localStream.getAudioTracks();
-
-    if (localAudioTracks?.length > 0) {
-      console.log('MeetingStreams#publishTracks() :: publishing local audio');
-      await meeting.media.publishTrack(localAudioTracks[0]);
-    }
-
     const localVideoTracks = localStream.getVideoTracks();
 
-    if (localVideoTracks?.length > 0) {
-      console.log('MeetingStreams#publishTracks() :: publishing local video');
-      await meeting.media.publishTrack(localVideoTracks[0]);
-    }
+    console.log(`MeetingStreams#publishTracks() :: publishing local audio (${localAudioTracks?.length > 0 ? 'yes': 'no'}) and video (${localVideoTracks?.length > 0 ? 'yes': 'no'})`);
+    await meeting.publishTracks({
+      microphone: localAudioTracks?.[0],
+      camera: localVideoTracks?.[0]
+    });
   }
   else {
     console.error('cannot publish tracks - local stream missing');
@@ -1088,7 +1083,8 @@ function setVideoInputDevice() {
     getMediaStreams({sendVideo, receiveVideo}, {video})
       .then(({localStream}) => {
         if (isMultistream) {
-          return meeting.media.publishTrack(localStream.getVideoTracks()?.[0]);
+          // ignoring sendVideo value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
+          return meeting.publishTracks({camera: localStream.getVideoTracks()?.[0]});
         }
 
         meeting.updateVideo({
@@ -1117,7 +1113,8 @@ function setAudioInputDevice() {
     getMediaStreams({sendAudio, receiveAudio}, {audio})
       .then(({localStream}) => {
         if (isMultistream) {
-          return meeting.media.publishTrack(localStream.getAudioTracks()?.[0]);
+          // ignoring sendAudio value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
+          return meeting.publishTracks({microphone: localStream.getAudioTracks()?.[0]});
         }
 
         meeting.updateAudio({
@@ -1236,13 +1233,36 @@ function toggleBNR() {
   }
 }
 
+let publishedLocalShareAudioTrack = null; // todo: stop and unset these on "unpublished" event (SPARK-399694)
+let publishedLocalShareVideoTrack = null;
+
 async function startScreenShare() {
   const meeting = getCurrentMeeting();
 
   // Using async/await to make code more readable
   console.log('MeetingControls#startScreenShare()');
   try {
-    await meeting.shareScreen();
+    if (isMultistream) {
+      const localShareStream = await navigator.mediaDevices.getDisplayMedia({audio: false}); // todo: SPARK-399690
+
+      const localShareAudioTrack = localShareStream?.getAudioTracks()?.[0];
+      const localShareVideoTrack = localShareStream?.getVideoTracks()?.[0];
+
+      await meeting.publishTracks({
+        screenShare: {
+          audio: localShareAudioTrack,
+          video: localShareVideoTrack,
+        }
+      });
+
+      publishedLocalShareAudioTrack = localShareAudioTrack;
+      publishedLocalShareVideoTrack = localShareVideoTrack;
+
+      meetingStreamsLocalShare.srcObject = localShareStream;
+    }
+    else {
+      await meeting.shareScreen();
+    }
     console.log('MeetingControls#startScreenShare() :: Successfully started sharing!');
   }
   catch (error) {
@@ -1256,7 +1276,31 @@ async function stopScreenShare() {
 
   console.log('MeetingControls#stopScreenShare()');
   try {
-    await meeting.stopShare();
+    if (isMultistream) {
+      const tracksToUnpublish = [];
+
+      if (publishedLocalShareAudioTrack) {
+        tracksToUnpublish.push(publishedLocalShareAudioTrack);
+      }
+      if (publishedLocalShareVideoTrack) {
+        tracksToUnpublish.push(publishedLocalShareVideoTrack);
+      }
+
+      if (tracksToUnpublish.length > 0) {
+        await meeting.unpublishTracks(tracksToUnpublish);
+
+        publishedLocalShareAudioTrack?.stop();
+        publishedLocalShareVideoTrack?.stop();
+
+        publishedLocalShareAudioTrack = null;
+        publishedLocalShareVideoTrack = null;
+
+        meetingStreamsLocalShare.srcObject = null;
+      }
+    }
+    else {
+      await meeting.stopShare();
+    }
     console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
   }
   catch (error) {
@@ -2037,6 +2081,13 @@ function setupMultistreamEventListeners(meeting) {
 
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
+
+    // todo: instead of here, do all this when we get "unpublished" notification from local share track (SPARK-399694)
+    meetingStreamsLocalShare.srcObject = null;
+    publishedLocalShareAudioTrack?.stop();
+    publishedLocalShareVideoTrack?.stop();
+    publishedLocalShareAudioTrack = null;
+    publishedLocalShareVideoTrack = null;
   });
 
   meeting.on('meeting:stoppedSharingRemote', () => {
@@ -2148,7 +2199,7 @@ function addMedia() {
           meetingStreamsRemoteShare.srcObject = media.stream;
           break;
         case 'localShare':
-          meetingStreamsLocalShare.srcObject = media.stream;
+          meetingStreamsLocalShare.srcObject = new MediaStream([media.track]);
           break;
       }
     });

@@ -27,7 +27,7 @@ import Roap from '../roap/index';
 import Media from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
-import createMuteState from './muteState';
+import {createMuteState} from './muteState';
 import createEffectsState from './effectsState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
@@ -94,7 +94,6 @@ import {
   RemoteMediaManager,
   Event as RemoteMediaManagerEvent,
 } from '../multistream/remoteMediaManager';
-import {MultistreamMedia} from '../multistream/multistreamMedia';
 import {
   Reaction,
   ReactionType,
@@ -469,7 +468,6 @@ export default class Meeting extends StatelessWebexPlugin {
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
-  media: MultistreamMedia;
   mediaProperties: MediaProperties;
   mediaRequestManagers: {
     audio: MediaRequestManager;
@@ -1102,8 +1100,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
     this.hasJoinedOnce = false;
-
-    this.media = new MultistreamMedia(this);
 
     /**
      * helper class for managing remote streams
@@ -1944,7 +1940,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusMediaSharesListener() {
     // Will get triggered on local and remote share
-    this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES, (payload) => {
+    this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES, async (payload) => {
       const {content: contentShare, whiteboard: whiteboardShare} = payload.current;
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
@@ -1977,14 +1973,20 @@ export default class Meeting extends StatelessWebexPlugin {
         contentShare.disposition === FLOOR_ACTION.GRANTED
       ) {
         if (this.mediaProperties.shareTrack?.readyState === 'ended') {
-          this.stopShare({
-            skipSignalingCheck: true,
-          }).catch((error) => {
+          try {
+            if (this.isMultistream) {
+              await this.unpublishTracks([this.mediaProperties.shareTrack]); // todo screen share audio (SPARK-399690)
+            } else {
+              await this.stopShare({
+                skipSignalingCheck: true,
+              });
+            }
+          } catch (error) {
             LoggerProxy.logger.log(
               'Meeting:index#setUpLocusMediaSharesListener --> Error stopping share: ',
               error
             );
-          });
+          }
         } else {
           // CONTENT - sharing content local
           newShareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
@@ -2076,19 +2078,23 @@ export default class Meeting extends StatelessWebexPlugin {
               );
             };
 
-            // if a remote participant is stealing the presentation from us
-            if (
-              !this.mediaProperties.mediaDirection?.sendShare ||
-              oldShareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE
-            ) {
+            try {
+              // if a remote participant is stealing the presentation from us
+              if (
+                this.mediaProperties.mediaDirection?.sendShare &&
+                oldShareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE
+              ) {
+                if (this.isMultistream) {
+                  await this.unpublishTracks([this.mediaProperties.shareTrack]); // todo screen share audio (SPARK-399690)
+                } else {
+                  await this.updateShare({
+                    sendShare: false,
+                    receiveShare: this.mediaProperties.mediaDirection.receiveShare,
+                  });
+                }
+              }
+            } finally {
               sendStartedSharingRemote();
-            } else {
-              this.updateShare({
-                sendShare: false,
-                receiveShare: this.mediaProperties.mediaDirection.receiveShare,
-              }).finally(() => {
-                sendStartedSharingRemote();
-              });
             }
             break;
           }
@@ -3065,6 +3071,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       this.mediaProperties.setLocalAudioTrack(audioTrack);
       if (this.audio) this.audio.applyClientStateLocally(this);
+    } else {
+      this.mediaProperties.setLocalAudioTrack(null);
     }
 
     if (emitEvent) {
@@ -3111,6 +3119,8 @@ export default class Meeting extends StatelessWebexPlugin {
         'Meeting:index#setLocalVideoTrack --> Video settings.',
         JSON.stringify(this.mediaProperties.mediaSettings.video)
       );
+    } else {
+      this.mediaProperties.setLocalVideoTrack(null);
     }
 
     if (emitEvent) {
@@ -3138,35 +3148,32 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Sets the local media stream on the class and emits an event to the developer
-   * @param {MediaStream} localShare the local media stream
+   * @param {MediaStreamTrack} localShareTrack the local media stream
    * @returns {undefined}
    * @public
    * @memberof Meeting
    */
-  public setLocalShareTrack(localShare: MediaStream) {
+  public setLocalShareTrack(localShareTrack: MediaStreamTrack) {
     let settings = null;
 
-    if (localShare) {
-      this.mediaProperties.setLocalShareTrack(MeetingUtil.getTrack(localShare).videoTrack);
-      const contentTracks = this.mediaProperties.shareTrack;
+    if (localShareTrack) {
+      this.mediaProperties.setLocalShareTrack(localShareTrack);
 
-      if (contentTracks) {
-        settings = contentTracks.getSettings();
-        this.mediaProperties.setMediaSettings('screen', {
-          aspectRatio: settings.aspectRatio,
-          frameRate: settings.frameRate,
-          height: settings.height,
-          width: settings.width,
-          displaySurface: settings.displaySurface,
-          cursor: settings.cursor,
-        });
-        LoggerProxy.logger.log(
-          'Meeting:index#setLocalShareTrack --> Screen settings.',
-          JSON.stringify(this.mediaProperties.mediaSettings.screen)
-        );
-      }
+      settings = localShareTrack.getSettings();
+      this.mediaProperties.setMediaSettings('screen', {
+        aspectRatio: settings.aspectRatio,
+        frameRate: settings.frameRate,
+        height: settings.height,
+        width: settings.width,
+        displaySurface: settings.displaySurface,
+        cursor: settings.cursor,
+      });
+      LoggerProxy.logger.log(
+        'Meeting:index#setLocalShareTrack --> Screen settings.',
+        JSON.stringify(this.mediaProperties.mediaSettings.screen)
+      );
 
-      contentTracks.onended = () => this.handleShareTrackEnded(localShare);
+      localShareTrack.addEventListener('ended', this.handleShareTrackEnded);
 
       Trigger.trigger(
         this,
@@ -3177,9 +3184,12 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEDIA_READY,
         {
           type: EVENT_TYPES.LOCAL_SHARE,
-          stream: localShare,
+          track: localShareTrack,
         }
       );
+    } else if (this.mediaProperties.shareTrack) {
+      this.mediaProperties.shareTrack.removeEventListener('ended', this.handleShareTrackEnded);
+      this.mediaProperties.setLocalShareTrack(null);
     }
   }
 
@@ -5691,7 +5701,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const previousSendShareStatus = this.mediaProperties.mediaDirection.sendShare;
 
-    this.setLocalShareTrack(stream);
+    this.setLocalShareTrack(track);
 
     return MeetingUtil.validateOptions({sendShare, localShare: stream})
       .then(() => this.checkForStopShare(sendShare, previousSendShareStatus))
@@ -5744,7 +5754,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.video = this.video || createMuteState(VIDEO, this, this.mediaProperties.mediaDirection);
     // Validation is already done in addMedia so no need to check if the lenght is greater then 0
     this.setLocalTracks(localStream);
-    this.setLocalShareTrack(localShare);
+    this.setLocalShareTrack(MeetingUtil.getTrack(localShare).videoTrack);
   }
 
   /**
@@ -6532,9 +6542,23 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {MediaStream} localShare
    * @returns {undefined}
    */
-  private handleShareTrackEnded(localShare: MediaStream) {
+  private handleShareTrackEnded = async () => {
     if (this.wirelessShare) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
+    } else if (this.isMultistream) {
+      try {
+        if (this.mediaProperties.mediaDirection.sendShare) {
+          await this.releaseScreenShareFloor();
+        }
+      } catch (error) {
+        LoggerProxy.logger.log(
+          'Meeting:index#handleShareTrackEnded --> Error stopping share: ',
+          error
+        );
+      } finally {
+        this.setLocalShareTrack(null);
+        this.mediaProperties.mediaDirection.sendShare = false;
+      }
     } else {
       // Skip checking for a stable peerConnection
       // to allow immediately stopping screenshare
@@ -6557,10 +6581,9 @@ export default class Meeting extends StatelessWebexPlugin {
       EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
       {
         type: EVENT_TYPES.LOCAL_SHARE,
-        stream: localShare,
       }
     );
-  }
+  };
 
   /**
    * Emits the 'network:quality' event
@@ -7088,5 +7111,112 @@ export default class Meeting extends StatelessWebexPlugin {
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
     });
+  }
+
+  /**
+   * Throws if we don't have a media connection created
+   *
+   * @returns {void}
+   */
+  private checkMediaConnection() {
+    if (this.mediaProperties?.webrtcMediaConnection) {
+      return;
+    }
+    throw new Error('Webrtc media connection is missing, call addMedia() first');
+  }
+
+  /**
+   * Publishes specified local tracks in the meeting
+   *
+   * @param {Object} tracks
+   * @returns {Promise}
+   */
+  async publishTracks(tracks: {
+    microphone?: MediaStreamTrack;
+    camera?: MediaStreamTrack;
+    screenShare: {
+      audio?: MediaStreamTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
+      video?: MediaStreamTrack;
+    };
+  }): Promise<void> {
+    this.checkMediaConnection();
+
+    if (tracks.screenShare?.video) {
+      // we are starting a screen share
+      this.setLocalShareTrack(tracks.screenShare.video);
+
+      await this.requestScreenShareFloor();
+      this.mediaProperties.mediaDirection.sendShare = true;
+
+      await this.mediaProperties.webrtcMediaConnection.publishTrack(
+        tracks.screenShare.video,
+        'slides'
+      );
+    }
+
+    if (tracks.microphone) {
+      this.setLocalAudioTrack(tracks.microphone);
+      this.mediaProperties.mediaDirection.sendAudio = true;
+
+      // audio mute state could be undefined if you have not sent audio before
+      this.audio = this.audio || createMuteState(AUDIO, this, this.mediaProperties.mediaDirection);
+
+      await this.mediaProperties.webrtcMediaConnection.publishTrack(tracks.microphone, 'main');
+    }
+
+    if (tracks.camera) {
+      this.setLocalVideoTrack(tracks.camera);
+      this.mediaProperties.mediaDirection.sendVideo = true;
+
+      // video state could be undefined if you have not sent video before
+      this.video = this.video || createMuteState(VIDEO, this, this.mediaProperties.mediaDirection);
+
+      await this.mediaProperties.webrtcMediaConnection.publishTrack(tracks.camera, 'main');
+    }
+  }
+
+  /**
+   * Un-publishes specified local tracks in the meeting
+   *
+   * @param {Array<MediaStreamTrack>} tracks
+   * @returns {Promise}
+   */
+  async unpublishTracks(tracks: MediaStreamTrack[]): Promise<void> {
+    this.checkMediaConnection();
+
+    const unpublishPromises = [];
+
+    for (const track of tracks) {
+      if (track === this.mediaProperties.shareTrack) {
+        this.setLocalShareTrack(null);
+
+        this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+        this.mediaProperties.mediaDirection.sendShare = false;
+
+        unpublishPromises.push(
+          this.mediaProperties.webrtcMediaConnection.unpublishTrack(track, 'slides')
+        );
+      }
+
+      if (track === this.mediaProperties.audioTrack) {
+        this.setLocalAudioTrack(null);
+        this.mediaProperties.mediaDirection.sendAudio = false;
+
+        unpublishPromises.push(
+          this.mediaProperties.webrtcMediaConnection.unpublishTrack(track, 'main')
+        );
+      }
+
+      if (track === this.mediaProperties.videoTrack) {
+        this.setLocalVideoTrack(null);
+        this.mediaProperties.mediaDirection.sendVideo = false;
+
+        unpublishPromises.push(
+          this.mediaProperties.webrtcMediaConnection.unpublishTrack(track, 'main')
+        );
+      }
+    }
+
+    await Promise.all(unpublishPromises);
   }
 }
