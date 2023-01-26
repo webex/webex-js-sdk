@@ -411,7 +411,7 @@ export class StatsAnalyzer extends EventsScope {
       return;
     }
 
-    if (type === STATS.AUDIO_CORRELATE) {
+    if (type.includes('audio-send')) {
       this.statsResults[type].send.audioLevel = result.audioLevel;
       this.statsResults[type].send.totalAudioEnergy = result.totalAudioEnergy;
     }
@@ -832,11 +832,10 @@ export class StatsAnalyzer extends EventsScope {
    * Processes OutboundRTP stats result and stores
    * @private
    * @param {*} result
-   * @param {*} type
+   * @param {*} mediaType
    * @returns {void}
    */
-  private processOutboundRTPResult(result: any, type: any) {
-    const mediaType = type || STATS.AUDIO_CORRELATE;
+  private processOutboundRTPResult(result: any, mediaType: any) {
     const sendrecvType = STATS.SEND_DIRECTION;
 
     if (result.bytesSent) {
@@ -906,11 +905,10 @@ export class StatsAnalyzer extends EventsScope {
    * Processes InboundRTP stats result and stores
    * @private
    * @param {*} result
-   * @param {*} type
+   * @param {*} mediaType
    * @returns {void}
    */
-  private processInboundRTPResult(result: any, type: any) {
-    const mediaType = type || STATS.AUDIO_CORRELATE;
+  private processInboundRTPResult(result: any, mediaType: any) {
     const sendrecvType = STATS.RECEIVE_DIRECTION;
 
     if (result.bytesReceived) {
@@ -1141,7 +1139,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults.resolutions[mediaType][sendrecvType].framesDropped = result.framesDropped;
     }
 
-    if (result.trackIdentifier && mediaType !== STATS.AUDIO_CORRELATE) {
+    if (result.trackIdentifier && !mediaType.includes('audio')) {
       this.statsResults.resolutions[mediaType][sendrecvType].trackIdentifier =
         result.trackIdentifier;
 
