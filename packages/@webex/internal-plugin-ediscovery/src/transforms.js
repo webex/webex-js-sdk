@@ -527,15 +527,16 @@ class Transforms {
         // Decrypt encrypted text map if present
         if (activity.encryptedTextKeyValues !== undefined) {
           for (const [key, value] of Object.entries(activity.encryptedTextKeyValues)) {
-            promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,[
-              activity.encryptionKeyUrl,
-              value
-            ])
+            promises.push(requestWithRetries(
+              ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
+              [activity.encryptionKeyUrl,value])
               .then((decryptedMessage) => {
                 activity.encryptedTextKeyValues[key] = decryptedMessage;
               })
               .catch((reason) => {
-                ctx.webex.logger.error(`Decrypt activity.encryptedTextKeyValues error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
+                ctx.webex.logger.error(
+                  `Decrypt activity.encryptedTextKeyValues error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
                 activity.error = reason;
 
                 return Promise.resolve(object);
