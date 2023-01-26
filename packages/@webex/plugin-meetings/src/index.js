@@ -11,5 +11,6 @@ registerPlugin('meetings', Meetings, {
 export default Meetings;
 
 export * as CONSTANTS from './constants';
+export * as REACTIONS from './reactions/reactions';
 
 export {default as TriggerProxy} from './common/events/trigger-proxy';
