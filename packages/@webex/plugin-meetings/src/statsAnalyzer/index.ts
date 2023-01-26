@@ -96,9 +96,7 @@ export class StatsAnalyzer extends EventsScope {
     this.networkQualityMonitor = networkQualityMonitor;
     this.correlationId = config.correlationId;
     this.mqaSentCount = -1;
-    this.lastMqaDataSent = {
-      resolutions: {},
-    };
+    this.lastMqaDataSent = {};
     this.lastEmittedStartStopEvent = {};
   }
 
