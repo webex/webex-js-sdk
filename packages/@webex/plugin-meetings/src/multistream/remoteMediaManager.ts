@@ -41,16 +41,13 @@ export interface VideoLayout {
 export interface Configuration {
   audio: {
     numOfActiveSpeakerStreams: number; // number of audio streams we want to receive
+    numOfScreenShareStreams: number; // 1 should be enough, because in webex only 1 person at a time can be presenting screen share
   };
   video: {
     preferLiveVideo: boolean; // applies to all pane groups with active speaker policy
     initialLayoutId: LayoutId;
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
-  };
-  screenShare: {
-    audio: boolean; // whether we ever want to receive screen share audio at all
-    video: boolean; // whether we ever want to receive screen share video at all
   };
 }
 
@@ -118,7 +115,7 @@ const TwoMainPlusSixSmallLayout: VideoLayout = {
 
 // A strip of 8 small video panes (thumbnails) displayed at the top of a remote screenshare:
 const RemoteScreenShareWithSmallThumbnailsLayout: VideoLayout = {
-  // screenShareVideo: {size: 'best'}, // todo: SPARK-393485
+  // screenShareVideo: {size: 'best'}, // todo: SPARK-393485: uncomment this once backend supports screen sharing
   activeSpeakerVideoPaneGroups: [
     {
       id: 'thumbnails',
@@ -156,6 +153,7 @@ const Stage2x2With6ThumbnailsLayout: VideoLayout = {
 export const DefaultConfiguration: Configuration = {
   audio: {
     numOfActiveSpeakerStreams: 3,
+    numOfScreenShareStreams: 0, // todo: SPARK-393485: change to 1 once backend supports screen sharing
   },
   video: {
     preferLiveVideo: true,
@@ -169,16 +167,12 @@ export const DefaultConfiguration: Configuration = {
       ScreenShareView: RemoteScreenShareWithSmallThumbnailsLayout,
     },
   },
-  screenShare: {
-    audio: false, // todo: SPARK-393485
-    video: false, // todo: SPARK-393485
-  },
 };
 
 export enum Event {
   // events for audio streams
   AudioCreated = 'AudioCreated',
-  ScreenShareAudioCreated = 'ScreenShareCreated',
+  ScreenShareAudioCreated = 'ScreenShareAudioCreated',
 
   // events for video streams
   VideoLayoutChanged = 'VideoLayoutChanged',
@@ -195,7 +189,7 @@ export interface VideoLayoutChangedEventData {
 export interface Events extends EventMap {
   // audio
   [Event.AudioCreated]: (audio: RemoteMediaGroup) => void;
-  [Event.ScreenShareAudioCreated]: (screenShareAudio: RemoteMedia) => void;
+  [Event.ScreenShareAudioCreated]: (screenShareAudio: RemoteMediaGroup) => void;
 
   // video
   [Event.VideoLayoutChanged]: (data: VideoLayoutChangedEventData) => void;
@@ -228,7 +222,7 @@ export class RemoteMediaManager extends EventsScope {
   private slots: {
     audio: ReceiveSlot[];
     screenShare: {
-      audio?: ReceiveSlot;
+      audio: ReceiveSlot[];
       video?: ReceiveSlot;
     };
     video: {
@@ -298,7 +292,7 @@ export class RemoteMediaManager extends EventsScope {
     this.slots = {
       audio: [],
       screenShare: {
-        audio: undefined,
+        audio: [],
         video: undefined,
       },
       video: {
@@ -355,12 +349,6 @@ export class RemoteMediaManager extends EventsScope {
         }
         paneIds[pane.id] = true;
       });
-
-      if (layout.screenShareVideo && !this.config.screenShare.video) {
-        throw new Error(
-          'one of the layouts has screen share, so config.screenShare.video has to be enabled'
-        );
-      }
     });
   }
 
@@ -404,10 +392,8 @@ export class RemoteMediaManager extends EventsScope {
     this.slots.audio.length = 0;
 
     // release screen share slots
-    if (this.slots.screenShare.audio) {
-      this.receiveSlotManager.releaseSlot(this.slots.screenShare.audio);
-      this.slots.screenShare.audio = undefined;
-    }
+    this.slots.screenShare.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+    this.slots.screenShare.audio.length = 0;
     if (this.slots.screenShare.video) {
       this.receiveSlotManager.releaseSlot(this.slots.screenShare.video);
       this.slots.screenShare.video = undefined;
@@ -531,26 +517,38 @@ export class RemoteMediaManager extends EventsScope {
     );
   }
 
+  /**
+   * Creates receive slots required for receiving screen share audio and video
+   */
   private async createScreenShareReceiveSlots() {
-    if (this.config.screenShare.audio) {
-      this.slots.screenShare.audio = await this.receiveSlotManager.allocateSlot(
-        MediaType.AudioSlides
-      );
+    // audio
+    for (let i = 0; i < this.config.audio.numOfScreenShareStreams; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioSlides);
+
+      this.slots.screenShare.audio.push(slot);
     }
 
-    if (this.config.screenShare.video) {
+    // video
+    const isAnyLayoutContainingScreenShareVideo = Object.values(this.config.video.layouts).some(
+      (layout) => !!layout.screenShareVideo
+    );
+
+    if (isAnyLayoutContainingScreenShareVideo) {
       this.slots.screenShare.video = await this.receiveSlotManager.allocateSlot(
         MediaType.VideoSlides
       );
     }
   }
 
+  /**
+   * Creates RemoteMedia objects for screen share
+   */
   private createScreenShareAudioMedia() {
-    if (this.slots.screenShare.audio) {
-      // we create a group of 1, because for screen share we need to use the "active speaker" policy
+    if (this.slots.screenShare.audio.length > 0) {
       this.media.screenShare.audio = new RemoteMediaGroup(
         this.mediaRequestManagers.screenShareAudio,
-        [this.slots.screenShare.audio],
+        this.slots.screenShare.audio,
         255,
         true
       );
@@ -558,7 +556,7 @@ export class RemoteMediaManager extends EventsScope {
       this.emit(
         {file: 'multistream/remoteMediaManager', function: 'createScreenShareAudioMedia'},
         Event.ScreenShareAudioCreated,
-        this.media.screenShare.audio.getRemoteMedia()[0]
+        this.media.screenShare.audio
       );
     }
   }
@@ -764,6 +762,13 @@ export class RemoteMediaManager extends EventsScope {
     this.mediaRequestManagers.video.commit();
   }
 
+  /**
+   * Checks if current layout requires a screen share.
+   * If it does, it creates new RemoteMediaGroup object for screen share
+   * and sends the media requests for it.
+   * If it doesn't, it makes sure we clean up any RemoteMediaGroup objects
+   * created earlier for screen share (for previous layout).
+   */
   private updateScreenShareVideoRemoteMediaObject() {
     this.invalidateCurrentRemoteMedia({
       audio: false,

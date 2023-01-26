@@ -1987,8 +1987,8 @@ function setupMultistreamEventListeners(meeting) {
     });
   });
 
-  meeting.on('media:remoteScreenShareAudio:created', (screenShareAudioMedia) => {
-    document.getElementById('multistream-remote-share-audio').srcObject = screenShareAudioMedia.stream;
+  meeting.on('media:remoteScreenShareAudio:created', (screenShareAudioMediaGroup) => {
+    document.getElementById('multistream-remote-share-audio').srcObject = screenShareAudioMediaGroup.getRemoteMedia()[0].stream;
   });
 
   meeting.on('media:remoteVideo:layoutChanged', ({
