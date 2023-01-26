@@ -12,6 +12,7 @@
     "Taymoor Khan <taykhan@cisco.com>"
   ],
   "main": "dist/index.js",
+  "types": "types/index.d.ts",
   "devMain": "src/index.js",
   "repository": {
     "type": "git",
@@ -27,6 +28,9 @@
       "envify"
     ]
   },
+  "scripts": {
+    "build": "yarn run tsc --declaration true --declarationDir ./types"
+  },
   "devDependencies": {
     "@webex/plugin-meetings": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
@@ -37,7 +41,8 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "jsdom-global": "3.0.2",
-    "sinon": "^9.2.4"
+    "sinon": "^9.2.4",
+    "typescript": "^4.7.4"
   },
   "dependencies": {
     "@webex/common": "workspace:^",
