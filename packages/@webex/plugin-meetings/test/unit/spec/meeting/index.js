@@ -3609,7 +3609,7 @@ describe('plugin-meetings', () => {
               },
           };
 
-          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined)};
+          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined), setSessionId: sinon.stub().returns(undefined)};
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -3618,6 +3618,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
+          assert.calledOnce(meeting.recordingController.setSessionId);
           done();
         });
       });

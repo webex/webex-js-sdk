@@ -14,7 +14,7 @@ const canUserStop = (displayHints: Array<string>): boolean =>
   displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
 
 const extractLocusId = (url: string) => {
-  return url.split('/').pop();
+  return url?.split('/').pop();
 };
 
 const deriveRecordingStates = (action: RecordingAction): {recording: boolean; paused: boolean} => {

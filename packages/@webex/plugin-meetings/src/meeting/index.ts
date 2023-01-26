@@ -900,15 +900,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.recording = null;
 
     /**
-     * The class that helps to control recording functions: start, stop, pause, resume, etc
-     * @instance
-     * @type {RecordingController}
-     * @public
-     * @memberof Meeting
-     */
-    this.recordingController = new RecordingController(this.meetingRequest);
-
-    /**
      * Promise that exists if joining, and resolves upon method completion.
      * @instance
      * @type {Promise}
@@ -996,6 +987,20 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.keepAliveTimerId = null;
+
+    /**
+     * The class that helps to control recording functions: start, stop, pause, resume, etc
+     * @instance
+     * @type {RecordingController}
+     * @public
+     * @memberof Meeting
+     */
+    this.recordingController = new RecordingController(this.meetingRequest, {
+      serviceUrl: this.locusInfo?.links?.services?.record?.url,
+      sessionId: this.locusInfo?.fullState?.sessionId,
+      locusUrl: this.locusInfo?.url,
+      displayHints: [],
+    });
 
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
@@ -1199,10 +1204,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // meeting update listeners
     this.setUpLocusInfoSelfListener();
     this.setUpLocusInfoMeetingListener();
+    this.setUpLocusServicesListener();
     // members update listeners
     this.setUpLocusFullStateListener();
     this.setUpLocusUrlListener();
-    this.setUpLocusServicesListener();
     this.setUpLocusHostListener();
     this.setUpLocusSelfListener();
     this.setUpLocusParticipantsListener();
@@ -1298,7 +1303,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusFullStateListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.FULL_STATE_MEETING_STATE_CHANGE, (payload) => {
-      this.recordingController.setSessionId(payload?.sessionId);
       Trigger.trigger(
         this,
         {
@@ -2031,6 +2035,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setUpLocusServicesListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
       this.recordingController.setServiceUrl(payload?.services?.record?.url);
+      this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
     });
   }
 

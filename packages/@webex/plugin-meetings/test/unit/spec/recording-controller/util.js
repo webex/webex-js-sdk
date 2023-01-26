@@ -86,7 +86,15 @@ describe('plugin-meetings', () => {
 
             describe('extractLocusId', () => {
               it('gets the correct id from the url param', () => {
-                assert(RecordingUtil.extractLocusId('test/id'), 'id');
+                assert.equal(RecordingUtil.extractLocusId('test/id'), 'id');
+              });
+
+              it('works with empty string parameters passed', () => {
+                assert.equal(RecordingUtil.extractLocusId(''), '');
+              });
+
+              it('works with no parameters passed', () => {
+                assert.isUndefined(RecordingUtil.extractLocusId(undefined));
               });
             });
         });

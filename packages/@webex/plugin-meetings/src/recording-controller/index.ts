@@ -62,11 +62,21 @@ export default class RecordingController {
 
   /**
    * @param {MeetingRequest} request
+   * @param {Object} options
    * @constructor
    * @memberof RecordingController
    */
-  constructor(request: MeetingRequest) {
+  constructor(
+    request: MeetingRequest,
+    options?: {
+      serviceUrl?: string;
+      sessionId: string;
+      locusUrl: string;
+      displayHints?: Array<string>;
+    }
+  ) {
     this.initialize(request);
+    this.set(options);
   }
 
   /**
@@ -86,7 +96,7 @@ export default class RecordingController {
    * @public
    * @memberof RecordingController
    */
-  public set(options: {
+  public set(options?: {
     serviceUrl?: string;
     sessionId: string;
     locusUrl: string;
@@ -187,16 +197,16 @@ export default class RecordingController {
    * @private
    * @memberof RecordingController
    */
-  private extract(options: {
+  private extract(options?: {
     serviceUrl?: string;
     sessionId: string;
     locusUrl: string;
     displayHints?: Array<string>;
   }) {
-    this.setServiceUrl(options.serviceUrl);
-    this.setSessionId(options.sessionId);
-    this.setDisplayHints(options.displayHints);
-    this.setLocusUrl(options.locusUrl);
+    this.setServiceUrl(options?.serviceUrl);
+    this.setSessionId(options?.sessionId);
+    this.setDisplayHints(options?.displayHints);
+    this.setLocusUrl(options?.locusUrl);
   }
 
   /**
