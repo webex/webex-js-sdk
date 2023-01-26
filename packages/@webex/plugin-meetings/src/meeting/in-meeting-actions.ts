@@ -2,9 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {
-  MEETINGS
-} from '../constants';
+import {MEETINGS} from '../constants';
 
 /**
  * IInMeetingActions
@@ -33,6 +31,8 @@ interface IInMeetingActions {
   isRealTimeTranslationEnabled?: boolean;
   canSelectSpokenLanguages?: boolean;
   waitingForOthersToJoin?: boolean;
+  canEnableReactions?: boolean;
+  canSendReactions?: boolean;
 }
 
 /**
@@ -85,6 +85,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   waitingForOthersToJoin = null;
 
+  canEnableReactions = null;
+
+  canSendReactions = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -112,7 +116,15 @@ export default class InMeetingActions implements IInMeetingActions {
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
     canSelectSpokenLanguages: this.canSelectSpokenLanguages,
     waitingForOthersToJoin: this.waitingForOthersToJoin,
+    canEnableReactions: this.canEnableReactions,
+    canSendReactions: this.canSendReactions,
   });
+
+  /**
+   *
+   * @param actions
+   * @returns
+   */
 
   set = (actions: Partial<IInMeetingActions>) => {
     const old = this.get();

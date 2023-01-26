@@ -16,9 +16,12 @@ const WebexInternalCore = AmpState.extend({
     ready: {
       deps: [],
       fn() {
-        return Object.keys(this._children).reduce((ready, name) => ready && this[name] && this[name].ready !== false, true);
-      }
-    }
+        return Object.keys(this._children).reduce(
+          (ready, name) => ready && this[name] && this[name].ready !== false,
+          true
+        );
+      },
+    },
   },
 
   /**
@@ -29,12 +32,15 @@ const WebexInternalCore = AmpState.extend({
    * @returns {Object}
    */
   inspect(depth) {
-    return util.inspect(this.serialize({
-      props: true,
-      session: true,
-      derived: true
-    }), {depth});
-  }
+    return util.inspect(
+      this.serialize({
+        props: true,
+        session: true,
+        derived: true,
+      }),
+      {depth}
+    );
+  },
 });
 
 export default WebexInternalCore;

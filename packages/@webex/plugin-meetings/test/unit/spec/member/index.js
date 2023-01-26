@@ -4,7 +4,6 @@ import {assert} from '@webex/test-helper-chai';
 import MemberUtil from '@webex/plugin-meetings/src/member/util';
 import Member from '@webex/plugin-meetings/src/member';
 
-
 describe('member', () => {
   afterEach(() => {
     sinon.restore();

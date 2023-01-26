@@ -4,10 +4,7 @@ import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 
 import METRICS from './metrics';
-import {
-  FEATURE_COLLECTION_NAMES,
-  DEVICE_EVENT_REGISTRATION_SUCCESS
-} from './constants';
+import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
 
 /**
@@ -20,7 +17,6 @@ function decider() {
 }
 
 const Device = WebexPlugin.extend({
-
   // Ampersand property members.
 
   namespace: 'Device',
@@ -37,7 +33,7 @@ const Device = WebexPlugin.extend({
      *
      * @type {FeaturesModel}
      */
-    features: FeaturesModel
+    features: FeaturesModel,
   },
 
   /**
@@ -121,7 +117,7 @@ const Device = WebexPlugin.extend({
      *
      * @returns {Array<string>}
      */
-    ecmSupportedStorageProviders: ['array', false, (() => [])],
+    ecmSupportedStorageProviders: ['array', false, () => []],
 
     /**
      * This property stores the modification time value retrieved from the
@@ -242,7 +238,7 @@ const Device = WebexPlugin.extend({
      *
      * @type {'ALLOW' | 'BLOCK'}
      */
-    whiteboardFileShareControl: 'string'
+    whiteboardFileShareControl: 'string',
   },
 
   /**
@@ -268,9 +264,9 @@ const Device = WebexPlugin.extend({
        * @returns {boolean}
        */
       fn() {
-        return !!(this.url);
-      }
-    }
+        return !!this.url;
+      },
+    },
   },
 
   /**
@@ -318,7 +314,7 @@ const Device = WebexPlugin.extend({
      *
      * @type {boolean}
      */
-    isInNetwork: 'boolean'
+    isInNetwork: 'boolean',
   },
 
   // Event method members.
@@ -355,61 +351,60 @@ const Device = WebexPlugin.extend({
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
-    return this.canRegister()
-      .then(() => {
-        // Validate if the device is not registered and register instead.
-        if (!this.registered) {
-          this.logger.info('device: device not registered, registering');
+    return this.canRegister().then(() => {
+      // Validate if the device is not registered and register instead.
+      if (!this.registered) {
+        this.logger.info('device: device not registered, registering');
 
-          return this.register();
-        }
+        return this.register();
+      }
 
-        // Merge body configurations, overriding defaults.
-        const body = {
-          ...(this.serialize()),
-          ...(this.config.body ? this.config.body : {})
-        };
+      // Merge body configurations, overriding defaults.
+      const body = {
+        ...this.serialize(),
+        ...(this.config.body ? this.config.body : {}),
+      };
 
-        // Remove unneeded properties from the body object.
-        delete body.features;
-        delete body.mediaCluster;
-        delete body.etag;
+      // Remove unneeded properties from the body object.
+      delete body.features;
+      delete body.mediaCluster;
+      delete body.etag;
 
-        // Append a ttl value if the device is marked as ephemeral.
-        if (this.config.ephemeral) {
-          body.ttl = this.config.ephemeralDeviceTTL;
-        }
+      // Append a ttl value if the device is marked as ephemeral.
+      if (this.config.ephemeral) {
+        body.ttl = this.config.ephemeralDeviceTTL;
+      }
 
-        // Merge header configurations, overriding defaults.
-        const headers = {
-          ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-          ...(this.config.headers ? this.config.headers : {}),
-          // If etag is sent, WDM will not send developer feature toggles unless they have changed
-          ...(this.etag ? {'If-None-Match': this.etag} : {})
-        };
+      // Merge header configurations, overriding defaults.
+      const headers = {
+        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+        ...(this.config.headers ? this.config.headers : {}),
+        // If etag is sent, WDM will not send developer feature toggles unless they have changed
+        ...(this.etag ? {'If-None-Match': this.etag} : {}),
+      };
 
-        return this.request({
-          method: 'PUT',
-          uri: this.url,
-          body,
-          headers
-        })
-          .then((response) => this.processRegistrationSuccess(response))
-          .catch((reason) => {
-            // Handle a 404 error, which indicates that the device is no longer
-            // valid and needs to be registered as a new device.
-            if (reason.statusCode === 404) {
-              this.logger.info('device: refresh failed, device is not valid');
-              this.logger.info('device: attempting to register a new device');
+      return this.request({
+        method: 'PUT',
+        uri: this.url,
+        body,
+        headers,
+      })
+        .then((response) => this.processRegistrationSuccess(response))
+        .catch((reason) => {
+          // Handle a 404 error, which indicates that the device is no longer
+          // valid and needs to be registered as a new device.
+          if (reason.statusCode === 404) {
+            this.logger.info('device: refresh failed, device is not valid');
+            this.logger.info('device: attempting to register a new device');
 
-              this.clear();
+            this.clear();
 
-              return this.register();
-            }
+            return this.register();
+          }
 
-            return Promise.reject(reason);
-          });
-      });
+          return Promise.reject(reason);
+        });
+    });
   },
 
   /**
@@ -425,52 +420,53 @@ const Device = WebexPlugin.extend({
     this.logger.info('device: registering');
 
     // Validate that the device can be registered.
-    return this.canRegister()
-      .then(() => {
-        // Validate if the device is already registered and refresh instead.
-        if (this.registered) {
-          this.logger.info('device: device already registered, refreshing');
+    return this.canRegister().then(() => {
+      // Validate if the device is already registered and refresh instead.
+      if (this.registered) {
+        this.logger.info('device: device already registered, refreshing');
 
-          return this.refresh();
-        }
+        return this.refresh();
+      }
 
-        // Merge body configurations, overriding defaults.
-        const body = {
-          ...(this.config.defaults.body ? this.config.defaults.body : {}),
-          ...(this.config.body ? this.config.body : {})
-        };
+      // Merge body configurations, overriding defaults.
+      const body = {
+        ...(this.config.defaults.body ? this.config.defaults.body : {}),
+        ...(this.config.body ? this.config.body : {}),
+      };
 
-        // Merge header configurations, overriding defaults.
-        const headers = {
-          ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-          ...(this.config.headers ? this.config.headers : {})
-        };
+      // Merge header configurations, overriding defaults.
+      const headers = {
+        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+        ...(this.config.headers ? this.config.headers : {}),
+      };
 
-        // Append a ttl value if the device is marked as ephemeral
-        if (this.config.ephemeral) {
-          body.ttl = this.config.ephemeralDeviceTTL;
-        }
+      // Append a ttl value if the device is marked as ephemeral
+      if (this.config.ephemeral) {
+        body.ttl = this.config.ephemeralDeviceTTL;
+      }
 
-        // This will be replaced by a `create()` method.
-        return this.request({
-          method: 'POST',
-          service: 'wdm',
-          resource: 'devices',
-          body,
-          headers
+      // This will be replaced by a `create()` method.
+      return this.request({
+        method: 'POST',
+        service: 'wdm',
+        resource: 'devices',
+        body,
+        headers,
+      })
+        .then((response) => {
+          this.webex.internal.metrics.submitClientMetrics(
+            METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
+          );
+
+          return this.processRegistrationSuccess(response);
         })
-          .then((response) => {
-            this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL);
-
-            return this.processRegistrationSuccess(response);
-          })
-          .catch((error) => {
-            this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
-              fields: {error}
-            });
-            throw error;
+        .catch((error) => {
+          this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
+            fields: {error},
           });
-      });
+          throw error;
+        });
+    });
   },
 
   /**
@@ -493,9 +489,8 @@ const Device = WebexPlugin.extend({
 
     return this.request({
       uri: this.url,
-      method: 'DELETE'
-    })
-      .then(() => this.clear());
+      method: 'DELETE',
+    }).then(() => this.clear());
   },
   /* eslint-enable require-jsdoc */
 
@@ -515,19 +510,19 @@ const Device = WebexPlugin.extend({
     const {services} = this.webex.internal;
 
     // Wait for the postauth catalog to populate.
-    return services.waitForCatalog(
-      'postauth',
-      this.config.canRegisterWaitDuration
-    )
-      .then(() => (
-        // Validate that the service exists after waiting for the catalog.
-        services.get('wdm') ?
-          Promise.resolve() :
-          Promise.reject(new Error([
-            'device: cannot register,',
-            '\'wdm\' service is not available from the postauth catalog'
-          ].join(' ')))
-      ));
+    return services.waitForCatalog('postauth', this.config.canRegisterWaitDuration).then(() =>
+      // Validate that the service exists after waiting for the catalog.
+      services.get('wdm')
+        ? Promise.resolve()
+        : Promise.reject(
+            new Error(
+              [
+                'device: cannot register,',
+                "'wdm' service is not available from the postauth catalog",
+              ].join(' ')
+            )
+          )
+    );
   },
 
   /**
@@ -556,14 +551,14 @@ const Device = WebexPlugin.extend({
     const headers = {
       'cisco-no-http-redirect': null,
       'spark-user-agent': null,
-      trackingid: null
+      trackingid: null,
     };
 
     // Send the network reachability request.
     return this.request({
       headers,
       method: 'GET',
-      uri: this.intranetInactivityCheckUrl
+      uri: this.intranetInactivityCheckUrl,
     })
       .then(() => {
         this.isInNetwork = true;
@@ -612,17 +607,15 @@ const Device = WebexPlugin.extend({
         .catch((error) => {
           this.logger.warn(error.message);
 
-          return Promise.reject(new Error(
-            'device: failed to get the current websocket url'
-          ));
+          return Promise.reject(new Error('device: failed to get the current websocket url'));
         });
     }
 
     // Validate if the device is registered.
     if (!this.registered) {
-      return Promise.reject(new Error(
-        'device: cannot get websocket url, device is not registered'
-      ));
+      return Promise.reject(
+        new Error('device: cannot get websocket url, device is not registered')
+      );
     }
 
     // Attempt to collect the priority-host-mapped web socket URL.
@@ -633,9 +626,7 @@ const Device = WebexPlugin.extend({
       return Promise.resolve(wsUrl);
     }
 
-    return Promise.reject(new Error(
-      'device: failed to get the current websocket url'
-    ));
+    return Promise.reject(new Error('device: failed to get the current websocket url'));
   },
 
   /**
@@ -707,12 +698,14 @@ const Device = WebexPlugin.extend({
 
     // Validate if the device is currently in a meeting and is configured to
     // required inactivity enforcement.
-    if (!this.isInMeeting && this.config.enableInactivityEnforcement &&
-      this.isReachabilityChecked) {
+    if (
+      !this.isInMeeting &&
+      this.config.enableInactivityEnforcement &&
+      this.isReachabilityChecked
+    ) {
       if (this.isInNetwork) {
         this.setLogoutTimer(this.inNetworkInactivityDuration);
-      }
-      else {
+      } else {
         this.setLogoutTimer(this.intranetInactivityDuration);
       }
     }
@@ -732,7 +725,9 @@ const Device = WebexPlugin.extend({
     }
 
     // Setup user activity date event listener.
-    this.on('change:lastUserActivityDate', () => { this.resetLogoutTimer(); });
+    this.on('change:lastUserActivityDate', () => {
+      this.resetLogoutTimer();
+    });
 
     // Initialize a new timer.
     this.logoutTimer = safeSetTimeout(() => {
@@ -754,9 +749,10 @@ const Device = WebexPlugin.extend({
         resolve();
       }
 
-      const timeoutTimer = safeSetTimeout(() => reject(
-        new Error('device: timeout occured while waiting for registration')
-      ), timeout * 1000);
+      const timeoutTimer = safeSetTimeout(
+        () => reject(new Error('device: timeout occured while waiting for registration')),
+        timeout * 1000
+      );
 
       this.once(DEVICE_EVENT_REGISTRATION_SUCCESS, () => {
         clearTimeout(timeoutTimer);
@@ -832,7 +828,7 @@ const Device = WebexPlugin.extend({
       this.isInMeeting = false;
       this.resetLogoutTimer();
     });
-  }
+  },
   /* eslint-enable require-jsdoc */
 });
 

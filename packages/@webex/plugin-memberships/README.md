@@ -29,15 +29,12 @@ npm install --save @webex/plugin-memberships
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.memberships.get(id)
-  .then((membership) => {
-    console.log(membership);
-  })
-
+webex.memberships.get(id).then((membership) => {
+  console.log(membership);
+});
 ```
 
 ## Maintainers

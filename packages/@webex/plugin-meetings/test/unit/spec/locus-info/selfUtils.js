@@ -33,6 +33,24 @@ describe('plugin-meetings', () => {
         assert.calledWith(getRolesSpy, self);
 
         assert.deepEqual(parsedSelf.roles, ['PRESENTER']);
+        assert.deepEqual(parsedSelf.breakoutSessions, {
+          active: [
+            {
+              name: 'Breakout session 2',
+              groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+              sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+              sessionType: 'BREAKOUT'
+            },
+          ],
+          allowed: [
+            {
+              name: 'Breakout session 2',
+              groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+              sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+              sessionType: 'BREAKOUT'
+            },
+          ]
+        });
       });
 
       it('calls getLayout and returns the resulting layout', () => {
@@ -58,9 +76,78 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('getBreakouts', () => {
+      it('should return breakout sessions', () => {
+        assert.deepEqual(SelfUtils.getBreakouts({controls: {breakout: {sessions: 'SESSIONS'}}}), 'SESSIONS');
+      });
+    });
+
+    describe('breakoutsChanged', () => {
+      it('should return true if breakouts have changed', () => {
+        const current = {
+          breakoutSessions: {
+            allowed: [
+              {
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              },
+            ]
+          }
+        };
+        const previous = {
+          breakoutSessions: {
+            active: [
+              {
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              },
+            ]
+          }
+        };
+
+        assert.isTrue(SelfUtils.breakoutsChanged(previous, current));
+      });
+
+      it('should return false if breakouts have not changed', () => {
+        const current = {
+          breakoutSessions: {
+            active: [
+              {
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              },
+            ]
+          }
+        };
+        const previous = {
+          breakoutSessions: {
+            active: [
+              {
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT'
+              },
+            ]
+          }
+        };
+
+        assert.isFalse(SelfUtils.breakoutsChanged(previous, current));
+      });
+    });
+
     describe('canNotViewTheParticipantList', () => {
       it('should return the correct value', () => {
-        assert.equal(SelfUtils.canNotViewTheParticipantList(self), self.canNotViewTheParticipantList);
+        assert.equal(
+          SelfUtils.canNotViewTheParticipantList(self),
+          self.canNotViewTheParticipantList
+        );
       });
 
       it('should return false if the new self does not have a value', () => {
@@ -90,17 +177,23 @@ describe('plugin-meetings', () => {
       it('get roles works', () => {
         assert.deepEqual(SelfUtils.getRoles(self), ['PRESENTER']);
 
-        assert.deepEqual(SelfUtils.getRoles({
-          controls: {
-            role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: true}]}
-          }
-        }), ['SOME_ARBITRARY_ROLE']);
+        assert.deepEqual(
+          SelfUtils.getRoles({
+            controls: {
+              role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: true}]},
+            },
+          }),
+          ['SOME_ARBITRARY_ROLE']
+        );
 
-        assert.deepEqual(SelfUtils.getRoles({
-          controls: {
-            role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: false}]}
-          }
-        }), []);
+        assert.deepEqual(
+          SelfUtils.getRoles({
+            controls: {
+              role: {roles: [{type: 'SOME_ARBITRARY_ROLE', hasRole: false}]},
+            },
+          }),
+          []
+        );
 
         assert.deepEqual(SelfUtils.getRoles({}), []);
         assert.deepEqual(SelfUtils.getRoles(), []);

@@ -12,13 +12,13 @@ MediaSharesUtils.parse = (mediaShares: object) => {
     return {
       content: {
         beneficiaryId: MediaSharesUtils.getContentBeneficiaryId(mediaShares),
-        disposition: MediaSharesUtils.getContentDisposition(mediaShares)
+        disposition: MediaSharesUtils.getContentDisposition(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
         disposition: MediaSharesUtils.getWhiteboardDisposition(mediaShares),
-        resourceUrl: MediaSharesUtils.getWhiteboardResourceUrl(mediaShares)
-      }
+        resourceUrl: MediaSharesUtils.getWhiteboardResourceUrl(mediaShares),
+      },
     };
   }
 
@@ -38,7 +38,7 @@ MediaSharesUtils.getMediaShares = (oldShare: object, newShare: object) => {
 
   return {
     previous,
-    current
+    current,
   };
 };
 

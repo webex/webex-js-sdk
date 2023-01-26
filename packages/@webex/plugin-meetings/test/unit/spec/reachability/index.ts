@@ -1,52 +1,84 @@
 import {assert} from '@webex/test-helper-chai';
+import MockWebex from '@webex/test-helper-mock-webex';
+import sinon from 'sinon';
 import Reachability from '@webex/plugin-meetings/src/reachability/';
 
 describe('isAnyClusterReachable', () => {
-  before(function () {
-    this.jsdom = require('jsdom-global')('', {url: 'http://localhost'});
-  });
-  after(function () {
-    this.jsdom();
-  });
+  let webex;
 
-  afterEach(() => {
-    window.localStorage.clear()
+  beforeEach(() => {
+    webex = new MockWebex();
   });
 
-  const checkIsClusterReachable = (mockStorage: any, expectedValue: boolean) => {
-
+  const checkIsClusterReachable = async (mockStorage: any, expectedValue: boolean) => {
     if (mockStorage) {
-      window.localStorage.setItem('reachability.result', JSON.stringify(mockStorage))
+      await webex.boundedStorage.put(
+        'Reachability',
+        'reachability.result',
+        JSON.stringify(mockStorage)
+      );
     }
-    const reachability = new Reachability({});
+    const reachability = new Reachability(webex);
 
-    const result = reachability.isAnyClusterReachable();
+    const result = await reachability.isAnyClusterReachable();
 
     assert.equal(result, expectedValue);
+  };
 
-  }
-
-  it('returns true when udp is reachable', () => {
-    checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}, true)
+  it('returns true when udp is reachable', async () => {
+    await checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}, true);
   });
 
-  it('returns true when tcp is reachable', () => {
-    checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'true'}}}, true)
+  it('returns true when tcp is reachable', async () => {
+    await checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'true'}}}, true);
   });
 
-  it('returns true when both tcp and udp are reachable', () => {
-    checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'true'}}}, true)
+  it('returns true when both tcp and udp are reachable', async () => {
+    await checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'true'}}}, true);
   });
 
-  it('returns false when both tcp and udp are unreachable', () => {
-    checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'false'}}}, false)
+  it('returns false when both tcp and udp are unreachable', async () => {
+    await checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'false'}}}, false);
   });
 
-  it('returns false when reachability result is empty', () => {
-    checkIsClusterReachable({x: {}}, false)
+  it('returns false when reachability result is empty', async () => {
+    await checkIsClusterReachable({x: {}}, false);
   });
 
-  it('returns false when reachability.result item is not there', () => {
-    checkIsClusterReachable(undefined, false)
+  it('returns false when reachability.result item is not there', async () => {
+    await checkIsClusterReachable(undefined, false);
   });
+});
+
+describe('gatherReachability', () => {
+  let webex;
+
+  beforeEach(async () => {
+    webex = new MockWebex();
+
+    await webex.boundedStorage.put(
+      'Reachability',
+      'reachability.result',
+      JSON.stringify({old: 'results'})
+    );
+  });
+
+  it('stores the reachability', async () => {
+    const reachability = new Reachability(webex);
+
+    const clusters = {some: 'clusters'};
+    const reachabilityResults = {some: 'results'};
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(clusters);
+    (reachability as any).performReachabilityCheck = sinon.stub().returns(reachabilityResults)
+
+    const result = await reachability.gatherReachability();
+
+    assert.equal(result, reachabilityResults);
+
+    const storedResult = await webex.boundedStorage.get('Reachability', 'reachability.result');
+
+    assert.equal(JSON.stringify(result), storedResult);
+  });
+
 });

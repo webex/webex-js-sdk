@@ -18,46 +18,46 @@ import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
 /**
-   * Members Update Event
-   * Emitted when something in the roster list needs to be updated
-   * @event members:update
-   * @instance
-   * @property {Object} delta the changes to the members list
-   * @property {Array} delta.updated array only the updates, includes removals, as they will have updated status and member properties
-   * @property {Array} delta.added array added members to the meeting
-   * @property {Array} full array the full members collection
-   * @memberof Members
-   */
+ * Members Update Event
+ * Emitted when something in the roster list needs to be updated
+ * @event members:update
+ * @instance
+ * @property {Object} delta the changes to the members list
+ * @property {Array} delta.updated array only the updates, includes removals, as they will have updated status and member properties
+ * @property {Array} delta.added array added members to the meeting
+ * @property {Array} full array the full members collection
+ * @memberof Members
+ */
 
 /**
-   * Members Content Update Event
-   * Emitted when who is sharing changes
-   * @event members:content:update
-   * @instance
-   * @property {String} activeContentSharingId
-   * @property {String} endedContentSharingId
-   * @memberof Members
-   */
+ * Members Content Update Event
+ * Emitted when who is sharing changes
+ * @event members:content:update
+ * @instance
+ * @property {String} activeContentSharingId
+ * @property {String} endedContentSharingId
+ * @memberof Members
+ */
 
 /**
-   * Members Host Update Event
-   * Emitted when who is the host changes
-   * @event members:host:update
-   * @instance
-   * @property {String} activeHostId
-   * @property {String} endedHostId
-   * @memberof Members
-   */
+ * Members Host Update Event
+ * Emitted when who is the host changes
+ * @event members:host:update
+ * @instance
+ * @property {String} activeHostId
+ * @property {String} endedHostId
+ * @memberof Members
+ */
 
 /**
-   * Members Self Update Event
-   * Emitted when who is the self changes
-   * @event members:self:update
-   * @instance
-   * @property {String} activeSelfId
-   * @property {String} endedSelfId
-   * @memberof Members
-   */
+ * Members Self Update Event
+ * Emitted when who is the self changes
+ * @event members:self:update
+ * @instance
+ * @property {String} activeSelfId
+ * @property {String} endedSelfId
+ * @memberof Members
+ */
 
 /**
  * @class Members
@@ -74,6 +74,7 @@ export default class Members extends StatelessWebexPlugin {
     audio: MediaRequestManager;
     video: MediaRequestManager;
   };
+
   recordingId: any;
   selfId: any;
   type: any;
@@ -94,8 +95,8 @@ export default class Members extends StatelessWebexPlugin {
      * @type {MembersRequest}
      * @private
      * @memberof Members
-    */
-   // @ts-ignore
+     */
+    // @ts-ignore
     this.membersRequest = new MembersRequest({}, options);
     /**
      * The Members Collection cache
@@ -103,7 +104,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {MembersCollection}
      * @private
      * @memberof Members
-    */
+     */
     this.membersCollection = new MembersCollection();
     /**
      * The current locus url for the active meeting
@@ -111,7 +112,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.locusUrl = attrs.locusUrl || null;
     /**
      * The current hostId for the meeting
@@ -119,7 +120,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.hostId = null;
     /**
      * The current type for the meeting, could be MEETING or CALL
@@ -127,7 +128,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.type = null;
     /**
      * Locus has a self object, sent individually to the client
@@ -141,7 +142,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.selfId = null;
     /**
      * The current mediaShareContentId for the meeting
@@ -149,7 +150,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.mediaShareContentId = null;
     /**
      * The current mediaShareWhiteboardId for the meeting
@@ -157,7 +158,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.mediaShareWhiteboardId = null;
     /**
      * The current recordingId for the meeting, if it exists
@@ -165,7 +166,7 @@ export default class Members extends StatelessWebexPlugin {
      * @type {String}
      * @private
      * @memberof Members
-    */
+     */
     this.recordingId = null;
 
     /**
@@ -190,7 +191,7 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusSelfUpdate(payload: { newSelf: any; oldSelf: any }) {
+  locusSelfUpdate(payload: {newSelf: any; oldSelf: any}) {
     let newSelfId = null;
     let oldSelfId = null;
 
@@ -221,12 +222,12 @@ export default class Members extends StatelessWebexPlugin {
       this,
       {
         file: 'members',
-        function: 'locusSelfUpdate'
+        function: 'locusSelfUpdate',
       },
       EVENT_TRIGGERS.MEMBERS_SELF_UPDATE,
       {
         activeSelfId: newSelfId,
-        endedSelfId: oldSelfId
+        endedSelfId: oldSelfId,
       }
     );
   }
@@ -240,7 +241,7 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusHostUpdate(payload: { newHost: any; oldHost: any }) {
+  locusHostUpdate(payload: {newHost: any; oldHost: any}) {
     let newHostId = null;
     let oldHostId = null;
 
@@ -271,12 +272,12 @@ export default class Members extends StatelessWebexPlugin {
       this,
       {
         file: 'members',
-        function: 'locusHostUpdate'
+        function: 'locusHostUpdate',
       },
       EVENT_TRIGGERS.MEMBERS_HOST_UPDATE,
       {
         activeHostId: newHostId,
-        endedHostId: oldHostId
+        endedHostId: oldHostId,
       }
     );
   }
@@ -290,7 +291,7 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: { participants: object }) {
+  locusParticipantsUpdate(payload: {participants: object}) {
     if (payload) {
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
@@ -299,12 +300,12 @@ export default class Members extends StatelessWebexPlugin {
         this,
         {
           file: 'members',
-          function: 'locusParticipantsUpdate'
+          function: 'locusParticipantsUpdate',
         },
         EVENT_TRIGGERS.MEMBERS_UPDATE,
         {
           delta,
-          full
+          full,
         }
       );
     }
@@ -319,7 +320,7 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusMediaSharesUpdate(payload: { current: any; previous: any }) {
+  locusMediaSharesUpdate(payload: {current: any; previous: any}) {
     const currentContent = payload.current?.content;
     const previousContent = payload.previous?.content;
     const currentWhiteboard = payload.current?.whiteboard;
@@ -338,8 +339,10 @@ export default class Members extends StatelessWebexPlugin {
         if (currentContent.disposition === FLOOR_ACTION.RELEASED) {
           whoStopped = currentContent.beneficiaryId;
           this.mediaShareContentId = null;
-        }
-        else if (currentContent.disposition === FLOOR_ACTION.GRANTED && currentContent.beneficiaryId !== previousContent.beneficiaryId) {
+        } else if (
+          currentContent.disposition === FLOOR_ACTION.GRANTED &&
+          currentContent.beneficiaryId !== previousContent.beneficiaryId
+        ) {
           whoStopped = previousContent.beneficiaryId;
         }
       }
@@ -356,8 +359,10 @@ export default class Members extends StatelessWebexPlugin {
         if (currentWhiteboard.disposition === FLOOR_ACTION.RELEASED) {
           whoStopped = currentWhiteboard.beneficiaryId;
           this.mediaShareWhiteboardId = null;
-        }
-        else if (currentWhiteboard.disposition === FLOOR_ACTION.GRANTED && currentWhiteboard.beneficiaryId !== previousWhiteboard.beneficiaryId) {
+        } else if (
+          currentWhiteboard.disposition === FLOOR_ACTION.GRANTED &&
+          currentWhiteboard.beneficiaryId !== previousWhiteboard.beneficiaryId
+        ) {
           whoStopped = previousWhiteboard.beneficiaryId;
         }
       }
@@ -382,16 +387,15 @@ export default class Members extends StatelessWebexPlugin {
       this,
       {
         file: 'members',
-        function: 'locusMediaSharesUpdate'
+        function: 'locusMediaSharesUpdate',
       },
       EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE,
       {
         activeSharingId: whoSharing,
-        endedSharingId: whoStopped
+        endedSharingId: whoStopped,
       }
     );
   }
-
 
   /**
    * Internal update the locus url value
@@ -415,7 +419,7 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusFullStateTypeUpdate(payload: { type: string }) {
+  locusFullStateTypeUpdate(payload: {type: string}) {
     // TODO: at some point there could be a timing issue here, for updating each member
     // ie., if the type changes AND there is no locus update, then each member will not know the type of call
     // which means they cannot determine isMutable && isRemovable
@@ -472,7 +476,9 @@ export default class Members extends StatelessWebexPlugin {
     this.selfId = payload.selfId || this.selfId;
     this.recordingId = payload.recordingId;
     if (!payload.participants) {
-      LoggerProxy.logger.warn('Members:index#handleLocusInfoUpdatedParticipants --> participants payload is missing.');
+      LoggerProxy.logger.warn(
+        'Members:index#handleLocusInfoUpdatedParticipants --> participants payload is missing.'
+      );
     }
     const memberUpdate = this.update(payload.participants);
 
@@ -491,12 +497,12 @@ export default class Members extends StatelessWebexPlugin {
   public setLocusUrl(locus: any, locusUrl: string = null) {
     if (locusUrl) {
       this.locusUrl = locusUrl;
-    }
-    else if (locus && (locus.locusUrl || locus.url)) {
+    } else if (locus && (locus.locusUrl || locus.url)) {
       this.locusUrl = locus.locusUrl || locus.url;
-    }
-    else {
-      throw new ParameterError('Setting locusUrl for the Members module should be done with a locus object or locusUrl');
+    } else {
+      throw new ParameterError(
+        'Setting locusUrl for the Members module should be done with a locus object or locusUrl'
+      );
     }
   }
 
@@ -512,12 +518,12 @@ export default class Members extends StatelessWebexPlugin {
   public setHostId(locus: any, hostId: string = null) {
     if (hostId) {
       this.hostId = hostId;
-    }
-    else if (locus) {
+    } else if (locus) {
       this.hostId = locus && locus.owner && locus.owner.info ? locus.owner.info : null;
-    }
-    else {
-      throw new ParameterError('Setting hostid for the Members module should be done with a locus object or hostId');
+    } else {
+      throw new ParameterError(
+        'Setting hostid for the Members module should be done with a locus object or hostId'
+      );
     }
   }
 
@@ -533,12 +539,12 @@ export default class Members extends StatelessWebexPlugin {
   public setType(fullState: any, type: string = null) {
     if (type) {
       this.type = type;
-    }
-    else if (fullState) {
+    } else if (fullState) {
       this.type = (fullState && fullState.type) || null;
-    }
-    else {
-      throw new ParameterError('Setting type for the Members module should be done with a fullstate object or type string');
+    } else {
+      throw new ParameterError(
+        'Setting type for the Members module should be done with a fullstate object or type string'
+      );
     }
   }
 
@@ -553,12 +559,15 @@ export default class Members extends StatelessWebexPlugin {
   setSelfId(locus: any, selfId: string = null) {
     if (selfId) {
       this.selfId = selfId;
-    }
-    else if (locus) {
-      this.selfId = locus && locus.self && locus.self.person && locus.self.person.id ? locus.self.person.id : null;
-    }
-    else {
-      throw new ParameterError('Setting selfid for the Members module should be done with a locus object or selfId');
+    } else if (locus) {
+      this.selfId =
+        locus && locus.self && locus.self.person && locus.self.person.id
+          ? locus.self.person.id
+          : null;
+    } else {
+      throw new ParameterError(
+        'Setting selfid for the Members module should be done with a locus object or selfId'
+      );
     }
   }
 
@@ -573,8 +582,7 @@ export default class Members extends StatelessWebexPlugin {
   setMediaShareContentId(locus: any, contentId?: string) {
     if (contentId) {
       this.mediaShareContentId = contentId;
-    }
-    else if (locus) {
+    } else if (locus) {
       const contentMediaShare =
         locus.mediaShares &&
         locus.mediaShares.length &&
@@ -586,9 +594,10 @@ export default class Members extends StatelessWebexPlugin {
           contentMediaShare.floor.beneficiary &&
           contentMediaShare.floor.beneficiary.id) ||
         null;
-    }
-    else {
-      throw new ParameterError('Setting hostid for the Members module should be done with a locus object or hostId');
+    } else {
+      throw new ParameterError(
+        'Setting hostid for the Members module should be done with a locus object or hostId'
+      );
     }
   }
 
@@ -603,8 +612,7 @@ export default class Members extends StatelessWebexPlugin {
   setMediaShareWhiteboardId(locus: any, whiteboardId?: string) {
     if (whiteboardId) {
       this.mediaShareWhiteboardId = whiteboardId;
-    }
-    else if (locus) {
+    } else if (locus) {
       const whiteboardMediaShare =
         locus.mediaShares &&
         locus.mediaShares.length &&
@@ -616,9 +624,10 @@ export default class Members extends StatelessWebexPlugin {
           whiteboardMediaShare.floor.beneficiary &&
           whiteboardMediaShare.floor.beneficiary.id) ||
         null;
-    }
-    else {
-      throw new ParameterError('Setting hostid for the Members module should be done with a locus object or hostId');
+    } else {
+      throw new ParameterError(
+        'Setting hostid for the Members module should be done with a locus object or hostId'
+      );
     }
   }
 
@@ -651,11 +660,10 @@ export default class Members extends StatelessWebexPlugin {
               hostId: this.hostId,
               contentSharingId: this.mediaShareContentId,
               whiteboardSharingId: this.mediaShareWhiteboardId,
-              type: this.type
+              type: this.type,
             })
           );
-        }
-        else {
+        } else {
           membersUpdate.added.push(
             new Member(participant, {
               recordingId: this.recordingId,
@@ -663,7 +671,7 @@ export default class Members extends StatelessWebexPlugin {
               hostId: this.hostId,
               contentSharingId: this.mediaShareContentId,
               whiteboardSharingId: this.mediaShareWhiteboardId,
-              type: this.type
+              type: this.type,
             })
           );
         }
@@ -682,11 +690,15 @@ export default class Members extends StatelessWebexPlugin {
    */
   addMember(invitee: any, alertIfActive?: boolean) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meeting object must be defined.'));
+      return Promise.reject(
+        new ParameterError('The associated locus url for this meeting object must be defined.')
+      );
     }
     if (MembersUtil.isInvalidInvitee(invitee)) {
       return Promise.reject(
-        new ParameterError('The invitee must be defined with either a valid email, emailAddress or phoneNumber property.')
+        new ParameterError(
+          'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.'
+        )
       );
     }
     const options = MembersUtil.generateAddMemberOptions(invitee, this.locusUrl, alertIfActive);
@@ -702,7 +714,9 @@ export default class Members extends StatelessWebexPlugin {
    */
   cancelPhoneInvite(invitee: any) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meeting object must be defined.'));
+      return Promise.reject(
+        new ParameterError('The associated locus url for this meeting object must be defined.')
+      );
     }
     if (MembersUtil.isInvalidInvitee(invitee)) {
       return Promise.reject(
@@ -710,7 +724,6 @@ export default class Members extends StatelessWebexPlugin {
       );
     }
     const options = MembersUtil.cancelPhoneInviteOptions(invitee, this.locusUrl);
-
 
     return this.membersRequest.cancelPhoneInvite(options);
   }
@@ -740,10 +753,14 @@ export default class Members extends StatelessWebexPlugin {
    */
   public removeMember(memberId: string) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meeting object must be defined.'));
+      return Promise.reject(
+        new ParameterError('The associated locus url for this meeting object must be defined.')
+      );
     }
     if (!memberId) {
-      return Promise.reject(new ParameterError('The member id must be defined to remove the member.'));
+      return Promise.reject(
+        new ParameterError('The member id must be defined to remove the member.')
+      );
     }
     const options = MembersUtil.generateRemoveMemberOptions(memberId, this.locusUrl);
 
@@ -758,12 +775,18 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public muteMember(memberId: string, mute: boolean = true) {
+  public muteMember(memberId: string, mute = true) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meetings members object must be defined.'));
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
     }
     if (!memberId) {
-      return Promise.reject(new ParameterError('The member id must be defined to mute the member.'));
+      return Promise.reject(
+        new ParameterError('The member id must be defined to mute the member.')
+      );
     }
     const options = MembersUtil.generateMuteMemberOptions(memberId, mute, this.locusUrl);
 
@@ -778,12 +801,18 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public raiseOrLowerHand(memberId: string, raise: boolean = true) {
+  public raiseOrLowerHand(memberId: string, raise = true) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meetings members object must be defined.'));
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
     }
     if (!memberId) {
-      return Promise.reject(new ParameterError('The member id must be defined to raise/lower the hand of the member.'));
+      return Promise.reject(
+        new ParameterError('The member id must be defined to raise/lower the hand of the member.')
+      );
     }
     const options = MembersUtil.generateRaiseHandMemberOptions(memberId, raise, this.locusUrl);
 
@@ -799,16 +828,26 @@ export default class Members extends StatelessWebexPlugin {
    */
   public lowerAllHands(requestingMemberId: string) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meetings members object must be defined.'));
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
     }
     if (!requestingMemberId) {
-      return Promise.reject(new ParameterError('The requestingMemberId must be defined to lower all hands in a meeting.'));
+      return Promise.reject(
+        new ParameterError(
+          'The requestingMemberId must be defined to lower all hands in a meeting.'
+        )
+      );
     }
-    const options = MembersUtil.generateLowerAllHandsMemberOptions(requestingMemberId, this.locusUrl);
+    const options = MembersUtil.generateLowerAllHandsMemberOptions(
+      requestingMemberId,
+      this.locusUrl
+    );
 
     return this.membersRequest.lowerAllHandsMember(options);
   }
-
 
   /**
    * Transfers the host to another member
@@ -818,18 +857,27 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public transferHostToMember(memberId: string, moderator: boolean = true) {
+  public transferHostToMember(memberId: string, moderator = true) {
     if (!this.locusUrl) {
-      return Promise.reject(new ParameterError('The associated locus url for this meetings members object must be defined.'));
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
     }
     if (!memberId) {
-      return Promise.reject(new ParameterError('The member id must be defined to transfer host to the member.'));
+      return Promise.reject(
+        new ParameterError('The member id must be defined to transfer host to the member.')
+      );
     }
-    const options = MembersUtil.generateTransferHostMemberOptions(memberId, moderator, this.locusUrl);
+    const options = MembersUtil.generateTransferHostMemberOptions(
+      memberId,
+      moderator,
+      this.locusUrl
+    );
 
     return this.membersRequest.transferHostToMember(options);
   }
-
 
   /**
    * Sends DTMF tones for the PSTN member of a meeting
@@ -839,7 +887,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public sendDialPadKey(tones: string = '', memberId: string = '') {
+  public sendDialPadKey(tones = '', memberId = '') {
     // @ts-ignore
     if (!tones && tones !== 0) {
       return Promise.reject(new ParameterError('DMTF tones must be passed in'));
@@ -863,7 +911,11 @@ export default class Members extends StatelessWebexPlugin {
       return this.membersRequest.sendDialPadKey(options);
     }
 
-    return Promise.reject(new Error('Members:index#sendDialPadKey --> cannot send DTMF, meeting does not have a connection to the "locus" call control service.'));
+    return Promise.reject(
+      new Error(
+        'Members:index#sendDialPadKey --> cannot send DTMF, meeting does not have a connection to the "locus" call control service.'
+      )
+    );
   }
 
   /** Finds a member that has any device with a csi matching provided value
@@ -872,10 +924,12 @@ export default class Members extends StatelessWebexPlugin {
    * @returns {Member}
    */
   findMemberByCsi(csi) {
-    return Object.values(this.membersCollection.getAll())
-      .find((member) => (
-        member.participant?.devices?.find((device) => (
-          device.csis?.find((memberCsi) => memberCsi === csi)))));
+    return Object.values(this.membersCollection.getAll()).find((member) =>
+      // @ts-ignore
+      member.participant?.devices?.find((device) =>
+        device.csis?.find((memberCsi) => memberCsi === csi)
+      )
+    );
   }
 
   /**
@@ -892,7 +946,10 @@ export default class Members extends StatelessWebexPlugin {
     this.membersCollection.get(memberId)?.participant?.devices?.forEach((device) => {
       if (device.mediaSessions) {
         const deviceCsis = device.mediaSessions
-          ?.filter((mediaSession) => mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent)
+          ?.filter(
+            (mediaSession) =>
+              mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent
+          )
           .map((mediaSession) => mediaSession.csi);
 
         csis.push(...deviceCsis);

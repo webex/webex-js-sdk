@@ -7,7 +7,7 @@ import {
   RSAPublicKey,
   CertificateChainValidationEngine,
   CryptoEngine,
-  setEngine
+  setEngine,
 } from 'pkijs';
 import {isArray} from 'lodash';
 import jose from 'node-jose';
@@ -20,7 +20,7 @@ setEngine(
   new CryptoEngine({
     name: '',
     crypto,
-    subtle: crypto.subtle
+    subtle: crypto.subtle,
   })
 );
 
@@ -83,7 +83,7 @@ const validateKtyHeader = ({kty}) => {
 
 const validateKidHeader = ({kid}) => {
   if (!isUri(kid)) {
-    throwError('\'kid\' is not a valid URI');
+    throwError("'kid' is not a valid URI");
   }
 
   if (parseUrl(kid).protocol !== VALID_KID_PROTOCOL) {
@@ -144,7 +144,7 @@ const validateCommonName = ([certificate], {kid}) => {
   }
 
   if (!validationSuccessful) {
-    throwError('hostname of the 1st certificate does not match \'kid\'');
+    throwError("hostname of the 1st certificate does not match 'kid'");
   }
 };
 
@@ -158,23 +158,22 @@ const validateCommonName = ([certificate], {kid}) => {
  * @throws {KMSError} if e or n doesn't match the first certificate
  * @returns {void}
  */
-const validatePublicCertificate =
-  ([certificate], {e: publicExponent, n: modulus}) => {
-    const {encode} = jose.util.base64url;
+const validatePublicCertificate = ([certificate], {e: publicExponent, n: modulus}) => {
+  const {encode} = jose.util.base64url;
 
-    const publicKey = certificate.subjectPublicKeyInfo.subjectPublicKey;
-    const asn1PublicCert = fromBER(publicKey.valueBlock.valueHex);
-    const publicCert = new RSAPublicKey({schema: asn1PublicCert.result});
-    const publicExponentHex = publicCert.publicExponent.valueBlock.valueHex;
-    const modulusHex = publicCert.modulus.valueBlock.valueHex;
+  const publicKey = certificate.subjectPublicKeyInfo.subjectPublicKey;
+  const asn1PublicCert = fromBER(publicKey.valueBlock.valueHex);
+  const publicCert = new RSAPublicKey({schema: asn1PublicCert.result});
+  const publicExponentHex = publicCert.publicExponent.valueBlock.valueHex;
+  const modulusHex = publicCert.modulus.valueBlock.valueHex;
 
-    if (publicExponent !== encode(publicExponentHex)) {
-      throwError('Public exponent is invalid');
-    }
-    if (modulus !== encode(modulusHex)) {
-      throwError('Modulus is invalid');
-    }
-  };
+  if (publicExponent !== encode(publicExponentHex)) {
+    throwError('Public exponent is invalid');
+  }
+  if (modulus !== encode(modulusHex)) {
+    throwError('Modulus is invalid');
+  }
+};
 
 /**
  * Validates the list of certificates against the CAs provided
@@ -187,17 +186,14 @@ const validatePublicCertificate =
 const validateCertificatesSignature = (certificates, caroots = []) => {
   const certificateEngine = new CertificateChainValidationEngine({
     trustedCerts: caroots.map(decodeCert),
-    certs: certificates
+    certs: certificates,
   });
 
-  return certificateEngine.verify()
-    .then(({result, resultCode, resultMessage}) => {
-      if (!result) {
-        throwError(
-          `Certificate Validation failed [${resultCode}]: ${resultMessage}`
-        );
-      }
-    });
+  return certificateEngine.verify().then(({result, resultCode, resultMessage}) => {
+    if (!result) {
+      throwError(`Certificate Validation failed [${resultCode}]: ${resultMessage}`);
+    }
+  });
 };
 
 /**
@@ -210,25 +206,27 @@ const validateCertificatesSignature = (certificates, caroots = []) => {
  *   validate the KMS
  * @returns {Promise} when resolved will return the jwt
  */
-const validateKMS = (caroots) => (jwt = {}) => Promise.resolve()
-  .then(() => {
-    validateKtyHeader(jwt);
-    validateKidHeader(jwt);
+const validateKMS =
+  (caroots) =>
+  (jwt = {}) =>
+    Promise.resolve().then(() => {
+      validateKtyHeader(jwt);
+      validateKidHeader(jwt);
 
-    if (!(isArray(jwt.x5c) && jwt.x5c.length > 0)) {
-      throwError('JWK does not contain a list of certificates');
-    }
-    const certificates = jwt.x5c.map(decodeCert);
+      if (!(isArray(jwt.x5c) && jwt.x5c.length > 0)) {
+        throwError('JWK does not contain a list of certificates');
+      }
+      const certificates = jwt.x5c.map(decodeCert);
 
-    validateCommonName(certificates, jwt);
-    validatePublicCertificate(certificates, jwt);
+      validateCommonName(certificates, jwt);
+      validatePublicCertificate(certificates, jwt);
 
-    // Skip validating signatures if no CA roots were provided
-    const promise = caroots ?
-      validateCertificatesSignature(certificates, caroots) : Promise.resolve();
+      // Skip validating signatures if no CA roots were provided
+      const promise = caroots
+        ? validateCertificatesSignature(certificates, caroots)
+        : Promise.resolve();
 
-    return promise
-      .then(() => jwt);
-  });
+      return promise.then(() => jwt);
+    });
 
 export default validateKMS;

@@ -25,25 +25,27 @@ ControlsUtils.parse = (controls: any) => {
       modifiedBy: ControlsUtils.getId(controls),
       paused: controls.record.paused ? controls.record.paused : false,
       recording: controls.record.recording,
-      lastModified: controls.record.meta.lastModified
+      lastModified: controls.record.meta.lastModified,
     };
   }
 
   if (controls && controls.meetingContainer) {
     parsedControls.meetingContainer = {
-      meetingContainerUrl: controls.meetingContainer.meetingContainerUrl
+      meetingContainerUrl: controls.meetingContainer.meetingContainerUrl,
     };
   }
 
   if (controls && controls.transcribe) {
     parsedControls.transcribe = {
       transcribing: controls.transcribe.transcribing,
-      caption: controls.transcribe.caption
+      caption: controls.transcribe.caption,
     };
   }
 
   if (controls && controls.entryExitTone) {
-    parsedControls.entryExitTone = controls.entryExitTone.enabled ? controls.entryExitTone.mode : null;
+    parsedControls.entryExitTone = controls.entryExitTone.enabled
+      ? controls.entryExitTone.mode
+      : null;
   }
 
   return parsedControls;
@@ -63,26 +65,36 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
     previous,
     current,
     updates: {
-      hasRecordingPausedChanged: current?.record &&
-      !isEqual(previous?.record?.paused, current.record.paused) &&
-      (previous?.record?.recording || current?.record?.recording), // see comments directly below
+      hasRecordingPausedChanged:
+        current?.record &&
+        !isEqual(previous?.record?.paused, current.record.paused) &&
+        (previous?.record?.recording || current?.record?.recording), // see comments directly below
 
-      hasRecordingChanged: current?.record &&
-      !isEqual(previous?.record?.recording, current?.record?.recording) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
-      (previous?.record?.recording || current?.record?.recording), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
+      hasRecordingChanged:
+        current?.record &&
+        !isEqual(previous?.record?.recording, current?.record?.recording) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
+        (previous?.record?.recording || current?.record?.recording), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
-      hasMeetingContainerChanged: current?.meetingContainer &&
-        !isEqual(previous?.meetingContainer?.meetingContainerUrl,
-          current?.meetingContainer?.meetingContainerUrl),
+      hasMeetingContainerChanged:
+        current?.meetingContainer &&
+        !isEqual(
+          previous?.meetingContainer?.meetingContainerUrl,
+          current?.meetingContainer?.meetingContainerUrl
+        ),
 
-      hasTranscribeChanged: current?.transcribe &&
-          !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
-          (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
+      hasTranscribeChanged:
+        current?.transcribe &&
+        !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
+        (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
-      hasEntryExitToneChanged: !!(newControls.entryExitTone &&
-          !isEqual(previous?.entryExitTone, current?.entryExitTone) &&
-          (previous?.entryExitTone || current?.entryExitTone)),
-    }
+      hasEntryExitToneChanged: !!(
+        newControls.entryExitTone &&
+        !isEqual(previous?.entryExitTone, current?.entryExitTone) &&
+        (previous?.entryExitTone || current?.entryExitTone)
+      ),
+
+      hasBreakoutChanged: !isEqual(previous?.breakout, current?.breakout),
+    },
   };
 };
 

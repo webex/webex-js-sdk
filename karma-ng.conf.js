@@ -13,7 +13,7 @@ const {flatten} = require('lodash');
 const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
 
-const SAUCE = (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE);
+const SAUCE = process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE;
 
 module.exports = function configureKarma(config) {
   config.set(makeConfig(process.env.PACKAGE));
@@ -23,17 +23,31 @@ module.exports.makeConfig = makeConfig;
 function makeConfig(packageName, argv) {
   // In case incoming argument is ['Chrome', 'Firefox', 'Safari,ie']
   // Cleanup and return ['Chrome', 'Firefox' 'Safari', 'ie']
-  argv.browsers = argv.browsers && flatten(
-    argv.browsers.map((browser) => (browser.includes(',') ? browser.toLowerCase().split(',') : browser.toLowerCase()))
-  );
-  argv.os = argv.os && flatten(
-    argv.os.map((os) => (os.includes(',') ? os.toLowerCase().split(',') : os.toLowerCase()))
-  );
+  argv.browsers =
+    argv.browsers &&
+    flatten(
+      argv.browsers.map((browser) =>
+        browser.includes(',') ? browser.toLowerCase().split(',') : browser.toLowerCase()
+      )
+    );
+  argv.os =
+    argv.os &&
+    flatten(
+      argv.os.map((os) => (os.includes(',') ? os.toLowerCase().split(',') : os.toLowerCase()))
+    );
 
   const pkg = require(`./packages/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join('packages', packageName, 'test', 'integration', 'spec', '**', '*.js');
+  const integrationTestPath = path.join(
+    'packages',
+    packageName,
+    'test',
+    'integration',
+    'spec',
+    '**',
+    '*.js'
+  );
   const unitTestPath = path.join('packages', packageName, 'test', 'unit', 'spec', '**', '*.js');
 
   const preprocessors = {
@@ -41,9 +55,7 @@ function makeConfig(packageName, argv) {
     // 'packages/**/*.ts': ['tsify', 'browserify']
   };
 
-  const files = [
-    'node_modules/@babel/polyfill/dist/polyfill.js'
-  ];
+  const files = ['node_modules/@babel/polyfill/dist/polyfill.js'];
 
   if (!argv || argv.unit) {
     files.push(unitTestPath);
@@ -70,13 +82,16 @@ function makeConfig(packageName, argv) {
       watch: argv && argv.karmaDebug,
       extensions: ['.ts', '.js'],
       transform: [
-        ['babelify', {
-          extensions: ['.ts', '.js'],
-          global: true,
-          ignore: ['node_modules']
-        }],
-        'envify'
-      ]
+        [
+          'babelify',
+          {
+            extensions: ['.ts', '.js'],
+            global: true,
+            ignore: ['node_modules'],
+          },
+        ],
+        'envify',
+      ],
     },
 
     // Restart the browser if it stops sending output for a minutes. This goes
@@ -97,18 +112,14 @@ function makeConfig(packageName, argv) {
 
     files,
 
-    frameworks: [
-      'browserify',
-      'mocha',
-      'chai',
-    ],
+    frameworks: ['browserify', 'mocha', 'chai'],
 
     hostname: 'localhost',
 
     logLevel: process.env.KARMA_LOG_LEVEL || 'INFO', // INFO is default value
 
     browserConsoleLogOptions: {
-      level: 'warn'
+      level: 'warn',
     },
 
     client: {
@@ -118,13 +129,13 @@ function makeConfig(packageName, argv) {
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
-        grep: argv && argv.grep[0]
-      }
+        grep: argv && argv.grep[0],
+      },
     },
 
     mochaReporter: {
       // Hide the skipped tests on jenkins to more easily see which tests failed
-      ignoreSkipped: true
+      ignoreSkipped: true,
     },
 
     port: parseInt(process.env.KARMA_PORT, 10) || 9001,
@@ -133,19 +144,17 @@ function makeConfig(packageName, argv) {
 
     proxies: {
       '/fixtures/': `http://localhost:${process.env.FIXTURE_PORT}/`,
-      '/upload': `http://localhost:${process.env.FIXTURE_PORT}/upload`
+      '/upload': `http://localhost:${process.env.FIXTURE_PORT}/upload`,
     },
 
-    reporters: [
-      'mocha'
-    ],
+    reporters: ['mocha'],
 
     singleRun: !(argv && argv.karmaDebug),
 
     // video and screenshots add on the request of sauce labs support to help
     // diagnose test user creation timeouts
     recordVideo: true,
-    recordScreenshots: true
+    recordScreenshots: true,
   };
 
   if (process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
@@ -155,7 +164,7 @@ function makeConfig(packageName, argv) {
       suite: packageName,
       useBrowserName: true,
       recordScreenshots: true,
-      recordVideo: true
+      recordVideo: true,
     };
 
     cfg.reporters.push('junit');
@@ -180,13 +189,10 @@ function makeConfig(packageName, argv) {
           '127.0.0.1',
           'localhost',
           '*.wbx2.com',
-          '*.ciscospark.com'
+          '*.ciscospark.com',
         ],
-        tunnelDomains: [
-          '127.0.0.1',
-          'localhost'
-        ]
-      }
+        tunnelDomains: ['127.0.0.1', 'localhost'],
+      },
     };
 
     cfg.reporters.push('saucelabs');
@@ -194,8 +200,7 @@ function makeConfig(packageName, argv) {
 
   try {
     cfg = require(`./packages/${packageName}/karma.conf.js`)(cfg);
-  }
-  catch (error) {
+  } catch (error) {
     // ignore
   }
 

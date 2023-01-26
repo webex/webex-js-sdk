@@ -79,10 +79,7 @@ function XUnit(runner, options) {
       console[methodName] = (...args) => {
         Reflect.apply(originalMethods[methodName], console, args);
 
-        const callerInfo = (new Error())
-          .stack
-          .split('\n')[2]
-          .match(/\((.+?):(\d+):\d+/);
+        const callerInfo = new Error().stack.split('\n')[2].match(/\((.+?):(\d+):\d+/);
 
         if (callerInfo && callerInfo.length >= 2) {
           const callerFile = path.relative(__dirname, '..', callerInfo[1]);
@@ -93,8 +90,7 @@ function XUnit(runner, options) {
 
         if (methodName === 'error') {
           test.systemErr.push(args);
-        }
-        else {
+        } else {
           args.unshift(`${methodName.toUpperCase()}:`);
 
           test.systemOut.push(args);
@@ -111,15 +107,21 @@ function XUnit(runner, options) {
 
   runner.on('end', () => {
     self.write('<testsuites>');
-    self.write(tag('testsuite', {
-      name: 'Mocha Tests',
-      tests: stats.tests,
-      failures: stats.failures,
-      errors: stats.failures,
-      skipped: stats.tests - stats.failures - stats.passes,
-      timestamp: (new Date()).toUTCString(),
-      time: stats.duration / 1000 || 0
-    }, false));
+    self.write(
+      tag(
+        'testsuite',
+        {
+          name: 'Mocha Tests',
+          tests: stats.tests,
+          failures: stats.failures,
+          errors: stats.failures,
+          skipped: stats.tests - stats.failures - stats.passes,
+          timestamp: new Date().toUTCString(),
+          time: stats.duration / 1000 || 0,
+        },
+        false
+      )
+    );
 
     tests.forEach((t) => {
       self.test(t);
@@ -147,8 +149,7 @@ XUnit.prototype.done = function done(failures, fn) {
     this.fileStream.end(() => {
       fn(failures);
     });
-  }
-  else {
+  } else {
     fn(failures);
   }
 };
@@ -162,8 +163,7 @@ XUnit.prototype.done = function done(failures, fn) {
 XUnit.prototype.write = function write(line) {
   if (this.fileStream) {
     this.fileStream.write(`${line}\n`);
-  }
-  else {
+  } else {
     console.log(line);
   }
 };
@@ -178,15 +178,14 @@ XUnit.prototype.test = function testFn(test) {
   const attrs = {
     classname: test.parent.fullTitle(),
     name: test.title,
-    time: test.duration / 1000 || 0
+    time: test.duration / 1000 || 0,
   };
 
   let systemErr;
 
   if (test.systemErr && test.systemErr.length > 0) {
     systemErr = tag('system-err', {}, false, cdata(test.systemErr.reduce(reducer, '\n')));
-  }
-  else {
+  } else {
     systemErr = '';
   }
 
@@ -194,8 +193,7 @@ XUnit.prototype.test = function testFn(test) {
 
   if (test.systemOut && test.systemOut.length > 0) {
     systemOut = tag('system-out', {}, false, cdata(test.systemOut.reduce(reducer, '\n')));
-  }
-  else {
+  } else {
     systemOut = '';
   }
 
@@ -204,11 +202,9 @@ XUnit.prototype.test = function testFn(test) {
     const failureMessage = tag('failure', {}, false, cdata(`${escape(err.message)}\n${err.stack}`));
 
     this.write(tag('testcase', attrs, false, failureMessage + systemOut + systemErr));
-  }
-  else if (test.pending) {
+  } else if (test.pending) {
     this.write(tag('testcase', attrs, false, tag('skipped', {}, true)));
-  }
-  else {
+  } else {
     this.write(tag('testcase', attrs, true));
   }
 

@@ -3,18 +3,18 @@
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 
-  1. Let core members know about your proposal by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
-  2. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
-      - You are welcomed you join our [weekly review meeting](https://cisco.webex.com/m/f4ebbec6-c306-49ca-83f4-fb2d098fc946) (Thursdays, 11:30a-12:30p PST) to propose your contribution as well
-  3. If your proposal is approved you should start coding at this point
-  4. We recommend opening a draft PR to receive feedback before finalizing your solution
-      - When opening a draft PR, specify with PR comments where in the code you would like to get feedback
-  5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
-  6. Let core members know about your PR by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
-  7. Core members will review the pull request and provide feedback when necessary
-      - If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs
-  8. Once the PR is approved by a core member, it will be merged
-  9. Celebrate! Your code is released 🎈🎉🍻
+1. Let core members know about your proposal by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
+2. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
+   - You are welcomed you join our [weekly review meeting](https://cisco.webex.com/m/f4ebbec6-c306-49ca-83f4-fb2d098fc946) (Thursdays, 11:30a-12:30p PST) to propose your contribution as well
+3. If your proposal is approved you should start coding at this point
+4. We recommend opening a draft PR to receive feedback before finalizing your solution
+   - When opening a draft PR, specify with PR comments where in the code you would like to get feedback
+5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
+6. Let core members know about your PR by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
+7. Core members will review the pull request and provide feedback when necessary
+   - If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs
+8. Once the PR is approved by a core member, it will be merged
+9. Celebrate! Your code is released 🎈🎉🍻
 
 ## Table of Contents
 
@@ -108,7 +108,7 @@ If at any point your out-of-the-box builds or failing or if you are tests are fa
 yarn
 ```
 
-By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with *No such file or directory*. To fix this you can set npm to use bash instead using:
+By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with _No such file or directory_. To fix this you can set npm to use bash instead using:
 
 ```bash
 npm config set script-shell "/bin/bash"
@@ -129,36 +129,36 @@ You can get these values by registering a new integration on [Cisco Webex for De
 
 The JS SDK allows you to customize your experience via configuration and environment variables. In general, external developers will not need to set any of the URL related environment variables.
 
-| **Environment Variable** | **Details** | **Default** |
-|---|---|---|
-| `ATLAS_SERVICE_URL` | Used to populate the atlasServiceUrl pre discovery config | https://atlas-a.wbx2.com/admin/api/v1 |
-| `CLIENT_LOGS_SERVICE_URL` | Used to populate the clientLogsServiceUrl pre discovery config | https://client-logs-a.wbx2.com/api/v1 |
-| `CONVERSATION_SERVICE` | Used for validating an auth token | https://conv-a.wbx2.com/conversation/api/v1 |
-| `ENABLE_MERCURY_LOGGING` | When set, will log all mercury messages | undefined |
-| `ENABLE_VERBOSE_NETWORK_LOGGING` | Utilized to enable interceptor logging | undefined |
-| `ENCRYPTION_SERVICE_URL` | Used for plugin-board tests | https://encryption-a.wbx2.com |
-| `HYDRA_SERVICE_URL` | Stores the public hydra api url for managing Webex resources. | https://api.ciscospark.com/v1/ |
-| `IDBROKER_BASE_URL` | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
-| `IDENTITY_BASE_URL` | Used to communicate with the identity api | https://identity.webex.com |
-| `MERCURY_FORCE_CLOSE_DELAY` | Milliseconds to wait for a before declaring the socket dead | 2000 |
-| `MERCURY_PING_INTERVAL` | Milliseconds between pings sent up the socket | 15000 |
-| `MERCURY_PONG_TIMEOUT` | Milliseconds to wait for a pong before declaring the connection dead | 14000 |
-| `METRICS_SERVICE_URL` | Used to populate the metricsServiceUrl pre discovery config | https://metrics-a.wbx2.com/metrics/api/v1 |
-| `U2C_SERVICE_URL` | Stores the service catalog collecting url, typically the **U2C** service. | https://u2c.wbx2.com/u2c/api/v1 |
-| `WEBEX_ACCESS_TOKEN` | Used to provide access token when using "webex/env" | undefined |
-| `WEBEX_AUTHORIZE_URL` | Populates the Authorization URL which prompts for user's password. | https://idbroker.webex.com/idb/oauth2/v1/authorize |
-| `WEBEX_AUTHORIZATION_STRING` | This is the authorization url for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined |
-| `WEBEX_CLIENT_ID` | The Webex client ID used to authorize | undefined |
-| `WEBEX_CLIENT_SECRET` | The Webex client secret used to authorize | undefined |
-| `WEBEX_CONVERSATION_CLUSTER_SERVICE` | Service identifier used to lookup conversation servers in hostmap | identityLookup |
-| `WEBEX_CONVERSATION_DEFAULT_CLUSTER` | Cluster used to convert from "us" cluster to actual cluster | urn:TEAM:us-east-2_a:identityLookup |
-| `WEBEX_LOG_LEVEL` | Maximum log level that should be printed to the console. | log |
-| `WEBEX_REDIRECT_URI` | The URI to redirect to after authorization | undefined |
-| `WEBEX_SCOPE` | The Webex scope the users will authorize with | undefined |
-| `WDM_SERVICE_URL` | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
-| `WHISTLER_API_SERVICE_URL` | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
-| `WHISTLER` | Run (meetings) tests using Whistler users | FALSE |
-| `JENKINS` | Run specific tests that should be run on (internal) Jenkins | FALSE |
+| **Environment Variable**             | **Details**                                                                                                              | **Default**                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `ATLAS_SERVICE_URL`                  | Used to populate the atlasServiceUrl pre discovery config                                                                | https://atlas-a.wbx2.com/admin/api/v1               |
+| `CLIENT_LOGS_SERVICE_URL`            | Used to populate the clientLogsServiceUrl pre discovery config                                                           | https://client-logs-a.wbx2.com/api/v1               |
+| `CONVERSATION_SERVICE`               | Used for validating an auth token                                                                                        | https://conv-a.wbx2.com/conversation/api/v1         |
+| `ENABLE_MERCURY_LOGGING`             | When set, will log all mercury messages                                                                                  | undefined                                           |
+| `ENABLE_VERBOSE_NETWORK_LOGGING`     | Utilized to enable interceptor logging                                                                                   | undefined                                           |
+| `ENCRYPTION_SERVICE_URL`             | Used for plugin-board tests                                                                                              | https://encryption-a.wbx2.com                       |
+| `HYDRA_SERVICE_URL`                  | Stores the public hydra api url for managing Webex resources.                                                            | https://api.ciscospark.com/v1/                      |
+| `IDBROKER_BASE_URL`                  | Used throughout the SDK as the endpoint for authorization                                                                | https://idbroker.webex.com                          |
+| `IDENTITY_BASE_URL`                  | Used to communicate with the identity api                                                                                | https://identity.webex.com                          |
+| `MERCURY_FORCE_CLOSE_DELAY`          | Milliseconds to wait for a before declaring the socket dead                                                              | 2000                                                |
+| `MERCURY_PING_INTERVAL`              | Milliseconds between pings sent up the socket                                                                            | 15000                                               |
+| `MERCURY_PONG_TIMEOUT`               | Milliseconds to wait for a pong before declaring the connection dead                                                     | 14000                                               |
+| `METRICS_SERVICE_URL`                | Used to populate the metricsServiceUrl pre discovery config                                                              | https://metrics-a.wbx2.com/metrics/api/v1           |
+| `U2C_SERVICE_URL`                    | Stores the service catalog collecting url, typically the **U2C** service.                                                | https://u2c.wbx2.com/u2c/api/v1                     |
+| `WEBEX_ACCESS_TOKEN`                 | Used to provide access token when using "webex/env"                                                                      | undefined                                           |
+| `WEBEX_AUTHORIZE_URL`                | Populates the Authorization URL which prompts for user's password.                                                       | https://idbroker.webex.com/idb/oauth2/v1/authorize  |
+| `WEBEX_AUTHORIZATION_STRING`         | This is the authorization url for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined                                           |
+| `WEBEX_CLIENT_ID`                    | The Webex client ID used to authorize                                                                                    | undefined                                           |
+| `WEBEX_CLIENT_SECRET`                | The Webex client secret used to authorize                                                                                | undefined                                           |
+| `WEBEX_CONVERSATION_CLUSTER_SERVICE` | Service identifier used to lookup conversation servers in hostmap                                                        | identityLookup                                      |
+| `WEBEX_CONVERSATION_DEFAULT_CLUSTER` | Cluster used to convert from "us" cluster to actual cluster                                                              | urn:TEAM:us-east-2_a:identityLookup                 |
+| `WEBEX_LOG_LEVEL`                    | Maximum log level that should be printed to the console.                                                                 | log                                                 |
+| `WEBEX_REDIRECT_URI`                 | The URI to redirect to after authorization                                                                               | undefined                                           |
+| `WEBEX_SCOPE`                        | The Webex scope the users will authorize with                                                                            | undefined                                           |
+| `WDM_SERVICE_URL`                    | The WDM service url before the catalog is downloaded                                                                     | https://wdm-a.wbx2.com/wdm/api/v1                   |
+| `WHISTLER_API_SERVICE_URL`           | The url to the whistler test service                                                                                     | https://whistler-prod.allnint.ciscospark.com/api/v1 |
+| `WHISTLER`                           | Run (meetings) tests using Whistler users                                                                                | FALSE                                               |
+| `JENKINS`                            | Run specific tests that should be run on (internal) Jenkins                                                              | FALSE                                               |
 
 ### Running Tests
 
@@ -182,19 +182,21 @@ A local development flow might look like
 3. Use `yarn run test --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
 
 4. Optionally, add environment variables to mimize logging and show any test specific logging, ie:
+
    - WEBEX_LOG_LEVEL - set this to "log" to minimize the default verbose output
    - DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
-   For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
-> `WEBEX_LOG_LEVEL=log DEBUG=messages yarn run test --packages @webex/plugin-messages --node`
+     For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
+     > `WEBEX_LOG_LEVEL=log DEBUG=messages yarn run test --packages @webex/plugin-messages --node`
 
 5. Repeat steps 2-3 until the tests pass.
    > If you use VS Code, we've created a configuration to utilize the built-in debugger
-   >    - Set breakpoints within the package you're working on
-   >    - Select the `Test package` configuration
-   >    - Enter the package you'd like to test (i.e. `MYPACKAGE`)
-   >      - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
-   >    - Add any _optional_ flags (i.e. `--node`)
-   >      - _If you don't want to add any flags, just add a space (current workaround)_
+   >
+   > - Set breakpoints within the package you're working on
+   > - Select the `Test package` configuration
+   > - Enter the package you'd like to test (i.e. `MYPACKAGE`)
+   >   - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
+   > - Add any _optional_ flags (i.e. `--node`)
+   >   - _If you don't want to add any flags, just add a space (current workaround)_
 6. Run `yarn run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
@@ -207,9 +209,9 @@ You can use the `--browsers` _(not to be confused with the `--browser` tag)_ all
 The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
 
 To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browser` flag, but with Sauce Labs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
+
 > **The default Sauce Labs configuration _"`SAUCE=true yarn run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
 
->
 > `--os Mac` will launch `Chrome`, `Firefox`, and `Safari`
 >
 > `--os Windows` will launch `Chrome`, `Firefox`, `Edge`, and `IE 11`
@@ -231,16 +233,18 @@ yarn run samples:serve
 > NOTE: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
 >
 > - Mac
+>
 >   - You can install these with `brew install graphicsmagick libgcrypt`.
 >
 > - Ubuntu
+>
 >   - You can install these with `sudo apt-get install graphicsmagick libgcrypt-dev`
 >
 > - Windows
 >   - You can install `graphicsmagick` using either [scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/)
 >     - scoop: `scoop install graphicsmagick`
 >     - chocolatey: `choco install graphicsmagick`
->     - Also *globally* install `win-node-env` to resolve `NODE_ENV` windows related command issues
+>     - Also _globally_ install `win-node-env` to resolve `NODE_ENV` windows related command issues
 
 Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
 
@@ -296,7 +300,6 @@ When you run, you should see two instances of Chrome open.
 > Testing on a iDevice only works on macOS due to the lockdown of `safaridriver`, you should probably switch to [two Android devices and changes to the `wdio.conf.mobile.js`](https://chromedriver.chromium.org/getting-started/getting-started---android#h.p_ID_306) or swap the iDevice config for a different browser installed on the machine.
 
 `yarn run samples:test:mobile`
-
 
 By default the config will look for both a Android and iOS device attached to the system. If you wish to test on a specific/singular device and use Chrome installed on your machine, you can pass either `IOS=true` or `ANDROID=true` environment variables to the command above.
 _Ex. `ANDROID=true yarn run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
@@ -401,6 +404,7 @@ The footer should contain any information about **Breaking changes** and is also
 These are commit messages that will have an impact on how the build pipeline behaves. They are not to be used without prior approval.
 
 All of these commit messages should include an explanation for why you're using them. You'll need to commit with `-n` or `--no-verify` to bypass the commit message linter.
+
 > For example
 > `git commit -m "docs(webex-core): [skip npm] - docs change" --no-verify`
 

@@ -14,17 +14,19 @@ describe('plugin-mercury', function () {
   describe('Sharable Mercury', () => {
     let webex;
 
-    beforeEach(() => testUsers.create({count: 1})
-      .then((users) => {
+    beforeEach(() =>
+      testUsers.create({count: 1}).then((users) => {
         webex = new WebexCore({
           credentials: {
-            supertoken: users[0].token
-          }
+            supertoken: users[0].token,
+          },
         });
 
-        return webex.internal.device.register()
+        return webex.internal.device
+          .register()
           .then(() => webex.internal.feature.setFeature('developer', 'web-shared-mercury', true));
-      }));
+      })
+    );
 
     afterEach(() => webex && webex.internal.mercury.disconnect());
 
@@ -39,17 +41,19 @@ describe('plugin-mercury', function () {
       webex.internal.mercury.on('event:mercury.buffer_state', spy1);
       webex.internal.mercury.on('event:mercury.registration_status', spy2);
 
-      return webex.internal.mercury.connect()
-        .then(() => {
-          assert.notCalled(spy1);
-          assert.calledOnce(spy2);
-          const {data} = spy2.args[0][0];
+      return webex.internal.mercury.connect().then(() => {
+        assert.notCalled(spy1);
+        assert.calledOnce(spy2);
+        const {data} = spy2.args[0][0];
 
-          assert.property(data, 'bufferState');
-          assert.property(data, 'localClusterServiceUrls');
+        assert.property(data, 'bufferState');
+        assert.property(data, 'localClusterServiceUrls');
 
-          assert.deepEqual(webex.internal.mercury.localClusterServiceUrls, data.localClusterServiceUrls);
-        });
+        assert.deepEqual(
+          webex.internal.mercury.localClusterServiceUrls,
+          data.localClusterServiceUrls
+        );
+      });
     });
   });
 });

@@ -1,6 +1,6 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 import {ReceiveSlotManager} from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as ReceiveSlotModule from '@webex/plugin-meetings/src/multistream/receiveSlot';
 
@@ -48,7 +48,7 @@ describe('ReceiveSlotManager', () => {
     fakeMeeting.mediaProperties.webrtcMediaConnection = null;
 
     assert.isRejected(
-      receiveSlotManager.allocateSlot(MC.MediaType.VideoMain),
+      receiveSlotManager.allocateSlot(MediaType.VideoMain),
       'Webrtc media connection is missing'
     );
   });
@@ -56,16 +56,16 @@ describe('ReceiveSlotManager', () => {
   it('allocates a slot when allocateSlot() is called and there are no free slots', async () => {
     assert.deepEqual(receiveSlotManager.getStats(), {numAllocatedSlots: {}, numFreeSlots: {}});
 
-    const slot = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledWith(
       fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot,
-      MC.MediaType.VideoMain
+      MediaType.VideoMain
     );
 
     assert.calledOnce(mockReceiveSlotCtor);
-    assert.calledWith(mockReceiveSlotCtor, MC.MediaType.VideoMain, fakeWcmeSlot, sinon.match.func);
+    assert.calledWith(mockReceiveSlotCtor, MediaType.VideoMain, fakeWcmeSlot, sinon.match.func);
     assert.strictEqual(slot, fakeReceiveSlots[0]);
 
     assert.deepEqual(receiveSlotManager.getStats(), {
@@ -75,7 +75,7 @@ describe('ReceiveSlotManager', () => {
   });
 
   it('reuses previously freed slot when allocateSlot() is called and a free slot is available', async () => {
-    const slot1 = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot1 = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledOnce(mockReceiveSlotCtor);
@@ -93,7 +93,7 @@ describe('ReceiveSlotManager', () => {
     mockReceiveSlotCtor.resetHistory();
 
     // allocate another slot, this time the previous one should be returned instead of allocating any new ones
-    const slot2 = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot2 = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.notCalled(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.notCalled(mockReceiveSlotCtor);
@@ -108,7 +108,7 @@ describe('ReceiveSlotManager', () => {
   });
 
   it('does not reuse any slots after reset() is called', async () => {
-    const slot1 = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot1 = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledOnce(mockReceiveSlotCtor);
@@ -125,7 +125,7 @@ describe('ReceiveSlotManager', () => {
     assert.deepEqual(receiveSlotManager.getStats(), {numAllocatedSlots: {}, numFreeSlots: {}});
 
     // allocate another slot, because we called reset(), the old free slot should not be reused
-    const slot2 = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot2 = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledOnce(mockReceiveSlotCtor);
@@ -140,7 +140,7 @@ describe('ReceiveSlotManager', () => {
   });
 
   it('does not reuse slots if they have different media type', async () => {
-    const slot1 = await receiveSlotManager.allocateSlot(MC.MediaType.VideoMain);
+    const slot1 = await receiveSlotManager.allocateSlot(MediaType.VideoMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledOnce(mockReceiveSlotCtor);
@@ -151,16 +151,16 @@ describe('ReceiveSlotManager', () => {
     mockReceiveSlotCtor.resetHistory();
 
     // allocate another slot, this time for main audio, so it should be a completely new slot
-    const slot2 = await receiveSlotManager.allocateSlot(MC.MediaType.AudioMain);
+    const slot2 = await receiveSlotManager.allocateSlot(MediaType.AudioMain);
 
     assert.calledOnce(fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
     assert.calledWith(
       fakeMeeting.mediaProperties.webrtcMediaConnection.createReceiveSlot,
-      MC.MediaType.AudioMain
+      MediaType.AudioMain
     );
 
     assert.calledOnce(mockReceiveSlotCtor);
-    assert.calledWith(mockReceiveSlotCtor, MC.MediaType.AudioMain, fakeWcmeSlot, sinon.match.func);
+    assert.calledWith(mockReceiveSlotCtor, MediaType.AudioMain, fakeWcmeSlot, sinon.match.func);
 
     // verify that in fact we got a brand new slot
     assert.strictEqual(slot2, fakeReceiveSlots[1]);

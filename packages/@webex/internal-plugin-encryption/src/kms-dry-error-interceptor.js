@@ -24,7 +24,10 @@ export default class KmsDryErrorInterceptor extends Interceptor {
    * @returns {Promise}
    */
   onResponseError(options, reason) {
-    if (reason instanceof DryError && reason.message.match(/Failed to resolve authorization token in KmsMessage request for user/)) {
+    if (
+      reason instanceof DryError &&
+      reason.message.match(/Failed to resolve authorization token in KmsMessage request for user/)
+    ) {
       this.webex.logger.error('DRY Request Failed due to kms/test-user flakiness');
       this.webex.logger.error(reason);
 
@@ -43,13 +46,14 @@ export default class KmsDryErrorInterceptor extends Interceptor {
   replay(options, reason) {
     if (options.replayCount) {
       options.replayCount += 1;
-    }
-    else {
+    } else {
       options.replayCount = 1;
     }
 
     if (options.replayCount > this.webex.config.maxAuthenticationReplays) {
-      this.webex.logger.error(`kms: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`);
+      this.webex.logger.error(
+        `kms: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
+      );
 
       return Promise.reject(reason);
     }

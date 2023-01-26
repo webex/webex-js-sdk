@@ -7,28 +7,28 @@ import {
   LOCUSEVENT,
   CORRELATION_ID,
   EVENT_TRIGGERS,
-  ROAP
+  ROAP,
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 
 /**
-  * Meetings Media Codec Missing Event
-  * Emitted when H.264 codec is not
-  * found in the browser.
-  * @event media:codec:missing
-  * @instance
-  * @memberof MeetingsUtil
-  */
+ * Meetings Media Codec Missing Event
+ * Emitted when H.264 codec is not
+ * found in the browser.
+ * @event media:codec:missing
+ * @instance
+ * @memberof MeetingsUtil
+ */
 
 /**
-  * Meetings Media Codec Loaded Event
-  * Emitted when H.264 codec has been
-  * loaded in the browser.
-  * @event media:codec:loaded
-  * @instance
-  * @memberof MeetingsUtil
-  */
+ * Meetings Media Codec Loaded Event
+ * Emitted when H.264 codec has been
+ * loaded in the browser.
+ * @event media:codec:loaded
+ * @instance
+ * @memberof MeetingsUtil
+ */
 
 const MeetingsUtil: any = {};
 
@@ -42,23 +42,20 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
     const meeting = meetingCollection.getByKey(CORRELATION_ID, data.correlationId);
 
     if (meeting) {
-      const {
-        seq, messageType, tieBreaker, errorType, errorCause
-      } = data.message;
+      const {seq, messageType, tieBreaker, errorType, errorCause} = data.message;
 
       if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
         // turn discovery is not part of normal roap protocol and so we are not handling it
         // through the usual roap state machine
         meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message);
-      }
-      else {
+      } else {
         const roapMessage = {
           seq,
           messageType,
           sdp: data.message.sdps?.length > 0 ? data.message.sdps[0] : undefined,
           tieBreaker,
           errorType,
-          errorCause
+          errorCause,
         };
 
         meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
@@ -116,9 +113,10 @@ MeetingsUtil.hasH264Codec = async () => {
       hasCodec = true;
     }
     pc.close();
-  }
-  catch (error) {
-    LoggerProxy.logger.warn('Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.');
+  } catch (error) {
+    LoggerProxy.logger.warn(
+      'Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.'
+    );
   }
 
   return hasCodec;
@@ -143,8 +141,8 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
   const {firstChecked, disableNotifications} = options || {};
   const delay = 5e3; // ms
   const maxDuration = 3e5; // ms
-  const shouldTrigger = (firstChecked === undefined);
-  const shouldStopChecking = firstChecked && (Date.now() - firstChecked) >= maxDuration;
+  const shouldTrigger = firstChecked === undefined;
+  const shouldStopChecking = firstChecked && Date.now() - firstChecked >= maxDuration;
 
   // Disable notifications and start H.264 download only
   if (disableNotifications) {
@@ -159,7 +157,7 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
       this,
       {
         file: 'meetings/util',
-        function: 'checkH264Support'
+        function: 'checkH264Support',
       },
       EVENT_TRIGGERS.MEDIA_CODEC_LOADED
     );
@@ -170,7 +168,9 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
 
   // Stop checking if past the timelimit
   if (shouldStopChecking) {
-    LoggerProxy.logger.error('Meetings:util#checkH264Support --> Timed out waiting for H264 codec to load.');
+    LoggerProxy.logger.error(
+      'Meetings:util#checkH264Support --> Timed out waiting for H264 codec to load.'
+    );
 
     return;
   }
@@ -181,7 +181,7 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
       this,
       {
         file: 'meetings/util',
-        function: 'checkH264Support'
+        function: 'checkH264Support',
       },
       EVENT_TRIGGERS.MEDIA_CODEC_MISSING
     );

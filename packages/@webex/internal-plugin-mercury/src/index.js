@@ -15,7 +15,7 @@ registerInternalPlugin('mercury', Mercury, {
   config,
   onBeforeLogout() {
     return this.disconnect();
-  }
+  },
 });
 
 export {default} from './mercury';
@@ -27,6 +27,6 @@ export {
   ConnectionError,
   Forbidden,
   NotAuthorized,
-  UnknownResponse
+  UnknownResponse,
   // NotFound
 } from './errors';

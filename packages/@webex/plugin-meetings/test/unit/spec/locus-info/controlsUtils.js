@@ -5,7 +5,7 @@ const defaultControls = {
   entryExitTone: {
     enabled: true,
     mode: 'foo',
-  }
+  },
 };
 
 describe('plugin-meetings', () => {
@@ -22,7 +22,7 @@ describe('plugin-meetings', () => {
           entryExitTone: {
             enabled: false,
             mode: 'foo',
-          }
+          },
         });
 
         assert.equal(parsedControls.entryExitTone, null);
@@ -48,7 +48,7 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: true,
           mode: 'bar',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
@@ -60,7 +60,7 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: false,
           mode: 'foo',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
@@ -72,11 +72,31 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: true,
           mode: 'foo',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
       assert.equal(updates.hasEntryExitToneChanged, false);
+    });
+
+    it('returns hasBreakoutChanged = true when it has changed', () => {
+      const newControls = {
+        breakout: 'breakout'
+      };
+
+      const {updates} = ControlsUtils.getControls({breakout: 'old breakout'}, newControls);
+
+      assert.equal(updates.hasBreakoutChanged, true);
+    });
+
+    it('returns hasBreakoutChanged = false when it has not changed', () => {
+      const newControls = {
+        breakout: 'breakout'
+      };
+
+      const {updates} = ControlsUtils.getControls({breakout: 'breakout'}, newControls);
+
+      assert.equal(updates.hasBreakoutChanged, false);
     });
   });
 });

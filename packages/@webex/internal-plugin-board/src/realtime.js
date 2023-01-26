@@ -6,7 +6,7 @@ import uuid from 'uuid';
 import {tap} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
-import RealtimeChannelCollection from './realtime-channel-collection.js';
+import RealtimeChannelCollection from './realtime-channel-collection';
 
 /**
  * @class
@@ -17,42 +17,48 @@ const RealtimeService = WebexPlugin.extend({
   namespace: 'Board',
 
   collections: {
-    realtimeChannels: RealtimeChannelCollection
+    realtimeChannels: RealtimeChannelCollection,
   },
 
   /**
-    * Sends the message via the socket. Assumes that the message is already properly formatted
-    * @memberof Board.RealtimeService
-    * @param {Board~Channel} channel
-    * @param {string} message   Contains the un-encrypted message to send.
-    * @returns {Promise<Board~Content>}
-    */
+   * Sends the message via the socket. Assumes that the message is already properly formatted
+   * @memberof Board.RealtimeService
+   * @param {Board~Channel} channel
+   * @param {string} message   Contains the un-encrypted message to send.
+   * @returns {Promise<Board~Content>}
+   */
   publish(channel, message) {
     let encryptionPromise;
     let contentType = 'STRING';
 
     if (message.payload.file) {
       contentType = 'FILE';
-      encryptionPromise = this.webex.internal.board.encryptSingleFileContent(channel.defaultEncryptionKeyUrl, message.payload);
-    }
-    else {
-      encryptionPromise = this.webex.internal.board.encryptSingleContent(channel.defaultEncryptionKeyUrl, message.payload);
+      encryptionPromise = this.webex.internal.board.encryptSingleFileContent(
+        channel.defaultEncryptionKeyUrl,
+        message.payload
+      );
+    } else {
+      encryptionPromise = this.webex.internal.board.encryptSingleContent(
+        channel.defaultEncryptionKeyUrl,
+        message.payload
+      );
     }
 
-    return encryptionPromise
-      .then((encryptedPayloadAndKeyUrl) => this.publishEncrypted(channel, encryptedPayloadAndKeyUrl, contentType));
+    return encryptionPromise.then((encryptedPayloadAndKeyUrl) =>
+      this.publishEncrypted(channel, encryptedPayloadAndKeyUrl, contentType)
+    );
   },
 
   /**
-    * Sends the message via the socket. The message should already have been
-    * encrypted
-    * @memberof Board.RealtimeService
-    * @param {Board~Channel} channel
-    * @param {object} encryptedPayloadAndKeyUrl
-    * @param {string} contentType - provides hint for decryption. Defaults to
-    * `STRING`, and could also be `FILE`
-    * @returns {Promise<Board~Content>}
-    */
+   * Sends the message via the socket. The message should already have been
+   * encrypted
+   * @memberof Board.RealtimeService
+   * @param {Board~Channel} channel
+   * @param {object} encryptedPayloadAndKeyUrl
+   * @param {string} contentType - provides hint for decryption. Defaults to
+   * `STRING`, and could also be `FILE`
+   * @returns {Promise<Board~Content>}
+   */
   publishEncrypted(channel, encryptedPayloadAndKeyUrl, contentType) {
     const realtimeChannel = this.realtimeChannels.get(channel.channelId);
 
@@ -63,27 +69,29 @@ const RealtimeService = WebexPlugin.extend({
     const data = {
       id: uuid.v4(),
       type: 'publishRequest',
-      recipients: [{
-        alertType: 'none',
-        route: realtimeChannel.binding,
-        headers: {}
-      }],
+      recipients: [
+        {
+          alertType: 'none',
+          route: realtimeChannel.binding,
+          headers: {},
+        },
+      ],
       data: {
         eventType: 'board.activity',
         contentType,
         payload: encryptedPayloadAndKeyUrl.payload,
         envelope: {
           encryptionKeyUrl: encryptedPayloadAndKeyUrl.encryptionKeyUrl,
-          channelId: channel.channelId
-        }
-      }
+          channelId: channel.channelId,
+        },
+      },
     };
 
     // provide a hint for decryption
     if (contentType === 'FILE') {
       data.data.payload = {
         file: encryptedPayloadAndKeyUrl.file,
-        payload: encryptedPayloadAndKeyUrl.payload
+        payload: encryptedPayloadAndKeyUrl.payload,
       };
     }
 
@@ -94,49 +102,46 @@ const RealtimeService = WebexPlugin.extend({
     const requestBindings = [this._boardChannelIdToMercuryBinding(channel.channelId)];
     const bindingObj = {bindings: requestBindings};
 
-    return this.webex.internal.board.register(bindingObj)
-      .then(({webSocketUrl, bindings}) => {
-        this.realtimeChannels.add({
-          channelId: channel.channelId,
-          socketUrl: webSocketUrl,
-          binding: bindings[0]
-        });
-
-        return this.realtimeChannels.get(channel.channelId);
+    return this.webex.internal.board.register(bindingObj).then(({webSocketUrl, bindings}) => {
+      this.realtimeChannels.add({
+        channelId: channel.channelId,
+        socketUrl: webSocketUrl,
+        binding: bindings[0],
       });
+
+      return this.realtimeChannels.get(channel.channelId);
+    });
   },
 
   /**
-    * Open new mercury connection
-    * @memberof Board.RealtimeService
-    * @param   {Board~Channel} channel
-    * @returns {Promise}
-    */
+   * Open new mercury connection
+   * @memberof Board.RealtimeService
+   * @param   {Board~Channel} channel
+   * @returns {Promise}
+   */
   connectByOpenNewMercuryConnection(channel) {
     let promise = Promise.resolve();
     let realtimeChannel = this.realtimeChannels.get(channel.channelId);
 
     if (!realtimeChannel) {
       this.logger.info('board realtime: realtime channel not found, creating new channel');
-      promise = this.createRealtimeChannel(channel)
-        .then((rc) => {
-          realtimeChannel = rc;
-          this.logger.info('board realtime: realtime channel created');
+      promise = this.createRealtimeChannel(channel).then((rc) => {
+        realtimeChannel = rc;
+        this.logger.info('board realtime: realtime channel created');
 
-          return realtimeChannel;
-        });
+        return realtimeChannel;
+      });
     }
 
-    return promise
-      .then(() => realtimeChannel.connect(realtimeChannel.socketUrl));
+    return promise.then(() => realtimeChannel.connect(realtimeChannel.socketUrl));
   },
 
   /**
-    * Disconnect connection
-    * @memberof Board.RealtimeService
-    * @param   {Board~Channel} channel
-    * @returns {Promise}
-    */
+   * Disconnect connection
+   * @memberof Board.RealtimeService
+   * @param   {Board~Channel} channel
+   * @returns {Promise}
+   */
   disconnectMercuryConnection(channel) {
     const realtimeChannel = this.realtimeChannels.get(channel.channelId);
 
@@ -144,10 +149,13 @@ const RealtimeService = WebexPlugin.extend({
       return Promise.reject(new Error('Realtime Channel not found!'));
     }
 
-    return realtimeChannel.disconnect()
-      // even if we can't remove the channels from the collection, we can still
-      // continue on execution
-      .then(tap(() => this.realtimeChannels.remove(channel.channelId)));
+    return (
+      realtimeChannel
+        .disconnect()
+        // even if we can't remove the channels from the collection, we can still
+        // continue on execution
+        .then(tap(() => this.realtimeChannels.remove(channel.channelId)))
+    );
   },
 
   /**
@@ -169,33 +177,39 @@ const RealtimeService = WebexPlugin.extend({
    * @returns {Promise<Board~Registration>}
    */
   connectToSharedMercury(channel) {
-    return this.webex.internal.board.registerToShareMercury(channel)
-      .then((res) => {
-        this.realtimeChannels.add({
-          channelId: channel.channelId,
-          binding: res.binding,
-          socketUrl: res.webSocketUrl
-        });
-
-        const realtimeChannel = this.realtimeChannels.get(channel.channelId);
-
-        if (!res.sharedWebSocket) {
-          return realtimeChannel.connect(realtimeChannel.socketUrl)
-            .then(() => res);
-        }
-
-        realtimeChannel.isSharingMercury = true;
-        realtimeChannel.socket = this.webex.internal.mercury.socket;
-        // refresh socket reference when mercury is reconnected
-        this.webex.internal.mercury.off('online', this.refreshMercurySocketReference, this);
-        this.webex.internal.mercury.on('online', this.refreshMercurySocketReference, this);
-
-        // make sure there's only one handler
-        this.webex.internal.mercury.off('event:board.activity', this.handleBoardActivityMessages, this);
-        this.webex.internal.mercury.on('event:board.activity', this.handleBoardActivityMessages, this);
-
-        return res;
+    return this.webex.internal.board.registerToShareMercury(channel).then((res) => {
+      this.realtimeChannels.add({
+        channelId: channel.channelId,
+        binding: res.binding,
+        socketUrl: res.webSocketUrl,
       });
+
+      const realtimeChannel = this.realtimeChannels.get(channel.channelId);
+
+      if (!res.sharedWebSocket) {
+        return realtimeChannel.connect(realtimeChannel.socketUrl).then(() => res);
+      }
+
+      realtimeChannel.isSharingMercury = true;
+      realtimeChannel.socket = this.webex.internal.mercury.socket;
+      // refresh socket reference when mercury is reconnected
+      this.webex.internal.mercury.off('online', this.refreshMercurySocketReference, this);
+      this.webex.internal.mercury.on('online', this.refreshMercurySocketReference, this);
+
+      // make sure there's only one handler
+      this.webex.internal.mercury.off(
+        'event:board.activity',
+        this.handleBoardActivityMessages,
+        this
+      );
+      this.webex.internal.mercury.on(
+        'event:board.activity',
+        this.handleBoardActivityMessages,
+        this
+      );
+
+      return res;
+    });
   },
 
   handleBoardActivityMessages(event) {
@@ -225,12 +239,14 @@ const RealtimeService = WebexPlugin.extend({
       return this.disconnectMercuryConnection(channel);
     }
 
-    return this.webex.internal.board.unregisterFromSharedMercury(channel, realtimeChannel.binding)
-      // tap suppress errors but we can still go on if the channel can't be
-      // removed from the collection
-      .then(tap(() => this.realtimeChannels.remove(channel.channelId)));
-  }
-
+    return (
+      this.webex.internal.board
+        .unregisterFromSharedMercury(channel, realtimeChannel.binding)
+        // tap suppress errors but we can still go on if the channel can't be
+        // removed from the collection
+        .then(tap(() => this.realtimeChannels.remove(channel.channelId)))
+    );
+  },
 });
 
 export default RealtimeService;

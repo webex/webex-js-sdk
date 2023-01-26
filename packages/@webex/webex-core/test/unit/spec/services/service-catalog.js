@@ -27,8 +27,13 @@ describe('webex-core', () => {
 
     describe('#serviceGroups', () => {
       it('has all the required keys', () => {
-        assert.hasAllKeys(catalog.serviceGroups,
-          ['discovery', 'override', 'preauth', 'signin', 'postauth']);
+        assert.hasAllKeys(catalog.serviceGroups, [
+          'discovery',
+          'override',
+          'preauth',
+          'signin',
+          'postauth',
+        ]);
       });
 
       it('contains values that are arrays', () => {
@@ -40,8 +45,13 @@ describe('webex-core', () => {
 
     describe('#status', () => {
       it('has all the required keys', () => {
-        assert.hasAllKeys(catalog.status,
-          ['discovery', 'override', 'preauth', 'postauth', 'signin']);
+        assert.hasAllKeys(catalog.status, [
+          'discovery',
+          'override',
+          'preauth',
+          'postauth',
+          'signin',
+        ]);
       });
 
       it('has valid key value types', () => {
@@ -91,11 +101,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach('generate allowed domains', () => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -105,9 +111,7 @@ describe('webex-core', () => {
       });
 
       it('finds an allowed domain that matches a specific url', () => {
-        const domain = catalog.findAllowedDomain(
-          'http://example-a.com/resource/id'
-        );
+        const domain = catalog.findAllowedDomain('http://example-a.com/resource/id');
 
         assert.include(domains, domain);
       });
@@ -117,11 +121,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach('generate allowed domains', () => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -160,11 +160,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach('generate allowed domains', () => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -174,11 +170,7 @@ describe('webex-core', () => {
       });
 
       it('sets the allowed domain entries to new values', () => {
-        const newValues = [
-          'example-d',
-          'example-e',
-          'example-f'
-        ];
+        const newValues = ['example-d', 'example-e', 'example-f'];
 
         catalog.setAllowedDomains(newValues);
 

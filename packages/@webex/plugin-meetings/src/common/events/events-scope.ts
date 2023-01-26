@@ -19,7 +19,11 @@ export default class EventsScope extends ChildEmitter {
    * @returns {Function}
    */
   emit(scope: any, eventName: any, args: any) {
-    LoggerProxy.logger.debug(`${EventsUtil.getScopeLog(scope)}event#${eventName}${LoggerConfig.verboseEvents ? ` -- ${EventsUtil.getEventLog(args)}` : ''}`);
+    LoggerProxy.logger.debug(
+      `${EventsUtil.getScopeLog(scope)}event#${eventName}${
+        LoggerConfig.verboseEvents ? ` -- ${EventsUtil.getEventLog(args)}` : ''
+      }`
+    );
 
     return super.emit(eventName, args);
   }

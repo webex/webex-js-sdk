@@ -16,7 +16,7 @@ const User = WebexPlugin.extend({
   namespace: 'User',
 
   children: {
-    batcher: UserUUIDBatcher
+    batcher: UserUUIDBatcher,
   },
 
   props: {
@@ -28,8 +28,8 @@ const User = WebexPlugin.extend({
      */
     hasPassword: {
       default: false,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
 
   session: {
@@ -37,8 +37,8 @@ const User = WebexPlugin.extend({
       default() {
         return new UserUUIDStore();
       },
-      type: 'any'
-    }
+      type: 'any',
+    },
   },
 
   @waitForValue('@')
@@ -55,7 +55,11 @@ const User = WebexPlugin.extend({
    */
   activate(options = {}) {
     if (!(options.verificationToken || (options.confirmationCode && options.id))) {
-      return Promise.reject(new Error('either options.verificationToken is required or both options.confirmationCode and options.id are required'));
+      return Promise.reject(
+        new Error(
+          'either options.verificationToken is required or both options.confirmationCode and options.id are required'
+        )
+      );
     }
 
     options.scope = this.webex.config.credentials.scope;
@@ -63,7 +67,7 @@ const User = WebexPlugin.extend({
     // if we have options.email and options.verificationToken
     // and Federation flag is enabled, flag that we need to
     // lookup user's CI.
-    const activateOptions = Object.assign({}, options);
+    const activateOptions = {...options};
 
     delete activateOptions.email;
 
@@ -74,14 +78,13 @@ const User = WebexPlugin.extend({
       auth: {
         user: this.webex.config.credentials.client_id,
         pass: this.webex.config.credentials.client_secret,
-        sendImmediately: true
-      }
-    })
-      .then((res) => {
-        this.webex.credentials.set({supertoken: res.body.tokenData});
+        sendImmediately: true,
+      },
+    }).then((res) => {
+      this.webex.credentials.set({supertoken: res.body.tokenData});
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -126,12 +129,12 @@ const User = WebexPlugin.extend({
    * @returns {Promise<string>}
    */
   fetchUUID(email, options) {
-    return this.batcher.request({
-      email,
-      create: options && options.create
-    })
-      .then((user) => this.recordUUID(Object.assign({emailAddress: email}, user))
-        .then(() => user.id));
+    return this.batcher
+      .request({
+        email,
+        create: options && options.create,
+      })
+      .then((user) => this.recordUUID({emailAddress: email, ...user}).then(() => user.id));
   },
   /**
    * Generates One Time Password.
@@ -152,10 +155,9 @@ const User = WebexPlugin.extend({
       body: options,
       auth: {
         user: this.webex.config.credentials.client_id,
-        pass: this.webex.config.credentials.client_secret
-      }
-    })
-      .then((res) => res.body);
+        pass: this.webex.config.credentials.client_secret,
+      },
+    }).then((res) => res.body);
   },
 
   /**
@@ -165,15 +167,19 @@ const User = WebexPlugin.extend({
   get() {
     return this.request({
       service: 'conversation',
-      resource: 'users'
+      resource: 'users',
     })
       .then((res) => res.body)
-      .then(tap((user) => this.recordUUID({
-        id: user.id,
-        // CI endpoints don't use the same user format as actors, so, email may
-        // be in one of a few fields
-        emailAddress: user.email || user.emailAddress
-      })));
+      .then(
+        tap((user) =>
+          this.recordUUID({
+            id: user.id,
+            // CI endpoints don't use the same user format as actors, so, email may
+            // be in one of a few fields
+            emailAddress: user.email || user.emailAddress,
+          })
+        )
+      );
   },
 
   /**
@@ -185,7 +191,8 @@ const User = WebexPlugin.extend({
    */
   @oneFlight({keyFactory: (email, options) => email + String(options && options.create)})
   getUUID(email, options) {
-    return this.store.getByEmail(email)
+    return this.store
+      .getByEmail(email)
       .then((user) => {
         if (options && options.create && !user.userExists) {
           return Promise.reject(new Error('User for specified email cannot be confirmed to exist'));
@@ -248,15 +255,16 @@ const User = WebexPlugin.extend({
    * @returns {Promise} Resolves with a response from PATCH request
    */
   _setUser(body) {
-    return this.webex.credentials.getUserToken()
-      .then((token) => this.request({
+    return this.webex.credentials.getUserToken().then((token) =>
+      this.request({
         uri: `${this.webex.config.credentials.setPasswordUrl}/${this.webex.internal.device.userId}`,
         method: 'PATCH',
         headers: {
-          authorization: token.toString()
+          authorization: token.toString(),
         },
-        body
-      }));
+        body,
+      })
+    );
   },
 
   /**
@@ -276,13 +284,12 @@ const User = WebexPlugin.extend({
 
     return this._setUser({
       schemas: ['urn:scim:schemas:core:1.0', 'urn:scim:schemas:extension:cisco:commonidentity:1.0'],
-      password: options.password
-    })
-      .then((res) => {
-        this.hasPassword = true;
+      password: options.password,
+    }).then((res) => {
+      this.hasPassword = true;
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -296,15 +303,16 @@ const User = WebexPlugin.extend({
    */
   updateName({givenName, familyName, displayName} = {}) {
     if (!(givenName || familyName || displayName)) {
-      return Promise.reject(new Error('One of `givenName` and `familyName` or `displayName` is required'));
+      return Promise.reject(
+        new Error('One of `givenName` and `familyName` or `displayName` is required')
+      );
     }
 
     return this._setUser({
       schemas: ['urn:scim:schemas:core:1.0', 'urn:scim:schemas:extension:cisco:commonidentity:1.0'],
       name: {givenName, familyName},
-      displayName
-    })
-      .then((res) => res.body);
+      displayName,
+    }).then((res) => res.body);
   },
 
   /**
@@ -323,9 +331,8 @@ const User = WebexPlugin.extend({
       method: 'PATCH',
       service: 'conversation',
       resource: 'users/user',
-      body: options
-    })
-      .then((res) => res.body);
+      body: options,
+    }).then((res) => res.body);
   },
 
   /**
@@ -339,7 +346,11 @@ const User = WebexPlugin.extend({
    */
   validateOTP(options = {}) {
     if (!(options.email || options.id) || !options.oneTimePassword) {
-      return Promise.reject(new Error('One of `options.email` or `options.id` and `options.oneTimePassword` are required'));
+      return Promise.reject(
+        new Error(
+          'One of `options.email` or `options.id` and `options.oneTimePassword` are required'
+        )
+      );
     }
 
     options.scope = this.webex.config.credentials.scope;
@@ -350,14 +361,13 @@ const User = WebexPlugin.extend({
       body: options,
       auth: {
         user: this.webex.config.credentials.client_id,
-        pass: this.webex.config.credentials.client_secret
-      }
-    })
-      .then((res) => {
-        this.webex.credentials.set({supertoken: res.body.tokenData});
+        pass: this.webex.config.credentials.client_secret,
+      },
+    }).then((res) => {
+      this.webex.credentials.set({supertoken: res.body.tokenData});
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -370,27 +380,30 @@ const User = WebexPlugin.extend({
    * @returns {Promise<Object>}
    */
   verify(options) {
-    options = Object.assign({}, this.config.verifyDefaults, options);
+    options = {...this.config.verifyDefaults, ...options};
     const {email} = options;
 
     if (!email) {
       return Promise.reject(new Error('`options.email` is required'));
     }
 
-    return this.webex.internal.services.collectPreauthCatalog({email})
+    return this.webex.internal.services
+      .collectPreauthCatalog({email})
       .then(() => this.webex.credentials.getUserToken())
       .catch(() => this.webex.credentials.getClientToken())
-      .then((token) => this.request({
-        service: 'atlas',
-        resource: 'users/activations',
-        method: 'POST',
-        headers: {
-          authorization: token.toString(),
-          'x-prelogin-userid': options.preloginId
-        },
-        body: options,
-        shouldRefreshAccessToken: false
-      }))
+      .then((token) =>
+        this.request({
+          service: 'atlas',
+          resource: 'users/activations',
+          method: 'POST',
+          headers: {
+            authorization: token.toString(),
+            'x-prelogin-userid': options.preloginId,
+          },
+          body: options,
+          shouldRefreshAccessToken: false,
+        })
+      )
       .then((res) => {
         if (res.body.hasPassword || res.body.sso) {
           this.hasPassword = true;
@@ -399,7 +412,6 @@ const User = WebexPlugin.extend({
         return res.body;
       });
   },
-
 
   /**
    * If the passed-in lookupCI is true, retrieve the user's
@@ -418,18 +430,16 @@ const User = WebexPlugin.extend({
       // call verify first to get the user's CI, but suppress sending another email
       const verifyOptions = {
         email,
-        suppressEmail: true
+        suppressEmail: true,
       };
 
       return this.verify(verifyOptions).then((res) => Promise.resolve(res.userEntities));
     }
 
-    return Promise.resolve(
-      {
-        idBrokerUrl: this.webex.config.credentials.idbroker.url,
-        identityUrl: this.webex.config.credentials.identity.url
-      }
-    );
+    return Promise.resolve({
+      idBrokerUrl: this.webex.config.credentials.idbroker.url,
+      identityUrl: this.webex.config.credentials.identity.url,
+    });
   },
 
   /**
@@ -450,8 +460,7 @@ const User = WebexPlugin.extend({
    */
   _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
-  }
-
+  },
 });
 
 export default User;

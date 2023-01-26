@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {ConnectionState, Event} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import testUtils from '../../../utils/testUtils';
@@ -19,7 +19,7 @@ describe('MediaProperties', () => {
       getStats: sinon.stub().resolves([]),
       on: sinon.stub(),
       off: sinon.stub(),
-      getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
+      getConnectionState: sinon.stub().returns(ConnectionState.Connected),
     };
 
     mediaProperties = new MediaProperties();
@@ -35,7 +35,7 @@ describe('MediaProperties', () => {
       await mediaProperties.waitForMediaConnectionConnected();
     });
     it('rejects after timeout if ice state does not reach connected/completed', async () => {
-      mockMC.getConnectionState.returns(MC.ConnectionState.Connecting);
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
 
       let promiseResolved = false;
       let promiseRejected = false;
@@ -60,15 +60,15 @@ describe('MediaProperties', () => {
 
       // check that listener was registered and removed
       assert.calledOnce(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], MC.Event.CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       const listener = mockMC.on.getCall(0).args[1];
 
       assert.calledOnce(mockMC.off);
-      assert.calledWith(mockMC.off, MC.Event.CONNECTION_STATE_CHANGED, listener);
+      assert.calledWith(mockMC.off, Event.CONNECTION_STATE_CHANGED, listener);
     });
 
     it(`resolves when media connection reaches "connected" state`, async () => {
-      mockMC.getConnectionState.returns(MC.ConnectionState.Connecting);
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
 
       const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
@@ -89,11 +89,11 @@ describe('MediaProperties', () => {
 
       // check the right listener was registered
       assert.calledOnce(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], MC.Event.CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       const listener = mockMC.on.getCall(0).args[1];
 
       // call the listener and pretend we are now connected
-      mockMC.getConnectionState.returns(MC.ConnectionState.Connected);
+      mockMC.getConnectionState.returns(ConnectionState.Connected);
       listener();
       await testUtils.flushPromises();
 
@@ -102,7 +102,7 @@ describe('MediaProperties', () => {
 
       // check that listener was removed
       assert.calledOnce(mockMC.off);
-      assert.calledWith(mockMC.off, MC.Event.CONNECTION_STATE_CHANGED, listener);
+      assert.calledWith(mockMC.off, Event.CONNECTION_STATE_CHANGED, listener);
 
       assert.calledOnce(clearTimeoutSpy);
     });

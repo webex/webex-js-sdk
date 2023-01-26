@@ -1,5 +1,5 @@
 // @ts-ignore
-import { hydraTypes } from '@webex/common';
+import {hydraTypes} from '@webex/common';
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -288,6 +288,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_RECORDING: 'meeting:recording:stopped',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+  MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
   MEETING_ADDED: 'meeting:added',
@@ -304,6 +305,9 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_IS_SHARING_BLOCKED: 'meeting:self:isSharingBlocked',
   MEETING_CONTROLS_LAYOUT_UPDATE: 'meeting:layout:update',
   MEETING_ENTRY_EXIT_TONE_UPDATE: 'meeting:entryExitTone:update',
+  MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
+  MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
+  MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
@@ -514,11 +518,34 @@ export const LOCUS = {
   SYNCDEBUG: 'sync_debug',
 };
 
+export const BREAKOUTS = {
+  STATUS: {
+    CLOSING: 'CLOSING',
+  },
+  EVENTS: {
+    BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
+    MESSAGE: 'MESSAGE',
+    MEMBERS_UPDATE: 'MEMBERS_UPDATE',
+  },
+  SESSION_TYPES: {
+    MAIN: 'MAIN',
+  },
+  SESSION_STATES: {
+    ACTIVE: 'active',
+    ASSIGNED: 'assigned',
+    ALLOWED: 'allowed',
+    ASSIGNED_CURRENT: 'assignedCurrent',
+    REQUESTED: 'requested',
+  },
+  BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
+};
+
 export const LOCUSINFO = {
   EVENTS: {
     CONTROLS_MEETING_LAYOUT_UPDATED: 'CONTROLS_MEETING_LAYOUT_UPDATED',
     CONTROLS_RECORDING_UPDATED: 'CONTROLS_RECORDING_UPDATED',
     CONTROLS_MEETING_TRANSCRIBE_UPDATED: 'CONTROLS_MEETING_TRANSCRIBE_UPDATED',
+    CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
     CONTROLS_ENTRY_EXIT_TONE_UPDATED: 'CONTROLS_ENTRY_EXIT_TONE_UPDATED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
@@ -540,6 +567,8 @@ export const LOCUSINFO = {
     EMBEDDED_APPS_UPDATED: 'EMBEDDED_APPS_UPDATED',
     SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE: 'SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE',
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
+    SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
+    MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
   },
 };
 
@@ -551,6 +580,9 @@ export const LOCUSEVENT = {
 
   // delta events
   DIFFERENCE: 'locus.difference',
+
+  // Breakout sessions
+  BREAKOUT_ROSTER: 'breakout.roster',
 
   // screen sharing
   FLOOR_GRANTED: 'locus.floor_granted',
@@ -724,6 +756,10 @@ export const DISPLAY_HINTS = {
   TRANSCRIPTION_CONTROL_STOP: 'TRANSCRIPTION_CONTROL_STOP',
   WEBEX_ASSISTANT_STATUS_ACTIVE: 'WEBEX_ASSISTANT_STATUS_ACTIVE',
   WAITING_FOR_OTHERS: 'WAITING_FOR_OTHERS',
+  ENABLE_REACTIONS: 'ENABLE_REACTIONS',
+  DISABLE_REACTIONS: 'DISABLE_REACTIONS',
+  REACTIONS_ACTIVE: 'REACTIONS_ACTIVE',
+  REACTIONS_INACTIVE: 'REACTIONS_INACTIVE',
 };
 
 export const SELF_ROLES = {
@@ -814,6 +850,7 @@ export const RESOURCE = {
 
 export const REACHABILITY = {
   localStorage: 'reachability.result',
+  namespace: 'Reachability',
 };
 
 export const ROAP = {

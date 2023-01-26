@@ -1,6 +1,6 @@
 {
   "name": "webex",
-  "version": "3.0.0-beta.10",
+  "version": "3.0.0-beta.17",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -46,6 +46,7 @@
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-llm": "workspace:^",
     "@webex/internal-plugin-presence": "workspace:^",
     "@webex/internal-plugin-support": "workspace:^",
     "@webex/plugin-attachment-actions": "workspace:^",

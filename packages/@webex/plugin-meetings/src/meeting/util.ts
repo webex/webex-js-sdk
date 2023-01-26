@@ -5,13 +5,15 @@ import Metrics from '../metrics';
 import {eventType, trigger} from '../metrics/config';
 import Media from '../media';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {INTENT_TO_JOIN,
+import {
+  INTENT_TO_JOIN,
   _LEFT_,
   _IDLE_,
   _JOINED_,
   PASSWORD_STATUS,
   DISPLAY_HINTS,
-  FULL_STATE} from '../constants';
+  FULL_STATE,
+} from '../constants';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -48,30 +50,35 @@ MeetingUtil.remoteUpdateAudioVideo = (audioMuted, videoMuted, meeting) => {
   const localMedias = Media.generateLocalMedias(meeting.mediaId, audioMuted, videoMuted);
 
   if (isEmpty(localMedias)) {
-    return Promise.reject(new ParameterError('You need a media id on the meeting to change remote audio.'));
+    return Promise.reject(
+      new ParameterError('You need a media id on the meeting to change remote audio.')
+    );
   }
 
   Metrics.postEvent({event: eventType.MEDIA_REQUEST, meeting});
 
-  return meeting.meetingRequest.remoteAudioVideoToggle({
-    locusUrl: meeting.locusUrl,
-    selfId: meeting.selfId,
-    localMedias,
-    deviceUrl: meeting.deviceUrl,
-    correlationId: meeting.correlationId,
-    preferTranscoding: !meeting.isMultistream,
-  }).then((response) => {
-    Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
+  return meeting.meetingRequest
+    .remoteAudioVideoToggle({
+      locusUrl: meeting.locusUrl,
+      selfId: meeting.selfId,
+      localMedias,
+      deviceUrl: meeting.deviceUrl,
+      correlationId: meeting.correlationId,
+      preferTranscoding: !meeting.isMultistream,
+    })
+    .then((response) => {
+      Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
 
-    return response.body.locus;
-  });
+      return response.body.locus;
+    });
 };
 
 MeetingUtil.hasOwner = (info) => info && info.owner;
 
 MeetingUtil.isOwnerSelf = (owner, selfId) => owner === selfId;
 
-MeetingUtil.isPinOrGuest = (err) => err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode);
+MeetingUtil.isPinOrGuest = (err) =>
+  err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode);
 
 MeetingUtil.joinMeeting = (meeting, options) => {
   if (!meeting) {
@@ -97,7 +104,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       pin: options.pin,
       moveToResource: options.moveToResource,
       preferTranscoding: !meeting.isMultistream,
-      asResourceOccupant: options.asResourceOccupant
+      asResourceOccupant: options.asResourceOccupant,
+      breakoutsSupported: options.breakoutsSupported,
     })
     .then((res) => {
       Metrics.postEvent({
@@ -107,8 +115,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
           trigger: trigger.LOCI_UPDATE,
           locus: res.body.locus,
           mediaConnections: res.body.mediaConnections,
-          trackingId: res.headers.trackingid
-        }
+          trackingId: res.headers.trackingid,
+        },
       });
 
       return MeetingUtil.parseLocusJoin(res);
@@ -116,8 +124,12 @@ MeetingUtil.joinMeeting = (meeting, options) => {
 };
 
 MeetingUtil.cleanUp = (meeting) => {
+  meeting.breakouts.cleanUp();
+
   // make sure we send last metrics before we close the peerconnection
-  const stopStatsAnalyzer = (meeting.statsAnalyzer) ? meeting.statsAnalyzer.stopAnalyzer() : Promise.resolve();
+  const stopStatsAnalyzer = meeting.statsAnalyzer
+    ? meeting.statsAnalyzer.stopAnalyzer()
+    : Promise.resolve();
 
   return stopStatsAnalyzer
     .then(() => meeting.closeLocalStream())
@@ -144,7 +156,7 @@ MeetingUtil.disconnectPhoneAudio = (meeting, phoneUrl) => {
     locusUrl: meeting.locusUrl,
     selfId: meeting.selfId,
     correlationId: meeting.correlationId,
-    phoneUrl
+    phoneUrl,
   };
 
   return meeting.meetingRequest
@@ -156,9 +168,7 @@ MeetingUtil.disconnectPhoneAudio = (meeting, phoneUrl) => {
     })
     .catch((err) => {
       LoggerProxy.logger.error(
-        `Meeting:util#disconnectPhoneAudio --> An error occured while disconnecting phone audio in meeting ${
-          meeting.id
-        }, error: ${err}`
+        `Meeting:util#disconnectPhoneAudio --> An error occured while disconnecting phone audio in meeting ${meeting.id}, error: ${err}`
       );
 
       return Promise.reject(err);
@@ -184,7 +194,7 @@ MeetingUtil.leaveMeeting = (meeting, options: any = {}) => {
     selfId: meeting.selfId,
     correlationId: meeting.correlationId,
     resourceId: meeting.resourceId,
-    deviceUrl: meeting.deviceUrl
+    deviceUrl: meeting.deviceUrl,
   };
 
   const leaveOptions = {...defaultOptions, ...options};
@@ -192,7 +202,8 @@ MeetingUtil.leaveMeeting = (meeting, options: any = {}) => {
   return meeting.meetingRequest
     .leaveMeeting(leaveOptions)
     .then((response) => {
-      if (response && response.body && response.body.locus) { // && !options.moveMeeting) {
+      if (response && response.body && response.body.locus) {
+        // && !options.moveMeeting) {
         meeting.locusInfo.onFullLocus(response.body.locus);
       }
 
@@ -210,9 +221,7 @@ MeetingUtil.leaveMeeting = (meeting, options: any = {}) => {
       // 1)  on leave clean up the meeting or simply do a sync on the meeting
       // 2) If the error says meeting is inactive then destroy the meeting object
       LoggerProxy.logger.error(
-        `Meeting:util#leaveMeeting --> An error occured while trying to leave meeting with an id of ${
-          meeting.id
-        }, error: ${err}`
+        `Meeting:util#leaveMeeting --> An error occured while trying to leave meeting with an id of ${meeting.id}, error: ${err}`
       );
 
       return Promise.reject(err);
@@ -222,21 +231,18 @@ MeetingUtil.declineMeeting = (meeting, reason) =>
   meeting.meetingRequest.declineMeeting({
     locusUrl: meeting.locusUrl,
     deviceUrl: meeting.deviceUrl,
-    reason
+    reason,
   });
 
-MeetingUtil.isUserInLeftState = (locusInfo) =>
-  locusInfo.parsedLocus?.self?.state === _LEFT_;
+MeetingUtil.isUserInLeftState = (locusInfo) => locusInfo.parsedLocus?.self?.state === _LEFT_;
 
-MeetingUtil.isUserInIdleState = (locusInfo) =>
-  locusInfo.parsedLocus?.self?.state === _IDLE_;
+MeetingUtil.isUserInIdleState = (locusInfo) => locusInfo.parsedLocus?.self?.state === _IDLE_;
 
-MeetingUtil.isUserInJoinedState = (locusInfo) =>
-  locusInfo.parsedLocus?.self?.state === _JOINED_;
+MeetingUtil.isUserInJoinedState = (locusInfo) => locusInfo.parsedLocus?.self?.state === _JOINED_;
 
 MeetingUtil.isMediaEstablished = (currentMediaStatus) =>
-  currentMediaStatus && (currentMediaStatus.audio || currentMediaStatus.video || currentMediaStatus.share);
-
+  currentMediaStatus &&
+  (currentMediaStatus.audio || currentMediaStatus.video || currentMediaStatus.share);
 
 MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
   meeting.resourceId = meeting.resourceId || options.resourceId;
@@ -251,7 +257,7 @@ MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
   if (options.pin) {
     Metrics.postEvent({
       event: eventType.PIN_COLLECTED,
-      meeting
+      meeting,
     });
   }
 
@@ -267,7 +273,7 @@ MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
       if (MeetingUtil.isPinOrGuest(err)) {
         Metrics.postEvent({
           event: eventType.PIN_PROMPT,
-          meeting
+          meeting,
         });
 
         // request host pin or non host for unclaimed PMR, start of Scenario C
@@ -281,9 +287,7 @@ MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
 };
 
 MeetingUtil.validateOptions = (options) => {
-  const {
-    sendVideo, sendAudio, sendShare, localStream, localShare
-  } = options;
+  const {sendVideo, sendAudio, sendShare, localStream, localShare} = options;
 
   if (sendVideo && !MeetingUtil.getTrack(localStream).videoTrack) {
     return Promise.reject(new ParameterError('please pass valid video streams'));
@@ -341,23 +345,34 @@ MeetingUtil.getPolicyFromLocusInfo = (locusInfo) =>
   locusInfo.parsedLocus.info &&
   locusInfo.parsedLocus.info.policy;
 
-MeetingUtil.getUserDisplayHintsFromLocusInfo = (locusInfo) => locusInfo?.parsedLocus?.info?.userDisplayHints || [];
+MeetingUtil.getUserDisplayHintsFromLocusInfo = (locusInfo) =>
+  locusInfo?.parsedLocus?.info?.userDisplayHints || [];
 
-MeetingUtil.canInviteNewParticipants = (displayHints) => displayHints.includes(DISPLAY_HINTS.ADD_GUEST);
+MeetingUtil.canInviteNewParticipants = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.ADD_GUEST);
 
-MeetingUtil.canAdmitParticipant = (displayHints) => displayHints.includes(DISPLAY_HINTS.ROSTER_WAITING_TO_JOIN);
+MeetingUtil.canAdmitParticipant = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.ROSTER_WAITING_TO_JOIN);
 
-MeetingUtil.canUserLock = (displayHints) => displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_LOCK) && displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_UNLOCKED);
+MeetingUtil.canUserLock = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_LOCK) &&
+  displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_UNLOCKED);
 
-MeetingUtil.canUserUnlock = (displayHints) => displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_UNLOCK) && displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_LOCKED);
+MeetingUtil.canUserUnlock = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_UNLOCK) &&
+  displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_LOCKED);
 
-MeetingUtil.canUserRecord = (displayHints) => displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START);
+MeetingUtil.canUserRecord = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START);
 
-MeetingUtil.canUserPause = (displayHints) => displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE);
+MeetingUtil.canUserPause = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE);
 
-MeetingUtil.canUserResume = (displayHints) => displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME);
+MeetingUtil.canUserResume = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME);
 
-MeetingUtil.canUserStop = (displayHints) => displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
+MeetingUtil.canUserStop = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
 
 MeetingUtil.startRecording = (request, locusUrl, locusInfo) => {
   const displayHints = MeetingUtil.getUserDisplayHintsFromLocusInfo(locusInfo);
@@ -366,7 +381,9 @@ MeetingUtil.startRecording = (request, locusUrl, locusInfo) => {
     return request.recordMeeting({locusUrl, recording: true, paused: false});
   }
 
-  return Promise.reject(new PermissionError('Start recording not allowed, due to moderator property.'));
+  return Promise.reject(
+    new PermissionError('Start recording not allowed, due to moderator property.')
+  );
 };
 
 MeetingUtil.pauseRecording = (request, locusUrl, locusInfo) => {
@@ -376,7 +393,9 @@ MeetingUtil.pauseRecording = (request, locusUrl, locusInfo) => {
     return request.recordMeeting({locusUrl, recording: true, paused: true});
   }
 
-  return Promise.reject(new PermissionError('Pause recording not allowed, due to moderator property.'));
+  return Promise.reject(
+    new PermissionError('Pause recording not allowed, due to moderator property.')
+  );
 };
 
 MeetingUtil.resumeRecording = (request, locusUrl, locusInfo) => {
@@ -386,7 +405,9 @@ MeetingUtil.resumeRecording = (request, locusUrl, locusInfo) => {
     return request.recordMeeting({locusUrl, recording: true, paused: false});
   }
 
-  return Promise.reject(new PermissionError('Resume recording not allowed, due to moderator property.'));
+  return Promise.reject(
+    new PermissionError('Resume recording not allowed, due to moderator property.')
+  );
 };
 
 MeetingUtil.stopRecording = (request, locusUrl, locusInfo) => {
@@ -396,16 +417,22 @@ MeetingUtil.stopRecording = (request, locusUrl, locusInfo) => {
     return request.recordMeeting({locusUrl, recording: false, paused: false});
   }
 
-  return Promise.reject(new PermissionError('Stop recording not allowed, due to moderator property.'));
+  return Promise.reject(
+    new PermissionError('Stop recording not allowed, due to moderator property.')
+  );
 };
 
 MeetingUtil.canUserRaiseHand = (displayHints) => displayHints.includes(DISPLAY_HINTS.RAISE_HAND);
 
-MeetingUtil.canUserLowerAllHands = (displayHints) => displayHints.includes(DISPLAY_HINTS.LOWER_ALL_HANDS);
+MeetingUtil.canUserLowerAllHands = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.LOWER_ALL_HANDS);
 
-MeetingUtil.canUserLowerSomeoneElsesHand = (displayHints) => displayHints.includes(DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND);
+MeetingUtil.canUserLowerSomeoneElsesHand = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND);
 
-MeetingUtil.bothLeaveAndEndMeetingAvailable = (displayHints) => displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) || displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING);
+MeetingUtil.bothLeaveAndEndMeetingAvailable = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) ||
+  displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING);
 
 MeetingUtil.lockMeeting = (actions, request, locusUrl) => {
   if (actions && actions.canLock) {
@@ -477,31 +504,60 @@ MeetingUtil.endMeetingForAll = (meeting) => {
     .then(() => MeetingUtil.cleanUp(meeting))
     .catch((err) => {
       LoggerProxy.logger.error(
-        `Meeting:util#endMeetingForAll An error occured while trying to end meeting for all with an id of ${
-          meeting.id
-        }, error: ${err}`
+        `Meeting:util#endMeetingForAll An error occured while trying to end meeting for all with an id of ${meeting.id}, error: ${err}`
       );
 
       return Promise.reject(err);
     });
 };
 
-MeetingUtil.canEnableClosedCaption = (displayHints) => displayHints.includes(DISPLAY_HINTS.CAPTION_START);
+MeetingUtil.canEnableClosedCaption = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAPTION_START);
 
-MeetingUtil.canStartTranscribing = (displayHints) => displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_START);
+MeetingUtil.canStartTranscribing = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_START);
 
-MeetingUtil.canStopTranscribing = (displayHints) => displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_STOP);
+MeetingUtil.canStopTranscribing = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_STOP);
 
-MeetingUtil.isClosedCaptionActive = (displayHints) => displayHints.includes(DISPLAY_HINTS.CAPTION_STATUS_ACTIVE);
+MeetingUtil.isClosedCaptionActive = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAPTION_STATUS_ACTIVE);
 
-MeetingUtil.isWebexAssistantActive = (displayHints) => displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE);
+MeetingUtil.isWebexAssistantActive = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE);
 
-MeetingUtil.canViewCaptionPanel = (displayHints) => displayHints.includes(DISPLAY_HINTS.ENABLE_CAPTION_PANEL);
+MeetingUtil.canViewCaptionPanel = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.ENABLE_CAPTION_PANEL);
 
-MeetingUtil.isRealTimeTranslationEnabled = (displayHints) => displayHints.includes(DISPLAY_HINTS.DISPLAY_REAL_TIME_TRANSLATION);
+MeetingUtil.isRealTimeTranslationEnabled = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.DISPLAY_REAL_TIME_TRANSLATION);
 
-MeetingUtil.canSelectSpokenLanguages = (displayHints) => displayHints.includes(DISPLAY_HINTS.DISPLAY_NON_ENGLISH_ASR);
+MeetingUtil.canSelectSpokenLanguages = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.DISPLAY_NON_ENGLISH_ASR);
 
-MeetingUtil.waitingForOthersToJoin = (displayHints) => displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS);
+MeetingUtil.waitingForOthersToJoin = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS);
+
+MeetingUtil.canEnableReactions = (originalValue, displayHints) => {
+  if (displayHints.includes(DISPLAY_HINTS.ENABLE_REACTIONS)) {
+    return true;
+  }
+  if (displayHints.includes(DISPLAY_HINTS.DISABLE_REACTIONS)) {
+    return false;
+  }
+
+  return originalValue;
+};
+
+MeetingUtil.canSendReactions = (originalValue, displayHints) => {
+  if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
+    return true;
+  }
+  if (displayHints.includes(DISPLAY_HINTS.REACTIONS_INACTIVE)) {
+    return false;
+  }
+
+  return originalValue;
+};
 
 export default MeetingUtil;

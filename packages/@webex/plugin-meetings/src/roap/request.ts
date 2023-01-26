@@ -3,11 +3,7 @@
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {
-  MEDIA,
-  HTTP_VERBS,
-  REACHABILITY
-} from '../constants';
+import {MEDIA, HTTP_VERBS, REACHABILITY} from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
 
@@ -17,13 +13,14 @@ import {eventType} from '../metrics/config';
 export default class RoapRequest extends StatelessWebexPlugin {
   /**
    * Joins a meeting via ROAP
-   * @param {Object} options
+   * @param {Object} localSdp
    * @returns {Promise} returns a promise that resolves/rejects whatever the request does
    */
-
-
-  attachRechabilityData(localSdp) {
-    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+  async attachRechabilityData(localSdp) {
+    // @ts-ignore
+    const reachabilityData = await this.webex.boundedStorage
+      .get(REACHABILITY.namespace, REACHABILITY.localStorage)
+      .catch(() => {});
 
     if (reachabilityData) {
       try {
@@ -33,9 +30,10 @@ export default class RoapRequest extends StatelessWebexPlugin {
         if (reachabilityResult && Object.keys(reachabilityResult).length) {
           localSdp.reachability = reachabilityResult;
         }
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+        );
       }
     }
 
@@ -52,6 +50,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {Boolean} options.audioMuted
    * @param {Boolean} options.videoMuted
    * @param {String} options.meetingId
+   * @param {Boolean} options.preferTranscoding
    * @returns {Promise} returns the response/failure of the request
    */
   sendRoap(options: {
@@ -64,9 +63,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
     meetingId: string;
     preferTranscoding?: boolean;
   }) {
-    const {
-      roapMessage, locusSelfUrl, mediaId, correlationId, meetingId
-    } = options;
+    const {roapMessage, locusSelfUrl, mediaId, correlationId, meetingId} = options;
 
     if (!mediaId) {
       LoggerProxy.logger.info('Roap:request#sendRoap --> Race Condition /call mediaID not present');
@@ -76,64 +73,85 @@ export default class RoapRequest extends StatelessWebexPlugin {
     // @ts-ignore
     const deviceUrl = this.webex.internal.device.url;
 
-    LoggerProxy.logger.info(`Roap:request#sendRoap --> ${mediaUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`);
+    LoggerProxy.logger.info(
+      `Roap:request#sendRoap --> ${mediaUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
+    );
 
     Metrics.postEvent({event: eventType.MEDIA_REQUEST, meetingId});
 
-    // @ts-ignore
-    return this.webex
-      .request({
-        uri: mediaUrl,
-        method: HTTP_VERBS.PUT,
-        body: {
-          device: {
-            url: deviceUrl,
-            // @ts-ignore
-            deviceType: this.config.meetings.deviceType
+    return this.attachRechabilityData({
+      roapMessage,
+      // eslint-disable-next-line no-warning-comments
+      // TODO: check whats the need for video and audiomute
+      audioMuted: !!options.audioMuted,
+      videoMuted: !!options.videoMuted,
+    }).then((sdpWithReachability) => {
+      // @ts-ignore
+      return this.webex
+        .request({
+          uri: mediaUrl,
+          method: HTTP_VERBS.PUT,
+          body: {
+            device: {
+              url: deviceUrl,
+              // @ts-ignore
+              deviceType: this.config.meetings.deviceType,
+            },
+            correlationId,
+            localMedias: [
+              {
+                localSdp: JSON.stringify(sdpWithReachability),
+                mediaId: options.mediaId,
+              },
+            ],
+            clientMediaPreferences: {
+              preferTranscoding: options.preferTranscoding ?? true,
+            },
           },
-          correlationId,
-          localMedias: [
-            {
-              localSdp: JSON.stringify(this.attachRechabilityData({
-                roapMessage,
-                // eslint-disable-next-line no-warning-comments
-                // TODO: check whats the need for video and audiomute
-                audioMuted: !!options.audioMuted,
-                videoMuted: !!options.videoMuted
-              })),
-              mediaId: options.mediaId
-            }
-          ],
-          clientMediaPreferences: {
-            preferTranscoding: options.preferTranscoding ?? true
-          }
-        }
-      })
-      .then((res) => {
-        Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId});
+        })
+        .then((res) => {
+          Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId});
 
-        // always it will be the first mediaConnection Object
-        const mediaConnections = res.body.mediaConnections && res.body.mediaConnections.length > 0 && res.body.mediaConnections[0];
+          // always it will be the first mediaConnection Object
+          const mediaConnections =
+            res.body.mediaConnections &&
+            res.body.mediaConnections.length > 0 &&
+            res.body.mediaConnections[0];
 
-        LoggerProxy.logger.info(
-          `Roap:request#sendRoap --> response:${JSON.stringify(mediaConnections, null, 2)}'\n StatusCode:'${res.statusCode}`
-        );
-        const {locus} = res.body;
+          LoggerProxy.logger.info(
+            `Roap:request#sendRoap --> response:${JSON.stringify(
+              mediaConnections,
+              null,
+              2
+            )}'\n StatusCode:'${res.statusCode}`
+          );
+          const {locus} = res.body;
 
-        locus.roapSeq = options.roapMessage.seq;
+          locus.roapSeq = options.roapMessage.seq;
 
-        return {
-          locus,
-          ...(mediaConnections && {mediaConnections: res.body.mediaConnections})
-        };
-      })
-      .catch((err) => {
-        Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId, data: {error: Metrics.parseLocusError(err, true)}});
-        LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);
-        LoggerProxy.logger.error(
-          `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(roapMessage, null, 2)} + '\\n mediaId:'${options.mediaId}`
-        );
-        throw err;
-      });
+          return {
+            locus,
+            ...(mediaConnections && {mediaConnections: res.body.mediaConnections}),
+          };
+        })
+        .catch((err) => {
+          Metrics.postEvent({
+            event: eventType.MEDIA_RESPONSE,
+            meetingId,
+            data: {error: Metrics.parseLocusError(err, true)},
+          });
+          LoggerProxy.logger.error(
+            `Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`
+          );
+          LoggerProxy.logger.error(
+            `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(
+              roapMessage,
+              null,
+              2
+            )} + '\\n mediaId:'${options.mediaId}`
+          );
+          throw err;
+        });
+    });
   }
 }

@@ -5,20 +5,20 @@ parserOptions:
     blockBindings: false
     modules: false
 rules:
-    arrow-parens: off
-    arrow-spacing: off
-    constructor-super: off
-    generator-star-spacing: off
-    no-class-assign: off
-    no-const-assign: off
-    no-dupe-class-members: off
-    no-this-before-super: off
-    no-var: off
-    object-shorthand: off
-    prefer-arrow-callback: off
-    prefer-const: off
-    prefer-reflect: off
-    prefer-spread: off
-    prefer-template: off
-    quotes: off
-    require-yield: off
+  arrow-parens: off
+  arrow-spacing: off
+  constructor-super: off
+  generator-star-spacing: off
+  no-class-assign: off
+  no-const-assign: off
+  no-dupe-class-members: off
+  no-this-before-super: off
+  no-var: off
+  object-shorthand: off
+  prefer-arrow-callback: off
+  prefer-const: off
+  prefer-reflect: off
+  prefer-spread: off
+  prefer-template: off
+  quotes: off
+  require-yield: off

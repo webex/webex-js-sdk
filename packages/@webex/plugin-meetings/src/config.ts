@@ -1,6 +1,6 @@
 import {
   // @ts-ignore
-  deviceType
+  deviceType,
 } from '@webex/common';
 
 export default {
@@ -16,7 +16,7 @@ export default {
       receiveVideo: true,
       pstn: false,
       sendShare: false,
-      receiveShare: false
+      receiveShare: false,
     },
     reconnection: {
       enabled: false,
@@ -25,7 +25,7 @@ export default {
       // Timeout duration to wait for ICE to reconnect if a disconnect is received.
       iceReconnectionTimeout: 10000,
       // Amount of times attempting to rejoin a meeting during reconnect
-      maxRejoinAttempts: 3
+      maxRejoinAttempts: 3,
     },
     stats: {
       // Enable the webrtc stats analyzer that emits quality degradation events
@@ -41,7 +41,7 @@ export default {
       // Once packet loss hits this ratio, the video will downgrade
       videoPacketLossRatioThreshold: 9, // comparison of packets lost / packets received
       rttThreshold: 500, // 500 ms noticeable quality lag begins based on bandwidth of user
-      jitterThreshold: 500 // 500 ms noticeable quality lag begins based on bandwidth of user
+      jitterThreshold: 500, // 500 ms noticeable quality lag begins based on bandwidth of user
     },
     metrics: {
       // change to your client name else data will be muddled
@@ -55,30 +55,30 @@ export default {
       mqaMetricsInterval: 60000,
       // send to cisco internal MQA data automatically
       // we already send CA
-      autoSendMQA: true
+      autoSendMQA: true,
     },
     logging: {
       enable: true,
-      verboseEvents: true
+      verboseEvents: true,
     },
     resolution: {
       maxWidth: 1280,
       maxHeight: 720,
       idealWidth: 1280,
-      idealHeight: 720
+      idealHeight: 720,
     },
     screenResolution: {
       maxWidth: 1920,
       maxHeight: 1080,
       idealWidth: 1920,
-      idealHeight: 1080
+      idealHeight: 1080,
     },
     bandwidth: {
       // please note, these are the maximum bandwidth values
       // the server supports, minimums have to be tested
       audio: 64000,
       video: 4000000,
-      startBitrate: 2000
+      startBitrate: 2000,
     },
     screenFrameRate: 10,
     videoShareFrameRate: 30,
@@ -94,6 +94,9 @@ export default {
       enableUnifiedMeetings: false,
       enableAdhocMeetings: false,
       enableTurnDiscovery: false,
-    }
-  }
+    },
+    degradationPreferences: {
+      maxMacroblocksLimit: 32400,
+    },
+  },
 };

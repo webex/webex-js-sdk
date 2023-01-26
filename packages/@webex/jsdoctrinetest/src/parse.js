@@ -12,24 +12,27 @@ import {defaults} from 'lodash';
  * @returns {ast}
  */
 export default function parse(code, options) {
-  return babelParse(code, defaults(options, {
-    allowImportExportEverywhere: true,
-    sourceType: 'module',
-    plugins: [
-      'jsx',
-      'flow',
-      'asyncFunctions',
-      'classConstructorCall',
-      'doExpressions',
-      'trailingFunctionCommas',
-      'objectRestSpread',
-      'decorators',
-      'classProperties',
-      'exportExtensions',
-      'exponentiationOperator',
-      'asyncGenerators',
-      'functionBind',
-      'functionSent'
-    ]
-  }));
+  return babelParse(
+    code,
+    defaults(options, {
+      allowImportExportEverywhere: true,
+      sourceType: 'module',
+      plugins: [
+        'jsx',
+        'flow',
+        'asyncFunctions',
+        'classConstructorCall',
+        'doExpressions',
+        'trailingFunctionCommas',
+        'objectRestSpread',
+        'decorators',
+        'classProperties',
+        'exportExtensions',
+        'exponentiationOperator',
+        'asyncGenerators',
+        'functionBind',
+        'functionSent',
+      ],
+    })
+  );
 }

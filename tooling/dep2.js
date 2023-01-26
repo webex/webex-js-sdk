@@ -1,4 +1,3 @@
-
 const fs = require('fs');
 
 const glob = require('glob');
@@ -12,11 +11,9 @@ glob('packages/**/package.json', {}, (er, files) => {
 
     let stringified = JSON.stringify(parsedPackages, null, 2);
 
-
     // replace all the version which 'workspace:^' to the SDK version
     stringified = stringified.replaceAll('workspace:^', parsedPackages.version);
 
     fs.writeFileSync(file, `${stringified}\n`);
   });
 });
-

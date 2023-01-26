@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
     "emitDeclarationOnly": true,
-  // Ensure that Babel can safely transpile files in the TypeScript project
+    // Ensure that Babel can safely transpile files in the TypeScript project
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "alwaysStrict": true,
+    "preserveSymlinks": true,
+    "experimentalDecorators": true,
     "declaration": true,
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -16,6 +18,7 @@
     "removeComments": false,
     "sourceMap": true,
     "target": "ES6",
+    "skipLibCheck": true,
     "lib": [
       "ESNext",
       "DOM"

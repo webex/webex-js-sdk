@@ -56,9 +56,8 @@ const Webhooks = WebexPlugin.extend({
       method: 'POST',
       service: 'hydra',
       resource: 'webhooks',
-      body: webhook
-    })
-      .then((res) => res.body);
+      body: webhook,
+    }).then((res) => res.body);
   },
 
   /**
@@ -95,9 +94,8 @@ const Webhooks = WebexPlugin.extend({
 
     return this.request({
       service: 'hydra',
-      resource: `webhooks/${id}`
-    })
-      .then((res) => res.body.items || res.body);
+      resource: `webhooks/${id}`,
+    }).then((res) => res.body.items || res.body);
   },
 
   /**
@@ -137,9 +135,8 @@ const Webhooks = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'webhooks/',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -183,17 +180,16 @@ const Webhooks = WebexPlugin.extend({
     return this.request({
       method: 'DELETE',
       service: 'hydra',
-      resource: `webhooks/${id}`
-    })
-      .then((res) => {
-        // Firefox has some issues with 204s and/or DELETE. This should move to
-        // http-core
-        if (res.statusCode === 204) {
-          return undefined;
-        }
+      resource: `webhooks/${id}`,
+    }).then((res) => {
+      // Firefox has some issues with 204s and/or DELETE. This should move to
+      // http-core
+      if (res.statusCode === 204) {
+        return undefined;
+      }
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -236,10 +232,9 @@ const Webhooks = WebexPlugin.extend({
       method: 'PUT',
       service: 'hydra',
       resource: `webhooks/${id}`,
-      body: webhook
-    })
-      .then((res) => res.body);
-  }
+      body: webhook,
+    }).then((res) => res.body);
+  },
 });
 
 export default Webhooks;

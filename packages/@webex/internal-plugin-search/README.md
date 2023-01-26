@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-search
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-search';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.search.WHATEVER
-
+webex.internal.search.WHATEVER;
 ```
 
 ## Maintainers

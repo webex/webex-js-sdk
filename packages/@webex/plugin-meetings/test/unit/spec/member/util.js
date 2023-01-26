@@ -1,7 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-
 import MemberUtil from '@webex/plugin-meetings/src/member/util';
-
 
 describe('isHandRaised', () => {
   it('throws error when there is no participant', () => {
@@ -18,7 +16,7 @@ describe('isHandRaised', () => {
 
   it('returns false when hand is not there in controls', () => {
     const participant = {
-      controls: {}
+      controls: {},
     };
 
     assert.isFalse(MemberUtil.isHandRaised(participant));
@@ -28,9 +26,9 @@ describe('isHandRaised', () => {
     const participant = {
       controls: {
         hand: {
-          raised: true
+          raised: true,
         },
-      }
+      },
     };
 
     assert.isTrue(MemberUtil.isHandRaised(participant));
@@ -40,11 +38,37 @@ describe('isHandRaised', () => {
     const participant = {
       controls: {
         hand: {
-          raised: false
+          raised: false,
         },
-      }
+      },
     };
 
     assert.isFalse(MemberUtil.isHandRaised(participant));
+  });
+});
+
+describe('plugin-meetings', () => {
+  describe('MemberUtil.isBreakoutsSupported', () => {
+    it('throws error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.isBreakoutsSupported();
+      }, 'Breakout support could not be processed, participant is undefined.');
+    });
+
+    it('returns true when hand breakouts are supported', () => {
+      const participant = {
+        doesNotSupportBreakouts: false
+      };
+
+      assert.isTrue(MemberUtil.isBreakoutsSupported(participant));
+    });
+
+    it('returns false when hand breakouts are not supported', () => {
+      const participant = {
+        doesNotSupportBreakouts: true
+      };
+
+      assert.isFalse(MemberUtil.isBreakoutsSupported(participant));
+    });
   });
 });

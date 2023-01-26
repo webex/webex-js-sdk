@@ -13,7 +13,7 @@ import {
   VIDEO_STATUS,
   _SEND_RECEIVE_,
   _RECEIVE_ONLY_,
-  _CALL_
+  _CALL_,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -39,7 +39,8 @@ MemberUtil.isGuest = (participant: any) => participant && participant.guest;
  */
 MemberUtil.isDevice = (participant: any) => participant && participant.type === _RESOURCE_ROOM_;
 
-MemberUtil.isModeratorAssignmentProhibited = (participant) => participant && participant.moderatorAssignmentNotAllowed;
+MemberUtil.isModeratorAssignmentProhibited = (participant) =>
+  participant && participant.moderatorAssignmentNotAllowed;
 
 /**
  * checks to see if the participant id is the same as the passed id
@@ -48,8 +49,8 @@ MemberUtil.isModeratorAssignmentProhibited = (participant) => participant && par
  * @param {String} id
  * @returns {Boolean}
  */
-MemberUtil.isSame = (participant: any, id: string) => participant &&
-  (participant.id === id || participant.person && participant.person.id === id);
+MemberUtil.isSame = (participant: any, id: string) =>
+  participant && (participant.id === id || (participant.person && participant.person.id === id));
 
 /**
  * checks to see if the participant id is the same as the passed id for associated devices
@@ -58,9 +59,12 @@ MemberUtil.isSame = (participant: any, id: string) => participant &&
  * @param {String} id
  * @returns {Boolean}
  */
-MemberUtil.isAssociatedSame = (participant: any, id: string) => participant &&
-participant.associatedUsers &&
-participant.associatedUsers.some((user) => (user.id === id || user.person && user.person.id === id));
+MemberUtil.isAssociatedSame = (participant: any, id: string) =>
+  participant &&
+  participant.associatedUsers &&
+  participant.associatedUsers.some(
+    (user) => user.id === id || (user.person && user.person.id === id)
+  );
 
 /**
  * @param {Object} participant the locus participant
@@ -68,11 +72,18 @@ participant.associatedUsers.some((user) => (user.id === id || user.person && use
  * @param {String} status
  * @returns {Boolean}
  */
-MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string) => participant &&
-  participant.guest && ((participant.devices && participant.devices[0] &&
-  participant.devices[0].intent && participant.devices[0].intent.type === _WAIT_ &&
-  // @ts-ignore
-  isGuest && status === _IN_LOBBY_) || !status === _IN_MEETING_);
+MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string): boolean =>
+  participant &&
+  participant.guest &&
+  ((participant.devices &&
+    participant.devices[0] &&
+    participant.devices[0].intent &&
+    participant.devices[0].intent.type === _WAIT_ &&
+    // @ts-ignore
+    isGuest &&
+    status === _IN_LOBBY_) ||
+    // @ts-ignore
+    !status === _IN_MEETING_);
 
 /**
  * @param {Object} participant the locus participant
@@ -118,6 +129,18 @@ MemberUtil.isHandRaised = (participant: any) => {
   }
 
   return participant.controls?.hand?.raised || false;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.isBreakoutsSupported = (participant) => {
+  if (!participant) {
+    throw new ParameterError('Breakout support could not be processed, participant is undefined.');
+  }
+
+  return !participant.doesNotSupportBreakouts;
 };
 
 /**
@@ -214,7 +237,10 @@ MemberUtil.extractStatus = (participant: any) => {
   }
   if (participant.state === _IDLE_) {
     if (participant.devices && participant.devices.length > 0) {
-      const foundDevice = participant.devices.find((device) => device.intent && (device.intent.type === _WAIT_ || device.intent.type === _OBSERVE_));
+      const foundDevice = participant.devices.find(
+        (device) =>
+          device.intent && (device.intent.type === _WAIT_ || device.intent.type === _OBSERVE_)
+      );
 
       return foundDevice ? _IN_LOBBY_ : _NOT_IN_MEETING_;
     }

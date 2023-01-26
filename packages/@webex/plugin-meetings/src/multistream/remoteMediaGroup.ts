@@ -8,8 +8,8 @@ import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 
 type Options = {
-  resolution?: RemoteVideoResolution; // applies only to groups of type MC.MediaType.VideoMain and MC.MediaType.VideoSlides
-  preferLiveVideo?: boolean; // applies only to groups of type MC.MediaType.VideoMain and MC.MediaType.VideoSlides
+  resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
+  preferLiveVideo?: boolean; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
 };
 
 export class RemoteMediaGroup {
@@ -62,6 +62,7 @@ export class RemoteMediaGroup {
       // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
       return [...this.pinnedRemoteMedia];
     }
+
     return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
   }
 
@@ -189,7 +190,7 @@ export class RemoteMediaGroup {
    * @param{boolean} commit whether to commit the cancellation of media requests
    * @internal
    */
-  public stop(commit: boolean = true) {
+  public stop(commit = true) {
     this.unpinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.cancelActiveSpeakerMediaRequest(false);

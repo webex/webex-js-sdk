@@ -1,9 +1,18 @@
 /* eslint-disable require-jsdoc */
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {
+  MediaRequest as WcmeMediaRequest,
+  Policy,
+  ActiveSpeakerInfo,
+  ReceiverSelectedInfo,
+  CodecInfo as WcmeCodecInfo,
+  H264Codec,
+} from '@webex/internal-media-core';
+import {cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotId} from './receiveSlot';
+import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -47,22 +56,32 @@ const CODEC_DEFAULTS = {
   },
 };
 
-type SendMediaRequestsCallback = (mediaRequests: MC.MediaRequest[]) => void;
+type DegradationPreferences = {
+  maxMacroblocksLimit: number;
+};
+
+type SendMediaRequestsCallback = (mediaRequests: WcmeMediaRequest[]) => void;
 
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
-  private counter;
+  private counter: number;
 
   private clientRequests: {[key: MediaRequestId]: MediaRequest};
 
   private slotsActiveInLastMediaRequest: {[key: ReceiveSlotId]: ReceiveSlot};
 
-  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback) {
+  private degradationPreferences: DegradationPreferences;
+
+  constructor(
+    degradationPreferences: DegradationPreferences,
+    sendMediaRequestsCallback: SendMediaRequestsCallback
+  ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
     this.clientRequests = {};
     this.slotsActiveInLastMediaRequest = {};
+    this.degradationPreferences = degradationPreferences;
   }
 
   private resetInactiveReceiveSlots() {
@@ -90,34 +109,79 @@ export class MediaRequestManager {
     this.slotsActiveInLastMediaRequest = activeSlots;
   }
 
-  private sendRequests() {
-    const wcmeMediaRequests: MC.MediaRequest[] = [];
+  public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
+    this.degradationPreferences = degradationPreferences;
+    this.sendRequests(); // re-send requests after preferences are set
+  }
 
-    // todo: check how many streams we're asking for and what resolution and introduce some limits (spark-377701)
+  private getDegradedClientRequests() {
+    const clientRequests = cloneDeep(this.clientRequests);
+    const maxFsLimits = [
+      getMaxFs('best'),
+      getMaxFs('large'),
+      getMaxFs('medium'),
+      getMaxFs('small'),
+      getMaxFs('very small'),
+      getMaxFs('thumbnail'),
+    ];
+
+    // reduce max-fs until total macroblocks is below limit
+    for (let i = 0; i < maxFsLimits.length; i += 1) {
+      let totalMacroblocksRequested = 0;
+      Object.values(clientRequests).forEach((mr) => {
+        if (mr.codecInfo) {
+          mr.codecInfo.maxFs = Math.min(
+            mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+            maxFsLimits[i]
+          );
+          totalMacroblocksRequested += mr.codecInfo.maxFs * mr.receiveSlots.length;
+        }
+      });
+      if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
+        if (i !== 0) {
+          LoggerProxy.logger.warn(
+            `multistream:mediaRequestManager --> too many requests with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
+          );
+        }
+        break;
+      } else if (i === maxFsLimits.length - 1) {
+        LoggerProxy.logger.warn(
+          `multistream:mediaRequestManager --> even with frame size limited to ${maxFsLimits[i]} you are still requesting too many streams, consider reducing the number of requests`
+        );
+      }
+    }
+
+    return clientRequests;
+  }
+
+  private sendRequests() {
+    const wcmeMediaRequests: WcmeMediaRequest[] = [];
+
+    const clientRequests = this.getDegradedClientRequests();
     const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
 
     // map all the client media requests to wcme media requests
-    Object.values(this.clientRequests).forEach((mr) => {
+    Object.values(clientRequests).forEach((mr) => {
       wcmeMediaRequests.push(
-        new MC.MediaRequest(
+        new WcmeMediaRequest(
           mr.policyInfo.policy === 'active-speaker'
-            ? MC.Policy.ActiveSpeaker
-            : MC.Policy.ReceiverSelected,
+            ? Policy.ActiveSpeaker
+            : Policy.ReceiverSelected,
           mr.policyInfo.policy === 'active-speaker'
-            ? new MC.ActiveSpeakerInfo(
+            ? new ActiveSpeakerInfo(
                 mr.policyInfo.priority,
                 mr.policyInfo.crossPriorityDuplication,
                 mr.policyInfo.crossPolicyDuplication,
                 mr.policyInfo.preferLiveVideo
               )
-            : new MC.ReceiverSelectedInfo(mr.policyInfo.csi),
+            : new ReceiverSelectedInfo(mr.policyInfo.csi),
           mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
           maxPayloadBitsPerSecond,
           mr.codecInfo && [
-            new MC.CodecInfo(
+            new WcmeCodecInfo(
               0x80,
-              new MC.H264Codec(
-                mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+              new H264Codec(
+                mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
                 mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
                 mr.codecInfo.maxWidth,

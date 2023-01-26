@@ -22,11 +22,9 @@ export default class ServiceState {
    */
   constructor() {
     // Iterate over the possible catalog names and generate their states.
-    SERVICE_CATALOGS.forEach(
-      (catalog) => {
-        this[catalog] = ServiceState.generateCatalogState();
-      }
-    );
+    SERVICE_CATALOGS.forEach((catalog) => {
+      this[catalog] = ServiceState.generateCatalogState();
+    });
   }
 
   /**
@@ -74,7 +72,7 @@ export default class ServiceState {
   static generateCatalogState() {
     return {
       collecting: false,
-      ready: false
+      ready: false,
     };
   }
 }

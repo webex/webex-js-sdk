@@ -7,11 +7,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {
-  persist,
-  WebexPlugin,
-  waitForValue
-} from '@webex/webex-core';
+import {persist, WebexPlugin, waitForValue} from '@webex/webex-core';
 
 describe('webex-core', () => {
   describe('@waitForValue', () => {
@@ -20,8 +16,8 @@ describe('webex-core', () => {
         props: {
           test: {
             default: false,
-            type: 'boolean'
-          }
+            type: 'boolean',
+          },
         },
 
         namespace: 'MockChild',
@@ -33,29 +29,34 @@ describe('webex-core', () => {
 
         @waitForValue('@')
         testMethod() {
-          return this.webex.request()
-            .then(() => {
-              this.test = true;
-            });
-        }
+          return this.webex.request().then(() => {
+            this.test = true;
+          });
+        },
       });
 
       const webex = new MockWebex({
         children: {
-          mockChild: MockChild
-        }
+          mockChild: MockChild,
+        },
       });
 
       let resolve;
 
-      sinon.stub(webex.boundedStorage, 'get').returns(new Promise((r) => { resolve = r; }));
+      sinon.stub(webex.boundedStorage, 'get').returns(
+        new Promise((r) => {
+          resolve = r;
+        })
+      );
 
-      webex.request.returns(Promise.resolve({
-        body: {
-          access_token: 'fake token @waitForValue',
-          token_type: 'Bearer'
-        }
-      }));
+      webex.request.returns(
+        Promise.resolve({
+          body: {
+            access_token: 'fake token @waitForValue',
+            token_type: 'Bearer',
+          },
+        })
+      );
 
       const promise = webex.internal.mockChild.testMethod();
 

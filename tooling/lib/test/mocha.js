@@ -5,12 +5,9 @@ const debug = require('debug')('*');
 const Mocha = require('mocha');
 
 require('@babel/register')({
-  only: [
-    './packages/**/*.js',
-    './packages/**/*.ts'
-  ],
+  only: ['./packages/**/*.js', './packages/**/*.ts'],
   extensions: ['.js', '.ts'],
-  sourceMaps: true
+  sourceMaps: true,
 });
 
 exports.test = async function test(options, packageName, suite, files) {
@@ -18,13 +15,11 @@ exports.test = async function test(options, packageName, suite, files) {
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
 
-
-  return run(options, files)
-    .catch((e) => {
-      debug(`${files} failed`);
-      console.log(e);
-      throw new Error('Mocha suite failed', e);
-    });
+  return run(options, files).catch((e) => {
+    debug(`${files} failed`);
+    console.log(e);
+    throw new Error('Mocha suite failed', e);
+  });
 };
 
 /**
@@ -37,15 +32,15 @@ async function run(options, files) {
   const cfg = {
     diff: true,
     bail: options.bail,
-    retries: (process.env.JENKINS || process.env.CIRCLECI || process.env.CI) ? 1 : 0,
+    retries: process.env.JENKINS || process.env.CIRCLECI || process.env.CI ? 1 : 0,
     timeout: 30000,
-    grep: new RegExp(options.grep.join('|'))
+    grep: new RegExp(options.grep.join('|')),
   };
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
     cfg.reporter = 'mocha-junit-reporter';
     cfg.reporterOptions = {
-      mochaFile: options.output
+      mochaFile: options.output,
     };
   }
 
@@ -55,5 +50,5 @@ async function run(options, files) {
 
   return new Promise((resolve) => {
     mocha.run(resolve);
-  });
+  })
 }

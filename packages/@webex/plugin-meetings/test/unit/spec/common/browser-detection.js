@@ -1,7 +1,6 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
-import BrowserDetection from
-  '@webex/plugin-meetings/src/common/browser-detection';
+import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 
 const USER_AGENT_CHROME_MAC =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
@@ -17,8 +16,7 @@ const USER_AGENT_SAFARI_MAC =
   ' AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15';
 
 const USER_AGENT_FIREFOX_MAC =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) ' +
-  'Gecko/20100101 Firefox/87.0';
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) ' + 'Gecko/20100101 Firefox/87.0';
 
 const mockDetectionObject = {
   /* eslint-disable global-require */
@@ -27,7 +25,7 @@ const mockDetectionObject = {
   /* eslint-enable global-require */
   getBrowserName: () => '',
   getBrowserVersion: () => '',
-  isBrowser: () => false
+  isBrowser: () => false,
 };
 
 describe('common/browser-detection', () => {
@@ -108,31 +106,14 @@ describe('common/browser-detection', () => {
   it('returns the mock object when there is no userAgent', () => {
     Object.defineProperty(global.window.navigator, 'userAgent', {
       get: () => undefined,
-      configurable: true
+      configurable: true,
     });
 
-    const {
-      getBrowserName,
-      getBrowserVersion,
-      getOSName,
-      getOSVersion
-    } = BrowserDetection(null);
+    const {getBrowserName, getBrowserVersion, getOSName, getOSVersion} = BrowserDetection(null);
 
-    assert.equal(
-      getBrowserName(),
-      mockDetectionObject.getBrowserName()
-    );
-    assert.equal(
-      getBrowserVersion(),
-      mockDetectionObject.getBrowserVersion()
-    );
-    assert.equal(
-      getOSName(),
-      mockDetectionObject.getOSName()
-    );
-    assert.equal(
-      getOSVersion(),
-      mockDetectionObject.getOSVersion()
-    );
+    assert.equal(getBrowserName(), mockDetectionObject.getBrowserName());
+    assert.equal(getBrowserVersion(), mockDetectionObject.getBrowserVersion());
+    assert.equal(getOSName(), mockDetectionObject.getOSName());
+    assert.equal(getOSVersion(), mockDetectionObject.getOSVersion());
   });
 });

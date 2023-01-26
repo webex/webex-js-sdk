@@ -8,8 +8,8 @@ import {set} from 'lodash';
 import {CISCO_DEVICE_URL} from '../constants';
 
 /**
-  * Adds 'cisco-device-url' header, as appropriate, to requests
-  */
+ * Adds 'cisco-device-url' header, as appropriate, to requests
+ */
 export default class DeviceUrlInterceptor extends Interceptor {
   /**
    * @returns {DeviceUrlInterceptor}
@@ -29,15 +29,13 @@ export default class DeviceUrlInterceptor extends Interceptor {
     const {device, services} = this.webex.internal;
 
     // Check if header is already set before moving forward
-    if (
-      !device.url ||
-      (headers && CISCO_DEVICE_URL in headers && !!headers[CISCO_DEVICE_URL])
-    ) {
+    if (!device.url || (headers && CISCO_DEVICE_URL in headers && !!headers[CISCO_DEVICE_URL])) {
       return Promise.resolve(options);
     }
 
     // Wait for catalog and service to be defined.
-    return services.waitForService({service, url: uri})
+    return services
+      .waitForService({service, url: uri})
       .then((url) => {
         // Grab the service name with the url returned from waitForService
         const {name: serviceName} = services.getServiceFromUrl(url) || {};

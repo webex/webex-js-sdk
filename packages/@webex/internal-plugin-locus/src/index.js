@@ -11,12 +11,4 @@ registerInternalPlugin('locus', Locus);
 
 export default Locus;
 export {locusEventKeys as eventKeys} from './event-keys';
-export {
-  USE_INCOMING,
-  USE_CURRENT,
-  EQUAL,
-  FETCH,
-  GREATER_THAN,
-  LESS_THAN,
-  DESYNC
-} from './locus';
+export {USE_INCOMING, USE_CURRENT, EQUAL, FETCH, GREATER_THAN, LESS_THAN, DESYNC} from './locus';

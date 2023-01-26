@@ -1,5 +1,6 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
-import {MediaConnection as MC} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import Meeting from '../meeting';
@@ -11,9 +12,9 @@ import {CSI, ReceiveSlot} from './receiveSlot';
  * so this manager has a pool in order to re-use the slots that were released earlier.
  */
 export class ReceiveSlotManager {
-  private allocatedSlots: {[key in MC.MediaType]: ReceiveSlot[]};
+  private allocatedSlots: {[key in MediaType]: ReceiveSlot[]};
 
-  private freeSlots: {[key in MC.MediaType]: ReceiveSlot[]};
+  private freeSlots: {[key in MediaType]: ReceiveSlot[]};
 
   private meeting: Meeting;
 
@@ -23,16 +24,16 @@ export class ReceiveSlotManager {
    */
   constructor(meeting) {
     this.allocatedSlots = {
-      [MC.MediaType.AudioMain]: [],
-      [MC.MediaType.VideoMain]: [],
-      [MC.MediaType.AudioSlides]: [],
-      [MC.MediaType.VideoSlides]: [],
+      [MediaType.AudioMain]: [],
+      [MediaType.VideoMain]: [],
+      [MediaType.AudioSlides]: [],
+      [MediaType.VideoSlides]: [],
     };
     this.freeSlots = {
-      [MC.MediaType.AudioMain]: [],
-      [MC.MediaType.VideoMain]: [],
-      [MC.MediaType.AudioSlides]: [],
-      [MC.MediaType.VideoSlides]: [],
+      [MediaType.AudioMain]: [],
+      [MediaType.VideoMain]: [],
+      [MediaType.AudioSlides]: [],
+      [MediaType.VideoSlides]: [],
     };
     this.meeting = meeting;
   }
@@ -40,10 +41,10 @@ export class ReceiveSlotManager {
   /**
    * Creates a new receive slot or returns one from the existing pool of free slots
    *
-   * @param {MC.MediaType} mediaType
+   * @param {MediaType} mediaType
    * @returns {Promise<ReceiveSlot>}
    */
-  async allocateSlot(mediaType: MC.MediaType): Promise<ReceiveSlot> {
+  async allocateSlot(mediaType: MediaType): Promise<ReceiveSlot> {
     if (!this.meeting?.mediaProperties?.webrtcMediaConnection) {
       return Promise.reject(new Error('Webrtc media connection is missing'));
     }
@@ -66,6 +67,7 @@ export class ReceiveSlotManager {
     const receiveSlot = new ReceiveSlot(
       mediaType,
       wcmeReceiveSlot,
+      // @ts-ignore
       (csi: CSI) => this.meeting.members.findMemberByCsi(csi)?.id
     );
 
@@ -100,16 +102,16 @@ export class ReceiveSlotManager {
    */
   reset() {
     this.allocatedSlots = {
-      [MC.MediaType.AudioMain]: [],
-      [MC.MediaType.VideoMain]: [],
-      [MC.MediaType.AudioSlides]: [],
-      [MC.MediaType.VideoSlides]: [],
+      [MediaType.AudioMain]: [],
+      [MediaType.VideoMain]: [],
+      [MediaType.AudioSlides]: [],
+      [MediaType.VideoSlides]: [],
     };
     this.freeSlots = {
-      [MC.MediaType.AudioMain]: [],
-      [MC.MediaType.VideoMain]: [],
-      [MC.MediaType.AudioSlides]: [],
-      [MC.MediaType.VideoSlides]: [],
+      [MediaType.AudioMain]: [],
+      [MediaType.VideoMain]: [],
+      [MediaType.AudioSlides]: [],
+      [MediaType.VideoSlides]: [],
     };
   }
 

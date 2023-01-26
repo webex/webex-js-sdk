@@ -11,7 +11,7 @@ import Mercury, {
   // NotFound,
   config as mercuryConfig,
   ConnectionError,
-  Socket
+  Socket,
 } from '@webex/internal-plugin-mercury';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -24,23 +24,19 @@ import promiseTick from '../lib/promise-tick';
 
 describe('plugin-mercury', () => {
   describe('Mercury', () => {
-    let clock,
-      mercury,
-      mockWebSocket,
-      socketOpenStub,
-      webex;
+    let clock, mercury, mockWebSocket, socketOpenStub, webex;
 
     const statusStartTypingMessage = JSON.stringify({
       id: uuid.v4(),
       data: {
         eventType: 'status.start_typing',
         actor: {
-          id: 'actorId'
+          id: 'actorId',
         },
-        conversationId: uuid.v4()
+        conversationId: uuid.v4(),
       },
       timestamp: Date.now(),
-      trackingId: `suffix_${uuid.v4()}_${Date.now()}`
+      trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
     });
 
     beforeEach(() => {
@@ -54,27 +50,31 @@ describe('plugin-mercury', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          mercury: Mercury
-        }
+          mercury: Mercury,
+        },
       });
       webex.credentials = {
         refresh: sinon.stub().returns(Promise.resolve()),
-        getUserToken: sinon.stub().returns(Promise.resolve({
-          toString() {
-            return 'Bearer FAKE';
-          }
-        }))
+        getUserToken: sinon.stub().returns(
+          Promise.resolve({
+            toString() {
+              return 'Bearer FAKE';
+            },
+          })
+        ),
       };
       webex.internal.device = {
         register: sinon.stub().returns(Promise.resolve()),
         refresh: sinon.stub().returns(Promise.resolve()),
         webSocketUrl: 'ws://example.com',
         getWebSocketUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
-        useServiceCatalogUrl: sinon.stub().returns(Promise.resolve('https://service-catalog-url.com'))
+        useServiceCatalogUrl: sinon
+          .stub()
+          .returns(Promise.resolve('https://service-catalog-url.com')),
       };
       webex.internal.services = {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
-        markFailedUrl: sinon.stub().returns(Promise.resolve())
+        markFailedUrl: sinon.stub().returns(Promise.resolve()),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.trackingId = 'fakeTrackingId';
@@ -132,10 +132,9 @@ describe('plugin-mercury', () => {
 
         mockWebSocket.open();
 
-        return promise
-          .then(() => {
-            assert.calledOnce(webex.internal.device.register);
-          });
+        return promise.then(() => {
+          assert.calledOnce(webex.internal.device.register);
+        });
       });
 
       it('connects to Mercury using default url', () => {
@@ -145,12 +144,11 @@ describe('plugin-mercury', () => {
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
         mockWebSocket.open();
 
-        return promise
-          .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
-          });
+        return promise.then(() => {
+          assert.isTrue(mercury.connected, 'Mercury is connected');
+          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+          assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
+        });
       });
 
       describe('when `maxRetries` is set', () => {
@@ -198,15 +196,14 @@ describe('plugin-mercury', () => {
           mercury.connect(),
           mercury.connect(),
           mercury.connect(),
-          mercury.connect()
+          mercury.connect(),
         ]);
 
         mockWebSocket.open();
 
-        return promise
-          .then(() => {
-            assert.calledOnce(Socket.prototype.open);
-          });
+        return promise.then(() => {
+          assert.calledOnce(Socket.prototype.open);
+        });
       });
 
       // skipping due to apparent bug with lolex in all browsers but Chrome.
@@ -261,7 +258,9 @@ describe('plugin-mercury', () => {
           it('fails permanently', () => {
             clock.uninstall();
             socketOpenStub.restore();
-            socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.reject(new BadRequest({code: 4400})));
+            socketOpenStub = sinon
+              .stub(Socket.prototype, 'open')
+              .returns(Promise.reject(new BadRequest({code: 4400})));
 
             return assert.isRejected(mercury.connect());
           });
@@ -276,17 +275,15 @@ describe('plugin-mercury', () => {
             assert.notCalled(webex.internal.device.refresh);
             const promise = mercury.connect();
 
-            return promiseTick(7)
-              .then(() => {
-                assert.notCalled(webex.credentials.refresh);
-                assert.called(webex.internal.device.refresh);
-                clock.tick(1000);
+            return promiseTick(7).then(() => {
+              assert.notCalled(webex.credentials.refresh);
+              assert.called(webex.internal.device.refresh);
+              clock.tick(1000);
 
-                return promise;
-              });
+              return promise;
+            });
           });
         });
-
 
         describe('with `NotAuthorized`', () => {
           it('triggers a token refresh', () => {
@@ -297,14 +294,13 @@ describe('plugin-mercury', () => {
             assert.notCalled(webex.internal.device.refresh);
             const promise = mercury.connect();
 
-            return promiseTick(7)
-              .then(() => {
-                assert.called(webex.credentials.refresh);
-                assert.notCalled(webex.internal.device.refresh);
-                clock.tick(1000);
+            return promiseTick(7).then(() => {
+              assert.called(webex.credentials.refresh);
+              assert.notCalled(webex.internal.device.refresh);
+              clock.tick(1000);
 
-                return promise;
-              });
+              return promise;
+            });
           });
         });
 
@@ -312,7 +308,9 @@ describe('plugin-mercury', () => {
           it('fails permanently', () => {
             clock.uninstall();
             socketOpenStub.restore();
-            socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.reject(new Forbidden({code: 4403})));
+            socketOpenStub = sinon
+              .stub(Socket.prototype, 'open')
+              .returns(Promise.reject(new Forbidden({code: 4403})));
 
             return assert.isRejected(mercury.connect());
           });
@@ -344,20 +342,19 @@ describe('plugin-mercury', () => {
             socketOpenStub.onCall(0).returns(Promise.reject(new ConnectionError({code: 4001})));
             const promise = mercury.connect();
 
-            return promiseTick(7)
-              .then(() => {
-                assert.calledOnce(webex.internal.services.markFailedUrl);
-                clock.tick(1000);
+            return promiseTick(7).then(() => {
+              assert.calledOnce(webex.internal.services.markFailedUrl);
+              clock.tick(1000);
 
-                return promise;
-              });
+              return promise;
+            });
           });
         });
       });
 
       describe('when connected', () => {
-        it('resolves immediately', () => mercury.connect()
-          .then(() => {
+        it('resolves immediately', () =>
+          mercury.connect().then(() => {
             assert.isTrue(mercury.connected, 'Mercury is connected');
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             const promise = mercury.connect();
@@ -393,12 +390,15 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connecting, 'Mercury is connecting');
           mockWebSocket.open();
 
-          return promise
-            .then(() => {
-              assert.isTrue(mercury.connected, 'Mercury is connected');
-              assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-              assert.calledWith(Socket.prototype.open, sinon.match(/ws:\/\/providedurl.com/), sinon.match.any);
-            });
+          return promise.then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.calledWith(
+              Socket.prototype.open,
+              sinon.match(/ws:\/\/providedurl.com/),
+              sinon.match.any
+            );
+          });
         });
       });
     });
@@ -418,13 +418,18 @@ describe('plugin-mercury', () => {
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
         mockWebSocket.open();
 
-        return promise
-          .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.has('agent',
-              sinon.match.has('proxy', sinon.match.has('href', testProxyUrl))));
-          });
+        return promise.then(() => {
+          assert.isTrue(mercury.connected, 'Mercury is connected');
+          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+          assert.calledWith(
+            socketOpenStub,
+            sinon.match(/ws:\/\/example.com/),
+            sinon.match.has(
+              'agent',
+              sinon.match.has('proxy', sinon.match.has('href', testProxyUrl))
+            )
+          );
+        });
       });
 
       it('connects to Mercury without proxy agent', () => {
@@ -434,41 +439,47 @@ describe('plugin-mercury', () => {
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
         mockWebSocket.open();
 
-        return promise
-          .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match({agent: undefined}));
-          });
+        return promise.then(() => {
+          assert.isTrue(mercury.connected, 'Mercury is connected');
+          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+          assert.calledWith(
+            socketOpenStub,
+            sinon.match(/ws:\/\/example.com/),
+            sinon.match({agent: undefined})
+          );
+        });
       });
     });
 
     describe('#disconnect()', () => {
-      it('disconnects the WebSocket', () => mercury.connect()
-        .then(() => {
-          assert.isTrue(mercury.connected, 'Mercury is connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-          const promise = mercury.disconnect();
+      it('disconnects the WebSocket', () =>
+        mercury
+          .connect()
+          .then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            const promise = mercury.disconnect();
 
-          mockWebSocket.emit('close', {
-            code: 1000,
-            reason: 'Done'
-          });
+            mockWebSocket.emit('close', {
+              code: 1000,
+              reason: 'Done',
+            });
 
-          return promise;
-        })
-        .then(() => {
-          assert.isFalse(mercury.connected, 'Mercury is not connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-          assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
-        }));
+            return promise;
+          })
+          .then(() => {
+            assert.isFalse(mercury.connected, 'Mercury is not connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+          }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
 
         mercury.on('event:status.start_typing', spy);
 
-        return mercury.connect()
+        return mercury
+          .connect()
           .then(() => {
             assert.isTrue(mercury.connected, 'Mercury is connected');
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
@@ -488,7 +499,7 @@ describe('plugin-mercury', () => {
             mockWebSocket.emit('message', {data: statusStartTypingMessage});
             mockWebSocket.emit('close', {
               code: 1000,
-              reason: 'Done'
+              reason: 'Done',
             });
             mockWebSocket.emit('message', {data: statusStartTypingMessage});
 
@@ -511,28 +522,27 @@ describe('plugin-mercury', () => {
             // Delay the opening of the socket so that disconnect is called while open
             // is in progress
             promiseTick(2 * webex.internal.mercury.config.backoffTimeReset)
-            // Pretend the socket opened successfully. Failing should be fine too but
-            // it generates more console output.
+              // Pretend the socket opened successfully. Failing should be fine too but
+              // it generates more console output.
               .then(() => Promise.resolve())
           );
           const promise = mercury.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mercury.config.backoffTimeReset)
-            .then(() => {
-              // By this time backoffCall and mercury socket should be defined by the
-              // 'connect' call
-              assert.isDefined(mercury.backoffCall, 'Mercury backoffCall is not defined');
-              assert.isDefined(mercury.socket, 'Mercury socket is not defined');
-              // Calling disconnect will abort the backoffCall, close the socket, and
-              // reject the connect
-              mercury.disconnect();
-              assert.isUndefined(mercury.backoffCall, 'Mercury backoffCall is still defined');
-              // The socket will never be unset (which seems bad)
-              assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+            // By this time backoffCall and mercury socket should be defined by the
+            // 'connect' call
+            assert.isDefined(mercury.backoffCall, 'Mercury backoffCall is not defined');
+            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            // Calling disconnect will abort the backoffCall, close the socket, and
+            // reject the connect
+            mercury.disconnect();
+            assert.isUndefined(mercury.backoffCall, 'Mercury backoffCall is still defined');
+            // The socket will never be unset (which seems bad)
+            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
-              return assert.isRejected(promise);
-            });
+            return assert.isRejected(promise);
+          });
         });
 
         it('stops the attempt when backoffCall is undefined', () => {
@@ -547,10 +557,12 @@ describe('plugin-mercury', () => {
             reason = _reason;
           });
 
-          return promiseTick(webex.internal.mercury.config.backoffTimeReset)
-            .then(() => {
-              assert.equal(reason.message, 'mercury: prevent socket open when backoffCall no longer defined');
-            });
+          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+            assert.equal(
+              reason.message,
+              'mercury: prevent socket open when backoffCall no longer defined'
+            );
+          });
         });
       });
     });
@@ -572,11 +584,11 @@ describe('plugin-mercury', () => {
       it('merges a single header field with data', () => {
         const envelope = {
           headers: {
-            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate
+            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
           },
           data: {
-            activity: {}
-          }
+            activity: {},
+          },
         };
 
         mercury._applyOverrides(envelope);
@@ -588,27 +600,30 @@ describe('plugin-mercury', () => {
         const envelope = {
           headers: {
             'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
-            'data.activity.target.lastReadableActivityDate': lastReadableActivityDate
+            'data.activity.target.lastReadableActivityDate': lastReadableActivityDate,
           },
           data: {
-            activity: {}
-          }
+            activity: {},
+          },
         };
 
         mercury._applyOverrides(envelope);
 
         assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
-        assert.equal(envelope.data.activity.target.lastReadableActivityDate, lastReadableActivityDate);
+        assert.equal(
+          envelope.data.activity.target.lastReadableActivityDate,
+          lastReadableActivityDate
+        );
       });
 
       it('merges headers when Mercury messages arrive', () => {
         const envelope = {
           headers: {
-            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate
+            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
           },
           data: {
-            activity: {}
-          }
+            activity: {},
+          },
         };
 
         mercury._applyOverrides(envelope);
@@ -622,19 +637,24 @@ describe('plugin-mercury', () => {
         webex.internal.device.webSocketUrl = 'ws://example.com';
       });
 
-      it('uses device default webSocketUrl', () => webex.internal.mercury._prepareUrl()
-        .then((wsUrl) => assert.match(wsUrl, /example.com/)));
-      it('uses provided webSocketUrl', () => webex.internal.mercury._prepareUrl('ws://provided.com')
-        .then((wsUrl) => assert.match(wsUrl, /provided.com/)));
-      it('requests text-mode WebSockets', () => webex.internal.mercury._prepareUrl()
-        .then((wsUrl) => assert.match(wsUrl, /outboundWireFormat=text/)));
+      it('uses device default webSocketUrl', () =>
+        webex.internal.mercury._prepareUrl().then((wsUrl) => assert.match(wsUrl, /example.com/)));
+      it('uses provided webSocketUrl', () =>
+        webex.internal.mercury
+          ._prepareUrl('ws://provided.com')
+          .then((wsUrl) => assert.match(wsUrl, /provided.com/)));
+      it('requests text-mode WebSockets', () =>
+        webex.internal.mercury
+          ._prepareUrl()
+          .then((wsUrl) => assert.match(wsUrl, /outboundWireFormat=text/)));
 
-      it('requests the buffer state message', () => webex.internal.mercury._prepareUrl()
-        .then((wsUrl) => assert.match(wsUrl, /bufferStates=true/)));
+      it('requests the buffer state message', () =>
+        webex.internal.mercury
+          ._prepareUrl()
+          .then((wsUrl) => assert.match(wsUrl, /bufferStates=true/)));
 
-
-      it('does not add conditional properties', () => webex.internal.mercury._prepareUrl()
-        .then((wsUrl) => {
+      it('does not add conditional properties', () =>
+        webex.internal.mercury._prepareUrl().then((wsUrl) => {
           assert.notMatch(wsUrl, /mercuryRegistrationStatus/);
           assert.notMatch(wsUrl, /mercuryRegistrationStatus/);
           assert.notMatch(wsUrl, /isRegistrationRefreshEnabled/);
@@ -643,27 +663,34 @@ describe('plugin-mercury', () => {
 
       describe('when web-high-availability is enabled', () => {
         it('uses webSocketUrl provided by device', () => {
-          webex.internal.device.useServiceCatalogUrl = sinon.stub().returns(Promise.resolve('ws://example-2.com'));
+          webex.internal.device.useServiceCatalogUrl = sinon
+            .stub()
+            .returns(Promise.resolve('ws://example-2.com'));
           webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
 
-          return webex.internal.mercury._prepareUrl()
+          return webex.internal.mercury
+            ._prepareUrl()
             .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
         });
       });
 
-      describe('when \'web-shared-socket\' is enabled', () => {
+      describe("when 'web-shared-socket' is enabled", () => {
         beforeEach(() => {
           webex.internal.feature.getFeature.returns(Promise.resolve(true));
         });
 
-        it('requests shared socket support', () => webex.internal.mercury._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /isRegistrationRefreshEnabled=true/)));
+        it('requests shared socket support', () =>
+          webex.internal.mercury
+            ._prepareUrl()
+            .then((wsUrl) => assert.match(wsUrl, /isRegistrationRefreshEnabled=true/)));
 
-        it('requests the registration banner', () => webex.internal.mercury._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /mercuryRegistrationStatus=true/)));
+        it('requests the registration banner', () =>
+          webex.internal.mercury
+            ._prepareUrl()
+            .then((wsUrl) => assert.match(wsUrl, /mercuryRegistrationStatus=true/)));
 
-        it('does not request the buffer state message', () => webex.internal.mercury._prepareUrl()
-          .then((wsUrl) => {
+        it('does not request the buffer state message', () =>
+          webex.internal.mercury._prepareUrl().then((wsUrl) => {
             assert.match(wsUrl, /mercuryRegistrationStatus=true/);
             assert.notMatch(wsUrl, /bufferStates/);
           }));
@@ -674,8 +701,10 @@ describe('plugin-mercury', () => {
           webex.config.device.ephemeral = true;
         });
 
-        it('indicates multiple connections may be coming from this user', () => webex.internal.mercury._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
+        it('indicates multiple connections may be coming from this user', () =>
+          webex.internal.mercury
+            ._prepareUrl()
+            .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
       });
     });
   });

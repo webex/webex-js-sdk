@@ -34,6 +34,8 @@ const integrationEnv = document.getElementById('integration-env');
 const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
+const breakoutsList = document.getElementById('breakouts-list');
+const breakoutTable = document.getElementById('breakout-table');
 const getStatsButton = document.getElementById('get-stats');
 
 // Disable screenshare on join in Safari patch
@@ -107,7 +109,8 @@ function generateWebexConfig({credentials}) {
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
         enableTurnDiscovery: turnDiscoveryCheckbox.checked,
-      }
+      },
+      enableAutomaticLLM: true,
     },
     credentials,
     // Any other sdk config we need
@@ -239,6 +242,7 @@ const createMeetingActionElm = document.querySelector('#create-meeting-action');
 const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
+const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -460,6 +464,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     enableMultistream: isMultistream,
     pin: meetingsJoinPinElm.value,
     moderator: meetingsJoinModeratorElm.checked,
+    breakoutsSupported: meetingsBreakoutSupportElm.checked,
     moveToResource: false,
     resourceId,
     receiveTranscription: receiveTranscriptionOption
@@ -477,6 +482,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
           console.log('member update', res);
           viewParticipants();
           populateStageSelector();
+        });
+
+        meeting.on('meeting:breakouts:update', (res) => {
+          viewBreakouts();
         });
 
         eventsList.innerText = '';
@@ -2479,6 +2488,131 @@ function transferHostToMember(transferButton) {
   }
 }
 
+function viewBreakouts(event) {
+  const meeting = getCurrentMeeting();
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+
+  const theadRow = document.createElement('tr');
+  const thName = document.createElement('th');
+  const th1 = document.createElement('th');
+  const th2 = document.createElement('th');
+  const th3 = document.createElement('th');
+  const th4 = document.createElement('th');
+  const th5 = document.createElement('th');
+  const th6 = document.createElement('th');
+
+  thName.innerText = 'Name';
+  th1.innerText = 'Active';
+  th2.innerText = 'Allowed';
+  th3.innerText = 'Assigned';
+  th4.innerText = 'Assigned Current';
+  th5.innerText = 'Requested';
+  th6.innerText = 'Controls';
+
+  theadRow.appendChild(thName);
+  theadRow.appendChild(th1);
+  theadRow.appendChild(th2);
+  theadRow.appendChild(th3);
+  theadRow.appendChild(th4);
+  theadRow.appendChild(th5);
+  theadRow.appendChild(th6);
+
+  const tbodyRow = document.createElement('tr');
+  const tdName = document.createElement('td');
+  const tdActive = document.createElement('td');
+  const tdAllowed = document.createElement('td');
+  const tdAssigned = document.createElement('td');
+  const tdAssignedCurrent = document.createElement('td');
+  const tdRequested = document.createElement('td');
+  const tdControls = document.createElement('td');
+
+  tbodyRow.appendChild(tdName);
+  tbodyRow.appendChild(tdActive);
+  tbodyRow.appendChild(tdAllowed);
+  tbodyRow.appendChild(tdAssigned);
+  tbodyRow.appendChild(tdAssignedCurrent);
+  tbodyRow.appendChild(tdRequested);
+  tbodyRow.appendChild(tdControls);
+
+  const createJoinSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Join';
+
+    button.onclick = () => {
+      breakoutSession.join();
+    };
+
+    return button;
+  };
+
+  const createLeaveSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Leave';
+
+    button.onclick = () => {
+      breakoutSession.leave();
+    };
+
+    return button;
+  };
+
+  const appendSession = (parentElement, isTrue) => {
+    const sessionBooleanEl = document.createElement('div');
+
+    sessionBooleanEl.innerText = isTrue ? 'YES' : 'NO';
+    parentElement.appendChild(sessionBooleanEl);
+  };
+
+  meeting.breakouts.breakouts.forEach((breakoutSession) => {
+    const nameEl = document.createElement('div');
+
+    nameEl.innerText = breakoutSession.isMain ? 'Main Session' : breakoutSession.name;
+    tdName.appendChild(nameEl);
+
+    appendSession(tdActive, breakoutSession.active);
+
+    appendSession(tdAllowed, breakoutSession.allowed);
+
+    appendSession(tdAssigned, breakoutSession.assigned);
+
+    appendSession(tdAssignedCurrent, breakoutSession.assignedCurrent);
+
+    appendSession(tdRequested, breakoutSession.requested);
+
+    tdControls.appendChild(createJoinSessionButton(breakoutSession));
+  });
+
+  thead.appendChild(theadRow);
+  tbody.appendChild(tbodyRow);
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
+  const currentBreakoutInformationEl = document.createElement('div');
+  const currentBreakoutInformationTitleEl = document.createElement('h3');
+
+  currentBreakoutInformationTitleEl.innerText = 'Current Breakout Session';
+  currentBreakoutInformationTitleEl.setAttribute('style', 'margin-top:0');
+  currentBreakoutInformationEl.appendChild(currentBreakoutInformationTitleEl);
+  const currentBreakoutSessionName = document.createElement('div');
+
+  currentBreakoutSessionName.innerText = meeting.breakouts.isInMainSession ? 'Main Session' : meeting.breakouts.name;
+  currentBreakoutInformationEl.appendChild(currentBreakoutSessionName);
+  currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
+
+  breakoutTable.innerHTML = '';
+  breakoutTable.appendChild(currentBreakoutInformationEl);
+  const breakoutTableTitle = document.createElement('h3');
+
+  breakoutTableTitle.innerText = 'Other Sessions';
+  breakoutTable.appendChild(breakoutTableTitle);
+  breakoutTable.appendChild(table);
+}
+
 function viewParticipants() {
   function createLabel(id, value = '') {
     const label = document.createElement('label');
@@ -2505,16 +2639,19 @@ function viewParticipants() {
     const th2 = document.createElement('th');
     const th3 = document.createElement('th');
     const th4 = document.createElement('th');
+    const th5 = document.createElement('th');
 
     th1.innerText = 'NAME';
     th2.innerText = 'VIDEO';
     th3.innerText = 'AUDIO';
     th4.innerText = 'STATUS';
+    th5.innerText = 'SUPPORTS BREAKOUTS';
 
     tr.appendChild(th1);
     tr.appendChild(th2);
     tr.appendChild(th3);
     tr.appendChild(th4);
+    tr.appendChild(th5);
 
     return tr;
   }
@@ -2525,10 +2662,12 @@ function viewParticipants() {
     const td2 = document.createElement('td');
     const td3 = document.createElement('td');
     const td4 = document.createElement('td');
+    const td5 = document.createElement('td');
     const label1 = createLabel(member.id);
     const label2 = createLabel(member.id, member.isVideoMuted ? 'NO' : 'YES');
     const label3 = createLabel(member.id, member.isAudioMuted ? 'NO' : 'YES');
     const label4 = createLabel(member.id, member.status);
+    const label5 = createLabel(member.id, member.supportsBreakouts ? 'YES' : 'NO');
 
     const radio = document.createElement('input');
 
@@ -2547,10 +2686,13 @@ function viewParticipants() {
     if (member.isInLobby) td4.appendChild(createButton('Admit', admitMember));
     else td4.appendChild(label4);
 
+    td5.appendChild(label5);
+
     tr.appendChild(td1);
     tr.appendChild(td2);
     tr.appendChild(td3);
     tr.appendChild(td4);
+    tr.appendChild(td5);
 
     return tr;
   }

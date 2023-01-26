@@ -12,16 +12,16 @@ module.exports = {
     alwaysIncrement: {
       default: false,
       description: 'always increment patch version even of no changes detected',
-      type: 'boolean'
+      type: 'boolean',
     },
     includeSamples: {
       default: false,
       description: 'include the samples project for version calcuation',
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
   handler: wrapHandler(async ({alwaysIncrement, includeSamples}) => {
     // eslint-disable-next-line callback-return
     console.log(await next({alwaysIncrement, includeSamples}));
-  })
+  }),
 };

@@ -8,11 +8,7 @@ import '@webex/plugin-rooms';
 import '@webex/plugin-memberships';
 import '@webex/plugin-messages';
 import WebexCore, {WebexHttpError} from '@webex/webex-core';
-import {
-  SDK_EVENT,
-  hydraTypes,
-  constructHydraId
-} from '@webex/common';
+import {SDK_EVENT, hydraTypes, constructHydraId} from '@webex/common';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import testUsers from '@webex/test-helper-test-users';
@@ -24,21 +20,21 @@ describe('plugin-rooms', function () {
 
   let webex, actor;
 
-  before(() => testUsers.create({count: 1})
-    .then(async ([user]) => {
+  before(() =>
+    testUsers.create({count: 1}).then(async ([user]) => {
       // Pause for 5 seconds for CI
       await new Promise((done) => setTimeout(done, 5000));
 
       webex = new WebexCore({credentials: user.token});
 
-      return webex.people.get('me')
-        .then((person) => {
-          actor = person;
-          debug('SDK User (Actor) for tests:');
-          debug(`- name: ${actor.displayName}`);
-          debug(`-   id: ${actor.id}`);
-        });
-    }));
+      return webex.people.get('me').then((person) => {
+        actor = person;
+        debug('SDK User (Actor) for tests:');
+        debug(`- name: ${actor.displayName}`);
+        debug(`-   id: ${actor.id}`);
+      });
+    })
+  );
 
   describe('#rooms', () => {
     const rooms = [];
@@ -48,15 +44,17 @@ describe('plugin-rooms', function () {
       webex.rooms.off('created');
       webex.rooms.off('updated');
 
-      return Promise.all(rooms.map((room) => webex.rooms.remove(room)
-        .catch((reason) => {
-          console.error('Failed to delete room', reason);
-        })))
-        .then(() => {
-          while (rooms.length) {
-            rooms.pop();
-          }
-        });
+      return Promise.all(
+        rooms.map((room) =>
+          webex.rooms.remove(room).catch((reason) => {
+            console.error('Failed to delete room', reason);
+          })
+        )
+      ).then(() => {
+        while (rooms.length) {
+          rooms.pop();
+        }
+      });
     });
 
     describe('#create()', () => {
@@ -68,23 +66,23 @@ describe('plugin-rooms', function () {
           });
         });
 
-        return webex.rooms.listen()
-          .then(() => webex.rooms.create({title: 'Webex Test Room'})
-            .then(async (room) => {
-              assert.isRoom(room);
-              rooms.push(room); // for future cleanup
-              const event = await createdEventPromise;
+        return webex.rooms.listen().then(() =>
+          webex.rooms.create({title: 'Webex Test Room'}).then(async (room) => {
+            assert.isRoom(room);
+            rooms.push(room); // for future cleanup
+            const event = await createdEventPromise;
 
-              validateRoomEvent(event, room, actor);
-            }));
+            validateRoomEvent(event, room, actor);
+          })
+        );
       });
     });
 
     describe('#one-on-one()', () => {
       let user1, room;
 
-      before(() => testUsers.create({count: 1})
-        .then(async (users) => {
+      before(() =>
+        testUsers.create({count: 1}).then(async (users) => {
           // Pause for 5 seconds for CI
           await new Promise((done) => setTimeout(done, 5000));
 
@@ -92,7 +90,8 @@ describe('plugin-rooms', function () {
           debug('Test User for One-on-One room:');
           debug(`- name: ${user1.displayName}`);
           debug(`-   id: ${constructHydraId(hydraTypes.PEOPLE, user1.id)}`);
-        }));
+        })
+      );
 
       // We need a one-on-on space for this test
       // We create it by sending a message to the test user
@@ -105,11 +104,12 @@ describe('plugin-rooms', function () {
           });
         });
 
-        return webex.rooms.listen()
-          .then(() => webex.messages.create({
-            toPersonId: user1.id,
-            text: 'Message to start a one-on-on space'
-          })
+        return webex.rooms.listen().then(() =>
+          webex.messages
+            .create({
+              toPersonId: user1.id,
+              text: 'Message to start a one-on-on space',
+            })
             .then((message) => {
               assert.exists(message.roomId);
 
@@ -121,27 +121,28 @@ describe('plugin-rooms', function () {
               const event = await createdEventPromise;
 
               validateRoomEvent(event, room, actor);
-            }));
+            })
+        );
       });
     });
 
     describe('#get()', () => {
       let room0;
 
-      beforeEach(() => Promise.all([
-        webex.rooms.create({title: 'Webex Test Room 1'})
-          .then((room) => {
+      beforeEach(() =>
+        Promise.all([
+          webex.rooms.create({title: 'Webex Test Room 1'}).then((room) => {
             rooms.push(room);
           }),
-        webex.rooms.create({title: 'Webex Test Room 0'})
-          .then((room) => {
+          webex.rooms.create({title: 'Webex Test Room 0'}).then((room) => {
             rooms.push(room);
             room0 = room;
-          })
-      ]));
+          }),
+        ])
+      );
 
-      it('retrieves a specific room', () => webex.rooms.get(room0)
-        .then((room) => {
+      it('retrieves a specific room', () =>
+        webex.rooms.get(room0).then((room) => {
           assert.isRoom(room);
 
           assert.equal(room.id, room0.id);
@@ -154,33 +155,36 @@ describe('plugin-rooms', function () {
       // the tests rely on ordering.
       let room0, room1;
 
-      beforeEach(() => webex.rooms.create({title: 'Webex Test Room 1'})
-        .then((room) => {
+      beforeEach(() =>
+        webex.rooms.create({title: 'Webex Test Room 1'}).then((room) => {
           rooms.push(room);
           room1 = room;
-        }));
+        })
+      );
 
-      beforeEach(() => webex.rooms.create({title: 'Webex Test Room 0'})
-        .then((room) => {
+      beforeEach(() =>
+        webex.rooms.create({title: 'Webex Test Room 0'}).then((room) => {
           rooms.push(room);
           room0 = room;
-        }));
+        })
+      );
 
-      it('retrieves all the rooms to which I have access', () => webex.rooms.list()
-        .then((rooms) => {
+      it('retrieves all the rooms to which I have access', () =>
+        webex.rooms.list().then((rooms) => {
           for (const room of rooms) {
             assert.isRoom(room);
           }
-          assert.equal(rooms.items[0].id, room0.id, 'Room 0\'s id matches');
-          assert.equal(rooms.items[0].title, room0.title, 'Room 0\'s title matches');
-          assert.equal(rooms.items[1].id, room1.id, 'Room 1\'s id matches');
-          assert.equal(rooms.items[1].title, room1.title, 'Room 1\'s title matches');
+          assert.equal(rooms.items[0].id, room0.id, "Room 0's id matches");
+          assert.equal(rooms.items[0].title, room0.title, "Room 0's title matches");
+          assert.equal(rooms.items[1].id, room1.id, "Room 1's id matches");
+          assert.equal(rooms.items[1].title, room1.title, "Room 1's title matches");
         }));
 
       it('retrieves a bounded, pageable set of rooms to which I have access', () => {
         const spy = sinon.spy();
 
-        return webex.rooms.list({max: 1})
+        return webex.rooms
+          .list({max: 1})
           .then((rooms) => {
             assert.lengthOf(rooms, 1);
 
@@ -194,7 +198,7 @@ describe('plugin-rooms', function () {
               }
 
               return Promise.resolve();
-            }(rooms));
+            })(rooms);
           })
           .then(() => {
             assert.isAbove(spy.callCount, 1);
@@ -207,46 +211,56 @@ describe('plugin-rooms', function () {
     describe('#getWithReadStatus()', () => {
       let room1, user2;
 
-      before(() => testUsers.create({count: 1})
-        .then(async ([user]) => {
+      before(() =>
+        testUsers.create({count: 1}).then(async ([user]) => {
           // Pause for 5 seconds for CI
           await new Promise((done) => setTimeout(done, 5000));
 
           user2 = user;
           user2.webex = new WebexCore({credentials: user2.token});
-        }));
+        })
+      );
 
       // Create a space with one user who is "caught up" and another "behind"
-      beforeEach(() => webex.rooms.create({title: 'Space to get Read Status from'})
-        .then((room) => {
-          rooms.push(room);
-          room1 = room;
+      beforeEach(() =>
+        webex.rooms
+          .create({title: 'Space to get Read Status from'})
+          .then((room) => {
+            rooms.push(room);
+            room1 = room;
 
-          return webex.memberships.create({
-            roomId: room1.id,
-            personId: user2.id
-          });
-        })
-        // User 1 will post a message, that user2 won't have seen
-        .then(() => webex.messages.create({
-          roomId: room1.id,
-          text: 'First message in room 1 from User 1'
-        })));
+            return webex.memberships.create({
+              roomId: room1.id,
+              personId: user2.id,
+            });
+          })
+          // User 1 will post a message, that user2 won't have seen
+          .then(() =>
+            webex.messages.create({
+              roomId: room1.id,
+              text: 'First message in room 1 from User 1',
+            })
+          )
+      );
 
-      it('gets the read status for new room for user1', () => webex.rooms.getWithReadStatus(room1.id)
-        .then((roomInfo) => {
-          assert.equal(roomInfo.id, room1.id, 'Room 1\'s title matches');
-          assert.equal(roomInfo.title, room1.title, 'Room 1\'s title matches');
-          assert.isTrue(roomInfo.lastSeenActivityDate >= roomInfo.lastActivityDate,
-            'Room 1 is read for User 1');
+      it('gets the read status for new room for user1', () =>
+        webex.rooms.getWithReadStatus(room1.id).then((roomInfo) => {
+          assert.equal(roomInfo.id, room1.id, "Room 1's title matches");
+          assert.equal(roomInfo.title, room1.title, "Room 1's title matches");
+          assert.isTrue(
+            roomInfo.lastSeenActivityDate >= roomInfo.lastActivityDate,
+            'Room 1 is read for User 1'
+          );
         }));
 
-      it('gets the read status for a new room for user2', () => user2.webex.rooms.getWithReadStatus(room1.id)
-        .then((roomInfo) => {
-          assert.equal(roomInfo.id, room1.id, 'Room 1\'s title matches');
-          assert.equal(roomInfo.title, room1.title, 'Room 1\'s title matches');
-          assert.isTrue(roomInfo.lastSeenActivityDate < roomInfo.lastActivityDate,
-            'Room 1 is unread for User 2');
+      it('gets the read status for a new room for user2', () =>
+        user2.webex.rooms.getWithReadStatus(room1.id).then((roomInfo) => {
+          assert.equal(roomInfo.id, room1.id, "Room 1's title matches");
+          assert.equal(roomInfo.title, room1.title, "Room 1's title matches");
+          assert.isTrue(
+            roomInfo.lastSeenActivityDate < roomInfo.lastActivityDate,
+            'Room 1 is unread for User 2'
+          );
         }));
     });
 
@@ -255,83 +269,100 @@ describe('plugin-rooms', function () {
       // the tests rely on ordering.
       let room1, room2, user2;
 
-      before(() => testUsers.create({count: 1})
-        .then(async ([user]) => {
+      before(() =>
+        testUsers.create({count: 1}).then(async ([user]) => {
           // Pause for 5 seconds for CI
           await new Promise((done) => setTimeout(done, 5000));
 
           user2 = user;
           user2.webex = new WebexCore({credentials: user2.token});
-        }));
+        })
+      );
 
       // Create two spaces with a message from each user in one of them
-      beforeEach(() => webex.rooms.create({title: 'Unread Message for User 2'})
-        .then((room) => {
-          rooms.push(room);
-          room1 = room;
+      beforeEach(() =>
+        webex.rooms
+          .create({title: 'Unread Message for User 2'})
+          .then((room) => {
+            rooms.push(room);
+            room1 = room;
 
-          return webex.memberships.create({
-            roomId: room1.id,
-            personId: user2.id
-          });
-        })
-        // User 1 will post a message, that user2 won't have seen
-        .then(() => webex.messages.create({
-          roomId: room1.id,
-          text: 'First message in room 1 from User 1'
-        }))
-        // Now create the second space with the two members
-        .then(() => webex.rooms.create({title: 'Unread Message for User 1'}))
-        .then((room) => {
-          rooms.push(room);
-          room2 = room;
-        })
-        .then(() => webex.memberships.create({
-          roomId: room2.id,
-          personId: user2.id
-        }))
-        // User 2 will post a message, that User 1 won't have seen
-        .then(() => user2.webex.messages.create({
-          roomId: room2.id,
-          text: 'First message in room 2 from User 2'
-        })));
+            return webex.memberships.create({
+              roomId: room1.id,
+              personId: user2.id,
+            });
+          })
+          // User 1 will post a message, that user2 won't have seen
+          .then(() =>
+            webex.messages.create({
+              roomId: room1.id,
+              text: 'First message in room 1 from User 1',
+            })
+          )
+          // Now create the second space with the two members
+          .then(() => webex.rooms.create({title: 'Unread Message for User 1'}))
+          .then((room) => {
+            rooms.push(room);
+            room2 = room;
+          })
+          .then(() =>
+            webex.memberships.create({
+              roomId: room2.id,
+              personId: user2.id,
+            })
+          )
+          // User 2 will post a message, that User 1 won't have seen
+          .then(() =>
+            user2.webex.messages.create({
+              roomId: room2.id,
+              text: 'First message in room 2 from User 2',
+            })
+          )
+      );
 
-      it('gets the read status for all rooms User 1 is in', () => webex.rooms.listWithReadStatus()
-        .then((roomList) => {
-          assert.isArray(roomList.items,
-            'Expect a list or rooms from listWithReadStatus()');
-          assert.isAbove(roomList.items.length, 1,
-            'Expected two or more rooms from listWithReadStatus()');
+      it('gets the read status for all rooms User 1 is in', () =>
+        webex.rooms.listWithReadStatus().then((roomList) => {
+          assert.isArray(roomList.items, 'Expect a list or rooms from listWithReadStatus()');
+          assert.isAbove(
+            roomList.items.length,
+            1,
+            'Expected two or more rooms from listWithReadStatus()'
+          );
           for (const room of roomList.items) {
             if (room.id === room1.id) {
-              assert.equal(room.title, room1.title, 'Room 1\'s title matches');
-              assert.isTrue(room.lastSeenActivityDate >= room.lastActivityDate,
-                'Room 1 is read for User 1');
+              assert.equal(room.title, room1.title, "Room 1's title matches");
+              assert.isTrue(
+                room.lastSeenActivityDate >= room.lastActivityDate,
+                'Room 1 is read for User 1'
+              );
             }
             if (room.id === room2.id) {
-              assert.equal(room.title, room2.title, 'Room 2\'s title matches');
-              assert.isTrue(room.lastSeenActivityDate < room.lastActivityDate,
-                'Room 2 is unread for User 1');
+              assert.equal(room.title, room2.title, "Room 2's title matches");
+              assert.isTrue(
+                room.lastSeenActivityDate < room.lastActivityDate,
+                'Room 2 is unread for User 1'
+              );
             }
           }
         }));
 
-      it('gets the read status for all rooms User 2 is in', () => user2.webex.rooms.listWithReadStatus()
-        .then((roomList) => {
-          assert.isArray(roomList.items,
-            'Expect a list or rooms from listWithReadStatus()');
-          assert.equal(roomList.items.length, 2,
-            'Expected two rooms from listWithReadStatus()');
+      it('gets the read status for all rooms User 2 is in', () =>
+        user2.webex.rooms.listWithReadStatus().then((roomList) => {
+          assert.isArray(roomList.items, 'Expect a list or rooms from listWithReadStatus()');
+          assert.equal(roomList.items.length, 2, 'Expected two rooms from listWithReadStatus()');
           for (const room of roomList.items) {
             if (room.id === room1.id) {
-              assert.equal(room.title, room1.title, 'Room 1\'s title matches');
-              assert.isTrue(room.lastSeenActivityDate < room.lastActivityDate,
-                'Room 1 is unread for User 2');
-            }
-            else {
-              assert.equal(room.title, room2.title, 'Room 2\'s title matches');
-              assert.isTrue(room.lastSeenActivityDate >= room.lastActivityDate,
-                'Room 2 is read for User 2');
+              assert.equal(room.title, room1.title, "Room 1's title matches");
+              assert.isTrue(
+                room.lastSeenActivityDate < room.lastActivityDate,
+                'Room 1 is unread for User 2'
+              );
+            } else {
+              assert.equal(room.title, room2.title, "Room 2's title matches");
+              assert.isTrue(
+                room.lastSeenActivityDate >= room.lastActivityDate,
+                'Room 2 is read for User 2'
+              );
             }
           }
         }));
@@ -340,14 +371,15 @@ describe('plugin-rooms', function () {
     describe('#update()', () => {
       let room;
 
-      beforeEach(() => webex.rooms.create({title: 'Webex Test Room'})
-        .then((r) => {
+      beforeEach(() =>
+        webex.rooms.create({title: 'Webex Test Room'}).then((r) => {
           room = r;
           rooms.push(room);
           assert.property(room, 'id');
-        }));
+        })
+      );
 
-      it('updates a single room\'s title and validates a room:updated event', () => {
+      it("updates a single room's title and validates a room:updated event", () => {
         const r = Object.assign({}, room, {title: 'Webex Test Room with New Title'});
         const updatedEventPromise = new Promise((resolve) => {
           webex.rooms.on('updated', (event) => {
@@ -356,36 +388,39 @@ describe('plugin-rooms', function () {
           });
         });
 
-        return webex.rooms.listen()
-          .then(() => webex.rooms.update(r)
-            .then(async (room) => {
-              assert.isRoom(room);
-              assert.deepEqual(room, r);
-              const event = await updatedEventPromise;
+        return webex.rooms.listen().then(() =>
+          webex.rooms.update(r).then(async (room) => {
+            assert.isRoom(room);
+            assert.deepEqual(room, r);
+            const event = await updatedEventPromise;
 
-              validateRoomEvent(event, room, actor);
-            }));
+            validateRoomEvent(event, room, actor);
+          })
+        );
       });
     });
 
     describe('#remove()', () => {
       let room;
 
-      beforeEach(() => webex.rooms.create({title: 'Webex Test Room'})
-        .then((r) => {
+      beforeEach(() =>
+        webex.rooms.create({title: 'Webex Test Room'}).then((r) => {
           room = r;
           assert.property(room, 'id');
-        }));
-
-      it('deletes a single room', () => webex.rooms.remove(room)
-        .then((body) => {
-          assert.notOk(body);
-
-          return assert.isRejected(webex.rooms.get(room));
         })
-        .then((reason) => {
-          assert.instanceOf(reason, WebexHttpError.NotFound);
-        }));
+      );
+
+      it('deletes a single room', () =>
+        webex.rooms
+          .remove(room)
+          .then((body) => {
+            assert.notOk(body);
+
+            return assert.isRejected(webex.rooms.get(room));
+          })
+          .then((reason) => {
+            assert.instanceOf(reason, WebexHttpError.NotFound);
+          }));
     });
   });
 });
@@ -398,26 +433,19 @@ describe('plugin-rooms', function () {
  * @returns {void}
  */
 function validateRoomEvent(event, room, actor) {
-  assert.isTrue(event.resource === SDK_EVENT.EXTERNAL.RESOURCE.ROOMS,
-    'not a room event');
+  assert.isTrue(event.resource === SDK_EVENT.EXTERNAL.RESOURCE.ROOMS, 'not a room event');
   assert.isDefined(event.event, 'room event type not set');
   assert.isDefined(event.created, 'event listener created date not set');
-  assert.equal(event.createdBy, actor.id,
-    'event listener createdBy not set to our actor');
-  assert.equal(event.orgId, actor.orgId,
-    'event listener orgId not === to our actor\'s');
+  assert.equal(event.createdBy, actor.id, 'event listener createdBy not set to our actor');
+  assert.equal(event.orgId, actor.orgId, "event listener orgId not === to our actor's");
   assert.equal(event.ownedBy, 'creator', 'event listener not owned by creator');
   assert.equal(event.status, 'active', 'event listener status not active');
-  assert.equal(event.actorId, actor.id,
-    'event actorId not equal to our actor\'s id');
+  assert.equal(event.actorId, actor.id, "event actorId not equal to our actor's id");
 
   // Ensure event data matches data returned from function call
   // Skip this until we figure out how conversations converts the internal test user UUID
-  assert.equal(event.data.id, room.id,
-    'event/room.id not equal');
-  assert.equal(event.data.isLocked, room.isLocked,
-    'event/room.isLocked not equal');
-  assert.equal(event.data.type, room.type,
-    'event/room.type not equal');
+  assert.equal(event.data.id, room.id, 'event/room.id not equal');
+  assert.equal(event.data.isLocked, room.isLocked, 'event/room.isLocked not equal');
+  assert.equal(event.data.type, room.type, 'event/room.type not equal');
   debug(`rooms:${event.event} event validated`);
 }

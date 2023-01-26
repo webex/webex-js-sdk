@@ -41,8 +41,7 @@ export default class UserAgentInterceptor extends Interceptor {
     super(options);
     if (appName) {
       strings.set(this, `${appName}/${appVersion}`);
-    }
-    else {
+    } else {
       strings.set(this, '@webex/http-core'); // Using the traditional default from http-core
     }
   }

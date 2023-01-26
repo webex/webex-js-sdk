@@ -9,7 +9,11 @@ const debug = require('debug')('tooling:git');
 exports.diff = async function diff(tag) {
   debug(`diffing HEAD against ${tag}`);
   debug(`Shelling out to \`git diff --name-only HEAD..${tag}\``);
-  const raw = String(execSync(`git diff --name-only HEAD..${tag} -- . ':(exclude)packages/**/package.json' ':(exclude)packages/webex/**/*.min.js'`));
+  const raw = String(
+    execSync(
+      `git diff --name-only HEAD..${tag} -- . ':(exclude)packages/**/package.json' ':(exclude)packages/webex/**/*.min.js'`
+    )
+  );
 
   debug('Done');
 

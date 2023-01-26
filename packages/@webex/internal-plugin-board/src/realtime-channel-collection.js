@@ -6,13 +6,13 @@
 
 import AmpCollection from 'ampersand-collection';
 
-import RealtimeChannel from './realtime-channel.js';
+import RealtimeChannel from './realtime-channel';
 
 const RealtimeChannelCollection = AmpCollection.extend({
   mainIndex: 'channelId',
   model: RealtimeChannel,
 
-  namespace: 'Board'
+  namespace: 'Board',
 });
 
 export default RealtimeChannelCollection;

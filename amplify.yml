@@ -10,4 +10,4 @@ frontend:
   artifacts:
     baseDirectory: docs/
     files:
-      - "**/*"
+      - '**/*'

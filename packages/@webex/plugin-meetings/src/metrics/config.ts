@@ -50,21 +50,21 @@ const errorDescription = {
   SIP_CALLEE_BUSY: 'SIPCalleeBusy',
   SIP_CALLEE_NOT_FOUND: 'SIPCalleeNotFound',
   START_RECORDING_FAILED: 'StartRecordingFailed',
-  RECORDING_IN_PROGRESS_FAILED: 'RecordingInProgressFailed'
+  RECORDING_IN_PROGRESS_FAILED: 'RecordingInProgressFailed',
 };
 
 const errorCategory = {
   SIGNALING: 'signaling',
   MEDIA: 'media',
   OTHER: 'other',
-  EXPECTED: 'expected'
+  EXPECTED: 'expected',
 };
 
 const errorFailureType = {
   CALL_INITIATION_FAILURE: 'CallInitiationFailure',
   MEDIA_CONNECTION_FAILURE: 'MediaConnectionFailure',
   EXPECTED_FAILURE: 'ExpectedFailure',
-  ACCESS_RIGHTS: 'AccessRights'
+  ACCESS_RIGHTS: 'AccessRights',
 };
 
 export const eventType = {
@@ -139,7 +139,7 @@ export const eventType = {
   MEDIA_RESPONSE: 'client.locus.media.response',
   PSTN_AUDIO_ATTEMPT_START: 'client.pstnaudio.attempt.start',
   PSTN_AUDIO_ATTEMPT_FINISH: 'client.pstnaudio.attempt.finish',
-  PSTN_AUDIO_ATTEMPT_SKIP: 'client.pstnaudio.attempt.skip'
+  PSTN_AUDIO_ATTEMPT_SKIP: 'client.pstnaudio.attempt.skip',
 };
 
 export const error = {
@@ -148,96 +148,270 @@ export const error = {
     ICE_FAILED: 'ice.failed',
     LOCUS_RESPONSE: 'locus.response',
     LOCUS_LEAVE: 'locus.leave',
-    OTHER: 'other'
+    OTHER: 'other',
   },
 
   notFatalErrorList: [3003, 3004, 4004, 4005, 4006, 4015],
   errors: {
     // https://sqbu-github.cisco.com/WebExSquared/event-dictionary/wiki/Error-codes-for-metric-events
     // [errorDescription, errorFailureType, errorCategory]
-    1000: [errorDescription.UNKNOWN_CALL_FAILURE, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.SIGNALING],
-    1001: [errorDescription.LOCUS_RATE_LIMITED_INCOMING,
+    1000: [
+      errorDescription.UNKNOWN_CALL_FAILURE,
       errorFailureType.CALL_INITIATION_FAILURE,
-      errorCategory.SIGNALING
+      errorCategory.SIGNALING,
     ],
-    1002: [errorDescription.LOCUS_RATE_LIMITED_OUTGOING,
+    1001: [
+      errorDescription.LOCUS_RATE_LIMITED_INCOMING,
       errorFailureType.CALL_INITIATION_FAILURE,
-      errorCategory.SIGNALING
+      errorCategory.SIGNALING,
     ],
-    1003: [errorDescription.LOCUS_UNAVAILABLE, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.SIGNALING],
-    1004: [errorDescription.LOCUS_CONFLICT, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.SIGNALING],
-    1005: [errorDescription.TIMEOUT, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.SIGNALING],
-    1006: [errorDescription.LOCUS_INVALID_SEQUENCE_HASH,
+    1002: [
+      errorDescription.LOCUS_RATE_LIMITED_OUTGOING,
       errorFailureType.CALL_INITIATION_FAILURE,
-      errorCategory.SIGNALING
+      errorCategory.SIGNALING,
     ],
-    1007: [errorDescription.UPDATE_MEDIA_FAILED, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.SIGNALING],
-    2001: [errorDescription.FAILED_TO_CONNECT_MEDIA,
+    1003: [
+      errorDescription.LOCUS_UNAVAILABLE,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    1004: [
+      errorDescription.LOCUS_CONFLICT,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    1005: [
+      errorDescription.TIMEOUT,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    1006: [
+      errorDescription.LOCUS_INVALID_SEQUENCE_HASH,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    1007: [
+      errorDescription.UPDATE_MEDIA_FAILED,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    2001: [
+      errorDescription.FAILED_TO_CONNECT_MEDIA,
       errorFailureType.MEDIA_CONNECTION_FAILURE,
-      errorCategory.SIGNALING
+      errorCategory.SIGNALING,
     ],
-    2002: [errorDescription.MEDIA_ENGINE_LOST, errorFailureType.MEDIA_CONNECTION_FAILURE, errorCategory.SIGNALING],
-    2003: [errorDescription.MEDIA_CONNECTION_LOST,
+    2002: [
+      errorDescription.MEDIA_ENGINE_LOST,
       errorFailureType.MEDIA_CONNECTION_FAILURE,
-      errorCategory.SIGNALING
+      errorCategory.SIGNALING,
     ],
-    2004: [errorDescription.ICE_FAILURE, errorFailureType.MEDIA_CONNECTION_FAILURE, errorCategory.SIGNALING],
-    2005: [errorDescription.MEDIA_ENGINE_HANG, errorFailureType.MEDIA_CONNECTION_FAILURE, errorCategory.SIGNALING],
-    2006: [errorDescription.ICE_SERVER_REJECTED, errorFailureType.MEDIA_CONNECTION_FAILURE, errorCategory.SIGNALING],
+    2003: [
+      errorDescription.MEDIA_CONNECTION_LOST,
+      errorFailureType.MEDIA_CONNECTION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    2004: [
+      errorDescription.ICE_FAILURE,
+      errorFailureType.MEDIA_CONNECTION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    2005: [
+      errorDescription.MEDIA_ENGINE_HANG,
+      errorFailureType.MEDIA_CONNECTION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
+    2006: [
+      errorDescription.ICE_SERVER_REJECTED,
+      errorFailureType.MEDIA_CONNECTION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
     3001: [errorDescription.CALL_FULL, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    3002: [errorDescription.ROOM_TOO_LARGE, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    3004: [errorDescription.GUEST_ALREADY_ADDED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    3005: [errorDescription.LOCUS_USER_NOT_AUTHORISED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    3006: [errorDescription.CLOUDBERRY_UNAVAILABLE, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    3007: [errorDescription.ROOM_TOO_LARGE_FREE_ACCOUNT, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4001: [errorDescription.MEETING_INACTIVE, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4002: [errorDescription.MEETING_LOCKED, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4003: [errorDescription.MEETING_TERMINATING, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4004: [errorDescription.MODERATOR_PIN_OR_GUEST_REQUIRED, errorFailureType.ACCESS_RIGHTS, errorCategory.EXPECTED],
-    4005: [errorDescription.MODERATOR_PIN_OR_GUEST_PIN_REQUIRED,
+    3002: [
+      errorDescription.ROOM_TOO_LARGE,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    3004: [
+      errorDescription.GUEST_ALREADY_ADDED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    3005: [
+      errorDescription.LOCUS_USER_NOT_AUTHORISED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    3006: [
+      errorDescription.CLOUDBERRY_UNAVAILABLE,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    3007: [
+      errorDescription.ROOM_TOO_LARGE_FREE_ACCOUNT,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4001: [
+      errorDescription.MEETING_INACTIVE,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4002: [
+      errorDescription.MEETING_LOCKED,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4003: [
+      errorDescription.MEETING_TERMINATING,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4004: [
+      errorDescription.MODERATOR_PIN_OR_GUEST_REQUIRED,
       errorFailureType.ACCESS_RIGHTS,
-      errorCategory.EXPECTED
+      errorCategory.EXPECTED,
     ],
-    4006: [errorDescription.MODERATOR_REQUIRED, errorFailureType.ACCESS_RIGHTS, errorCategory.EXPECTED],
-    4007: [errorDescription.USER_NOT_MEMBER_OF_ROOM, errorFailureType.ACCESS_RIGHTS, errorCategory.EXPECTED],
-    4008: [errorDescription.NEW_LOCUS_ERROR, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4009: [errorDescription.NET_WORK_UNAVAILABLE, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4010: [errorDescription.MEETING_UNAVAILABLE, errorFailureType.CALL_INITIATION_FAILURE, errorCategory.EXPECTED],
-    4011: [errorDescription.MEETING_ID_INVALID, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4012: [errorDescription.MEETING_SITE_INVALID, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4013: [errorDescription.LOCUS_INVALID_JOINTIME, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4014: [errorDescription.LOBBY_EXPIRED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4015: [errorDescription.MEDIA_CONNECTION_LOST_PAIRED,
+    4005: [
+      errorDescription.MODERATOR_PIN_OR_GUEST_PIN_REQUIRED,
+      errorFailureType.ACCESS_RIGHTS,
+      errorCategory.EXPECTED,
+    ],
+    4006: [
+      errorDescription.MODERATOR_REQUIRED,
+      errorFailureType.ACCESS_RIGHTS,
+      errorCategory.EXPECTED,
+    ],
+    4007: [
+      errorDescription.USER_NOT_MEMBER_OF_ROOM,
+      errorFailureType.ACCESS_RIGHTS,
+      errorCategory.EXPECTED,
+    ],
+    4008: [
+      errorDescription.NEW_LOCUS_ERROR,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4009: [
+      errorDescription.NET_WORK_UNAVAILABLE,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4010: [
+      errorDescription.MEETING_UNAVAILABLE,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4011: [
+      errorDescription.MEETING_ID_INVALID,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4012: [
+      errorDescription.MEETING_SITE_INVALID,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4013: [
+      errorDescription.LOCUS_INVALID_JOINTIME,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4014: [
+      errorDescription.LOBBY_EXPIRED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4015: [
+      errorDescription.MEDIA_CONNECTION_LOST_PAIRED,
       errorFailureType.MEDIA_CONNECTION_FAILURE,
-      errorCategory.EXPECTED
+      errorCategory.EXPECTED,
     ],
-    4016: [errorDescription.PHONE_NUMBER_NOT_A_NUMBER, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4017: [errorDescription.PHONE_NUMBER_TOO_LONG, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4018: [errorDescription.INVALID_DIALABLE_KEY, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4019: [errorDescription.ONE_ON_ONE_TO_SELF_NOT_ALLOWED,
+    4016: [
+      errorDescription.PHONE_NUMBER_NOT_A_NUMBER,
       errorFailureType.EXPECTED_FAILURE,
-      errorCategory.EXPECTED
+      errorCategory.EXPECTED,
     ],
-    4020: [errorDescription.REMOVED_PARTICIPANT, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4021: [errorDescription.MEETING_LINK_NOT_FOUND, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4022: [errorDescription.PHONE_NUMBER_TOO_SHORT_AFTER_IDD,
+    4017: [
+      errorDescription.PHONE_NUMBER_TOO_LONG,
       errorFailureType.EXPECTED_FAILURE,
-      errorCategory.EXPECTED
+      errorCategory.EXPECTED,
     ],
-    4023: [errorDescription.INVALID_INVITEE_ADDRESS, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4024: [errorDescription.PMR_USER_ACCOUNT_LOCKED_OUT, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4025: [errorDescription.GUEST_FORBIDDEN, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4026: [errorDescription.PMR_ACCOUNT_SUSPENDED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4027: [errorDescription.EMPTY_PHONE_NUMBER_OR_COUNTRY_CODE,
+    4018: [
+      errorDescription.INVALID_DIALABLE_KEY,
       errorFailureType.EXPECTED_FAILURE,
-      errorCategory.EXPECTED
+      errorCategory.EXPECTED,
     ],
-    4028: [errorDescription.CONVERSATION_NOT_FOUND, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4029: [errorDescription.START_RECORDING_FAILED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    4030: [errorDescription.RECORDING_IN_PROGRESS_FAILED, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    5000: [errorDescription.SIP_CALLEE_BUSY, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED],
-    5001: [errorDescription.SIP_CALLEE_NOT_FOUND, errorFailureType.EXPECTED_FAILURE, errorCategory.EXPECTED]
-  }
+    4019: [
+      errorDescription.ONE_ON_ONE_TO_SELF_NOT_ALLOWED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4020: [
+      errorDescription.REMOVED_PARTICIPANT,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4021: [
+      errorDescription.MEETING_LINK_NOT_FOUND,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4022: [
+      errorDescription.PHONE_NUMBER_TOO_SHORT_AFTER_IDD,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4023: [
+      errorDescription.INVALID_INVITEE_ADDRESS,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4024: [
+      errorDescription.PMR_USER_ACCOUNT_LOCKED_OUT,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4025: [
+      errorDescription.GUEST_FORBIDDEN,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4026: [
+      errorDescription.PMR_ACCOUNT_SUSPENDED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4027: [
+      errorDescription.EMPTY_PHONE_NUMBER_OR_COUNTRY_CODE,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4028: [
+      errorDescription.CONVERSATION_NOT_FOUND,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4029: [
+      errorDescription.START_RECORDING_FAILED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    4030: [
+      errorDescription.RECORDING_IN_PROGRESS_FAILED,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    5000: [
+      errorDescription.SIP_CALLEE_BUSY,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+    5001: [
+      errorDescription.SIP_CALLEE_NOT_FOUND,
+      errorFailureType.EXPECTED_FAILURE,
+      errorCategory.EXPECTED,
+    ],
+  },
 };
 
 export const trigger = {
@@ -247,12 +421,12 @@ export const trigger = {
   MEDIA_ENGINE_EVENT: 'media-engine-event',
   TIMEOUT: 'timeout',
   SIGNALING: 'signaling',
-  OTHER: 'other'
+  OTHER: 'other',
 };
 
 export const pstnAudioType = {
   DIAL_IN: 'dial-in',
-  DIAL_OUT: 'dial-out'
+  DIAL_OUT: 'dial-out',
 };
 
 export const displayLocation = {
@@ -260,21 +434,20 @@ export const displayLocation = {
   ROOM_LIST: 'room-list',
   CALL_PANE: 'call-pane',
   CALL_VIEW: 'call-view',
-  OTHER: 'other'
+  OTHER: 'other',
 };
 
 export const mediaType = {
   AUDIO: 'audio',
   VIDEO: 'video',
   SHARE: 'share',
-  WHITEBOARD: 'whiteboard'
+  WHITEBOARD: 'whiteboard',
 };
 
 export const reconnection = {
   RECOVERED_BY_NEW: 'new', // always set to new due to /media request, no retries with ice restart
-  RECOVERED_BY_RETRY: 'retry'
+  RECOVERED_BY_RETRY: 'retry',
 };
-
 
 export const errorCodes = {
   // ordered by error code values
@@ -285,7 +458,7 @@ export const errorCodes = {
   NOT_ANNOUNCEMENT_SPACE: 1403015,
   USER_NOT_MODERATOR_IN_ANNOUNCEMENT_SPACE: 1403016,
   TEMP_ID_ALREADY_EXISTS: 1409001,
-  PARENT_ACTIVITY_ID_NOT_FOUND_OR_INVALID: 14000015
+  PARENT_ACTIVITY_ID_NOT_FOUND_OR_INVALID: 14000015,
 };
 export const statusCodes = {
   // ordered by status codes
@@ -293,17 +466,17 @@ export const statusCodes = {
   BAD_REQUEST: 400,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
-  CONFLICT: 409
+  CONFLICT: 409,
 };
 
 export const errorObjects = {
   category: {
     media: 'media',
-    expected: 'expected'
+    expected: 'expected',
   },
   name: {
-    mediaEngine: 'media-engine'
-  }
+    mediaEngine: 'media-engine',
+  },
 };
 
 export const UNKNOWN = 'unknown';
@@ -315,7 +488,7 @@ export const OS_NAME = {
   ANDROID: 'android',
   CHROME: 'chrome',
   LINUX: 'linux',
-  OTHERS: 'other'
+  OTHERS: 'other',
 };
 
 export const CLIENT_NAME = 'webex-js-sdk';

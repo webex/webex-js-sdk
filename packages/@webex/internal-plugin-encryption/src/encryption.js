@@ -15,7 +15,7 @@ import KMS from './kms';
 
 const Encryption = WebexPlugin.extend({
   children: {
-    kms: KMS
+    kms: KMS,
   },
 
   namespace: 'Encryption',
@@ -25,15 +25,14 @@ const Encryption = WebexPlugin.extend({
   },
 
   decryptBinary(scr, buffer) {
-    return ensureBuffer(buffer)
-      .then((b) => {
-        /* istanbul ignore if */
-        if (buffer.length === 0 || buffer.byteLength === 0) {
-          return Promise.reject(new Error('Attempted to decrypt zero-length buffer'));
-        }
+    return ensureBuffer(buffer).then((b) => {
+      /* istanbul ignore if */
+      if (buffer.length === 0 || buffer.byteLength === 0) {
+        return Promise.reject(new Error('Attempted to decrypt zero-length buffer'));
+      }
 
-        return scr.decrypt(b);
-      });
+      return scr.decrypt(b);
+    });
   },
 
   /**
@@ -46,8 +45,7 @@ const Encryption = WebexPlugin.extend({
    * @returns {Object} Decrypted SCR
    */
   decryptScr(key, cipherScr, options) {
-    return this.getKey(key, options)
-      .then((k) => SCR.fromJWE(k.jwk, cipherScr));
+    return this.getKey(key, options).then((k) => SCR.fromJWE(k.jwk, cipherScr));
   },
 
   /**
@@ -60,11 +58,11 @@ const Encryption = WebexPlugin.extend({
    * @returns {string} Decrypted plaintext
    */
   decryptText(key, ciphertext, options) {
-    return this.getKey(key, options)
-      .then((k) => jose.JWE
-        .createDecrypt(k.jwk)
+    return this.getKey(key, options).then((k) =>
+      jose.JWE.createDecrypt(k.jwk)
         .decrypt(ciphertext)
-        .then((result) => result.plaintext.toString()));
+        .then((result) => result.plaintext.toString())
+    );
   },
 
   /**
@@ -83,10 +81,11 @@ const Encryption = WebexPlugin.extend({
     const shunt = new EventEmitter();
     const promise = this._fetchDownloadUrl(scr, options)
       .then((uri) => {
+        // eslint-disable-next-line no-shadow
         const options = {
           method: 'GET',
           uri,
-          responseType: 'buffer'
+          responseType: 'buffer',
         };
 
         const ret = this.request(options);
@@ -113,13 +112,15 @@ const Encryption = WebexPlugin.extend({
     this.logger.info('encryption: retrieving download url for encrypted file');
 
     if (process.env.NODE_ENV !== 'production' && scr.loc.includes('localhost')) {
-      this.logger.info('encryption: bypassing webex files because this looks to be a test file on localhost');
+      this.logger.info(
+        'encryption: bypassing webex files because this looks to be a test file on localhost'
+      );
 
       return Promise.resolve(scr.loc);
     }
 
     const inputBody = {
-      endpoints: [scr.loc]
+      endpoints: [scr.loc],
     };
     const endpointUrl = url.parse(scr.loc);
 
@@ -130,32 +131,39 @@ const Encryption = WebexPlugin.extend({
     return this.request({
       method: 'POST',
       uri: url.format(endpointUrl),
-      body: options ? {
-        ...inputBody,
-        allow: options.params.allow
-      } : inputBody
-    })
-      .then((res) => {
-        const url = res.body.endpoints[scr.loc];
+      body: options
+        ? {
+            ...inputBody,
+            allow: options.params.allow,
+          }
+        : inputBody,
+    }).then((res) => {
+      // eslint-disable-next-line no-shadow
+      const url = res.body.endpoints[scr.loc];
 
-        if (!url) {
-          this.logger.warn('encryption: could not determine download url for `scr.loc`; attempting to download `scr.loc` directly');
+      if (!url) {
+        this.logger.warn(
+          'encryption: could not determine download url for `scr.loc`; attempting to download `scr.loc` directly'
+        );
 
-          return scr.loc;
-        }
-        this.logger.info('encryption: retrieved download url for encrypted file');
+        return scr.loc;
+      }
+      this.logger.info('encryption: retrieved download url for encrypted file');
 
-        return url;
-      });
+      return url;
+    });
   },
 
   encryptBinary(file) {
-    return ensureBuffer(file)
-      .then((buffer) => SCR.create()
-        .then((scr) => scr.encrypt(buffer)
+    return ensureBuffer(file).then((buffer) =>
+      SCR.create().then((scr) =>
+        scr
+          .encrypt(buffer)
           .then(ensureBuffer)
           // eslint-disable-next-line max-nested-callbacks
-          .then((cdata) => ({scr, cdata}))));
+          .then((cdata) => ({scr, cdata}))
+      )
+    );
   },
 
   /**
@@ -173,8 +181,7 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('Cannot encrypt `scr` without first setting `loc`'));
     }
 
-    return this.getKey(key, options)
-      .then((k) => scr.toJWE(k.jwk));
+    return this.getKey(key, options).then((k) => scr.toJWE(k.jwk));
   },
 
   /**
@@ -187,16 +194,15 @@ const Encryption = WebexPlugin.extend({
    * @returns {string} Encrypted text
    */
   encryptText(key, plaintext, options) {
-    return this.getKey(key, options)
-      .then((k) => jose.JWE
-        .createEncrypt(this.config.joseOptions, {
-          key: k.jwk,
-          header: {
-            alg: 'dir'
-          },
-          reference: null
-        })
-        .final(plaintext, 'utf8'));
+    return this.getKey(key, options).then((k) =>
+      jose.JWE.createEncrypt(this.config.joseOptions, {
+        key: k.jwk,
+        header: {
+          alg: 'dir',
+        },
+        reference: null,
+      }).final(plaintext, 'utf8')
+    );
   },
 
   /**
@@ -218,12 +224,16 @@ const Encryption = WebexPlugin.extend({
       storageKey += `/onBehalfOf/${onBehalfOf}`;
     }
 
-    return this.unboundedStorage.get(storageKey)
+    return this.unboundedStorage
+      .get(storageKey)
       .then((keyString) => JSON.parse(keyString))
       .then((keyObject) => this.kms.asKey(keyObject))
-      .catch(() => this.kms.fetchKey({uri, onBehalfOf})
-        .then(tap((key) => this.unboundedStorage.put(storageKey, JSON.stringify(key, replacer)))));
-  }
+      .catch(() =>
+        this.kms
+          .fetchKey({uri, onBehalfOf})
+          .then(tap((key) => this.unboundedStorage.put(storageKey, JSON.stringify(key, replacer))))
+      );
+  },
 });
 
 /**

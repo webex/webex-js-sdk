@@ -16,17 +16,22 @@ export default function ProgressEvent(loaded, total) {
     loaded: {
       enumerable: true,
       value: loaded,
-      writable: false
+      writable: false,
     },
     total: {
       enumerable: true,
       value: total,
-      writable: false
+      writable: false,
     },
     lengthComputable: {
       enumerable: true,
-      value: isNumber(loaded) && !Number.isNaN(loaded) && isNumber(total) && !Number.isNaN(total) && total > 0,
-      writable: false
-    }
+      value:
+        isNumber(loaded) &&
+        !Number.isNaN(loaded) &&
+        isNumber(total) &&
+        !Number.isNaN(total) &&
+        total > 0,
+      writable: false,
+    },
   });
 }
