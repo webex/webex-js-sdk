@@ -1,7 +1,6 @@
 /* eslint-disable consistent-return */
 
 import Mercury from '@webex/internal-plugin-mercury';
-import {LoggerProxy} from '@webex/plugin-meetings';
 
 import {LLM} from './constants';
 // eslint-disable-next-line no-unused-vars
@@ -85,7 +84,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         this.binding = res.body.binding;
       })
       .catch((error: any) => {
-        LoggerProxy.logger.error(`Error connecting to websocket: ${error}`);
+        this.logger.error(`Error connecting to websocket: ${error}`);
         throw error;
       });
 
