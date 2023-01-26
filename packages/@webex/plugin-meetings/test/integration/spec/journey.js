@@ -25,6 +25,9 @@ skipInNode(describe)('plugin-meetings', () => {
         .generateTestUsers({
           count: 3,
           whistler: process.env.WHISTLER || process.env.JENKINS,
+          config: {
+            orgId: '930ad5d6-d315-4c09-a18a-bad630e48646',
+          },
         })
         .then((users) => {
           userSet = users;
