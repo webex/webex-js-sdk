@@ -28,7 +28,7 @@
     "build": "node ./tooling/index.js build && yarn run build:tsc",
     "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/plugin-meetings run build",
     "build:script": "node ./tooling/index.js build --umd",
-    "build:skip-samples": "node ./tooling/index.js build --umd --skip-samples && yarn run build:tsc",
+    "build:skip-samples": "node ./tooling/index.js build --umd --skip-samples && yarn workspace @webex/plugin-meetings run build",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --format html --output ./docs/api --github ./packages/webex/src/index.js ./packages/@webex/plugin-*/src/index.[tj]s --babel=./babel.config.json",
