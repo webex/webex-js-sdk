@@ -289,16 +289,17 @@ describe('EDiscovery Transform Tests', () => {
       });
 
       it('Decrypt function throws an exception', () => {
+        const expectedError = new Error('Failed to acquire a key');
         ctx.webex.internal.encryption.decryptText = sinon
           .stub()
-          .returns(Promise.reject(new Error('@@@@@@')));
+          .returns(Promise.reject(expectedError));
 
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
             assert.fail('Decrypt did not fail as expected');
           })
           .catch(() => {
-            assert.isDefined(activity.error);
+            assert.deepEqual(activity.error, expectedError);
           });
 
         return result;
@@ -471,7 +472,8 @@ describe('EDiscovery Transform Tests', () => {
       });
 
       it('Decrypt function throws an exception when processing activity.encryptedTextKeyValues', () => {
-        ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(new Error('Failed to acquire a key')));
+        const expectedError = new Error('Failed to acquire a key');
+        ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(expectedError));
         object.body.verb = 'add';
         object.body.objectDisplayName = undefined;
         object.body.encryptedTextKeyValues = {
@@ -484,7 +486,7 @@ describe('EDiscovery Transform Tests', () => {
             assert.fail('Decrypt did not fail as expected');
           })
           .catch(() => {
-            assert.isDefined(activity.error);
+            assert.deepEqual(activity.error, expectedError);
           });
 
         return result;
