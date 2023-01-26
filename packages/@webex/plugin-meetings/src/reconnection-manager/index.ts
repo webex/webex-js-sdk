@@ -556,6 +556,7 @@ export default class ReconnectionManager {
     // resend media requests
     if (this.meeting.isMultistream) {
       Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+        // @ts-ignore - Fix type
         mediaRequestManager.commit()
       );
     }
