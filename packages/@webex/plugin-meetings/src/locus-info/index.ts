@@ -62,6 +62,7 @@ export default class LocusInfo extends EventsScope {
   mediaShares: any;
   replace: any;
   url: any;
+  services: any;
 
   constructor(updateMeeting, webex, meetingId) {
     super();
@@ -185,6 +186,7 @@ export default class LocusInfo extends EventsScope {
     this.updateSelf(locus.self, locus.participants);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
+    this.updateServices(locus.links?.services);
   }
 
   /**
@@ -355,6 +357,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMemberShip(locus.membership);
     this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
+    this.updateServices(locus.links?.services);
     this.compareAndUpdate();
     // update which required to compare different objects from locus
   }
@@ -786,6 +789,27 @@ export default class LocusInfo extends EventsScope {
   updateCreated(created: object) {
     if (created && !isEqual(this.created, created)) {
       this.created = created;
+    }
+  }
+
+  /**
+   * @param {Object} services
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  updateServices(services: Record<'breakout' | 'record', {url: string}>) {
+    if (services && !isEqual(this.services, services)) {
+      this.services = services;
+      this.emitScoped(
+        {
+          file: 'locus-info',
+          function: 'updateServices',
+        },
+        LOCUSINFO.EVENTS.LINKS_SERVICES,
+        {
+          services,
+        }
+      );
     }
   }
 
