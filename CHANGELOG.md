@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.38.0](https://github.com/webex/webex-js-sdk/compare/v2.37.2...v2.38.0) (2023-01-26)
+
+
+### Features
+
+* **CDR-Compliance:** add encrypted text to decryption flows ([#2515](https://github.com/webex/webex-js-sdk/issues/2515)) ([c60db64](https://github.com/webex/webex-js-sdk/commit/c60db64278d9479b089cdaa2fa2d183c252c6e9f))
+* enable turn tls support by default ([#2583](https://github.com/webex/webex-js-sdk/issues/2583)) ([7efb6b2](https://github.com/webex/webex-js-sdk/commit/7efb6b25605d8638e2232b5ef3aa0005ab746df8))
+* enable turn tls support by default ([#2583](https://github.com/webex/webex-js-sdk/issues/2583)) ([ef48fc2](https://github.com/webex/webex-js-sdk/commit/ef48fc2601590504d5cc56d3d3a9b8d9aafc5941))
+* export types for the meetings SDK ([#2589](https://github.com/webex/webex-js-sdk/issues/2589)) ([4fb8487](https://github.com/webex/webex-js-sdk/commit/4fb848757405ace8b919e698790faf815e8d2dc0))
+* **plugin-meetings:** enable the TLS 443 support for meetings SDK ([#2537](https://github.com/webex/webex-js-sdk/issues/2537)) ([4ae3434](https://github.com/webex/webex-js-sdk/commit/4ae34344825bc138ea3fa0199e8af59b9ea79125))
+* **recording:** add recording streaming service ([#2581](https://github.com/webex/webex-js-sdk/issues/2581)) ([f277800](https://github.com/webex/webex-js-sdk/commit/f27780092590c868f8d7772477099a989e6bff63))
+
+
+### Bug Fixes
+
+* remove logger as circular dependency ([#2590](https://github.com/webex/webex-js-sdk/issues/2590)) ([d6386ea](https://github.com/webex/webex-js-sdk/commit/d6386ea71a154693cddde497be14029e8cc1ccde))
+* run typecheck only on pr checks ([#2591](https://github.com/webex/webex-js-sdk/issues/2591)) ([4cf3963](https://github.com/webex/webex-js-sdk/commit/4cf3963c53afb01d0e5564d0b60691de508c3c0c))
+* script to postbump ([#2592](https://github.com/webex/webex-js-sdk/issues/2592)) ([63d8b6c](https://github.com/webex/webex-js-sdk/commit/63d8b6cd0b0adb9836ca116c1b87eb8da9061417))
+
 ### [2.37.2](https://github.com/webex/webex-js-sdk/compare/v2.37.1...v2.37.2) (2023-01-17)
 
 
