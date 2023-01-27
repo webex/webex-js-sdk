@@ -12,13 +12,16 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
-    it('uses correct TURN TLS information on the new connection', async () => {
-      Metrics.postEvent = sinon.stub();
+    let fakeMediaConnection;
+    let fakeMeeting;
 
-      const fakeMediaConnection = {
+    beforeEach(() => {
+      Metrics.postEvent = sinon.stub();
+      fakeMediaConnection = {
         initiateOffer: sinon.stub().resolves({}),
+        reconnect: sinon.stub().resolves({}),
       };
-      const fakeMeeting = {
+      fakeMeeting = {
         closePeerConnections: sinon.stub().resolves({}),
         createMediaConnection: sinon.stub().returns(fakeMediaConnection),
         config: {
@@ -37,6 +40,11 @@ describe('plugin-meetings', () => {
         },
         mediaProperties: {
           unsetPeerConnection: sinon.stub(),
+          webrtcMediaConnection: fakeMediaConnection,
+        },
+        mediaRequestManagers: {
+          audio: {commit: sinon.stub()},
+          video: {commit: sinon.stub()},
         },
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
@@ -58,21 +66,42 @@ describe('plugin-meetings', () => {
           },
         },
       };
+    });
 
+    it('uses correct TURN TLS information on the reconnection', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
-      assert.calledOnce(fakeMeeting.closePeerConnections);
-      assert.calledOnce(fakeMeeting.mediaProperties.unsetPeerConnection);
       assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
-      assert.calledOnce(fakeMeeting.createMediaConnection);
-      assert.calledWith(fakeMeeting.createMediaConnection, {
-        url: 'fake_turn_url',
-        username: 'fake_turn_username',
-        password: 'fake_turn_password',
-      });
-      assert.calledOnce(fakeMediaConnection.initiateOffer);
+      assert.calledOnce(fakeMediaConnection.reconnect);
+      assert.calledWith(fakeMediaConnection.reconnect, [
+        {
+          urls: 'fake_turn_url',
+          username: 'fake_turn_username',
+          credential: 'fake_turn_password',
+        },
+      ]);
+    });
+
+    it('does not re-request media for non-multistream meetings', async () => {
+      fakeMeeting.isMultistream = false;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.notCalled(fakeMeeting.mediaRequestManagers.audio.commit);
+      assert.notCalled(fakeMeeting.mediaRequestManagers.video.commit);
+    });
+
+    it('does re-request media for multistream meetings', async () => {
+      fakeMeeting.isMultistream = true;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });
   });
 
