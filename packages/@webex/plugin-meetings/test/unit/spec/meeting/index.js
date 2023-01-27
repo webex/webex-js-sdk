@@ -44,6 +44,8 @@ import Metrics from '@webex/plugin-meetings/src/metrics';
 import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex-errors';
+import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
@@ -257,6 +259,12 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.destination, testDestination);
           assert.equal(meeting.destinationType, _MEETING_ID_);
           assert.instanceOf(meeting.breakouts, Breakouts);
+        });
+        it('creates MediaRequestManager instances', () => {
+          assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
+          assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
+          assert.instanceOf(meeting.mediaRequestManagers.screenShareAudio, MediaRequestManager);
+          assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
       });
       describe('#invite', () => {
