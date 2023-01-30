@@ -635,32 +635,40 @@ export default class Meeting extends StatelessWebexPlugin {
         }
         this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.VideoMain, mediaRequests);
       }),
-      screenShareAudio: new MediaRequestManager((mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send screenshare audio media request before media connection was created'
-          );
+      screenShareAudio: new MediaRequestManager(
+        // @ts-ignore - config coming from registerPlugin
+        this.config.degradationPreferences,
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send screenshare audio media request before media connection was created'
+            );
 
-          return;
-        }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(
-          MediaType.AudioSlides,
-          mediaRequests
-        );
-      }),
-      screenShareVideo: new MediaRequestManager((mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send screenshare video media request before media connection was created'
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.AudioSlides,
+            mediaRequests
           );
-
-          return;
         }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(
-          MediaType.VideoSlides,
-          mediaRequests
-        );
-      }),
+      ),
+      screenShareVideo: new MediaRequestManager(
+        // @ts-ignore - config coming from registerPlugin
+        this.config.degradationPreferences,
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send screenshare video media request before media connection was created'
+            );
+
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.VideoSlides,
+            mediaRequests
+          );
+        }
+      ),
     };
     /**
      * @instance
