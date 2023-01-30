@@ -23,10 +23,12 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf packages/**/.coverage packages/**/dist",
+    "clean": "rimraf packages/**/.coverage packages/**/dist packages/**/types",
     "prebuild": "yarn run clean",
-    "build": "node ./tooling/index.js build && yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit",
+    "build": "node ./tooling/index.js build && yarn run build:tsc",
+    "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/plugin-meetings run build",
     "build:script": "node ./tooling/index.js build --umd",
+    "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/plugin-meetings run build",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --format html --output ./docs/api --github ./packages/webex/src/index.js ./packages/@webex/plugin-*/src/index.[tj]s --babel=./babel.config.json",
@@ -214,8 +216,8 @@
   },
   "standard-version": {
     "scripts": {
-      "postbump": "yarn run build --skip-samples && yarn run build:script && git add packages/webex/umd/*.js",
-      "release": "git add packages/*/package.json  packages/@webex/*/package.json CHANGELOG.md && standard-version -a"
+      "postbump": "yarn run build:skip-samples && yarn run build:script && git add packages/webex/umd/*.js",
+      "release": "git add packages/*/package.json packages/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   },
   "packageManager": "yarn@4.0.0-rc.22"

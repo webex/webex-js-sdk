@@ -36,6 +36,7 @@ import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from './request';
 import Members from '../members/index';
 import MeetingUtil from './util';
+import RecordingUtil from '../recording-controller/util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
 import {Reactions, SkinTones} from '../reactions/reactions';
@@ -105,6 +106,7 @@ import Breakouts from '../breakouts';
 
 import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
+import RecordingController from '../recording-controller';
 
 const {isBrowser} = BrowserDetection();
 
@@ -483,6 +485,7 @@ export default class Meeting extends StatelessWebexPlugin {
   queuedMediaUpdates: any[];
   recording: any;
   remoteMediaManager: RemoteMediaManager | null;
+  recordingController: RecordingController;
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
   shareStatus: string;
@@ -974,6 +977,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore - Fix type
     this.locusInfo = new LocusInfo(this.updateMeetingObject.bind(this), this.webex, this.id);
+
     // We had to add listeners first before setting up the locus instance
     /**
      * @instance
@@ -1072,6 +1076,20 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.keepAliveTimerId = null;
+
+    /**
+     * The class that helps to control recording functions: start, stop, pause, resume, etc
+     * @instance
+     * @type {RecordingController}
+     * @public
+     * @memberof Meeting
+     */
+    this.recordingController = new RecordingController(this.meetingRequest, {
+      serviceUrl: this.locusInfo?.links?.services?.record?.url,
+      sessionId: this.locusInfo?.fullState?.sessionId,
+      locusUrl: this.locusInfo?.url,
+      displayHints: [],
+    });
 
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
@@ -1282,6 +1300,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // meeting update listeners
     this.setUpLocusInfoSelfListener();
     this.setUpLocusInfoMeetingListener();
+    this.setUpLocusServicesListener();
     // members update listeners
     this.setUpLocusFullStateListener();
     this.setUpLocusUrlListener();
@@ -2152,6 +2171,23 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.locusUrlUpdate(payload);
       this.locusUrl = payload;
       this.locusId = this.locusUrl?.split('/').pop();
+      this.recordingController.setLocusUrl(this.locusUrl);
+    });
+  }
+
+  /**
+   * Set up the locus info service link listener
+   * update the locusInfo for recording controller
+   * does not currently re-emit the event as it's internal only
+   * payload is unused
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private setUpLocusServicesListener() {
+    this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
+      this.recordingController.setServiceUrl(payload?.services?.record?.url);
+      this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
     });
   }
 
@@ -2201,10 +2237,10 @@ export default class Meeting extends StatelessWebexPlugin {
           canAdmitParticipant: MeetingUtil.canAdmitParticipant(payload.info.userDisplayHints),
           canLock: MeetingUtil.canUserLock(payload.info.userDisplayHints),
           canUnlock: MeetingUtil.canUserUnlock(payload.info.userDisplayHints),
-          canStartRecording: MeetingUtil.canUserRecord(payload.info.userDisplayHints),
-          canStopRecording: MeetingUtil.canUserStop(payload.info.userDisplayHints),
-          canPauseRecording: MeetingUtil.canUserPause(payload.info.userDisplayHints),
-          canResumeRecording: MeetingUtil.canUserResume(payload.info.userDisplayHints),
+          canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
+          canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
+          canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
+          canResumeRecording: RecordingUtil.canUserResume(payload.info.userDisplayHints),
           canRaiseHand: MeetingUtil.canUserRaiseHand(payload.info.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(payload.info.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(
@@ -2235,6 +2271,8 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
         });
+
+        this.recordingController.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {
           Trigger.trigger(
@@ -6047,7 +6085,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public startRecording() {
-    return MeetingUtil.startRecording(this.meetingRequest, this.locusUrl, this.locusInfo);
+    return this.recordingController.startRecording();
   }
 
   /**
@@ -6057,7 +6095,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public stopRecording() {
-    return MeetingUtil.stopRecording(this.meetingRequest, this.locusUrl, this.locusInfo);
+    return this.recordingController.stopRecording();
   }
 
   /**
@@ -6067,7 +6105,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public pauseRecording() {
-    return MeetingUtil.pauseRecording(this.meetingRequest, this.locusUrl, this.locusInfo);
+    return this.recordingController.pauseRecording();
   }
 
   /**
@@ -6077,7 +6115,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public resumeRecording() {
-    return MeetingUtil.resumeRecording(this.meetingRequest, this.locusUrl, this.locusInfo);
+    return this.recordingController.resumeRecording();
   }
 
   /**

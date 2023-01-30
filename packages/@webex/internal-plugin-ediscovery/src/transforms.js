@@ -269,7 +269,8 @@ class Transforms {
           !activity.recording &&
           !(activity.extension && activity.extension.extensionType === 'customApp') &&
           !activity.spaceInfo?.name &&
-          !activity.spaceInfo?.description
+          !activity.spaceInfo?.description &&
+          !activity.encryptedTextKeyValues
         ) {
           return Promise.resolve(object);
         }
@@ -283,7 +284,8 @@ class Transforms {
           return Promise.resolve(object);
         }
 
-        if (!container.onBehalfOfUser) {
+        // CDR Compliance uses org key and does depend on an onBehalfOfUser
+        if (activity.encryptedTextKeyValues === undefined && !container.onBehalfOfUser) {
           const reason = `No user available with which to decrypt activity ${activity.activityId} in container ${activity.targetId}`;
 
           ctx.webex.logger.error(reason);
@@ -519,6 +521,30 @@ class Transforms {
                   })
               );
             }
+          }
+        }
+
+        // Decrypt encrypted text map if present
+        if (activity.encryptedTextKeyValues !== undefined) {
+          for (const [key, value] of Object.entries(activity.encryptedTextKeyValues)) {
+            promises.push(
+              requestWithRetries(
+                ctx.webex.internal.encryption,
+                ctx.webex.internal.encryption.decryptText,
+                [activity.encryptionKeyUrl, value]
+              )
+                .then((decryptedMessage) => {
+                  activity.encryptedTextKeyValues[key] = decryptedMessage;
+                })
+                .catch((reason) => {
+                  ctx.webex.logger.error(
+                    `Decrypt activity.encryptedTextKeyValues error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                  );
+                  activity.error = reason;
+
+                  return Promise.resolve(object);
+                })
+            );
           }
         }
 

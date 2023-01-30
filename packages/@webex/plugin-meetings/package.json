@@ -12,6 +12,7 @@
     "Taymoor Khan <taykhan@cisco.com>"
   ],
   "main": "dist/index.js",
+  "types": "types/index.d.ts",
   "devMain": "src/index.js",
   "repository": {
     "type": "git",
@@ -26,6 +27,9 @@
       "babelify",
       "envify"
     ]
+  },
+  "scripts": {
+    "build": "yarn run tsc --declaration true --declarationDir ./types"
   },
   "devDependencies": {
     "@webex/plugin-meetings": "workspace:^",

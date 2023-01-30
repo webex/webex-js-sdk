@@ -362,66 +362,6 @@ MeetingUtil.canUserUnlock = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_UNLOCK) &&
   displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_LOCKED);
 
-MeetingUtil.canUserRecord = (displayHints) =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START);
-
-MeetingUtil.canUserPause = (displayHints) =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE);
-
-MeetingUtil.canUserResume = (displayHints) =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME);
-
-MeetingUtil.canUserStop = (displayHints) =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
-
-MeetingUtil.startRecording = (request, locusUrl, locusInfo) => {
-  const displayHints = MeetingUtil.getUserDisplayHintsFromLocusInfo(locusInfo);
-
-  if (MeetingUtil.canUserRecord(displayHints)) {
-    return request.recordMeeting({locusUrl, recording: true, paused: false});
-  }
-
-  return Promise.reject(
-    new PermissionError('Start recording not allowed, due to moderator property.')
-  );
-};
-
-MeetingUtil.pauseRecording = (request, locusUrl, locusInfo) => {
-  const displayHints = MeetingUtil.getUserDisplayHintsFromLocusInfo(locusInfo);
-
-  if (MeetingUtil.canUserPause(displayHints)) {
-    return request.recordMeeting({locusUrl, recording: true, paused: true});
-  }
-
-  return Promise.reject(
-    new PermissionError('Pause recording not allowed, due to moderator property.')
-  );
-};
-
-MeetingUtil.resumeRecording = (request, locusUrl, locusInfo) => {
-  const displayHints = MeetingUtil.getUserDisplayHintsFromLocusInfo(locusInfo);
-
-  if (MeetingUtil.canUserResume(displayHints)) {
-    return request.recordMeeting({locusUrl, recording: true, paused: false});
-  }
-
-  return Promise.reject(
-    new PermissionError('Resume recording not allowed, due to moderator property.')
-  );
-};
-
-MeetingUtil.stopRecording = (request, locusUrl, locusInfo) => {
-  const displayHints = MeetingUtil.getUserDisplayHintsFromLocusInfo(locusInfo);
-
-  if (MeetingUtil.canUserStop(displayHints)) {
-    return request.recordMeeting({locusUrl, recording: false, paused: false});
-  }
-
-  return Promise.reject(
-    new PermissionError('Stop recording not allowed, due to moderator property.')
-  );
-};
-
 MeetingUtil.canUserRaiseHand = (displayHints) => displayHints.includes(DISPLAY_HINTS.RAISE_HAND);
 
 MeetingUtil.canUserLowerAllHands = (displayHints) =>

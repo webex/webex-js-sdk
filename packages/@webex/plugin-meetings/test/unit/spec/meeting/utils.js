@@ -386,34 +386,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('canUserRecord', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserRecord(['RECORDING_CONTROL_START']), true);
-        assert.deepEqual(MeetingUtil.canUserRecord([]), false);
-      });
-    });
-
-    describe('canUserPause', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserPause(['RECORDING_CONTROL_PAUSE']), true);
-        assert.deepEqual(MeetingUtil.canUserPause([]), false);
-      });
-    });
-
-    describe('canUserResume', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserResume(['RECORDING_CONTROL_RESUME']), true);
-        assert.deepEqual(MeetingUtil.canUserResume([]), false);
-      });
-    });
-
-    describe('canUserStop', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserStop(['RECORDING_CONTROL_STOP']), true);
-        assert.deepEqual(MeetingUtil.canUserStop([]), false);
-      });
-    });
-
     [
       {functionName: 'canEnableClosedCaption', displayHint: 'CAPTION_START'},
       {functionName: 'canStartTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_START'},
@@ -432,7 +404,6 @@ describe('plugin-meetings', () => {
         });
       });
     });
-
 
     describe('reactions', () => {
       describe('canEnableReactions', () => {
