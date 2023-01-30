@@ -289,16 +289,17 @@ describe('EDiscovery Transform Tests', () => {
       });
 
       it('Decrypt function throws an exception', () => {
+        const expectedError = new Error('Failed to acquire a key');
         ctx.webex.internal.encryption.decryptText = sinon
           .stub()
-          .returns(Promise.reject(new Error('@@@@@@')));
+          .returns(Promise.reject(expectedError));
 
         const result = Transforms.decryptReportContent(ctx, object, reportId)
           .then(() => {
             assert.fail('Decrypt did not fail as expected');
           })
           .catch(() => {
-            assert.isDefined(activity.error);
+            assert.deepEqual(activity.error, expectedError);
           });
 
         return result;
@@ -425,6 +426,68 @@ describe('EDiscovery Transform Tests', () => {
           assert.callCount(ctx.webex.internal.encryption.decryptText, 2);
           assert.equal(activity.error, undefined);
         });
+
+        return result;
+      });
+
+      it('Calls the correct decrypt functions when transforming activity.encryptedTextKeyValues', () => {
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
+            assert.equal(activity.error, undefined);
+            assert.equal(object.body.encryptedTextKeyValues.CallingLineId, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.CallingNumber, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.RedirectingNumber, decryptedText);
+          });
+
+        return result;
+      });
+
+      it('Calls the correct decrypt functions when transforming activity.encryptedTextKeyValues and no onBehalfOfUser user is present', () => {
+        contentContainer.onBehalfOfUser = undefined;
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.callCount(ctx.webex.internal.encryption.decryptText, 3);
+            assert.equal(activity.error, undefined);
+            assert.equal(object.body.encryptedTextKeyValues.CallingLineId, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.CallingNumber, decryptedText);
+            assert.equal(object.body.encryptedTextKeyValues.RedirectingNumber, decryptedText);
+          });
+
+        return result;
+      });
+
+      it('Decrypt function throws an exception when processing activity.encryptedTextKeyValues', () => {
+        const expectedError = new Error('Failed to acquire a key');
+        ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(expectedError));
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = {
+          CallingLineId: 'Encrypted Phone Number 1',
+          CallingNumber: 'Encrypted Phone Number 2',
+          RedirectingNumber: 'Encrypted Phone Number 3',
+        };
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.fail('Decrypt did not fail as expected');
+          })
+          .catch(() => {
+            assert.deepEqual(activity.error, expectedError);
+          });
 
         return result;
       });

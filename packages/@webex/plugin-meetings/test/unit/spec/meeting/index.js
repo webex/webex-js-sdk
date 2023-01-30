@@ -36,6 +36,7 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
+import RecordingUtil from '@webex/plugin-meetings/src/recording-controller/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
@@ -4055,6 +4056,7 @@ describe('plugin-meetings', () => {
           const newLocusUrl = 'newLocusUrl/12345';
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
+          meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
 
@@ -4064,8 +4066,34 @@ describe('plugin-meetings', () => {
             newLocusUrl
           );
           assert.calledOnceWithExactly(meeting.breakouts.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
+          done();
+        });
+      });
+
+      describe('#setUpLocusServicesListener', () => {
+        it('listens to the locus services update event', (done) => {
+          const newLocusServices = {
+              services: {
+                record: {
+                  url: 'url',
+                }
+              },
+          };
+
+          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined), setSessionId: sinon.stub().returns(undefined)};
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LINKS_SERVICES',
+            newLocusServices
+          );
+
+          assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
+          assert.calledOnce(meeting.recordingController.setSessionId);
           done();
         });
       });
@@ -4476,7 +4504,7 @@ describe('plugin-meetings', () => {
         let inMeetingActionsSetSpy;
         let canUserLockSpy;
         let canUserUnlockSpy;
-        let canUserRecordSpy;
+        let canUserStartSpy;
         let canUserStopSpy;
         let canUserPauseSpy;
         let canUserResumeSpy;
@@ -4493,10 +4521,10 @@ describe('plugin-meetings', () => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
           canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
           canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
-          canUserRecordSpy = sinon.spy(MeetingUtil, 'canUserRecord');
-          canUserStopSpy = sinon.spy(MeetingUtil, 'canUserStop');
-          canUserPauseSpy = sinon.spy(MeetingUtil, 'canUserPause');
-          canUserResumeSpy = sinon.spy(MeetingUtil, 'canUserResume');
+          canUserStartSpy = sinon.spy(RecordingUtil, 'canUserStart');
+          canUserStopSpy = sinon.spy(RecordingUtil, 'canUserStop');
+          canUserPauseSpy = sinon.spy(RecordingUtil, 'canUserPause');
+          canUserResumeSpy = sinon.spy(RecordingUtil, 'canUserResume');
           inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
           canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
           canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
@@ -4538,7 +4566,7 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(canUserLockSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserUnlockSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserRecordSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserStartSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
