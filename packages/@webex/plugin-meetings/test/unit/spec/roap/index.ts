@@ -47,8 +47,12 @@ describe('Roap', () => {
       correlationId: 'correlation id',
       selfUrl: 'self url',
       mediaId: 'media id',
-      isAudioMuted: () => true,
-      isVideoMuted: () => false,
+      audio:{
+        isLocallyMuted: () => true,
+      },
+      video:{
+        isLocallyMuted: () => false,
+      },
       setRoapSeq: sinon.stub(),
       config: {experimental: {enableTurnDiscovery: false}},
     };
@@ -99,8 +103,8 @@ describe('Roap', () => {
           correlationId: meeting.correlationId,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-          audioMuted: meeting.isAudioMuted(),
-          videoMuted: meeting.isVideoMuted(),
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
         });
 
