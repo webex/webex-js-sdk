@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.18](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.17...v3.0.0-beta.18) (2023-01-31)
+
+
+### Features
+
+* **in-meeting-reactions:** Reaction class ([#2566](https://github.com/webex/webex-js-sdk/issues/2566)) ([65015b5](https://github.com/webex/webex-js-sdk/commit/65015b5d872d63ddd419f3a09033281c245f61cd))
+* **plugin-meetings:** add max-fs degradation based on macroblock requested ([#2575](https://github.com/webex/webex-js-sdk/issues/2575)) ([acbbb2c](https://github.com/webex/webex-js-sdk/commit/acbbb2c6279770cb668f186a8350eff94624610f))
+* **plugin-meetings:** add multistream failover support ([#2594](https://github.com/webex/webex-js-sdk/issues/2594)) ([7555de2](https://github.com/webex/webex-js-sdk/commit/7555de2be5249948c4272b147aea3b1c4e95238a))
+* **plugin-meetings:** fix build script ([#2597](https://github.com/webex/webex-js-sdk/issues/2597)) ([0c9598f](https://github.com/webex/webex-js-sdk/commit/0c9598f1b744e64f742b6c896c21180db533686a))
+
+
+### Bug Fixes
+
+* added support for receiving multistream screen share ([#2545](https://github.com/webex/webex-js-sdk/issues/2545)) ([daf4347](https://github.com/webex/webex-js-sdk/commit/daf4347937d4ae92b2c595f328bb3e1a3aa91772))
+* **plugin-meetings:** imports of MediaConnection from internal-media-core ([#2578](https://github.com/webex/webex-js-sdk/issues/2578)) ([3ddfb22](https://github.com/webex/webex-js-sdk/commit/3ddfb227f32a5fd6b96cc15ea3f7d22f2f6c5487))
+* **plugin-meetings:** set the preferTranscoding param correctly ([#2558](https://github.com/webex/webex-js-sdk/issues/2558)) ([db3f620](https://github.com/webex/webex-js-sdk/commit/db3f62082706fa2f8d752440ecbe4bbeadac9ff7))
+
 ## [3.0.0-beta.17](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.16...v3.0.0-beta.17) (2023-01-20)
 
 ## [3.0.0-beta.16](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.15...v3.0.0-beta.16) (2023-01-19)
