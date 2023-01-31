@@ -505,37 +505,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     });
   }
 
-  /**
-   * Make a network request to acknowledge a meeting
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.deviceUrl
-   * @param {String} options.id
-   * @returns {Promise}
-   */
-  recordMeeting(options: {
-    locusUrl: string;
-    deviceUrl: string;
-    id: string;
-    recording: any;
-    paused: any;
-  }) {
-    const uri = `${options.locusUrl}/${CONTROLS}`;
-    const body = {
-      record: {
-        recording: options.recording,
-        paused: options.paused,
-      },
-    };
-
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.PATCH,
-      uri,
-      body,
-    });
-  }
-
   lockMeeting(options) {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {

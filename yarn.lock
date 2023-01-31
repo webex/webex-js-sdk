@@ -4070,21 +4070,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:1.32.1":
-  version: 1.32.1
-  resolution: "@webex/internal-media-core@npm:1.32.1"
+"@webex/internal-media-core@npm:1.33.0":
+  version: 1.33.0
+  resolution: "@webex/internal-media-core@npm:1.33.0"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:1.20.0"
     "@webex/ts-sdp": "npm:1.3.0"
-    "@webex/web-client-media-engine": "npm:^1.34.4"
+    "@webex/web-client-media-engine": "npm:^1.36.1"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.1"
     xstate: "npm:^4.30.6"
-  checksum: 215b924e4c2291ba5a2bb471f16a2469c5080f2b09e892131d4005a9ef0d98d7701686cd3b3b07040a2968e06312307b59e85fbda7625ece90ccaf8668c536fa
+  checksum: 9e2957db56c9b14bd4f2126561e96a95a75e387855e29d72562d4c696b3877ba34ff0329b21a62152b5b57d574aeaa74d41a1ee416d8af24683d164aac2d9152
   languageName: node
   linkType: hard
 
@@ -4664,7 +4664,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:1.32.1"
+    "@webex/internal-media-core": "npm:1.33.0"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -5075,7 +5075,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:^1.34.4":
+"@webex/web-client-media-engine@npm:^1.36.1":
   version: 1.36.1
   resolution: "@webex/web-client-media-engine@npm:1.36.1"
   dependencies:

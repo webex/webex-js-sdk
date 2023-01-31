@@ -335,7 +335,7 @@ export const EVENT_TRIGGERS = {
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
   REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
   REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
-  REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScrenShareAudio:created',
+  REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
   REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
 };
 
@@ -569,6 +569,7 @@ export const LOCUSINFO = {
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
+    LINKS_SERVICES: 'LINKS_SERVICES',
   },
 };
 
@@ -850,6 +851,7 @@ export const RESOURCE = {
 
 export const REACHABILITY = {
   localStorage: 'reachability.result',
+  namespace: 'Reachability',
 };
 
 export const ROAP = {

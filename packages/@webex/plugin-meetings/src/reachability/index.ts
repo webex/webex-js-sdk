@@ -19,6 +19,7 @@ const VIDEO_MESH_TIMEOUT = 1000;
  * @export
  */
 export default class Reachability {
+  namespace = REACHABILITY.namespace;
   webex: object;
   reachabilityRequest: any;
   clusterLatencyResults: any;
@@ -61,15 +62,8 @@ export default class Reachability {
     this.setup();
 
     // Remove stored reachability results to ensure no stale data
-    if (window?.localStorage?.removeItem) {
-      window.localStorage.removeItem(REACHABILITY.localStorage);
-    } else {
-      LoggerProxy.logger.error(
-        'Reachability:index#gatherReachability --> Error in accessing LocalStorage.'
-      );
-
-      return {};
-    }
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorage);
 
     // Fetch clusters and measure latency
     try {
@@ -78,7 +72,12 @@ export default class Reachability {
       // Perform Reachability Check
       const results = await this.performReachabilityCheck(clusters);
 
-      window.localStorage.setItem(REACHABILITY.localStorage, JSON.stringify(results));
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorage,
+        JSON.stringify(results)
+      );
 
       LoggerProxy.logger.log(
         'Reachability:index#gatherReachability --> Reachability checks completed'
@@ -100,9 +99,12 @@ export default class Reachability {
    * @public
    * @memberof Reachability
    */
-  isAnyClusterReachable() {
+  async isAnyClusterReachable() {
     let reachable = false;
-    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+    // @ts-ignore
+    const reachabilityData = await this.webex.boundedStorage
+      .get(this.namespace, REACHABILITY.localStorage)
+      .catch(() => {});
 
     if (reachabilityData) {
       try {

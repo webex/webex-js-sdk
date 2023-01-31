@@ -238,19 +238,19 @@ export default class TurnDiscovery {
    *                                 media connection just after a reconnection
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
+  async doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
     // @ts-ignore - fix type
-    const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
+    const isAnyClusterReachable = await meeting.webex.meetings.reachability.isAnyClusterReachable();
 
     if (isAnyClusterReachable) {
       LoggerProxy.logger.info(
         'Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery'
       );
 
-      return Promise.resolve({
+      return {
         turnServerInfo: undefined,
         turnDiscoverySkippedReason: 'reachability',
-      });
+      };
     }
 
     // @ts-ignore - fix type
@@ -259,7 +259,7 @@ export default class TurnDiscovery {
         'Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it'
       );
 
-      return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
+      return {turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'};
     }
 
     return this.sendRoapTurnDiscoveryRequest(meeting, isReconnecting)
@@ -285,7 +285,7 @@ export default class TurnDiscovery {
           stack: e.stack,
         });
 
-        return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+        return {turnServerInfo: undefined, turnDiscoverySkippedReason: undefined};
       });
   }
 }

@@ -37,6 +37,7 @@ class FakeSlot extends EventEmitter {
 const DefaultTestConfiguration: Configuration = {
   audio: {
     numOfActiveSpeakerStreams: 3,
+    numOfScreenShareStreams: 1,
   },
   video: {
     preferLiveVideo: true,
@@ -44,7 +45,6 @@ const DefaultTestConfiguration: Configuration = {
 
     layouts: {
       AllEqual: {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'main',
@@ -55,7 +55,6 @@ const DefaultTestConfiguration: Configuration = {
         ],
       },
       OnePlusFive: {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'mainBigOne',
@@ -72,7 +71,6 @@ const DefaultTestConfiguration: Configuration = {
         ],
       },
       Single: {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'main',
@@ -83,7 +81,6 @@ const DefaultTestConfiguration: Configuration = {
         ],
       },
       Stage: {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'thumbnails',
@@ -99,11 +96,18 @@ const DefaultTestConfiguration: Configuration = {
           {id: 'stage-4', size: 'medium', csi: undefined},
         ],
       },
+      ScreenShareView: {
+        screenShareVideo: {size: 'medium'},
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'thumbnails',
+            numPanes: 6,
+            size: 'thumbnail',
+            priority: 255,
+          },
+        ],
+      },
     },
-  },
-  screenShare: {
-    audio: true,
-    video: true,
   },
 };
 
@@ -113,18 +117,34 @@ describe('RemoteMediaManager', () => {
   let fakeMediaRequestManagers;
   let fakeAudioSlot;
   let fakeVideoSlot;
+  let fakeScreenShareAudioSlot;
+  let fakeScreenShareVideoSlot;
 
   beforeEach(() => {
     fakeAudioSlot = new FakeSlot(MediaType.AudioMain, 'fake audio slot');
     fakeVideoSlot = new FakeSlot(MediaType.VideoMain, 'fake video slot');
+    fakeScreenShareAudioSlot = new FakeSlot(
+      MediaType.AudioSlides,
+      'fake screen share audio slot'
+    );
+    fakeScreenShareVideoSlot = new FakeSlot(
+      MediaType.VideoSlides,
+      'fake screen share video slot'
+    );
 
     fakeReceiveSlotManager = {
       allocateSlot: sinon.stub().callsFake((mediaType) => {
-        if (mediaType === MediaType.AudioMain) {
-          return Promise.resolve(fakeAudioSlot);
+        switch (mediaType) {
+          case MediaType.AudioMain:
+            return Promise.resolve(fakeAudioSlot);
+          case MediaType.VideoMain:
+            return Promise.resolve(fakeVideoSlot);
+          case MediaType.AudioSlides:
+            return Promise.resolve(fakeScreenShareAudioSlot);
+          case MediaType.VideoSlides:
+            return Promise.resolve(fakeScreenShareVideoSlot);
         }
-
-        return Promise.resolve(fakeVideoSlot);
+        throw new Error(`invalid mediaType: ${mediaType}`);
       }),
       releaseSlot: sinon.stub(),
     };
@@ -136,6 +156,16 @@ describe('RemoteMediaManager', () => {
         commit: sinon.stub(),
       },
       video: {
+        addRequest: sinon.stub(),
+        cancelRequest: sinon.stub(),
+        commit: sinon.stub(),
+      },
+      screenShareAudio: {
+        addRequest: sinon.stub(),
+        cancelRequest: sinon.stub(),
+        commit: sinon.stub(),
+      },
+      screenShareVideo: {
         addRequest: sinon.stub(),
         cancelRequest: sinon.stub(),
         commit: sinon.stub(),
@@ -159,6 +189,8 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers.video.addRequest.resetHistory();
     fakeMediaRequestManagers.video.cancelRequest.resetHistory();
     fakeMediaRequestManagers.video.commit.resetHistory();
+    fakeMediaRequestManagers.screenShareVideo.commit.resetHistory();
+    fakeMediaRequestManagers.screenShareAudio.commit.resetHistory();
   };
 
   describe('start', () => {
@@ -187,24 +219,17 @@ describe('RemoteMediaManager', () => {
       let createdAudioGroup: RemoteMediaGroup | null = null;
 
       // create a config with just audio, no video at all and no screen share
-      const config = {
+      const config: Configuration = {
         audio: {
           numOfActiveSpeakerStreams: 5,
+          numOfScreenShareStreams: 0,
         },
         video: {
           preferLiveVideo: false,
           initialLayoutId: 'empty',
           layouts: {
-            empty: {
-              screenShareVideo: {
-                size: null,
-              },
-            },
+            empty: {},
           },
-        },
-        screenShare: {
-          audio: false,
-          video: false,
         },
       };
 
@@ -255,9 +280,6 @@ describe('RemoteMediaManager', () => {
 
       config.audio.numOfActiveSpeakerStreams = 0;
       config.video.layouts.huge = {
-        screenShareVideo: {
-          size: null,
-        },
         activeSpeakerVideoPaneGroups: [
           {
             id: 'big one',
@@ -267,6 +289,8 @@ describe('RemoteMediaManager', () => {
           },
         ],
       };
+      config.audio.numOfScreenShareStreams = 0;
+      delete config.video.layouts.ScreenShareView;
 
       remoteMediaManager = new RemoteMediaManager(
         fakeReceiveSlotManager,
@@ -302,8 +326,128 @@ describe('RemoteMediaManager', () => {
           receivedLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia().length,
           9
         );
+        assert.isUndefined(receivedLayoutInfo.screenShareVideo); // the initial layout has no screen share
       }
     });
+
+    it('creates RemoteMedia for screen share audio correctly', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+
+      const NUM_STREAMS = 2;
+
+      // create a config with just screen share audio, nothing else
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 0,
+          numOfScreenShareStreams: NUM_STREAMS,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.ScreenShareAudioCreated, (audio: RemoteMediaGroup) => {
+        createdAudioGroup = audio;
+      });
+
+      remoteMediaManager.start();
+
+      await testUtils.flushPromises();
+
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, NUM_STREAMS);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioSlides);
+
+      assert.isNotNull(createdAudioGroup);
+      if (createdAudioGroup) {
+        assert.strictEqual(createdAudioGroup.getRemoteMedia().length, NUM_STREAMS);
+        assert.isTrue(
+          createdAudioGroup
+            .getRemoteMedia()
+            .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioSlides)
+        );
+        assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
+      }
+
+      assert.calledOnce(fakeMediaRequestManagers.screenShareAudio.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManagers.screenShareAudio.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: Array(NUM_STREAMS).fill(fakeScreenShareAudioSlot),
+          codecInfo: undefined,
+        })
+      );
+    });
+
+    it('creates a single receive slot for screen share video if any layout has screen share', async () => {
+      // create a config with 2 layouts that use screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 0,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'first',
+          layouts: {
+            first: {
+              screenShareVideo: { size: 'small'}
+            },
+            second: {
+              screenShareVideo: { size: 'medium'}
+            }
+          },
+        },
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      // even though 2 layouts use screen share, only 1 video screen share slot should be created
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 1);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoSlides);
+    });
+
+    it('does not create any receive slot for screen share video if none of the layouts have screen share', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
+
+      config.audio.numOfActiveSpeakerStreams = 0;
+      config.audio.numOfScreenShareStreams = 0;
+
+      // delete the only layout that uses screen share
+      delete config.video.layouts.ScreenShareView;
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      // we don't expect any audio and for video there should be no VideoSlides, so all the calls should be just for VideoMain
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
+    });
+
+
   });
 
   describe('constructor', () => {
@@ -325,7 +469,6 @@ describe('RemoteMediaManager', () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'someDuplicate',
@@ -361,7 +504,6 @@ describe('RemoteMediaManager', () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
-        screenShareVideo: {size: null},
         activeSpeakerVideoPaneGroups: [
           {
             id: 'group1',
@@ -397,7 +539,6 @@ describe('RemoteMediaManager', () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
-        screenShareVideo: {size: null},
         memberVideoPanes: [
           {id: 'paneA', size: 'best', csi: 123},
           {id: 'paneB', size: 'large', csi: 222},
@@ -414,6 +555,7 @@ describe('RemoteMediaManager', () => {
         );
       }, 'invalid config: duplicate member video pane id: paneB');
     });
+
   });
 
   describe('stop', () => {
@@ -421,11 +563,16 @@ describe('RemoteMediaManager', () => {
       let audioStopStub;
       let videoActiveSpeakerGroupStopStub;
       const memberVideoPaneStopStubs: any[] = [];
+      let screenShareAudioStopStub;
+      let screenShareVideoStopStub;
 
-      // change the initial layout to one that has both active speakers and receveiver selected videos
+      // change the initial layout to one that has both active speakers and receiver selected videos
       const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'Stage';
+
+      // and also modify it to have screen share so we can test that too
+      config.video.layouts['Stage'].screenShareVideo = {size: 'medium'};
 
       remoteMediaManager = new RemoteMediaManager(
         fakeReceiveSlotManager,
@@ -435,6 +582,10 @@ describe('RemoteMediaManager', () => {
 
       remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
         audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      remoteMediaManager.on(Event.ScreenShareAudioCreated, (audio: RemoteMediaGroup) => {
+        screenShareAudioStopStub = sinon.stub(audio, 'stop');
       });
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
@@ -447,12 +598,14 @@ describe('RemoteMediaManager', () => {
         Object.values(layoutInfo.memberVideoPanes).forEach((pane) => {
           memberVideoPaneStopStubs.push(sinon.stub(pane, 'stop'));
         });
+
+        screenShareVideoStopStub = sinon.stub(layoutInfo.screenShareVideo, 'stop');
       });
 
       await remoteMediaManager.start();
 
-      // we're using the default config that requires 3 main audio slots and 10 video slots (for Stage2x2With6ThumbnailsLayout)
-      assert.callCount(fakeReceiveSlotManager.allocateSlot, 13);
+      // we're using the default config that requires 3 main audio slots, 10 video slots (for Stage2x2With6ThumbnailsLayout), 1 screenshare audio, 1 screenshare video
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 15);
 
       // our layout has 4 member video panes, we should have a stub for each of these panes' stop methods
       assert.strictEqual(memberVideoPaneStopStubs.length, 4);
@@ -462,16 +615,20 @@ describe('RemoteMediaManager', () => {
       remoteMediaManager.stop();
 
       // check that all slots have been released
-      assert.callCount(fakeReceiveSlotManager.releaseSlot, 13);
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 15);
 
       // and that all RemoteMedia and RemoteMediaGroups have been stopped
       assert.calledOnce(audioStopStub);
       assert.calledWith(audioStopStub, true);
+      assert.calledOnce(screenShareAudioStopStub);
+      assert.calledWith(screenShareAudioStopStub, true);
       assert.calledOnce(videoActiveSpeakerGroupStopStub);
       memberVideoPaneStopStubs.forEach((stub) => {
         assert.calledOnce(stub);
       });
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
+      assert.calledOnce(screenShareVideoStopStub);
+      assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.commit);
     });
 
     it('can be called multiple times', async () => {
@@ -600,6 +757,104 @@ describe('RemoteMediaManager', () => {
       });
     });
 
+    it('emits Event.VideoLayoutChanged with correct data', async () => {
+      // setup the initial layout to be empty and a testLayout that has screen share, active speaker groups and member video panes
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 0,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: true,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+            testLayout: {
+              screenShareVideo: {size: 'very small'},
+              activeSpeakerVideoPaneGroups: [
+                {
+                  id: 'big',
+                  numPanes: 10,
+                  priority: 255,
+                  size: 'large',
+                },
+                {
+                  id: 'small',
+                  numPanes: 3,
+                  priority: 254,
+                  size: 'medium',
+                },
+              ],
+              memberVideoPanes: [
+                {id: 'pane 1', size: 'best', csi: 555},
+                {id: 'pane 2', size: 'best', csi: undefined},
+              ],
+            },
+          },
+        },
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      let receivedLayoutInfo: VideoLayoutChangedEventData | null = null;
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo) => {
+        receivedLayoutInfo = layoutInfo;
+      });
+
+      // switch to the test layout
+      await remoteMediaManager.setLayout('testLayout');
+
+      assert.isNotNull(receivedLayoutInfo);
+
+      if (receivedLayoutInfo) {
+        assert.strictEqual(receivedLayoutInfo.layoutId, 'testLayout');
+
+        // check screen share video
+        assert.isTrue(!!receivedLayoutInfo.screenShareVideo);
+        assert.strictEqual(receivedLayoutInfo.screenShareVideo.mediaType, MediaType.VideoSlides);
+
+        // check member videos
+        assert.strictEqual(Object.keys(receivedLayoutInfo.memberVideoPanes).length, 2);
+        Object.values(receivedLayoutInfo.memberVideoPanes).forEach((remoteMedia) =>
+          assert.strictEqual(remoteMedia.mediaType, MediaType.VideoMain)
+        );
+
+        // check the 2 active speaker groups
+        assert.strictEqual(Object.keys(receivedLayoutInfo.activeSpeakerVideoPanes).length, 2);
+
+        // "big" group
+        assert.strictEqual(
+          receivedLayoutInfo.activeSpeakerVideoPanes.big.getRemoteMedia().length,
+          10
+        );
+        receivedLayoutInfo.activeSpeakerVideoPanes.big
+          .getRemoteMedia()
+          .forEach((remoteMedia) =>
+            assert.strictEqual(remoteMedia.mediaType, MediaType.VideoMain)
+          );
+
+        // "small" group
+        assert.strictEqual(
+          receivedLayoutInfo.activeSpeakerVideoPanes.small.getRemoteMedia().length,
+          3
+        );
+        receivedLayoutInfo.activeSpeakerVideoPanes.small
+          .getRemoteMedia()
+          .forEach((remoteMedia) =>
+            assert.strictEqual(remoteMedia.mediaType, MediaType.VideoMain)
+          );
+      }
+    });
+
     describe('switching between different receiver selected layouts', () => {
       let fakeSlots: {[key: ReceiveSlotId]: FakeSlot};
       let slotCounter: number;
@@ -652,12 +907,12 @@ describe('RemoteMediaManager', () => {
         // This test starts with a layout that has 5 receiver selected video slots
         // and switches to a different layout that has fewer slots, but 2 of them match CSIs
         // from the initial layout. We want to verify that these 2 slots get re-used correctly.
+        // There are no screen share or audio slots being used in this test.
+        delete config.video.layouts.ScreenShareView;
         config.audio.numOfActiveSpeakerStreams = 0;
-        config.screenShare.audio = false;
-        config.screenShare.video = false;
+        config.audio.numOfScreenShareStreams = 0;
         config.video.initialLayoutId = 'biggerLayout';
         config.video.layouts['biggerLayout'] = {
-          screenShareVideo: {size: null},
           memberVideoPanes: [
             {id: '1', size: 'best', csi: 100},
             {id: '2', size: 'best', csi: 200},
@@ -667,7 +922,6 @@ describe('RemoteMediaManager', () => {
           ],
         };
         config.video.layouts['smallerLayout'] = {
-          screenShareVideo: {size: null},
           memberVideoPanes: [
             {id: '1', size: 'medium', csi: 200}, // this csi matches pane '2' from biggerLayout
             {id: '2', size: 'medium', csi: 123},
@@ -717,16 +971,15 @@ describe('RemoteMediaManager', () => {
         // This test starts with a layout that has video slot with a specific CSI
         // and switches to a different layout that 2 panes with that same CSI.
         // We want to verify that the slot gets reused, but also that a 2nd slot is allocated.
+        // There are no screen share or audio slots being used in this test.
+        delete config.video.layouts.ScreenShareView;
         config.audio.numOfActiveSpeakerStreams = 0;
-        config.screenShare.audio = false;
-        config.screenShare.video = false;
+        config.audio.numOfScreenShareStreams = 0;
         config.video.initialLayoutId = 'initialEmptyLayout';
         config.video.layouts['initialEmptyLayout'] = {
-          screenShareVideo: {size: null},
           memberVideoPanes: [{id: '2', size: 'medium', csi: 456}],
         };
         config.video.layouts['layoutWithDuplicateCSIs'] = {
-          screenShareVideo: {size: null},
           memberVideoPanes: [
             {id: '1', size: 'medium', csi: 123},
             {id: '2', size: 'medium', csi: 456},
@@ -899,16 +1152,18 @@ describe('RemoteMediaManager', () => {
       });
 
       it('cancels all media requests for the previous layout when switching to a new one', async () => {
+        // setup the initial layout to have screen share, active speaker groups and member video panes
         const config: Configuration = {
           audio: {
             numOfActiveSpeakerStreams: 0,
+            numOfScreenShareStreams: 0,
           },
           video: {
             preferLiveVideo: true,
             initialLayoutId: 'initial',
             layouts: {
               initial: {
-                screenShareVideo: {size: null},
+                screenShareVideo: {size: 'best'},
                 activeSpeakerVideoPaneGroups: [
                   {
                     id: 'big',
@@ -928,14 +1183,8 @@ describe('RemoteMediaManager', () => {
                   {id: 'pane 2', size: 'best', csi: 234},
                 ],
               },
-              other: {
-                screenShareVideo: {size: null},
-              },
+              other: {},
             },
-          },
-          screenShare: {
-            audio: false,
-            video: false,
           },
         };
 
@@ -959,8 +1208,14 @@ describe('RemoteMediaManager', () => {
 
           return `receiver selected request ${receiverSelectedRequestCounter}`;
         });
+        // setup the mock for screen share addRequest - this one should be called just once
+        fakeMediaRequestManagers.screenShareVideo.addRequest.callsFake(() => {
+          return 'video screen share request id';
+        });
 
         await remoteMediaManager.start();
+
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.addRequest);
 
         resetHistory();
 
@@ -979,10 +1234,44 @@ describe('RemoteMediaManager', () => {
           fakeMediaRequestManagers.video.cancelRequest,
           'receiver selected request 2'
         );
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.cancelRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.screenShareVideo.cancelRequest,
+          'video screen share request id'
+        );
 
         // new layout has no videos, so no new requests should be sent out
-        // check that 2 correct active speaker media requests were sent out
         assert.callCount(fakeMediaRequestManagers.video.addRequest, 0);
+      });
+
+      it('sends media request for screen share if layout contains screen share', async () => {
+        const allEqualMediaRequestId = 'fake request id';
+
+        fakeMediaRequestManagers.video.addRequest.returns(allEqualMediaRequestId);
+
+        await remoteMediaManager.start();
+
+        resetHistory();
+
+        // switch to a layout that contains a screen share video pane
+        await remoteMediaManager.setLayout('ScreenShareView');
+
+        // check that a correct active speaker media request for screen share has been sent out
+        assert.callCount(fakeMediaRequestManagers.screenShareVideo.addRequest, 1);
+        assert.calledWith(
+          fakeMediaRequestManagers.screenShareVideo.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+            }),
+            receiveSlots: [fakeScreenShareVideoSlot],
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
       });
     });
   });

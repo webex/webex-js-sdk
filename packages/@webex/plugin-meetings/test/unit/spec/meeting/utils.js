@@ -386,34 +386,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('canUserRecord', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserRecord(['RECORDING_CONTROL_START']), true);
-        assert.deepEqual(MeetingUtil.canUserRecord([]), false);
-      });
-    });
-
-    describe('canUserPause', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserPause(['RECORDING_CONTROL_PAUSE']), true);
-        assert.deepEqual(MeetingUtil.canUserPause([]), false);
-      });
-    });
-
-    describe('canUserResume', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserResume(['RECORDING_CONTROL_RESUME']), true);
-        assert.deepEqual(MeetingUtil.canUserResume([]), false);
-      });
-    });
-
-    describe('canUserStop', () => {
-      it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserStop(['RECORDING_CONTROL_STOP']), true);
-        assert.deepEqual(MeetingUtil.canUserStop([]), false);
-      });
-    });
-
     [
       {functionName: 'canEnableClosedCaption', displayHint: 'CAPTION_START'},
       {functionName: 'canStartTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_START'},
@@ -433,7 +405,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-
     describe('reactions', () => {
       describe('canEnableReactions', () => {
         [[null, DISPLAY_HINTS.ENABLE_REACTIONS, true], [null, DISPLAY_HINTS.DISABLE_REACTIONS, false], [null, undefined, null]].forEach(() => ([originalValue, displayHint, expected]) => {
@@ -446,104 +417,5 @@ describe('plugin-meetings', () => {
         });
       });
     });
-
-    describe('recording tests', () => {
-      let request;
-      let locusInfo;
-      const locusUrl = 'locusUrl';
-
-      beforeEach(() => {
-        locusInfo = {
-          parsedLocus: {
-            info: {
-              userDisplayHints: ['RECORDING_CONTROL_START'],
-            },
-          },
-        };
-        request = {
-          recordMeeting: sinon.stub().returns(Promise.resolve()),
-        };
-      });
-
-      describe('startRecording', () => {
-        it('can start recording when the correct display hint is present', () => {
-          locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_START');
-
-          const result = MeetingUtil.startRecording(request, locusUrl, locusInfo);
-
-          assert.calledWith(request.recordMeeting, {locusUrl, recording: true, paused: false});
-
-          assert.deepEqual(result, request.recordMeeting.firstCall.returnValue);
-        });
-
-        it('rejects when correct display hint is not present', () => {
-          const result = MeetingUtil.startRecording(request, locusUrl, {});
-
-          assert.notCalled(request.recordMeeting);
-
-          assert.isRejected(result);
-        });
-      });
-
-      describe('pauseRecording', () => {
-        it('can pause recording when the correct display hint is present', () => {
-          locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_PAUSE');
-
-          const result = MeetingUtil.pauseRecording(request, locusUrl, locusInfo);
-
-          assert.calledWith(request.recordMeeting, {locusUrl, recording: true, paused: true});
-
-          assert.deepEqual(result, request.recordMeeting.firstCall.returnValue);
-        });
-
-        it('rejects when correct display hint is not present', () => {
-          const result = MeetingUtil.pauseRecording(request, locusUrl, {});
-
-          assert.notCalled(request.recordMeeting);
-
-          assert.isRejected(result);
-        });
-      });
-
-      describe('resumeRecording', () => {
-        it('can resume recording when the correct display hint is present', () => {
-          locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_RESUME');
-
-          const result = MeetingUtil.resumeRecording(request, locusUrl, locusInfo);
-
-          assert.calledWith(request.recordMeeting, {locusUrl, recording: true, paused: false});
-
-          assert.deepEqual(result, request.recordMeeting.firstCall.returnValue);
-        });
-
-        it('rejects when correct display hint is not present', () => {
-          const result = MeetingUtil.resumeRecording(request, locusUrl, {});
-
-          assert.notCalled(request.recordMeeting);
-
-          assert.isRejected(result);
-        });
-      });
-
-      describe('stopRecording', () => {
-        it('can stop recording when the correct display hint is present', () => {
-          locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_STOP');
-
-          const result = MeetingUtil.stopRecording(request, locusUrl, locusInfo);
-
-          assert.calledWith(request.recordMeeting, {locusUrl, recording: false, paused: false});
-
-          assert.deepEqual(result, request.recordMeeting.firstCall.returnValue);
-        });
-
-        it('rejects when correct display hint is not present', () => {
-          const result = MeetingUtil.stopRecording(request, locusUrl, {});
-
-          assert.notCalled(request.recordMeeting);
-
-          assert.isRejected(result);
-        });
-      });
-    });
-  });
+  })
 });
