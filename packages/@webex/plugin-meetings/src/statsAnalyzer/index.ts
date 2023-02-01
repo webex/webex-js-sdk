@@ -395,6 +395,7 @@ export class StatsAnalyzer extends EventsScope {
     if (this.statsResults[type]) {
       this.statsResults[type].direction = statsItem.currentDirection;
       this.statsResults[type].trackLabel = statsItem.localTrackLabel;
+      this.statsResults[type].csi = statsItem.csi;
     }
   }
 

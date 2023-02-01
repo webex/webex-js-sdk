@@ -17,6 +17,11 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
   const lastFecPacketsDiscarded =
     lastMqaDataSent[mediaType]?.[sendrecvType].fecPacketsDiscarded || 0;
 
+  const {csi} = statsResults[mediaType];
+  if (csi && !audioReceiver.streams[0].common.csi.includes(csi)) {
+    audioReceiver.streams[0].common.csi.push(csi);
+  }
+
   audioReceiver.common.common.direction = statsResults[mediaType].direction;
   audioReceiver.common.transportType = statsResults.connectionType.remote.transport[0];
 
@@ -71,6 +76,11 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, m
   const lastBytesSent = lastMqaDataSent[mediaType]?.[sendrecvType].totalBytesSent || 0;
   const lastFramesEncoded = lastMqaDataSent[mediaType]?.[sendrecvType].totalKeyFramesEncoded || 0;
   const lastFirCount = lastMqaDataSent[mediaType]?.[sendrecvType].totalFirCount || 0;
+
+  const {csi} = statsResults[mediaType];
+  if (csi && !audioSender.streams[0].common.csi.includes(csi)) {
+    audioSender.streams[0].common.csi.push(csi);
+  }
 
   audioSender.common.common.direction = statsResults[mediaType].direction;
   audioSender.common.transportType = statsResults.connectionType.local.transport[0];
@@ -129,6 +139,11 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   const lastFramesDropped = lastMqaDataSent[mediaType]?.[sendrecvType].framesDropped || 0;
   const lastKeyFramesDecoded = lastMqaDataSent[mediaType]?.[sendrecvType].keyFramesDecoded || 0;
   const lastPliCount = lastMqaDataSent[mediaType]?.[sendrecvType].totalPliCount || 0;
+
+  const {csi} = statsResults[mediaType];
+  if (csi && !videoReceiver.streams[0].common.csi.includes(csi)) {
+    videoReceiver.streams[0].common.csi.push(csi);
+  }
 
   videoReceiver.common.common.direction = statsResults[mediaType].direction;
   videoReceiver.common.transportType = statsResults.connectionType.remote.transport[0];
@@ -208,6 +223,10 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
     lastMqaDataSent[mediaType]?.[sendrecvType].totalKeyFramesEncoded || 0;
   const lastFirCount = lastMqaDataSent[mediaType]?.[sendrecvType].totalFirCount || 0;
   const lastFramesSent = lastMqaDataSent[mediaType]?.[sendrecvType].framesSent || 0;
+  const {csi} = statsResults[mediaType];
+  if (csi && !videoSender.streams[0].common.csi.includes(csi)) {
+    videoSender.streams[0].common.csi.push(csi);
+  }
 
   videoSender.common.common.direction = statsResults[mediaType].direction;
   videoSender.common.transportType = statsResults.connectionType.local.transport[0];

@@ -102,6 +102,7 @@ export const emptyAudioTransmit = {
     {
       common: {
         codec: 'opus',
+        csi: [],
         requestedBitrate: 0,
         requestedFrames: 0,
         rtpPackets: 0,
@@ -147,7 +148,7 @@ export const emptyVideoReceive = {
       common: {
         codec: 'H264',
         concealedFrames: 0, // Not avaliable
-        csi: [], // Not avaliable
+        csi: [],
         maxConcealRunLength: 0, // Not avaliable
         optimalBitrate: 0,
         optimalFrameRate: 0,
@@ -211,6 +212,7 @@ export const emptyVideoTransmit = {
     {
       common: {
         codec: 'H264',
+        csi: [],
         duplicateSsci: 0, // Not Avaliable
         requestedBitrate: 0, // TODO: from remote SDP
         requestedFrames: 0, // TODO: from remote SDP
@@ -280,7 +282,7 @@ export const emptyVideoShareReceive = {
       common: {
         codec: 'H264',
         concealedFrames: 0, // Not avaliable
-        csi: [], // Not avaliable
+        csi: [],
         maxConcealRunLength: 0, // Not avaliable
         optimalBitrate: 0,
         optimalFrameRate: 0,
@@ -345,6 +347,7 @@ export const emptyVideoShareTransmit = {
     {
       common: {
         codec: 'H264',
+        csi: [],
         duplicateSsci: 0, // Not Avaliable
         requestedBitrate: 0, // TODO: from remote SDP
         requestedFrames: 0, // TODO: from remote SDP
