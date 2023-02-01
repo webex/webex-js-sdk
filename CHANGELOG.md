@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.19](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.18...v3.0.0-beta.19) (2023-02-01)
+
+
+### Bug Fixes
+
+* workaround for edonus bug when handling Roap glare ([#2587](https://github.com/webex/webex-js-sdk/issues/2587)) ([45207ea](https://github.com/webex/webex-js-sdk/commit/45207ea4118e8a3f70bdeec6ddc45785486693af))
+
 ## [3.0.0-beta.18](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.17...v3.0.0-beta.18) (2023-01-31)
 
 
