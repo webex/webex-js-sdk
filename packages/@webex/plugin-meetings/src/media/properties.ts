@@ -257,12 +257,7 @@ export default class MediaProperties {
 
     try {
       const statsResult = await this.webrtcMediaConnection.getStats();
-
-      if (typeof statsResult.forEach === 'function') {
-        statsResult.forEach((report) => allStatsReports.push(report));
-      } else {
-        allStatsReports.push(...Object.values(statsResult));
-      }
+      statsResult.forEach((report) => allStatsReports.push(report));
     } catch (error) {
       LoggerProxy.logger.warn(
         `Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`
