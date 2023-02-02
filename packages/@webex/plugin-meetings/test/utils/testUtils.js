@@ -195,12 +195,19 @@ const delayedTest = (callback, timeout) =>
     }, timeout);
   });
 
-const addMedia = (user) => {
-  const mediaReadyPromises = {
-    local: new Defer(),
-    remoteAudio: new Defer(),
-    remoteVideo: new Defer(),
-  };
+const addMedia = (user, options = {}) => {
+  const mediaReadyPromises = Array.isArray(options.streams)
+    ? options.streams.reduce((output, stream) => {
+      if (typeof stream !== 'string') {
+        return output;
+      }
+
+      output[stream] = new Defer();
+
+      return output;
+    }, {})
+    : {local: new Defer(), remoteAudio: new Defer(), remoteVideo: new Defer()};
+
   const mediaReady = (media) => {
     if (!media) {
       return;

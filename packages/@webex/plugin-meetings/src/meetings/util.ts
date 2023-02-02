@@ -59,6 +59,22 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
         };
 
         meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
+
+        let roapConnectionService;
+
+        try {
+          roapConnectionService = roapMessage.sdp
+            .split('\r\n')
+            .find((line) => line.includes('o='))
+            .split(' ')
+            .shift()
+            .replace('o=', '');
+        } catch {
+          roapConnectionService = undefined;
+        }
+
+        meeting.mediaProperties.webrtcMediaConnection.roapConnectionService = roapConnectionService;
+        meeting.mediaProperties.webrtcMediaConnection.roapMessage = roapMessage;
       }
     }
   }
