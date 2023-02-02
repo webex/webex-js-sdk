@@ -2217,6 +2217,190 @@ describe('plugin-meetings', () => {
           );
           assert.isTrue(myPromiseResolved);
         });
+
+        it('should request floor only after roap transaction is completed', async () => {
+          const eventListeners = {};
+
+          meeting.webex.meetings.reachability = {
+            isAnyClusterReachable: sandbox.stub().resolves(true)
+          };
+
+          const fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+
+            // mock the on() method and store all the listeners
+            on: sinon.stub().callsFake((event, listener) => {
+              eventListeners[event] = listener;
+            }),
+
+            updateSendReceiveOptions: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+              if (eventListeners[Event.ROAP_STARTED]) {
+                eventListeners[Event.ROAP_STARTED]();
+              } else {
+                throw new Error('ROAP_STARTED listener not registered')
+              }
+              return Promise.resolve();
+            }),
+          };
+
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+          meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
+          Media.createMediaConnection = sinon.stub().returns(fakeMediaConnection);
+
+          const requestScreenShareFloorStub = sandbox.stub(meeting, 'requestScreenShareFloor').resolves({});
+
+          let myPromiseResolved = false;
+
+          meeting.meetingState = 'ACTIVE';
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
+
+          meeting
+            .updateMedia({
+              localShare: mockLocalShare,
+              mediaSettings: {
+                sendShare: true,
+              },
+            })
+            .then(() => {
+              myPromiseResolved = true;
+            });
+
+          await testUtils.flushPromises();
+
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.isFalse(myPromiseResolved);
+
+          // verify that requestScreenShareFloorStub was not called yet
+          assert.notCalled(requestScreenShareFloorStub);
+
+          eventListeners[Event.ROAP_DONE]();
+          await testUtils.flushPromises();
+
+          // now it should have been called
+          assert.calledOnce(requestScreenShareFloorStub);
+        });
+      });
+
+      describe('#updateShare', () => {
+        const mockLocalShare = {id: 'mock local share stream'};
+        let eventListeners;
+        let fakeMediaConnection;
+        let requestScreenShareFloorStub;
+
+        const FAKE_TRACKS = {
+          screenshareVideo: {
+            id: 'fake share track',
+            getSettings: sinon.stub().returns({}),
+          },
+        };
+
+        beforeEach(async () => {
+          eventListeners = {};
+
+          sinon.stub(MeetingUtil, 'getTrack').callsFake((stream) => {
+            if (stream === mockLocalShare) {
+              return {audioTrack: null, videoTrack: FAKE_TRACKS.screenshareVideo};
+            }
+
+            return {audioTrack: null, videoTrack: null};
+          });
+
+          meeting.webex.meetings.reachability = {
+            isAnyClusterReachable: sinon.stub().resolves(true)
+          };
+
+          fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+
+            // mock the on() method and store all the listeners
+            on: sinon.stub().callsFake((event, listener) => {
+              eventListeners[event] = listener;
+            }),
+
+            updateSendReceiveOptions: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+              if (eventListeners[Event.ROAP_STARTED]) {
+                eventListeners[Event.ROAP_STARTED]();
+              } else {
+                throw new Error('ROAP_STARTED listener not registered')
+              }
+              return Promise.resolve();
+            }),
+          };
+
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+          meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
+          Media.createMediaConnection = sinon.stub().returns(fakeMediaConnection);
+
+          requestScreenShareFloorStub = sinon.stub(meeting, 'requestScreenShareFloor').resolves({});
+
+          meeting.meetingState = 'ACTIVE';
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
+        });
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('when starting share, it should request floor only after roap transaction is completed', async () => {
+          let myPromiseResolved = false;
+
+          meeting
+            .updateShare({
+              sendShare: true,
+              receiveShare: true,
+              stream: mockLocalShare,
+            })
+            .then(() => {
+              myPromiseResolved = true;
+            });
+
+          await testUtils.flushPromises();
+
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.isFalse(myPromiseResolved);
+
+          // verify that requestScreenShareFloorStub was not called yet
+          assert.notCalled(requestScreenShareFloorStub);
+
+          eventListeners[Event.ROAP_DONE]();
+          await testUtils.flushPromises();
+
+          // now it should have been called
+          assert.calledOnce(requestScreenShareFloorStub);
+        });
+
+        it('when changing screen share stream and no roap transaction happening, it requests floor immediately', async () => {
+          let myPromiseResolved = false;
+
+          // simulate a case when no roap transaction is triggered by updateSendReceiveOptions
+          meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions = sinon.stub().resolves({});
+
+          meeting
+            .updateShare({
+              sendShare: true,
+              receiveShare: true,
+              stream: mockLocalShare,
+            })
+            .then(() => {
+              myPromiseResolved = true;
+            });
+
+          await testUtils.flushPromises();
+
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(requestScreenShareFloorStub);
+          assert.isTrue(myPromiseResolved);
+        });
       });
 
       describe('#changeVideoLayout', () => {
