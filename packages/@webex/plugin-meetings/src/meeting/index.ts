@@ -130,6 +130,7 @@ export const MEDIA_UPDATE_TYPE = {
   AUDIO: 'AUDIO',
   VIDEO: 'VIDEO',
   SHARE: 'SHARE',
+  LAMBDA: 'LAMBDA',
 };
 
 /**
@@ -5351,7 +5352,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private enqueueMediaUpdate(mediaUpdateType: string, options: object) {
+  private enqueueMediaUpdate(mediaUpdateType: string, options: any) {
+    if (mediaUpdateType === MEDIA_UPDATE_TYPE.LAMBDA && typeof options?.lambda !== 'function') {
+      return Promise.reject(
+        new Error('lambda must be specified when enqueuing MEDIA_UPDATE_TYPE.LAMBDA')
+      );
+    }
+    const canUpdateMediaNow = this.canUpdateMedia();
+
     return new Promise((resolve, reject) => {
       const queueItem = {
         pendingPromiseResolve: resolve,
@@ -5364,6 +5372,10 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#enqueueMediaUpdate --> enqueuing media update type=${mediaUpdateType}`
       );
       this.queuedMediaUpdates.push(queueItem);
+
+      if (canUpdateMediaNow) {
+        this.processNextQueuedMediaUpdate();
+      }
     });
   }
 
@@ -5415,6 +5427,9 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
         case MEDIA_UPDATE_TYPE.SHARE:
           this.updateShare(options).then(pendingPromiseResolve, pendingPromiseReject);
+          break;
+        case MEDIA_UPDATE_TYPE.LAMBDA:
+          options.lambda().then(pendingPromiseResolve, pendingPromiseReject);
           break;
         default:
           LoggerProxy.logger.error(
@@ -5500,17 +5515,26 @@ export default class Meeting extends StatelessWebexPlugin {
           // now it's called independently from the roap message (so might be before it), check if that's OK
           // if not, ensure it's called after (now it's called after roap message is sent out, but we're not
           // waiting for sendRoapMediaRequest() to be resolved)
-          .then(() => this.checkForStopShare(mediaSettings.sendShare, previousSendShareStatus))
-          .then((startShare) => {
-            // This is a special case if we do an /floor grant followed by /media
-            // we actually get a OFFER from the server and a GLAR condition happens
-            if (startShare) {
-              // We are assuming that the clients are connected when doing an update
-              return this.requestScreenShareFloor();
-            }
+          .then(() =>
+            this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
+              lambda: () => {
+                return Promise.resolve()
+                  .then(() =>
+                    this.checkForStopShare(mediaSettings.sendShare, previousSendShareStatus)
+                  )
+                  .then((startShare) => {
+                    // This is a special case if we do an /floor grant followed by /media
+                    // we actually get a OFFER from the server and a GLAR condition happens
+                    if (startShare) {
+                      // We are assuming that the clients are connected when doing an update
+                      return this.requestScreenShareFloor();
+                    }
 
-            return Promise.resolve();
-          })
+                    return Promise.resolve();
+                  });
+              },
+            })
+          )
       );
   }
 
@@ -5706,13 +5730,17 @@ export default class Meeting extends StatelessWebexPlugin {
               remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
             },
           })
-          .then(() => {
-            if (startShare) {
-              return this.requestScreenShareFloor();
-            }
+          .then(() =>
+            this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
+              lambda: async () => {
+                if (startShare) {
+                  return this.requestScreenShareFloor();
+                }
 
-            return Promise.resolve();
-          })
+                return undefined;
+              },
+            })
+          )
       )
       .then(() => {
         this.mediaProperties.mediaDirection.sendShare = sendShare;
