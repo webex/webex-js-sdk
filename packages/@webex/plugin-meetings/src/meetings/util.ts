@@ -60,20 +60,21 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
 
         meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
 
-        let roapConnectionService;
+        let mediaServer;
 
+        // Attempt to collect the media server from the roap message.
         try {
-          roapConnectionService = roapMessage.sdp
+          mediaServer = roapMessage.sdp
             .split('\r\n')
-            .find((line) => line.includes('o='))
+            .find((line) => line.startsWith('o='))
             .split(' ')
             .shift()
             .replace('o=', '');
         } catch {
-          roapConnectionService = undefined;
+          mediaServer = undefined;
         }
 
-        meeting.mediaProperties.webrtcMediaConnection.roapConnectionService = roapConnectionService;
+        meeting.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
         meeting.mediaProperties.webrtcMediaConnection.roapMessage = roapMessage;
       }
     }

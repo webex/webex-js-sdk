@@ -1,126 +1,163 @@
 import { config } from 'dotenv';
 
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 
+import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
 import webexTestUsers from '../../utils/webex-test-users';
 
 config();
 
 skipInNode(describe)('plugin-meetings', () => {
-  describe('converged-space-meeting', () => {
+  describe.only('converged-space-meeting', () => {
+    let stepFailed = false;
     let users, alice, bob, chris;
     let meeting = null;
     let space = null;
 
-    before(() => webexTestUsers.generateConvergedTestUsers({
+    before(async () => {
+      const userSet = await webexTestUsers.generateConvergedTestUsers({
         count: 3,
         whistler: process.env.WHISTLER || process.env.JENKINS,
-      }).then((userSet) => {
-        users = userSet;
-        alice = users[0];
-        bob = users[1];
-        chris = users[2];
-        alice.name = 'alice';
-        bob.name = 'bob';
-        chris.name = 'chris';
-      }).then(() => Promise.all([
-        testUtils.syncAndEndMeeting(alice),
-        testUtils.syncAndEndMeeting(bob),
-      ])).catch((error) => {
-        console.log(error);
-      })
-    );
+      });
 
-    it('user "alice" starts a space', () =>
-      alice.webex.internal.conversation.create({
+      users = userSet;
+      alice = users[0];
+      bob = users[1];
+      chris = users[2];
+      alice.name = 'alice';
+      bob.name = 'bob';
+      chris.name = 'chris';
+
+      const aliceSync = testUtils.syncAndEndMeeting(alice);
+      const bobSync = testUtils.syncAndEndMeeting(bob);
+      const chrisSync = testUtils.syncAndEndMeeting(chris);
+
+      await aliceSync;
+      await bobSync;
+      await chrisSync;
+    });
+
+    // Skip a test in this series if one failed.
+    beforeEach(function() {
+      if (stepFailed) {
+        this.skip();
+      }
+    });
+
+    // Store to the describe scope if a test has failed for skipping.
+    afterEach(function() {
+      if (this.currentTest.state === 'failed') {
+        stepFailed = true;
+      }
+    });
+
+    it('user "alice" starts a space', async () => {
+      const conversation = await alice.webex.internal.conversation.create({
         participants: [bob, chris],
-      }).then((conversation) => {
-        assert.lengthOf(conversation.participants.items, 3);
-        assert.lengthOf(conversation.activities.items, 1);
-        space = conversation;
-      }).then(() => Promise.all([
-        alice.webex.meetings.meetingInfo.fetchMeetingInfo(space.url, 'CONVERSATION_URL'),
-        alice.webex.meetings.meetingInfo.fetchMeetingInfo(space.url),
-      ])).then(([destinationWithType, destinationWithoutType]) => {
-        assert.exists(destinationWithoutType);
-        assert.exists(destinationWithType);
-        assert.exists(destinationWithoutType.body.meetingNumber);
-        assert.exists(destinationWithType.body.meetingNumber);
-      }),
-    );
+      });
 
-    it('user "alice" starts a meeting', () =>
-      Promise.all([
-        testUtils.delayedPromise(alice.webex.meetings.create(space.url)),
-        testUtils.waitForEvents([{
-          scope: alice.webex.meetings,
-          event: 'meeting:added',
-          user: alice,
-        }]),
-      ]).then(([createdMeeting]) => {
-        assert.exists(createdMeeting);
+      assert.lengthOf(conversation.participants.items, 3);
+      assert.lengthOf(conversation.activities.items, 1);
 
-        meeting = createdMeeting;
-      }),
-    );
+      space = conversation;
 
-    it('user "alice" joins the meeting', () =>
-      Promise.all([
-        testUtils.delayedPromise(alice.meeting.join({enableMultistream: true})),
-        testUtils.waitForEvents([
-          {scope: bob.webex.meetings, event: 'meeting:added', user: bob},
-          {scope: chris.webex.meetings, event: 'meeting:added', user: chris},
-        ]),
-      ]).then(() => {
-        assert.isTrue(!!alice.webex.meetings.meetingCollection.meetings[meeting.id].joinedWith);
-      }),
-    );
+      const destinationWithType = await alice.webex.meetings.meetingInfo.fetchMeetingInfo(space.url, 'CONVERSATION_URL');
+      const destinationWithoutType = await alice.webex.meetings.meetingInfo.fetchMeetingInfo(space.url);
 
-    it('users "bob" and "chris" join the meeting', () =>
-      testUtils.waitForStateChange(alice.meeting, 'JOINED')
-        .then(() => Promise.all([
-          testUtils.waitForStateChange(bob.meeting, 'IDLE'),
-          testUtils.waitForStateChange(chris.meeting, 'IDLE'),
-        ])).then(() => Promise.all([
-          bob.meeting.join({enableMultistream: true}),
-          chris.meeting.join({enableMultistream: true}),
-        ])).then(() => Promise.all([
-          testUtils.waitForStateChange(bob.meeting, 'JOINED'),
-          testUtils.waitForStateChange(chris.meeting, 'JOINED'),
-        ])).then(() => {
-          assert.exists(bob.meeting.joinedWith);
-          assert.exists(chris.meeting.joinedWith);
-        }),
-    );
+      assert.exists(destinationWithoutType);
+      assert.exists(destinationWithType);
+      assert.exists(destinationWithoutType.body.meetingNumber);
+      assert.exists(destinationWithType.body.meetingNumber);
+    });
 
-    it('user "alice", "bob", and "chris" adds media', () =>
-      Promise.all([
-        testUtils.addMedia(alice, {streams: ['local']}),
-        testUtils.addMedia(bob, {streams: ['local']}),
-        testUtils.addMedia(chris, {streams: ['local']}),
-      ])
-        .then(() => {
-          assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendAudio);
-          assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendVideo);
-          assert.isTrue(alice.meeting.mediaProperties.mediaDirection.receiveAudio);
-          assert.isTrue(alice.meeting.mediaProperties.mediaDirection.receiveVideo);
-          assert.isTrue(bob.meeting.mediaProperties.mediaDirection.sendAudio);
-          assert.isTrue(bob.meeting.mediaProperties.mediaDirection.sendVideo);
-          assert.isTrue(bob.meeting.mediaProperties.mediaDirection.receiveAudio);
-          assert.isTrue(bob.meeting.mediaProperties.mediaDirection.receiveVideo);
-          assert.isTrue(chris.meeting.mediaProperties.mediaDirection.sendAudio);
-          assert.isTrue(chris.meeting.mediaProperties.mediaDirection.sendVideo);
-          assert.isTrue(chris.meeting.mediaProperties.mediaDirection.receiveAudio);
-          assert.isTrue(chris.meeting.mediaProperties.mediaDirection.receiveVideo);
-        })
-    );
+    it('user "alice" starts a meeting', async () => {
+      const wait = testUtils.waitForEvents([{
+        scope: alice.webex.meetings,
+        event: 'meeting:added',
+        user: alice,
+      }]);
 
-    it('user "alice", "bob", and "chris" should be using the "homer" roap connection service', () => {
-        assert.equal(alice.meeting.mediaProperties.webrtcMediaConnection.roapConnectionService, 'homer');
-        assert.equal(bob.meeting.mediaProperties.webrtcMediaConnection.roapConnectionService, 'homer');
-        assert.equal(chris.meeting.mediaProperties.webrtcMediaConnection.roapConnectionService, 'homer');
+      const createdMeeting = await testUtils.delayedPromise(alice.webex.meetings.create(space.url));
+
+      await wait;
+
+      assert.exists(createdMeeting);
+
+      meeting = createdMeeting;
+    });
+
+    it('user "alice" joins the meeting', async () => {
+      const wait = testUtils.waitForEvents([
+        {scope: bob.webex.meetings, event: 'meeting:added', user: bob},
+        {scope: chris.webex.meetings, event: 'meeting:added', user: chris},
+      ]);
+
+      await testUtils.delayedPromise(alice.meeting.join({enableMultistream: true}));
+
+      await wait;
+
+      assert.isTrue(!!alice.webex.meetings.meetingCollection.meetings[meeting.id].joinedWith);
+    });
+
+    it('users "bob" and "chris" join the meeting', async () => {
+      await testUtils.waitForStateChange(alice.meeting, 'JOINED');
+
+      const bobIdle = testUtils.waitForStateChange(bob.meeting, 'IDLE');
+      const chrisIdle =  testUtils.waitForStateChange(chris.meeting, 'IDLE');
+
+      await bobIdle;
+      await chrisIdle;
+
+      const bobJoined = testUtils.waitForStateChange(bob.meeting, 'JOINED');
+      const chrisJoined =  testUtils.waitForStateChange(chris.meeting, 'JOINED');
+      const bobJoin = bob.meeting.join({enableMultistream: true});
+      const chrisJoin = chris.meeting.join({enableMultistream: true});
+
+      await bobJoin;
+      await chrisJoin;
+      await bobJoined;
+      await chrisJoined;
+
+      assert.exists(bob.meeting.joinedWith);
+      assert.exists(chris.meeting.joinedWith);
+    });
+
+    it('user "alice", "bob", and "chris" adds media', async () => {
+      const addMediaAlice = testUtils.addMedia(alice, {expectedMediaReadyTypes: ['local']});
+      const addMediaBob = testUtils.addMedia(bob, {expectedMediaReadyTypes: ['local']});
+      const addMediaChris = testUtils.addMedia(chris, {expectedMediaReadyTypes: ['local']});
+
+      await addMediaAlice;
+      await addMediaBob;
+      await addMediaChris;
+
+      assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendAudio);
+      assert.isTrue(alice.meeting.mediaProperties.mediaDirection.sendVideo);
+      assert.isTrue(alice.meeting.mediaProperties.mediaDirection.receiveAudio);
+      assert.isTrue(alice.meeting.mediaProperties.mediaDirection.receiveVideo);
+      assert.isTrue(bob.meeting.mediaProperties.mediaDirection.sendAudio);
+      assert.isTrue(bob.meeting.mediaProperties.mediaDirection.sendVideo);
+      assert.isTrue(bob.meeting.mediaProperties.mediaDirection.receiveAudio);
+      assert.isTrue(bob.meeting.mediaProperties.mediaDirection.receiveVideo);
+      assert.isTrue(chris.meeting.mediaProperties.mediaDirection.sendAudio);
+      assert.isTrue(chris.meeting.mediaProperties.mediaDirection.sendVideo);
+      assert.isTrue(chris.meeting.mediaProperties.mediaDirection.receiveAudio);
+      assert.isTrue(chris.meeting.mediaProperties.mediaDirection.receiveVideo);
+    });
+
+    it(`user "alice", "bob", and "chris" should be using the "${MEDIA_SERVERS.HOMER}" roap connection service`, async () => {
+      // await testUtils.waitForEvents([ // PENDING CORRECT EVENT NAMES
+      //   {scope: alice.webex.meetings, event: 'media:negotiated', user: alice},
+      //   {scope: bob.webex.meetings, event: 'media:negotiated', user: bob},
+      //   {scope: chris.webex.meetings, event: 'media:negotiated', user: chris},
+      // ]);
+
+      assert.equal(alice.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
+      assert.equal(bob.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
+      assert.equal(chris.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
     });
   });
 });
