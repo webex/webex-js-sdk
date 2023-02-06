@@ -65,7 +65,6 @@ export default class ControlsOptionsManager {
 
   /**
    * @param {MeetingRequest} request
-   * @param {LocusInfo} info
    * @returns {void}
    * @private
    * @memberof ControlsOptionsManager

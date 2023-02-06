@@ -36,6 +36,7 @@ import PeerConnectionManager from '@webex/plugin-meetings/src/peer-connection-ma
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import RecordingUtil from '@webex/plugin-meetings/src/recording-controller/util';
+import ControlsOptionsUtil from '@webex/plugin-meetings/src/controls-options-manager/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
@@ -3585,6 +3586,7 @@ describe('plugin-meetings', () => {
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -3593,6 +3595,7 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
@@ -4040,6 +4043,10 @@ describe('plugin-meetings', () => {
         let canUserStopSpy;
         let canUserPauseSpy;
         let canUserResumeSpy;
+        let canSetMuteOnEntrySpy;
+        let canUnsetMuteOnEntrySpy;
+        let canSetDisallowUnmuteSpy;
+        let canUnsetDisallowUnmuteSpy;
         let canUserRaiseHandSpy;
         let bothLeaveAndEndMeetingAvailableSpy;
         let canUserLowerAllHandsSpy;
@@ -4054,6 +4061,10 @@ describe('plugin-meetings', () => {
           canUserStopSpy = sinon.spy(RecordingUtil, 'canUserStop');
           canUserPauseSpy = sinon.spy(RecordingUtil, 'canUserPause');
           canUserResumeSpy = sinon.spy(RecordingUtil, 'canUserResume');
+          canSetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canSetMuteOnEntry');
+          canUnsetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canUnsetMuteOnEntry');
+          canSetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canSetDisallowUnmute');
+          canUnsetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canUnsetDisallowUnmute');
           inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
           canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
           canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
@@ -4095,6 +4106,10 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
+          assert.calledWith(canSetMuteOnEntrySpy, payload.info.userDisplayHints);
+          assert.calledWith(canUnsetMuteOnEntrySpy, payload.info.userDisplayHints);
+          assert.calledWith(canSetDisallowUnmuteSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUnsetDisallowUnmuteSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
           assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
