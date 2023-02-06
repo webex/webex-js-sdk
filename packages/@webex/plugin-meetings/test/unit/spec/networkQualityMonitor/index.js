@@ -42,12 +42,12 @@ describe('plugin-meetings', () => {
         roundTripTimeMeasurements: 14,
       },
       statsAnalyzerCurrentStats: {
-        'video-send': {
+        'audio-send': {
           send: {
             currentPacketLossRatio: 8,
           },
         },
-        'audio-send': {
+        'video-send': {
           send: {
             currentPacketLossRatio: 10,
           },
