@@ -31,6 +31,7 @@ import MeetingRequest from './request';
 import Members from '../members/index';
 import MeetingUtil from './util';
 import RecordingUtil from '../recording-controller/util';
+import ControlsOptionsUtil from '../controls-options-manager/util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
 import PasswordError from '../common/errors/password-error';
@@ -90,6 +91,7 @@ import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type'
 
 import InMeetingActions from './in-meeting-actions';
 import RecordingController from '../recording-controller';
+import ControlsOptionsManager from '../controls-options-manager';
 
 const {isBrowser} = BrowserDetection();
 
@@ -455,6 +457,7 @@ export default class Meeting extends StatelessWebexPlugin {
   queuedMediaUpdates: any[];
   recording: any;
   recordingController: RecordingController;
+  controlsOptionsManager: ControlsOptionsManager;
   requiredCaptcha: any;
   shareStatus: string;
   statsAnalyzer: StatsAnalyzer;
@@ -998,6 +1001,18 @@ export default class Meeting extends StatelessWebexPlugin {
     this.recordingController = new RecordingController(this.meetingRequest, {
       serviceUrl: this.locusInfo?.links?.services?.record?.url,
       sessionId: this.locusInfo?.fullState?.sessionId,
+      locusUrl: this.locusInfo?.url,
+      displayHints: [],
+    });
+
+    /**
+     * The class that helps to control recording functions: start, stop, pause, resume, etc
+     * @instance
+     * @type {ControlsOptionsManager}
+     * @public
+     * @memberof Meeting
+     */
+    this.controlsOptionsManager = new ControlsOptionsManager(this.meetingRequest, {
       locusUrl: this.locusInfo?.url,
       displayHints: [],
     });
@@ -2020,6 +2035,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.locusUrl = payload;
       this.locusId = this.locusUrl?.split('/').pop();
       this.recordingController.setLocusUrl(this.locusUrl);
+      this.controlsOptionsManager.setLocusUrl(this.locusUrl);
     });
   }
 
@@ -2085,6 +2101,16 @@ export default class Meeting extends StatelessWebexPlugin {
           canAdmitParticipant: MeetingUtil.canAdmitParticipant(payload.info.userDisplayHints),
           canLock: MeetingUtil.canUserLock(payload.info.userDisplayHints),
           canUnlock: MeetingUtil.canUserUnlock(payload.info.userDisplayHints),
+          canSetDisallowUnmute: ControlsOptionsUtil.canSetDisallowUnmute(
+            payload.info.userDisplayHints
+          ),
+          canUnsetDisallowUnmute: ControlsOptionsUtil.canUnsetDisallowUnmute(
+            payload.info.userDisplayHints
+          ),
+          canSetMuteOnEntry: ControlsOptionsUtil.canSetMuteOnEntry(payload.info.userDisplayHints),
+          canUnsetMuteOnEntry: ControlsOptionsUtil.canUnsetMuteOnEntry(
+            payload.info.userDisplayHints
+          ),
           canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
           canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
           canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
@@ -2113,6 +2139,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
+        this.controlsOptionsManager.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {
           Trigger.trigger(
@@ -5550,6 +5577,28 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public startRecording() {
     return this.recordingController.startRecording();
+  }
+
+  /**
+   * set the mute on entry flag for participants if you're the host
+   * @returns {Promise}
+   * @param {boolean} enabled
+   * @public
+   * @memberof Meeting
+   */
+  public setMuteOnEntry(enabled: boolean) {
+    return this.controlsOptionsManager.setMuteOnEntry(enabled);
+  }
+
+  /**
+   * set the disallow unmute flag for participants if you're the host
+   * @returns {Promise}
+   * @param {boolean} enabled
+   * @public
+   * @memberof Meeting
+   */
+  public setDisallowUnmute(enabled: boolean) {
+    return this.controlsOptionsManager.setDisallowUnmute(enabled);
   }
 
   /**
