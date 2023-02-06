@@ -198,7 +198,7 @@ const delayedTest = (callback, timeout) =>
 const addMedia = (user, options = {}) => {
   const mediaReadyPromises = Array.isArray(options.expectedMediaReadyTypes)
     ? options.expectedMediaReadyTypes.reduce((output, expectedMediaReadyType) => {
-      if (typeof stream !== 'string') {
+      if (typeof expectedMediaReadyType !== 'string') {
         return output;
       }
 

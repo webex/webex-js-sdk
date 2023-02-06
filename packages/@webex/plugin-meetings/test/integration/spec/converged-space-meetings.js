@@ -11,14 +11,14 @@ import webexTestUsers from '../../utils/webex-test-users';
 config();
 
 skipInNode(describe)('plugin-meetings', () => {
-  describe.only('converged-space-meeting', () => {
+  describe('converged-space-meeting', () => {
     let stepFailed = false;
     let users, alice, bob, chris;
     let meeting = null;
     let space = null;
 
     before(async () => {
-      const userSet = await webexTestUsers.generateConvergedTestUsers({
+      const userSet = await webexTestUsers.generateTestUsers({
         count: 3,
         whistler: process.env.WHISTLER || process.env.JENKINS,
       });
@@ -41,6 +41,8 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     // Skip a test in this series if one failed.
+    // This beforeEach() instance function must use the `function` declaration to preserve the
+    // `this` context. `() => {}` will not generate the correct `this` context
     beforeEach(function() {
       if (stepFailed) {
         this.skip();
@@ -48,6 +50,8 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     // Store to the describe scope if a test has failed for skipping.
+    // This beforeEach() instance function must use the `function` declaration to preserve the
+    // `this` context. `() => {}` will not generate the correct `this` context
     afterEach(function() {
       if (this.currentTest.state === 'failed') {
         stepFailed = true;
@@ -125,7 +129,7 @@ skipInNode(describe)('plugin-meetings', () => {
       assert.exists(chris.meeting.joinedWith);
     });
 
-    it('user "alice", "bob", and "chris" adds media', async () => {
+    it('users "alice", "bob", and "chris" adds media', async () => {
       const addMediaAlice = testUtils.addMedia(alice, {expectedMediaReadyTypes: ['local']});
       const addMediaBob = testUtils.addMedia(bob, {expectedMediaReadyTypes: ['local']});
       const addMediaChris = testUtils.addMedia(chris, {expectedMediaReadyTypes: ['local']});
@@ -148,7 +152,7 @@ skipInNode(describe)('plugin-meetings', () => {
       assert.isTrue(chris.meeting.mediaProperties.mediaDirection.receiveVideo);
     });
 
-    it(`user "alice", "bob", and "chris" should be using the "${MEDIA_SERVERS.HOMER}" roap connection service`, async () => {
+    it(`users "alice", "bob", and "chris" should be using the "${MEDIA_SERVERS.HOMER}" media server`, async () => {
       // await testUtils.waitForEvents([ // PENDING CORRECT EVENT NAMES
       //   {scope: alice.webex.meetings, event: 'media:negotiated', user: alice},
       //   {scope: bob.webex.meetings, event: 'media:negotiated', user: bob},

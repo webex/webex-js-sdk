@@ -1,6 +1,6 @@
 // MOVE TO TEST CONSTANTS
 export const MEDIA_SERVERS = {
-  // The homer media server for converged meetings.
+  // The homer media server for converged multistream meetings.
   HOMER: 'homer',
   // The linus media server
   LINUS: 'linus',

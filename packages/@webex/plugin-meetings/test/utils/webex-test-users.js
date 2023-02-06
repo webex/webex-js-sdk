@@ -17,7 +17,11 @@ require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
-const generateTestUsers = (options = {}) => testUser.create({count: options.count, config: options.config, whistler: options.whistler})
+const generateTestUsers = (options = {}) => {
+  options.config = options.config || {};
+  options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
+
+  return testUser.create(options)
     .then(async (userSet) => {
       if (userSet.length !== options.count) {
         return Promise.reject(new Error('Test users not created'));
@@ -50,22 +54,6 @@ const generateTestUsers = (options = {}) => testUser.create({count: options.coun
     .catch((error) => {
       console.error('#generateTestUsers=>ERROR', error);
     });
-
-    /**
-     * Generate test users using a converged test user organization.
-     *
-     * @param {Object} options - generateTestUser options param.
-     * @returns - An array of test users.
-     */
-const generateConvergedTestUsers = (options = {}) => {
-  const config = options.config || {};
-  config.orgId = config.orgId || process.env.WEBEX_CONVERGED_ORG_ID
-
-  return generateTestUsers({
-    config,
-    count: options.count,
-    whistler: options.whistler,
-  });
 };
 
 const reserveCMR = (user) =>
@@ -93,7 +81,6 @@ const reserveCMR = (user) =>
     });
 
 module.exports = {
-  generateConvergedTestUsers,
   generateTestUsers,
   reserveCMR,
 };
