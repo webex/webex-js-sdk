@@ -5,7 +5,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {BREAKOUTS, MEETINGS} from '../constants';
+import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
@@ -219,6 +219,46 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
+  },
+
+  /**
+   * Host or cohost starts breakout sessions
+   * @returns {Promise}
+   */
+  start() {
+    const startTime = new Date().toISOString();
+    const action = BREAKOUTS.ACTION.START;
+    const groups = this.breakouts.map(({groupId}) => {
+      return {id: groupId, startTime, action};
+    });
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups,
+      },
+    });
+  },
+
+  /**
+   * Host or cohost ends breakout sessions
+   * @returns {Promise}
+   */
+  end() {
+    const {delayCloseTime} = this;
+    const action = BREAKOUTS.ACTION.CLOSE;
+    const groups = this.breakouts.map(({groupId}) => {
+      return {id: groupId, delayCloseTime, action};
+    });
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups,
+      },
+    });
   },
 });
 

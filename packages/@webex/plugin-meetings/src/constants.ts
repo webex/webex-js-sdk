@@ -538,6 +538,10 @@ export const BREAKOUTS = {
     REQUESTED: 'requested',
   },
   BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
+  ACTION: {
+    START: 'START',
+    CLOSE: 'CLOSE',
+  },
 };
 
 export const LOCUSINFO = {
