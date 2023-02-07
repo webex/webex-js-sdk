@@ -236,12 +236,12 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         // check that we got the LOCAL_MEDIA_STARTED event for audio
-        checkReceivedEvent({expected: {local: {started: {type: 'audio-send'}}}});
+        checkReceivedEvent({expected: {local: {started: {type: 'audio'}}}});
 
         // now advance the clock and the mock still returns same values, so only "stopped" event should be triggered
         resetReceivedEvents();
         await progressTime();
-        checkReceivedEvent({expected: {local: {stopped: {type: 'audio-send'}}}});
+        checkReceivedEvent({expected: {local: {stopped: {type: 'audio'}}}});
       });
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for video', async () => {
@@ -256,12 +256,12 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         // check that we got the LOCAL_MEDIA_STARTED event for audio
-        checkReceivedEvent({expected: {local: {started: {type: 'video-send'}}}});
+        checkReceivedEvent({expected: {local: {started: {type: 'video'}}}});
 
         // now advance the clock and the mock still returns same values, so only "stopped" event should be triggered
         resetReceivedEvents();
         await progressTime();
-        checkReceivedEvent({expected: {local: {stopped: {type: 'video-send'}}}});
+        checkReceivedEvent({expected: {local: {stopped: {type: 'video'}}}});
       });
 
       it('emits REMOTE_MEDIA_STARTED and REMOTE_MEDIA_STOPPED events for audio', async () => {
@@ -275,13 +275,13 @@ describe('plugin-meetings', () => {
 
         await progressTime();
         // check that we got the REMOTE_MEDIA_STARTED event for audio
-        checkReceivedEvent({expected: {remote: {started: {type: 'audio-recv-0'}}}});
+        checkReceivedEvent({expected: {remote: {started: {type: 'audio'}}}});
 
         // now advance the clock and the mock still returns same values, so only "stopped" event should be triggered
         resetReceivedEvents();
         await progressTime();
 
-        checkReceivedEvent({expected: {remote: {stopped: {type: 'audio-recv-0'}}}});
+        checkReceivedEvent({expected: {remote: {stopped: {type: 'audio'}}}});
       });
 
       it('emits REMOTE_MEDIA_STARTED and REMOTE_MEDIA_STOPPED events for video', async () => {
@@ -295,13 +295,13 @@ describe('plugin-meetings', () => {
 
         await progressTime();
         // check that we got the REMOTE_MEDIA_STARTED event for video
-        checkReceivedEvent({expected: {remote: {started: {type: 'video-recv-0'}}}});
+        checkReceivedEvent({expected: {remote: {started: {type: 'video'}}}});
 
         // now advance the clock and the mock still returns same values, so only "stopped" event should be triggered
         resetReceivedEvents();
         await progressTime();
 
-        checkReceivedEvent({expected: {remote: {stopped: {type: 'video-recv-0'}}}});
+        checkReceivedEvent({expected: {remote: {stopped: {type: 'video'}}}});
       });
     });
   });
