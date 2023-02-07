@@ -1,8 +1,8 @@
 import { config } from 'dotenv';
-
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
+import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
 
 import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
@@ -12,15 +12,30 @@ config();
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('converged-space-meeting', () => {
-    let stepFailed = false;
+    let shouldSkip = false;
     let users, alice, bob, chris;
     let meeting = null;
     let space = null;
+    let mediaReadyListener = null;
 
-    before(async () => {
+    // Remove this `before` once firefox compatibility with converged is stable.
+    before('skip in firefox', () => {
+      const {isBrowser} = BrowserDetection();
+      
+      if (isBrowser('firefox')) {
+        shouldSkip = true;
+      }
+    })
+
+    before('setup users', async () => {
+      if (shouldSkip) {
+        return;
+      }
+
       const userSet = await webexTestUsers.generateTestUsers({
         count: 3,
         whistler: process.env.WHISTLER || process.env.JENKINS,
+        config
       });
 
       users = userSet;
@@ -43,8 +58,8 @@ skipInNode(describe)('plugin-meetings', () => {
     // Skip a test in this series if one failed.
     // This beforeEach() instance function must use the `function` declaration to preserve the
     // `this` context. `() => {}` will not generate the correct `this` context
-    beforeEach(function() {
-      if (stepFailed) {
+    beforeEach('check if should skip test', function() {
+      if (shouldSkip) {
         this.skip();
       }
     });
@@ -52,9 +67,9 @@ skipInNode(describe)('plugin-meetings', () => {
     // Store to the describe scope if a test has failed for skipping.
     // This beforeEach() instance function must use the `function` declaration to preserve the
     // `this` context. `() => {}` will not generate the correct `this` context
-    afterEach(function() {
+    afterEach('check if test failed', function() {
       if (this.currentTest.state === 'failed') {
-        stepFailed = true;
+        shouldSkip = true;
       }
     });
 
@@ -129,7 +144,13 @@ skipInNode(describe)('plugin-meetings', () => {
       assert.exists(chris.meeting.joinedWith);
     });
 
-    it('users "alice", "bob", and "chris" adds media', async () => {
+    it('users "alice", "bob", and "chris" add media', async () => {
+      mediaReadyListener = testUtils.waitForEvents([
+        {scope: alice.meeting, event: 'media:negotiated'},
+        {scope: bob.meeting, event: 'media:negotiated'},
+        {scope: chris.meeting, event: 'media:negotiated'},
+      ]);
+
       const addMediaAlice = testUtils.addMedia(alice, {expectedMediaReadyTypes: ['local']});
       const addMediaBob = testUtils.addMedia(bob, {expectedMediaReadyTypes: ['local']});
       const addMediaChris = testUtils.addMedia(chris, {expectedMediaReadyTypes: ['local']});
@@ -153,11 +174,7 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     it(`users "alice", "bob", and "chris" should be using the "${MEDIA_SERVERS.HOMER}" media server`, async () => {
-      // await testUtils.waitForEvents([ // PENDING CORRECT EVENT NAMES
-      //   {scope: alice.webex.meetings, event: 'media:negotiated', user: alice},
-      //   {scope: bob.webex.meetings, event: 'media:negotiated', user: bob},
-      //   {scope: chris.webex.meetings, event: 'media:negotiated', user: chris},
-      // ]);
+      await mediaReadyListener;
 
       assert.equal(alice.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
       assert.equal(bob.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
