@@ -481,15 +481,5 @@ export const errorObjects = {
 
 export const UNKNOWN = 'unknown';
 
-export const OS_NAME = {
-  WINDOWS: 'windows',
-  MAC: 'mac',
-  IOS: 'ios',
-  ANDROID: 'android',
-  CHROME: 'chrome',
-  LINUX: 'linux',
-  OTHERS: 'other',
-};
-
 export const CLIENT_NAME = 'webex-js-sdk';
 export const PLATFORM = 'Web';
