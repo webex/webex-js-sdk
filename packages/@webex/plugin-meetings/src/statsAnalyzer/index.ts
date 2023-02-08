@@ -640,16 +640,6 @@ export class StatsAnalyzer extends EventsScope {
           'video-recv',
           'framesDropped'
         );
-        const senderFramesDecoded = Object.keys(this.statsResults)
-          .filter((keys) => keys.includes('video-recv'))
-          .reduce(
-            (prev, cur) =>
-              prev +
-              ((this.statsResults.resolutions[cur].send &&
-                this.statsResults.resolutions[cur].send.framesDecoded) ||
-                0),
-            0
-          );
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
@@ -662,7 +652,7 @@ export class StatsAnalyzer extends EventsScope {
             );
           }
 
-          if (currentFramesDecoded === previousFramesDecoded || senderFramesDecoded === 0) {
+          if (currentFramesDecoded === previousFramesDecoded || currentFramesDecoded === 0) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No video frames decoded`
             );
