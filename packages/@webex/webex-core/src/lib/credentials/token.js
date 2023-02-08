@@ -241,7 +241,7 @@ const Token = WebexPlugin.extend({
    * @returns {Promise<Token>}
    */
   downscope(scope) {
-    this.logger.info(`token: downscoping token to ${scope}`);
+    // this.logger.info(`token: downscoping token to ${scope}`);
 
     if (this.isExpired) {
       this.logger.info('token: request received to downscope expired access_token');
