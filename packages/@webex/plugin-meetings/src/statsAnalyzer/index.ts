@@ -491,23 +491,26 @@ export class StatsAnalyzer extends EventsScope {
     if (this.lastStatsResults !== null && this.meetingMediaStatus) {
       const getCurrentStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
-          .filter((keys) => keys.includes(keyPrefix))
+          .filter((key) => key.startsWith(keyPrefix))
           .reduce((prev, cur) => prev + (this.statsResults[cur].recv[value] || 0), 0);
 
       const getPreviousStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
-          .filter((keys) => keys.includes(keyPrefix))
+          .filter((key) => key.startsWith(keyPrefix))
           .reduce((prev, cur) => prev + (this.lastStatsResults[cur].recv[value] || 0), 0);
 
       const getCurrentResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
-          .filter((keys) => keys.includes(keyPrefix))
-          .reduce((prev, cur) => prev + (this.statsResults[cur].recv[value] || 0), 0);
+          .filter((key) => key.startsWith(keyPrefix))
+          .reduce((prev, cur) => prev + (this.statsResults.resolutions[cur].recv[value] || 0), 0);
 
       const getPreviousResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
-          .filter((keys) => keys.includes(keyPrefix))
-          .reduce((prev, cur) => prev + (this.lastStatsResults[cur].recv[value] || 0), 0);
+          .filter((key) => key.startsWith(keyPrefix))
+          .reduce(
+            (prev, cur) => prev + (this.lastStatsResults.resolutions[cur].recv[value] || 0),
+            0
+          );
 
       if (this.meetingMediaStatus.expected.sendAudio && this.lastStatsResults['audio-send']) {
         // compare audio stats sent
@@ -724,27 +727,21 @@ export class StatsAnalyzer extends EventsScope {
         );
         const currentFramesReceived = getCurrentResolutionsStatsTotals(
           'video-share-recv',
-          'totalFramesReceived'
+          'framesReceived'
         );
         const previousFramesReceived = getPreviousResolutionsStatsTotals(
           'video-share-recv',
-          'totalFramesReceived'
+          'framesReceived'
         );
-        const currentFramesDecoded = getCurrentStatsTotals(
-          'video-share-recv',
-          'totalFramesDecoded'
-        );
-        const previousFramesDecoded = getPreviousStatsTotals(
-          'video-share-recv',
-          'totalFramesDecoded'
-        );
+        const currentFramesDecoded = getCurrentStatsTotals('video-share-recv', 'framesDecoded');
+        const previousFramesDecoded = getPreviousStatsTotals('video-share-recv', 'framesDecoded');
         const currentFramesDropped = getCurrentResolutionsStatsTotals(
           'video-share-recv',
-          'totalFramesDropped'
+          'framesDropped'
         );
         const previousFramesDropped = getPreviousResolutionsStatsTotals(
           'video-share-recv',
-          'totalFramesDropped'
+          'framesDropped'
         );
 
         const senderFramesDecoded = Object.keys(this.statsResults)
