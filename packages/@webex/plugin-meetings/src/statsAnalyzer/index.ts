@@ -710,7 +710,6 @@ export class StatsAnalyzer extends EventsScope {
           'video-share-recv',
           'totalPacketsReceived'
         );
-        const currentPacketsSent = getCurrentStatsTotals('video-share-recv', 'totalPacketsSent');
         const previousPacketsReceived = getPreviousStatsTotals(
           'video-share-recv',
           'totalPacketsReceived'
@@ -734,18 +733,7 @@ export class StatsAnalyzer extends EventsScope {
           'framesDropped'
         );
 
-        const senderFramesDecoded = Object.keys(this.statsResults)
-          .filter((keys) => keys.includes('video-share-recv'))
-          .reduce(
-            (prev, cur) =>
-              prev +
-              ((this.statsResults.resolutions[cur].send &&
-                this.statsResults.resolutions[cur].send.framesDecoded) ||
-                0),
-            0
-          );
-
-        if (currentPacketsReceived === previousPacketsReceived || currentPacketsSent === 0) {
+        if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets received`
           );
@@ -756,7 +744,7 @@ export class StatsAnalyzer extends EventsScope {
             );
           }
 
-          if (currentFramesDecoded === previousFramesDecoded || senderFramesDecoded === 0) {
+          if (currentFramesDecoded === previousFramesDecoded || currentFramesDecoded === 0) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No share frames decoded`
             );
@@ -1145,7 +1133,6 @@ export class StatsAnalyzer extends EventsScope {
     if (!result || result.type !== 'track') {
       return;
     }
-    if (result.type !== 'track') return;
 
     const sendrecvType =
       result.remoteSource === true ? STATS.RECEIVE_DIRECTION : STATS.SEND_DIRECTION;
