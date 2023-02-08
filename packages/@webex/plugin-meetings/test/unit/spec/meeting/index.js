@@ -2296,6 +2296,7 @@ describe('plugin-meetings', () => {
           screenshareVideo: {
             id: 'fake share track',
             getSettings: sinon.stub().returns({}),
+            addEventListener: sinon.stub(),
           },
         };
 
