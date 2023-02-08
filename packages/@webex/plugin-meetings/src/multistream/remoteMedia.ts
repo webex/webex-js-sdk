@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+import {MediaType, SourceState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
@@ -186,7 +187,7 @@ export class RemoteMedia extends EventsScope {
   /**
    * Getter for mediaType
    */
-  public get mediaType() {
+  public get mediaType(): MediaType {
     return this.receiveSlot?.mediaType;
   }
 
@@ -207,7 +208,7 @@ export class RemoteMedia extends EventsScope {
   /**
    * Getter for source state
    */
-  public get sourceState() {
+  public get sourceState(): SourceState {
     return this.receiveSlot?.sourceState;
   }
 
