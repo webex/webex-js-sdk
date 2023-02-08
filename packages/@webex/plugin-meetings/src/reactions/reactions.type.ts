@@ -13,15 +13,15 @@ export type Reaction = EmoticonData & {
 };
 
 // eslint-disable-next-line no-shadow
-export enum ReactionType {
+export enum ReactionServerType {
   smile = 'smile',
   sad = 'sad',
   wow = 'wow',
   haha = 'haha',
   celebrate = 'celebrate',
   clap = 'clap',
-  thumbs_up = 'thumbs_up',
-  thumbs_down = 'thumbs_down',
+  thumb_up = 'thumb_up',
+  thumb_down = 'thumb_down',
   heart = 'heart',
   fire = 'fire',
   prayer = 'prayer',

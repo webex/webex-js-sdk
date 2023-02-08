@@ -97,7 +97,7 @@ import {
 import {MultistreamMedia} from '../multistream/multistreamMedia';
 import {
   Reaction,
-  ReactionType,
+  ReactionServerType,
   SkinToneType,
   ProcessedReaction,
   RelayEvent,
@@ -7068,13 +7068,13 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Send a reaction inside the meeting.
    *
-   * @param {ReactionType} reactionType - type of reaction to be sent. Example: "thumbs_up"
+   * @param {ReactionServerType} reactionType - type of reaction to be sent. Example: "thumbs_up"
    * @param {SkinToneType} skinToneType - skin tone for the reaction. Example: "medium_dark"
    * @returns {Promise}
    * @public
    * @memberof Meeting
    */
-  public sendReaction(reactionType: ReactionType, skinToneType?: SkinToneType) {
+  public sendReaction(reactionType: ReactionServerType, skinToneType?: SkinToneType) {
     const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
     const participantId = this.members.selfId;
 
