@@ -5904,7 +5904,7 @@ describe('plugin-meetings', () => {
         it('should send reaction with the right data and return a promise', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          const reactionPromise = meeting.sendReaction('thumbs_down', 'light');
+          const reactionPromise = meeting.sendReaction('thumb_down', 'light');
 
           assert.exists(reactionPromise.then);
           await reactionPromise;
@@ -5928,7 +5928,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: undefined}};
 
           await assert.isRejected(
-            meeting.sendReaction('thumbs_down', 'light'),
+            meeting.sendReaction('thumb_down', 'light'),
             Error,
             'Error sending reaction, service url not found.'
           );
@@ -5951,7 +5951,7 @@ describe('plugin-meetings', () => {
         it('should send a reaction with default skin tone if provided skinToneType is invalid ', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          const reactionPromise = meeting.sendReaction('thumbs_down', 'invalid_skin_tone');
+          const reactionPromise = meeting.sendReaction('thumb_down', 'invalid_skin_tone');
 
           assert.exists(reactionPromise.then);
           await reactionPromise;
@@ -5970,7 +5970,7 @@ describe('plugin-meetings', () => {
         it('should send a reaction with default skin tone if none provided', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          const reactionPromise = meeting.sendReaction('thumbs_down');
+          const reactionPromise = meeting.sendReaction('thumb_down');
 
           assert.exists(reactionPromise.then);
           await reactionPromise;
