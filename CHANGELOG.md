@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.23](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.22...v3.0.0-beta.23) (2023-02-09)
+
+
+### Features
+
+* **plugin-meetings:** send MQEs for multistream connections ([#2574](https://github.com/webex/webex-js-sdk/issues/2574)) ([8987df2](https://github.com/webex/webex-js-sdk/commit/8987df239f1b363e545508bd7db6c74b64605ab9))
+
 ## [3.0.0-beta.22](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.21...v3.0.0-beta.22) (2023-02-08)
 
 
