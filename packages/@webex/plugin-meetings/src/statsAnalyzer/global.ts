@@ -1,55 +1,5 @@
 const STATS_DEFAULT = {
   encryption: 'sha-256',
-  audio: {
-    send: {
-      trackLabel: '',
-      maxPacketLossRatio: 0,
-      availableBandwidth: 0,
-      bytesSent: 0,
-      meanRemoteJitter: [],
-      meanRoundTripTime: [],
-    },
-    recv: {
-      availableBandwidth: 0,
-      bytesReceived: 0,
-      meanRtpJitter: [],
-      meanRoundTripTime: [],
-    },
-  },
-  video: {
-    send: {
-      trackLabel: '',
-      maxPacketLossRatio: 0,
-      availableBandwidth: 0,
-      meanRemoteJitter: [],
-      meanRoundTripTime: [],
-    },
-    recv: {
-      availableBandwidth: 0,
-      totalPacketsLost: 0,
-      meanRtpJitter: [],
-      meanRoundTripTime: [],
-    },
-    latency: 0,
-    packetsLost: 0,
-  },
-  share: {
-    send: {
-      maxPacketLossRatio: 0,
-      availableBandwidth: 0,
-      totalPacketsLost: 0,
-      meanRemoteJitter: [],
-      meanRoundTripTime: [],
-    },
-    recv: {
-      availableBandwidth: 0,
-      meanRtpJitter: [],
-      meanRoundTripTime: [],
-    },
-
-    latency: 0,
-    packetsLost: 0,
-  },
   bandwidth: {
     systemBandwidth: 0,
     sentPerSecond: 0,
@@ -77,51 +27,8 @@ const STATS_DEFAULT = {
       networkType: [],
     },
   },
-  resolutions: {
-    audio: {
-      send: {
-        width: 0,
-        height: 0,
-      },
-      recv: {
-        width: 0,
-        height: 0,
-      },
-    },
-    video: {
-      send: {
-        width: 0,
-        height: 0,
-      },
-      recv: {
-        width: 0,
-        height: 0,
-      },
-    },
-    share: {
-      send: {
-        width: 0,
-        height: 0,
-      },
-      recv: {
-        width: 0,
-        height: 0,
-      },
-    },
-  },
+  resolutions: {},
   internal: {
-    audio: {
-      send: {},
-      recv: {},
-    },
-    video: {
-      send: {},
-      recv: {},
-    },
-    share: {
-      send: {},
-      recv: {},
-    },
     remote: {},
     candidates: {},
   },

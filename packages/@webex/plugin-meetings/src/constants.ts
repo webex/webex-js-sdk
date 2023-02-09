@@ -886,9 +886,6 @@ export const NETWORK_TYPE = {
 };
 
 export const STATS = {
-  AUDIO_CORRELATE: 'audio',
-  VIDEO_CORRELATE: 'video',
-  SHARE_CORRELATE: 'share',
   SEND_DIRECTION: 'send',
   RECEIVE_DIRECTION: 'recv',
   REMOTE: 'remote',

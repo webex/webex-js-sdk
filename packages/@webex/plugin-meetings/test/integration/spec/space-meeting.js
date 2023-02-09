@@ -141,7 +141,7 @@ skipInNode(describe)('plugin-meetings', () => {
     it('Bob has flowing streams on reconnect', () => {
       const retrieveStats = () => {
         assert.isAbove(
-          bob.meeting.statsAnalyzer.statsResults.audio.recv.totalPacketsReceived,
+          bob.meeting.statsAnalyzer.statsResults['audio-recv-0'].recv.totalPacketsReceived,
           0,
           'total packets received greater than 0'
         );
