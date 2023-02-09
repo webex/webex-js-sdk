@@ -478,7 +478,7 @@ export default class Parser {
    * @param {Types~Locus} locus Locus delta
    * @returns {undefined}
    */
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onDeltaAction(action: string, locus) {}
 
   /**

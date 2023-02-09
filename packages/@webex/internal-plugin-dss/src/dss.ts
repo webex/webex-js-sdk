@@ -159,9 +159,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    */
   _request(options) {
-    const {
-      resource, params, dataPath, foundPath, notFoundPath
-    } = options;
+    const {resource, params, dataPath, foundPath, notFoundPath} = options;
 
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
@@ -288,9 +286,9 @@ const DSS = WebexPlugin.extend({
   lookup(options: LookupOptions) {
     const {id, entityProviderType, shouldBatch = true} = options;
 
-    const resource = entityProviderType ?
-      `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}` :
-      `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
+    const resource = entityProviderType
+      ? `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}`
+      : `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
 
     if (shouldBatch) {
       return this._batchedLookup({

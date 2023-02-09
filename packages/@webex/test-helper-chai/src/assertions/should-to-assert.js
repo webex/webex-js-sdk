@@ -15,7 +15,7 @@ const {isArray, camelCase} = require('lodash');
  */
 module.exports = function shouldToAssert(chai, names) {
   const {Assertion} = chai;
-  /* eslint chai-friendly/no-unused-expressions: [0] */
+  /* eslint no-unused-expressions: [0] */
 
   const keys = isArray(names) ? names : Object.keys(names);
 

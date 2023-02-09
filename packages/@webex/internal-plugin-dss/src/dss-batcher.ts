@@ -67,7 +67,10 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    const successItems = res.foundArray.map((requestValue, index) => ({requestValue, entity: res.resultArray[index]}));
+    const successItems = res.foundArray.map((requestValue, index) => ({
+      requestValue,
+      entity: res.resultArray[index],
+    }));
     const failureItems = res.notFoundArray.map((requestValue) => ({requestValue, entity: null}));
 
     return Promise.all(successItems.concat(failureItems).map((item) => this.acceptItem(item)));
