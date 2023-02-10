@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.24](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.23...v3.0.0-beta.24) (2023-02-10)
+
+
+### Features
+
+* **gitignore:** remove types folder from gitignore ([#2610](https://github.com/webex/webex-js-sdk/issues/2610)) ([9134949](https://github.com/webex/webex-js-sdk/commit/9134949e5195fcb95420b97241210ea5f9ab0bd6))
+
 ## [3.0.0-beta.23](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.22...v3.0.0-beta.23) (2023-02-09)
 
 
