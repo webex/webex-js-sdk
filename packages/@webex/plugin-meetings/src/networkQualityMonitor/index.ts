@@ -1,5 +1,5 @@
 import EventsScope from '../common/events/events-scope';
-import {EVENT_TRIGGERS, STATS} from '../constants';
+import {EVENT_TRIGGERS} from '../constants';
 
 /**
  * Meeting - network quality event
@@ -49,11 +49,7 @@ export default class NetworkQualityMonitor extends EventsScope {
     });
     this.networkQualityScore = 1;
     this.networkQualityStatus = {
-      [this.frequencyTypes.UPLINK]: {
-        [STATS.VIDEO_CORRELATE]: {},
-        [STATS.AUDIO_CORRELATE]: {},
-        [STATS.SHARE_CORRELATE]: {},
-      },
+      [this.frequencyTypes.UPLINK]: {},
     };
     this.mediaType = null;
   }
@@ -171,6 +167,10 @@ export default class NetworkQualityMonitor extends EventsScope {
      */
     const determineIfUndefined = (value: number | undefined) =>
       typeof value === 'undefined' ? null : value;
+
+    if (!this.networkQualityStatus[UPLINK][mediaType]) {
+      this.networkQualityStatus[UPLINK][mediaType] = {};
+    }
 
     /**
      * Values for some browsers specifically Safari will be undefined we explicitly set to null

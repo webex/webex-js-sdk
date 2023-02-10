@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-meetings",
-  "version": "3.0.0-beta.20",
+  "version": "3.0.0-beta.23",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -12,7 +12,7 @@
     "Taymoor Khan <taykhan@cisco.com>"
   ],
   "main": "dist/index.js",
-  "types": "types/index.d.ts",
+  "types": "dist/types/index.d.ts",
   "devMain": "src/index.js",
   "repository": {
     "type": "git",
@@ -29,7 +29,7 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./types"
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "devDependencies": {
     "@webex/plugin-meetings": "workspace:^",
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "1.33.0",
+    "@webex/internal-media-core": "1.33.1",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-llm": "workspace:^",

@@ -998,6 +998,8 @@ export default class LocusInfo extends EventsScope {
       const parsedMediaShares = MediaSharesUtils.getMediaShares(this.mediaShares, mediaShares);
 
       this.updateMeeting(parsedMediaShares.current);
+      this.parsedLocus.mediaShares = parsedMediaShares.current;
+      this.mediaShares = mediaShares;
       this.emitScoped(
         {
           file: 'locus-info',
@@ -1009,8 +1011,6 @@ export default class LocusInfo extends EventsScope {
           previous: parsedMediaShares.previous,
         }
       );
-      this.parsedLocus.mediaShares = parsedMediaShares.current;
-      this.mediaShares = mediaShares;
     }
   }
 

@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.23](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.22...v3.0.0-beta.23) (2023-02-09)
+
+
+### Features
+
+* **plugin-meetings:** send MQEs for multistream connections ([#2574](https://github.com/webex/webex-js-sdk/issues/2574)) ([8987df2](https://github.com/webex/webex-js-sdk/commit/8987df239f1b363e545508bd7db6c74b64605ab9))
+
+## [3.0.0-beta.22](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.21...v3.0.0-beta.22) (2023-02-08)
+
+
+### Bug Fixes
+
+* updated publish/unpublish tracks API ([#2599](https://github.com/webex/webex-js-sdk/issues/2599)) ([07e4ee8](https://github.com/webex/webex-js-sdk/commit/07e4ee8e87e49553f3450e97a37f3f8dd57cb91a))
+
+## [3.0.0-beta.21](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.20...v3.0.0-beta.21) (2023-02-08)
+
+
+### Features
+
+* **reactions:** export constants and fix types ([#2606](https://github.com/webex/webex-js-sdk/issues/2606)) ([f7448a3](https://github.com/webex/webex-js-sdk/commit/f7448a30757eb89378a73790aaaeb099eb34f5af))
+
 ## [3.0.0-beta.20](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.19...v3.0.0-beta.20) (2023-02-08)
 
 

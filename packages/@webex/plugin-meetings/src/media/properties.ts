@@ -212,7 +212,7 @@ export default class MediaProperties {
    *
    * @returns {Promise<void>}
    */
-  waitForMediaConnectionConnected() {
+  waitForMediaConnectionConnected(): Promise<void> {
     const isConnected = () =>
       this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
 
@@ -256,9 +256,7 @@ export default class MediaProperties {
     const allStatsReports = [];
 
     try {
-      // eslint-disable-next-line no-await-in-loop
       const statsResult = await this.webrtcMediaConnection.getStats();
-
       statsResult.forEach((report) => allStatsReports.push(report));
     } catch (error) {
       LoggerProxy.logger.warn(

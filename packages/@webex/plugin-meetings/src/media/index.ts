@@ -426,37 +426,6 @@ Media.stopTracks = (track: any) => {
 };
 
 /**
- *
- * Stop input stream
- * @param {Stream} stream A media stream
- * @returns {null}
- * @deprecated after v1.89.3
- */
-Media.stopStream = (stream: any) => {
-  LoggerProxy.logger.warn(
-    'Media:index#stopStream --> [DEPRECATION WARNING]: stopStream has been deprecated after v1.89.3'
-  );
-  if (!stream) {
-    return Promise.resolve();
-  }
-
-  /*
-   * To release local media
-   * 1) Chrome requires all tracks to be stopped (stream.stop got deprecated)
-   * 2) Firefox requires the stream to be stopped
-   */
-  return Promise.resolve().then(() => {
-    if (stream.getTracks) {
-      stream.getTracks().forEach((track) => {
-        track.stop();
-      });
-    } else if (stream.stop) {
-      stream.stop();
-    }
-  });
-};
-
-/**
  * generates streams for audio video and share
  * @param {object} mediaSetting parameter
  * @param {Object} mediaSetting.sendAudio sendAudio: {Boolean} sendAudio constraints
