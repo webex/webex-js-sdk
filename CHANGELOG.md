@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.38.1](https://github.com/webex/webex-js-sdk/compare/v2.38.0...v2.38.1) (2023-02-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** set correct local audio state in localsdp  ([#2598](https://github.com/webex/webex-js-sdk/issues/2598)) ([a438fde](https://github.com/webex/webex-js-sdk/commit/a438fdeea28f95834a722706bd5a6913fe246941))
+
 ## [2.38.0](https://github.com/webex/webex-js-sdk/compare/v2.37.2...v2.38.0) (2023-01-26)
 
 
