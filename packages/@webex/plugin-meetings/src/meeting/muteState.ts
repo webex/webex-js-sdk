@@ -330,6 +330,17 @@ class MuteState {
   }
 
   /**
+   * Returns true if the user is locally muted
+   *
+   * @public
+   * @memberof MuteState
+   * @returns {Boolean}
+   */
+  public isLocallyMuted() {
+    return this.state.client.localMute || this.state.server.localMute;
+  }
+
+  /**
    * Returns true if the user is muted as a result of the client request (and not remotely muted)
    *
    * @public

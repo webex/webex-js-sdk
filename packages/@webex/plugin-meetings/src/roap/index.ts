@@ -170,8 +170,8 @@ export default class Roap extends StatelessWebexPlugin {
           locusSelfUrl: meeting.selfUrl,
           mediaId: options.mediaId,
           correlationId: options.correlationId,
-          audioMuted: meeting.isAudioMuted(),
-          videoMuted: meeting.isVideoMuted(),
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
         })
         .then(() => {
@@ -222,8 +222,8 @@ export default class Roap extends StatelessWebexPlugin {
         locusSelfUrl: meeting.selfUrl,
         mediaId: options.mediaId,
         correlationId: options.correlationId,
-        audioMuted: options.audioMuted,
-        videoMuted: options.videoMuted,
+        audioMuted: meeting.audio?.isLocallyMuted(),
+        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
       })
       .then(() => {
@@ -295,8 +295,8 @@ export default class Roap extends StatelessWebexPlugin {
         correlationId: meeting.correlationId,
         locusSelfUrl: meeting.selfUrl,
         mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
-        audioMuted: meeting.isAudioMuted(),
-        videoMuted: meeting.isVideoMuted(),
+        audioMuted: meeting.audio?.isLocallyMuted(),
+        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
       })
       .then(({locus, mediaConnections}) => {
@@ -353,8 +353,8 @@ export default class Roap extends StatelessWebexPlugin {
               roapMessage,
               // eslint-disable-next-line no-warning-comments
               // TODO: check whats the need for video and audiomute
-              audioMuted: !!meeting.isAudioMuted(),
-              videoMuted: !!meeting.isVideoMuted(),
+              audioMuted: meeting.audio?.isLocallyMuted(),
+              videoMuted: meeting.video?.isLocallyMuted(),
             })
           ),
           // mediaId: meeting.mediaId

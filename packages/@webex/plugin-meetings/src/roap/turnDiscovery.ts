@@ -177,8 +177,8 @@ export default class TurnDiscovery {
         locusSelfUrl: meeting.selfUrl,
         // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
-        audioMuted: meeting.isAudioMuted(),
-        videoMuted: meeting.isVideoMuted(),
+        audioMuted: meeting.audio?.isLocallyMuted(),
+        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
       })
       .then(({mediaConnections}) => {
@@ -211,8 +211,8 @@ export default class TurnDiscovery {
       // @ts-ignore - fix type
       mediaId: meeting.mediaId,
       correlationId: meeting.correlationId,
-      audioMuted: meeting.isAudioMuted(),
-      videoMuted: meeting.isVideoMuted(),
+      audioMuted: meeting.audio?.isLocallyMuted(),
+      videoMuted: meeting.video?.isLocallyMuted(),
       meetingId: meeting.id,
     });
   }
