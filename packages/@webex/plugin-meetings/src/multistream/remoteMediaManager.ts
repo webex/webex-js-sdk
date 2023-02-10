@@ -115,7 +115,7 @@ const TwoMainPlusSixSmallLayout: VideoLayout = {
 
 // A strip of 8 small video panes (thumbnails) displayed at the top of a remote screenshare:
 const RemoteScreenShareWithSmallThumbnailsLayout: VideoLayout = {
-  // screenShareVideo: {size: 'best'}, // todo: SPARK-393485: uncomment this once backend supports screen sharing
+  screenShareVideo: {size: 'best'},
   activeSpeakerVideoPaneGroups: [
     {
       id: 'thumbnails',
@@ -153,7 +153,7 @@ const Stage2x2With6ThumbnailsLayout: VideoLayout = {
 export const DefaultConfiguration: Configuration = {
   audio: {
     numOfActiveSpeakerStreams: 3,
-    numOfScreenShareStreams: 0, // todo: SPARK-393485: change to 1 once backend supports screen sharing
+    numOfScreenShareStreams: 1,
   },
   video: {
     preferLiveVideo: true,
