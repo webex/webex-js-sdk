@@ -4905,32 +4905,6 @@ export default class Meeting extends StatelessWebexPlugin {
             // we actually get a OFFER from the server and a GLAR condition happens
             if (startShare) {
               // We are assuming that the clients are connected when doing an update
-              // @ts-ignore
-              return this.share();
-            }
-
-            return Promise.resolve();
-          })
-          .then(() =>
-            logRequest(
-              this.roap.sendRoapMediaRequest({
-                sdp: this.mediaProperties.peerConnection.sdp,
-                roapSeq: this.roapSeq,
-                meeting: this, // or can pass meeting ID
-              }),
-              {
-                header: `${LOG_HEADER} sendRoapMediaRequest being sent`,
-                success: `${LOG_HEADER} sendRoadMediaRequest successful`,
-                failure: `${LOG_HEADER} Error updateMedia on send roap media request, `,
-              }
-            )
-          )
-          .then(() => this.checkForStopShare(mediaSettings.sendShare, previousSendShareStatus))
-          .then((startShare) => {
-            // This is a special case if we do an /floor grant followed by /media
-            // we actually get a OFFER from the server and a GLAR condition happens
-            if (startShare) {
-              // We are assuming that the clients are connected when doing an update
               return this.requestScreenShareFloor();
             }
 
