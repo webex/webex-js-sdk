@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.38.2](https://github.com/webex/webex-js-sdk/compare/v2.38.1...v2.38.2) (2023-02-10)
+
+
+### Bug Fixes
+
+* call disconnecting after calling updateMedia ([#2611](https://github.com/webex/webex-js-sdk/issues/2611)) ([804c205](https://github.com/webex/webex-js-sdk/commit/804c205f08e9242bf7e50745977bcbcacdc17ca9))
+
 ### [2.38.1](https://github.com/webex/webex-js-sdk/compare/v2.38.0...v2.38.1) (2023-02-10)
 
 

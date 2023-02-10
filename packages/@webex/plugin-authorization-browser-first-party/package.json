@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-authorization-browser-first-party",
-  "version": "2.38.1",
+  "version": "2.38.2",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",

@@ -1,6 +1,6 @@
 {
   "name": "@webex/common-timers",
-  "version": "2.38.1",
+  "version": "2.38.2",
   "description": "Timer wrappers to prevent wedging a process open",
   "license": "MIT",
   "main": "dist/index.js",
