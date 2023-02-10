@@ -6216,6 +6216,47 @@ describe('plugin-meetings', () => {
           });
         });
       });
+      describe('#touchBreakout', () => {
+        it('should have #touchBreakout', () => {
+          assert.exists(meeting.touchBreakout);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.touchBreakout = sinon.stub().returns(Promise.resolve());
+        });
+
+        it('should touch the breakout return a promise', async () => {
+          meeting.breakoutServiceUrl = 'breakoutServiceUrl';
+          meeting.locusUrl = 'locusUrl';
+
+          const togglePromise = meeting.touchBreakout();
+
+          assert.exists(togglePromise.then);
+          await togglePromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.touchBreakout, { breakoutUrl: 'breakoutServiceUrl/breakout/', locusUrl: 'locusUrl' } );
+        });
+      });
+      describe('#toggleBreakout', () => {
+        it('should have #toggleBreakout', () => {
+          assert.exists(meeting.toggleBreakout);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.touchBreakout = sinon.stub().returns(Promise.resolve());
+        });
+
+        it('should toggle the breakout with the right data and return a promise', async () => {
+          meeting.breakoutServiceUrl = 'breakoutServiceUrl';
+          meeting.locusInfo.controls = {breakout: {enableBreakoutSession: false}};
+
+          const togglePromise = meeting.touchBreakout();
+
+          assert.exists(togglePromise.then);
+          await togglePromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.touchBreakout, 
+            { breakoutUrl: 'breakoutServiceUrl/breakout/',locusUrl: meeting.locusUrl } );
+        });
+      });
     });
   });
 });
