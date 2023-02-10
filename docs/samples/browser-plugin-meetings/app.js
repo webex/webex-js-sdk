@@ -500,6 +500,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
 
           return getMediaStreams().then(() => addMedia());
         }
+        createBreakoutOperations();
       })
       .catch(() => {
         // join failed, so allow  user decide on multistream again
