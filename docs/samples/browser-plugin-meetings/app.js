@@ -2994,6 +2994,7 @@ function viewBreakouts(event) {
   selfIsHost && currentBreakoutInformationEl.appendChild(createAskAllReturnButton(meeting.breakouts.currentBreakoutSession));
   currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
 
+
   selfIsHost && hasBreakoutSessions && currentBreakoutInformationEl.appendChild(createBroadcastDiv(meeting.breakouts.currentBreakoutSession));
   breakoutTable.innerHTML = '';
   breakoutTable.appendChild(currentBreakoutInformationEl);

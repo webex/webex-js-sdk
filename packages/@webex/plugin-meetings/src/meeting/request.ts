@@ -865,4 +865,44 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     });
   }
+
+  /**
+   * Make enable breakout resource
+   * @param {breakoutUrl} options.breakoutUrl
+   * @param {locusUrl} options.locusUrl
+   * @returns {Promise} -- breakout resource info
+   */
+  enableBreakout({breakoutUrl, locusUrl}: {breakoutUrl: string; locusUrl: string}) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: breakoutUrl,
+      body: {
+        locusUrl,
+      },
+    }).catch((err) => {
+      LoggerProxy.logger.error(
+        `Meeting:request#enableBreakout --> Error provisioning error ${err}`
+      );
+
+      throw err;
+    });
+  }
+
+  /**
+   * Make the meeting enbale or disable breakout session
+   * @param {boolean} -- options.enable
+   * @param {breakoutUrl} options.breakoutUrl
+   * @returns {Promise}
+   */
+  toggleBreakout({enable, breakoutUrl}: {enable: boolean; breakoutUrl: string}) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: breakoutUrl,
+      body: {
+        enableBreakoutSession: enable,
+      },
+    });
+  }
 }
