@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.20](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.19...v3.0.0-beta.20) (2023-02-08)
+
+
+### Bug Fixes
+
+* update webrtc-adapter ([#2604](https://github.com/webex/webex-js-sdk/issues/2604)) ([4a24997](https://github.com/webex/webex-js-sdk/commit/4a24997dfc1278e85bad263c6363d5fbfb9e6ef5))
+
 ## [3.0.0-beta.19](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.18...v3.0.0-beta.19) (2023-02-01)
 
 

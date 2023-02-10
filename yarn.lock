@@ -4696,7 +4696,7 @@ __metadata:
     sinon: "npm:^9.2.4"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^3.3.2"
-    webrtc-adapter: "npm:^7.7.0"
+    webrtc-adapter: "npm:^8.1.2"
   languageName: unknown
   linkType: soft
 
@@ -19459,15 +19459,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rtcpeerconnection-shim@npm:^1.2.15":
-  version: 1.2.15
-  resolution: "rtcpeerconnection-shim@npm:1.2.15"
-  dependencies:
-    sdp: "npm:^2.6.0"
-  checksum: 0513869070e96db05f0143271dce77ffa6cd4f6349e17ebeb26e6ca047d3b3ee25f1ddc5a8828cb5ab47cc170700b7f0e7edb4d49634e44526e5b05c438b1061
-  languageName: node
-  linkType: hard
-
 "run-async@npm:^2.4.0":
   version: 2.4.1
   resolution: "run-async@npm:2.4.1"
@@ -19642,13 +19633,6 @@ __metadata:
   bin:
     sdp-verify: checker.js
   checksum: 5e9f1953f6dc40a29a4e96a7ebf10c98e758c3c5f6b77a8e276fc958c1f462c774526580d929aa60fe28013fd397348e3ac1b6437deb56bb736e701bf3cc894c
-  languageName: node
-  linkType: hard
-
-"sdp@npm:^2.12.0, sdp@npm:^2.6.0":
-  version: 2.12.0
-  resolution: "sdp@npm:2.12.0"
-  checksum: fd090ff5dc362d24005e16811388e71b81f5c9e860fb51cff3efba63b75f2daa549a32b4b5ecb53f929ad35cf47596f5300d25a64f307ac6e6d7d128c40445b5
   languageName: node
   linkType: hard
 
@@ -23044,16 +23028,6 @@ __metadata:
   bin:
     webpack: bin/webpack.js
   checksum: 253fca9ba42fea3e3aaf6c913cb6aca6bf383a8a55f9fcdf8d9f364b4f7e406b3c308f4164ea3f45f11259e1a699a584fa6811bdd2c215101cb1a2fa6c0410dc
-  languageName: node
-  linkType: hard
-
-"webrtc-adapter@npm:^7.7.0":
-  version: 7.7.1
-  resolution: "webrtc-adapter@npm:7.7.1"
-  dependencies:
-    rtcpeerconnection-shim: "npm:^1.2.15"
-    sdp: "npm:^2.12.0"
-  checksum: c73b2417b7eb479a8925e5f3b9b12af5cb23ad90a98bf70db682755dfa7293ede277a1ba67ced803579f5de4bfb0c4f54c5247e86bfc9bc6ef3957cb6a08ba6d
   languageName: node
   linkType: hard
 

@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-meetings",
-  "version": "3.0.0-beta.19",
+  "version": "3.0.0-beta.20",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -67,6 +67,6 @@
     "lodash": "^4.17.21",
     "sdp-transform": "^2.12.0",
     "uuid": "^3.3.2",
-    "webrtc-adapter": "^7.7.0"
+    "webrtc-adapter": "^8.1.2"
   }
 }

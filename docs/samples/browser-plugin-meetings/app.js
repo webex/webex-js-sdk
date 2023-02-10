@@ -2629,6 +2629,12 @@ const createBreakoutOperations = ()=>{
     breakoutHostOperation.appendChild(hostOperationsEl);
   }
 }
+function toggleBreakout() {
+  var enableBox = document.getElementById("enable-breakout");
+  const meeting = getCurrentMeeting();
+  var enableStates = enableBox.checked == true ? true : false;
+  meeting.toggleBreakout(enableStates);
+}
 
 function viewBreakouts(event) {
   const meeting = getCurrentMeeting();
@@ -2745,6 +2751,7 @@ function viewBreakouts(event) {
   currentBreakoutSessionName.innerText = meeting.breakouts.isInMainSession ? 'Main Session' : meeting.breakouts.name;
   currentBreakoutInformationEl.appendChild(currentBreakoutSessionName);
   currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
+
 
   breakoutTable.innerHTML = '';
   breakoutTable.appendChild(currentBreakoutInformationEl);
