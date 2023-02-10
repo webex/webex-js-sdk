@@ -36,6 +36,7 @@ const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
+const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
 
 // Disable screenshare on join in Safari patch
@@ -498,6 +499,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
 
           return getMediaStreams().then(() => addMedia());
         }
+        createBreakoutOperations();
       })
       .catch(() => {
         // join failed, so allow  user decide on multistream again
@@ -539,6 +541,8 @@ function leaveMeeting(meetingId) {
       meetingsJoinCaptchaElm.value = '';
       meetingsJoinMultistreamElm.disabled = false;
       enableMultistreamControls(false);
+      breakoutHostOperation.innerHTML = '';
+      breakoutTable.innerHTML = '';
     });
 }
 
@@ -2571,6 +2575,61 @@ function transferHostToMember(transferButton) {
   }
 }
 
+const createButton = (text, func) => {
+  const button = document.createElement('button');
+
+  button.onclick = (e) => func(e.target);
+  button.innerText = text;
+  button.setAttribute('type', 'button');
+
+  return button;
+}
+
+const createBreakoutOperations = ()=>{
+  console.log('+++++++++', meeting.breakouts);
+  const isHostUser = meeting.members.hostId === meeting.userId;
+  const hostOperationsEl = document.createElement('div');
+  if(isHostUser && meetingsBreakoutSupportElm.checked){
+    breakoutHostOperation.innerHTML = '';
+    const hostOperationsTitleEl = document.createElement('h3');
+    hostOperationsTitleEl.innerText = 'Host Operations';
+    hostOperationsTitleEl.setAttribute('style', 'margin-top:0');
+    const startBtn = createButton('Start Breakout Sessions', ()=>{
+      meeting.breakouts.getBreakout().then((res)=>{
+        meeting.breakouts.start(res.body.groups[0].id);
+        endBtn.disabled = false;
+        startBtn.disabled = true;
+      })
+    });
+    const endBtn = createButton('End Breakout Sessions', ()=>{
+      let countDown = meeting.breakouts.delayCloseTime;
+      countDown = countDown<0?0:countDown;
+      meeting.breakouts.end();
+      setTimeout(()=>{
+        endBtn.disabled = true;
+        startBtn.disabled = false;
+      }, countDown*1000);
+      if(countDown>0){
+        const intervalId = setInterval(()=>{
+          endBtn.innerText = `End Breakout Sessions in (${--countDown}s)`;
+          endBtn.disabled = true;
+          if(countDown === 0){
+            clearInterval(intervalId);
+            endBtn.innerText = 'End Breakout Sessions';
+          }
+        }, 1000)
+      }
+    })
+    // startBtn.disabled = meeting.breakouts.breakouts.length;
+    // endBtn.disabled = !meeting.breakouts.breakouts.length;
+    endBtn.disabled = true;
+    hostOperationsEl.appendChild(hostOperationsTitleEl);
+    hostOperationsEl.appendChild(startBtn);
+    hostOperationsEl.appendChild(endBtn);
+    breakoutHostOperation.appendChild(hostOperationsEl);
+  }
+}
+
 function viewBreakouts(event) {
   const meeting = getCurrentMeeting();
 
@@ -2704,16 +2763,6 @@ function viewParticipants() {
     label.setAttribute('for', id);
 
     return label;
-  }
-
-  function createButton(text, func) {
-    const button = document.createElement('button');
-
-    button.onclick = (e) => func(e.target);
-    button.innerText = text;
-    button.setAttribute('type', 'button');
-
-    return button;
   }
 
   function createHeadRow() {

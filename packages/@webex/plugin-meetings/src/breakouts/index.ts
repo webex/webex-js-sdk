@@ -223,14 +223,16 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Host or cohost starts breakout sessions
+   * @param {String} id
    * @returns {Promise}
    */
-  start() {
-    const startTime = new Date().toISOString();
+  start(id) {
     const action = BREAKOUTS.ACTION.START;
-    const groups = this.breakouts.map(({groupId}) => {
-      return {id: groupId, startTime, action};
-    });
+    let groupId = id;
+    if (this.breakouts.length) {
+      groupId = this.breakouts.models[0].groupId;
+    }
+    const groups = [{id: groupId, action}];
 
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -243,14 +245,14 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Host or cohost ends breakout sessions
+   * @param {String} id
    * @returns {Promise}
    */
-  end() {
+  end(id) {
     const {delayCloseTime} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
-    const groups = this.breakouts.map(({groupId}) => {
-      return {id: groupId, delayCloseTime, action};
-    });
+    const {groupId} = this.breakouts.models[0];
+    const groups = [{id: id || groupId, delayCloseTime, action}];
 
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -258,6 +260,17 @@ const Breakouts = WebexPlugin.extend({
       body: {
         groups,
       },
+    });
+  },
+
+  /**
+   * get existed breakout sessions
+   * @returns {Promise}
+   */
+  getBreakout() {
+    return this.request({
+      method: HTTP_VERBS.GET,
+      uri: this.url,
     });
   },
 });
