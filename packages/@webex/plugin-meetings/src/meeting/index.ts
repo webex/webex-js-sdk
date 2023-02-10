@@ -509,6 +509,8 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
+  breakoutServiceUrl: string;
+  breakoutInfo: any;
 
   namespace = MEETINGS;
 
@@ -2203,6 +2205,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
       this.recordingController.setServiceUrl(payload?.services?.record?.url);
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
+      this.breakoutServiceUrl = payload?.services?.breakout?.url;
     });
   }
 
@@ -7243,5 +7246,56 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     await Promise.all(unpublishPromises);
+  }
+
+  /**
+   * Touch enable breakout resource
+   * return breakout resource info
+   * @returns {Promise}
+   */
+  private async touchBreakout() {
+    const breakoutUrl = `${this.breakoutServiceUrl}/breakout/`;
+
+    await this.meetingRequest
+      .touchBreakout({breakoutUrl, locusUrl: this.locusUrl})
+      .then((response) => {
+        if (response && response.body && response.body.breakout) {
+          this.breakoutInfo = response.body;
+        }
+      })
+      .catch((err) => {
+        LoggerProxy.logger.error(
+          `Meeting:index#touchBreakout. --> can't get breakout resource ${err}`
+        );
+        throw err;
+      });
+  }
+
+  /**
+   * Method to enable or disable the meeting breakout session
+   * @param  {boolean} enable - enable or disable breakout
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public async toggleBreakout(enable: boolean) {
+    this.breakoutInfo = this.locusInfo?.controls?.breakout;
+
+    if (!this.breakoutInfo) {
+      await new Promise((resolve, reject) => {
+        this.touchBreakout();
+      });
+    }
+
+    if (this.breakoutInfo && this.breakoutInfo.url) {
+      return this.meetingRequest.toggleBreakout({
+        enable,
+        breakoutUrl: this.breakoutInfo.url,
+      });
+    }
+
+    return Promise.reject(
+      new Error('Meeting:index#toggleBreakout --> get breakout resource failed!')
+    );
   }
 }
