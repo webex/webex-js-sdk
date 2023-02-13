@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.25](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.24...v3.0.0-beta.25) (2023-02-13)
+
+
+### Bug Fixes
+
+* enabled screen share for multistream ([#2614](https://github.com/webex/webex-js-sdk/issues/2614)) ([7787b06](https://github.com/webex/webex-js-sdk/commit/7787b062093d38921dccc0d1bbaf51f6c4398ea6))
+
 ## [3.0.0-beta.24](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.23...v3.0.0-beta.24) (2023-02-10)
 
 
