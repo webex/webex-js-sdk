@@ -30,11 +30,11 @@ describe('plugin-meetings', () => {
                 assert.equal(ControlsOptionsUtil.canUnsetMuteOnEntry(locusInfo.parsedLocus.info.userDisplayHints), true);
               });
         
-              it('rejects when correct display hint is not present', () => {
+              it('rejects when correct display hint is not present for setting mute on entry', () => {
                 assert.equal(ControlsOptionsUtil.canSetMuteOnEntry(locusInfo.parsedLocus.info.userDisplayHints), false);
               });
 
-              it('rejects when correct display hint is not present', () => {
+              it('rejects when correct display hint is not present for unsetting mute on entry', () => {
                 assert.equal(ControlsOptionsUtil.canUnsetMuteOnEntry(locusInfo.parsedLocus.info.userDisplayHints), false);
               });
             });

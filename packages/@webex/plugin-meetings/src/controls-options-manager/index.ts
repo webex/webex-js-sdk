@@ -5,6 +5,7 @@ import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Setting from './enums';
 import Util from './util';
+import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
 /**
  * docs
@@ -142,13 +143,13 @@ export default class ControlsOptionsManager {
   private setControls(setting: Setting, enabled: boolean): Promise<any> {
     LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${setting} [${enabled}]`);
 
-    if (Util?.[`${enabled ? Setting.canSet : Setting.canUnset}${setting}`](this.displayHints)) {
+    if (Util?.[`${enabled ? CAN_SET : CAN_UNSET}${setting}`](this.displayHints)) {
       // @ts-ignore
       return this.request.request({
         uri: `${this.locusUrl}/${CONTROLS}`,
         body: {
           [camelCase(setting)]: {
-            [Setting.enabled]: enabled,
+            [ENABLED]: enabled,
           },
         },
         method: HTTP_VERBS.PATCH,

@@ -19,7 +19,6 @@ describe('plugin-meetings', () => {
                 });
             });
 
-
             describe('Mute On Entry', () => {
                 let manager;
             
