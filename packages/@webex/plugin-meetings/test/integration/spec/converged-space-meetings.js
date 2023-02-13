@@ -1,8 +1,7 @@
 import { config } from 'dotenv';
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
-import {skipInNode} from '@webex/test-helper-mocha';
-import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
+import {skipInNode, skipInFirefox} from '@webex/test-helper-mocha';
 
 import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
@@ -10,7 +9,8 @@ import webexTestUsers from '../../utils/webex-test-users';
 
 config();
 
-skipInNode(describe)('plugin-meetings', () => {
+// `addMedia()` fails on FF, this needs to be debuged and fixed in a later pr.
+skipInFirefox(skipInNode(describe))('plugin-meetings', () => {
   describe('converged-space-meeting', () => {
     let shouldSkip = false;
     let users, alice, bob, chris;
@@ -18,20 +18,7 @@ skipInNode(describe)('plugin-meetings', () => {
     let space = null;
     let mediaReadyListener = null;
 
-    // Remove this `before` once firefox compatibility with converged is stable.
-    before('skip in firefox', () => {
-      const {isBrowser} = BrowserDetection();
-      
-      if (isBrowser('firefox')) {
-        shouldSkip = true;
-      }
-    })
-
     before('setup users', async () => {
-      if (shouldSkip) {
-        return;
-      }
-
       const userSet = await webexTestUsers.generateTestUsers({
         count: 3,
         whistler: process.env.WHISTLER || process.env.JENKINS,
