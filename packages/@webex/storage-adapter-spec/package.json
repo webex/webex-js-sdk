@@ -1,6 +1,6 @@
 {
   "name": "@webex/storage-adapter-spec",
-  "version": "2.38.0",
+  "version": "2.38.2",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

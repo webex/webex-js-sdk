@@ -161,6 +161,17 @@ describe('plugin-meetings', () => {
       assert.isFalse(audio.isSelf());
     });
 
+    describe('#isLocallyMuted()', () => {
+      it('does not consider remote mute status for audio', async () => {
+        // simulate being already remote muted
+        meeting.remoteMuted = true;
+        // create a new MuteState intance
+        audio = createMuteState(AUDIO, meeting, {sendAudio: true});
+
+        assert.isFalse(audio.isLocallyMuted());
+      });
+    });
+
     describe('#handleClientRequest', () => {
       it('disables/enables the local audio track when audio is muted/unmuted', async () => {
         // mute

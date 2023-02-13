@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-voicea",
-  "version": "2.38.0",
+  "version": "2.38.2",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
