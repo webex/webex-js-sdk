@@ -102,6 +102,49 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#broadcast', () => {
+      it('makes the request as expected', async () => {
+        let result = await breakout.broadcast('hello')
+        assert.calledWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/message',
+          body: {
+            message: 'hello',
+            groups: [{
+              id: 'groupId',
+              recipientRoles: undefined,
+              sessions: [
+                {
+                  id: 'sessionId'
+                }
+              ]}]
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE')
+
+        result = await breakout.broadcast('hello', {presenters: true, cohosts: true})
+
+        assert.calledWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/message',
+          body: {
+            message: 'hello',
+            groups: [{
+              id: 'groupId',
+              recipientRoles: ['COHOST', 'PRESENTER'],
+              sessions: [
+                {
+                  id: 'sessionId'
+                }
+              ]}]
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE')
+      });
+    });
+
     describe('#parseRoster', () => {
       it('calls locusParticipantsUpdate', () => {
         breakout.members = {

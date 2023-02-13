@@ -2694,6 +2694,39 @@ function viewBreakouts(event) {
 
     return button;
   };
+  const createAskForHelpButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Help';
+
+    button.onclick = () => {
+      breakoutSession.askForHelp();
+    };
+
+    return button;
+  };
+  const createAskAllReturnButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Return';
+
+    button.onclick = () => {
+      meeting.breakouts.askAllToReturn();
+    };
+
+    return button;
+  };
+  const createBroadcastButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'broadcast';
+
+    button.onclick = () => {
+      meeting.breakouts.broadcast('Hello');
+    };
+
+    return button;
+  };
 
   const appendSession = (parentElement, isTrue) => {
     const sessionBooleanEl = document.createElement('div');
@@ -2736,6 +2769,10 @@ function viewBreakouts(event) {
 
   currentBreakoutSessionName.innerText = meeting.breakouts.isInMainSession ? 'Main Session' : meeting.breakouts.name;
   currentBreakoutInformationEl.appendChild(currentBreakoutSessionName);
+  const selfIsHost = meeting.moderator;
+  !meeting.breakouts.isInMainSession && !selfIsHost && currentBreakoutInformationEl.appendChild(createAskForHelpButton(meeting.breakouts.currentBreakoutSession));
+  selfIsHost && currentBreakoutInformationEl.appendChild(createAskAllReturnButton(meeting.breakouts.currentBreakoutSession));
+  selfIsHost && currentBreakoutInformationEl.appendChild(createBroadcastButton(meeting.breakouts.currentBreakoutSession));
   currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
 
   breakoutTable.innerHTML = '';

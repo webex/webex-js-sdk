@@ -20,6 +20,12 @@ describe('plugin-meetings', () => {
       webex.internal.llm.on = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
+      breakouts.groupId = 'groupId';
+      breakouts.sessionId = 'sessionId';
+      breakouts.url = 'url';
+      breakouts.mainGroupId = 'mainGroupId';
+      breakouts.breakoutGroupId = 'breakoutGroupId';
+      breakouts.mainSessionId = 'mainSessionId';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -287,6 +293,56 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.isInMainSession, false);
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN)
         assert.equal(breakouts.isInMainSession, true);
+      });
+    });
+
+    describe('#askAllToReturn',  () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.askAllToReturn();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/requestMove',
+          body: {
+            groupId: 'mainGroupId',
+            sessionId: 'mainSessionId'
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('#broadcast',  () => {
+      it('makes the request as expected', async () => {
+        let result = await breakouts.broadcast('hello');
+        assert.calledWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/message',
+          body: {
+            message: 'hello',
+            groups: [{
+              id: 'breakoutGroupId',
+              recipientRoles: undefined,
+            }]
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+
+        result = await breakouts.broadcast('hello', {presenters: true, cohosts: true});
+        assert.calledWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/message',
+          body: {
+            message: 'hello',
+            groups: [{
+              id: 'breakoutGroupId',
+              recipientRoles: ['COHOST', 'PRESENTER'],
+            }]
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
   });

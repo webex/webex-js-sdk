@@ -5,10 +5,11 @@ import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {BREAKOUTS, MEETINGS} from '../constants';
+import {BREAKOUTS, HTTP_VERBS, MEETINGS} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
+import {getBroadcastRoles} from './utils';
 
 /**
  * @class Breakouts
@@ -25,6 +26,9 @@ const Breakouts = WebexPlugin.extend({
     delayCloseTime: 'number', // appears once breakouts start
     enableBreakoutSession: 'boolean', // appears from the moment you enable breakouts
     groupId: 'string', // appears from the moment you enable breakouts
+    mainGroupId: 'string',
+    mainSessionId: 'string',
+    breakoutGroupId: 'string',
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
     sessionType: 'string', // appears from the moment you enable breakouts
@@ -170,6 +174,13 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     this.set(params);
+    if (params.sessionType === BREAKOUTS.SESSION_TYPES.MAIN) {
+      this.set({
+        mainGroupId: params.groupId,
+        mainSessionId: params.sessionId,
+        breakoutGroupId: params.groups && params.groups.length ? params.groups[0].id : '',
+      });
+    }
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -219,6 +230,44 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
+  },
+
+  /**
+   * Host/CoHost ask all participants return to main session
+   * @returns {void}
+   */
+  askAllToReturn() {
+    return this.webex.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/requestMove`,
+      body: {
+        groupId: this.mainGroupId,
+        sessionId: this.mainSessionId,
+      },
+    });
+  },
+
+  /**
+   * Broadcast message to all breakout session's participants
+   * @param {String} message
+   * @param {Object} options
+   * @returns {void}
+   */
+  broadcast(message, options) {
+    const roles = getBroadcastRoles(options);
+    const params = {
+      id: this.breakoutGroupId,
+      recipientRoles: roles.length ? roles : undefined,
+    };
+
+    return this.webex.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/message`,
+      body: {
+        message,
+        groups: [params],
+      },
+    });
   },
 });
 

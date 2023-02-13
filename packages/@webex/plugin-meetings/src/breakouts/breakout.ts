@@ -7,6 +7,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import {HTTP_VERBS, MEETINGS} from '../constants';
 import LocusInfo from '../locus-info';
 import Members from '../members';
+import {getBroadcastRoles} from './utils';
 
 /**
  * @class
@@ -104,6 +105,34 @@ const Breakout = WebexPlugin.extend({
 
   parseRoster(locus) {
     this.members.locusParticipantsUpdate(locus);
+  },
+
+  /**
+   * Broadcast message to this breakout session's participants
+   * @param {String} message
+   * @param {Object} options
+   * @returns {void}
+   */
+  broadcast(message, options) {
+    const roles = getBroadcastRoles(options);
+    const params = {
+      id: this.groupId,
+      recipientRoles: roles.length ? roles : undefined,
+      sessions: [
+        {
+          id: this.sessionId,
+        },
+      ],
+    };
+
+    return this.webex.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/message`,
+      body: {
+        message,
+        groups: [params],
+      },
+    });
   },
 });
 
