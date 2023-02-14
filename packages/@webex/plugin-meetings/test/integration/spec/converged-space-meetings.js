@@ -13,7 +13,7 @@ config();
 skipInNode(describe)('plugin-meetings', () => {
   const {isBrowser} = BrowserDetection();
 
-  // `addMedia()` fails on FF, this needs to be debuged and fixed in a later change.
+  // `addMedia()` fails on FF, this needs to be debuged and fixed in a later change
   if (!isBrowser('firefox')) {
     describe('converged-space-meeting', () => {
       let shouldSkip = false;
