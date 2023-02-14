@@ -152,7 +152,6 @@ export function getHydraClusterString(webex, conversationUrl) {
  *
  * @export
  * @param {arra} tags
- * @param {any} spaceUUID
  * @returns {string}
  */
 export function getHydraRoomType(tags) {
