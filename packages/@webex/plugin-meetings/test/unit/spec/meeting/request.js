@@ -376,39 +376,5 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.requestingParticipantId, requestingParticipantId);
       });
     });
-
-    //toggleBreakout({enable, breakoutUrl}: {enable: boolean; breakoutUrl: string}) {
-    describe('#toggleBreakout', () => {
-      it('sends request to toggleBreakout', async () => {
-        const breakoutUrl = 'breakoutUrl';
-
-        await meetingsRequest.toggleBreakout({
-          enable: true,
-          breakoutUrl
-        });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
-
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, `${breakoutUrl}`);
-      });
-    });
-
-    //toggleBreakout({enable, breakoutUrl}: {enable: boolean; breakoutUrl: string}) {
-    describe('#touchBreakout', () => {
-      it('sends request to touchBreakout', async () => {
-        const breakoutUrl = 'breakoutUrl',
-        locusUrl = 'locusUrl';
-
-        await meetingsRequest.touchBreakout({
-          locusUrl,
-          breakoutUrl
-        });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
-
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${breakoutUrl}`);
-        assert.equal(requestParams.body.locusUrl, `${locusUrl}`);
-      });
-    });
   });
 });
