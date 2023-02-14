@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.39.1](https://github.com/webex/webex-js-sdk/compare/v2.39.0...v2.39.1) (2023-02-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send appropriate metrics for chrome os ([#2605](https://github.com/webex/webex-js-sdk/issues/2605)) ([a827eef](https://github.com/webex/webex-js-sdk/commit/a827eef1d33af2eb53cf252defb312d061cc9e31))
+
 ## [2.39.0](https://github.com/webex/webex-js-sdk/compare/v2.38.2...v2.39.0) (2023-02-13)
 
 

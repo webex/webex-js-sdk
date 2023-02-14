@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-presence",
-  "version": "2.39.0",
+  "version": "2.39.1",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
