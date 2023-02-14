@@ -2626,7 +2626,7 @@ function toggleBreakout() {
   var enableBox = document.getElementById("enable-breakout");
   const meeting = getCurrentMeeting();
   var enableStates = enableBox.checked == true ? true : false;
-  meeting.toggleBreakout(enableStates);
+  meeting.breakouts.toggleBreakout(enableStates);
 }
 
 function viewBreakouts(event) {

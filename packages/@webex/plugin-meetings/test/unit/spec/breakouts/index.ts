@@ -20,6 +20,9 @@ describe('plugin-meetings', () => {
       webex.internal.llm.on = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
+      breakouts.locusUrl = 'locusUrl';
+      breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
+      breakouts.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -287,6 +290,45 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.isInMainSession, false);
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN)
         assert.equal(breakouts.isInMainSession, true);
+      });
+    });
+
+    describe('#breakoutServiceUrlUpdate', () => {
+      it('sets the breakoutService url', () => {
+        breakouts.breakoutServiceUrlUpdate('newBreakoutServiceUrl');
+
+        assert.equal(breakouts.breakoutServiceUrl, 'newBreakoutServiceUrl/breakout/');
+      });
+    });
+
+    describe('touchBreakout', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.touchBreakout();
+        breakouts.set('breakoutServiceUrl', 'breakoutServiceUrl');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'breakoutServiceUrl',
+          body: {
+            locusUrl: 'locusUrl'
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('doToggleBreakout', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.doToggleBreakout(true);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            enableBreakoutSession: true
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
   });
