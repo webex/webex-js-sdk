@@ -8,6 +8,7 @@ import uuid from 'uuid';
 import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
+import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEETING_ERRORS} from '../constants';
 import BrowserDetection from '../common/browser-detection';
@@ -16,21 +17,10 @@ import {
   error,
   eventType,
   errorCodes as ERROR_CODE,
-  OS_NAME,
   UNKNOWN,
   CLIENT_NAME,
   mediaType,
 } from './config';
-
-const OSMap = {
-  // @ts-ignore
-  'Chrome OS': OS_NAME.chrome,
-  macOS: OS_NAME.MAC,
-  Windows: OS_NAME.WINDOWS,
-  iOS: OS_NAME.IOS,
-  Android: OS_NAME.ANDROID,
-  Linux: OS_NAME.LINUX,
-};
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -205,7 +195,7 @@ class Metrics {
           localNetworkPrefix: anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress),
           osVersion: getOSVersion() || 'unknown',
           subClientType: options.subClientType,
-          os: this.getOsName(),
+          os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
         },
@@ -257,17 +247,6 @@ class Metrics {
   }
 
   /**
-   * returns metrics friendly OS versions
-   * @param {String} osName Os name
-   * @returns {String}
-   * @private
-   * @memberof Metrics
-   */
-  private getOsName() {
-    return OSMap[getOSName()] ?? OS_NAME.OTHERS;
-  }
-
-  /**
    * get the payload specific for a media quality event through call analyzer
    * @param {String} eventType the event name
    * @param {Object} identifiers contains the identifiers needed for CA
@@ -311,7 +290,7 @@ class Metrics {
           clientType: options.clientType, // TODO: Only clientType: 'TEAMS_CLIENT' is whitelisted
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
           localNetworkPrefix: anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress),
-          os: this.getOsName(),
+          os: getOSNameInternal(),
           osVersion: getOSVersion() || UNKNOWN,
           subClientType: options.subClientType,
           browser: getBrowserName(),

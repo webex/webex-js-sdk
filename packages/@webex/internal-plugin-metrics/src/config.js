@@ -21,3 +21,22 @@ export default {
     batcherRetryPlateau: 32000,
   },
 };
+
+export const OS_NAME = {
+  WINDOWS: 'windows',
+  MAC: 'mac',
+  IOS: 'ios',
+  ANDROID: 'android',
+  CHROME: 'chrome',
+  LINUX: 'linux',
+  OTHERS: 'other',
+};
+
+export const OSMap = {
+  'Chrome OS': OS_NAME.CHROME,
+  macOS: OS_NAME.MAC,
+  Windows: OS_NAME.WINDOWS,
+  iOS: OS_NAME.IOS,
+  Android: OS_NAME.ANDROID,
+  Linux: OS_NAME.LINUX,
+};
