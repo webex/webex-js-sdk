@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.39.0](https://github.com/webex/webex-js-sdk/compare/v2.38.2...v2.39.0) (2023-02-13)
+
+
+### Features
+
+* **meeting:** add mute participant controls ([#2603](https://github.com/webex/webex-js-sdk/issues/2603)) ([4b69091](https://github.com/webex/webex-js-sdk/commit/4b69091eba06478a24bc397c609e03d56723d6e1))
+
 ### [2.38.2](https://github.com/webex/webex-js-sdk/compare/v2.38.1...v2.38.2) (2023-02-10)
 
 
