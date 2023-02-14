@@ -26,9 +26,9 @@ const Breakouts = WebexPlugin.extend({
     delayCloseTime: 'number', // appears once breakouts start
     enableBreakoutSession: 'boolean', // appears from the moment you enable breakouts
     groupId: 'string', // appears from the moment you enable breakouts
-    mainGroupId: 'string',
-    mainSessionId: 'string',
-    breakoutGroupId: 'string',
+    mainGroupId: 'string', // appears from the moment you enable breakouts
+    mainSessionId: 'string', // appears from the moment you enable breakouts
+    breakoutGroupId: 'string', // appears once breakouts start
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
     sessionType: 'string', // appears from the moment you enable breakouts
