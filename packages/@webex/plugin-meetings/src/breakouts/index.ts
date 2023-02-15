@@ -307,6 +307,7 @@ const Breakouts = WebexPlugin.extend({
    * Make enable breakout resource
    * @returns {Promise}
    */
+<<<<<<< HEAD
   enableBreakouts() {
     if (this.breakoutServiceUrl) {
       // @ts-ignore
@@ -327,6 +328,24 @@ const Breakouts = WebexPlugin.extend({
     }
 
     return Promise.reject(new Error(`enableBreakouts: the breakoutServiceUrl is empty`));
+=======
+  checkLocusDTO() {
+    // @ts-ignore
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri: this.breakoutServiceUrl,
+        body: {
+          locusUrl: this.locusUrl,
+        },
+      })
+      .catch((err) => {
+        LoggerProxy.logger.error(
+          `Meeting:request#touchBreakout --> Error provisioning error ${err}`
+        );
+        throw err;
+      });
+>>>>>>> 569c571b8... feat(plugin-meetings): breakout session, host enable/disable breakout
   },
 
   /**
@@ -336,12 +355,18 @@ const Breakouts = WebexPlugin.extend({
    */
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
+<<<<<<< HEAD
       const info = await this.enableBreakouts();
       if (!enable) {
         // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
         this.updateBreakout(info.body);
         await this.doToggleBreakout(enable);
       }
+=======
+      await this.checkLocusDTO().then(() => {
+        this.doToggleBreakout(enable);
+      });
+>>>>>>> 569c571b8... feat(plugin-meetings): breakout session, host enable/disable breakout
     } else {
       await this.doToggleBreakout(enable);
     }

@@ -2758,12 +2758,19 @@ const createBreakoutOperations = ()=>{
   }
 }
 function toggleBreakout() {
+<<<<<<< HEAD
   const enableBox = document.getElementById("enable-breakout"),
         meeting = getCurrentMeeting();
 
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
+=======
+  var enableBox = document.getElementById("enable-breakout");
+  const meeting = getCurrentMeeting();
+  if (meeting) {
+    meeting.breakouts.toggleBreakout(enableBox.checked);
+>>>>>>> 569c571b8... feat(plugin-meetings): breakout session, host enable/disable breakout
   }
 }
 
