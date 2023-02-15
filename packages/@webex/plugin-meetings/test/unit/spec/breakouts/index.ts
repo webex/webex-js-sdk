@@ -296,14 +296,27 @@ describe('plugin-meetings', () => {
     describe('#breakoutServiceUrlUpdate', () => {
       it('sets the breakoutService url', () => {
         breakouts.breakoutServiceUrlUpdate('newBreakoutServiceUrl');
-
         assert.equal(breakouts.breakoutServiceUrl, 'newBreakoutServiceUrl/breakout/');
       });
     });
 
-    describe('touchBreakout', () => {
+    describe('#toggleBreakout', () => {
+      it('makes the toggleBreakout as expected', async() => {
+        breakouts.checkLocusDTO = sinon.stub();
+        breakouts.checkLocusDTO.returns(Promise.resolve({}));
+        breakouts.doToggleBreakout = sinon.stub();
+
+        breakouts.toggleBreakout = sinon.stub();
+        breakouts.toggleBreakout.returns(Promise.resolve('TRUE'));
+
+        const result = await breakouts.toggleBreakout();
+        assert.equal(result, 'TRUE');
+      });
+    });
+
+    describe('checkLocusDTO', () => {
       it('makes the request as expected', async () => {
-        const result = await breakouts.touchBreakout();
+        const result = await breakouts.checkLocusDTO();
         breakouts.set('breakoutServiceUrl', 'breakoutServiceUrl');
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',

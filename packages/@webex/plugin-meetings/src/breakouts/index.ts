@@ -237,7 +237,7 @@ const Breakouts = WebexPlugin.extend({
    * Make enable breakout resource
    * @returns {Promise}
    */
-  touchBreakout() {
+  checkLocusDTO() {
     // @ts-ignore
     return this.webex
       .request({
@@ -262,7 +262,7 @@ const Breakouts = WebexPlugin.extend({
    */
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
-      await this.touchBreakout().then(() => {
+      await this.checkLocusDTO().then(() => {
         this.doToggleBreakout(enable);
       });
     } else {
