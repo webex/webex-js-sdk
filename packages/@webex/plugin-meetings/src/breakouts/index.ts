@@ -238,21 +238,25 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   checkLocusDTO() {
-    // @ts-ignore
-    return this.webex
-      .request({
-        method: HTTP_VERBS.POST,
-        uri: this.breakoutServiceUrl,
-        body: {
-          locusUrl: this.locusUrl,
-        },
-      })
-      .catch((err) => {
-        LoggerProxy.logger.error(
-          `Meeting:request#touchBreakout --> Error provisioning error ${err}`
-        );
-        throw err;
-      });
+    if (this.breakoutServiceUrl) {
+      // @ts-ignore
+      return this.webex
+        .request({
+          method: HTTP_VERBS.POST,
+          uri: this.breakoutServiceUrl,
+          body: {
+            locusUrl: this.locusUrl,
+          },
+        })
+        .catch((err) => {
+          LoggerProxy.logger.error(
+            `Meeting:request#touchBreakout --> Error provisioning error ${err}`
+          );
+          throw err;
+        });
+    }
+
+    return Promise.reject(new Error(`CheckLocusDTO: the breakoutServiceUrl is empty`));
   },
 
   /**
