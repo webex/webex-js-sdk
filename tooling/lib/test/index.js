@@ -23,7 +23,9 @@ exports.testPackage = async function testPackage(options, packageName, onMocha) 
   // Move NODE_ENV override into the exported function since babel-node is processing everything above
   process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
-  const currentPackageString = `===== Testing with ${onMocha ? 'Mocha' : 'Jest'} ${packageName} =====`;
+  let currentPackageString = `===== Testing ${packageName} =====`;
+  if(options.node || options.unit)
+   currentPackageString = `===== Testing with ${onMocha ? 'Mocha' : 'Jest'} ${packageName} =====`;
 
   console.info(`\n${'='.repeat(currentPackageString.length)}`);
   console.info(currentPackageString);

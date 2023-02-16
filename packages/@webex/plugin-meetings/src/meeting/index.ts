@@ -90,6 +90,8 @@ import {SkinTones, Reactions} from '../reactions/reactions';
 import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
 
 import InMeetingActions from './in-meeting-actions';
+import RecordingController from '../recording-controller';
+import ControlsOptionsManager from '../controls-options-manager';
 
 const {isBrowser} = BrowserDetection();
 
@@ -5695,7 +5697,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (layoutType) {
       if (!LAYOUT_TYPES.includes(layoutType)) {
-        return this.rejectWithErrorLog('Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.');
+        return this.rejectWithErrorLog(
+          'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
+        );
       }
 
       layoutInfo.layoutType = layoutType;

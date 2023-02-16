@@ -78,7 +78,7 @@ describe('plugin-meetings', () => {
    * level causes testing errors in CI based around related files. Skipping this here until a solution
    * to this problem is generated.
    */
-  describe('ReconnectionManager', () => {
+  describe.skip('ReconnectionManager', () => {
     let reconnectionManager;
 
     beforeEach(() => {

@@ -134,13 +134,10 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error('Meeting:index#enableBNR.', error);
 
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE,
-        {
-          reason: error.message,
-          stack: error.stack
-        }
-      );
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE, {
+        reason: error.message,
+        stack: error.stack,
+      });
 
       return this.rejectPromise(error);
     }
@@ -197,13 +194,10 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error(`Meeting:index#disableBNR. ${error}`);
 
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE,
-        {
-          reason: error.message,
-          stack: error.stack
-        }
-      );
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE, {
+        reason: error.message,
+        stack: error.stack,
+      });
 
       return this.rejectPromise(error);
     }

@@ -3,6 +3,7 @@ import chai from 'chai';
 import uuid from 'uuid';
 import chaiAsPromised from 'chai-as-promised';
 import MockWebex from '@webex/test-helper-mock-webex';
+
 import Meetings from '@webex/plugin-meetings';
 import MembersRequest from '@webex/plugin-meetings/src/members/request';
 import membersUtil from '@webex/plugin-meetings/src/members/util';
@@ -127,7 +128,11 @@ describe('plugin-meetings', () => {
         'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.';
 
       const checkInvalid = async (functionParams) => {
-        assert.throws(() => membersRequest.lowerAllHandsMember(functionParams), ParameterError, parameterErrorMessage);
+        assert.throws(
+          () => membersRequest.lowerAllHandsMember(functionParams),
+          ParameterError,
+          parameterErrorMessage
+        );
         assert(membersRequest.request.notCalled);
         assert(membersUtil.getLowerAllHandsMemberRequestParams.notCalled);
       };

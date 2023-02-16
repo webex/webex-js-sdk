@@ -14,7 +14,7 @@
   },
   "search.exclude": {
     "**/bower_components": true,
-    "**/dist": true,
+    "**/dist": true
   },
   "editor.codeActionsOnSave": {
     "source.fixAll": true,

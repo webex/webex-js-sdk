@@ -64,7 +64,7 @@ describe('plugin-meetings', () => {
     describe('#updateControls', () => {
       let newControls;
 
-      beforeEach(() => {
+      beforeEach('setup new controls', () => {
         newControls = {
           lock: {},
           meetingFull: {},
@@ -403,7 +403,7 @@ describe('plugin-meetings', () => {
     describe('#updateParticipants()', () => {
       let newParticipants;
 
-      beforeEach(() => {
+      beforeEach('setup new participants', () => {
         newParticipants = [
           {
             person: {
@@ -897,7 +897,7 @@ describe('plugin-meetings', () => {
       let getRolesSpy;
       let isJoinedSpy;
 
-      beforeEach(() => {
+      beforeEach('setup meeting info', () => {
         meetingInfo = {
           displayHints: {
             joined: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],

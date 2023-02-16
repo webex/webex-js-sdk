@@ -1,4 +1,3 @@
-
 const packages = [
   '@webex/common',
   '@webex/common-evented',
@@ -36,7 +35,6 @@ const packages = [
   '@webex/plugin-authorization-node',
   '@webex/plugin-device-manager',
   '@webex/plugin-logger',
-  '@webex/plugin-meetings',
   '@webex/plugin-memberships',
   '@webex/plugin-messages',
   '@webex/plugin-people',
@@ -66,12 +64,11 @@ const packages = [
   '@webex/webex-server',
   '@webex/webrtc',
   '@webex/xunit-with-logs',
-  'webex'
 ];
 
-const packagesWithSetup = [
-  '@webex/plugin-meetings'
-];
+/* const packagesWithSetup = [
+  //'@webex/plugin-meetings'
+]; */
 
 const jestProject = [];
 
@@ -84,18 +81,15 @@ packages.forEach((packageName) => {
     testEnvironment: 'node',
     displayName: packageName,
 
-    testMatch: [
-      `<rootDir>/packages/${packageName}/test/unit/**/!(lib|fixture)/*.[jt]s`
-    ]
+    testMatch: [`<rootDir>/packages/${packageName}/test/unit/**/!(lib|fixture)/*.[jt]s`],
   };
 
-  if (packagesWithSetup.includes(packageName)) {
+  /* if (packagesWithSetup.includes(packageName)) {
     config.setupFiles = [`<rootDir>/packages/${packageName}/jest.setup.js`];
-  }
+  } */
 
   jestProject.push(config);
 });
-
 
 module.exports = {
   clearMocks: true,

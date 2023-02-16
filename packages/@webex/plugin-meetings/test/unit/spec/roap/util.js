@@ -8,7 +8,7 @@ describe('RoapUtil', () => {
   describe('updatePeerConnection', () => {
     let meeting, session;
 
-    beforeEach(() => {
+    beforeEach('stub PeerConnectionManager', () => {
       meeting = {
         mediaProperties: {
           peerConnection: {name: 'peer-connection'},

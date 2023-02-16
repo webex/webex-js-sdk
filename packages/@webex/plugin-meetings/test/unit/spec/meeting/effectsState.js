@@ -3,6 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {BNR_STATUS} from '@webex/plugin-meetings/src/constants';
+
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Meetings from '@webex/plugin-meetings';
@@ -211,12 +212,14 @@ describe('plugin-meetings', () => {
       });
 
       it('if called twice, does bnr effect enable on audio track for the first request and resolves second', async () => {
-        Promise.all([effects.handleClientRequest(true, meeting), effects.handleClientRequest(true, meeting)])
-          .then((resolveFirst, resolveSecond) => {
-            assert.isTrue(resolveFirst);
-            assert.isTrue(resolveSecond);
-            assert.calledOnce(MediaUtil.createMediaStream);
-          });
+        Promise.all([
+          effects.handleClientRequest(true, meeting),
+          effects.handleClientRequest(true, meeting),
+        ]).then((resolveFirst, resolveSecond) => {
+          assert.isTrue(resolveFirst);
+          assert.isTrue(resolveSecond);
+          assert.calledOnce(MediaUtil.createMediaStream);
+        });
       });
 
       it('should throw error for inappropriate sample rate and send error metrics', async () => {

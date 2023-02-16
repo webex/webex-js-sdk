@@ -559,7 +559,7 @@ describe('plugin-avatar', () => {
                 },
               ],
             },
-          })
+          }})
         );
 
         return Promise.all([
