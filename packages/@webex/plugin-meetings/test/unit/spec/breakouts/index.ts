@@ -47,7 +47,7 @@ const getBOResponse = (status: string) => {
   };
 };
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -434,6 +434,14 @@ describe('plugin-meetings', () => {
         breakouts.doToggleBreakout = sinon.stub().resolves();
         await breakouts.toggleBreakout(true);
         assert.calledOnceWithExactly(breakouts.doToggleBreakout, true);
+      });
+
+      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
+        breakouts.enableBreakoutSession = true;
+        breakouts.toggleBreakout = sinon.stub();
+        breakouts.toggleBreakout.returns(Promise.resolve('FALSE'));
+        const result = await breakouts.toggleBreakout();
+        assert.equal(result, 'FALSE');
       });
     });
 
