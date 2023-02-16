@@ -13,7 +13,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
  * Integration tests use a real webex test user against services.
  */
 describe('plugin-scheduler', () => {
-  describe('Scheduler', () => {
+  describe('transformers', () => {
     let scheduler;
     let user;
     let webex;
