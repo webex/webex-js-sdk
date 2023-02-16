@@ -58,10 +58,34 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
           errorCause,
         };
 
+        const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+
         meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
+
+        if (mediaServer) {
+          meeting.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+        }
       }
     }
   }
+};
+
+MeetingsUtil.getMediaServer = (sdp) => {
+  let mediaServer;
+
+  // Attempt to collect the media server from the roap message.
+  try {
+    mediaServer = sdp
+      .split('\r\n')
+      .find((line) => line.startsWith('o='))
+      .split(' ')
+      .shift()
+      .replace('o=', '');
+  } catch {
+    mediaServer = undefined;
+  }
+
+  return mediaServer;
 };
 
 MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
