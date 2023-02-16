@@ -266,8 +266,13 @@ const Breakouts = WebexPlugin.extend({
    */
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
-      await this.checkLocusDTO().then(() => {
-        this.doToggleBreakout(enable);
+      await this.checkLocusDTO().then((response) => {
+        // checkLocusDTO default return enableBreakoutSession:true
+        if (!enable) {
+          // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
+          this.updateBreakout(response.body);
+          this.doToggleBreakout(enable);
+        }
       });
     } else {
       this.doToggleBreakout(enable);

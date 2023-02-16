@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -301,16 +301,22 @@ describe('plugin-meetings', () => {
     });
 
     describe('#toggleBreakout', () => {
-      it('makes the toggleBreakout as expected', async() => {
+      it('enableBreakoutSession is undefined, run checkLocusDTO then toggleBreakout', async() => {
         breakouts.checkLocusDTO = sinon.stub();
         breakouts.checkLocusDTO.returns(Promise.resolve({}));
-        breakouts.doToggleBreakout = sinon.stub();
-
         breakouts.toggleBreakout = sinon.stub();
         breakouts.toggleBreakout.returns(Promise.resolve('TRUE'));
 
         const result = await breakouts.toggleBreakout();
         assert.equal(result, 'TRUE');
+      });
+
+      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
+        breakouts.enableBreakoutSession = true;
+        breakouts.toggleBreakout = sinon.stub();
+        breakouts.toggleBreakout.returns(Promise.resolve('FALSE'));
+        const result = await breakouts.toggleBreakout();
+        assert.equal(result, 'FALSE');
       });
     });
 
