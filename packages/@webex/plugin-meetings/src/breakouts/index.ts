@@ -237,7 +237,7 @@ const Breakouts = WebexPlugin.extend({
    * Make enable breakout resource
    * @returns {Promise}
    */
-  checkLocusDTO() {
+  enableBreakouts() {
     if (this.breakoutServiceUrl) {
       // @ts-ignore
       return this.webex
@@ -266,7 +266,7 @@ const Breakouts = WebexPlugin.extend({
    */
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
-      await this.checkLocusDTO().then((response) => {
+      await this.enableBreakouts().then((response) => {
         // checkLocusDTO default return enableBreakoutSession:true
         if (!enable) {
           // if enable is false, updateBreakout set the param then set enableBreakoutSession as false

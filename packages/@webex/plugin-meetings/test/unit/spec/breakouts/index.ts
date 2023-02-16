@@ -301,9 +301,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('#toggleBreakout', () => {
-      it('enableBreakoutSession is undefined, run checkLocusDTO then toggleBreakout', async() => {
-        breakouts.checkLocusDTO = sinon.stub();
-        breakouts.checkLocusDTO.returns(Promise.resolve({}));
+      it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async() => {
+        breakouts.enableBreakouts = sinon.stub();
+        breakouts.enableBreakouts.returns(Promise.resolve({}));
         breakouts.toggleBreakout = sinon.stub();
         breakouts.toggleBreakout.returns(Promise.resolve('TRUE'));
 
@@ -320,9 +320,9 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('checkLocusDTO', () => {
+    describe('enableBreakouts', () => {
       it('makes the request as expected', async () => {
-        const result = await breakouts.checkLocusDTO();
+        const result = await breakouts.enableBreakouts();
         breakouts.set('breakoutServiceUrl', 'breakoutServiceUrl');
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
