@@ -97,7 +97,7 @@ const Feature = WebexPlugin.extend({
 
   /**
    * Issues request to server to set a value for a feature toggle.
-   * @param {array} featureList
+   * @param {array} featureList - in the form of `Array<{ type: 'USER' | 'DEV', key: string, val: any }>`
    * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
    */
   setBundledFeatures(featureList) {
