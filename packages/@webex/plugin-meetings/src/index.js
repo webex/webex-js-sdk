@@ -8,6 +8,8 @@ registerPlugin('meetings', Meetings, {
   config,
 });
 
+export * from './webrtc-core';
+
 export default Meetings;
 
 export * as CONSTANTS from './constants';

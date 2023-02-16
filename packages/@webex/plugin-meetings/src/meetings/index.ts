@@ -6,6 +6,8 @@ import '@webex/internal-plugin-conversation';
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
 
+import {createCameraTrack, createMicrophoneTrack, createDisplayTrack} from '../webrtc-core';
+
 import 'webrtc-adapter';
 
 import Metrics from '../metrics';
@@ -1155,5 +1157,20 @@ export default class Meetings extends WebexPlugin {
    */
   getLogger() {
     return LoggerProxy.get();
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  createCameraTrack(constraints) {
+    return createCameraTrack(constraints);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  createMicrophoneTrack(constraints) {
+    return createMicrophoneTrack(constraints);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  createDisplayTrack() {
+    return createDisplayTrack();
   }
 }

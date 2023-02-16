@@ -1,5 +1,5 @@
 import {isEmpty} from 'lodash';
-import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/internal-media-core';
+import {LocalCameraTrack, LocalMicrophoneTrack} from '../webrtc-core';
 
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import Metrics from '../metrics';
