@@ -15,6 +15,7 @@ _site
 doc
 docker-env
 dist
+types
 html-report
 js-bin
 local/
