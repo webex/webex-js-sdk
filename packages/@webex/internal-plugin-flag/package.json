@@ -14,6 +14,9 @@
   "engines": {
     "node": ">=14"
   },
+  "scripts": {
+    "static:lint": "eslint ./src/**/*.*"
+  },
   "browserify": {
     "transform": [
       "babelify",
@@ -29,5 +32,10 @@
     "@webex/test-helper-test-users": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "eslint": "^8.24.0"
   }
 }
