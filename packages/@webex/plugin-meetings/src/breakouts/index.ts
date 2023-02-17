@@ -294,6 +294,43 @@ const Breakouts = WebexPlugin.extend({
       },
     });
   },
+
+  /**
+   * Create new breakout session
+   * @param {object} sessions -- breakout session group
+   * @returns {Promise}
+   */
+  create(sessions) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: sessions,
+      },
+    });
+  },
+
+  /**
+   * delete breakout session
+   * @param {object} sessions
+   * @returns {Promise}
+   */
+  delete(sessions) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            action: 'DELETE',
+            sessions,
+          },
+        ],
+      },
+    });
+  },
 });
 
 export default Breakouts;
