@@ -48,19 +48,6 @@ const getBOResponse = (status: string) => {
   };
 };
 
-const getBreakoutList = (parent: typeof Breakouts) => {
-  const breakoutList = [];
-  for (let i = 0; i < 2; i++) {
-    const breakout = new Breakout({}, {parent});
-    breakout.groupId = `groupId_${i + 1}`;
-    breakout.sessionId = `sessionId_${i + 1}`;
-    breakout.url = `url_${i + 1}`;
-    breakoutList.push(breakout);
-  }
-
-  return breakoutList;
-};
-
 describe('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
@@ -397,19 +384,19 @@ describe('plugin-meetings', () => {
         );
 
         breakouts.set('url', 'url');
-        breakouts.set('breakouts', getBreakoutList(breakouts));
+        breakouts.breakoutGroupId = 'breakoutGroupId';
 
         const result = await breakouts.start();
+        await breakouts.start({id: 'id', someOtherParam: 'someOtherParam'});
 
-        const argObj = webex.request.getCall(1).args[0];
+        const arg = webex.request.getCall(0).args[0];
+        const argObj1 = arg.body.groups[0];
+        const argObj2 = webex.request.getCall(1).args[0].body.groups[0];
 
-        assert.equal(argObj.uri, 'url');
-        assert.equal(argObj.method, 'PUT');
-        assert.deepEqual(
-          argObj.body.groups.map(({id}) => id),
-          ['groupId_1', 'groupId_2']
-        );
-        assert.equal(argObj.body.groups[0].action, 'START');
+        assert.equal(arg.uri, 'url');
+        assert.equal(arg.method, 'PUT');
+        assert.deepEqual(argObj1, {id:'breakoutGroupId', action: 'START', allowBackToMain: false, allowToJoinLater: false});
+        assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam'});
         assert.deepEqual(result, {body: getBOResponse('OPEN')});
       });
     });
@@ -423,19 +410,19 @@ describe('plugin-meetings', () => {
         );
 
         breakouts.set('url', 'url');
-        breakouts.set('breakouts', getBreakoutList(breakouts));
+        breakouts.breakoutGroupId = 'breakoutGroupId';
+        breakouts.set('delayCloseTime', 60);
 
         const result = await breakouts.end();
+        await breakouts.end({id: 'id', someOtherParam: 'someOtherParam'});
+        const arg = webex.request.getCall(0).args[0];
+        const argObj1 = arg.body.groups[0];
+        const argObj2 = webex.request.getCall(1).args[0].body.groups[0];
 
-        const argObj = webex.request.getCall(1).args[0];
-
-        assert.equal(argObj.uri, 'url');
-        assert.equal(argObj.method, 'PUT');
-        assert.deepEqual(
-          argObj.body.groups.map(({id}) => id),
-          ['groupId_1', 'groupId_2']
-        );
-        assert.equal(argObj.body.groups[0].action, 'CLOSE');
+        assert.equal(arg.uri, 'url');
+        assert.equal(arg.method, 'PUT');
+        assert.deepEqual(argObj1, {id:'breakoutGroupId', action: 'CLOSE', delayCloseTime: 60});
+        assert.deepEqual(argObj2, {id:'id', action: 'CLOSE', delayCloseTime: 60, someOtherParam: 'someOtherParam'});
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
       });
     });

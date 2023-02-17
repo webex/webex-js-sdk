@@ -300,7 +300,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  start(params) {
+  start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
       id: this.breakoutGroupId,
@@ -323,7 +323,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  end(params) {
+  end(params = {}) {
     const {delayCloseTime, breakoutGroupId: id} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
     const payload = {
