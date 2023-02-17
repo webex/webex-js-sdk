@@ -2683,8 +2683,9 @@ const createBreakoutOperations = ()=>{
 function toggleBreakout() {
   var enableBox = document.getElementById("enable-breakout");
   const meeting = getCurrentMeeting();
-  var enableStates = enableBox.checked == true ? true : false;
-  meeting.toggleBreakout(enableStates);
+  if (meeting) {
+    meeting.breakouts.toggleBreakout(enableBox.checked);
+  }
 }
 
 function viewBreakouts(event) {

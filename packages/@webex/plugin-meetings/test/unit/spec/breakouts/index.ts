@@ -72,6 +72,9 @@ describe('plugin-meetings', () => {
       webex.internal.llm.on = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
+      breakouts.locusUrl = 'locusUrl';
+      breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
+      breakouts.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -343,6 +346,48 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#breakoutServiceUrlUpdate', () => {
+      it('sets the breakoutService url', () => {
+        breakouts.breakoutServiceUrlUpdate('newBreakoutServiceUrl');
+        assert.equal(breakouts.breakoutServiceUrl, 'newBreakoutServiceUrl/breakout/');
+      });
+    });
+
+    describe('#toggleBreakout', () => {
+      it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async() => {
+        breakouts.enableBreakouts = sinon.stub();
+        breakouts.enableBreakouts.returns(Promise.resolve({}));
+        breakouts.toggleBreakout = sinon.stub();
+        breakouts.toggleBreakout.returns(Promise.resolve('TRUE'));
+
+        const result = await breakouts.toggleBreakout();
+        assert.equal(result, 'TRUE');
+      });
+
+      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
+        breakouts.enableBreakoutSession = true;
+        breakouts.toggleBreakout = sinon.stub();
+        breakouts.toggleBreakout.returns(Promise.resolve('FALSE'));
+        const result = await breakouts.toggleBreakout();
+        assert.equal(result, 'FALSE');
+      });
+    });
+
+    describe('enableBreakouts', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.enableBreakouts();
+        breakouts.set('breakoutServiceUrl', 'breakoutServiceUrl');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'breakoutServiceUrl',
+          body: {
+            locusUrl: 'locusUrl'
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
     describe('#start', () => {
       it('should start breakout sessions', async () => {
         webex.request.returns(
@@ -392,6 +437,20 @@ describe('plugin-meetings', () => {
         );
         assert.equal(argObj.body.groups[0].action, 'CLOSE');
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
+      });
+    });
+    describe('doToggleBreakout', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.doToggleBreakout(true);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            enableBreakoutSession: true
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
   });

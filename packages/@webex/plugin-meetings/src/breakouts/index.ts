@@ -32,6 +32,7 @@ const Breakouts = WebexPlugin.extend({
     status: 'string', // only present when in a breakout session
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
+    breakoutServiceUrl: 'string', // the current breakout resouce url
   },
 
   children: {
@@ -87,6 +88,15 @@ const Breakouts = WebexPlugin.extend({
    */
   locusUrlUpdate(locusUrl) {
     this.set('locusUrl', locusUrl);
+  },
+
+  /**
+   * Update the current breakout resouce url
+   * @param {string} breakoutServiceUrl
+   * @returns {void}
+   */
+  breakoutServiceUrlUpdate(breakoutServiceUrl) {
+    this.set('breakoutServiceUrl', `${breakoutServiceUrl}/breakout/`);
   },
 
   /**
@@ -184,6 +194,8 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
+
+    this.set('enableBreakoutSession', params.enableBreakoutSession);
   },
 
   /**
@@ -222,6 +234,68 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Make enable breakout resource
+   * @returns {Promise}
+   */
+  enableBreakouts() {
+    if (this.breakoutServiceUrl) {
+      // @ts-ignore
+      return this.webex
+        .request({
+          method: HTTP_VERBS.POST,
+          uri: this.breakoutServiceUrl,
+          body: {
+            locusUrl: this.locusUrl,
+          },
+        })
+        .catch((err) => {
+          LoggerProxy.logger.error(
+            `Meeting:request#touchBreakout --> Error provisioning error ${err}`
+          );
+          throw err;
+        });
+    }
+
+    return Promise.reject(new Error(`CheckLocusDTO: the breakoutServiceUrl is empty`));
+  },
+
+  /**
+   * Make the meeting enbale or disable breakout session
+   * @param {boolean} enable
+   * @returns {Promise}
+   */
+  async toggleBreakout(enable) {
+    if (this.enableBreakoutSession === undefined) {
+      await this.enableBreakouts().then((response) => {
+        // checkLocusDTO default return enableBreakoutSession:true
+        if (!enable) {
+          // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
+          this.updateBreakout(response.body);
+          this.doToggleBreakout(enable);
+        }
+      });
+    } else {
+      this.doToggleBreakout(enable);
+    }
+  },
+
+  /**
+   * do toggle meeting breakout session enable or disable
+   * @param {boolean} enable
+   * @returns {Promise}
+   */
+  doToggleBreakout(enable) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        enableBreakoutSession: enable,
+      },
+    });
+  },
+
+  /**
    * Host or cohost starts breakout sessions
    * @param {String} id
    * @returns {Promise}
@@ -242,7 +316,6 @@ const Breakouts = WebexPlugin.extend({
       },
     });
   },
-
   /**
    * Host or cohost ends breakout sessions
    * @param {String} id
@@ -264,6 +337,22 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Create new breakout session
+   * @param {object} sessions -- breakout session group
+   * @returns {Promise}
+   */
+  create(sessions) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: sessions,
+      },
+    });
+  },
+
+  /**
    * get existed breakout sessions
    * @returns {Promise}
    */
@@ -271,6 +360,27 @@ const Breakouts = WebexPlugin.extend({
     return this.request({
       method: HTTP_VERBS.GET,
       uri: this.url,
+    });
+  },
+
+  /**
+   * delete breakout session
+   * @param {object} sessions
+   * @returns {Promise}
+   */
+  delete(sessions) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            action: 'DELETE',
+            sessions,
+          },
+        ],
+      },
     });
   },
 });
