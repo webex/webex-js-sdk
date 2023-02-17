@@ -2702,6 +2702,17 @@ const createBreakoutOperations = ()=>{
         })
       }
     });
+    const startBtn = createButton('Start Breakout Sessions', ()=>{
+      endBtn.disabled = false;
+      startBtn.disabled = true;
+      if(groupId){
+          meeting.breakouts.start(groupId);
+      }else{
+        meeting.breakouts.getBreakout().then((res)=>{
+          meeting.breakouts.start(res.body.groups[0].id);
+        })
+      }
+    });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;
       countDown = countDown<0?0:countDown;
@@ -2769,8 +2780,14 @@ function toggleBreakout() {
   var enableBox = document.getElementById("enable-breakout");
   const meeting = getCurrentMeeting();
   if (meeting) {
+<<<<<<< HEAD
     meeting.breakouts.toggleBreakout(enableBox.checked);
 >>>>>>> 569c571b8... feat(plugin-meetings): breakout session, host enable/disable breakout
+=======
+    meeting.breakouts.toggleBreakout(enableBox.checked).then(()=>{
+      document.getElementById('createBO').disabled = !enableBox.checked;
+    });
+>>>>>>> d39eb061e... feat: working on BO start and end functionalities
   }
 }
 
