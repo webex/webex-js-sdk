@@ -2111,6 +2111,8 @@ export default class Meeting extends StatelessWebexPlugin {
           canUnsetMuteOnEntry: ControlsOptionsUtil.canUnsetMuteOnEntry(
             payload.info.userDisplayHints
           ),
+          canSetMuted: ControlsOptionsUtil.canSetMuted(payload.info.userDisplayHints),
+          canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(payload.info.userDisplayHints),
           canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
           canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
           canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
@@ -5573,6 +5575,17 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setDisallowUnmute(enabled: boolean) {
     return this.controlsOptionsManager.setDisallowUnmute(enabled);
+  }
+
+  /**
+   * set the mute all flag for participants if you're the host
+   * @returns {Promise}
+   * @param {boolean} enabled
+   * @public
+   * @memberof Meeting
+   */
+  public setMuteAll(enabled: boolean) {
+    return this.controlsOptionsManager.setMuteAll(enabled);
   }
 
   /**

@@ -180,4 +180,14 @@ export default class ControlsOptionsManager {
   public setDisallowUnmute(enabled: boolean): Promise<any> {
     return this.setControls(Setting.disallowUnmute, enabled);
   }
+
+  /**
+   * @public
+   * @param {boolean} enabled
+   * @memberof ControlsOptionsManager
+   * @returns {Promise}
+   */
+  public setMuteAll(enabled: boolean): Promise<any> {
+    return this.setControls(Setting.muted, enabled);
+  }
 }
