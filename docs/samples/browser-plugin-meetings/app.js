@@ -2637,7 +2637,6 @@ const createButton = (text, func) => {
 }
 
 const createBreakoutOperations = ()=>{
-  console.log('+++++++++', meeting.breakouts);
   const isHostUser = meeting.members.hostId === meeting.userId;
   const hostOperationsEl = document.createElement('div');
   let groupId = '';
@@ -2664,17 +2663,17 @@ const createBreakoutOperations = ()=>{
       endBtn.disabled = false;
       startBtn.disabled = true;
       if(groupId){
-          meeting.breakouts.start(groupId);
+          meeting.breakouts.start({id: groupId});
       }else{
         meeting.breakouts.getBreakout().then((res)=>{
-          meeting.breakouts.start(res.body.groups[0].id);
+          meeting.breakouts.start({id: res.body.groups[0].id});
         })
       }
     });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;
       countDown = countDown<0?0:countDown;
-      meeting.breakouts.end(groupId || '');
+      meeting.breakouts.end({id: groupId});
       setTimeout(()=>{
         endBtn.disabled = true;
         startBtn.disabled = false;

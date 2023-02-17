@@ -297,38 +297,47 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Host or cohost starts breakout sessions
-   * @param {String} id
+   * @param {object} params
    * @returns {Promise}
    */
-  start(id) {
+  start(params) {
     const action = BREAKOUTS.ACTION.START;
-    const groups = [
-      {id: id || this.breakoutGroupId, action, allowBackToMain: false, allowToJoinLater: false},
-    ];
+    const payload = {
+      id: this.breakoutGroupId,
+      action,
+      allowBackToMain: false,
+      allowToJoinLater: false,
+      ...params,
+    };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body: {
-        groups,
+        groups: [payload],
       },
     });
   },
   /**
    * Host or cohost ends breakout sessions
-   * @param {String} id
+   * @param {object} params
    * @returns {Promise}
    */
-  end(id) {
-    const {delayCloseTime} = this;
+  end(params) {
+    const {delayCloseTime, breakoutGroupId: id} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
-    const groups = [{id: id || this.breakoutGroupId, delayCloseTime, action}];
+    const payload = {
+      id,
+      action,
+      delayCloseTime,
+      ...params,
+    };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body: {
-        groups,
+        groups: [payload],
       },
     });
   },
