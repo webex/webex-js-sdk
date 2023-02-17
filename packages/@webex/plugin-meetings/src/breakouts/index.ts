@@ -302,11 +302,9 @@ const Breakouts = WebexPlugin.extend({
    */
   start(id) {
     const action = BREAKOUTS.ACTION.START;
-    let groupId = id;
-    if (this.breakouts.length) {
-      groupId = this.breakouts.models[0].groupId;
-    }
-    const groups = [{id: groupId, action}];
+    const groups = [
+      {id: id || this.breakoutGroupId, action, allowBackToMain: false, allowToJoinLater: false},
+    ];
 
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -324,8 +322,7 @@ const Breakouts = WebexPlugin.extend({
   end(id) {
     const {delayCloseTime} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
-    const {groupId} = this.breakouts.models[0];
-    const groups = [{id: id || groupId, delayCloseTime, action}];
+    const groups = [{id: id || this.breakoutGroupId, delayCloseTime, action}];
 
     return this.request({
       method: HTTP_VERBS.PUT,

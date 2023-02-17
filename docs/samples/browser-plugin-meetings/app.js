@@ -2640,22 +2640,41 @@ const createBreakoutOperations = ()=>{
   console.log('+++++++++', meeting.breakouts);
   const isHostUser = meeting.members.hostId === meeting.userId;
   const hostOperationsEl = document.createElement('div');
+  let groupId = '';
   if(isHostUser && meetingsBreakoutSupportElm.checked){
     breakoutHostOperation.innerHTML = '';
     const hostOperationsTitleEl = document.createElement('h3');
     hostOperationsTitleEl.innerText = 'Host Operations';
     hostOperationsTitleEl.setAttribute('style', 'margin-top:0');
-    const startBtn = createButton('Start Breakout Sessions', ()=>{
+    const createBtn = createButton('Create Breakout Sessions', ()=>{
       meeting.breakouts.getBreakout().then((res)=>{
-        meeting.breakouts.start(res.body.groups[0].id);
-        endBtn.disabled = false;
-        startBtn.disabled = true;
+        createBtn.disabled = true;
+        startBtn.disabled = false;
+        if(res.body.groups.length){
+          groupId = res.body.groups[0].id;
+        }else{
+          const obj = [{'sessions': [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}]}];
+          meeting.breakouts.create(obj).then((res)=>{
+            groupId = res.body.groups[0].id;
+          })
+        }
       })
+    });
+    const startBtn = createButton('Start Breakout Sessions', ()=>{
+      endBtn.disabled = false;
+      startBtn.disabled = true;
+      if(groupId){
+          meeting.breakouts.start(groupId);
+      }else{
+        meeting.breakouts.getBreakout().then((res)=>{
+          meeting.breakouts.start(res.body.groups[0].id);
+        })
+      }
     });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;
       countDown = countDown<0?0:countDown;
-      meeting.breakouts.end();
+      meeting.breakouts.end(groupId || '');
       setTimeout(()=>{
         endBtn.disabled = true;
         startBtn.disabled = false;
@@ -2671,10 +2690,14 @@ const createBreakoutOperations = ()=>{
         }, 1000)
       }
     })
-    // startBtn.disabled = meeting.breakouts.breakouts.length;
-    // endBtn.disabled = !meeting.breakouts.breakouts.length;
+    createBtn.disabled = true;
+    startBtn.disabled = true;
     endBtn.disabled = true;
+    startBtn.id = 'startBO';
+    endBtn.id = 'endBO';
+    createBtn.id = 'createBO';
     hostOperationsEl.appendChild(hostOperationsTitleEl);
+    hostOperationsEl.appendChild(createBtn);
     hostOperationsEl.appendChild(startBtn);
     hostOperationsEl.appendChild(endBtn);
     breakoutHostOperation.appendChild(hostOperationsEl);
@@ -2684,7 +2707,9 @@ function toggleBreakout() {
   var enableBox = document.getElementById("enable-breakout");
   const meeting = getCurrentMeeting();
   if (meeting) {
-    meeting.breakouts.toggleBreakout(enableBox.checked);
+    meeting.breakouts.toggleBreakout(enableBox.checked).then(()=>{
+      document.getElementById('createBO').disabled = !enableBox.checked;
+    });
   }
 }
 
