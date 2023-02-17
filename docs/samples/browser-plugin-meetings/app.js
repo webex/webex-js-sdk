@@ -2706,10 +2706,10 @@ const createBreakoutOperations = ()=>{
       endBtn.disabled = false;
       startBtn.disabled = true;
       if(groupId){
-          meeting.breakouts.start(groupId);
+          meeting.breakouts.start({id: groupId});
       }else{
         meeting.breakouts.getBreakout().then((res)=>{
-          meeting.breakouts.start(res.body.groups[0].id);
+          meeting.breakouts.start({id: res.body.groups[0].id});
         })
       }
     });
