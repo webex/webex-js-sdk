@@ -4631,15 +4631,6 @@ export default class Meeting extends StatelessWebexPlugin {
           error
         );
 
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-          correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
-          reason: error.message,
-          stack: error.stack,
-          turnDiscoverySkippedReason,
-          turnServerUsed,
-        });
-
         throw error;
       })
       .then(
