@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.39.3](https://github.com/webex/webex-js-sdk/compare/v2.39.2...v2.39.3) (2023-02-17)
+
+
+### Bug Fixes
+
+* 'js_sdk_add_media_failures' metric is sent twice ([#2620](https://github.com/webex/webex-js-sdk/issues/2620)) ([59ed880](https://github.com/webex/webex-js-sdk/commit/59ed880ae2b075ae94802efdd7e3b57a5f03133d))
+
 ### [2.39.2](https://github.com/webex/webex-js-sdk/compare/v2.39.1...v2.39.2) (2023-02-15)
 
 
