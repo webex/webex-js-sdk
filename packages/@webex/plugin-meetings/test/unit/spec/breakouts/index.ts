@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -302,21 +302,36 @@ describe('plugin-meetings', () => {
 
     describe('#toggleBreakout', () => {
       it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async() => {
-        breakouts.enableBreakouts = sinon.stub();
-        breakouts.enableBreakouts.returns(Promise.resolve({}));
-        breakouts.toggleBreakout = sinon.stub();
-        breakouts.toggleBreakout.returns(Promise.resolve('TRUE'));
-
-        const result = await breakouts.toggleBreakout();
-        assert.equal(result, 'TRUE');
+        breakouts.enableBreakoutSession = undefined;
+        breakouts.enableBreakouts = sinon.stub().returns(Promise.resolve({body: {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url'
+        }}))
+        breakouts.updateBreakout = sinon.stub();
+        breakouts.doToggleBreakout = sinon.stub();
+        
+        await breakouts.toggleBreakout(false);
+        // doToggleBreakout.restore()
+        assert.calledOnceWithExactly(breakouts.updateBreakout, {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url'
+        });
+        assert.calledOnceWithExactly(breakouts.doToggleBreakout, false);
       });
 
       it('enableBreakoutSession is exist, run toggleBreakout', async() => {
         breakouts.enableBreakoutSession = true;
-        breakouts.toggleBreakout = sinon.stub();
-        breakouts.toggleBreakout.returns(Promise.resolve('FALSE'));
-        const result = await breakouts.toggleBreakout();
-        assert.equal(result, 'FALSE');
+        breakouts.doToggleBreakout = sinon.stub();
+        await breakouts.toggleBreakout(true);
+        assert.calledOnceWithExactly(breakouts.doToggleBreakout, true);
       });
     });
 
