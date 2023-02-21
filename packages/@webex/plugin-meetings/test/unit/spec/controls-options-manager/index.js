@@ -119,6 +119,63 @@ describe('plugin-meetings', () => {
                     });
                   });
             });
+
+            describe('Mute/Unmute All', () => {
+              let manager;
+            
+              beforeEach(() => {
+                request = {
+                  request: sinon.stub().returns(Promise.resolve()),
+                };
+
+                manager = new ControlsOptionsManager(request);
+
+                manager.set({
+                  locusUrl: 'test/id',
+                  displayHints: [],
+                })
+              });
+
+              it('rejects when correct display hint is not present enabled=false', () => {  
+                const result = manager.setMuteOnEntry(false);
+        
+                assert.notCalled(request.request);
+        
+                assert.isRejected(result);
+              });
+
+              it('rejects when correct display hint is not present enabled=true', () => {  
+                const result = manager.setMuteOnEntry(true);
+        
+                assert.notCalled(request.request);
+        
+                assert.isRejected(result);
+              });
+
+              it('can set mute all when the display hint is available enabled=true', () => {
+                manager.setDisplayHints(['MUTE_ALL']);
+        
+                const result = manager.setMuteOnEntry(true);
+        
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: true } },
+                method: HTTP_VERBS.PATCH});
+        
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('can set mute all when the display hint is available enabled=false', () => {
+                manager.setDisplayHints(['UNMUTE_ALL']);
+        
+                const result = manager.setMuteOnEntry(false);
+        
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: false } },
+                method: HTTP_VERBS.PATCH});
+        
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+            });
           });
     });
 });
