@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -311,11 +311,11 @@ describe('plugin-meetings', () => {
           sessionType: 'sessionType',
           url: 'url'
         }}))
-        breakouts.updateBreakout = sinon.stub().returns(Promise.resolve());;
-        breakouts.doToggleBreakout = sinon.stub().returns(Promise.resolve());;
+        breakouts.updateBreakout = sinon.stub().returns(Promise.resolve());
+        breakouts.doToggleBreakout = sinon.stub().returns(Promise.resolve());
         
         await breakouts.toggleBreakout(false);
-        // doToggleBreakout.restore()
+        assert.calledOnceWithExactly(breakouts.enableBreakouts);
         assert.calledOnceWithExactly(breakouts.updateBreakout, {
           sessionId: 'sessionId',
           groupId: 'groupId',
