@@ -311,8 +311,8 @@ describe.only('plugin-meetings', () => {
           sessionType: 'sessionType',
           url: 'url'
         }}))
-        breakouts.updateBreakout = sinon.stub().returns(Promise.resolve());
-        breakouts.doToggleBreakout = sinon.stub().returns(Promise.resolve());
+        breakouts.updateBreakout = sinon.stub().resolves();
+        breakouts.doToggleBreakout = sinon.stub().resolves();
         
         await breakouts.toggleBreakout(false);
         assert.calledOnceWithExactly(breakouts.enableBreakouts);
@@ -329,7 +329,7 @@ describe.only('plugin-meetings', () => {
 
       it('enableBreakoutSession is exist, run toggleBreakout', async() => {
         breakouts.enableBreakoutSession = true;
-        breakouts.doToggleBreakout = sinon.stub().returns(Promise.resolve());;
+        breakouts.doToggleBreakout = sinon.stub().resolves();
         await breakouts.toggleBreakout(true);
         assert.calledOnceWithExactly(breakouts.doToggleBreakout, true);
       });

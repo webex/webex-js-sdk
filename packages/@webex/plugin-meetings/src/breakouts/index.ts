@@ -270,10 +270,10 @@ const Breakouts = WebexPlugin.extend({
       if (!enable) {
         // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
         this.updateBreakout(info.body);
-        this.doToggleBreakout(enable);
+        await this.doToggleBreakout(enable);
       }
     } else {
-      this.doToggleBreakout(enable);
+      await this.doToggleBreakout(enable);
     }
   },
 
