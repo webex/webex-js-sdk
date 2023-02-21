@@ -91,7 +91,7 @@ export class ReceiveSlot extends EventsScope {
   /**
    * registers event handlers with the underlying ReceiveSlot
    */
-  setupEventListeners() {
+  private setupEventListeners() {
     const scope = {
       file: 'meeting/receiveSlot',
       function: 'setupEventListeners',
@@ -114,6 +114,13 @@ export class ReceiveSlot extends EventsScope {
         });
       }
     );
+  }
+
+  /** Tries to find the member id for this receive slot if it hasn't got one */
+  public findMemberId() {
+    if (this.#memberId === undefined && this.#csi) {
+      this.#memberId = this.findMemberIdCallback(this.#csi);
+    }
   }
 
   /**
