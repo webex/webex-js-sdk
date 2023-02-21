@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.27](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.26...v3.0.0-beta.27) (2023-02-21)
+
+
+### Features
+
+* **plugin-meetings:** breakout session, host enable/disable breakout ([#2612](https://github.com/webex/webex-js-sdk/issues/2612)) ([7736913](https://github.com/webex/webex-js-sdk/commit/7736913b5c4cffefd6424121342b2a648667ba00))
+
 ## [3.0.0-beta.26](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.25...v3.0.0-beta.26) (2023-02-13)
 
 
