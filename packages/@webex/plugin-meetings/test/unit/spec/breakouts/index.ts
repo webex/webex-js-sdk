@@ -20,6 +20,9 @@ describe('plugin-meetings', () => {
       webex.internal.llm.on = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
+      breakouts.locusUrl = 'locusUrl';
+      breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
+      breakouts.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -287,6 +290,79 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.isInMainSession, false);
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN)
         assert.equal(breakouts.isInMainSession, true);
+      });
+    });
+
+    describe('#breakoutServiceUrlUpdate', () => {
+      it('sets the breakoutService url', () => {
+        breakouts.breakoutServiceUrlUpdate('newBreakoutServiceUrl');
+        assert.equal(breakouts.breakoutServiceUrl, 'newBreakoutServiceUrl/breakout/');
+      });
+    });
+
+    describe('#toggleBreakout', () => {
+      it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async() => {
+        breakouts.enableBreakoutSession = undefined;
+        breakouts.enableBreakouts = sinon.stub().resolves(({body: {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url'
+        }}))
+        breakouts.updateBreakout = sinon.stub().resolves();
+        breakouts.doToggleBreakout = sinon.stub().resolves();
+        
+        await breakouts.toggleBreakout(false);
+        assert.calledOnceWithExactly(breakouts.enableBreakouts);
+        assert.calledOnceWithExactly(breakouts.updateBreakout, {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url'
+        });
+        assert.calledOnceWithExactly(breakouts.doToggleBreakout, false);
+      });
+
+      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
+        breakouts.enableBreakoutSession = true;
+        breakouts.doToggleBreakout = sinon.stub().resolves();
+        await breakouts.toggleBreakout(true);
+        assert.calledOnceWithExactly(breakouts.doToggleBreakout, true);
+      });
+    });
+
+    describe('enableBreakouts', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.enableBreakouts();
+        breakouts.set('breakoutServiceUrl', 'breakoutServiceUrl');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'breakoutServiceUrl',
+          body: {
+            locusUrl: 'locusUrl'
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('doToggleBreakout', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.doToggleBreakout(true);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            enableBreakoutSession: true
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
   });

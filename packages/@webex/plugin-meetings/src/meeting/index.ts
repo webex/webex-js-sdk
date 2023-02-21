@@ -2219,6 +2219,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
       this.recordingController.setServiceUrl(payload?.services?.record?.url);
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
+      this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
     });
   }
 
