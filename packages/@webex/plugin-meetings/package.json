@@ -29,7 +29,8 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "devDependencies": {
     "@webex/plugin-meetings": "workspace:^",

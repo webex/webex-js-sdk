@@ -1,0 +1,27 @@
+{
+  "unversionedId": "authorization",
+  "id": "authorization",
+  "title": "Authorization",
+  "description": "",
+  "source": "@site/docs/authorization.md",
+  "sourceDirName": ".",
+  "slug": "/authorization",
+  "permalink": "/docs/authorization",
+  "draft": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/authorization.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Developer Portal",
+    "permalink": "/docs/developer-account"
+  },
+  "next": {
+    "title": "Use Case",
+    "permalink": "/docs/use-case"
+  }
+}

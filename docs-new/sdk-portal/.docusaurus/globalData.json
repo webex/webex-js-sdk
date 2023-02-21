@@ -1,0 +1,88 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "authorization",
+              "path": "/docs/authorization",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "developer-account",
+              "path": "/docs/developer-account",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/docs/intro",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "use-case",
+              "path": "/docs/use-case",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advanced-feature/congratulations",
+              "path": "/docs/Web/advanced-feature/congratulations",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advanced-feature/create-a-document",
+              "path": "/docs/Web/advanced-feature/create-a-document",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advanced-feature/deploy-your-site",
+              "path": "/docs/Web/advanced-feature/deploy-your-site",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basic-feature/create-a-blog-post",
+              "path": "/docs/Web/basic-feature/create-a-blog-post",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basic-feature/create-a-page",
+              "path": "/docs/Web/basic-feature/create-a-page",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/markdown-features",
+              "path": "/docs/Web/markdown-features",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/advanced-feature",
+              "path": "/docs/category/advanced-feature",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "/category/basic-feature",
+              "path": "/docs/category/basic-feature",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/docs/intro",
+                "label": "intro"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

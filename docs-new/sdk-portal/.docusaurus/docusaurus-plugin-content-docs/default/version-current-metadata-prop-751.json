@@ -1,0 +1,162 @@
+{
+  "pluginId": "default",
+  "version": "current",
+  "label": "Next",
+  "banner": null,
+  "badge": false,
+  "noIndex": false,
+  "className": "docs-version-current",
+  "isLast": true,
+  "docsSidebars": {
+    "tutorialSidebar": [
+      {
+        "type": "link",
+        "label": "Introduction",
+        "href": "/docs/intro",
+        "docId": "intro"
+      },
+      {
+        "type": "link",
+        "label": "Developer Portal",
+        "href": "/docs/developer-account",
+        "docId": "developer-account"
+      },
+      {
+        "type": "link",
+        "label": "Authorization",
+        "href": "/docs/authorization",
+        "docId": "authorization"
+      },
+      {
+        "type": "link",
+        "label": "Use Case",
+        "href": "/docs/use-case",
+        "docId": "use-case"
+      },
+      {
+        "type": "category",
+        "label": "Web",
+        "collapsible": true,
+        "collapsed": true,
+        "items": [
+          {
+            "type": "category",
+            "label": "Advanced Feature",
+            "collapsible": true,
+            "collapsed": true,
+            "items": [
+              {
+                "type": "link",
+                "label": "Create a Document",
+                "href": "/docs/Web/advanced-feature/create-a-document",
+                "docId": "Web/advanced-feature/create-a-document"
+              },
+              {
+                "type": "link",
+                "label": "Deploy your site",
+                "href": "/docs/Web/advanced-feature/deploy-your-site",
+                "docId": "Web/advanced-feature/deploy-your-site"
+              },
+              {
+                "type": "link",
+                "label": "Congratulations!",
+                "href": "/docs/Web/advanced-feature/congratulations",
+                "docId": "Web/advanced-feature/congratulations"
+              }
+            ],
+            "href": "/docs/category/advanced-feature"
+          },
+          {
+            "type": "category",
+            "label": "Basic Feature",
+            "collapsible": true,
+            "collapsed": true,
+            "items": [
+              {
+                "type": "link",
+                "label": "Create a Page",
+                "href": "/docs/Web/basic-feature/create-a-page",
+                "docId": "Web/basic-feature/create-a-page"
+              },
+              {
+                "type": "link",
+                "label": "Create a Blog Post",
+                "href": "/docs/Web/basic-feature/create-a-blog-post",
+                "docId": "Web/basic-feature/create-a-blog-post"
+              }
+            ],
+            "href": "/docs/category/basic-feature"
+          },
+          {
+            "type": "link",
+            "label": "Markdown Features",
+            "href": "/docs/Web/markdown-features",
+            "docId": "Web/markdown-features"
+          }
+        ]
+      }
+    ]
+  },
+  "docs": {
+    "authorization": {
+      "id": "authorization",
+      "title": "Authorization",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "developer-account": {
+      "id": "developer-account",
+      "title": "Developer Portal",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "intro": {
+      "id": "intro",
+      "title": "Introduction",
+      "description": "Let's discover Docusaurus in less than 5 minutes.",
+      "sidebar": "tutorialSidebar"
+    },
+    "use-case": {
+      "id": "use-case",
+      "title": "Use Case",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advanced-feature/congratulations": {
+      "id": "Web/advanced-feature/congratulations",
+      "title": "Congratulations!",
+      "description": "You have just learned the basics of Docusaurus and made some changes to the initial template.",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advanced-feature/create-a-document": {
+      "id": "Web/advanced-feature/create-a-document",
+      "title": "Create a Document",
+      "description": "Documents are groups of pages connected through:",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advanced-feature/deploy-your-site": {
+      "id": "Web/advanced-feature/deploy-your-site",
+      "title": "Deploy your site",
+      "description": "Docusaurus is a static-site-generator (also called Jamstack).",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basic-feature/create-a-blog-post": {
+      "id": "Web/basic-feature/create-a-blog-post",
+      "title": "Create a Blog Post",
+      "description": "Docusaurus creates a page for each blog post, but also a blog index page, a tag system, an RSS feed...",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basic-feature/create-a-page": {
+      "id": "Web/basic-feature/create-a-page",
+      "title": "Create a Page",
+      "description": "Add Markdown or React files to src/pages to create a standalone page:",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/markdown-features": {
+      "id": "Web/markdown-features",
+      "title": "Markdown Features",
+      "description": "Docusaurus supports Markdown and a few additional features.",
+      "sidebar": "tutorialSidebar"
+    }
+  }
+}

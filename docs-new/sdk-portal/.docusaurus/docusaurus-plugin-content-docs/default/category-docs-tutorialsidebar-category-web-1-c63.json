@@ -1,0 +1,16 @@
+{
+  "title": "Web",
+  "description": "5 minutes to learn the most important Docusaurus concepts.",
+  "slug": "/category/web-1",
+  "permalink": "/docs/category/web-1",
+  "navigation": {
+    "previous": {
+      "title": "Congratulations!",
+      "permalink": "/docs/Web/advanced-feature/congratulations"
+    },
+    "next": {
+      "title": "Create a Page",
+      "permalink": "/docs/Web/basic-feature/create-a-page"
+    }
+  }
+}

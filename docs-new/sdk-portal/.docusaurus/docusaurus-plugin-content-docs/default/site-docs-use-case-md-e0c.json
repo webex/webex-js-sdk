@@ -1,0 +1,27 @@
+{
+  "unversionedId": "use-case",
+  "id": "use-case",
+  "title": "Use Case",
+  "description": "",
+  "source": "@site/docs/use-case.md",
+  "sourceDirName": ".",
+  "slug": "/use-case",
+  "permalink": "/docs/use-case",
+  "draft": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/use-case.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Authorization",
+    "permalink": "/docs/authorization"
+  },
+  "next": {
+    "title": "Advanced Feature",
+    "permalink": "/docs/category/advanced-feature"
+  }
+}

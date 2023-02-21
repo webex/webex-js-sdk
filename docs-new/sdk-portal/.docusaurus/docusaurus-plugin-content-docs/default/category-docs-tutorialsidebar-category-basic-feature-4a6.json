@@ -1,0 +1,16 @@
+{
+  "title": "Basic Feature",
+  "description": "5 minutes to learn the most important Docusaurus concepts.",
+  "slug": "/category/basic-feature",
+  "permalink": "/docs/category/basic-feature",
+  "navigation": {
+    "previous": {
+      "title": "Congratulations!",
+      "permalink": "/docs/Web/advanced-feature/congratulations"
+    },
+    "next": {
+      "title": "Create a Page",
+      "permalink": "/docs/Web/basic-feature/create-a-page"
+    }
+  }
+}

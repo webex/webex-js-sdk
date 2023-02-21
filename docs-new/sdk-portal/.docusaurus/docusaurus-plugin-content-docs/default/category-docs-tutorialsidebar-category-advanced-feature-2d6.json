@@ -1,0 +1,16 @@
+{
+  "title": "Advanced Feature",
+  "description": "5 minutes to learn the most important Docusaurus concepts.",
+  "slug": "/category/advanced-feature",
+  "permalink": "/docs/category/advanced-feature",
+  "navigation": {
+    "previous": {
+      "title": "Use Case",
+      "permalink": "/docs/use-case"
+    },
+    "next": {
+      "title": "Create a Document",
+      "permalink": "/docs/Web/advanced-feature/create-a-document"
+    }
+  }
+}

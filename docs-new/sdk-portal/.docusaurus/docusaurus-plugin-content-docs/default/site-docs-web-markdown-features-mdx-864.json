@@ -1,0 +1,23 @@
+{
+  "unversionedId": "Web/markdown-features",
+  "id": "Web/markdown-features",
+  "title": "Markdown Features",
+  "description": "Docusaurus supports Markdown and a few additional features.",
+  "source": "@site/docs/Web/markdown-features.mdx",
+  "sourceDirName": "Web",
+  "slug": "/Web/markdown-features",
+  "permalink": "/docs/Web/markdown-features",
+  "draft": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/markdown-features.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Create a Blog Post",
+    "permalink": "/docs/Web/basic-feature/create-a-blog-post"
+  }
+}

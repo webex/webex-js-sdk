@@ -2,7 +2,11 @@
 import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
+import * as Meeting from './meeting';
 import config from './config';
+
+import * as CONSTANTS from './constants';
+import * as REACTIONS from './reactions/reactions';
 
 registerPlugin('meetings', Meetings, {
   config,
@@ -10,7 +14,6 @@ registerPlugin('meetings', Meetings, {
 
 export default Meetings;
 
-export * as CONSTANTS from './constants';
-export * as REACTIONS from './reactions/reactions';
+export {CONSTANTS, REACTIONS, Meeting};
 
 export {default as TriggerProxy} from './common/events/trigger-proxy';

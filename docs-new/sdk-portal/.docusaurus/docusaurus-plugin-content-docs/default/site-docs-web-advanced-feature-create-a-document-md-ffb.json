@@ -1,0 +1,27 @@
+{
+  "unversionedId": "Web/advanced-feature/create-a-document",
+  "id": "Web/advanced-feature/create-a-document",
+  "title": "Create a Document",
+  "description": "Documents are groups of pages connected through:",
+  "source": "@site/docs/Web/advanced-feature/create-a-document.md",
+  "sourceDirName": "Web/advanced-feature",
+  "slug": "/Web/advanced-feature/create-a-document",
+  "permalink": "/docs/Web/advanced-feature/create-a-document",
+  "draft": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advanced-feature/create-a-document.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Advanced Feature",
+    "permalink": "/docs/category/advanced-feature"
+  },
+  "next": {
+    "title": "Deploy your site",
+    "permalink": "/docs/Web/advanced-feature/deploy-your-site"
+  }
+}
