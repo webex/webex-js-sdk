@@ -30,6 +30,7 @@ describe('ReceiveSlotManager', () => {
       const fakeReceiveSlot = {
         id: `fake sdk receive slot ${fakeReceiveSlots.length + 1}`,
         mediaType,
+        on: sinon.stub(),
       };
 
       fakeReceiveSlots.push(fakeReceiveSlot);

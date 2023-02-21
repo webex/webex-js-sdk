@@ -4077,21 +4077,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:1.33.2":
-  version: 1.33.2
-  resolution: "@webex/internal-media-core@npm:1.33.2"
+"@webex/internal-media-core@npm:1.34.1":
+  version: 1.34.1
+  resolution: "@webex/internal-media-core@npm:1.34.1"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:1.20.0"
     "@webex/ts-sdp": "npm:1.3.0"
-    "@webex/web-client-media-engine": "npm:1.37.4"
+    "@webex/web-client-media-engine": "npm:1.37.6"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: a213d6cd5cd46f5278c64c4ad2d0541b21f9b296f0b7e767e42b757423e04e0dbfc7c134ebabac481512cb22d92f5ff892d63edacba7d583afabbba79925d706
+  checksum: 121b72d82637aef66ee93ca2b7dd69da9a0161f5b69fa5e8fc7d99044052dc4b2d302130fc59cf3a5791ec8d75ac578294118967df86a25202f89c3d8f79d5d5
   languageName: node
   linkType: hard
 
@@ -4671,7 +4671,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:1.33.2"
+    "@webex/internal-media-core": "npm:1.34.1"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -5082,9 +5082,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:1.37.4":
-  version: 1.37.4
-  resolution: "@webex/web-client-media-engine@npm:1.37.4"
+"@webex/web-client-media-engine@npm:1.37.6":
+  version: 1.37.6
+  resolution: "@webex/web-client-media-engine@npm:1.37.6"
   dependencies:
     "@webex/json-multistream": "npm:^1.20.1"
     "@webex/rtcstats": "npm:^1.0.1"
@@ -5094,7 +5094,7 @@ __metadata:
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
-  checksum: f2290d8c5739c2ac5c7663fd0f09c70d56d71d536fc957bcb973a4dfc64fa9d30eac23e422e167e2ce1707d4f9f08a066bd5145f69851ee3e4a151ba5c416b98
+  checksum: 0e0a5fefd054ea929bf461dd3914bc2ce903f65faec41390b2b4732742624cd5f12c858fef486b8c979ad10f39cb58e01c1980a14ca57d3f2cdde8ebc57a9d6b
   languageName: node
   linkType: hard
 
