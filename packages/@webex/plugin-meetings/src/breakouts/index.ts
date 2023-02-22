@@ -36,6 +36,7 @@ const Breakouts = WebexPlugin.extend({
     status: 'string', // only present when in a breakout session
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
+    breakoutServiceUrl: 'string', // the current breakout resouce url
   },
 
   children: {
@@ -91,6 +92,15 @@ const Breakouts = WebexPlugin.extend({
    */
   locusUrlUpdate(locusUrl) {
     this.set('locusUrl', locusUrl);
+  },
+
+  /**
+   * Update the current breakout resouce url
+   * @param {string} breakoutServiceUrl
+   * @returns {void}
+   */
+  breakoutServiceUrlUpdate(breakoutServiceUrl) {
+    this.set('breakoutServiceUrl', `${breakoutServiceUrl}/breakout/`);
   },
 
   /**
@@ -195,6 +205,8 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
+
+    this.set('enableBreakoutSession', params.enableBreakoutSession);
   },
 
   /**
@@ -266,6 +278,65 @@ const Breakouts = WebexPlugin.extend({
       body: {
         message,
         groups: [params],
+      },
+    });
+  },
+  /**
+   * Make enable breakout resource
+   * @returns {Promise}
+   */
+  enableBreakouts() {
+    if (this.breakoutServiceUrl) {
+      // @ts-ignore
+      return this.webex
+        .request({
+          method: HTTP_VERBS.POST,
+          uri: this.breakoutServiceUrl,
+          body: {
+            locusUrl: this.locusUrl,
+          },
+        })
+        .catch((err) => {
+          LoggerProxy.logger.error(
+            `Meeting:request#touchBreakout --> Error provisioning error ${err}`
+          );
+          throw err;
+        });
+    }
+
+    return Promise.reject(new Error(`enableBreakouts: the breakoutServiceUrl is empty`));
+  },
+
+  /**
+   * Make the meeting enbale or disable breakout session
+   * @param {boolean} enable
+   * @returns {Promise}
+   */
+  async toggleBreakout(enable) {
+    if (this.enableBreakoutSession === undefined) {
+      const info = await this.enableBreakouts();
+      if (!enable) {
+        // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
+        this.updateBreakout(info.body);
+        await this.doToggleBreakout(enable);
+      }
+    } else {
+      await this.doToggleBreakout(enable);
+    }
+  },
+
+  /**
+   * do toggle meeting breakout session enable or disable
+   * @param {boolean} enable
+   * @returns {Promise}
+   */
+  doToggleBreakout(enable) {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        enableBreakoutSession: enable,
       },
     });
   },

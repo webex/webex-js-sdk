@@ -2622,6 +2622,14 @@ function transferHostToMember(transferButton) {
   }
 }
 
+function toggleBreakout() {
+  var enableBox = document.getElementById("enable-breakout");
+  const meeting = getCurrentMeeting();
+  if (meeting) {
+    meeting.breakouts.toggleBreakout(enableBox.checked);
+  }
+}
+
 function viewBreakouts(event) {
   const meeting = getCurrentMeeting();
 
