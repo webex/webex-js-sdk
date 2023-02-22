@@ -11,7 +11,7 @@ import {cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotId} from './receiveSlot';
+import {ReceiveSlot, ReceiveSlotEvents, ReceiveSlotId} from './receiveSlot';
 import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
@@ -73,6 +73,8 @@ export class MediaRequestManager {
 
   private degradationPreferences: DegradationPreferences;
 
+  private sourceUpdateListener: () => void;
+
   constructor(
     degradationPreferences: DegradationPreferences,
     sendMediaRequestsCallback: SendMediaRequestsCallback
@@ -82,6 +84,7 @@ export class MediaRequestManager {
     this.clientRequests = {};
     this.slotsActiveInLastMediaRequest = {};
     this.degradationPreferences = degradationPreferences;
+    this.sourceUpdateListener = this.commit.bind(this);
   }
 
   private resetInactiveReceiveSlots() {
@@ -208,6 +211,10 @@ export class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
+    mediaRequest.receiveSlots.forEach((rs) => {
+      rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+    });
+
     if (commit) {
       this.commit();
     }
@@ -216,6 +223,10 @@ export class MediaRequestManager {
   }
 
   public cancelRequest(requestId: MediaRequestId, commit = true) {
+    this.clientRequests[requestId]?.receiveSlots.forEach((rs) => {
+      rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+    });
+
     delete this.clientRequests[requestId];
 
     if (commit) {

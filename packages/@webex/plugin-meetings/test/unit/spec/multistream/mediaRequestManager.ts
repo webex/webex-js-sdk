@@ -58,6 +58,8 @@ describe('MediaRequestManager', () => {
         (_, index) =>
           ({
             id: `fake receive slot ${index}`,
+            on: sinon.stub(),
+            off: sinon.stub(),
             sourceState: 'live',
             wcmeReceiveSlot: fakeWcmeSlots[index],
             resetSourceState: sinon.stub(),

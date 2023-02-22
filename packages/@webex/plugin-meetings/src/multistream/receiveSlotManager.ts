@@ -1,11 +1,11 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
-import {MediaType, MediaFamily, getMediaFamily} from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import Meeting from '../meeting';
 
-import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
+import {CSI, ReceiveSlot} from './receiveSlot';
 
 /**
  * Manages all receive slots used by a meeting. WMCE receive slots cannot be ever deleted,
@@ -70,15 +70,6 @@ export class ReceiveSlotManager {
       // @ts-ignore
       (csi: CSI) => this.meeting.members.findMemberByCsi(csi)?.id
     );
-
-    // update media requests on source update
-    if (getMediaFamily(mediaType) === MediaFamily.Video) {
-      receiveSlot.on(ReceiveSlotEvents.SourceUpdate, () => {
-        this.meeting.mediaRequestManagers[
-          mediaType === MediaType.VideoMain ? 'video' : 'screenShareVideo'
-        ].commit();
-      });
-    }
 
     this.allocatedSlots[mediaType].push(receiveSlot);
     LoggerProxy.logger.log(`new receive slot allocated: ${receiveSlot.id}`);
