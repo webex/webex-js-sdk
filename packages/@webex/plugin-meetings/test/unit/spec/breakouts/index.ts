@@ -295,6 +295,44 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#getMainSession', () => {
+      it('returns main session as expect', () => {
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl'
+        });
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1'}],
+          }
+        }
+        breakouts.updateBreakoutSessions(payload);
+
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        let result = breakouts.getMainSession();
+        assert.equal(result.sessionId, 'sessionId');
+
+        const payload2 = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
+          }
+        }
+        breakouts.updateBreakoutSessions(payload2);
+        breakouts.set('sessionType', 'BREAKOUT');
+        result = breakouts.getMainSession();
+        assert.equal(result.sessionId, 'sessionId1');
+      });
+    });
+
     describe('#askAllToReturn',  () => {
       it('makes the request as expected', async () => {
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
