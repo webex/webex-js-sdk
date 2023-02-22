@@ -8,6 +8,7 @@ import {HTTP_VERBS, MEETINGS} from '../constants';
 import LocusInfo from '../locus-info';
 import Members from '../members';
 import {getBroadcastRoles} from './utils';
+import LoggerProxy from '../common/logs/logger-proxy';
 
 /**
  * @class
@@ -111,7 +112,7 @@ const Breakout = WebexPlugin.extend({
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options
-   * @returns {void}
+   * @returns {Promise}
    */
   broadcast(message, options) {
     const roles = getBroadcastRoles(options);
@@ -125,14 +126,22 @@ const Breakout = WebexPlugin.extend({
       ],
     };
 
-    return this.webex.request({
-      method: HTTP_VERBS.POST,
-      uri: `${this.url}/message`,
-      body: {
-        message,
-        groups: [params],
-      },
-    });
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri: `${this.url}/message`,
+        body: {
+          message,
+          groups: [params],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === 201409036 && error.statusCode === 409) {
+          LoggerProxy.logger.info(`Breakouts:breakout#broadcast --> no joined participants`);
+        } else {
+          throw error;
+        }
+      });
   },
 });
 

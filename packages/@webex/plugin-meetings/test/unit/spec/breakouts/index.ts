@@ -23,9 +23,6 @@ describe('plugin-meetings', () => {
       breakouts.groupId = 'groupId';
       breakouts.sessionId = 'sessionId';
       breakouts.url = 'url';
-      breakouts.mainGroupId = 'mainGroupId';
-      breakouts.breakoutGroupId = 'breakoutGroupId';
-      breakouts.mainSessionId = 'mainSessionId';
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
@@ -300,13 +297,16 @@ describe('plugin-meetings', () => {
 
     describe('#askAllToReturn',  () => {
       it('makes the request as expected', async () => {
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        breakouts.currentBreakoutSession.sessionId = 'sessionId';
+        breakouts.currentBreakoutSession.groupId = 'groupId';
         const result = await breakouts.askAllToReturn();
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
           uri: 'url/requestMove',
           body: {
-            groupId: 'mainGroupId',
-            sessionId: 'mainSessionId'
+            groupId: 'groupId',
+            sessionId: 'sessionId'
           }
         });
       });
@@ -379,7 +379,7 @@ describe('plugin-meetings', () => {
           body: {
             message: 'hello',
             groups: [{
-              id: 'breakoutGroupId',
+              id: 'groupId',
               recipientRoles: undefined,
             }]
           }
@@ -394,7 +394,7 @@ describe('plugin-meetings', () => {
           body: {
             message: 'hello',
             groups: [{
-              id: 'breakoutGroupId',
+              id: 'groupId',
               recipientRoles: ['COHOST', 'PRESENTER'],
             }]
           }

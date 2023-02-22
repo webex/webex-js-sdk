@@ -26,9 +26,6 @@ const Breakouts = WebexPlugin.extend({
     delayCloseTime: 'number', // appears once breakouts start
     enableBreakoutSession: 'boolean', // appears from the moment you enable breakouts
     groupId: 'string', // appears from the moment you enable breakouts
-    mainGroupId: 'string', // appears from the moment you enable breakouts
-    mainSessionId: 'string', // appears from the moment you enable breakouts
-    breakoutGroupId: 'string', // appears once breakouts start
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
     sessionType: 'string', // appears from the moment you enable breakouts
@@ -184,13 +181,6 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     this.set(params);
-    if (params.sessionType === BREAKOUTS.SESSION_TYPES.MAIN) {
-      this.set({
-        mainGroupId: params.groupId,
-        mainSessionId: params.sessionId,
-        breakoutGroupId: params.groups && params.groups.length ? params.groups[0].id : '',
-      });
-    }
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -243,18 +233,35 @@ const Breakouts = WebexPlugin.extend({
 
     this.breakouts.set(Object.values(breakouts));
   },
+  /**
+   * get main session
+   * @returns {Breakout}
+   */
+  getMainSession() {
+    if (this.isInMainSession) {
+      return this.currentBreakoutSession;
+    }
 
+    const mainSession = this.breakouts.filter((breakout) => breakout.isMain)[0];
+    if (!mainSession) {
+      throw new Error('no main session found');
+    }
+
+    return mainSession;
+  },
   /**
    * Host/CoHost ask all participants return to main session
-   * @returns {void}
+   * @returns {Promise}
    */
   askAllToReturn() {
+    const mainSession = this.getMainSession();
+
     return this.webex.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/requestMove`,
       body: {
-        groupId: this.mainGroupId,
-        sessionId: this.mainSessionId,
+        groupId: mainSession.groupId,
+        sessionId: mainSession.sessionId,
       },
     });
   },
@@ -263,23 +270,37 @@ const Breakouts = WebexPlugin.extend({
    * Broadcast message to all breakout session's participants
    * @param {String} message
    * @param {Object} options
-   * @returns {void}
+   * @returns {Promise}
    */
   broadcast(message, options) {
     const roles = getBroadcastRoles(options);
+    const breakoutGroupId = this.isInMainSession
+      ? this.breakouts.filter((breakout) => !breakout.isMain)[0]?.groupId
+      : this.groupId;
+    if (!breakoutGroupId) {
+      throw new Error('Cannot broadcast, no breakout session found');
+    }
     const params = {
-      id: this.breakoutGroupId,
+      id: breakoutGroupId,
       recipientRoles: roles.length ? roles : undefined,
     };
 
-    return this.webex.request({
-      method: HTTP_VERBS.POST,
-      uri: `${this.url}/message`,
-      body: {
-        message,
-        groups: [params],
-      },
-    });
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri: `${this.url}/message`,
+        body: {
+          message,
+          groups: [params],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === 201409036 && error.statusCode === 409) {
+          LoggerProxy.logger.info(`Breakouts:index#broadcast --> no joined participants`);
+        } else {
+          throw error;
+        }
+      });
   },
   /**
    * Make enable breakout resource
