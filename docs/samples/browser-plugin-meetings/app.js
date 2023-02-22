@@ -2697,7 +2697,7 @@ function viewBreakouts(event) {
   const createAskForHelpButton = (breakoutSession) => {
     const button = document.createElement('button');
 
-    button.innerText = 'Help';
+    button.innerText = 'Ask for help';
 
     button.onclick = () => {
       breakoutSession.askForHelp();
@@ -2708,7 +2708,7 @@ function viewBreakouts(event) {
   const createAskAllReturnButton = (breakoutSession) => {
     const button = document.createElement('button');
 
-    button.innerText = 'Return';
+    button.innerText = 'Ask all return';
 
     button.onclick = () => {
       meeting.breakouts.askAllToReturn();
