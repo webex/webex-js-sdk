@@ -2649,7 +2649,7 @@ const createBreakoutOperations = ()=>{
       meeting.breakouts.getBreakout().then((res)=>{
         createBtn.disabled = true;
         startBtn.disabled = false;
-        if(res.body.groups.length){
+        if(res.body.groups?.length){
           groupId = res.body.groups[0].id;
         }else{
           const obj = [{'sessions': [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}]}];
