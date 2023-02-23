@@ -164,38 +164,7 @@ Media.createMediaConnection = (
       {
         iceServers,
       },
-      debugId,
-      (messages, context) => {
-        // Convert argument `messages` object to an array.
-        const logMessages = Array.from(messages).map((message) =>
-          typeof message === 'object' ? JSON.stringify(message) : message
-        );
-
-        logMessages.unshift(`[${context.name}]`);
-
-        // Send log messages to appropriate logging function.
-        switch (context.level.name) {
-          case 'TRACE':
-            LoggerProxy.logger.trace(...logMessages);
-            break;
-          case 'DEBUG':
-            LoggerProxy.logger.debug(...logMessages);
-            break;
-          case 'INFO':
-            LoggerProxy.logger.info(...logMessages);
-            break;
-          case 'WARN':
-            LoggerProxy.logger.warn(...logMessages);
-            break;
-          case 'ERROR':
-            LoggerProxy.logger.error(...logMessages);
-            break;
-          case 'TIME':
-          case 'OFF':
-          default:
-            break;
-        }
-      }
+      debugId
     );
   }
 
