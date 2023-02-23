@@ -118,7 +118,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
             res.body.mediaConnections.length > 0 &&
             res.body.mediaConnections[0];
 
-          LoggerProxy.logger.info(
+          LoggerProxy.logger.debug(
             `Roap:request#sendRoap --> response:${JSON.stringify(
               mediaConnections,
               null,
