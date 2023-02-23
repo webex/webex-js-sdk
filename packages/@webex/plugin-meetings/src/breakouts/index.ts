@@ -9,14 +9,14 @@ import {BREAKOUTS, HTTP_VERBS, MEETINGS} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
-import {getBroadcastRoles} from './utils';
+import BreakoutRequest from './request';
 
 /**
  * @class Breakouts
  */
 const Breakouts = WebexPlugin.extend({
   namespace: MEETINGS,
-
+  breakoutRequest: BreakoutRequest,
   collections: {
     breakouts: BreakoutCollection,
   },
@@ -72,6 +72,8 @@ const Breakouts = WebexPlugin.extend({
     });
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    // @ts-ignore
+    this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
 
   /**
@@ -273,34 +275,19 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   broadcast(message, options) {
-    const roles = getBroadcastRoles(options);
     const breakoutGroupId = this.isInMainSession
       ? this.breakouts.filter((breakout) => !breakout.isMain)[0]?.groupId
       : this.groupId;
     if (!breakoutGroupId) {
       throw new Error('Cannot broadcast, no breakout session found');
     }
-    const params = {
-      id: breakoutGroupId,
-      recipientRoles: roles.length ? roles : undefined,
-    };
 
-    return this.webex
-      .request({
-        method: HTTP_VERBS.POST,
-        uri: `${this.url}/message`,
-        body: {
-          message,
-          groups: [params],
-        },
-      })
-      .catch((error) => {
-        if (error.body && error.body.errorCode === 201409036 && error.statusCode === 409) {
-          LoggerProxy.logger.info(`Breakouts:index#broadcast --> no joined participants`);
-        } else {
-          throw error;
-        }
-      });
+    return this.breakoutRequest.broadcast({
+      url: this.url,
+      message,
+      options,
+      groupId: breakoutGroupId,
+    });
   },
   /**
    * Make enable breakout resource

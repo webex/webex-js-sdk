@@ -7,8 +7,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import {HTTP_VERBS, MEETINGS} from '../constants';
 import LocusInfo from '../locus-info';
 import Members from '../members';
-import {getBroadcastRoles} from './utils';
-import LoggerProxy from '../common/logs/logger-proxy';
+import BreakoutRequest from './request';
 
 /**
  * @class
@@ -18,6 +17,7 @@ const Breakout = WebexPlugin.extend({
 
   namespace: MEETINGS,
 
+  breakoutRequest: BreakoutRequest,
   props: {
     active: ['boolean', false, false], // this session is active
     allowed: ['boolean', false, false], // allowed to join this session
@@ -47,6 +47,8 @@ const Breakout = WebexPlugin.extend({
 
   initialize() {
     this.members = new Members({}, {parent: this.webex});
+    // @ts-ignore
+    this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
 
   /**
@@ -115,33 +117,13 @@ const Breakout = WebexPlugin.extend({
    * @returns {Promise}
    */
   broadcast(message, options) {
-    const roles = getBroadcastRoles(options);
-    const params = {
-      id: this.groupId,
-      recipientRoles: roles.length ? roles : undefined,
-      sessions: [
-        {
-          id: this.sessionId,
-        },
-      ],
-    };
-
-    return this.webex
-      .request({
-        method: HTTP_VERBS.POST,
-        uri: `${this.url}/message`,
-        body: {
-          message,
-          groups: [params],
-        },
-      })
-      .catch((error) => {
-        if (error.body && error.body.errorCode === 201409036 && error.statusCode === 409) {
-          LoggerProxy.logger.info(`Breakouts:breakout#broadcast --> no joined participants`);
-        } else {
-          throw error;
-        }
-      });
+    return this.breakoutRequest.broadcast({
+      url: this.url,
+      message,
+      options,
+      groupId: this.groupId,
+      sessionId: this.sessionId,
+    });
   },
 });
 

@@ -1,4 +1,4 @@
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import BreakoutCollection from '@webex/plugin-meetings/src/breakouts/collection';
@@ -331,6 +331,12 @@ describe('plugin-meetings', () => {
         result = breakouts.getMainSession();
         assert.equal(result.sessionId, 'sessionId1');
       });
+      it('throw error if cannot find main session', () => {
+        const fn = () => {
+          breakouts.getMainSession();
+        }
+        expect(fn).to.throw(/no main session found/);
+      });
     });
 
     describe('#askAllToReturn',  () => {
@@ -410,33 +416,33 @@ describe('plugin-meetings', () => {
 
     describe('#broadcast',  () => {
       it('makes the request as expected', async () => {
+        breakouts.breakoutRequest.broadcast = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
         let result = await breakouts.broadcast('hello');
-        assert.calledWithExactly(webex.request, {
-          method: 'POST',
-          uri: 'url/message',
-          body: {
-            message: 'hello',
-            groups: [{
-              id: 'groupId',
-              recipientRoles: undefined,
-            }]
-          }
+        assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
+          url: 'url',
+          message: 'hello',
+          options: undefined,
+          groupId: 'groupId'
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
 
         result = await breakouts.broadcast('hello', {presenters: true, cohosts: true});
-        assert.calledWithExactly(webex.request, {
-          method: 'POST',
-          uri: 'url/message',
-          body: {
-            message: 'hello',
-            groups: [{
-              id: 'groupId',
-              recipientRoles: ['COHOST', 'PRESENTER'],
-            }]
-          }
+        assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
+          url: 'url',
+          groupId: 'groupId',
+          message: 'hello',
+          options: {presenters: true, cohosts: true}
         });
+        assert.equal(result, 'REQUEST_RETURN_VALUE')
+      });
+
+      it('throw error if no breakout group id found', () => {
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        const fn = () => {
+          breakouts.broadcast('hello');
+        }
+        expect(fn).to.throw(/no breakout session found/);
       });
     });
 
