@@ -141,11 +141,11 @@ breakouts.disable()
 breakouts.askAllToReturn()
 
 // Send a message to a breakout session
-// You can determine which participant types receive the message
+// You can determine which participant types receive the message, if no type set, default is to all participants
 breakout.broadcast(message, {participants: boolean, cohosts: boolean, presenters: boolean})
 
 // Send a message to All breakout sessions
-// You can determine which participant types receive the message
+// You can determine which participant types receive the message,  if no type set, default is to all participants
 breakouts.broadcast(message, {participants: boolean, cohosts: boolean, presenters: boolean})
 
 // When breakouts are active you can cancel the automatic end of all sessions by calling this
