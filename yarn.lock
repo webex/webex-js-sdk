@@ -3974,7 +3974,6 @@ __metadata:
   resolution: "@webex/babel-config-legacy@workspace:packages/legacy/babel"
   dependencies:
     "@babel/cli": ^7.17.10
-    "@babel/core": ^7.17.10
     "@babel/generator": ^7.14.9
     "@babel/node": ^7.14.9
     "@babel/plugin-proposal-async-generator-functions": ^7.14.9
@@ -3999,6 +3998,8 @@ __metadata:
     babel-plugin-lodash: ^3.3.4
     babel-plugin-module-resolver: ^4.1.0
     babelify: ^10.0.0
+  peerDependencies:
+    "@babel/core": ^7.17.10
   languageName: unknown
   linkType: soft
 
@@ -4043,11 +4044,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config-legacy@workspace:packages/legacy/eslint"
   dependencies:
-    "@babel/core": ^7.17.10
     "@babel/eslint-parser": ^7.17.0
     "@typescript-eslint/eslint-plugin": ^5.38.1
     "@typescript-eslint/parser": ^5.38.1
-    eslint: ^8.24.0
     eslint-config-airbnb-base: ^15.0.0
     eslint-config-prettier: ^8.5.0
     eslint-import-resolver-typescript: ^2.4.0
@@ -4058,6 +4057,9 @@ __metadata:
     eslint-plugin-mocha: ^10.1.0
     eslint-plugin-prettier: ^4.2.1
     eslint-plugin-tsdoc: ^0.2.14
+  peerDependencies:
+    "@babel/core": ^7.17.10
+    eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
@@ -4333,6 +4335,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-flag@workspace:packages/@webex/internal-plugin-flag"
   dependencies:
+    "@babel/core": ^7.17.10
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-conversation": "workspace:^"
@@ -4342,9 +4345,9 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
-    babel: ^6.23.0
     eslint: ^8.24.0
     lodash: ^4.17.21
+    prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
@@ -6324,17 +6327,6 @@ __metadata:
   peerDependencies:
     "@babel/core": ^7.0.0-0
   checksum: ab0355efbad17d29492503230387679dfb780b63b25408990d2e4cf421012dae61d6199ddc309f4d2409ce4e9d3002d187702700dd8f4f8770ebbba651ed066c
-  languageName: node
-  linkType: hard
-
-"babel@npm:^6.23.0":
-  version: 6.23.0
-  resolution: "babel@npm:6.23.0"
-  bin:
-    babel: ./lib/cli.js
-    babel-external-helpers: ./lib/cli.js
-    babel-node: ./lib/cli.js
-  checksum: 129af541cdfa010f09d7c6413a2e0b159f98605195ae05952dfef4d36de22b995536920c09f189676db2304d81faad8203ee787eb12029d89a9a59136beda488
   languageName: node
   linkType: hard
 

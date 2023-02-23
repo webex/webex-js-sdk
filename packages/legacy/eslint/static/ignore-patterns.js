@@ -12,6 +12,7 @@ const ignorePatterns = [
   'webex-core.js',
   'ediscovery.js',
   'CHANGELOG.md',
+  '*.md',
   '*.json',
   '**/*.json',
   '*.lock',
