@@ -120,6 +120,22 @@ export class ReceiveSlot extends EventsScope {
   public findMemberId() {
     if (this.#memberId === undefined && this.#csi) {
       this.#memberId = this.findMemberIdCallback(this.#csi);
+
+      if (this.#memberId) {
+        // if we found the memberId, simulate source update so that the client app knows that something's changed
+        this.emit(
+          {
+            file: 'meeting/receiveSlot',
+            function: 'findMemberId',
+          },
+          ReceiveSlotEvents.SourceUpdate,
+          {
+            state: this.#sourceState,
+            csi: this.#csi,
+            memberId: this.#memberId,
+          }
+        );
+      }
     }
   }
 
