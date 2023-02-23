@@ -141,4 +141,16 @@ export class ReceiveSlotManager {
       numFreeSlots,
     };
   }
+
+  /**
+   * Tries to find the member id on all allocated receive slots
+   * This function should be called when new members are added to the meeting.
+   */
+  updateMemberIds() {
+    Object.keys(this.allocatedSlots).forEach((key) => {
+      this.allocatedSlots[key].forEach((slot: ReceiveSlot) => {
+        slot.findMemberId();
+      });
+    });
+  }
 }
