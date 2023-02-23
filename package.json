@@ -10,7 +10,9 @@
   "workspaces": [
     "./packages/@webex/*",
     "./packages/webex",
-    "./packages/legacy/*"
+    "./packages/config/*",
+    "./packages/legacy/*",
+    "./packages/tools/*"
   ],
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",

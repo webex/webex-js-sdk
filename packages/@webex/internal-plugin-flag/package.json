@@ -15,6 +15,7 @@
     "node": ">=14"
   },
   "scripts": {
+    "static": "yarn static:lint",
     "static:lint": "eslint ./src/**/*.*"
   },
   "browserify": {
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@webex/babel-config-legacy": "workspace:^",
     "@webex/eslint-config-legacy": "workspace:^",
+    "babel": "^6.23.0",
     "eslint": "^8.24.0"
   }
 }
