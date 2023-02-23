@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.31](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.30...v3.0.0-beta.31) (2023-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add multistream logs to log buffer ([#2626](https://github.com/webex/webex-js-sdk/issues/2626)) ([06ae8f1](https://github.com/webex/webex-js-sdk/commit/06ae8f1f11dbd64d31fdd8a7b445639ec8f49023))
+
+## [3.0.0-beta.30](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.29...v3.0.0-beta.30) (2023-02-23)
+
+
+### Bug Fixes
+
+* emitting SourceUpdate event when memberId is found for ReceiveSlot ([#2627](https://github.com/webex/webex-js-sdk/issues/2627)) ([9efef88](https://github.com/webex/webex-js-sdk/commit/9efef88e1e9b99bcaf1224bdacee374fa9230d24))
+
+## [3.0.0-beta.29](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.28...v3.0.0-beta.29) (2023-02-23)
+
+
+### Features
+
+* **breakout:** add broadcast, askAllReturn methods ([#2615](https://github.com/webex/webex-js-sdk/issues/2615)) ([24affd7](https://github.com/webex/webex-js-sdk/commit/24affd70b19cb82c1e9715dcd15dbcd0e569015a))
+
 ## [3.0.0-beta.28](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.27...v3.0.0-beta.28) (2023-02-22)
 
 

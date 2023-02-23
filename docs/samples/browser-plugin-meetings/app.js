@@ -2702,6 +2702,113 @@ function viewBreakouts(event) {
 
     return button;
   };
+  const createAskForHelpButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Ask for help';
+
+    button.onclick = () => {
+      breakoutSession.askForHelp();
+    };
+
+    return button;
+  };
+  const createAskAllReturnButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Ask all return';
+
+    button.onclick = () => {
+      meeting.breakouts.askAllToReturn();
+    };
+
+    return button;
+  };
+  const getTextByRoleKey = (roleKey) => {
+    switch (roleKey) {
+      case 'all':
+        return 'All participants in session';
+      case 'presenters':
+        return 'All presenters';
+      case 'cohosts':
+        return 'All cohosts';
+      case 'cohpres':
+        return 'All cohosts and presenters';
+      default:
+        return '';
+    }
+  }
+  const getOptionsByRoleKey = (roleKey) => {
+    switch (roleKey) {
+      case 'presenters':
+        return {presenters: true};
+      case 'cohosts':
+        return {cohosts: true};
+      case 'cohpres':
+        return {presenters: true, cohosts: true};
+      default:
+        return;
+    }
+  }
+  const createBroadcastDiv = (breakoutSession) => {
+    const containerDiv = document.createElement('div');
+    const boSelector = document.createElement('select');
+    boSelector.style.display = 'inline-block';
+    const allSession = document.createElement('option');
+    allSession.value = 'all';
+    allSession.text = 'All breakout sessions';
+    boSelector.appendChild(allSession);
+    if (!meeting.breakouts.currentBreakoutSession.isMain) {
+      const breakoutSession = meeting.breakouts.currentBreakoutSession;
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    }
+    meeting.breakouts.breakouts.forEach((breakoutSession) => {
+      if (breakoutSession.isMain) {
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    })
+    const roleSelector = document.createElement('select');
+    roleSelector.style.display = 'inline-block';
+    ['all', 'presenters', 'cohosts', 'cohpres'].forEach((key) => {
+      const option = document.createElement('option');
+      option.value = key;
+      option.text = getTextByRoleKey(key);
+      roleSelector.appendChild(option);
+    })
+    const msgInput = document.createElement('input');
+    msgInput.style.display = 'inline-block';
+    msgInput.placeholder = 'message';
+    const button = document.createElement('button');
+
+    button.innerText = 'broadcast';
+
+    button.onclick = () => {
+      const targetBo = boSelector.value;
+      const targetRole = roleSelector.value;
+      const message = msgInput.value;
+      const options = getOptionsByRoleKey(targetRole);
+
+      if (targetBo === 'all') {
+        meeting.breakouts.broadcast(message, options);
+      } else {
+        const boInstance = meeting.breakouts.sessionId === targetBo ?
+          meeting.breakouts.currentBreakoutSession : meeting.breakouts.breakouts.get(targetBo);
+        boInstance.broadcast(message, options);
+      }
+    };
+    containerDiv.appendChild(boSelector);
+    containerDiv.appendChild(roleSelector);
+    containerDiv.appendChild(msgInput);
+    containerDiv.appendChild(button);
+    return containerDiv;
+  };
 
   const appendSession = (parentElement, isTrue) => {
     const sessionBooleanEl = document.createElement('div');
@@ -2744,8 +2851,13 @@ function viewBreakouts(event) {
 
   currentBreakoutSessionName.innerText = meeting.breakouts.isInMainSession ? 'Main Session' : meeting.breakouts.name;
   currentBreakoutInformationEl.appendChild(currentBreakoutSessionName);
+  const selfIsHost = meeting.moderator;
+  const hasBreakoutSessions = meeting.breakouts.breakouts.length > 0;
+  !meeting.breakouts.isInMainSession && !selfIsHost && currentBreakoutInformationEl.appendChild(createAskForHelpButton(meeting.breakouts.currentBreakoutSession));
+  selfIsHost && currentBreakoutInformationEl.appendChild(createAskAllReturnButton(meeting.breakouts.currentBreakoutSession));
   currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
 
+  selfIsHost && hasBreakoutSessions && currentBreakoutInformationEl.appendChild(createBroadcastDiv(meeting.breakouts.currentBreakoutSession));
   breakoutTable.innerHTML = '';
   breakoutTable.appendChild(currentBreakoutInformationEl);
   const breakoutTableTitle = document.createElement('h3');

@@ -111,15 +111,30 @@ describe('ReceiveSlot', () => {
     });
 
     it('finds a member id if member id is undefined and CSI is known', () => {
+      let emittedSourceUpdateEvent = null;
+
       // setup receiveSlot to have a csi without a member id
       const csi = 12345;
+      const fakeMemberId = 'aaa-bbb-ccc-ddd';
       fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
       findMemberIdCallbackStub.reset();
+      findMemberIdCallbackStub.returns(fakeMemberId);
+
+      receiveSlot.on(ReceiveSlotEvents.SourceUpdate, (data) => {
+        emittedSourceUpdateEvent = data;
+      });
 
       receiveSlot.findMemberId();
 
       assert.calledOnce(findMemberIdCallbackStub);
       assert.calledWith(findMemberIdCallbackStub, csi);
+
+      assert.deepEqual(emittedSourceUpdateEvent, {
+        state: 'live',
+        csi,
+        memberId: fakeMemberId,
+      });
+
     });
 
     it('doesn\'t do anything if member id already set', () => {

@@ -1,4 +1,4 @@
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import BreakoutCollection from '@webex/plugin-meetings/src/breakouts/collection';
@@ -20,9 +20,11 @@ describe('plugin-meetings', () => {
       webex.internal.llm.on = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
+      breakouts.groupId = 'groupId';
+      breakouts.sessionId = 'sessionId';
+      breakouts.url = 'url';
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
-      breakouts.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -31,7 +33,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.namespace, 'Meetings');
       });
 
-      it('emits BREAKOUTS_CLOSING event when the status is CLOSING', () => {  
+      it('emits BREAKOUTS_CLOSING event when the status is CLOSING', () => {
         let called = false;
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, () => {
           called = true;
@@ -58,7 +60,7 @@ describe('plugin-meetings', () => {
       it('triggers message event when a message received', () => {
         const call = webex.internal.llm.on.getCall(0);
         const callback = call.args[1];
-        
+
         assert.equal(call.args[0], 'event:breakout.message');
 
         let message;
@@ -90,7 +92,7 @@ describe('plugin-meetings', () => {
       it('triggers member update event when a roster received', () => {
         const call = webex.internal.mercury.on.getCall(0);
         const callback = call.args[1];
-        
+
         assert.equal(call.args[0], 'event:breakout.roster');
 
         let called = false;
@@ -204,9 +206,9 @@ describe('plugin-meetings', () => {
     describe('#cleanUp', () => {
       it('stops listening', () => {
         breakouts.stopListening = sinon.stub();
-  
+
         breakouts.cleanUp();
-  
+
         assert.calledOnceWithExactly(breakouts.stopListening);
       });
     });
@@ -230,7 +232,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#queryRosters', () => {
-      
+
       it('makes the expected query', async () => {
 
         webex.request.returns(Promise.resolve({
@@ -249,7 +251,7 @@ describe('plugin-meetings', () => {
         breakouts.handleRosterUpdate = sinon.stub();
 
         const result = await breakouts.queryRosters();
-  
+
         assert.calledOnceWithExactly(webex.request, {
           uri: 'url/roster',
           qs: { locusUrl: 'dGVzdA==' }
@@ -293,6 +295,67 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#getMainSession', () => {
+      it('returns main session as expect', () => {
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl'
+        });
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1'}],
+          }
+        }
+        breakouts.updateBreakoutSessions(payload);
+
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        let result = breakouts.getMainSession();
+        assert.equal(result.sessionId, 'sessionId');
+
+        const payload2 = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
+          }
+        }
+        breakouts.updateBreakoutSessions(payload2);
+        breakouts.set('sessionType', 'BREAKOUT');
+        result = breakouts.getMainSession();
+        assert.equal(result.sessionId, 'sessionId1');
+      });
+      it('throw error if cannot find main session', () => {
+        const fn = () => {
+          breakouts.getMainSession();
+        }
+        expect(fn).to.throw(/no main session found/);
+      });
+    });
+
+    describe('#askAllToReturn',  () => {
+      it('makes the request as expected', async () => {
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        breakouts.currentBreakoutSession.sessionId = 'sessionId';
+        breakouts.currentBreakoutSession.groupId = 'groupId';
+        const result = await breakouts.askAllToReturn();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'url/requestMove',
+          body: {
+            groupId: 'groupId',
+            sessionId: 'sessionId'
+          }
+        });
+      });
+    });
+
     describe('#breakoutServiceUrlUpdate', () => {
       it('sets the breakoutService url', () => {
         breakouts.breakoutServiceUrlUpdate('newBreakoutServiceUrl');
@@ -313,7 +376,7 @@ describe('plugin-meetings', () => {
         }}))
         breakouts.updateBreakout = sinon.stub().resolves();
         breakouts.doToggleBreakout = sinon.stub().resolves();
-        
+
         await breakouts.toggleBreakout(false);
         assert.calledOnceWithExactly(breakouts.enableBreakouts);
         assert.calledOnceWithExactly(breakouts.updateBreakout, {
@@ -348,6 +411,38 @@ describe('plugin-meetings', () => {
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('#broadcast',  () => {
+      it('makes the request as expected', async () => {
+        breakouts.breakoutRequest.broadcast = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+        let result = await breakouts.broadcast('hello');
+        assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
+          url: 'url',
+          message: 'hello',
+          options: undefined,
+          groupId: 'groupId'
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+
+        result = await breakouts.broadcast('hello', {presenters: true, cohosts: true});
+        assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
+          url: 'url',
+          groupId: 'groupId',
+          message: 'hello',
+          options: {presenters: true, cohosts: true}
+        });
+        assert.equal(result, 'REQUEST_RETURN_VALUE')
+      });
+
+      it('throw error if no breakout group id found', () => {
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        const fn = () => {
+          breakouts.broadcast('hello');
+        }
+        expect(fn).to.throw(/no breakout session found/);
       });
     });
 
