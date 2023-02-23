@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.30](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.29...v3.0.0-beta.30) (2023-02-23)
+
+
+### Bug Fixes
+
+* emitting SourceUpdate event when memberId is found for ReceiveSlot ([#2627](https://github.com/webex/webex-js-sdk/issues/2627)) ([9efef88](https://github.com/webex/webex-js-sdk/commit/9efef88e1e9b99bcaf1224bdacee374fa9230d24))
+
 ## [3.0.0-beta.29](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.28...v3.0.0-beta.29) (2023-02-23)
 
 
