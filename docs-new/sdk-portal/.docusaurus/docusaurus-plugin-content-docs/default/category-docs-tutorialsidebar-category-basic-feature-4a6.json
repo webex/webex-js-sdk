@@ -5,12 +5,12 @@
   "permalink": "/docs/category/basic-feature",
   "navigation": {
     "previous": {
-      "title": "Congratulations!",
-      "permalink": "/docs/Web/advanced-feature/congratulations"
+      "title": "meetingFeature",
+      "permalink": "/docs/Web/advancedFeature/meetingFeature"
     },
     "next": {
       "title": "Create a Page",
-      "permalink": "/docs/Web/basic-feature/create-a-page"
+      "permalink": "/docs/Web/basicFeature/create-a-page"
     }
   }
 }

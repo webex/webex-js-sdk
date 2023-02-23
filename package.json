@@ -10,7 +10,7 @@
   "workspaces": [
     "./packages/@webex/*",
     "./packages/webex",
-    "./docs-new"
+    "./docs-new/sdk-portal"
   ],
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
@@ -60,6 +60,7 @@
     "release": "standard-version -a",
     "release:dry-run": "standard-version --dry-run",
     "depcheck": "./tooling/depcheck.js",
+    "docType": " yarn run tsc -p ./config/tsconfig.docs.json",
     "postinstall": "patch-package && husky install"
   },
   "devDependencies": {

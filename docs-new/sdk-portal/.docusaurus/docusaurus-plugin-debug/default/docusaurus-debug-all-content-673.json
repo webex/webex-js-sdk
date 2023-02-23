@@ -124,43 +124,40 @@
               }
             },
             {
-              "unversionedId": "Web/advanced-feature/congratulations",
-              "id": "Web/advanced-feature/congratulations",
-              "title": "Congratulations!",
-              "description": "You have just learned the basics of Docusaurus and made some changes to the initial template.",
-              "source": "@site/docs/Web/advanced-feature/congratulations.md",
-              "sourceDirName": "Web/advanced-feature",
-              "slug": "/Web/advanced-feature/congratulations",
-              "permalink": "/docs/Web/advanced-feature/congratulations",
+              "unversionedId": "Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "id": "Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "title": "What is an Ad-hoc space meeting?",
+              "description": "In Webex, the meetings can be broadly classified as below,",
+              "source": "@site/docs/Web/advancedFeature/Ad-hoc-Space-Meetings.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "permalink": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings",
               "draft": false,
-              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advanced-feature/congratulations.md",
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/Ad-hoc-Space-Meetings.md",
               "tags": [],
               "version": "current",
-              "sidebarPosition": 6,
-              "frontMatter": {
-                "sidebar_position": 6
-              },
+              "frontMatter": {},
               "sidebar": "tutorialSidebar",
               "previous": {
                 "title": "Deploy your site",
-                "permalink": "/docs/Web/advanced-feature/deploy-your-site"
+                "permalink": "/docs/Web/advancedFeature/deploy-your-site"
               },
               "next": {
-                "title": "Basic Feature",
-                "permalink": "/docs/category/basic-feature"
+                "title": "TLS-443-Support",
+                "permalink": "/docs/Web/advancedFeature/TLS-443-Support"
               }
             },
             {
-              "unversionedId": "Web/advanced-feature/create-a-document",
-              "id": "Web/advanced-feature/create-a-document",
+              "unversionedId": "Web/advancedFeature/create-a-document",
+              "id": "Web/advancedFeature/create-a-document",
               "title": "Create a Document",
               "description": "Documents are groups of pages connected through:",
-              "source": "@site/docs/Web/advanced-feature/create-a-document.md",
-              "sourceDirName": "Web/advanced-feature",
-              "slug": "/Web/advanced-feature/create-a-document",
-              "permalink": "/docs/Web/advanced-feature/create-a-document",
+              "source": "@site/docs/Web/advancedFeature/create-a-document.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/create-a-document",
+              "permalink": "/docs/Web/advancedFeature/create-a-document",
               "draft": false,
-              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advanced-feature/create-a-document.md",
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/create-a-document.md",
               "tags": [],
               "version": "current",
               "sidebarPosition": 2,
@@ -174,20 +171,20 @@
               },
               "next": {
                 "title": "Deploy your site",
-                "permalink": "/docs/Web/advanced-feature/deploy-your-site"
+                "permalink": "/docs/Web/advancedFeature/deploy-your-site"
               }
             },
             {
-              "unversionedId": "Web/advanced-feature/deploy-your-site",
-              "id": "Web/advanced-feature/deploy-your-site",
+              "unversionedId": "Web/advancedFeature/deploy-your-site",
+              "id": "Web/advancedFeature/deploy-your-site",
               "title": "Deploy your site",
               "description": "Docusaurus is a static-site-generator (also called Jamstack).",
-              "source": "@site/docs/Web/advanced-feature/deploy-your-site.md",
-              "sourceDirName": "Web/advanced-feature",
-              "slug": "/Web/advanced-feature/deploy-your-site",
-              "permalink": "/docs/Web/advanced-feature/deploy-your-site",
+              "source": "@site/docs/Web/advancedFeature/deploy-your-site.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/deploy-your-site",
+              "permalink": "/docs/Web/advancedFeature/deploy-your-site",
               "draft": false,
-              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advanced-feature/deploy-your-site.md",
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/deploy-your-site.md",
               "tags": [],
               "version": "current",
               "sidebarPosition": 5,
@@ -197,24 +194,168 @@
               "sidebar": "tutorialSidebar",
               "previous": {
                 "title": "Create a Document",
-                "permalink": "/docs/Web/advanced-feature/create-a-document"
+                "permalink": "/docs/Web/advancedFeature/create-a-document"
               },
               "next": {
-                "title": "Congratulations!",
-                "permalink": "/docs/Web/advanced-feature/congratulations"
+                "title": "What is an Ad-hoc space meeting?",
+                "permalink": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings"
               }
             },
             {
-              "unversionedId": "Web/basic-feature/create-a-blog-post",
-              "id": "Web/basic-feature/create-a-blog-post",
+              "unversionedId": "Web/advancedFeature/effects",
+              "id": "Web/advancedFeature/effects",
+              "title": "effects",
+              "description": "",
+              "source": "@site/docs/Web/advancedFeature/effects.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/effects",
+              "permalink": "/docs/Web/advancedFeature/effects",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/effects.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Introduction",
+                "permalink": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)"
+              },
+              "next": {
+                "title": "mediaQuality",
+                "permalink": "/docs/Web/advancedFeature/mediaQuality"
+              }
+            },
+            {
+              "unversionedId": "Web/advancedFeature/mediaQuality",
+              "id": "Web/advancedFeature/mediaQuality",
+              "title": "mediaQuality",
+              "description": "",
+              "source": "@site/docs/Web/advancedFeature/mediaQuality.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/mediaQuality",
+              "permalink": "/docs/Web/advancedFeature/mediaQuality",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/mediaQuality.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "effects",
+                "permalink": "/docs/Web/advancedFeature/effects"
+              },
+              "next": {
+                "title": "meetingFeature",
+                "permalink": "/docs/Web/advancedFeature/meetingFeature"
+              }
+            },
+            {
+              "unversionedId": "Web/advancedFeature/meetingFeature",
+              "id": "Web/advancedFeature/meetingFeature",
+              "title": "meetingFeature",
+              "description": "",
+              "source": "@site/docs/Web/advancedFeature/meetingFeature.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/meetingFeature",
+              "permalink": "/docs/Web/advancedFeature/meetingFeature",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/meetingFeature.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "mediaQuality",
+                "permalink": "/docs/Web/advancedFeature/mediaQuality"
+              },
+              "next": {
+                "title": "Basic Feature",
+                "permalink": "/docs/category/basic-feature"
+              }
+            },
+            {
+              "unversionedId": "Web/advancedFeature/TLS-443-Support",
+              "id": "Web/advancedFeature/TLS-443-Support",
+              "title": "TLS-443-Support",
+              "description": "Introduction",
+              "source": "@site/docs/Web/advancedFeature/TLS-443-Support.md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/TLS-443-Support",
+              "permalink": "/docs/Web/advancedFeature/TLS-443-Support",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/TLS-443-Support.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "What is an Ad-hoc space meeting?",
+                "permalink": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings"
+              },
+              "next": {
+                "title": "Introduction",
+                "permalink": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)"
+              }
+            },
+            {
+              "unversionedId": "Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "id": "Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "title": "Introduction",
+              "description": "Webex Meeting Center today has three distinct meeting experiences: Personal Meeting Room (PMR), Scheduled Meetings, and Space Meetings. Each of these meeting types has distinct experiences, USM is to consolidate the experiences of Space Meetings with Scheduled Meetings and meld together the experiences. Get the single meetings experience in Webex App.",
+              "source": "@site/docs/Web/advancedFeature/Unified-Space-Meetings-(USM).md",
+              "sourceDirName": "Web/advancedFeature",
+              "slug": "/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "permalink": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/advancedFeature/Unified-Space-Meetings-(USM).md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "TLS-443-Support",
+                "permalink": "/docs/Web/advancedFeature/TLS-443-Support"
+              },
+              "next": {
+                "title": "effects",
+                "permalink": "/docs/Web/advancedFeature/effects"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/Background-Noise-Reduction",
+              "id": "Web/basicFeature/Background-Noise-Reduction",
+              "title": "Background-Noise-Reduction",
+              "description": "Introduction",
+              "source": "@site/docs/Web/basicFeature/Background-Noise-Reduction.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/Background-Noise-Reduction",
+              "permalink": "/docs/Web/basicFeature/Background-Noise-Reduction",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/Background-Noise-Reduction.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Create a Blog Post",
+                "permalink": "/docs/Web/basicFeature/create-a-blog-post"
+              },
+              "next": {
+                "title": "Password---Captcha-Flow-in-Web-JS-SDK",
+                "permalink": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/create-a-blog-post",
+              "id": "Web/basicFeature/create-a-blog-post",
               "title": "Create a Blog Post",
               "description": "Docusaurus creates a page for each blog post, but also a blog index page, a tag system, an RSS feed...",
-              "source": "@site/docs/Web/basic-feature/create-a-blog-post.md",
-              "sourceDirName": "Web/basic-feature",
-              "slug": "/Web/basic-feature/create-a-blog-post",
-              "permalink": "/docs/Web/basic-feature/create-a-blog-post",
+              "source": "@site/docs/Web/basicFeature/create-a-blog-post.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/create-a-blog-post",
+              "permalink": "/docs/Web/basicFeature/create-a-blog-post",
               "draft": false,
-              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basic-feature/create-a-blog-post.md",
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/create-a-blog-post.md",
               "tags": [],
               "version": "current",
               "sidebarPosition": 3,
@@ -224,24 +365,24 @@
               "sidebar": "tutorialSidebar",
               "previous": {
                 "title": "Create a Page",
-                "permalink": "/docs/Web/basic-feature/create-a-page"
+                "permalink": "/docs/Web/basicFeature/create-a-page"
               },
               "next": {
-                "title": "Markdown Features",
-                "permalink": "/docs/Web/markdown-features"
+                "title": "Background-Noise-Reduction",
+                "permalink": "/docs/Web/basicFeature/Background-Noise-Reduction"
               }
             },
             {
-              "unversionedId": "Web/basic-feature/create-a-page",
-              "id": "Web/basic-feature/create-a-page",
+              "unversionedId": "Web/basicFeature/create-a-page",
+              "id": "Web/basicFeature/create-a-page",
               "title": "Create a Page",
               "description": "Add Markdown or React files to src/pages to create a standalone page:",
-              "source": "@site/docs/Web/basic-feature/create-a-page.md",
-              "sourceDirName": "Web/basic-feature",
-              "slug": "/Web/basic-feature/create-a-page",
-              "permalink": "/docs/Web/basic-feature/create-a-page",
+              "source": "@site/docs/Web/basicFeature/create-a-page.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/create-a-page",
+              "permalink": "/docs/Web/basicFeature/create-a-page",
               "draft": false,
-              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basic-feature/create-a-page.md",
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/create-a-page.md",
               "tags": [],
               "version": "current",
               "sidebarPosition": 1,
@@ -255,7 +396,219 @@
               },
               "next": {
                 "title": "Create a Blog Post",
-                "permalink": "/docs/Web/basic-feature/create-a-blog-post"
+                "permalink": "/docs/Web/basicFeature/create-a-blog-post"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/guestIssuer",
+              "id": "Web/basicFeature/guestIssuer",
+              "title": "guestIssuer",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/guestIssuer.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/guestIssuer",
+              "permalink": "/docs/Web/basicFeature/guestIssuer",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/guestIssuer.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Webex-Transcription",
+                "permalink": "/docs/Web/basicFeature/Webex-Transcription"
+              },
+              "next": {
+                "title": "joinMeeting",
+                "permalink": "/docs/Web/basicFeature/joinMeeting"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/joinMeeting",
+              "id": "Web/basicFeature/joinMeeting",
+              "title": "joinMeeting",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/joinMeeting.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/joinMeeting",
+              "permalink": "/docs/Web/basicFeature/joinMeeting",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/joinMeeting.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "guestIssuer",
+                "permalink": "/docs/Web/basicFeature/guestIssuer"
+              },
+              "next": {
+                "title": "schedulemeeting",
+                "permalink": "/docs/Web/basicFeature/schedulemeeting"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "id": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "title": "Password---Captcha-Flow-in-Web-JS-SDK",
+              "description": "Introduction",
+              "source": "@site/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "permalink": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Background-Noise-Reduction",
+                "permalink": "/docs/Web/basicFeature/Background-Noise-Reduction"
+              },
+              "next": {
+                "title": "Webex-Transcription",
+                "permalink": "/docs/Web/basicFeature/Webex-Transcription"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/schedulemeeting",
+              "id": "Web/basicFeature/schedulemeeting",
+              "title": "schedulemeeting",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/schedulemeeting.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/schedulemeeting",
+              "permalink": "/docs/Web/basicFeature/schedulemeeting",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/schedulemeeting.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "joinMeeting",
+                "permalink": "/docs/Web/basicFeature/joinMeeting"
+              },
+              "next": {
+                "title": "screenshare",
+                "permalink": "/docs/Web/basicFeature/screenshare"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/screenshare",
+              "id": "Web/basicFeature/screenshare",
+              "title": "screenshare",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/screenshare.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/screenshare",
+              "permalink": "/docs/Web/basicFeature/screenshare",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/screenshare.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "schedulemeeting",
+                "permalink": "/docs/Web/basicFeature/schedulemeeting"
+              },
+              "next": {
+                "title": "token",
+                "permalink": "/docs/Web/basicFeature/token"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/token",
+              "id": "Web/basicFeature/token",
+              "title": "token",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/token.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/token",
+              "permalink": "/docs/Web/basicFeature/token",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/token.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "screenshare",
+                "permalink": "/docs/Web/basicFeature/screenshare"
+              },
+              "next": {
+                "title": "trackmanagement",
+                "permalink": "/docs/Web/basicFeature/trackmanagement"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/trackmanagement",
+              "id": "Web/basicFeature/trackmanagement",
+              "title": "trackmanagement",
+              "description": "",
+              "source": "@site/docs/Web/basicFeature/trackmanagement.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/trackmanagement",
+              "permalink": "/docs/Web/basicFeature/trackmanagement",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/trackmanagement.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "token",
+                "permalink": "/docs/Web/basicFeature/token"
+              },
+              "next": {
+                "title": "Markdown Features",
+                "permalink": "/docs/Web/markdown-features"
+              }
+            },
+            {
+              "unversionedId": "Web/basicFeature/Webex-Transcription",
+              "id": "Web/basicFeature/Webex-Transcription",
+              "title": "Webex-Transcription",
+              "description": "TBD",
+              "source": "@site/docs/Web/basicFeature/Webex-Transcription.md",
+              "sourceDirName": "Web/basicFeature",
+              "slug": "/Web/basicFeature/Webex-Transcription",
+              "permalink": "/docs/Web/basicFeature/Webex-Transcription",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/basicFeature/Webex-Transcription.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Password---Captcha-Flow-in-Web-JS-SDK",
+                "permalink": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK"
+              },
+              "next": {
+                "title": "guestIssuer",
+                "permalink": "/docs/Web/basicFeature/guestIssuer"
+              }
+            },
+            {
+              "unversionedId": "Web/introduction",
+              "id": "Web/introduction",
+              "title": "introduction",
+              "description": "",
+              "source": "@site/docs/Web/introduction.md",
+              "sourceDirName": "Web",
+              "slug": "/Web/introduction",
+              "permalink": "/docs/Web/introduction",
+              "draft": false,
+              "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/Web/introduction.md",
+              "tags": [],
+              "version": "current",
+              "frontMatter": {},
+              "sidebar": "tutorialSidebar",
+              "previous": {
+                "title": "Markdown Features",
+                "permalink": "/docs/Web/markdown-features"
               }
             },
             {
@@ -277,8 +630,12 @@
               },
               "sidebar": "tutorialSidebar",
               "previous": {
-                "title": "Create a Blog Post",
-                "permalink": "/docs/Web/basic-feature/create-a-blog-post"
+                "title": "trackmanagement",
+                "permalink": "/docs/Web/basicFeature/trackmanagement"
+              },
+              "next": {
+                "title": "introduction",
+                "permalink": "/docs/Web/introduction"
               }
             }
           ],
@@ -315,15 +672,35 @@
                     "items": [
                       {
                         "type": "doc",
-                        "id": "Web/advanced-feature/create-a-document"
+                        "id": "Web/advancedFeature/create-a-document"
                       },
                       {
                         "type": "doc",
-                        "id": "Web/advanced-feature/deploy-your-site"
+                        "id": "Web/advancedFeature/deploy-your-site"
                       },
                       {
                         "type": "doc",
-                        "id": "Web/advanced-feature/congratulations"
+                        "id": "Web/advancedFeature/Ad-hoc-Space-Meetings"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/advancedFeature/TLS-443-Support"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/advancedFeature/Unified-Space-Meetings-(USM)"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/advancedFeature/effects"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/advancedFeature/mediaQuality"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/advancedFeature/meetingFeature"
                       }
                     ],
                     "link": {
@@ -341,11 +718,47 @@
                     "items": [
                       {
                         "type": "doc",
-                        "id": "Web/basic-feature/create-a-page"
+                        "id": "Web/basicFeature/create-a-page"
                       },
                       {
                         "type": "doc",
-                        "id": "Web/basic-feature/create-a-blog-post"
+                        "id": "Web/basicFeature/create-a-blog-post"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/Background-Noise-Reduction"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/Webex-Transcription"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/guestIssuer"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/joinMeeting"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/schedulemeeting"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/screenshare"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/token"
+                      },
+                      {
+                        "type": "doc",
+                        "id": "Web/basicFeature/trackmanagement"
                       }
                     ],
                     "link": {
@@ -358,6 +771,10 @@
                   {
                     "type": "doc",
                     "id": "Web/markdown-features"
+                  },
+                  {
+                    "type": "doc",
+                    "id": "Web/introduction"
                   }
                 ]
               }

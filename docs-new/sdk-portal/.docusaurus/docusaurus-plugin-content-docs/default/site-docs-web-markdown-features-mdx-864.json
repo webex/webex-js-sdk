@@ -17,7 +17,11 @@
   },
   "sidebar": "tutorialSidebar",
   "previous": {
-    "title": "Create a Blog Post",
-    "permalink": "/docs/Web/basic-feature/create-a-blog-post"
+    "title": "trackmanagement",
+    "permalink": "/docs/Web/basicFeature/trackmanagement"
+  },
+  "next": {
+    "title": "introduction",
+    "permalink": "/docs/Web/introduction"
   }
 }

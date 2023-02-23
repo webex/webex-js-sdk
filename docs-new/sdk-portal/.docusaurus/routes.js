@@ -99,7 +99,7 @@ export default [
   },
   {
     path: '/docs',
-    component: ComponentCreator('/docs', '2a3'),
+    component: ComponentCreator('/docs', 'b51'),
     routes: [
       {
         path: '/docs/authorization',
@@ -138,32 +138,122 @@ export default [
         sidebar: "tutorialSidebar"
       },
       {
-        path: '/docs/Web/advanced-feature/congratulations',
-        component: ComponentCreator('/docs/Web/advanced-feature/congratulations', '78a'),
+        path: '/docs/Web/advancedFeature/Ad-hoc-Space-Meetings',
+        component: ComponentCreator('/docs/Web/advancedFeature/Ad-hoc-Space-Meetings', '48f'),
         exact: true,
         sidebar: "tutorialSidebar"
       },
       {
-        path: '/docs/Web/advanced-feature/create-a-document',
-        component: ComponentCreator('/docs/Web/advanced-feature/create-a-document', 'a53'),
+        path: '/docs/Web/advancedFeature/create-a-document',
+        component: ComponentCreator('/docs/Web/advancedFeature/create-a-document', '7fd'),
         exact: true,
         sidebar: "tutorialSidebar"
       },
       {
-        path: '/docs/Web/advanced-feature/deploy-your-site',
-        component: ComponentCreator('/docs/Web/advanced-feature/deploy-your-site', '18f'),
+        path: '/docs/Web/advancedFeature/deploy-your-site',
+        component: ComponentCreator('/docs/Web/advancedFeature/deploy-your-site', '95f'),
         exact: true,
         sidebar: "tutorialSidebar"
       },
       {
-        path: '/docs/Web/basic-feature/create-a-blog-post',
-        component: ComponentCreator('/docs/Web/basic-feature/create-a-blog-post', '9f7'),
+        path: '/docs/Web/advancedFeature/effects',
+        component: ComponentCreator('/docs/Web/advancedFeature/effects', 'ffa'),
         exact: true,
         sidebar: "tutorialSidebar"
       },
       {
-        path: '/docs/Web/basic-feature/create-a-page',
-        component: ComponentCreator('/docs/Web/basic-feature/create-a-page', '1df'),
+        path: '/docs/Web/advancedFeature/mediaQuality',
+        component: ComponentCreator('/docs/Web/advancedFeature/mediaQuality', 'ebb'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/advancedFeature/meetingFeature',
+        component: ComponentCreator('/docs/Web/advancedFeature/meetingFeature', '7a2'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/advancedFeature/TLS-443-Support',
+        component: ComponentCreator('/docs/Web/advancedFeature/TLS-443-Support', '3d2'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)',
+        component: ComponentCreator('/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)', 'e0b'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/Background-Noise-Reduction',
+        component: ComponentCreator('/docs/Web/basicFeature/Background-Noise-Reduction', 'f70'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/create-a-blog-post',
+        component: ComponentCreator('/docs/Web/basicFeature/create-a-blog-post', 'ad6'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/create-a-page',
+        component: ComponentCreator('/docs/Web/basicFeature/create-a-page', 'e84'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/guestIssuer',
+        component: ComponentCreator('/docs/Web/basicFeature/guestIssuer', '48a'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/joinMeeting',
+        component: ComponentCreator('/docs/Web/basicFeature/joinMeeting', '1b3'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK',
+        component: ComponentCreator('/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK', '50f'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/schedulemeeting',
+        component: ComponentCreator('/docs/Web/basicFeature/schedulemeeting', 'e17'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/screenshare',
+        component: ComponentCreator('/docs/Web/basicFeature/screenshare', 'c40'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/token',
+        component: ComponentCreator('/docs/Web/basicFeature/token', 'e16'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/trackmanagement',
+        component: ComponentCreator('/docs/Web/basicFeature/trackmanagement', 'e83'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/basicFeature/Webex-Transcription',
+        component: ComponentCreator('/docs/Web/basicFeature/Webex-Transcription', 'a3c'),
+        exact: true,
+        sidebar: "tutorialSidebar"
+      },
+      {
+        path: '/docs/Web/introduction',
+        component: ComponentCreator('/docs/Web/introduction', '134'),
         exact: true,
         sidebar: "tutorialSidebar"
       },

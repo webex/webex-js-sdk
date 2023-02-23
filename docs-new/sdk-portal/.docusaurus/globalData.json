@@ -31,28 +31,103 @@
               "sidebar": "tutorialSidebar"
             },
             {
-              "id": "Web/advanced-feature/congratulations",
-              "path": "/docs/Web/advanced-feature/congratulations",
+              "id": "Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "path": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings",
               "sidebar": "tutorialSidebar"
             },
             {
-              "id": "Web/advanced-feature/create-a-document",
-              "path": "/docs/Web/advanced-feature/create-a-document",
+              "id": "Web/advancedFeature/create-a-document",
+              "path": "/docs/Web/advancedFeature/create-a-document",
               "sidebar": "tutorialSidebar"
             },
             {
-              "id": "Web/advanced-feature/deploy-your-site",
-              "path": "/docs/Web/advanced-feature/deploy-your-site",
+              "id": "Web/advancedFeature/deploy-your-site",
+              "path": "/docs/Web/advancedFeature/deploy-your-site",
               "sidebar": "tutorialSidebar"
             },
             {
-              "id": "Web/basic-feature/create-a-blog-post",
-              "path": "/docs/Web/basic-feature/create-a-blog-post",
+              "id": "Web/advancedFeature/effects",
+              "path": "/docs/Web/advancedFeature/effects",
               "sidebar": "tutorialSidebar"
             },
             {
-              "id": "Web/basic-feature/create-a-page",
-              "path": "/docs/Web/basic-feature/create-a-page",
+              "id": "Web/advancedFeature/mediaQuality",
+              "path": "/docs/Web/advancedFeature/mediaQuality",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advancedFeature/meetingFeature",
+              "path": "/docs/Web/advancedFeature/meetingFeature",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advancedFeature/TLS-443-Support",
+              "path": "/docs/Web/advancedFeature/TLS-443-Support",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "path": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/Background-Noise-Reduction",
+              "path": "/docs/Web/basicFeature/Background-Noise-Reduction",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/create-a-blog-post",
+              "path": "/docs/Web/basicFeature/create-a-blog-post",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/create-a-page",
+              "path": "/docs/Web/basicFeature/create-a-page",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/guestIssuer",
+              "path": "/docs/Web/basicFeature/guestIssuer",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/joinMeeting",
+              "path": "/docs/Web/basicFeature/joinMeeting",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "path": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/schedulemeeting",
+              "path": "/docs/Web/basicFeature/schedulemeeting",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/screenshare",
+              "path": "/docs/Web/basicFeature/screenshare",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/token",
+              "path": "/docs/Web/basicFeature/token",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/trackmanagement",
+              "path": "/docs/Web/basicFeature/trackmanagement",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/basicFeature/Webex-Transcription",
+              "path": "/docs/Web/basicFeature/Webex-Transcription",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "Web/introduction",
+              "path": "/docs/Web/introduction",
               "sidebar": "tutorialSidebar"
             },
             {

@@ -48,20 +48,50 @@
               {
                 "type": "link",
                 "label": "Create a Document",
-                "href": "/docs/Web/advanced-feature/create-a-document",
-                "docId": "Web/advanced-feature/create-a-document"
+                "href": "/docs/Web/advancedFeature/create-a-document",
+                "docId": "Web/advancedFeature/create-a-document"
               },
               {
                 "type": "link",
                 "label": "Deploy your site",
-                "href": "/docs/Web/advanced-feature/deploy-your-site",
-                "docId": "Web/advanced-feature/deploy-your-site"
+                "href": "/docs/Web/advancedFeature/deploy-your-site",
+                "docId": "Web/advancedFeature/deploy-your-site"
               },
               {
                 "type": "link",
-                "label": "Congratulations!",
-                "href": "/docs/Web/advanced-feature/congratulations",
-                "docId": "Web/advanced-feature/congratulations"
+                "label": "What is an Ad-hoc space meeting?",
+                "href": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings",
+                "docId": "Web/advancedFeature/Ad-hoc-Space-Meetings"
+              },
+              {
+                "type": "link",
+                "label": "TLS-443-Support",
+                "href": "/docs/Web/advancedFeature/TLS-443-Support",
+                "docId": "Web/advancedFeature/TLS-443-Support"
+              },
+              {
+                "type": "link",
+                "label": "Introduction",
+                "href": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+                "docId": "Web/advancedFeature/Unified-Space-Meetings-(USM)"
+              },
+              {
+                "type": "link",
+                "label": "effects",
+                "href": "/docs/Web/advancedFeature/effects",
+                "docId": "Web/advancedFeature/effects"
+              },
+              {
+                "type": "link",
+                "label": "mediaQuality",
+                "href": "/docs/Web/advancedFeature/mediaQuality",
+                "docId": "Web/advancedFeature/mediaQuality"
+              },
+              {
+                "type": "link",
+                "label": "meetingFeature",
+                "href": "/docs/Web/advancedFeature/meetingFeature",
+                "docId": "Web/advancedFeature/meetingFeature"
               }
             ],
             "href": "/docs/category/advanced-feature"
@@ -75,14 +105,68 @@
               {
                 "type": "link",
                 "label": "Create a Page",
-                "href": "/docs/Web/basic-feature/create-a-page",
-                "docId": "Web/basic-feature/create-a-page"
+                "href": "/docs/Web/basicFeature/create-a-page",
+                "docId": "Web/basicFeature/create-a-page"
               },
               {
                 "type": "link",
                 "label": "Create a Blog Post",
-                "href": "/docs/Web/basic-feature/create-a-blog-post",
-                "docId": "Web/basic-feature/create-a-blog-post"
+                "href": "/docs/Web/basicFeature/create-a-blog-post",
+                "docId": "Web/basicFeature/create-a-blog-post"
+              },
+              {
+                "type": "link",
+                "label": "Background-Noise-Reduction",
+                "href": "/docs/Web/basicFeature/Background-Noise-Reduction",
+                "docId": "Web/basicFeature/Background-Noise-Reduction"
+              },
+              {
+                "type": "link",
+                "label": "Password---Captcha-Flow-in-Web-JS-SDK",
+                "href": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+                "docId": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK"
+              },
+              {
+                "type": "link",
+                "label": "Webex-Transcription",
+                "href": "/docs/Web/basicFeature/Webex-Transcription",
+                "docId": "Web/basicFeature/Webex-Transcription"
+              },
+              {
+                "type": "link",
+                "label": "guestIssuer",
+                "href": "/docs/Web/basicFeature/guestIssuer",
+                "docId": "Web/basicFeature/guestIssuer"
+              },
+              {
+                "type": "link",
+                "label": "joinMeeting",
+                "href": "/docs/Web/basicFeature/joinMeeting",
+                "docId": "Web/basicFeature/joinMeeting"
+              },
+              {
+                "type": "link",
+                "label": "schedulemeeting",
+                "href": "/docs/Web/basicFeature/schedulemeeting",
+                "docId": "Web/basicFeature/schedulemeeting"
+              },
+              {
+                "type": "link",
+                "label": "screenshare",
+                "href": "/docs/Web/basicFeature/screenshare",
+                "docId": "Web/basicFeature/screenshare"
+              },
+              {
+                "type": "link",
+                "label": "token",
+                "href": "/docs/Web/basicFeature/token",
+                "docId": "Web/basicFeature/token"
+              },
+              {
+                "type": "link",
+                "label": "trackmanagement",
+                "href": "/docs/Web/basicFeature/trackmanagement",
+                "docId": "Web/basicFeature/trackmanagement"
               }
             ],
             "href": "/docs/category/basic-feature"
@@ -92,6 +176,12 @@
             "label": "Markdown Features",
             "href": "/docs/Web/markdown-features",
             "docId": "Web/markdown-features"
+          },
+          {
+            "type": "link",
+            "label": "introduction",
+            "href": "/docs/Web/introduction",
+            "docId": "Web/introduction"
           }
         ]
       }
@@ -122,34 +212,124 @@
       "description": "",
       "sidebar": "tutorialSidebar"
     },
-    "Web/advanced-feature/congratulations": {
-      "id": "Web/advanced-feature/congratulations",
-      "title": "Congratulations!",
-      "description": "You have just learned the basics of Docusaurus and made some changes to the initial template.",
+    "Web/advancedFeature/Ad-hoc-Space-Meetings": {
+      "id": "Web/advancedFeature/Ad-hoc-Space-Meetings",
+      "title": "What is an Ad-hoc space meeting?",
+      "description": "In Webex, the meetings can be broadly classified as below,",
       "sidebar": "tutorialSidebar"
     },
-    "Web/advanced-feature/create-a-document": {
-      "id": "Web/advanced-feature/create-a-document",
+    "Web/advancedFeature/create-a-document": {
+      "id": "Web/advancedFeature/create-a-document",
       "title": "Create a Document",
       "description": "Documents are groups of pages connected through:",
       "sidebar": "tutorialSidebar"
     },
-    "Web/advanced-feature/deploy-your-site": {
-      "id": "Web/advanced-feature/deploy-your-site",
+    "Web/advancedFeature/deploy-your-site": {
+      "id": "Web/advancedFeature/deploy-your-site",
       "title": "Deploy your site",
       "description": "Docusaurus is a static-site-generator (also called Jamstack).",
       "sidebar": "tutorialSidebar"
     },
-    "Web/basic-feature/create-a-blog-post": {
-      "id": "Web/basic-feature/create-a-blog-post",
+    "Web/advancedFeature/effects": {
+      "id": "Web/advancedFeature/effects",
+      "title": "effects",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advancedFeature/mediaQuality": {
+      "id": "Web/advancedFeature/mediaQuality",
+      "title": "mediaQuality",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advancedFeature/meetingFeature": {
+      "id": "Web/advancedFeature/meetingFeature",
+      "title": "meetingFeature",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advancedFeature/TLS-443-Support": {
+      "id": "Web/advancedFeature/TLS-443-Support",
+      "title": "TLS-443-Support",
+      "description": "Introduction",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/advancedFeature/Unified-Space-Meetings-(USM)": {
+      "id": "Web/advancedFeature/Unified-Space-Meetings-(USM)",
+      "title": "Introduction",
+      "description": "Webex Meeting Center today has three distinct meeting experiences: Personal Meeting Room (PMR), Scheduled Meetings, and Space Meetings. Each of these meeting types has distinct experiences, USM is to consolidate the experiences of Space Meetings with Scheduled Meetings and meld together the experiences. Get the single meetings experience in Webex App.",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/Background-Noise-Reduction": {
+      "id": "Web/basicFeature/Background-Noise-Reduction",
+      "title": "Background-Noise-Reduction",
+      "description": "Introduction",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/create-a-blog-post": {
+      "id": "Web/basicFeature/create-a-blog-post",
       "title": "Create a Blog Post",
       "description": "Docusaurus creates a page for each blog post, but also a blog index page, a tag system, an RSS feed...",
       "sidebar": "tutorialSidebar"
     },
-    "Web/basic-feature/create-a-page": {
-      "id": "Web/basic-feature/create-a-page",
+    "Web/basicFeature/create-a-page": {
+      "id": "Web/basicFeature/create-a-page",
       "title": "Create a Page",
       "description": "Add Markdown or React files to src/pages to create a standalone page:",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/guestIssuer": {
+      "id": "Web/basicFeature/guestIssuer",
+      "title": "guestIssuer",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/joinMeeting": {
+      "id": "Web/basicFeature/joinMeeting",
+      "title": "joinMeeting",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK": {
+      "id": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+      "title": "Password---Captcha-Flow-in-Web-JS-SDK",
+      "description": "Introduction",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/schedulemeeting": {
+      "id": "Web/basicFeature/schedulemeeting",
+      "title": "schedulemeeting",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/screenshare": {
+      "id": "Web/basicFeature/screenshare",
+      "title": "screenshare",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/token": {
+      "id": "Web/basicFeature/token",
+      "title": "token",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/trackmanagement": {
+      "id": "Web/basicFeature/trackmanagement",
+      "title": "trackmanagement",
+      "description": "",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/basicFeature/Webex-Transcription": {
+      "id": "Web/basicFeature/Webex-Transcription",
+      "title": "Webex-Transcription",
+      "description": "TBD",
+      "sidebar": "tutorialSidebar"
+    },
+    "Web/introduction": {
+      "id": "Web/introduction",
+      "title": "introduction",
+      "description": "",
       "sidebar": "tutorialSidebar"
     },
     "Web/markdown-features": {
