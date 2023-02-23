@@ -17,7 +17,7 @@ const cwd = 'packages';
 exports.list = async function list() {
   const packages = await g('**/package.json', {cwd});
 
-  return packages.map((p) => path.dirname(p));
+  return packages.map((p) => path.dirname(p)).filter((p) => (p.startsWith('webex') || p.startsWith('@webex')));
 };
 
 exports.glob = function glob(pattern, options = {}) {
