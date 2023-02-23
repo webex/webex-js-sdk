@@ -35,9 +35,10 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.10",
     "@webex/babel-config-legacy": "workspace:^",
     "@webex/eslint-config-legacy": "workspace:^",
-    "babel": "^6.23.0",
-    "eslint": "^8.24.0"
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1"
   }
 }
