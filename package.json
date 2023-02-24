@@ -9,7 +9,10 @@
   "private": true,
   "workspaces": [
     "./packages/@webex/*",
-    "./packages/webex"
+    "./packages/webex",
+    "./packages/config/*",
+    "./packages/legacy/*",
+    "./packages/tools/*"
   ],
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
@@ -220,5 +223,5 @@
       "release": "git add packages/*/package.json packages/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   },
-  "packageManager": "yarn@4.0.0-rc.22"
+  "packageManager": "yarn@3.4.1"
 }
