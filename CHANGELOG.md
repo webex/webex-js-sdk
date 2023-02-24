@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.33](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.32...v3.0.0-beta.33) (2023-02-24)
+
+
+### Bug Fixes
+
+* reduced maxMacroblocksLimit for multistream ([#2632](https://github.com/webex/webex-js-sdk/issues/2632)) ([be4fae0](https://github.com/webex/webex-js-sdk/commit/be4fae08399d95c885893208c64cfb8b5882460f))
+
 ## [3.0.0-beta.32](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.31...v3.0.0-beta.32) (2023-02-23)
 
 
