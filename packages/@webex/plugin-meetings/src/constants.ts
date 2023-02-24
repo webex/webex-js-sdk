@@ -538,6 +538,9 @@ export const BREAKOUTS = {
     REQUESTED: 'requested',
   },
   BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
+  ACTION_TYPES: {
+    DELETE: 'DELETE',
+  },
 };
 
 export const LOCUSINFO = {

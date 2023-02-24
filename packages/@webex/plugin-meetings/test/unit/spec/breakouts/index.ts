@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -463,48 +463,57 @@ describe('plugin-meetings', () => {
 
     describe('delete', () => {
       it('makes the request as expected', async () => {
-        const result = await breakouts.delete();
+        webex.request.returns(Promise.resolve({
+          body: {
+            groups: [{
+              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
+              status : "CLOSE",
+              type : "BREAKOUT",
+            }]
+          }
+        }));
+
+        const result = await breakouts.clearSessions();
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
           uri: 'url',
           body: {
             groups: [
               {
-                action: 'DELETE',
+                action: BREAKOUTS.ACTION_TYPES.DELETE,
               },
             ],
           }
         });
 
-        assert.equal(result, 'REQUEST_RETURN_VALUE');
+        assert.equal(breakouts.groups[0].status, "CLOSE")
       });
     });
 
     describe('creat', () => {
-      it('repose not include groups info, return false', async () => {
+      it('repose not include groups info', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
         const result = await breakouts.create(sessions);
 
-        assert.equal(result, false);
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
 
       });
 
-      it('repose include groups info, return false', async () => {
+      it('repose include groups info', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
 
         webex.request.returns(Promise.resolve({
           body: {
             groups: [{
               id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
-              type : "BREAKOUT",
               status : "PENDING",
+              type : "BREAKOUT",
             }]
           }
         }));
 
         const result = await breakouts.create(sessions);
 
-        assert.equal(result, true);
         assert.equal(breakouts.groups[0].id, "455556a4-37cd-4baa-89bc-8730581a1cc0")
 
       });

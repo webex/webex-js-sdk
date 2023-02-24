@@ -2646,7 +2646,7 @@ function toggleBreakout() {
     button.innerText = 'Delete Breakout';
 
     button.onclick = () => {
-      breakoutSession.delete();
+      breakoutSession.clearSessions();
     };
 
     return button;

@@ -351,7 +351,7 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * Create new breakout session
+   * Create new breakout sessions
    * @param {object} sessions -- breakout session group
    * @returns {Promise}
    */
@@ -369,32 +369,36 @@ const Breakouts = WebexPlugin.extend({
       },
     });
 
-    if (breakInfo.body && breakInfo.body.groups) {
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
       this.set('groups', breakInfo.body.groups);
-
-      return Promise.resolve(true);
     }
 
-    return Promise.resolve(false);
+    return Promise.resolve(breakInfo);
   },
 
   /**
-   * delete breakout session
+   * Delete all breakout sessions
    * @returns {Promise}
    */
-  delete() {
+  async clearSessions() {
     // @ts-ignore
-    return this.webex.request({
+    const breakInfo = await this.webex.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body: {
         groups: [
           {
-            action: 'DELETE',
+            action: BREAKOUTS.ACTION_TYPES.DELETE,
           },
         ],
       },
     });
+
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+    }
+
+    return Promise.resolve(breakInfo);
   },
 });
 
