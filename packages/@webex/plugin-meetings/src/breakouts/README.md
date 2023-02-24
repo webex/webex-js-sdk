@@ -120,7 +120,7 @@ breakout.remove(participant)
 breakout.delete()
 
 // Create a breakout session
-breakouts.create(sessionName)
+breakouts.create(sessions)
 
 // Rename an existing breakout session
 breakout.rename(newSessionName)
