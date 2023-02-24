@@ -98,8 +98,8 @@ describe('Roap', () => {
           correlationId: meeting.correlationId,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-          audioMuted: meeting.isAudioMuted(),
-          videoMuted: meeting.isVideoMuted(),
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
           preferTranscoding: true,
         });
