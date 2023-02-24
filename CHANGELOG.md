@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.40.0](https://github.com/webex/webex-js-sdk/compare/v2.39.3...v2.40.0) (2023-02-24)
+
+
+### Features
+
+* **legacy:** elevate babel and eslint ([#2622](https://github.com/webex/webex-js-sdk/issues/2622)) ([cbd2d8e](https://github.com/webex/webex-js-sdk/commit/cbd2d8ea270ec9a62b17fabcd981e6ff915d278d))
+
 ### [2.39.3](https://github.com/webex/webex-js-sdk/compare/v2.39.2...v2.39.3) (2023-02-17)
 
 
