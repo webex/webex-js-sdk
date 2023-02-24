@@ -4417,6 +4417,7 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
+
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
           meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
@@ -4461,7 +4462,6 @@ describe('plugin-meetings', () => {
           done();
         });
       });
-
 
       describe('#setUpLocusInfoMediaInactiveListener', () => {
         it('listens to disconnect due to un activity ', (done) => {
