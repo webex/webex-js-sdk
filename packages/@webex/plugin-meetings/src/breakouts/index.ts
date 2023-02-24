@@ -34,6 +34,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
+    groups: 'object', // appears when create breakouts
   },
 
   children: {
@@ -345,6 +346,53 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url,
       body: {
         enableBreakoutSession: enable,
+      },
+    });
+  },
+
+  /**
+   * Create new breakout session
+   * @param {object} sessions -- breakout session group
+   * @returns {Promise}
+   */
+  async create(sessions) {
+    // @ts-ignore
+    const breakInfo = await this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            sessions,
+          },
+        ],
+      },
+    });
+
+    if (breakInfo.body && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+
+      return Promise.resolve(true);
+    }
+
+    return Promise.resolve(false);
+  },
+
+  /**
+   * delete breakout session
+   * @returns {Promise}
+   */
+  delete() {
+    // @ts-ignore
+    return this.webex.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            action: 'DELETE',
+          },
+        ],
       },
     });
   },

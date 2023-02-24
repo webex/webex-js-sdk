@@ -460,5 +460,54 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
+
+    describe('delete', () => {
+      it('makes the request as expected', async () => {
+        const result = await breakouts.delete();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            groups: [
+              {
+                action: 'DELETE',
+              },
+            ],
+          }
+        });
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('creat', () => {
+      it('repose not include groups info, return false', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+        const result = await breakouts.create(sessions);
+
+        assert.equal(result, false);
+
+      });
+
+      it('repose include groups info, return false', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+
+        webex.request.returns(Promise.resolve({
+          body: {
+            groups: [{
+              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
+              type : "BREAKOUT",
+              status : "PENDING",
+            }]
+          }
+        }));
+
+        const result = await breakouts.create(sessions);
+
+        assert.equal(result, true);
+        assert.equal(breakouts.groups[0].id, "455556a4-37cd-4baa-89bc-8730581a1cc0")
+
+      });
+    });
   });
 });
