@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
