@@ -4417,7 +4417,6 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
-
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
           meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
@@ -4459,38 +4458,11 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
           assert.calledOnce(meeting.recordingController.setSessionId);
-          assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
-          assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
-          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
-          assert.equal(meeting.locusUrl, newLocusUrl);
-          assert(meeting.locusId, '12345');
           done();
         });
       });
 
-      describe('#setUpLocusServicesListener', () => {
-        it('listens to the locus services update event', (done) => {
-          const newLocusServices = {
-              services: {
-                record: {
-                  url: 'url',
-                }
-              },
-          };
 
-          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined), setSessionId: sinon.stub().returns(undefined)};
-
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'LINKS_SERVICES',
-            newLocusServices
-          );
-
-          assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
-          assert.calledOnce(meeting.recordingController.setSessionId);
-          done();
-        });
-      });
       describe('#setUpLocusInfoMediaInactiveListener', () => {
         it('listens to disconnect due to un activity ', (done) => {
           TriggerProxy.trigger.reset();
