@@ -9,13 +9,14 @@ import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
+import BreakoutRequest from './request';
 
 /**
  * @class Breakouts
  */
 const Breakouts = WebexPlugin.extend({
   namespace: MEETINGS,
-
+  breakoutRequest: BreakoutRequest,
   collections: {
     breakouts: BreakoutCollection,
   },
@@ -71,6 +72,8 @@ const Breakouts = WebexPlugin.extend({
     });
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    // @ts-ignore
+    this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
 
   /**
@@ -232,7 +235,60 @@ const Breakouts = WebexPlugin.extend({
 
     this.breakouts.set(Object.values(breakouts));
   },
+  /**
+   * get main session
+   * @returns {Breakout}
+   */
+  getMainSession() {
+    if (this.isInMainSession) {
+      return this.currentBreakoutSession;
+    }
 
+    const mainSession = this.breakouts.filter((breakout) => breakout.isMain)[0];
+    if (!mainSession) {
+      throw new Error('no main session found');
+    }
+
+    return mainSession;
+  },
+  /**
+   * Host/CoHost ask all participants return to main session
+   * @returns {Promise}
+   */
+  askAllToReturn() {
+    const mainSession = this.getMainSession();
+
+    return this.webex.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/requestMove`,
+      body: {
+        groupId: mainSession.groupId,
+        sessionId: mainSession.sessionId,
+      },
+    });
+  },
+
+  /**
+   * Broadcast message to all breakout session's participants
+   * @param {String} message
+   * @param {Object} options
+   * @returns {Promise}
+   */
+  broadcast(message, options) {
+    const breakoutGroupId = this.isInMainSession
+      ? this.breakouts.filter((breakout) => !breakout.isMain)[0]?.groupId
+      : this.groupId;
+    if (!breakoutGroupId) {
+      throw new Error('Cannot broadcast, no breakout session found');
+    }
+
+    return this.breakoutRequest.broadcast({
+      url: this.url,
+      message,
+      options,
+      groupId: breakoutGroupId,
+    });
+  },
   /**
    * Make enable breakout resource
    * @returns {Promise}
@@ -256,7 +312,7 @@ const Breakouts = WebexPlugin.extend({
         });
     }
 
-    return Promise.reject(new Error(`CheckLocusDTO: the breakoutServiceUrl is empty`));
+    return Promise.reject(new Error(`enableBreakouts: the breakoutServiceUrl is empty`));
   },
 
   /**
@@ -266,16 +322,14 @@ const Breakouts = WebexPlugin.extend({
    */
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
-      await this.enableBreakouts().then((response) => {
-        // checkLocusDTO default return enableBreakoutSession:true
-        if (!enable) {
-          // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
-          this.updateBreakout(response.body);
-          this.doToggleBreakout(enable);
-        }
-      });
+      const info = await this.enableBreakouts();
+      if (!enable) {
+        // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
+        this.updateBreakout(info.body);
+        await this.doToggleBreakout(enable);
+      }
     } else {
-      this.doToggleBreakout(enable);
+      await this.doToggleBreakout(enable);
     }
   },
 

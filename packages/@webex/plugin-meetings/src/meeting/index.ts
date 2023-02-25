@@ -4983,7 +4983,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(
       Event.VIDEO_SOURCES_COUNT_CHANGED,
-      (numTotalSources, numLiveSources) => {
+      (numTotalSources, numLiveSources, mediaContent) => {
         Trigger.trigger(
           this,
           {
@@ -4994,6 +4994,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             numTotalSources,
             numLiveSources,
+            mediaContent,
           }
         );
       }
@@ -5001,7 +5002,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(
       Event.AUDIO_SOURCES_COUNT_CHANGED,
-      (numTotalSources, numLiveSources) => {
+      (numTotalSources, numLiveSources, mediaContent) => {
         Trigger.trigger(
           this,
           {
@@ -5012,6 +5013,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             numTotalSources,
             numLiveSources,
+            mediaContent,
           }
         );
       }

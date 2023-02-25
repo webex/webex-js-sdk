@@ -101,4 +101,55 @@ describe('ReceiveSlot', () => {
     assert.strictEqual(receiveSlot.csi, undefined);
     assert.strictEqual(receiveSlot.sourceState, 'no source');
   });
+
+  describe('findMemberId()', () => {
+    it('doesn\'t do anything if csi is not set', () => {
+      // by default the receiveSlot does not have any csi or member id
+      receiveSlot.findMemberId();
+
+      assert.notCalled(findMemberIdCallbackStub);
+    });
+
+    it('finds a member id if member id is undefined and CSI is known', () => {
+      let emittedSourceUpdateEvent = null;
+
+      // setup receiveSlot to have a csi without a member id
+      const csi = 12345;
+      const fakeMemberId = 'aaa-bbb-ccc-ddd';
+      fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
+      findMemberIdCallbackStub.reset();
+      findMemberIdCallbackStub.returns(fakeMemberId);
+
+      receiveSlot.on(ReceiveSlotEvents.SourceUpdate, (data) => {
+        emittedSourceUpdateEvent = data;
+      });
+
+      receiveSlot.findMemberId();
+
+      assert.calledOnce(findMemberIdCallbackStub);
+      assert.calledWith(findMemberIdCallbackStub, csi);
+
+      assert.deepEqual(emittedSourceUpdateEvent, {
+        state: 'live',
+        csi,
+        memberId: fakeMemberId,
+      });
+
+    });
+
+    it('doesn\'t do anything if member id already set', () => {
+      // setup receiveSlot to have a csi and a member id
+      const csi = 12345;
+      const memberId = '12345678-1234-5678-9012-345678901234';
+
+      findMemberIdCallbackStub.returns(memberId);
+
+      fakeWcmeSlot.emit(WcmeReceiveSlotEvents.SourceUpdate, 'live', csi);
+      findMemberIdCallbackStub.reset();
+
+      receiveSlot.findMemberId();
+
+      assert.notCalled(findMemberIdCallbackStub);
+    });
+  });
 });

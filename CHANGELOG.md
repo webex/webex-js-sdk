@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.32](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.31...v3.0.0-beta.32) (2023-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** update degradation logic to use live sources ([#2625](https://github.com/webex/webex-js-sdk/issues/2625)) ([26746af](https://github.com/webex/webex-js-sdk/commit/26746afd597d104199497ff51f18d1c867ba77d8))
+
+## [3.0.0-beta.31](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.30...v3.0.0-beta.31) (2023-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add multistream logs to log buffer ([#2626](https://github.com/webex/webex-js-sdk/issues/2626)) ([06ae8f1](https://github.com/webex/webex-js-sdk/commit/06ae8f1f11dbd64d31fdd8a7b445639ec8f49023))
+
+## [3.0.0-beta.30](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.29...v3.0.0-beta.30) (2023-02-23)
+
+
+### Bug Fixes
+
+* emitting SourceUpdate event when memberId is found for ReceiveSlot ([#2627](https://github.com/webex/webex-js-sdk/issues/2627)) ([9efef88](https://github.com/webex/webex-js-sdk/commit/9efef88e1e9b99bcaf1224bdacee374fa9230d24))
+
+## [3.0.0-beta.29](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.28...v3.0.0-beta.29) (2023-02-23)
+
+
+### Features
+
+* **breakout:** add broadcast, askAllReturn methods ([#2615](https://github.com/webex/webex-js-sdk/issues/2615)) ([24affd7](https://github.com/webex/webex-js-sdk/commit/24affd70b19cb82c1e9715dcd15dbcd0e569015a))
+
+## [3.0.0-beta.28](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.27...v3.0.0-beta.28) (2023-02-22)
+
+
+### Bug Fixes
+
+* update memberId on ReceiveSlots when members are updated ([#2624](https://github.com/webex/webex-js-sdk/issues/2624)) ([ec05bd4](https://github.com/webex/webex-js-sdk/commit/ec05bd4cbbff807234a08ae66f1bfe716efcdb0f))
+
+## [3.0.0-beta.27](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.26...v3.0.0-beta.27) (2023-02-21)
+
+
+### Features
+
+* **plugin-meetings:** breakout session, host enable/disable breakout ([#2612](https://github.com/webex/webex-js-sdk/issues/2612)) ([7736913](https://github.com/webex/webex-js-sdk/commit/7736913b5c4cffefd6424121342b2a648667ba00))
+
 ## [3.0.0-beta.26](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.25...v3.0.0-beta.26) (2023-02-13)
 
 

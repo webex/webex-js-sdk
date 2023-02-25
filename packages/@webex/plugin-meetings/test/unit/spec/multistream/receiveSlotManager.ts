@@ -1,6 +1,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {MediaType} from '@webex/internal-media-core';
+import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import {ReceiveSlotManager} from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as ReceiveSlotModule from '@webex/plugin-meetings/src/multistream/receiveSlot';
 
@@ -30,6 +31,7 @@ describe('ReceiveSlotManager', () => {
       const fakeReceiveSlot = {
         id: `fake sdk receive slot ${fakeReceiveSlots.length + 1}`,
         mediaType,
+        findMemberId: sinon.stub(),
       };
 
       fakeReceiveSlots.push(fakeReceiveSlot);
@@ -168,6 +170,32 @@ describe('ReceiveSlotManager', () => {
     assert.deepEqual(receiveSlotManager.getStats(), {
       numAllocatedSlots: {'AUDIO-MAIN': 1},
       numFreeSlots: {'VIDEO-MAIN': 1},
+    });
+  });
+
+  describe('updateMemberIds', () => {
+
+    it('calls findMemberId() on all allocated receive slots', async () => {
+      const audioSlots: ReceiveSlot[] = [];
+      const videoSlots: ReceiveSlot[] = [];
+
+      // allocate a bunch of receive slots
+      audioSlots.push(await receiveSlotManager.allocateSlot(MediaType.AudioMain));
+      audioSlots.push(await receiveSlotManager.allocateSlot(MediaType.AudioMain));
+      videoSlots.push(await receiveSlotManager.allocateSlot(MediaType.VideoMain));
+      videoSlots.push(await receiveSlotManager.allocateSlot(MediaType.VideoMain));
+      videoSlots.push(await receiveSlotManager.allocateSlot(MediaType.VideoMain));
+
+      receiveSlotManager.updateMemberIds();
+
+      assert.strictEqual(audioSlots.length, 2);
+      assert.strictEqual(videoSlots.length, 3);
+
+      assert.strictEqual(fakeReceiveSlots.length, audioSlots.length + videoSlots.length);
+
+      fakeReceiveSlots.forEach(slot => {
+        assert.calledOnce(slot.findMemberId);
+      });
     });
   });
 });

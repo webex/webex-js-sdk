@@ -11,7 +11,7 @@ import {cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotId} from './receiveSlot';
+import {ReceiveSlot, ReceiveSlotEvents, ReceiveSlotId} from './receiveSlot';
 import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
@@ -73,6 +73,8 @@ export class MediaRequestManager {
 
   private degradationPreferences: DegradationPreferences;
 
+  private sourceUpdateListener: () => void;
+
   constructor(
     degradationPreferences: DegradationPreferences,
     sendMediaRequestsCallback: SendMediaRequestsCallback
@@ -82,6 +84,7 @@ export class MediaRequestManager {
     this.clientRequests = {};
     this.slotsActiveInLastMediaRequest = {};
     this.degradationPreferences = degradationPreferences;
+    this.sourceUpdateListener = this.commit.bind(this);
   }
 
   private resetInactiveReceiveSlots() {
@@ -128,19 +131,23 @@ export class MediaRequestManager {
     // reduce max-fs until total macroblocks is below limit
     for (let i = 0; i < maxFsLimits.length; i += 1) {
       let totalMacroblocksRequested = 0;
-      Object.values(clientRequests).forEach((mr) => {
+      Object.entries(clientRequests).forEach(([id, mr]) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
             mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
             maxFsLimits[i]
           );
-          totalMacroblocksRequested += mr.codecInfo.maxFs * mr.receiveSlots.length;
+          // we only consider sources with "live" state
+          const slotsWithLiveSource = this.clientRequests[id].receiveSlots.filter(
+            (rs) => rs.sourceState === 'live'
+          );
+          totalMacroblocksRequested += mr.codecInfo.maxFs * slotsWithLiveSource.length;
         }
       });
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
         if (i !== 0) {
           LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> too many requests with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
+            `multistream:mediaRequestManager --> too many streams with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
           );
         }
         break;
@@ -204,6 +211,10 @@ export class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
+    mediaRequest.receiveSlots.forEach((rs) => {
+      rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+    });
+
     if (commit) {
       this.commit();
     }
@@ -212,6 +223,10 @@ export class MediaRequestManager {
   }
 
   public cancelRequest(requestId: MediaRequestId, commit = true) {
+    this.clientRequests[requestId]?.receiveSlots.forEach((rs) => {
+      rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+    });
+
     delete this.clientRequests[requestId];
 
     if (commit) {
