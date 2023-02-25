@@ -4003,6 +4003,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/build-legacy@workspace:^, @webex/build-legacy@workspace:packages/legacy/build":
+  version: 0.0.0-use.local
+  resolution: "@webex/build-legacy@workspace:packages/legacy/build"
+  dependencies:
+    "@webex/babel-config-legacy": "workspace:^"
+    glob: ^7.1.4
+    mkdirp: ^0.5.1
+    yargs: ^16.2.0
+  peerDependencies:
+    "@babel/core": ^7.17.10
+  bin:
+    webex-build-legacy: ./static/cli.js
+  languageName: unknown
+  linkType: soft
+
 "@webex/common-evented@workspace:^, @webex/common-evented@workspace:packages/@webex/common-evented":
   version: 0.0.0-use.local
   resolution: "@webex/common-evented@workspace:packages/@webex/common-evented"
@@ -4337,6 +4352,7 @@ __metadata:
   dependencies:
     "@babel/core": ^7.17.10
     "@webex/babel-config-legacy": "workspace:^"
+    "@webex/build-legacy": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
