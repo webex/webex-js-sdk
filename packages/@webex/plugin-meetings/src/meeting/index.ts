@@ -5580,12 +5580,22 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * set the mute all flag for participants if you're the host
    * @returns {Promise}
-   * @param {boolean} enabled
+   * @param {boolean} mutedEnabled
+   * @param {boolean} disallowUnmuteEnabled
+   * @param {boolean} muteOnEntryEnabled
    * @public
    * @memberof Meeting
    */
-  public setMuteAll(enabled: boolean) {
-    return this.controlsOptionsManager.setMuteAll(enabled);
+  public setMuteAll(
+    mutedEnabled: boolean,
+    disallowUnmuteEnabled: boolean,
+    muteOnEntryEnabled: boolean
+  ) {
+    return this.controlsOptionsManager.setMuteAll(
+      mutedEnabled,
+      disallowUnmuteEnabled,
+      muteOnEntryEnabled
+    );
   }
 
   /**

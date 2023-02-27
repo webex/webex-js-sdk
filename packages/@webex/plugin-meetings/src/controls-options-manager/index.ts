@@ -135,30 +135,37 @@ export default class ControlsOptionsManager {
 
   /**
    * @param {Setting} setting
-   * @param {boolean} enabled
    * @private
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
-  private setControls(setting: Setting, enabled: boolean): Promise<any> {
-    LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${setting} [${enabled}]`);
+  private setControls(setting: {[key in Setting]?: boolean}): Promise<any> {
+    const muteUnmuteAll = Object.keys(setting).includes(Setting.muted);
 
-    if (Util?.[`${enabled ? CAN_SET : CAN_UNSET}${setting}`](this.displayHints)) {
-      // @ts-ignore
-      return this.request.request({
-        uri: `${this.locusUrl}/${CONTROLS}`,
-        body: {
-          [camelCase(setting)]: {
-            [ENABLED]: enabled,
-          },
-        },
-        method: HTTP_VERBS.PATCH,
-      });
+    const body = muteUnmuteAll ? {audio: {}} : {};
+
+    for (const [key, value] of Object.entries(setting)) {
+      LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${key} [${value}]`);
+      if (!Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)) {
+        return Promise.reject(
+          new PermissionError(`${key} [${value}] not allowed, due to moderator property.`)
+        );
+      }
+      if (muteUnmuteAll) {
+        body.audio[camelCase(key)] = value;
+      } else {
+        body[camelCase(key)] = {
+          [ENABLED]: value,
+        };
+      }
     }
 
-    return Promise.reject(
-      new PermissionError(`${setting} [${enabled}] not allowed, due to moderator property.`)
-    );
+    // @ts-ignore
+    return this.request.request({
+      uri: `${this.locusUrl}/${CONTROLS}`,
+      body,
+      method: HTTP_VERBS.PATCH,
+    });
   }
 
   /**
@@ -168,7 +175,7 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   public setMuteOnEntry(enabled: boolean): Promise<any> {
-    return this.setControls(Setting.muteOnEntry, enabled);
+    return this.setControls({[Setting.muteOnEntry]: enabled});
   }
 
   /**
@@ -178,35 +185,26 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   public setDisallowUnmute(enabled: boolean): Promise<any> {
-    return this.setControls(Setting.disallowUnmute, enabled);
+    return this.setControls({[Setting.disallowUnmute]: enabled});
   }
 
   /**
    * @public
-   * @param {boolean} enabled
+   * @param {boolean} mutedEnabled
+   * @param {boolean} disallowUnmuteEnabled
+   * @param {boolean} muteOnEntryEnabled
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
-  public setMuteAll(enabled: boolean): Promise<any> {
-    LoggerProxy.logger.log(
-      `ControlsOptionsManager:index#setControls --> ${Setting.muted} [${enabled}]`
-    );
-
-    if (Util?.[`${enabled ? CAN_SET : CAN_UNSET}${Setting.muted}`](this.displayHints)) {
-      // @ts-ignore
-      return this.request.request({
-        uri: `${this.locusUrl}/${CONTROLS}`,
-        body: {
-          audio: {
-            muted: enabled,
-          },
-        },
-        method: HTTP_VERBS.PATCH,
-      });
-    }
-
-    return Promise.reject(
-      new PermissionError(`${Setting.muted} [${enabled}] not allowed, due to moderator property.`)
-    );
+  public setMuteAll(
+    mutedEnabled: boolean,
+    disallowUnmuteEnabled: boolean,
+    muteOnEntryEnabled: boolean
+  ): Promise<any> {
+    return this.setControls({
+      [Setting.muted]: mutedEnabled,
+      [Setting.disallowUnmute]: disallowUnmuteEnabled,
+      [Setting.muteOnEntry]: muteOnEntryEnabled,
+    });
   }
 }
