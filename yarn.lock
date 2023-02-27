@@ -4483,18 +4483,19 @@ __metadata:
     "@webex/common-timers": "workspace:^"
     "@webex/http-core": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
+    "@webex/internal-plugin-encryption": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
-    ampersand-collection: "npm:^2.0.2"
-    ampersand-state: "npm:^5.0.3"
-    chai: "npm:^4.3.4"
-    chai-as-promised: "npm:^7.1.1"
-    lodash: "npm:^4.17.21"
-    sinon: "npm:^9.2.4"
+    ampersand-collection: ^2.0.2
+    ampersand-state: ^5.0.3
+    chai: ^4.3.4
+    chai-as-promised: ^7.1.1
+    lodash: ^4.17.21
+    sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
