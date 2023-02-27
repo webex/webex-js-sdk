@@ -188,6 +188,25 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   public setMuteAll(enabled: boolean): Promise<any> {
-    return this.setControls(Setting.muted, enabled);
+    LoggerProxy.logger.log(
+      `ControlsOptionsManager:index#setControls --> ${Setting.muted} [${enabled}]`
+    );
+
+    if (Util?.[`${enabled ? CAN_SET : CAN_UNSET}${Setting.muted}`](this.displayHints)) {
+      // @ts-ignore
+      return this.request.request({
+        uri: `${this.locusUrl}/${CONTROLS}`,
+        body: {
+          audio: {
+            muted: enabled,
+          },
+        },
+        method: HTTP_VERBS.PATCH,
+      });
+    }
+
+    return Promise.reject(
+      new PermissionError(`${Setting.muted} [${enabled}] not allowed, due to moderator property.`)
+    );
   }
 }
