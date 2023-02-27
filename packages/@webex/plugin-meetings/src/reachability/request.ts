@@ -28,12 +28,11 @@ class ReachabilityRequest {
   }
 
   /**
-   * gets the cluster information
+   * Gets the cluster information
    *
-   * @param {boolean} includeVideoMesh whether to include the video mesh clusters in the result or not
    * @returns {Promise}
    */
-  getClusters = (): Promise<ClusterList> =>
+  getClusters = (): Promise<{clusters: ClusterList; joinCookie: any}> =>
     this.webex
       .request({
         method: HTTP_VERBS.GET,
