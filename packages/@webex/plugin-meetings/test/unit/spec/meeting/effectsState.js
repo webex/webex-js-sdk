@@ -57,6 +57,11 @@ describe('plugin-meetings', () => {
     }),
   });
 
+  const fakeLocalMicrophoneTrack = () => ({
+    stop: () => {},
+    underlyingTrack: {...fakeMediaTrack()}
+  });
+
   class FakeMediaStream {
     constructor(tracks) {
       this.active = false;
@@ -179,9 +184,14 @@ describe('plugin-meetings', () => {
 
     meeting.addMedia = sinon.stub().returns(Promise.resolve());
     meeting.getMediaStreams = sinon.stub().returns(Promise.resolve());
+    MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
+      return {
+        getTracks: () => tracks
+      };
+    });
     sinon.stub(meeting, 'effects').value(effects);
     sinon.replace(meeting, 'addMedia', () => {
-      sinon.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
+      sinon.stub(meeting.mediaProperties, 'audioTrack').value(fakeLocalMicrophoneTrack());
       sinon.stub(meeting.mediaProperties, 'mediaDirection').value({
         receiveAudio: true,
       });

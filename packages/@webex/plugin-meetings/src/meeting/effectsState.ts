@@ -112,7 +112,9 @@ class EffectsState {
     try {
       bnr.enabled = BNR_STATUS.SHOULD_ENABLE;
       this.state.callToWebrtcBNRInProgress = true;
-      const audioStream = MediaUtil.createMediaStream([meeting.mediaProperties.audioTrack]);
+      const audioStream = MediaUtil.createMediaStream([
+        meeting.mediaProperties.audioTrack.underlyingTrack,
+      ]);
 
       LoggerProxy.logger.info(
         'Meeting:effectState#enableBNR. MediaStream created from meeting & sent to updateAudio'
@@ -171,7 +173,7 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = true;
 
       // @ts-ignore - disableBNR does not expect an argument
-      const audioTrack = WebRTCMedia.Effects.BNR.disableBNR(meeting.mediaProperties.audioTrack);
+      const audioTrack = WebRTCMedia.Effects.BNR.disableBNR();
 
       const audioStream = MediaUtil.createMediaStream([audioTrack]);
 
