@@ -23,6 +23,7 @@ import {
   PARTICIPANT,
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
+  REACHABILITY,
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
 } from '../constants';
@@ -34,13 +35,32 @@ import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
  */
 export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
+  joinCookie?: any;
 
+  /**
+   * Constructor
+   * @param {Object} attrs
+   * @param {Object} options
+   */
   constructor(attrs: any, options: any) {
     super(attrs, options);
     this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
       leading: true,
       trailing: true,
     });
+    const joinCookieRaw = window.localStorage.getItem(REACHABILITY.localStorageJoinCookie);
+    if (joinCookieRaw) {
+      try {
+        const joinCookie = JSON.parse(joinCookieRaw);
+        if (joinCookie) {
+          this.joinCookie = joinCookie;
+        }
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
+        );
+      }
+    }
   }
 
   /**
@@ -115,6 +135,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       supportsNativeLobby: 1,
       clientMediaPreferences: {
         preferTranscoding: preferTranscoding ?? true,
+        joinCookie: this.joinCookie,
       },
     };
 

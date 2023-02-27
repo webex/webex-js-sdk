@@ -42,7 +42,7 @@ class ReachabilityRequest {
         resource: RESOURCE.CLUSTERS,
       })
       .then((res) => {
-        const {clusters} = res.body;
+        const {clusters, joinCookie} = res.body;
 
         Object.keys(clusters).forEach((key) => {
           clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
@@ -52,7 +52,10 @@ class ReachabilityRequest {
           `Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`
         );
 
-        return clusters;
+        return {
+          clusters,
+          joinCookie,
+        };
       });
 
   /**

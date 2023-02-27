@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Reachability from '@webex/plugin-meetings/src/reachability/';
+import {REACHABILITY} from '@webex/plugin-meetings/dist/constants';
 
 describe('isAnyClusterReachable', () => {
   let webex;
@@ -22,8 +23,8 @@ describe('isAnyClusterReachable', () => {
 
     const result = await reachability.isAnyClusterReachable();
 
-    assert.equal(result, expectedValue);
-  };
+      assert.equal(result, expectedValue);
+    };
 
   it('returns true when udp is reachable', async () => {
     await checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}, true);
@@ -67,7 +68,14 @@ describe('gatherReachability', () => {
     const reachability = new Reachability(webex);
 
     const clusters = {some: 'clusters'};
-    const reachabilityResults = {some: 'results'};
+    const reachabilityResults = {
+      clusters: {
+        clusterId: {
+          udp: 'testUDP',
+        },
+      },
+      joinCookie: {id: 'id'}
+    };
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(clusters);
     (reachability as any).performReachabilityCheck = sinon.stub().returns(reachabilityResults)
@@ -76,9 +84,11 @@ describe('gatherReachability', () => {
 
     assert.equal(result, reachabilityResults);
 
-    const storedResult = await webex.boundedStorage.get('Reachability', 'reachability.result');
+    const storedResultForReachabilityResult = await webex.boundedStorage.get('Reachability', 'reachability.result');
+    const storedResultForJoinCookie = await webex.boundedStorage.get('Reachability', 'reachability.joinCookie');
 
-    assert.equal(JSON.stringify(result), storedResult);
+    assert.equal(JSON.stringify(result), storedResultForReachabilityResult);
+    assert.equal(JSON.stringify(reachabilityResults.joinCookie), storedResultForJoinCookie);
   });
 
 });
