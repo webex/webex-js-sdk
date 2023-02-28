@@ -48,7 +48,7 @@ const getBOResponse = (status: string) => {
   };
 };
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -535,6 +535,27 @@ describe('plugin-meetings', () => {
         assert.deepEqual(argObj1, {id:'breakoutGroupId', action: 'CLOSE', delayCloseTime: 60});
         assert.deepEqual(argObj2, {id:'id', action: 'CLOSE', delayCloseTime: 60, someOtherParam: 'someOtherParam'});
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
+      });
+    });
+
+    describe('#getBreakout', () => {
+      it('should get breakout sessions', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('PENDING'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        const result = await breakouts.getBreakout();
+        await breakouts.getBreakout(true);
+        const arg1 = webex.request.getCall(0).args[0];
+        const arg2 = webex.request.getCall(1).args[0];
+
+        assert.equal(arg1.uri, 'url');
+        assert.equal(arg2.uri, 'url?editlock=true');
+        assert.equal(arg1.method, 'GET');
+        assert.deepEqual(result, {body: getBOResponse('PENDING')});
       });
     });
 

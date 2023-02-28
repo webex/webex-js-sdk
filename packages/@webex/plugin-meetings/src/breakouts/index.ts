@@ -357,7 +357,7 @@ const Breakouts = WebexPlugin.extend({
   start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
-      id: this.breakoutGroupId,
+      id: this.breakoutGroupId || '',
       action,
       allowBackToMain: false,
       allowToJoinLater: false,
@@ -414,12 +414,13 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * get existed breakout sessions
+   * @param {boolean} editlock -- lock operations of the breakout sessions
    * @returns {Promise}
    */
-  getBreakout() {
+  getBreakout(editlock) {
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: this.url,
+      uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
     });
   },
 
