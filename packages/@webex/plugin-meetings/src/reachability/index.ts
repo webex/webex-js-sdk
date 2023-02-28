@@ -14,6 +14,7 @@ import ReachabilityRequest from './request';
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
 
+type IceCandidateResult = {clusterId: string; elapsed?: string; clientMediaIP?: string};
 /**
  * @class Reachability
  * @export
@@ -301,6 +302,7 @@ export default class Reachability {
           elapsed
         );
         this.setLatencyAndClose(peerConnection, elapsed);
+        this.setClientMediaIPs(peerConnection, e.candidate.address);
       }
     };
   }
@@ -316,9 +318,11 @@ export default class Reachability {
    */
   private iceGatheringState(peerConnection: RTCPeerConnection, timeout: number) {
     const ELAPSED = 'elapsed';
+    const CLIENT_MEDIA_IP = 'clientMediaIP';
 
-    return new Promise((resolve) => {
+    return new Promise<IceCandidateResult>((resolve) => {
       const peerConnectionProxy = new window.Proxy(peerConnection, {
+        // eslint-disable-next-line require-jsdoc
         get(target, property) {
           const targetMember = target[property];
 
@@ -329,12 +333,19 @@ export default class Reachability {
           return targetMember;
         },
         set: (target, property, value) => {
-          // only intercept elapsed property
-          if (property === ELAPSED) {
-            // @ts-ignore
-            resolve({clusterId: peerConnection.key, elapsed: value});
+          switch (property) {
+            case ELAPSED:
+              // @ts-ignore
+              resolve({clusterId: peerConnection.key, elapsed: value});
 
-            return true;
+              return true;
+            case CLIENT_MEDIA_IP:
+              // @ts-ignore
+              resolve({clusterId: peerConnection.key, clientMediaIP: value});
+
+              return true;
+            default:
+              break;
           }
 
           // pass thru
@@ -354,6 +365,7 @@ export default class Reachability {
         // Close any open peerConnections
         if (peerConnectionProxy.connectionState !== CLOSED) {
           this.setLatencyAndClose(peerConnectionProxy, null);
+          this.setClientMediaIPs(peerConnectionProxy, null);
         }
       }, timeout);
     });
@@ -382,10 +394,10 @@ export default class Reachability {
    * @private
    * @memberof Reachability
    */
-  private parseIceResultsToReachabilityResults(iceResults: Array<any>) {
+  private parseIceResultsToReachabilityResults(iceResults: Array<IceCandidateResult>) {
     const reachabilityMap = {};
 
-    iceResults.forEach(({clusterId, elapsed}) => {
+    iceResults.forEach(({clusterId, elapsed, clientMediaIP}) => {
       let latencyResult;
 
       if (elapsed === null) {
@@ -401,6 +413,20 @@ export default class Reachability {
         udp: latencyResult,
         tcp: latencyResult,
       };
+
+      if (clientMediaIP) {
+        if (!reachabilityMap[clusterId].udp.clientMediaIPs) {
+          reachabilityMap[clusterId].udp.clientMediaIPs = [clientMediaIP];
+        } else {
+          reachabilityMap[clusterId].udp.clientMediaIPs.push(clientMediaIP);
+        }
+
+        if (!reachabilityMap[clusterId].tcp.clientMediaIPs) {
+          reachabilityMap[clusterId].tcp.clientMediaIPs = [clientMediaIP];
+        } else {
+          reachabilityMap[clusterId].tcp.clientMediaIPs.push(clientMediaIP);
+        }
+      }
     });
 
     return reachabilityMap;
@@ -438,6 +464,29 @@ export default class Reachability {
           resolve({});
         });
     });
+  }
+
+  /**
+   * Set client media IPs
+   * @param {RTCPeerConnection} peerConnection
+   * @param {string} clientMediaIP
+   * @returns {void}
+   */
+  private setClientMediaIPs(peerConnection: RTCPeerConnection, clientMediaIP?: string) {
+    const {CLOSED} = CONNECTION_STATE;
+
+    if (peerConnection.connectionState === CLOSED) {
+      LoggerProxy.logger.log(
+        `Reachability:index#setClientMediaIPs --> Attempting to set clientMediaIP of ${clientMediaIP} on closed peerConnection.`
+      );
+    }
+
+    // Set to null in case this fired from
+    // an event other than onIceCandidate
+    peerConnection.onicecandidate = null;
+    peerConnection.close();
+    // @ts-ignore
+    peerConnection.clientMediaIP = clientMediaIP;
   }
 
   /**
