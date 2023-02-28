@@ -39,6 +39,9 @@ class ReachabilityRequest {
         shouldRefreshAccessToken: false,
         api: API.CALLIOPEDISCOVERY,
         resource: RESOURCE.CLUSTERS,
+        qs: {
+          JCSupport: 1,
+        },
       })
       .then((res) => {
         const {clusters, joinCookie} = res.body;

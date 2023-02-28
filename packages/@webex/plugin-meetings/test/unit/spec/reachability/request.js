@@ -56,6 +56,9 @@ describe('plugin-meetings/reachability', () => {
       assert.equal(requestParams.api, 'calliopeDiscovery');
       assert.equal(requestParams.shouldRefreshAccessToken, false);
 
+      assert.deepEqual(requestParams.qs, {
+        JCSupport: 1,
+      });
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
     });
