@@ -58,6 +58,9 @@ describe('MediaRequestManager', () => {
         (_, index) =>
           ({
             id: `fake receive slot ${index}`,
+            on: sinon.stub(),
+            off: sinon.stub(),
+            sourceState: 'live',
             wcmeReceiveSlot: fakeWcmeSlots[index],
             resetSourceState: sinon.stub(),
           } as unknown as ReceiveSlot)
@@ -682,6 +685,30 @@ describe('MediaRequestManager', () => {
     // set max macroblocks limit
     mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
     assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('should not degrade max-fs if receive slot sources are not live', () => {
+    // set receive slot source states to "no source"
+    fakeReceiveSlots.forEach((slot) => {
+      slot.sourceState = 'no source';
+    });
+
+    // set max macroblocks limit
+    mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+    sendMediaRequestsCallback.resetHistory();
+
+    // request 4 "large" 1080p streams, which should degrade to 720p if live
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 4), getMaxFs('large'), true);
+
+    // check that resulting requests are 4 "large" 1080p streams
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: fakeWcmeSlots.slice(0, 4),
+        maxFs: getMaxFs('large'),
+      },
+    ]);
   });
 
   it('can degrade max-fs once when request exceeds max macroblocks limit', () => {

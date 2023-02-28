@@ -6,13 +6,17 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 import {BrowserDetection} from '@webex/common';
+import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
-import {CLIENT_NAME} from './config';
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
 import CallDiagnosticEventsBatcher from './call-diagnostic-events-batcher';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+
+export function getOSNameInternal() {
+  return OSMap[getOSName()] ?? OS_NAME.OTHERS;
+}
 
 function getSparkUserAgent(webex) {
   const {appName, appVersion, appPlatform} = webex?.config ?? {};
@@ -59,7 +63,7 @@ const Metrics = WebexPlugin.extend({
     payload.tags = {
       ...props.tags,
       browser: getBrowserName(),
-      os: getOSName(),
+      os: getOSNameInternal(),
 
       // Node does not like this so we need to check if it exists or not
       // eslint-disable-next-line no-undef
@@ -93,7 +97,7 @@ const Metrics = WebexPlugin.extend({
       },
       locale: 'en-US',
       os: {
-        name: getOSName(),
+        name: getOSNameInternal(),
         version: getOSVersion(),
       },
     };

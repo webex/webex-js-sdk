@@ -2219,6 +2219,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_SERVICES, (payload) => {
       this.recordingController.setServiceUrl(payload?.services?.record?.url);
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
+      this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
     });
   }
 
@@ -4980,7 +4981,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(
       Event.VIDEO_SOURCES_COUNT_CHANGED,
-      (numTotalSources, numLiveSources) => {
+      (numTotalSources, numLiveSources, mediaContent) => {
         Trigger.trigger(
           this,
           {
@@ -4991,6 +4992,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             numTotalSources,
             numLiveSources,
+            mediaContent,
           }
         );
       }
@@ -4998,7 +5000,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(
       Event.AUDIO_SOURCES_COUNT_CHANGED,
-      (numTotalSources, numLiveSources) => {
+      (numTotalSources, numLiveSources, mediaContent) => {
         Trigger.trigger(
           this,
           {
@@ -5009,6 +5011,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             numTotalSources,
             numLiveSources,
+            mediaContent,
           }
         );
       }

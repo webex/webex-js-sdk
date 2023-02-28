@@ -13,5 +13,5 @@ registerInternalPlugin('metrics', Metrics, {
   config,
 });
 
-export {default} from './metrics';
+export {default, getOSNameInternal} from './metrics';
 export {config};
