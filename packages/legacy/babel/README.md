@@ -23,10 +23,10 @@ Installation, local to this project, can be performed by using the following com
 
 ```bash
 # Project root installation.
-yarn add --dev @webex/babel-config-legacy
+yarn add --dev @webex/babel-config-legacy @babel/core
 
 # Package installation.
-yarn workspace @{scope}/{package} add --dev @webex/babel-config-legacy
+yarn workspace @{scope}/{package} add --dev @webex/babel-config-legacy @babel/core
 ```
 
 ## Usage

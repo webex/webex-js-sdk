@@ -15,6 +15,8 @@
     "node": ">=14"
   },
   "scripts": {
+    "build": "yarn build:source",
+    "build:source": "webex-build-legacy -jtm",
     "static": "yarn static:lint",
     "static:lint": "eslint ./src/**/*.*"
   },
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@webex/babel-config-legacy": "workspace:^",
+    "@webex/build-legacy": "workspace:^",
     "@webex/eslint-config-legacy": "workspace:^",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1"

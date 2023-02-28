@@ -1,1 +1,1 @@
-{ "extends": "@webex/babel-config-legacy" }
+{"extends": "@webex/babel-config-legacy" }

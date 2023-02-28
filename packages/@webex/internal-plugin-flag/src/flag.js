@@ -2,9 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {flatten} from 'lodash';
-import {WebexPlugin} from '@webex/webex-core';
+import * as WebexCore from '@webex/webex-core';
 
-const Flag = WebexPlugin.extend({
+const Flag = WebexCore.WebexPlugin.extend({
   namespace: 'Flag',
 
   /**
