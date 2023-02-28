@@ -96,7 +96,7 @@ export default {
       enableTurnDiscovery: true,
     },
     degradationPreferences: {
-      maxMacroblocksLimit: 32400,
+      maxMacroblocksLimit: 8192,
     },
   },
 };

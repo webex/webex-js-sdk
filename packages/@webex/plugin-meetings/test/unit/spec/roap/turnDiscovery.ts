@@ -40,8 +40,12 @@ describe('TurnDiscovery', () => {
       mediaId: 'fake media id',
       locusUrl: `https://locus-a.wbx2.com/locus/api/v1/loci/${FAKE_LOCUS_ID}`,
       roapSeq: -1,
-      isAudioMuted: () => true,
-      isVideoMuted: () => false,
+      audio:{
+        isLocallyMuted: () => true,
+      },
+      video:{
+        isLocallyMuted: () => false,
+      },
       setRoapSeq: sinon.fake((newSeq) => {
         testMeeting.roapSeq = newSeq;
       }),
@@ -73,8 +77,8 @@ describe('TurnDiscovery', () => {
       correlationId: testMeeting.correlationId,
       locusSelfUrl: testMeeting.selfUrl,
       mediaId: expectedMediaId,
-      audioMuted: testMeeting.isAudioMuted(),
-      videoMuted: testMeeting.isVideoMuted(),
+      audioMuted: testMeeting.audio?.isLocallyMuted(),
+      videoMuted: testMeeting.video?.isLocallyMuted(),
       meetingId: testMeeting.id,
       preferTranscoding: !testMeeting.isMultistream
     });

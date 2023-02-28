@@ -4695,6 +4695,7 @@ __metadata:
     sdp-transform: "npm:^2.12.0"
     sinon: "npm:^9.2.4"
     typed-emitter: "npm:^2.1.0"
+    typescript: "npm:^4.7.4"
     uuid: "npm:^3.3.2"
     webrtc-adapter: "npm:^8.1.2"
   languageName: unknown
