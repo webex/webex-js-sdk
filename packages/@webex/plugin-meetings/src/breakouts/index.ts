@@ -144,6 +144,11 @@ const Breakouts = WebexPlugin.extend({
     session.parseRoster(locus);
   },
 
+  /**
+   * To judge is there any breakout session started in meeting
+   * @param {Object} breakoutDto // locus dto object
+   * @returns {boolean}
+   */
   hasBreakoutSessionStarted(breakoutDto) {
     if (!breakoutDto) {
       return false;
