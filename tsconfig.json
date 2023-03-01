@@ -16,6 +16,7 @@
     "baseUrl": ".",
     "preserveConstEnums": true,
     "removeComments": false,
+    "skipLibCheck": true,
     "sourceMap": true,
     "target": "ES6",
     "lib": [
