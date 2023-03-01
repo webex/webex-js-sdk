@@ -1,0 +1,18 @@
+{
+  "name": "@webex/api-extractor-config",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "main": "./static/index.js",
+  "type": "commonjs",
+  "files": [
+    "./static"
+  ],
+  "dependencies": {
+    "@microsoft/api-extractor": "^7.34.4"
+  }
+}
