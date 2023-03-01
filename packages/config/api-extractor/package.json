@@ -7,12 +7,12 @@
     "npm": ">=8.0.0",
     "yarn": ">=3.0.0"
   },
-  "main": "./static/index.js",
+  "main": "./static/index.json",
   "type": "commonjs",
   "files": [
     "./static"
   ],
-  "dependencies": {
+  "peerDependencies": {
     "@microsoft/api-extractor": "^7.34.4"
   }
 }

@@ -4257,7 +4257,7 @@ __metadata:
 "@webex/api-extractor-config@workspace:^, @webex/api-extractor-config@workspace:packages/config/api-extractor":
   version: 0.0.0-use.local
   resolution: "@webex/api-extractor-config@workspace:packages/config/api-extractor"
-  dependencies:
+  peerDependencies:
     "@microsoft/api-extractor": ^7.34.4
   languageName: unknown
   linkType: soft
@@ -4308,6 +4308,28 @@ __metadata:
     "@babel/core": ^7.17.10
   bin:
     webex-build-legacy: ./static/cli.js
+  languageName: unknown
+  linkType: soft
+
+"@webex/cli-tools@workspace:packages/tools/cli":
+  version: 0.0.0-use.local
+  resolution: "@webex/cli-tools@workspace:packages/tools/cli"
+  dependencies:
+    "@microsoft/api-documenter": ^7.21.5
+    "@microsoft/api-extractor": ^7.34.4
+    "@types/eslint": ^8
+    "@types/jasmine": ^4
+    "@webex/api-extractor-config": "workspace:^"
+    "@webex/eslint-config": "workspace:^"
+    "@webex/jasmine-config": "workspace:^"
+    "@webex/nyc-config": "workspace:^"
+    "@webex/typescript-config": "workspace:^"
+    eslint: ^8.35.0
+    jasmine: ^4.5.0
+    nyc: ^15.1.0
+    rimraf: ^4.1.2
+    typescript: ^4.9.5
+    yargs: ^17.7.1
   languageName: unknown
   linkType: soft
 
@@ -23646,10 +23668,12 @@ __metadata:
     envify: ^4.1.0
     eslint: ^8.24.0
     eslint-config-airbnb-base: ^15.0.0
+    eslint-config-airbnb-typescript: ^17.0.0
     eslint-config-prettier: ^8.5.0
     eslint-import-resolver-typescript: ^2.4.0
     eslint-plugin-chai-friendly: ^0.7.2
     eslint-plugin-import: ^2.26.0
+    eslint-plugin-jasmine: ^4.1.3
     eslint-plugin-jest: ^26.1.1
     eslint-plugin-jsdoc: ^40.0.0
     eslint-plugin-json: ^3.1.0

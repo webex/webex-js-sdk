@@ -21,7 +21,7 @@
   "scripts": {
     "build": "yarn build:src",
     "build:docs": "yarn build:docs:metadata && yarn build:docs:markdown",
-    "build:docs:metadata": "node ./api-extractor.config.js",
+    "build:docs:metadata": "api-extractor run -c ./api-extractor.config.json",
     "build:docs:markdown": "api-documenter markdown --input-folder ./dist/docs/metadata --output-folder ./dist/docs/markdown",
     "build:src": "tsc",
     "clean": "yarn clean:coverage && yarn clean:dist",
@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@microsoft/api-documenter": "^7.21.5",
+    "@microsoft/api-extractor": "^7.34.4",
     "@types/eslint": "^8",
     "@types/jasmine": "^4",
     "@webex/api-extractor-config": "workspace:^",
