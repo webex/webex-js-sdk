@@ -136,26 +136,28 @@ describe('plugin-meetings', () => {
                 })
               });
 
-              it('rejects when correct display hint is not present enabled=false', () => {  
-                const result = manager.setMuteOnEntry(false);
+              it('rejects when correct display hint is not present mutedEnabled=false', () => {  
+                const result = manager.setMuteAll(false, false, false);
         
                 assert.notCalled(request.request);
         
                 assert.isRejected(result);
               });
 
-              it('rejects when correct display hint is not present enabled=true', () => {  
-                const result = manager.setMuteOnEntry(true);
+              it('rejects when correct display hint is not present mutedEnabled=true', () => {  
+                const result = manager.setMuteAll(true, false, false);
         
                 assert.notCalled(request.request);
         
                 assert.isRejected(result);
               });
 
-              it('can set mute all when the display hint is available enabled=true', () => {
+              it.only('can set mute all when the display hint is available mutedEnabled=true', () => {
                 manager.setDisplayHints(['MUTE_ALL']);
+                manager.setDisplayHints(['ENABLE_HARD_MUTE']);
+                manager.setDisplayHints(['ENABLE_MUTE_ON_ENTRY']);
         
-                const result = manager.setMuteOnEntry(true);
+                const result = manager.setMuteAll(true, false, false);
         
                 assert.calledWith(request.request, {  uri: 'test/id/controls',
                 body: { audio: { muted: true } },
@@ -164,10 +166,10 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(result, request.request.firstCall.returnValue);
               });
 
-              it('can set mute all when the display hint is available enabled=false', () => {
+              it('can set mute all when the display hint is available mutedEnabled=false', () => {
                 manager.setDisplayHints(['UNMUTE_ALL']);
         
-                const result = manager.setMuteOnEntry(false);
+                const result = manager.setMuteAll(false, false, false);
         
                 assert.calledWith(request.request, {  uri: 'test/id/controls',
                 body: { audio: { muted: false } },
