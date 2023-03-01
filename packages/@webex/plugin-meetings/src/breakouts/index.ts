@@ -34,6 +34,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
+    hasBreakoutStarted: 'boolean', // appears when one or more breakouts started
   },
 
   children: {
@@ -143,6 +144,24 @@ const Breakouts = WebexPlugin.extend({
     session.parseRoster(locus);
   },
 
+  hasBreakoutSessionStarted(breakoutDto) {
+    if (!breakoutDto) {
+      return false;
+    }
+    const hasBreakout = breakoutDto.groups && breakoutDto.groups[0];
+    if (!hasBreakout) {
+      return false;
+    }
+    if (
+      hasBreakout.type === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+      hasBreakout.status === BREAKOUTS.STATUS.OPEN
+    ) {
+      return true;
+    }
+
+    return false;
+  },
+
   /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}
@@ -199,6 +218,7 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.set('enableBreakoutSession', params.enableBreakoutSession);
+    this.set('hasBreakoutStarted', this.hasBreakoutSessionStarted(params));
   },
 
   /**

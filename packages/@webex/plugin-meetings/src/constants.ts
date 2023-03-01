@@ -520,7 +520,10 @@ export const LOCUS = {
 
 export const BREAKOUTS = {
   STATUS: {
+    PENIDNG: 'PENIDNG',
+    OPEN: 'OPEN',
     CLOSING: 'CLOSING',
+    CLOSED: 'CLOSED',
   },
   EVENTS: {
     BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
@@ -529,6 +532,7 @@ export const BREAKOUTS = {
   },
   SESSION_TYPES: {
     MAIN: 'MAIN',
+    BREAKOUT: 'BREAKOUT',
   },
   SESSION_STATES: {
     ACTIVE: 'active',
