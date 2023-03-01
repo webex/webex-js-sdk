@@ -62,7 +62,8 @@
     "release": "standard-version -a",
     "release:dry-run": "standard-version --dry-run",
     "depcheck": "./tooling/depcheck.js",
-    "postinstall": "patch-package && husky install"
+    "postinstall": "patch-package && husky install",
+    "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run"
   },
   "devDependencies": {
     "@babel/cli": "^7.17.10",
@@ -130,6 +131,7 @@
     "eslint-plugin-chai-friendly": "^0.7.2",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jest": "^26.1.1",
+    "eslint-plugin-jsdoc": "^40.0.0",
     "eslint-plugin-json": "^3.1.0",
     "eslint-plugin-mocha": "^10.1.0",
     "eslint-plugin-prettier": "^4.2.1",
