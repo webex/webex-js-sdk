@@ -27,7 +27,6 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
 } from '../constants';
-import {Reaction} from '../reactions/reactions.type';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 
 /**
@@ -35,7 +34,6 @@ import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
  */
 export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
-  joinCookie?: any;
 
   /**
    * Constructor
@@ -48,12 +46,23 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       leading: true,
       trailing: true,
     });
-    const joinCookieRaw = window.localStorage.getItem(REACHABILITY.localStorageJoinCookie);
+  }
+
+  /**
+   * Returns joinCookie from boundedStorage if present.
+   * @returns {Object} joinCookie
+   */
+  private getJoinCookie = async () => {
+    // @ts-ignore
+    const joinCookieRaw = await this.webex.boundedStorage
+      .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
+      .catch(() => {});
+
     if (joinCookieRaw) {
       try {
         const joinCookie = JSON.parse(joinCookieRaw);
         if (joinCookie) {
-          this.joinCookie = joinCookie;
+          return joinCookie;
         }
       } catch (e) {
         LoggerProxy.logger.error(
@@ -61,7 +70,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         );
       }
     }
-  }
+
+    return null;
+  };
 
   /**
    * Make a network request to join a meeting
@@ -119,6 +130,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
     let url = '';
 
+    const joinCookie = await this.getJoinCookie();
+
     const body: any = {
       asResourceOccupant,
       device: {
@@ -135,7 +148,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       supportsNativeLobby: 1,
       clientMediaPreferences: {
         preferTranscoding: preferTranscoding ?? true,
-        joinCookie: this.joinCookie,
+        joinCookie,
       },
     };
 

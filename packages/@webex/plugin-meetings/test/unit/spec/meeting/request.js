@@ -7,17 +7,6 @@ import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 describe('plugin-meetings', () => {
   let meetingsRequest;
 
-  before(function () {
-    this.jsdom = require('jsdom-global')('', {url: 'http://localhost'});
-  });
-  after(function () {
-    this.jsdom();
-  });
-
-  afterEach(() => {
-    window.localStorage.clear();
-  });
-
   beforeEach(() => {
     const webex = new MockWebex({
       children: {
@@ -37,7 +26,7 @@ describe('plugin-meetings', () => {
       },
     };
 
-    window.localStorage.setItem('reachability.joinCookie', JSON.stringify({anycastEntryPoint: "aws-eu-west-1"}));
+    webex.boundedStorage.get = sinon.mock().returns(Promise.resolve(JSON.stringify({anycastEntryPoint: "aws-eu-west-1"})))
 
     meetingsRequest = new MeetingRequest(
       {},

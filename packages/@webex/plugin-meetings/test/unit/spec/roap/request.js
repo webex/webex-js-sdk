@@ -6,26 +6,14 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import { REACHABILITY } from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings/roap', () => {
   let roapRequest;
   let webex;
   const locusUrl = 'locusUrl'
 
-  before(function () {
-    this.jsdom = require('jsdom-global')('', {
-      url: 'http://localhost',
-    });
-  });
-  after(function () {
-    this.jsdom();
-  });
-
-  afterEach(() => {
-    window.localStorage.clear();
-  });
-
-  beforeEach(() => {
+  beforeEach(async () => {
     webex = new MockWebex({
       children: {
         meetings: Meetings,
@@ -66,14 +54,16 @@ describe('plugin-meetings/roap', () => {
 
     Metrics.postEvent = sinon.stub().returns();
 
-    window.localStorage.setItem(
-      'reachability.joinCookie',
+    await webex.boundedStorage.put(
+      REACHABILITY.namespace,
+      REACHABILITY.localStorageJoinCookie,
       JSON.stringify({
         anycastEntryPoint: 'aws-eu-west-1',
       })
     );
-    window.localStorage.setItem(
-      'reachability.result',
+    await webex.boundedStorage.put(
+      REACHABILITY.namespace,
+      REACHABILITY.localStorageResult,
       JSON.stringify({
         clusterId: {
           udp: 'test',
@@ -82,9 +72,9 @@ describe('plugin-meetings/roap', () => {
     );
   });
 
-  describe('#attachRechabilityData', () => {
+  describe('#attachReachabilityData', () => {
     it('returns the correct reachability data', async () => {
-      const res = await roapRequest.attachRechabilityData({});
+      const res = await roapRequest.attachReachabilityData({});
 
       assert.deepEqual(res.localSdp, {
         reachability: {
@@ -98,30 +88,6 @@ describe('plugin-meetings/roap', () => {
       });
     });
   });
-
-  describe("joinMeetingWithRoap", () => {
-    it('includes joinCookie in the request correctly', async () => {
-      await roapRequest.joinMeetingWithRoap({
-        locusUrl,
-        roapMessage: {
-          seq: "seq"
-        }
-      });
-
-      const requestParams = roapRequest.request.getCall(0).args[0];
-      assert.equal(requestParams.method, 'POST');
-      assert.equal(requestParams.uri, `${locusUrl}/participant`);
-      assert.deepEqual(requestParams.body.localMedias, [{
-        localSdp: "{\"roapMessage\":{\"seq\":\"seq\"},\"audioMuted\":false,\"videoMuted\":false,\"reachability\":{\"clusterId\":{\"udp\":\"test\"}}}"
-      }]);
-      assert.deepEqual(requestParams.body.clientMediaPreferences, {
-        "joinCookie": {
-          "anycastEntryPoint": "aws-eu-west-1"
-        },
-        "preferTranscoding": true
-      });
-    })
-  })
 
   describe("sendRoap", () => {
     it('includes joinCookie in the request correctly', async () => {

@@ -16,7 +16,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {Object} localSdp
    * @returns {Object}
    */
-  attachReachabilityData(localSdp) {
+  async attachReachabilityData(localSdp) {
     let joinCookie: object;
 
     // @ts-ignore
@@ -69,7 +69,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {Boolean} options.preferTranscoding
    * @returns {Promise} returns the response/failure of the request
    */
-  sendRoap(options: {
+  async sendRoap(options: {
     roapMessage: any;
     locusSelfUrl: string;
     mediaId: string;
@@ -85,7 +85,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
       LoggerProxy.logger.info('Roap:request#sendRoap --> Race Condition /call mediaID not present');
     }
 
-    const reachabilityData = this.attachReachabilityData({
+    const {localSdp: localSdpWithReachabilityData, joinCookie} = await this.attachReachabilityData({
       roapMessage,
       // eslint-disable-next-line no-warning-comments
       // TODO: check whats the need for video and audiomute
@@ -116,13 +116,13 @@ export default class RoapRequest extends StatelessWebexPlugin {
         correlationId,
         localMedias: [
           {
-            localSdp: JSON.stringify(reachabilityData.localSdp),
+            localSdp: JSON.stringify(localSdpWithReachabilityData),
             mediaId: options.mediaId,
           },
         ],
         clientMediaPreferences: {
           preferTranscoding: options.preferTranscoding ?? true,
-          joinCookie: reachabilityData.joinCookie,
+          joinCookie,
         },
       },
     })

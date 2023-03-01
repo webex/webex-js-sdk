@@ -2,7 +2,6 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Reachability from '@webex/plugin-meetings/src/reachability/';
-import {REACHABILITY} from '@webex/plugin-meetings/dist/constants';
 
 describe('isAnyClusterReachable', () => {
   let webex;
@@ -67,17 +66,19 @@ describe('gatherReachability', () => {
   it('stores the reachability', async () => {
     const reachability = new Reachability(webex);
 
-    const clusters = {some: 'clusters'};
     const reachabilityResults = {
       clusters: {
         clusterId: {
           udp: 'testUDP',
         },
       },
+    }
+    const getClustersResult = {
+      clusters: {clusterId: 'cluster'},
       joinCookie: {id: 'id'}
     };
 
-    reachability.reachabilityRequest.getClusters = sinon.stub().returns(clusters);
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
     (reachability as any).performReachabilityCheck = sinon.stub().returns(reachabilityResults)
 
     const result = await reachability.gatherReachability();
@@ -88,7 +89,7 @@ describe('gatherReachability', () => {
     const storedResultForJoinCookie = await webex.boundedStorage.get('Reachability', 'reachability.joinCookie');
 
     assert.equal(JSON.stringify(result), storedResultForReachabilityResult);
-    assert.equal(JSON.stringify(reachabilityResults.joinCookie), storedResultForJoinCookie);
+    assert.equal(JSON.stringify(getClustersResult.joinCookie), storedResultForJoinCookie);
   });
 
 });

@@ -7,13 +7,13 @@ import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 
 
 describe('RoapRequest', () => {
-  describe('attachRechabilityData', () => {
+  describe('attachReachabilityData', () => {
     let webex;
 
     beforeEach(() => {
       webex = new MockWebex();
     });
-    
+
     it('attaches the reachability data when it exists', async () => {
       // @ts-ignore
       const roapRequest = new RoapRequest({}, {parent: webex});
@@ -28,21 +28,21 @@ describe('RoapRequest', () => {
         JSON.stringify(reachabilitData)
       );
 
-      const newSdp = await roapRequest.attachRechabilityData(sdp);
+      const newSdp = await roapRequest.attachReachabilityData(sdp);
 
       assert.deepEqual(newSdp, {
         some: 'attribute',
         reachability: reachabilitData
       })
     });
-  
+
     it('handles the case when realiability data does not exist', async () => {
       // @ts-ignore
       const roapRequest = new RoapRequest({}, {parent: webex});
 
       const sdp = {some: 'attribute'};
 
-      const newSdp = await roapRequest.attachRechabilityData(sdp);
+      const newSdp = await roapRequest.attachReachabilityData(sdp);
 
       assert.deepEqual(newSdp, sdp);
     });
@@ -63,7 +63,7 @@ describe('RoapRequest', () => {
 
       const newSdp = {new: 'sdp'}
 
-      roapRequest.attachRechabilityData = sinon.stub().returns(Promise.resolve(newSdp));
+      roapRequest.attachReachabilityData = sinon.stub().returns(Promise.resolve(newSdp));
       webex.request.returns(Promise.resolve({
         body: {
           locus: {}
@@ -98,7 +98,7 @@ describe('RoapRequest', () => {
         },
       });
 
-      assert.calledOnceWithExactly(roapRequest.attachRechabilityData, {
+      assert.calledOnceWithExactly(roapRequest.attachReachabilityData, {
         roapMessage: {seq: 1},
         audioMuted: true,
         videoMuted: true
