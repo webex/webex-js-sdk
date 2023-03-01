@@ -54,12 +54,18 @@ MembersUtil.getAddMemberBody = (options: any) => ({
 });
 
 /**
- * @param {Object} options with {memberIds}
+ * @param {Object} options with {memberIds, authorizingLocusUrl}
  * @returns {Object} admit with {memberIds}
  */
-MembersUtil.getAdmitMemberRequestBody = (options: any) => ({
-  admit: {participantIds: options.memberIds},
-});
+MembersUtil.getAdmitMemberRequestBody = (options: any) => {
+  const {memberIds, authorizingLocusUrl} = options;
+  const body: any = {admit: {participantIds: memberIds}};
+  if (authorizingLocusUrl) {
+    return {authorizingLocusUrl, ...body};
+  }
+
+  return body;
+};
 
 /**
  * @param {Object} format with {memberIds, locusUrl}
