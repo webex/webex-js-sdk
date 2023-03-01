@@ -145,14 +145,14 @@ export default class ControlsOptionsManager {
     const body = muteUnmuteAll ? {audio: {}} : {};
     for (const [key, value] of Object.entries(setting)) {
       LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${key} [${value}]`);
-      // if mute all, and can set mute or unmute all, add the property, otherwise throw error
-      // else, if trying to set or unset a property, check if can set, and if not, throw error
       if (muteUnmuteAll) {
         if (Util?.[`${value ? CAN_SET : CAN_UNSET}${Setting.muted}`](this.displayHints)) {
           body.audio[camelCase(key)] = value;
         } else {
           return Promise.reject(
-            new PermissionError(`${Setting.muted} [${value}] not allowed, due to moderator property.`)
+            new PermissionError(
+              `${Setting.muted} [${value}] not allowed, due to moderator property.`
+            )
           );
         }
       } else if (Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)) {
@@ -207,11 +207,6 @@ export default class ControlsOptionsManager {
     disallowUnmuteEnabled: boolean,
     muteOnEntryEnabled: boolean
   ): Promise<any> {
-    console.log('XXXXXXXXXXXXXXXXXXXXXX');
-    console.log('mutedEnabled', mutedEnabled);
-    console.log('disallowUnmuteEnabled', disallowUnmuteEnabled);
-    console.log('muteOnENtryEnabled', muteOnEntryEnabled);
-    console.log('XXXXXXXXXXXXXXXXXXXXXX');
     return this.setControls({
       [Setting.muted]: mutedEnabled,
       [Setting.disallowUnmute]: disallowUnmuteEnabled,
