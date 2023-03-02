@@ -489,7 +489,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.groups[0].status, "CLOSE")
       });
 
-      it('response include erorr info', async () => {
+      it('response include error info', async () => {
         webex.request.returns(Promise.resolve({
           body: {
             "errorCode":201409024,
