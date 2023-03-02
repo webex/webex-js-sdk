@@ -10,7 +10,6 @@ import {
   LocalCameraTrack,
   LocalDisplayTrack,
   LocalMicrophoneTrack,
-  LocalTrack,
   LocalTrackEvents,
   MediaType,
   RemoteTrackType,
@@ -6713,8 +6712,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleMediaLogging(mediaProperties: {
-    audioTrack: LocalTrack | null;
-    videoTrack: LocalTrack | null;
+    audioTrack: LocalMicrophoneTrack | null;
+    videoTrack: LocalCameraTrack | null;
   }) {
     MeetingUtil.handleVideoLogging(mediaProperties.videoTrack);
     MeetingUtil.handleAudioLogging(mediaProperties.audioTrack);

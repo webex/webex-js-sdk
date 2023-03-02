@@ -1,4 +1,10 @@
-import {ConnectionState, Event, LocalTrack} from '@webex/internal-media-core';
+import {
+  ConnectionState,
+  Event,
+  LocalCameraTrack,
+  LocalMicrophoneTrack,
+  LocalDisplayTrack,
+} from '@webex/internal-media-core';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -7,7 +13,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioTrack: LocalTrack | null;
+  audioTrack: LocalMicrophoneTrack | null;
   localQualityLevel: any;
   mediaDirection: any;
   mediaSettings: any;
@@ -16,9 +22,9 @@ export default class MediaProperties {
   remoteQualityLevel: any;
   remoteShare: any;
   remoteVideoTrack: any;
-  shareTrack: LocalTrack | null;
+  shareTrack: LocalDisplayTrack | null;
   videoDeviceId: any;
-  videoTrack: LocalTrack | null;
+  videoTrack: LocalCameraTrack | null;
   namespace = MEETINGS;
 
   /**
@@ -60,11 +66,11 @@ export default class MediaProperties {
     this.webrtcMediaConnection = mediaPeerConnection;
   }
 
-  setLocalVideoTrack(videoTrack: LocalTrack | null) {
+  setLocalVideoTrack(videoTrack: LocalCameraTrack | null) {
     this.videoTrack = videoTrack;
   }
 
-  setLocalAudioTrack(audioTrack: LocalTrack | null) {
+  setLocalAudioTrack(audioTrack: LocalMicrophoneTrack | null) {
     this.audioTrack = audioTrack;
   }
 
@@ -72,7 +78,7 @@ export default class MediaProperties {
     this.localQualityLevel = localQualityLevel;
   }
 
-  setLocalShareTrack(shareTrack: LocalTrack | null) {
+  setLocalShareTrack(shareTrack: LocalDisplayTrack | null) {
     this.shareTrack = shareTrack;
   }
 

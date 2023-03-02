@@ -4,7 +4,9 @@
 /* globals navigator */
 
 import {
-  LocalTrack,
+  LocalCameraTrack,
+  LocalDisplayTrack,
+  LocalMicrophoneTrack,
   RoapMediaConnection,
   MultistreamRoapMediaConnection,
 } from '@webex/internal-media-core';
@@ -121,9 +123,9 @@ Media.createMediaConnection = (
         receiveVideo: boolean;
         receiveShare: boolean;
       };
-      audioTrack?: LocalTrack;
-      videoTrack?: LocalTrack;
-      shareTrack?: LocalTrack;
+      audioTrack?: LocalMicrophoneTrack;
+      videoTrack?: LocalCameraTrack;
+      shareTrack?: LocalDisplayTrack;
     };
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
