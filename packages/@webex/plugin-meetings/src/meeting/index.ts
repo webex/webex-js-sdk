@@ -12,7 +12,6 @@ import {
   LocalMicrophoneTrack,
   LocalTrack,
   LocalTrackEvents,
-  Media as WebRTCMedia,
   MediaType,
   RemoteTrackType,
 } from '@webex/internal-media-core';
@@ -33,7 +32,6 @@ import Media from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
-import createEffectsState from './effectsState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
 import {trigger, mediaType, error as MetricsError, eventType} from '../metrics/config';
@@ -83,7 +81,6 @@ import {
   SHARE_STOPPED_REASON,
   VIDEO_RESOLUTIONS,
   VIDEO,
-  BNR_STATUS,
   HTTP_VERBS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -435,7 +432,6 @@ export default class Meeting extends StatelessWebexPlugin {
   destination: string;
   destinationType: string;
   deviceUrl: string;
-  effects: any;
   hostId: string;
   id: string;
   isMultistream: boolean;
@@ -736,14 +732,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.video = null;
-    /**
-     * created later
-     * @instance
-     * @type {EffectsState}
-     * @private
-     * @memberof Meeting
-     */
-    this.effects = null;
     /**
      * @instance
      * @type {MeetingStateMachine}
@@ -5627,7 +5615,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.AUDIO, options);
     }
     const {sendAudio, receiveAudio, stream} = options;
-    let track = MeetingUtil.getTrack(stream).audioTrack;
+    const track = MeetingUtil.getTrack(stream).audioTrack;
 
     if (typeof sendAudio !== 'boolean' || typeof receiveAudio !== 'boolean') {
       return Promise.reject(new ParameterError('Pass sendAudio and receiveAudio parameter'));
@@ -5635,20 +5623,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (!this.mediaProperties.webrtcMediaConnection) {
       return Promise.reject(new Error('media connection not established, call addMedia() first'));
-    }
-
-    if (this.effects && this.effects.state) {
-      const bnrEnabled = this.effects.state.bnr.enabled;
-
-      if (
-        sendAudio &&
-        !this.isAudioMuted() &&
-        (bnrEnabled === BNR_STATUS.ENABLED || bnrEnabled === BNR_STATUS.SHOULD_ENABLE)
-      ) {
-        LoggerProxy.logger.info('Meeting:index#updateAudio. Calling WebRTC enable bnr method');
-        track = await this.internal_enableBNR(track);
-        LoggerProxy.logger.info('Meeting:index#updateAudio. WebRTC enable bnr request completed');
-      }
     }
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
@@ -7005,121 +6979,6 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription = undefined;
     }
   };
-
-  /**
-   * Internal API to return status of BNR
-   * @returns {Boolean}
-   * @public
-   * @memberof Meeting
-   */
-  public isBnrEnabled() {
-    return this.effects && this.effects.isBnrEnabled();
-  }
-
-  /**
-   * Internal API to obtain BNR enabled MediaStream
-   * @returns {Promise<MediaStreamTrack>}
-   * @private
-   * @param {MedaiStreamTrack} audioTrack from updateAudio
-   * @memberof Meeting
-   */
-  private async internal_enableBNR(audioTrack: any) {
-    try {
-      LoggerProxy.logger.info('Meeting:index#internal_enableBNR. Internal enable BNR called');
-      const bnrAudioTrack = await WebRTCMedia.Effects.BNR.enableBNR(audioTrack);
-
-      LoggerProxy.logger.info(
-        'Meeting:index#internal_enableBNR. BNR enabled track obtained from WebRTC & returned as stream'
-      );
-
-      return bnrAudioTrack;
-    } catch (error) {
-      LoggerProxy.logger.error('Meeting:index#internal_enableBNR.', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Enable the audio track with BNR for a meeting
-   * @returns {Promise} resolves the data from enable bnr or rejects if there is no audio or audio is muted
-   * @public
-   * @memberof Meeting
-   */
-  public enableBNR() {
-    if (
-      typeof this.mediaProperties === 'undefined' ||
-      typeof this.mediaProperties.audioTrack === 'undefined'
-    ) {
-      return Promise.reject(new Error("Meeting doesn't have an audioTrack attached"));
-    }
-
-    if (this.isAudioMuted()) {
-      return Promise.reject(new Error('Cannot enable BNR while meeting is muted'));
-    }
-
-    this.effects = this.effects || createEffectsState('BNR');
-
-    const LOG_HEADER = 'Meeting:index#enableBNR -->';
-
-    return logRequest(
-      this.effects
-        .handleClientRequest(true, this)
-        .then((res) => {
-          LoggerProxy.logger.info('Meeting:index#enableBNR. Enable bnr completed');
-
-          return res;
-        })
-        .catch((error) => {
-          throw error;
-        }),
-      {
-        header: `${LOG_HEADER} enable bnr`,
-        success: `${LOG_HEADER} enable bnr success`,
-        failure: `${LOG_HEADER} enable bnr failure, `,
-      }
-    );
-  }
-
-  /**
-   * Disable the BNR for an audio track
-   * @returns {Promise} resolves the data from disable bnr or rejects if there is no audio set
-   * @public
-   * @memberof Meeting
-   */
-  public disableBNR() {
-    if (
-      typeof this.mediaProperties === 'undefined' ||
-      typeof this.mediaProperties.audioTrack === 'undefined'
-    ) {
-      return Promise.reject(new Error("Meeting doesn't have an audioTrack attached"));
-    }
-
-    if (!this.isBnrEnabled()) {
-      return Promise.reject(new Error('Can not disable as BNR is not enabled'));
-    }
-
-    this.effects = this.effects || createEffectsState('BNR');
-
-    const LOG_HEADER = 'Meeting:index#disableBNR -->';
-
-    return logRequest(
-      this.effects
-        .handleClientRequest(false, this)
-        .then((res) => {
-          LoggerProxy.logger.info('Meeting:index#disableBNR. Disable bnr completed');
-
-          return res;
-        })
-        .catch((error) => {
-          throw error;
-        }),
-      {
-        header: `${LOG_HEADER} disable bnr`,
-        success: `${LOG_HEADER} disable bnr success`,
-        failure: `${LOG_HEADER} disable bnr failure, `,
-      }
-    );
-  }
 
   /**
    * starts keepAlives being sent
