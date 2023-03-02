@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.41.0](https://github.com/webex/webex-js-sdk/compare/v2.40.0...v2.41.0) (2023-03-02)
+
+
+### Features
+
+* **legacy/build:** create package ([#2633](https://github.com/webex/webex-js-sdk/issues/2633)) ([12b2638](https://github.com/webex/webex-js-sdk/commit/12b2638a1387ebc773c8bb63b10c72469500b454))
+* **scheduler:** generate template ([#2609](https://github.com/webex/webex-js-sdk/issues/2609)) ([200ed6a](https://github.com/webex/webex-js-sdk/commit/200ed6ad520bd624e4909d1128b2ce9bc98d46ef))
+
 ## [2.40.0](https://github.com/webex/webex-js-sdk/compare/v2.39.3...v2.40.0) (2023-02-24)
 
 
