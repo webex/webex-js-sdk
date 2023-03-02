@@ -48,7 +48,7 @@ const getBOResponse = (status: string) => {
   };
 };
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
