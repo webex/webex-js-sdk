@@ -17,7 +17,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @returns {Object}
    */
   async attachReachabilityData(localSdp) {
-    let joinCookie: object;
+    let joinCookie;
 
     // @ts-ignore
     const reachabilityData = await this.webex.boundedStorage
@@ -37,19 +37,20 @@ export default class RoapRequest extends StatelessWebexPlugin {
           `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
         );
       }
+    }
 
-      // @ts-ignore
-      const joinCookieRaw = await this.webex.boundedStorage
-        .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
-        .catch(() => {});
-      if (joinCookieRaw) {
-        try {
-          joinCookie = JSON.parse(joinCookieRaw);
-        } catch (e) {
-          LoggerProxy.logger.error(
-            `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
-          );
-        }
+    // @ts-ignore
+    const joinCookieRaw = await this.webex.boundedStorage
+      .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
+      .catch(() => {});
+
+    if (joinCookieRaw) {
+      try {
+        joinCookie = JSON.parse(joinCookieRaw);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
+        );
       }
     }
 
