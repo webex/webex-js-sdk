@@ -25,6 +25,7 @@ describe('plugin-meetings', () => {
       breakouts.url = 'url';
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
+      breakouts.hasBreakoutStarted = false;
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -111,6 +112,39 @@ describe('plugin-meetings', () => {
         assert.isTrue(called);
         assert.calledOnceWithExactly(breakouts.handleRosterUpdate, 'locus');
       });
+    });
+
+    describe('#hasBreakoutSessionStarted', () => {
+
+      it('works', () => {
+
+
+        const payload1 = {
+          "sessionType" : "MAIN",
+          "groups" : [ {
+            "id" : "09108c12-63ea-480c-8021-34f2905c15ec",
+            "type" : "BREAKOUT",
+            "duration" : 600,
+            "startTime" : "2023-02-28T04:07:01.411Z",
+            "status" : "OPEN"
+          } ],
+          "meta" : {
+            "modifiedBy" : "48be95ae-b461-4437-aa26-cfbc3c79b004",
+            "lastModified" : "1970-01-01T00:00:00.000Z"
+          }
+        };
+        const payload2 = {
+          "sessionType" : "MAIN",
+          "enableBreakoutSession": true,
+          "groupId": "b26d7a3b-f5ef-4ac4-bf31-94a414131f8f",
+          "meta" : {
+            "modifiedBy" : "48be95ae-b461-4437-aa26-cfbc3c79b004",
+            "lastModified" : "1970-01-01T00:00:00.000Z"
+          }
+        };
+        assert.equal(breakouts.hasBreakoutSessionStarted(payload1), true);
+        assert.equal(breakouts.hasBreakoutSessionStarted(payload2), false);
+      })
     });
 
     describe('#updateBreakout', () => {

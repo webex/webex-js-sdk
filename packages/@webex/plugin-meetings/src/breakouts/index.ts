@@ -146,18 +146,14 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * To judge is there any breakout session started in meeting
-   * @param {Object} breakoutDto // locus dto object
+   * @param {Object} params // locus breakout dto object
    * @returns {boolean}
    */
-  hasBreakoutSessionStarted(breakoutDto) {
-    if (!breakoutDto) {
-      return false;
-    }
-    const hasBreakout = breakoutDto.groups && breakoutDto.groups[0];
-    if (!hasBreakout) {
-      return false;
-    }
+  hasBreakoutSessionStarted(params) {
+    const hasGroups = params?.groups;
+    const hasBreakout = hasGroups ? hasGroups[0] : null;
     if (
+      hasBreakout &&
       hasBreakout.type === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
       hasBreakout.status === BREAKOUTS.STATUS.OPEN
     ) {
