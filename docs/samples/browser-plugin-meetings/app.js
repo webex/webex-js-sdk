@@ -2631,10 +2631,17 @@ function toggleBreakout() {
     const button = document.createElement('button');
 
     button.innerText = 'CreateOneBreakoutSession';
+    button.id = 'btn-creatBreakout';
 
     button.onclick = () => {
       const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
-      breakoutSession.create(sessions);
+      breakoutSession.create(sessions).then((result)=>{
+        if (result.body.groups) {
+          button.disabled = true;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: error create', error);
+      });
     };
 
     return button;
@@ -2646,7 +2653,14 @@ function toggleBreakout() {
     button.innerText = 'Delete Breakout';
 
     button.onclick = () => {
-      breakoutSession.clearSessions();
+      breakoutSession.clearSessions().then((result) => {
+        if (result.body) {
+          const btnCreat = document.getElementById('btn-creatBreakout');
+          btnCreat.disabled = false;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: error create', error);
+      });
     };
 
     return button;

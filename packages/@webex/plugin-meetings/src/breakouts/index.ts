@@ -34,7 +34,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
-    groups: 'object', // appears when create breakouts
+    groups: 'array', // appears when create breakouts
   },
 
   children: {
@@ -357,17 +357,24 @@ const Breakouts = WebexPlugin.extend({
    */
   async create(sessions) {
     // @ts-ignore
-    const breakInfo = await this.webex.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
-        groups: [
-          {
-            sessions,
-          },
-        ],
-      },
-    });
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              sessions,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === 201409024) {
+          LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
+        }
+        throw error;
+      });
 
     if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
       this.set('groups', breakInfo.body.groups);
@@ -382,17 +389,24 @@ const Breakouts = WebexPlugin.extend({
    */
   async clearSessions() {
     // @ts-ignore
-    const breakInfo = await this.webex.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
-        groups: [
-          {
-            action: BREAKOUTS.ACTION_TYPES.DELETE,
-          },
-        ],
-      },
-    });
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              action: BREAKOUTS.ACTION_TYPES.DELETE,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === 201409024) {
+          LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
+        }
+        throw error;
+      });
 
     if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
       this.set('groups', breakInfo.body.groups);

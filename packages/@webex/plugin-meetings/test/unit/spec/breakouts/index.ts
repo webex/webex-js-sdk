@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -488,10 +488,24 @@ describe('plugin-meetings', () => {
 
         assert.equal(breakouts.groups[0].status, "CLOSE")
       });
+
+      it('response include erorr info', async () => {
+        webex.request.returns(Promise.resolve({
+          body: {
+            "errorCode":201409024,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        const error = await breakouts.clearSessions();
+
+        assert.equal(error.body.errorCode, '201409024');
+
+      });
     });
 
-    describe('creat', () => {
-      it('repose not include groups info', async () => {
+    describe('create', () => {
+      it('response not include groups info', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
         const result = await breakouts.create(sessions);
 
@@ -499,7 +513,7 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('repose include groups info', async () => {
+      it('response include groups info', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
 
         webex.request.returns(Promise.resolve({
@@ -515,6 +529,22 @@ describe('plugin-meetings', () => {
         const result = await breakouts.create(sessions);
 
         assert.equal(breakouts.groups[0].id, "455556a4-37cd-4baa-89bc-8730581a1cc0")
+
+      });
+
+      it('response include erorr info', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+
+        webex.request.returns(Promise.resolve({
+          body: {
+            "errorCode":201409024,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        const error = await breakouts.create(sessions);
+
+        assert.equal(error.body.errorCode, '201409024');
 
       });
     });
