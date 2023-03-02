@@ -3,6 +3,7 @@ import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import testUsers from '@webex/test-helper-test-users';
 import WebexCore from '@webex/webex-core';
+import '@webex/internal-plugin-scheduler';
 
 const {assert} = chai;
 
@@ -33,7 +34,7 @@ describe('plugin-scheduler', () => {
     /**
      * Integration test scope, typically methods/name or event/name.
      */
-    describe('{scope}', () => {
+    describe('test scope', () => {
       // TODO - Add integration tests.
       it('example test', () => {
         assert.isTrue(true);
