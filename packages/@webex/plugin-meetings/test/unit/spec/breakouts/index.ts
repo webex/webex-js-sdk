@@ -532,7 +532,7 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('response include erorr info', async () => {
+      it('response include error info', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
 
         webex.request.returns(Promise.resolve({
