@@ -492,14 +492,14 @@ describe('plugin-meetings', () => {
       it('response include error info', async () => {
         webex.request.returns(Promise.resolve({
           body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK,
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
             "message":"Edit lock token mismatch"
           }
         }));
 
         const error = await breakouts.clearSessions();
 
-        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK);
+        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
 
       });
     });
@@ -537,14 +537,14 @@ describe('plugin-meetings', () => {
 
         webex.request.returns(Promise.resolve({
           body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK,
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
             "message":"Edit lock token mismatch"
           }
         }));
 
         const error = await breakouts.create(sessions);
 
-        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK);
+        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
 
       });
     });
