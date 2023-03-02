@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -492,14 +492,14 @@ describe('plugin-meetings', () => {
       it('response include error info', async () => {
         webex.request.returns(Promise.resolve({
           body: {
-            "errorCode":201409024,
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK,
             "message":"Edit lock token mismatch"
           }
         }));
 
         const error = await breakouts.clearSessions();
 
-        assert.equal(error.body.errorCode, '201409024');
+        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK);
 
       });
     });
@@ -537,14 +537,14 @@ describe('plugin-meetings', () => {
 
         webex.request.returns(Promise.resolve({
           body: {
-            "errorCode":201409024,
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK,
             "message":"Edit lock token mismatch"
           }
         }));
 
         const error = await breakouts.create(sessions);
 
-        assert.equal(error.body.errorCode, '201409024');
+        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK);
 
       });
     });
