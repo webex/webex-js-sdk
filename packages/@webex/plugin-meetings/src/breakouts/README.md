@@ -120,6 +120,7 @@ breakout.remove(participant)
 breakout.delete()
 
 // Create breakout sessions
+// Type is array, like [{'name':'session1', "anyoneCanJoin" : true}]
 breakouts.create(sessions)
 
 // Delete all breakout sessions
