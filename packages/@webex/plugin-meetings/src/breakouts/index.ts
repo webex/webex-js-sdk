@@ -371,10 +371,10 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK) {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
           LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
 
-          return Promise.reject(new BreakoutEditLockedError('Edit lock', error));
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatc', error));
         }
 
         return Promise.reject(error);
@@ -406,10 +406,10 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK) {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
           LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
 
-          return Promise.reject(new BreakoutEditLockedError('Edit lock', error));
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatc', error));
         }
 
         return Promise.reject(error);

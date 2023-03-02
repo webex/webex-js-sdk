@@ -452,7 +452,7 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Captcha is required.',
     CODE: 8,
   },
-  BREAKOUT_EDIT_LOCKED: {
+  BREAKOUT_EDIT: {
     NAME: 'BreakoutEditLockedError',
     MESSAGE: 'Edit lock token mismatch',
     CODE: 9,
@@ -547,7 +547,7 @@ export const BREAKOUTS = {
     DELETE: 'DELETE',
   },
   ERROR_CODE: {
-    EDIT_LOCK: 201409024,
+    EDIT_LOCK_TOKEN_MISMATCH: 201409024,
   },
 };
 
