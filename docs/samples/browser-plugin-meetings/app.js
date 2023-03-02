@@ -2640,7 +2640,7 @@ function toggleBreakout() {
           button.disabled = true;
         }
       }).catch((error) => {
-        console.error('Breatout#createOneBreakoutSession :: error create', error);
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
       });
     };
 
@@ -2659,7 +2659,7 @@ function toggleBreakout() {
           btnCreat.disabled = false;
         }
       }).catch((error) => {
-        console.error('Breatout#createOneBreakoutSession :: error create', error);
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
       });
     };
 

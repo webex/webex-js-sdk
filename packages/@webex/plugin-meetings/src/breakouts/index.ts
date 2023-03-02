@@ -10,6 +10,7 @@ import {BREAKOUTS, HTTP_VERBS, MEETINGS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
+import BreakoutEditLockedError from './edit-lock-error';
 
 /**
  * @class Breakouts
@@ -370,10 +371,13 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === 201409024) {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK) {
           LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock', error));
         }
-        throw error;
+
+        return Promise.reject(error);
       });
 
     if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
@@ -402,10 +406,13 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === 201409024) {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK) {
           LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock', error));
         }
-        throw error;
+
+        return Promise.reject(error);
       });
 
     if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {

@@ -452,6 +452,11 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Captcha is required.',
     CODE: 8,
   },
+  BREAKOUT_EDIT_LOCKED: {
+    NAME: 'BreakoutEditLockedError',
+    MESSAGE: 'Edit lock token mismatch',
+    CODE: 9,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -540,6 +545,9 @@ export const BREAKOUTS = {
   BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
   ACTION_TYPES: {
     DELETE: 'DELETE',
+  },
+  ERROR_CODE: {
+    EDIT_LOCK: 201409024,
   },
 };
 
