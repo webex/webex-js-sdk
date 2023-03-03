@@ -7,7 +7,7 @@ import {BREAKOUTS} from '@webex/plugin-meetings/src/constants';
 import sinon from "sinon";
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
-
+import BreakoutEditLockedError from "@webex/plugin-meetings/src/breakouts/edit-lock-error";
 
 describe('plugin-meetings', () => {
   describe('Breakouts', () => {
@@ -502,6 +502,20 @@ describe('plugin-meetings', () => {
         assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
 
       });
+
+      it('rejects when edit lock token mismatch', async () => {
+        const fakeError = {
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        };
+
+        webex.request.returns(Promise.reject(new BreakoutEditLockedError('message', fakeError)));
+
+        await assert.isRejected(breakouts.clearSessions(), BreakoutEditLockedError, 'message');
+
+      });
     });
 
     describe('create', () => {
@@ -545,6 +559,22 @@ describe('plugin-meetings', () => {
         const error = await breakouts.create(sessions);
 
         assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
+
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+
+        const fakeError = {
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        };
+
+        webex.request.returns(Promise.reject(new BreakoutEditLockedError('message', fakeError)));
+
+        await assert.isRejected(breakouts.create(sessions), BreakoutEditLockedError, 'message');
 
       });
     });
