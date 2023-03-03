@@ -135,6 +135,7 @@ describe('plugin-meetings', () => {
         };
         const payload2 = {
           "sessionType" : "MAIN",
+          "status" : "OPEN",
           "enableBreakoutSession": true,
           "groupId": "b26d7a3b-f5ef-4ac4-bf31-94a414131f8f",
           "meta" : {
@@ -142,8 +143,18 @@ describe('plugin-meetings', () => {
             "lastModified" : "1970-01-01T00:00:00.000Z"
           }
         };
+        const payload3 = {
+          "sessionType" : "BREAKOUT",
+          "status" : "OPEN",
+          "enableBreakoutSession": true,
+          "meta" : {
+            "modifiedBy" : "48be95ae-b461-4437-aa26-cfbc3c79b004",
+            "lastModified" : "1970-01-01T00:00:00.000Z"
+          }
+        };
         assert.equal(breakouts.hasBreakoutSessionStarted(payload1), true);
         assert.equal(breakouts.hasBreakoutSessionStarted(payload2), false);
+        assert.equal(breakouts.hasBreakoutSessionStarted(payload3), true);
       })
     });
 

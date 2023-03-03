@@ -255,14 +255,12 @@ const Breakouts = WebexPlugin.extend({
           }
 
           breakouts[sessionId][state] = true;
-          if (
-            state === BREAKOUTS.SESSION_STATES.ACTIVE &&
-            breakouts[sessionId].sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT
-          ) {
-            this.set('hasBreakoutStarted', true);
-          }
         });
       });
+
+      if (payload.breakoutSessions[BREAKOUTS.SESSION_STATES.ACTIVE]?.length > 0) {
+        this.set('hasBreakoutStarted', true);
+      }
     }
 
     forEach(breakouts, (breakout: typeof Breakout) => {
