@@ -733,17 +733,17 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Admits waiting members (invited guests to meeting)
    * @param {Array} memberIds
-   * @param {String} authorizingLocusUrl
+   * @param {Object} sessionLocusUrls
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public admitMembers(memberIds: Array<any>, authorizingLocusUrl?: string) {
+  public admitMembers(memberIds: Array<any>, sessionLocusUrls?: any) {
     if (isEmpty(memberIds)) {
       return Promise.reject(new ParameterError('No member ids provided to admit.'));
     }
     const options = {
-      authorizingLocusUrl,
+      sessionLocusUrls,
       ...MembersUtil.generateAdmitMemberOptions(memberIds, this.locusUrl),
     };
 

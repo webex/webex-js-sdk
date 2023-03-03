@@ -58,9 +58,11 @@ MembersUtil.getAddMemberBody = (options: any) => ({
  * @returns {Object} admit with {memberIds}
  */
 MembersUtil.getAdmitMemberRequestBody = (options: any) => {
-  const {memberIds, authorizingLocusUrl} = options;
+  const {memberIds, sessionLocusUrls} = options;
   const body: any = {admit: {participantIds: memberIds}};
-  if (authorizingLocusUrl) {
+  if (sessionLocusUrls) {
+    const {authorizingLocusUrl} = sessionLocusUrls;
+
     return {authorizingLocusUrl, ...body};
   }
 
@@ -68,12 +70,15 @@ MembersUtil.getAdmitMemberRequestBody = (options: any) => {
 };
 
 /**
- * @param {Object} format with {memberIds, locusUrl}
+ * @param {Object} format with {memberIds, locusUrl, sessionLocusUrls}
  * @returns {Object} the request parameters (method, uri, body) needed to make a admitMember request
+ * if a host/cohost is in a breakout session, the locus url should be the main session locus url
  */
 MembersUtil.getAdmitMemberRequestParams = (format: any) => {
   const body = MembersUtil.getAdmitMemberRequestBody(format);
-  const uri = `${format.locusUrl}/${CONTROLS}`;
+  const {locusUrl, sessionLocusUrls} = format;
+  const baseUrl = sessionLocusUrls?.mainLocusUrl || locusUrl;
+  const uri = `${baseUrl}/${CONTROLS}`;
 
   return {
     method: HTTP_VERBS.PUT,

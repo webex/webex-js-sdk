@@ -2684,21 +2684,21 @@ export default class Meeting extends StatelessWebexPlugin {
    * of the session must be provided. If the loucs url is not
    * passed in, the function will do the check.
    * @param {Array} memberIds
-   * @param {String} sessionLocusUrl
+   * @param {Object} sessionLocusUrls
    * @returns {Promise} see #members.admitMembers
    * @public
    * @memberof Meeting
    */
-  public admit(memberIds: Array<any>, sessionLocusUrl?: string) {
-    let authorizingLocusUrl = sessionLocusUrl;
-    if (!authorizingLocusUrl) {
-      const {sessionId, isInMainSession, locusUrl} = this.breakouts;
-      if (sessionId && !isInMainSession) {
-        authorizingLocusUrl = locusUrl;
+  public admit(memberIds: Array<any>, sessionLocusUrls?: any) {
+    let locusUrls: any = sessionLocusUrls;
+    if (!locusUrls) {
+      const {locusUrl, mainLocusUrl} = this.breakouts;
+      if (locusUrl && mainLocusUrl) {
+        locusUrls = {authorizingLocusUrl: locusUrl, mainLocusUrl};
       }
     }
 
-    return this.members.admitMembers(memberIds, authorizingLocusUrl);
+    return this.members.admitMembers(memberIds, locusUrls);
   }
 
   /**
