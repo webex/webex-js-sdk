@@ -69,8 +69,6 @@ export class MediaRequestManager {
 
   private clientRequests: {[key: MediaRequestId]: MediaRequest};
 
-  private slotsActiveInLastMediaRequest: {[key: ReceiveSlotId]: ReceiveSlot};
-
   private degradationPreferences: DegradationPreferences;
 
   private sourceUpdateListener: () => void;
@@ -82,34 +80,8 @@ export class MediaRequestManager {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
     this.clientRequests = {};
-    this.slotsActiveInLastMediaRequest = {};
     this.degradationPreferences = degradationPreferences;
     this.sourceUpdateListener = this.commit.bind(this);
-  }
-
-  private resetInactiveReceiveSlots() {
-    const activeSlots: {[key: ReceiveSlotId]: ReceiveSlot} = {};
-
-    // create a map of all currently used slot ids
-    Object.values(this.clientRequests).forEach((request) =>
-      request.receiveSlots.forEach((slot) => {
-        activeSlots[slot.id] = slot;
-      })
-    );
-
-    // when we stop using some receive slots and they are not included in the new media request,
-    // we will never get a 'no source' notification for them, so we reset their state,
-    // so that the client doesn't try to display their video anymore
-    for (const [slotId, slot] of Object.entries(this.slotsActiveInLastMediaRequest)) {
-      if (!(slotId in activeSlots)) {
-        LoggerProxy.logger.info(
-          `multistream:mediaRequestManager --> resetting sourceState to "no source" for slot ${slot.id}`
-        );
-        slot.resetSourceState();
-      }
-    }
-
-    this.slotsActiveInLastMediaRequest = activeSlots;
   }
 
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
@@ -201,8 +173,6 @@ export class MediaRequestManager {
     });
 
     this.sendMediaRequestsCallback(wcmeMediaRequests);
-
-    this.resetInactiveReceiveSlots();
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
@@ -240,6 +210,5 @@ export class MediaRequestManager {
 
   public reset() {
     this.clientRequests = {};
-    this.slotsActiveInLastMediaRequest = {};
   }
 }
