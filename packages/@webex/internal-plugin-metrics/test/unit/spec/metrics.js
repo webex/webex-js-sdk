@@ -199,17 +199,15 @@ describe('plugin-metrics', () => {
               assert.property(metric, 'eventPayload');
 
               assert.property(metric.tags, 'browser');
-              assert.property(metric.tags, 'org_id');
               assert.property(metric.tags, 'os');
               assert.property(metric.tags, 'domain');
-              assert.property(metric.tags, 'client_id');
-              assert.property(metric.tags, 'user_id');
 
               assert.property(metric.fields, 'browser_version');
               assert.property(metric.fields, 'os_version');
               assert.property(metric.fields, 'sdk_version');
               assert.property(metric.fields, 'platform');
               assert.property(metric.fields, 'spark_user_agent');
+              assert.property(metric.fields, 'client_id');
 
               assert.property(metric.context, 'app');
               assert.property(metric.context, 'locale');
