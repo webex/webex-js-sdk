@@ -5304,7 +5304,9 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() =>
         this.mediaProperties.waitForMediaConnectionConnected().catch(() => {
-          throw createMeetingsError(30202, 'Meeting connection failed');
+          throw new Error(
+            `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
+          );
         })
       )
       .then(() => {

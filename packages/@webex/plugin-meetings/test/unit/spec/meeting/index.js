@@ -1237,8 +1237,7 @@ describe('plugin-meetings', () => {
             .addMedia({
               mediaSettings: {},
             })
-            .catch((error) => {
-              assert.equal(error.code, IceGatheringFailed.CODE);
+            .catch(() => {
               errorThrown = true;
             });
 
