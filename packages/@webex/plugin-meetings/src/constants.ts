@@ -854,7 +854,8 @@ export const RESOURCE = {
 };
 
 export const REACHABILITY = {
-  localStorage: 'reachability.result',
+  localStorageResult: 'reachability.result',
+  localStorageJoinCookie: 'reachability.joinCookie',
   namespace: 'Reachability',
 };
 
