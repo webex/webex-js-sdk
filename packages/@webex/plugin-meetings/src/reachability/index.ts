@@ -392,7 +392,7 @@ export default class Reachability {
     const reachabilityMap = {};
 
     iceResults.forEach(({clusterId, elapsed, publicIPs}) => {
-      let latencyResult;
+      const latencyResult = {};
 
       if (elapsed === null) {
         Object.assign(latencyResult, {reachable: 'false'});
