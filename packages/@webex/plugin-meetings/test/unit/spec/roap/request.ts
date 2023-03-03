@@ -33,12 +33,8 @@ describe('plugin-meetings/roap', () => {
       },
     };
 
-    roapRequest = new RoapRequest(
-      {},
-      {
-        parent: webex,
-      }
-    );
+    // @ts-ignore
+    roapRequest = new RoapRequest({webex});
 
     roapRequest.request = sinon.mock().returns(
       Promise.resolve({
