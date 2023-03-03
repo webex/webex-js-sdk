@@ -4462,6 +4462,7 @@ describe('plugin-meetings', () => {
           done();
         });
       });
+
       describe('#setUpLocusInfoMediaInactiveListener', () => {
         it('listens to disconnect due to un activity ', (done) => {
           TriggerProxy.trigger.reset();

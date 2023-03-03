@@ -286,6 +286,9 @@ module.exports = {
     'webex-core.js',
     'ediscovery.js',
     'CHANGELOG.md',
+    '*.json',
+    '**/*.json',
+    '*.lock',
     // end decorator
   ],
 };
