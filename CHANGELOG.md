@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.42.0](https://github.com/webex/webex-js-sdk/compare/v2.41.0...v2.42.0) (2023-03-03)
+
+
+### Features
+
+* **package:** add cli tooling ([#2636](https://github.com/webex/webex-js-sdk/issues/2636)) ([1227352](https://github.com/webex/webex-js-sdk/commit/1227352e66111669ed24699a380fd860ddf7eca2))
+
 ## [2.41.0](https://github.com/webex/webex-js-sdk/compare/v2.40.0...v2.41.0) (2023-03-02)
 
 
