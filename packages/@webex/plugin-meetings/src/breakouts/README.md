@@ -121,9 +121,7 @@ breakout.delete()
 
 /* 
 Create breakout sessions, Type is array
-Format 1: [{'name':'session1', "anyoneCanJoin" : true}]
-Format 2: [ { "name" : "Breakout Session 1", "subConfId" : 1,  "anyoneCanJoin" : false,  "id" : "ea2db6e1-2da9-4f72-9d62-f099e5e3c7b4”}] id and subConfId are optional, 
-id only to be provided on an update, subConfId is cb-only
+Format: [{'name':'session1', "anyoneCanJoin" : true}]
 */
 breakouts.create(sessions)
 
