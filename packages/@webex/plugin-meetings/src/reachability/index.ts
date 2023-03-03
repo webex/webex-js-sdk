@@ -302,7 +302,7 @@ export default class Reachability {
           elapsed
         );
         // order is important
-        this.setPublicIPs(peerConnection, e.candidate.address);
+        this.addPublicIPs(peerConnection, e.candidate.address);
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
@@ -336,7 +336,7 @@ export default class Reachability {
           // only intercept elapsed property
           if (property === ELAPSED) {
             // @ts-ignore
-            resolve({clusterId: peerConnection.key, elapsed: value});
+            resolve({clusterId: peerConnection.key, publicIPs: target.publicIPs, elapsed: value});
 
             return true;
           }
@@ -358,7 +358,7 @@ export default class Reachability {
         // Close any open peerConnections
         if (peerConnectionProxy.connectionState !== CLOSED) {
           // order is important
-          this.setPublicIPs(peerConnectionProxy, null);
+          this.addPublicIPs(peerConnectionProxy, null);
           this.setLatencyAndClose(peerConnectionProxy, null);
         }
       }, timeout);
@@ -453,17 +453,17 @@ export default class Reachability {
   }
 
   /**
-   * Set public IPs (client media IPs)
+   * Adds public IPs (client media IPs)
    * @param {RTCPeerConnection} peerConnection
    * @param {string} publicIP
    * @returns {void}
    */
-  private setPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string) {
+  private addPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string) {
     const {CLOSED} = CONNECTION_STATE;
 
     if (peerConnection.connectionState === CLOSED) {
       LoggerProxy.logger.log(
-        `Reachability:index#setPublicIPs --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
+        `Reachability:index#addPublicIPs --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
       );
     }
 
