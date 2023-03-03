@@ -119,8 +119,12 @@ breakout.remove(participant)
 // This can only be done when breakouts are inactive
 breakout.delete()
 
-// Create breakout sessions
-// Type is array, like [{'name':'session1', "anyoneCanJoin" : true}]
+/* 
+Create breakout sessions, Type is array
+Format 1: [{'name':'session1', "anyoneCanJoin" : true}]
+Format 2: [ { "name" : "Breakout Session 1", "subConfId" : 1,  "anyoneCanJoin" : false,  "id" : "ea2db6e1-2da9-4f72-9d62-f099e5e3c7b4”}] id and subConfId are optional, 
+id only to be provided on an update, subConfId is cb-only
+*/
 breakouts.create(sessions)
 
 // Delete all breakout sessions
