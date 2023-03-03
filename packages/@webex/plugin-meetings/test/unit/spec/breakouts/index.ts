@@ -489,31 +489,19 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.groups[0].status, "CLOSE")
       });
 
-      it('response include error info', async () => {
-        webex.request.returns(Promise.resolve({
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
           body: {
             "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
             "message":"Edit lock token mismatch"
           }
         }));
 
-        const error = await breakouts.clearSessions();
-
-        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
-
-      });
-
-      it('rejects when edit lock token mismatch', async () => {
-        const fakeError = {
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        };
-
-        webex.request.returns(Promise.reject(new BreakoutEditLockedError('message', fakeError)));
-
-        await assert.isRejected(breakouts.clearSessions(), BreakoutEditLockedError, 'message');
+        await assert.isRejected(
+          breakouts.clearSessions(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
 
       });
     });
@@ -546,36 +534,21 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('response include error info', async () => {
+      it('rejects when edit lock token mismatch', async () => {
         const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
 
-        webex.request.returns(Promise.resolve({
+        webex.request.returns(Promise.reject({
           body: {
             "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
             "message":"Edit lock token mismatch"
           }
         }));
 
-        const error = await breakouts.create(sessions);
-
-        assert.equal(error.body.errorCode, BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH);
-
-      });
-
-      it('rejects when edit lock token mismatch', async () => {
-        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
-
-        const fakeError = {
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        };
-
-        webex.request.returns(Promise.reject(new BreakoutEditLockedError('message', fakeError)));
-
-        await assert.isRejected(breakouts.create(sessions), BreakoutEditLockedError, 'message');
-
+        await assert.isRejected(
+          breakouts.create(sessions),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
       });
     });
   });
