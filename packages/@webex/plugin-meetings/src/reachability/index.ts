@@ -14,7 +14,7 @@ import ReachabilityRequest from './request';
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
 
-type ICECandidateResult = {clusterId: string; elapsed?: string; publicIPs?: string[]};
+export type ICECandidateResult = {clusterId: string; elapsed?: string | null; publicIPs?: string[]};
 /**
  * @class Reachability
  * @export
@@ -385,16 +385,16 @@ export default class Reachability {
    * Calculates time to establish connection
    * @param {Array<ICECandidateResult>} iceResults iceResults
    * @returns {object} reachabilityMap
-   * @private
+   * @protected
    * @memberof Reachability
    */
-  private parseIceResultsToReachabilityResults(iceResults: Array<ICECandidateResult>) {
+  protected parseIceResultsToReachabilityResults(iceResults: Array<ICECandidateResult>) {
     const reachabilityMap = {};
 
     iceResults.forEach(({clusterId, elapsed, publicIPs}) => {
       const latencyResult = {};
 
-      if (elapsed === null) {
+      if (!elapsed) {
         Object.assign(latencyResult, {reachable: 'false'});
       } else {
         Object.assign(latencyResult, {
@@ -458,7 +458,7 @@ export default class Reachability {
    * @param {string} publicIP
    * @returns {void}
    */
-  private addPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string) {
+  protected addPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string | null) {
     const {CLOSED} = CONNECTION_STATE;
 
     if (peerConnection.connectionState === CLOSED) {
