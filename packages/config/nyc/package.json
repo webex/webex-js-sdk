@@ -1,0 +1,24 @@
+{
+  "name": "@webex/nyc-config",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "type": "commonjs",
+  "main": "./static/index.js",
+  "files": [
+    "./static"
+  ],
+  "devDependencies": {
+    "@webex/eslint-config": "workspace:^",
+    "eslint": "^8.35.0"
+  },
+  "peerDependencies": {
+    "@webex/jasmine-config": "workspace:^",
+    "jasmine": "^4.5.0",
+    "nyc": "^15.1.0"
+  }
+}

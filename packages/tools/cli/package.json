@@ -1,0 +1,58 @@
+{
+  "name": "@webex/cli-tools",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "type": "commonjs",
+  "main": "./dist/module/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": "./dist/module/index.js",
+    "./config": "./config.js",
+    "./reporter": "./test/helpers/reporter.js"
+  },
+  "files": [
+    "./static"
+  ],
+  "scripts": {
+    "build": "yarn build:src",
+    "build:docs": "yarn build:docs:metadata && yarn build:docs:markdown",
+    "build:docs:metadata": "api-extractor run -c ./api-extractor.config.json",
+    "build:docs:markdown": "api-documenter markdown --input-folder ./dist/docs/metadata --output-folder ./dist/docs/markdown",
+    "build:src": "tsc",
+    "clean": "yarn clean:coverage && yarn clean:dist",
+    "clean:coverage": "rimraf ./test/coverage",
+    "clean:dist": "rimraf ./dist",
+    "test": "yarn test:static && yarn test:integration && yarn test:coverage",
+    "test:coverage": "nyc yarn test:integration --silent",
+    "test:coverage:report": "nyc --reporter=lcov yarn test:integration --silent",
+    "test:integration": "yarn test:integration:module",
+    "test:integration:module": "node ./jasmine.config.js --mod",
+    "test:static": "yarn test:static:style && yarn test:static:syntax",
+    "test:static:style": "eslint ./src/**/*.*",
+    "test:static:syntax": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@microsoft/api-documenter": "^7.21.5",
+    "@microsoft/api-extractor": "^7.34.4",
+    "@types/eslint": "^8",
+    "@types/jasmine": "^4",
+    "@webex/api-extractor-config": "workspace:^",
+    "@webex/eslint-config": "workspace:^",
+    "@webex/jasmine-config": "workspace:^",
+    "@webex/nyc-config": "workspace:^",
+    "@webex/typescript-config": "workspace:^",
+    "eslint": "^8.35.0",
+    "jasmine": "^4.5.0",
+    "nyc": "^15.1.0",
+    "rimraf": "^4.1.2",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "yargs": "^17.7.1"
+  }
+}

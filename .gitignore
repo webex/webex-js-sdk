@@ -11,6 +11,7 @@ tmp*.*
 
 _site
 .coverage
+**/coverage
 **/node_modules
 doc
 docker-env
