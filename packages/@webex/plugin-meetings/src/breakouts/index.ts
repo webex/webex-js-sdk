@@ -34,7 +34,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
-    hasBreakoutStarted: 'boolean', // appears when one or more breakouts started
+    hasBreakoutStarted: 'boolean', // appears when one or more breakouts started(active)
   },
 
   children: {
@@ -150,13 +150,23 @@ const Breakouts = WebexPlugin.extend({
    * @returns {boolean}
    */
   hasBreakoutSessionStarted(params) {
-    const hasGroups = params?.groups;
-    const hasBreakout = hasGroups ? hasGroups[0] : null;
+    if (!params) {
+      return false;
+    }
     if (
-      hasBreakout &&
-      hasBreakout.type === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-      hasBreakout.status === BREAKOUTS.STATUS.OPEN
+      params.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+      params.status === BREAKOUTS.STATUS.OPEN
     ) {
+      // Joined a breakout
+      return true;
+    }
+    const otherBreakout = params.groups ? params.groups[0] : null;
+    if (
+      otherBreakout &&
+      otherBreakout.type === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+      otherBreakout.status === BREAKOUTS.STATUS.OPEN
+    ) {
+      // Other breakout started
       return true;
     }
 
@@ -223,7 +233,7 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * Updates the information about available breakouts
+   * Updates the information about self available breakouts
    * @param {Object} payload
    * @returns {void}
    */
@@ -245,6 +255,12 @@ const Breakouts = WebexPlugin.extend({
           }
 
           breakouts[sessionId][state] = true;
+          if (
+            state === BREAKOUTS.SESSION_STATES.ACTIVE &&
+            breakouts[sessionId].sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT
+          ) {
+            this.set('hasBreakoutStarted', true);
+          }
         });
       });
     }
