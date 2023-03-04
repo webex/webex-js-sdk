@@ -2623,10 +2623,57 @@ function transferHostToMember(transferButton) {
 }
 
 function toggleBreakout() {
-  var enableBox = document.getElementById("enable-breakout");
-  const meeting = getCurrentMeeting();
+  const enableBox = document.getElementById("enable-breakout"),
+        meeting = getCurrentMeeting(),
+        newBreakoutDiv = document.getElementById("newBreakout-div");
+
+  const createOneBreakoutSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'CreateOneBreakoutSession';
+    button.id = 'btn-creatBreakout';
+
+    button.onclick = () => {
+      const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+      breakoutSession.create(sessions).then((result)=>{
+        if (result.body.groups) {
+          button.disabled = true;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
+      });
+    };
+
+    return button;
+  };
+
+  const createDeleteSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Delete Breakout';
+
+    button.onclick = () => {
+      breakoutSession.clearSessions().then((result) => {
+        if (result.body) {
+          const btnCreat = document.getElementById('btn-creatBreakout');
+          btnCreat.disabled = false;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
+      });
+    };
+
+    return button;
+  };
+
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
+    if(enableBox.checked) {
+      newBreakoutDiv.appendChild(createOneBreakoutSessionButton(meeting.breakouts)); 
+      newBreakoutDiv.appendChild(createDeleteSessionButton(meeting.breakouts)); 
+    } else {
+      newBreakoutDiv.innerHTML = ""
+    }
   }
 }
 
