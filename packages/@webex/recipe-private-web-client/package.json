@@ -1,6 +1,6 @@
 {
   "name": "@webex/recipe-private-web-client",
-  "version": "3.0.0-beta.34",
+  "version": "3.0.0-beta.35",
   "description": "This is a plugin recipe for the Cisco Webex JS SDK. This recipe uses internal APIs to provide the features needed by the Cisco Webex Teams Client. There is no guarantee of non-breaking changes. Non-Cisco engineers should stick to the `webex` package.",
   "license": "MIT",
   "main": "dist/index.js",

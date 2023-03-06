@@ -119,8 +119,14 @@ breakout.remove(participant)
 // This can only be done when breakouts are inactive
 breakout.delete()
 
-// Create a breakout session
-breakouts.create(sessionName)
+/* 
+Create breakout sessions, Type is array
+Format: [{'name':'session1', "anyoneCanJoin" : true}]
+*/
+breakouts.create(sessions)
+
+// Delete all breakout sessions
+breakouts.clearSessions()
 
 // Rename an existing breakout session
 breakout.rename(newSessionName)

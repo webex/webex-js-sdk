@@ -63,11 +63,13 @@ export default class Reachability {
 
     // Remove stored reachability results to ensure no stale data
     // @ts-ignore
-    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorage);
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageJoinCookie);
 
     // Fetch clusters and measure latency
     try {
-      const clusters = await this.reachabilityRequest.getClusters();
+      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters();
 
       // Perform Reachability Check
       const results = await this.performReachabilityCheck(clusters);
@@ -75,8 +77,14 @@ export default class Reachability {
       // @ts-ignore
       await this.webex.boundedStorage.put(
         this.namespace,
-        REACHABILITY.localStorage,
+        REACHABILITY.localStorageResult,
         JSON.stringify(results)
+      );
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageJoinCookie,
+        JSON.stringify(joinCookie)
       );
 
       LoggerProxy.logger.log(
@@ -103,7 +111,7 @@ export default class Reachability {
     let reachable = false;
     // @ts-ignore
     const reachabilityData = await this.webex.boundedStorage
-      .get(this.namespace, REACHABILITY.localStorage)
+      .get(this.namespace, REACHABILITY.localStorageResult)
       .catch(() => {});
 
     if (reachabilityData) {
