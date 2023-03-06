@@ -141,6 +141,7 @@ export const MEDIA_UPDATE_TYPE = {
 
 /**
  * MediaDirection
+ *
  * @typedef {Object} MediaDirection
  * @property {boolean} sendAudio
  * @property {boolean} receiveAudio
