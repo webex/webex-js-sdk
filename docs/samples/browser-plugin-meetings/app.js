@@ -2706,10 +2706,10 @@ const createBreakoutOperations = ()=>{
       endBtn.disabled = false;
       startBtn.disabled = true;
       if(groupId){
-          meeting.breakouts.start({id: groupId});
+          meeting.breakouts.start();
       }else{
         meeting.breakouts.getBreakout().then((res)=>{
-          meeting.breakouts.start({id: res.body.groups[0].id});
+          meeting.breakouts.start();
         })
       }
     });
@@ -2771,11 +2771,57 @@ const createBreakoutOperations = ()=>{
 function toggleBreakout() {
 <<<<<<< HEAD
   const enableBox = document.getElementById("enable-breakout"),
+<<<<<<< HEAD
         meeting = getCurrentMeeting();
+=======
+        meeting = getCurrentMeeting(),
+        newBreakoutDiv = document.getElementById("newBreakout-div");
+
+  const createOneBreakoutSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Create One Breakout Session';
+    button.id = 'btn-creatBreakout';
+
+    button.onclick = () => {
+      const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+      breakoutSession.create(sessions).then((result)=>{
+        if (result.body.groups) {
+          button.disabled = true;
+          document.getElementById('startBtn').disabled = false;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
+      });
+    };
+
+    return button;
+  };
+
+  const createDeleteSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Delete Breakout';
+
+    button.onclick = () => {
+      breakoutSession.clearSessions().then((result) => {
+        if (result.body) {
+          const btnCreat = document.getElementById('btn-creatBreakout');
+          btnCreat.disabled = false;
+        }
+      }).catch((error) => {
+        console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
+      });
+    };
+
+    return button;
+  };
+>>>>>>> dd1188dfe... feat: breakout service apis intergration (enable, create, start, end)
 
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
+<<<<<<< HEAD
 =======
   var enableBox = document.getElementById("enable-breakout");
   const meeting = getCurrentMeeting();
@@ -2788,6 +2834,14 @@ function toggleBreakout() {
       document.getElementById('createBO').disabled = !enableBox.checked;
     });
 >>>>>>> d39eb061e... feat: working on BO start and end functionalities
+=======
+    if(enableBox.checked) {
+      newBreakoutDiv.appendChild(createOneBreakoutSessionButton(meeting.breakouts));
+      newBreakoutDiv.appendChild(createDeleteSessionButton(meeting.breakouts));
+    } else {
+      newBreakoutDiv.innerHTML = ""
+    }
+>>>>>>> dd1188dfe... feat: breakout service apis intergration (enable, create, start, end)
   }
 }
 

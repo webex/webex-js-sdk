@@ -624,6 +624,8 @@ describe('plugin-meetings', () => {
         assert.equal(arg2.uri, 'url?editlock=true');
         assert.equal(arg1.method, 'GET');
         assert.deepEqual(result, {body: getBOResponse('PENDING')});
+        assert.deepEqual(breakouts.groups, result.body.groups);
+        assert.equal(breakouts.breakoutGroupId, 'groupId');
       });
     });
 
