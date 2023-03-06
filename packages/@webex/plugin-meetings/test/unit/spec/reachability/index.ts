@@ -105,8 +105,8 @@ describe('gatherReachability', () => {
       public testParseIceResultsToReachabilityResults(iceResults: Array<ICECandidateResult>) {
         return this.parseIceResultsToReachabilityResults(iceResults);
       }
-      public testAddPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string | null) {
-        return this.addPublicIPs(peerConnection, publicIP);
+      public testAddPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+        return this.addPublicIP(peerConnection, publicIP);
       }
     }
     beforeEach(() => {
@@ -158,12 +158,12 @@ describe('gatherReachability', () => {
       });
     });
 
-    it('calls addPublicIPs correctly with no existing public APIs', () => {
+    it('calls addPublicIP correctly with no existing public APIs', () => {
       const peerConnection = {
         connectionState: 'not_closed',
       };
 
-      testingClass.testAddPublicIPs(peerConnection as RTCPeerConnection, '1.1.1.1');
+      testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, '1.1.1.1');
 
       assert.deepEqual(peerConnection, {
         connectionState: 'not_closed',
@@ -171,13 +171,13 @@ describe('gatherReachability', () => {
       });
     });
 
-    it('calls addPublicIPs correctly with existing public APIs', () => {
+    it('calls addPublicIP correctly with existing public APIs', () => {
       const peerConnection = {
         connectionState: 'not_closed',
         publicIPs: ['2.2.2.2'],
       };
 
-      testingClass.testAddPublicIPs(peerConnection as any, '1.1.1.1');
+      testingClass.testAddPublicIP(peerConnection as any, '1.1.1.1');
 
       assert.deepEqual(peerConnection, {
         connectionState: 'not_closed',
@@ -185,12 +185,12 @@ describe('gatherReachability', () => {
       });
     });
 
-    it('calls addPublicIPs correctly null publicAPI', () => {
+    it('calls addPublicIP correctly null publicAPI', () => {
       const peerConnection = {
         connectionState: 'not_closed',
       };
 
-      testingClass.testAddPublicIPs(peerConnection as RTCPeerConnection, null);
+      testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, null);
 
       assert.deepEqual(peerConnection, {
         connectionState: 'not_closed',

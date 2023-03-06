@@ -302,7 +302,7 @@ export default class Reachability {
           elapsed
         );
         // order is important
-        this.addPublicIPs(peerConnection, e.candidate.address);
+        this.addPublicIP(peerConnection, e.candidate.address);
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
@@ -358,7 +358,7 @@ export default class Reachability {
         // Close any open peerConnections
         if (peerConnectionProxy.connectionState !== CLOSED) {
           // order is important
-          this.addPublicIPs(peerConnectionProxy, null);
+          this.addPublicIP(peerConnectionProxy, null);
           this.setLatencyAndClose(peerConnectionProxy, null);
         }
       }, timeout);
@@ -453,32 +453,29 @@ export default class Reachability {
   }
 
   /**
-   * Adds public IPs (client media IPs)
+   * Adds public IP (client media IPs)
    * @param {RTCPeerConnection} peerConnection
    * @param {string} publicIP
    * @returns {void}
    */
-  protected addPublicIPs(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+  protected addPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+    const modifiedPeerConnection: RTCPeerConnection & {publicIPs?: string[]} = peerConnection;
     const {CLOSED} = CONNECTION_STATE;
 
-    if (peerConnection.connectionState === CLOSED) {
+    if (modifiedPeerConnection.connectionState === CLOSED) {
       LoggerProxy.logger.log(
-        `Reachability:index#addPublicIPs --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
+        `Reachability:index#addPublicIP --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
       );
     }
 
     if (publicIP) {
-      // @ts-ignore
-      if (peerConnection.publicIPs) {
-        // @ts-ignore
-        peerConnection.publicIPs.push(publicIP);
+      if (modifiedPeerConnection.publicIPs) {
+        modifiedPeerConnection.publicIPs.push(publicIP);
       } else {
-        // @ts-ignore
-        peerConnection.publicIPs = [publicIP];
+        modifiedPeerConnection.publicIPs = [publicIP];
       }
     } else {
-      // @ts-ignore
-      peerConnection.publicIPs = null;
+      modifiedPeerConnection.publicIPs = null;
     }
   }
 
