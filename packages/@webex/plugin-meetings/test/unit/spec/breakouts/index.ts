@@ -7,6 +7,7 @@ import {BREAKOUTS} from '@webex/plugin-meetings/src/constants';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
+import BreakoutEditLockedError from "@webex/plugin-meetings/src/breakouts/edit-lock-error";
 
 const getBOResponse = (status: string) => {
   return {
@@ -571,6 +572,97 @@ describe('plugin-meetings', () => {
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('delete', () => {
+      it('makes the request as expected', async () => {
+        webex.request.returns(Promise.resolve({
+          body: {
+            groups: [{
+              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
+              status : "CLOSE",
+              type : "BREAKOUT",
+            }]
+          }
+        }));
+
+        const result = await breakouts.clearSessions();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            groups: [
+              {
+                action: BREAKOUTS.ACTION.DELETE,
+              },
+            ],
+          }
+        });
+
+        assert.equal(breakouts.groups[0].status, "CLOSE")
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.clearSessions(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+
+      });
+    });
+
+    describe('create', () => {
+      it('response not include groups info', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+        const result = await breakouts.create(sessions);
+
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+
+      });
+
+      it('response include groups info', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+
+        webex.request.returns(Promise.resolve({
+          body: {
+            groups: [{
+              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
+              status : "PENDING",
+              type : "BREAKOUT",
+            }]
+          }
+        }));
+
+        const result = await breakouts.create(sessions);
+
+        assert.equal(breakouts.groups[0].id, "455556a4-37cd-4baa-89bc-8730581a1cc0")
+
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.create(sessions),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
       });
     });
   });

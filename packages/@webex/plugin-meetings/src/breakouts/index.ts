@@ -10,6 +10,7 @@ import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
+import BreakoutEditLockedError from './edit-lock-error';
 
 /**
  * @class Breakouts
@@ -34,6 +35,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
+    groups: 'array', // appears when create breakouts
   },
 
   children: {
@@ -49,6 +51,23 @@ const Breakouts = WebexPlugin.extend({
        */
       fn() {
         return this.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+      },
+    },
+    breakoutGroupId: {
+      deps: ['groups'],
+      /**
+       * Returns the actived group id
+       * @returns {boolean}
+       */
+      fn() {
+        if (this.groups?.length) {
+          const activedGroup = this.groups.find(({a}) => a !== 'CLOSED');
+          if (activedGroup) {
+            return activedGroup.id;
+          }
+        }
+
+        return '';
       },
     },
   },
@@ -350,6 +369,77 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Create new breakout sessions
+   * @param {object} sessions -- breakout session group
+   * @returns {Promise}
+   */
+  async create(sessions) {
+    // @ts-ignore
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              sessions,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
+          LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
+        }
+
+        return Promise.reject(error);
+      });
+
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+    }
+
+    return Promise.resolve(breakInfo);
+  },
+
+  /**
+   * Delete all breakout sessions
+   * @returns {Promise}
+   */
+  async clearSessions() {
+    // @ts-ignore
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              action: BREAKOUTS.ACTION.DELETE,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
+          LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
+        }
+
+        return Promise.reject(error);
+      });
+
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+    }
+
+    return Promise.resolve(breakInfo);
+  },
+
+  /**
    * Host or cohost starts breakout sessions
    * @param {object} params
    * @returns {Promise}
@@ -372,6 +462,7 @@ const Breakouts = WebexPlugin.extend({
       },
     });
   },
+
   /**
    * Host or cohost ends breakout sessions
    * @param {object} params
@@ -397,22 +488,6 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * Create new breakout session
-   * @param {object} sessions -- breakout session group
-   * @returns {Promise}
-   */
-  create(sessions) {
-    // @ts-ignore
-    return this.webex.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
-        groups: sessions,
-      },
-    });
-  },
-
-  /**
    * get existed breakout sessions
    * @param {boolean} editlock -- lock operations of the breakout sessions
    * @returns {Promise}
@@ -421,27 +496,6 @@ const Breakouts = WebexPlugin.extend({
     return this.request({
       method: HTTP_VERBS.GET,
       uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
-    });
-  },
-
-  /**
-   * delete breakout session
-   * @param {object} sessions
-   * @returns {Promise}
-   */
-  delete(sessions) {
-    // @ts-ignore
-    return this.webex.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
-        groups: [
-          {
-            action: 'DELETE',
-            sessions,
-          },
-        ],
-      },
     });
   },
 });

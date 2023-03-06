@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.35](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.34...v3.0.0-beta.35) (2023-03-03)
+
+
+### Features
+
+* **reachability:** add join cookie ([#2634](https://github.com/webex/webex-js-sdk/issues/2634)) ([1d2b353](https://github.com/webex/webex-js-sdk/commit/1d2b3530909680ae2bf7188faadeca9b89733368))
+
 ## [3.0.0-beta.34](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.33...v3.0.0-beta.34) (2023-02-27)
 
 

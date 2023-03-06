@@ -26,6 +26,8 @@ describe('plugin-meetings', () => {
       },
     };
 
+    webex.boundedStorage.get = sinon.mock().returns(Promise.resolve(JSON.stringify({anycastEntryPoint: "aws-eu-west-1"})))
+
     meetingsRequest = new MeetingRequest(
       {},
       {
@@ -206,6 +208,31 @@ describe('plugin-meetings', () => {
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+
+      });
+
+      it('includes joinCookie correctly', async () => {
+        const locusUrl = 'locusURL';
+        const deviceUrl = 'deviceUrl';
+        const correlationId = 'random-uuid';
+        const roapMessage = 'roap-message';
+        const permissionToken = 'permission-token';
+
+        await meetingsRequest.joinMeeting({
+          locusUrl,
+          deviceUrl,
+          correlationId,
+          roapMessage,
+          permissionToken,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'POST');
+        assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
+        assert.deepEqual(requestParams.body.clientMediaPreferences, {
+          "joinCookie": {anycastEntryPoint: "aws-eu-west-1"},
+          "preferTranscoding": true
+        });
       });
     });
 

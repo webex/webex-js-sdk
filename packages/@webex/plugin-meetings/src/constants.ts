@@ -452,6 +452,11 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Captcha is required.',
     CODE: 8,
   },
+  BREAKOUT_EDIT: {
+    NAME: 'BreakoutEditLockedError',
+    MESSAGE: 'Edit lock token mismatch',
+    CODE: 9,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -521,6 +526,7 @@ export const LOCUS = {
 export const BREAKOUTS = {
   STATUS: {
     CLOSING: 'CLOSING',
+    CLOSED: 'CLOSED',
   },
   EVENTS: {
     BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
@@ -541,6 +547,10 @@ export const BREAKOUTS = {
   ACTION: {
     START: 'START',
     CLOSE: 'CLOSE',
+    DELETE: 'DELETE',
+  },
+  ERROR_CODE: {
+    EDIT_LOCK_TOKEN_MISMATCH: 201409024,
   },
 };
 
@@ -858,7 +868,8 @@ export const RESOURCE = {
 };
 
 export const REACHABILITY = {
-  localStorage: 'reachability.result',
+  localStorageResult: 'reachability.result',
+  localStorageJoinCookie: 'reachability.joinCookie',
   namespace: 'Reachability',
 };
 
