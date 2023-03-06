@@ -36,3 +36,9 @@ beforeEach(() => {
     {replace: true}
   );
 });
+
+describe('_setup', () => {
+  it('a sample test so that it does not throw an error', () => {
+    expect(true).toBeTruthy();
+  });
+});

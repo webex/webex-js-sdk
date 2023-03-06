@@ -40,8 +40,10 @@ tasks/selenium
 browsers.processed.js
 docs/samples/webex.min.js
 docs/samples/webex.min.js.map
+coverage
 
 # patch-package
 patches.hash
 bundle.js.map
 webex-server
+junit.xml

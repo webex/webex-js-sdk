@@ -5697,7 +5697,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (layoutType) {
       if (!LAYOUT_TYPES.includes(layoutType)) {
-        this.rejectWithErrorLog(
+        return this.rejectWithErrorLog(
           'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
         );
       }

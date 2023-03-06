@@ -37,7 +37,7 @@ export default function runAbstractStorageAdapterSpec(adapter) {
     describe('bound', () => {
       let bound;
 
-      before(() =>
+      beforeAll(() =>
         adapter.bind(namespace, options).then((b) => {
           bound = b;
         })

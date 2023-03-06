@@ -168,7 +168,9 @@ module.exports = {
 
         /** Each package is run through testPackage util */
         for (const packageName of argv.packages) {
-          await testPackage(argv, packageName);
+          const onMocha = packageName === '@webex/plugin-meetings' || packageName === 'webex';
+
+          await testPackage(argv, packageName, onMocha);
         }
 
         await stopProxies();
@@ -186,21 +188,19 @@ module.exports = {
          */
         const packages = await list();
 
-        const argString = Object.keys(argv).reduce((acc, key) => {
-          const value = argv[key];
-
-          if (typeof value === 'boolean') {
-            acc += value ? ` --${key}` : ` --no-${key}`;
-          }
-
-          return acc;
-        }, '');
-
         for (const packageName of packages) {
-          const [cmd, ...args] =
-            `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(
-              ' '
-            );
+          const argString = Object.keys(argv).reduce((acc, key) => {
+            const value = argv[key];
+
+            if (typeof value === 'boolean') {
+              acc += value ? ` --${key}` : ` --no-${key}`;
+            }
+
+            return acc;
+          }, '');
+
+          console.log(`Package ${packageName} Args ${argString}`);
+          const [cmd, ...args] = `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(' ');
 
           await spawn(cmd, args);
         }

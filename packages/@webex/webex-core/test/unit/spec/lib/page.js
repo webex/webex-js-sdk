@@ -11,7 +11,7 @@ describe('webex-core', () => {
     describe('#constructor', () => {
       let page;
 
-      before(() => {
+      beforeAll(() => {
         sinon.stub(Page, 'parseLinkHeaders');
         const response = {
           body: {
@@ -45,7 +45,7 @@ describe('webex-core', () => {
     describe('#next', () => {
       let page, webex;
 
-      before(() => {
+      beforeAll(() => {
         webex = {
           request: sinon.stub().returns(
             Promise.resolve({
@@ -84,7 +84,7 @@ describe('webex-core', () => {
     describe('#previous', () => {
       let page, webex;
 
-      before(() => {
+      beforeAll(() => {
         webex = {
           request: sinon.stub().returns(
             Promise.resolve({

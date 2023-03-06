@@ -18,7 +18,7 @@ import {
   DISPLAY_HINTS,
 } from '../../../../src/constants';
 
-import {self, selfWithInactivity} from './selfConstant';
+import {self, selfWithInactivity} from './lib/selfConstant';
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {

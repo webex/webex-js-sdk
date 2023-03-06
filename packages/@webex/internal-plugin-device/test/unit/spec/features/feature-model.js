@@ -9,13 +9,13 @@ describe('plugin-device', () => {
     let featureNLM;
     let featureModel;
 
-    beforeEach('create feature model', () => {
+    beforeEach(() => {
       [featureLM, featureNLM] = dto.features.developer;
     });
 
     describe('#constructor()', () => {
-      describe("when the feature includes a 'lastModified' property", () => {
-        beforeEach('generate the feature model', () => {
+      describe('when the feature includes a \'lastModified\' property', () => {
+        beforeEach(() => {
           featureModel = new FeatureModel(featureLM);
         });
 
@@ -34,8 +34,8 @@ describe('plugin-device', () => {
         });
       });
 
-      describe("when the feature excludes a 'lastModified' property", () => {
-        beforeEach('generate the feature model', () => {
+      describe('when the feature excludes a \'lastModified\' property', () => {
+        beforeEach(() => {
           featureModel = new FeatureModel(featureNLM);
         });
 
@@ -57,7 +57,7 @@ describe('plugin-device', () => {
       let fixture;
       let model;
 
-      beforeEach('initialize the feature model', () => {
+      beforeEach(() => {
         featureModel = new FeatureModel();
       });
 
@@ -67,12 +67,12 @@ describe('plugin-device', () => {
       });
 
       describe('when the model is defined', () => {
-        beforeEach('define the fixture', () => {
+        beforeEach(() => {
           fixture = {};
         });
 
         describe('when the value is a number', () => {
-          beforeEach('set the value to a number', () => {
+          beforeEach(() => {
             fixture.val = '1234';
             model = featureModel.parse(fixture);
           });
@@ -87,7 +87,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the value is a true boolean', () => {
-          beforeEach('set the value to a true string', () => {
+          beforeEach(() => {
             fixture.val = 'true';
             model = featureModel.parse(fixture);
           });
@@ -98,7 +98,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the value is a True boolean', () => {
-          beforeEach('set the value to a True string', () => {
+          beforeEach(() => {
             fixture.val = 'True';
             model = featureModel.parse(fixture);
           });
@@ -109,7 +109,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the value is a false string', () => {
-          beforeEach('set the value to a false boolean', () => {
+          beforeEach(() => {
             fixture.val = 'false';
             model = featureModel.parse(fixture);
           });
@@ -120,7 +120,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the value is a False string', () => {
-          beforeEach('set the value to a false boolean', () => {
+          beforeEach(() => {
             fixture.val = 'False';
             model = featureModel.parse(fixture);
           });
@@ -131,7 +131,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the value is a string', () => {
-          beforeEach('set the value to a string', () => {
+          beforeEach(() => {
             fixture.val = 'hello world';
             model = featureModel.parse(fixture);
           });
@@ -158,7 +158,7 @@ describe('plugin-device', () => {
         });
 
         describe('when there is no value', () => {
-          beforeEach('set the value to undefined', () => {
+          beforeEach(() => {
             fixture.val = undefined;
             model = featureModel.parse(fixture);
           });
@@ -173,8 +173,8 @@ describe('plugin-device', () => {
     describe('#serialize()', () => {
       let serialized;
 
-      describe("when the feature includes a 'lastModified' property", () => {
-        beforeEach('generate the feature model', () => {
+      describe('when the feature includes a \'lastModified\' property', () => {
+        beforeEach(() => {
           featureModel = new FeatureModel(featureLM);
           serialized = featureModel.serialize();
         });
@@ -193,8 +193,8 @@ describe('plugin-device', () => {
         });
       });
 
-      describe("when the feature excludes a 'lastModified' property", () => {
-        beforeEach('generate the feature model', () => {
+      describe('when the feature excludes a \'lastModified\' property', () => {
+        beforeEach(() => {
           featureModel = new FeatureModel(featureNLM);
           serialized = featureModel.serialize();
         });
@@ -218,7 +218,7 @@ describe('plugin-device', () => {
         let key;
         let value;
 
-        beforeEach("configure feature and set 'key' and 'value'", () => {
+        beforeEach(() => {
           key = 'val';
           value = 'false';
           featureModel = new FeatureModel(featureLM);
@@ -237,7 +237,7 @@ describe('plugin-device', () => {
       });
 
       describe('when setting all properties', () => {
-        beforeEach('configure feature model', () => {
+        beforeEach(() => {
           featureModel = new FeatureModel(featureLM);
           featureModel.set(featureNLM);
         });
