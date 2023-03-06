@@ -1,0 +1,768 @@
+{
+  "metadata": {
+    "toolPackage": "@microsoft/api-extractor",
+    "toolVersion": "7.34.4",
+    "schemaVersion": 1011,
+    "oldestForwardsCompatibleVersion": 1001,
+    "tsdocConfig": {
+      "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+      "noStandardTags": true,
+      "tagDefinitions": [
+        {
+          "tagName": "@alpha",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@beta",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@defaultValue",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@decorator",
+          "syntaxKind": "block",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@deprecated",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@eventProperty",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@example",
+          "syntaxKind": "block",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@experimental",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@inheritDoc",
+          "syntaxKind": "inline"
+        },
+        {
+          "tagName": "@internal",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@label",
+          "syntaxKind": "inline"
+        },
+        {
+          "tagName": "@link",
+          "syntaxKind": "inline",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@override",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@packageDocumentation",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@param",
+          "syntaxKind": "block",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@privateRemarks",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@public",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@readonly",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@remarks",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@returns",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@sealed",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@see",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@throws",
+          "syntaxKind": "block",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@typeParam",
+          "syntaxKind": "block",
+          "allowMultiple": true
+        },
+        {
+          "tagName": "@virtual",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@betaDocumentation",
+          "syntaxKind": "modifier"
+        },
+        {
+          "tagName": "@internalRemarks",
+          "syntaxKind": "block"
+        },
+        {
+          "tagName": "@preapproved",
+          "syntaxKind": "modifier"
+        }
+      ],
+      "supportForTags": {
+        "@alpha": true,
+        "@beta": true,
+        "@defaultValue": true,
+        "@decorator": true,
+        "@deprecated": true,
+        "@eventProperty": true,
+        "@example": true,
+        "@experimental": true,
+        "@inheritDoc": true,
+        "@internal": true,
+        "@label": true,
+        "@link": true,
+        "@override": true,
+        "@packageDocumentation": true,
+        "@param": true,
+        "@privateRemarks": true,
+        "@public": true,
+        "@readonly": true,
+        "@remarks": true,
+        "@returns": true,
+        "@sealed": true,
+        "@see": true,
+        "@throws": true,
+        "@typeParam": true,
+        "@virtual": true,
+        "@betaDocumentation": true,
+        "@internalRemarks": true,
+        "@preapproved": true
+      },
+      "reportUnsupportedHtmlElements": false
+    }
+  },
+  "kind": "Package",
+  "canonicalReference": "@webex/internal-plugin-device!",
+  "docComment": "",
+  "name": "@webex/internal-plugin-device",
+  "preserveMemberOrder": false,
+  "members": [
+    {
+      "kind": "EntryPoint",
+      "canonicalReference": "@webex/internal-plugin-device!",
+      "name": "",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "Namespace",
+          "canonicalReference": "@webex/internal-plugin-device!config:namespace",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "declare namespace _default "
+            }
+          ],
+          "fileUrlPath": "dist/types/config.d.ts",
+          "releaseTag": "Public",
+          "name": "config",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Namespace",
+              "canonicalReference": "@webex/internal-plugin-device!config.device:namespace",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "namespace device "
+                }
+              ],
+              "releaseTag": "Public",
+              "name": "device",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!config.device.canRegisterWaitDuration:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "canRegisterWaitDuration: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "number"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "canRegisterWaitDuration",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!config.device.defaults:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "defaults: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "any"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "defaults",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!config.device.enableInactivityEnforcement:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "enableInactivityEnforcement: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "boolean"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "enableInactivityEnforcement",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!config.device.ephemeral:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "ephemeral: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "boolean"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "ephemeral",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!config.device.ephemeralDeviceTTL:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "ephemeralDeviceTTL: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "boolean"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "ephemeralDeviceTTL",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "Namespace",
+          "canonicalReference": "@webex/internal-plugin-device!constants:namespace",
+          "docComment": "",
+          "excerptTokens": [],
+          "fileUrlPath": "dist/types/index.d.ts",
+          "releaseTag": "None",
+          "name": "constants",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.CISCO_DEVICE_URL:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "CISCO_DEVICE_URL: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"cisco-device-url\""
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "CISCO_DEVICE_URL",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.DEVICE_EVENT_REGISTRATION_SUCCESS:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "DEVICE_EVENT_REGISTRATION_SUCCESS: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"registration:success\""
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "DEVICE_EVENT_REGISTRATION_SUCCESS",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.DEVICE_EVENTS:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "DEVICE_EVENTS: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string[]"
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "DEVICE_EVENTS",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_COLLECTION_DEVELOPER:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "FEATURE_COLLECTION_DEVELOPER: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"developer\""
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "FEATURE_COLLECTION_DEVELOPER",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_COLLECTION_ENTITLEMENT:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "FEATURE_COLLECTION_ENTITLEMENT: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"entitlement\""
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "FEATURE_COLLECTION_ENTITLEMENT",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_COLLECTION_NAMES:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "FEATURE_COLLECTION_NAMES: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "string[]"
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "FEATURE_COLLECTION_NAMES",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Variable",
+              "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_COLLECTION_USER:var",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "FEATURE_COLLECTION_USER: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "\"user\""
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "isReadonly": true,
+              "releaseTag": "Public",
+              "name": "FEATURE_COLLECTION_USER",
+              "variableTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              }
+            },
+            {
+              "kind": "Namespace",
+              "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_TYPES:namespace",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export namespace FEATURE_TYPES "
+                }
+              ],
+              "fileUrlPath": "dist/types/constants.d.ts",
+              "releaseTag": "Public",
+              "name": "FEATURE_TYPES",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_TYPES.BOOLEAN:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "BOOLEAN: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "string"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "BOOLEAN",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_TYPES.NUMBER:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "NUMBER: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "string"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "NUMBER",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                },
+                {
+                  "kind": "Variable",
+                  "canonicalReference": "@webex/internal-plugin-device!constants.FEATURE_TYPES.STRING:var",
+                  "docComment": "",
+                  "excerptTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "STRING: "
+                    },
+                    {
+                      "kind": "Content",
+                      "text": "string"
+                    }
+                  ],
+                  "isReadonly": true,
+                  "releaseTag": "Public",
+                  "name": "STRING",
+                  "variableTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@webex/internal-plugin-device!Device:var",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "Device: "
+            },
+            {
+              "kind": "Content",
+              "text": "any"
+            }
+          ],
+          "fileUrlPath": "dist/types/device.d.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "Device",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        },
+        {
+          "kind": "Class",
+          "canonicalReference": "@webex/internal-plugin-device!DeviceUrlInterceptor:class",
+          "docComment": "/**\n * Adds 'cisco-device-url' header, as appropriate, to requests\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export default class DeviceUrlInterceptor "
+            }
+          ],
+          "fileUrlPath": "dist/types/interceptors/device-url.d.ts",
+          "releaseTag": "Public",
+          "isAbstract": false,
+          "name": "DeviceUrlInterceptor",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Method",
+              "canonicalReference": "@webex/internal-plugin-device!DeviceUrlInterceptor.create:member(1)",
+              "docComment": "/**\n * @returns {DeviceUrlInterceptor}\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "static create(): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": "DeviceUrlInterceptor",
+                  "canonicalReference": "@webex/internal-plugin-device!DeviceUrlInterceptor:class"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": true,
+              "returnTypeTokenRange": {
+                "startIndex": 1,
+                "endIndex": 2
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "create"
+            },
+            {
+              "kind": "Method",
+              "canonicalReference": "@webex/internal-plugin-device!DeviceUrlInterceptor#onRequest:member(1)",
+              "docComment": "/**\n * @param options - \n *\n * @returns {Object}\n *\n * @see\n *\n * Interceptor#onRequest\n */\n",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "onRequest(options: "
+                },
+                {
+                  "kind": "Content",
+                  "text": "any"
+                },
+                {
+                  "kind": "Content",
+                  "text": "): "
+                },
+                {
+                  "kind": "Content",
+                  "text": "any"
+                },
+                {
+                  "kind": "Content",
+                  "text": ";"
+                }
+              ],
+              "isStatic": false,
+              "returnTypeTokenRange": {
+                "startIndex": 3,
+                "endIndex": 4
+              },
+              "releaseTag": "Public",
+              "isProtected": false,
+              "overloadIndex": 1,
+              "parameters": [
+                {
+                  "parameterName": "options",
+                  "parameterTypeTokenRange": {
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "isOptional": false
+                }
+              ],
+              "isOptional": false,
+              "isAbstract": false,
+              "name": "onRequest"
+            }
+          ],
+          "implementsTokenRanges": []
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@webex/internal-plugin-device!FeatureCollection:var",
+          "docComment": "/**\n * Feature collection model.\n *\n * @description This model contains a collection of features under a specific collection group.\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "FeatureCollection: "
+            },
+            {
+              "kind": "Content",
+              "text": "any"
+            }
+          ],
+          "fileUrlPath": "dist/types/features/feature-collection.d.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "FeatureCollection",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@webex/internal-plugin-device!FeatureModel:var",
+          "docComment": "/**\n * Feature model.\n *\n * @description This model contains details on a single feature and is received from the **WDM** service upon registration.\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "FeatureModel: "
+            },
+            {
+              "kind": "Content",
+              "text": "any"
+            }
+          ],
+          "fileUrlPath": "dist/types/features/feature-model.d.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "FeatureModel",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        },
+        {
+          "kind": "Variable",
+          "canonicalReference": "@webex/internal-plugin-device!FeaturesModel:var",
+          "docComment": "/**\n * Feature collection parent container.\n *\n * @description This class contains all of the feature collection class objects to help organize the data retrieved from the **wdm** service on device registration.\n */\n",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "FeaturesModel: "
+            },
+            {
+              "kind": "Content",
+              "text": "any"
+            }
+          ],
+          "fileUrlPath": "dist/types/features/features-model.d.ts",
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "FeaturesModel",
+          "variableTypeTokenRange": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        }
+      ]
+    }
+  ]
+}

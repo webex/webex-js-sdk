@@ -31,5 +31,10 @@
     "@webex/plugin-team-memberships": "workspace:^",
     "@webex/plugin-teams": "workspace:^",
     "@webex/webex-core": "workspace:^"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

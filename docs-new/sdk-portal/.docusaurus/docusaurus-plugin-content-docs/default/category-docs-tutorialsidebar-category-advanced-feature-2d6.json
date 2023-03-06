@@ -6,11 +6,11 @@
   "navigation": {
     "previous": {
       "title": "Use Case",
-      "permalink": "/docs/use-case"
+      "permalink": "/docs/meeting/use-case"
     },
     "next": {
       "title": "Create a Document",
-      "permalink": "/docs/Web/advancedFeature/create-a-document"
+      "permalink": "/docs/meeting/Web/advancedFeature/create-a-document"
     }
   }
 }

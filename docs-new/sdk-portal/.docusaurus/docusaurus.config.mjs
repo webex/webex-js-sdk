@@ -4,307 +4,361 @@
  * Modify the docusaurus.config.js file at your site's root instead.
  */
 export default {
-  title: 'Webex SDKs',
-  tagline: 'SDK dev portal',
-  favicon: 'img/favicon.ico',
-  url: 'https://your-docusaurus-test-site.com',
-  baseUrl: '/',
-  organizationName: 'webex',
-  projectName: 'webex-js-sdk',
-  onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
-  i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
-    path: 'i18n',
-    localeConfigs: {},
-  },
-  presets: [
-    [
-      'classic',
-      {
-        docs: {
-          sidebarPath: '/Users/arungane/SDK v3/WebSDKv3/docs-new/sdk-portal/sidebars.js',
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-        },
-        blog: {
-          showReadingTime: true,
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-        },
-        theme: {
-          customCss: '/Users/arungane/SDK v3/WebSDKv3/docs-new/sdk-portal/src/css/custom.css',
-        },
-      },
+  "title": "Webex SDKs",
+  "tagline": "SDK dev portal",
+  "favicon": "img/favicon.ico",
+  "url": "https://your-docusaurus-test-site.com",
+  "baseUrl": "/",
+  "organizationName": "webex",
+  "projectName": "webex-js-sdk",
+  "onBrokenLinks": "throw",
+  "onBrokenMarkdownLinks": "warn",
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": [
+      "en"
     ],
+    "path": "i18n",
+    "localeConfigs": {}
+  },
+  "presets": [
+    [
+      "classic",
+      {
+        "docs": {
+          "sidebarPath": "/Users/arungane/SDK v3/WebSDKv3/docs-new/sdk-portal/sidebars.js",
+          "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/"
+        },
+        "blog": false,
+        "theme": {
+          "customCss": "/Users/arungane/SDK v3/WebSDKv3/docs-new/sdk-portal/src/css/custom.css"
+        }
+      }
+    ]
   ],
-  themeConfig: {
-    image: 'img/docusaurus-social-card.jpg',
-    navbar: {
-      title: 'Webex SDKs',
-      logo: {
-        alt: 'My Site Logo',
-        src: 'img/logo.svg',
+  "themeConfig": {
+    "image": "img/docusaurus-social-card.jpg",
+    "navbar": {
+      "title": "Webex SDKs",
+      "logo": {
+        "alt": "My Site Logo",
+        "src": "img/logo.svg"
       },
-      items: [
+      "items": [
         {
-          type: 'doc',
-          docId: 'intro',
-          position: 'left',
-          label: 'Messaging',
+          "type": "doc",
+          "docId": "intro",
+          "position": "left",
+          "label": "Messaging"
         },
         {
-          type: 'doc',
-          docId: 'intro',
-          position: 'left',
-          label: 'Calling',
+          "type": "doc",
+          "docId": "intro",
+          "position": "left",
+          "label": "Calling"
         },
         {
-          type: 'doc',
-          docId: 'intro',
-          position: 'left',
-          label: 'Meeting',
+          "type": "doc",
+          "docId": "meeting/intro",
+          "position": "left",
+          "label": "Meeting"
         },
         {
-          to: '/blog',
-          label: 'Blog',
-          position: 'left',
+          "type": "doc",
+          "docId": "apis/web/index",
+          "position": "left",
+          "label": "Api"
         },
         {
-          href: 'https://github.com/facebook/docusaurus',
-          label: 'GitHub',
-          position: 'right',
-        },
+          "href": "https://github.com/facebook/docusaurus",
+          "label": "GitHub",
+          "position": "right"
+        }
       ],
-      hideOnScroll: false,
+      "hideOnScroll": false
     },
-    footer: {
-      style: 'dark',
-      links: [
+    "footer": {
+      "style": "dark",
+      "links": [
         {
-          title: 'Docs',
-          items: [
+          "title": "Docs",
+          "items": [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
-            },
-          ],
+              "label": "Tutorial",
+              "to": "/docs/intro"
+            }
+          ]
         },
         {
-          title: 'Community',
-          items: [
+          "title": "Community",
+          "items": [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              "label": "Stack Overflow",
+              "href": "https://stackoverflow.com/questions/tagged/docusaurus"
             },
             {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
+              "label": "Discord",
+              "href": "https://discordapp.com/invite/docusaurus"
             },
             {
-              label: 'Twitter',
-              href: 'https://twitter.com/docusaurus',
-            },
-          ],
+              "label": "Twitter",
+              "href": "https://twitter.com/docusaurus"
+            }
+          ]
         },
         {
-          title: 'More',
-          items: [
+          "title": "More",
+          "items": [
             {
-              label: 'Blog',
-              to: '/blog',
+              "label": "Blog",
+              "to": "/blog"
             },
             {
-              label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
-            },
-          ],
-        },
+              "label": "GitHub",
+              "href": "https://github.com/facebook/docusaurus"
+            }
+          ]
+        }
       ],
-      copyright: 'Copyright © 2023 My Project, Inc. Built with Docusaurus.',
+      "copyright": "Copyright © 2023 My Project, Inc. Built with Docusaurus."
     },
-    prism: {
-      theme: {
-        plain: {
-          color: '#393A34',
-          backgroundColor: '#f6f8fa',
+    "prism": {
+      "theme": {
+        "plain": {
+          "color": "#393A34",
+          "backgroundColor": "#f6f8fa"
         },
-        styles: [
+        "styles": [
           {
-            types: ['comment', 'prolog', 'doctype', 'cdata'],
-            style: {
-              color: '#999988',
-              fontStyle: 'italic',
-            },
-          },
-          {
-            types: ['namespace'],
-            style: {
-              opacity: 0.7,
-            },
-          },
-          {
-            types: ['string', 'attr-value'],
-            style: {
-              color: '#e3116c',
-            },
-          },
-          {
-            types: ['punctuation', 'operator'],
-            style: {
-              color: '#393A34',
-            },
-          },
-          {
-            types: [
-              'entity',
-              'url',
-              'symbol',
-              'number',
-              'boolean',
-              'variable',
-              'constant',
-              'property',
-              'regex',
-              'inserted',
+            "types": [
+              "comment",
+              "prolog",
+              "doctype",
+              "cdata"
             ],
-            style: {
-              color: '#36acaa',
-            },
+            "style": {
+              "color": "#999988",
+              "fontStyle": "italic"
+            }
           },
           {
-            types: ['atrule', 'keyword', 'attr-name', 'selector'],
-            style: {
-              color: '#00a4db',
-            },
+            "types": [
+              "namespace"
+            ],
+            "style": {
+              "opacity": 0.7
+            }
           },
           {
-            types: ['function', 'deleted', 'tag'],
-            style: {
-              color: '#d73a49',
-            },
+            "types": [
+              "string",
+              "attr-value"
+            ],
+            "style": {
+              "color": "#e3116c"
+            }
           },
           {
-            types: ['function-variable'],
-            style: {
-              color: '#6f42c1',
-            },
+            "types": [
+              "punctuation",
+              "operator"
+            ],
+            "style": {
+              "color": "#393A34"
+            }
           },
           {
-            types: ['tag', 'selector', 'keyword'],
-            style: {
-              color: '#00009f',
-            },
+            "types": [
+              "entity",
+              "url",
+              "symbol",
+              "number",
+              "boolean",
+              "variable",
+              "constant",
+              "property",
+              "regex",
+              "inserted"
+            ],
+            "style": {
+              "color": "#36acaa"
+            }
           },
-        ],
+          {
+            "types": [
+              "atrule",
+              "keyword",
+              "attr-name",
+              "selector"
+            ],
+            "style": {
+              "color": "#00a4db"
+            }
+          },
+          {
+            "types": [
+              "function",
+              "deleted",
+              "tag"
+            ],
+            "style": {
+              "color": "#d73a49"
+            }
+          },
+          {
+            "types": [
+              "function-variable"
+            ],
+            "style": {
+              "color": "#6f42c1"
+            }
+          },
+          {
+            "types": [
+              "tag",
+              "selector",
+              "keyword"
+            ],
+            "style": {
+              "color": "#00009f"
+            }
+          }
+        ]
       },
-      darkTheme: {
-        plain: {
-          color: '#F8F8F2',
-          backgroundColor: '#282A36',
+      "darkTheme": {
+        "plain": {
+          "color": "#F8F8F2",
+          "backgroundColor": "#282A36"
         },
-        styles: [
+        "styles": [
           {
-            types: ['prolog', 'constant', 'builtin'],
-            style: {
-              color: 'rgb(189, 147, 249)',
-            },
+            "types": [
+              "prolog",
+              "constant",
+              "builtin"
+            ],
+            "style": {
+              "color": "rgb(189, 147, 249)"
+            }
           },
           {
-            types: ['inserted', 'function'],
-            style: {
-              color: 'rgb(80, 250, 123)',
-            },
+            "types": [
+              "inserted",
+              "function"
+            ],
+            "style": {
+              "color": "rgb(80, 250, 123)"
+            }
           },
           {
-            types: ['deleted'],
-            style: {
-              color: 'rgb(255, 85, 85)',
-            },
+            "types": [
+              "deleted"
+            ],
+            "style": {
+              "color": "rgb(255, 85, 85)"
+            }
           },
           {
-            types: ['changed'],
-            style: {
-              color: 'rgb(255, 184, 108)',
-            },
+            "types": [
+              "changed"
+            ],
+            "style": {
+              "color": "rgb(255, 184, 108)"
+            }
           },
           {
-            types: ['punctuation', 'symbol'],
-            style: {
-              color: 'rgb(248, 248, 242)',
-            },
+            "types": [
+              "punctuation",
+              "symbol"
+            ],
+            "style": {
+              "color": "rgb(248, 248, 242)"
+            }
           },
           {
-            types: ['string', 'char', 'tag', 'selector'],
-            style: {
-              color: 'rgb(255, 121, 198)',
-            },
+            "types": [
+              "string",
+              "char",
+              "tag",
+              "selector"
+            ],
+            "style": {
+              "color": "rgb(255, 121, 198)"
+            }
           },
           {
-            types: ['keyword', 'variable'],
-            style: {
-              color: 'rgb(189, 147, 249)',
-              fontStyle: 'italic',
-            },
+            "types": [
+              "keyword",
+              "variable"
+            ],
+            "style": {
+              "color": "rgb(189, 147, 249)",
+              "fontStyle": "italic"
+            }
           },
           {
-            types: ['comment'],
-            style: {
-              color: 'rgb(98, 114, 164)',
-            },
+            "types": [
+              "comment"
+            ],
+            "style": {
+              "color": "rgb(98, 114, 164)"
+            }
           },
           {
-            types: ['attr-name'],
-            style: {
-              color: 'rgb(241, 250, 140)',
-            },
-          },
-        ],
+            "types": [
+              "attr-name"
+            ],
+            "style": {
+              "color": "rgb(241, 250, 140)"
+            }
+          }
+        ]
       },
-      additionalLanguages: [],
-      magicComments: [
+      "additionalLanguages": [],
+      "magicComments": [
         {
-          className: 'theme-code-block-highlighted-line',
-          line: 'highlight-next-line',
-          block: {
-            start: 'highlight-start',
-            end: 'highlight-end',
-          },
-        },
-      ],
+          "className": "theme-code-block-highlighted-line",
+          "line": "highlight-next-line",
+          "block": {
+            "start": "highlight-start",
+            "end": "highlight-end"
+          }
+        }
+      ]
     },
-    colorMode: {
-      defaultMode: 'light',
-      disableSwitch: false,
-      respectPrefersColorScheme: false,
+    "colorMode": {
+      "defaultMode": "light",
+      "disableSwitch": false,
+      "respectPrefersColorScheme": false
     },
-    docs: {
-      versionPersistence: 'localStorage',
-      sidebar: {
-        hideable: false,
-        autoCollapseCategories: false,
-      },
+    "docs": {
+      "versionPersistence": "localStorage",
+      "sidebar": {
+        "hideable": false,
+        "autoCollapseCategories": false
+      }
     },
-    metadata: [],
-    tableOfContents: {
-      minHeadingLevel: 2,
-      maxHeadingLevel: 3,
-    },
+    "metadata": [],
+    "tableOfContents": {
+      "minHeadingLevel": 2,
+      "maxHeadingLevel": 3
+    }
   },
-  baseUrlIssueBanner: true,
-  onDuplicateRoutes: 'warn',
-  staticDirectories: ['static'],
-  customFields: {},
-  plugins: [],
-  themes: [],
-  scripts: [],
-  headTags: [],
-  stylesheets: [],
-  clientModules: [],
-  titleDelimiter: '|',
-  noIndex: false,
-  markdown: {
-    mermaid: false,
-  },
+  "baseUrlIssueBanner": true,
+  "onDuplicateRoutes": "warn",
+  "staticDirectories": [
+    "static"
+  ],
+  "customFields": {},
+  "plugins": [],
+  "themes": [],
+  "scripts": [],
+  "headTags": [],
+  "stylesheets": [],
+  "clientModules": [],
+  "titleDelimiter": "|",
+  "noIndex": false,
+  "markdown": {
+    "mermaid": false
+  }
 };

@@ -27,5 +27,10 @@
     "@webex/test-helper-chai": "workspace:^",
     "ampersand-events": "^2.0.2",
     "sinon": "^9.2.4"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

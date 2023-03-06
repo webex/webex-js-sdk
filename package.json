@@ -27,9 +27,9 @@
     "clean": "rimraf packages/**/.coverage packages/**/dist packages/**/types",
     "prebuild": "yarn run clean",
     "build": "node ./tooling/index.js build && yarn run build:tsc",
-    "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/plugin-meetings run build",
+    "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/plugin-meetings run types",
     "build:script": "node ./tooling/index.js build --umd",
-    "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/plugin-meetings run build",
+    "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/plugin-meetings run types",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --format html --output ./docs/api --github ./packages/webex/src/index.js ./packages/@webex/plugin-*/src/index.[tj]s --babel=./babel.config.json",
@@ -60,7 +60,8 @@
     "release": "standard-version -a",
     "release:dry-run": "standard-version --dry-run",
     "depcheck": "./tooling/depcheck.js",
-    "docType": " yarn run tsc -p ./config/tsconfig.docs.json",
+    "docType": "yarn run tsc -p ./config/tsconfig.docs.json",
+    "api:doc": "node ./docs-new/sdk-portal/scripts/api-doc.js  && api-documenter markdown -o ./docs-new/sdk-portal/docs/apis/web -i ./docs-new/sdk-portal/static/apijson",
     "postinstall": "patch-package && husky install"
   },
   "devDependencies": {

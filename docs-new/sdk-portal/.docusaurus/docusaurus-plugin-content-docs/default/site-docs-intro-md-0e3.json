@@ -14,10 +14,5 @@
   "sidebarPosition": 1,
   "frontMatter": {
     "sidebar_position": 1
-  },
-  "sidebar": "tutorialSidebar",
-  "next": {
-    "title": "Developer Portal",
-    "permalink": "/docs/developer-account"
   }
 }

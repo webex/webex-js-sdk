@@ -29,5 +29,10 @@
     "@webex/storage-adapter-spec": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "localforage": "^1.7.3"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

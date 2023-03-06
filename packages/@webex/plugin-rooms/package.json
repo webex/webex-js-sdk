@@ -36,5 +36,10 @@
     "@webex/webex-core": "workspace:^",
     "debug": "^4.3.4",
     "lodash": "^4.17.21"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

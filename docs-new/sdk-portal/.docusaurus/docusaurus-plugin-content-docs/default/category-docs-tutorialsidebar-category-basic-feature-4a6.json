@@ -6,11 +6,11 @@
   "navigation": {
     "previous": {
       "title": "meetingFeature",
-      "permalink": "/docs/Web/advancedFeature/meetingFeature"
+      "permalink": "/docs/meeting/Web/advancedFeature/meetingFeature"
     },
     "next": {
       "title": "Create a Page",
-      "permalink": "/docs/Web/basicFeature/create-a-page"
+      "permalink": "/docs/meeting/Web/basicFeature/create-a-page"
     }
   }
 }

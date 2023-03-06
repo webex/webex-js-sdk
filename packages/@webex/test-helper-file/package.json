@@ -22,5 +22,10 @@
     "es6-promise": "^4.2.8",
     "file-type": "^16.0.1",
     "xhr": "^2.5.0"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

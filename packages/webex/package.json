@@ -1,6 +1,6 @@
 {
   "name": "webex",
-  "version": "3.0.0-beta.32",
+  "version": "3.0.0-beta.22",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -64,5 +64,10 @@
     "@webex/storage-adapter-local-storage": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "lodash": "^4.17.21"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

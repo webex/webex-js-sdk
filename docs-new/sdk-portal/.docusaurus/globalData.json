@@ -8,150 +8,2434 @@
           "label": "Next",
           "isLast": true,
           "path": "/docs",
-          "mainDocId": "intro",
+          "mainDocId": "meeting/intro",
           "docs": [
             {
-              "id": "authorization",
-              "path": "/docs/authorization",
-              "sidebar": "tutorialSidebar"
+              "id": "apis/intro",
+              "path": "/docs/apis/intro"
             },
             {
-              "id": "developer-account",
-              "path": "/docs/developer-account",
-              "sidebar": "tutorialSidebar"
+              "id": "apis/web/common-evented",
+              "path": "/docs/apis/web/common-evented"
+            },
+            {
+              "id": "apis/web/common-evented.evented",
+              "path": "/docs/apis/web/common-evented.evented"
+            },
+            {
+              "id": "apis/web/index",
+              "path": "/docs/apis/web/"
+            },
+            {
+              "id": "apis/web/internal-plugin-avatar",
+              "path": "/docs/apis/web/internal-plugin-avatar"
+            },
+            {
+              "id": "apis/web/internal-plugin-avatar.avatar",
+              "path": "/docs/apis/web/internal-plugin-avatar.avatar"
+            },
+            {
+              "id": "apis/web/internal-plugin-calendar",
+              "path": "/docs/apis/web/internal-plugin-calendar"
+            },
+            {
+              "id": "apis/web/internal-plugin-calendar.calendar",
+              "path": "/docs/apis/web/internal-plugin-calendar.calendar"
+            },
+            {
+              "id": "apis/web/internal-plugin-conversation",
+              "path": "/docs/apis/web/internal-plugin-conversation"
+            },
+            {
+              "id": "apis/web/internal-plugin-conversation.conversation",
+              "path": "/docs/apis/web/internal-plugin-conversation.conversation"
+            },
+            {
+              "id": "apis/web/internal-plugin-conversation.conversationerror",
+              "path": "/docs/apis/web/internal-plugin-conversation.conversationerror"
+            },
+            {
+              "id": "apis/web/internal-plugin-conversation.invalidusercreation",
+              "path": "/docs/apis/web/internal-plugin-conversation.invalidusercreation"
+            },
+            {
+              "id": "apis/web/internal-plugin-conversation.shareactivity",
+              "path": "/docs/apis/web/internal-plugin-conversation.shareactivity"
+            },
+            {
+              "id": "apis/web/internal-plugin-device",
+              "path": "/docs/apis/web/internal-plugin-device"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config",
+              "path": "/docs/apis/web/internal-plugin-device.config"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device",
+              "path": "/docs/apis/web/internal-plugin-device.config.device"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device.canregisterwaitduration",
+              "path": "/docs/apis/web/internal-plugin-device.config.device.canregisterwaitduration"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device.defaults",
+              "path": "/docs/apis/web/internal-plugin-device.config.device.defaults"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device.enableinactivityenforcement",
+              "path": "/docs/apis/web/internal-plugin-device.config.device.enableinactivityenforcement"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device.ephemeral",
+              "path": "/docs/apis/web/internal-plugin-device.config.device.ephemeral"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.config.device.ephemeraldevicettl",
+              "path": "/docs/apis/web/internal-plugin-device.config.device.ephemeraldevicettl"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants",
+              "path": "/docs/apis/web/internal-plugin-device.constants"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.cisco_device_url",
+              "path": "/docs/apis/web/internal-plugin-device.constants.cisco_device_url"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.device_event_registration_success",
+              "path": "/docs/apis/web/internal-plugin-device.constants.device_event_registration_success"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.device_events",
+              "path": "/docs/apis/web/internal-plugin-device.constants.device_events"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_collection_developer",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_collection_developer"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_collection_entitlement",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_collection_entitlement"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_collection_names",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_collection_names"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_collection_user",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_collection_user"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_types",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_types"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_types.boolean",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_types.boolean"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_types.number",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_types.number"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.constants.feature_types.string",
+              "path": "/docs/apis/web/internal-plugin-device.constants.feature_types.string"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.device",
+              "path": "/docs/apis/web/internal-plugin-device.device"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.deviceurlinterceptor",
+              "path": "/docs/apis/web/internal-plugin-device.deviceurlinterceptor"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.deviceurlinterceptor.create",
+              "path": "/docs/apis/web/internal-plugin-device.deviceurlinterceptor.create"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.deviceurlinterceptor.onrequest",
+              "path": "/docs/apis/web/internal-plugin-device.deviceurlinterceptor.onrequest"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.featurecollection",
+              "path": "/docs/apis/web/internal-plugin-device.featurecollection"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.featuremodel",
+              "path": "/docs/apis/web/internal-plugin-device.featuremodel"
+            },
+            {
+              "id": "apis/web/internal-plugin-device.featuresmodel",
+              "path": "/docs/apis/web/internal-plugin-device.featuresmodel"
+            },
+            {
+              "id": "apis/web/internal-plugin-dss",
+              "path": "/docs/apis/web/internal-plugin-dss"
+            },
+            {
+              "id": "apis/web/internal-plugin-dss.dss",
+              "path": "/docs/apis/web/internal-plugin-dss.dss"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery",
+              "path": "/docs/apis/web/internal-plugin-ediscovery"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.ediscovery",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.ediscovery"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.ediscoveryerror",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.ediscoveryerror"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.invalidemailaddresserror",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.invalidemailaddresserror"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.invalidemailaddresserror.geterrorcode",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.invalidemailaddresserror.geterrorcode"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest._constructor_",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest._constructor_"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.description",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.description"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.emails",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.emails"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.encryptionkeyurl",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.encryptionkeyurl"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.keywords",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.keywords"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.name",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.name"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.range",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.range"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.spacenames",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.spacenames"
+            },
+            {
+              "id": "apis/web/internal-plugin-ediscovery.reportrequest.userids",
+              "path": "/docs/apis/web/internal-plugin-ediscovery.reportrequest.userids"
+            },
+            {
+              "id": "apis/web/internal-plugin-feature",
+              "path": "/docs/apis/web/internal-plugin-feature"
+            },
+            {
+              "id": "apis/web/internal-plugin-feature.feature",
+              "path": "/docs/apis/web/internal-plugin-feature.feature"
+            },
+            {
+              "id": "apis/web/internal-plugin-flag",
+              "path": "/docs/apis/web/internal-plugin-flag"
+            },
+            {
+              "id": "apis/web/internal-plugin-flag.flag",
+              "path": "/docs/apis/web/internal-plugin-flag.flag"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm",
+              "path": "/docs/apis/web/internal-plugin-llm"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel._constructor_",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel._constructor_"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.disconnectllm",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.disconnectllm"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.getbinding",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.getbinding"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.getlocusurl",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.getlocusurl"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.isconnected",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.isconnected"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.namespace",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.namespace"
+            },
+            {
+              "id": "apis/web/internal-plugin-llm.llmchannel.registerandconnect",
+              "path": "/docs/apis/web/internal-plugin-llm.llmchannel.registerandconnect"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus",
+              "path": "/docs/apis/web/internal-plugin-locus"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.desync",
+              "path": "/docs/apis/web/internal-plugin-locus.desync"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.equal",
+              "path": "/docs/apis/web/internal-plugin-locus.equal"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.eventkeys",
+              "path": "/docs/apis/web/internal-plugin-locus.eventkeys"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.fetch",
+              "path": "/docs/apis/web/internal-plugin-locus.fetch"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.greater_than",
+              "path": "/docs/apis/web/internal-plugin-locus.greater_than"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.less_than",
+              "path": "/docs/apis/web/internal-plugin-locus.less_than"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.locus",
+              "path": "/docs/apis/web/internal-plugin-locus.locus"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.use_current",
+              "path": "/docs/apis/web/internal-plugin-locus.use_current"
+            },
+            {
+              "id": "apis/web/internal-plugin-locus.use_incoming",
+              "path": "/docs/apis/web/internal-plugin-locus.use_incoming"
+            },
+            {
+              "id": "apis/web/internal-plugin-lyra",
+              "path": "/docs/apis/web/internal-plugin-lyra"
+            },
+            {
+              "id": "apis/web/internal-plugin-lyra.config",
+              "path": "/docs/apis/web/internal-plugin-lyra.config"
+            },
+            {
+              "id": "apis/web/internal-plugin-lyra.config.lyra",
+              "path": "/docs/apis/web/internal-plugin-lyra.config.lyra"
+            },
+            {
+              "id": "apis/web/internal-plugin-lyra.lyra",
+              "path": "/docs/apis/web/internal-plugin-lyra.lyra"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics",
+              "path": "/docs/apis/web/internal-plugin-metrics"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config",
+              "path": "/docs/apis/web/internal-plugin-metrics.config"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.device",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.device"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.device.prediscoveryservices",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.device.prediscoveryservices"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.device.prediscoveryservices.metrics",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.device.prediscoveryservices.metrics"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.device.prediscoveryservices.metricsserviceurl",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.device.prediscoveryservices.metricsserviceurl"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1.apptype",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1.apptype"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1.batchermaxcalls",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1.batchermaxcalls"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1.batchermaxwait",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1.batchermaxwait"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1.batcherretryplateau",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1.batcherretryplateau"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.config.metrics_1.batcherwait",
+              "path": "/docs/apis/web/internal-plugin-metrics.config.metrics_1.batcherwait"
+            },
+            {
+              "id": "apis/web/internal-plugin-metrics.metrics",
+              "path": "/docs/apis/web/internal-plugin-metrics.metrics"
+            },
+            {
+              "id": "apis/web/internal-plugin-presence",
+              "path": "/docs/apis/web/internal-plugin-presence"
+            },
+            {
+              "id": "apis/web/internal-plugin-presence.presence",
+              "path": "/docs/apis/web/internal-plugin-presence.presence"
+            },
+            {
+              "id": "apis/web/internal-plugin-search",
+              "path": "/docs/apis/web/internal-plugin-search"
+            },
+            {
+              "id": "apis/web/internal-plugin-search.search",
+              "path": "/docs/apis/web/internal-plugin-search.search"
+            },
+            {
+              "id": "apis/web/internal-plugin-support",
+              "path": "/docs/apis/web/internal-plugin-support"
+            },
+            {
+              "id": "apis/web/internal-plugin-support.support",
+              "path": "/docs/apis/web/internal-plugin-support.support"
+            },
+            {
+              "id": "apis/web/internal-plugin-team",
+              "path": "/docs/apis/web/internal-plugin-team"
+            },
+            {
+              "id": "apis/web/internal-plugin-team.team",
+              "path": "/docs/apis/web/internal-plugin-team.team"
+            },
+            {
+              "id": "apis/web/internal-plugin-user",
+              "path": "/docs/apis/web/internal-plugin-user"
+            },
+            {
+              "id": "apis/web/internal-plugin-user.user",
+              "path": "/docs/apis/web/internal-plugin-user.user"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea",
+              "path": "/docs/apis/web/internal-plugin-voicea"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel._constructor_",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel._constructor_"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.deregisterevents",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.deregisterevents"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.namespace",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.namespace"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.requestlanguage",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.requestlanguage"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.setspokenlanguage",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.setspokenlanguage"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.toggletranscribing",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.toggletranscribing"
+            },
+            {
+              "id": "apis/web/internal-plugin-voicea.voiceachannel.turnoncaptions",
+              "path": "/docs/apis/web/internal-plugin-voicea.voiceachannel.turnoncaptions"
+            },
+            {
+              "id": "apis/web/plugin-attachment-actions",
+              "path": "/docs/apis/web/plugin-attachment-actions"
+            },
+            {
+              "id": "apis/web/plugin-attachment-actions.attachmentactions",
+              "path": "/docs/apis/web/plugin-attachment-actions.attachmentactions"
+            },
+            {
+              "id": "apis/web/plugin-authorization",
+              "path": "/docs/apis/web/plugin-authorization"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser",
+              "path": "/docs/apis/web/plugin-authorization-browser"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party.authorization",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party.authorization"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party.config",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party.config"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party.config.credentials",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party.config.credentials"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party.config.credentials.clienttype",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party.config.credentials.clienttype"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser-first-party.config.credentials.refreshcallback",
+              "path": "/docs/apis/web/plugin-authorization-browser-first-party.config.credentials.refreshcallback"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser.authorization",
+              "path": "/docs/apis/web/plugin-authorization-browser.authorization"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser.config",
+              "path": "/docs/apis/web/plugin-authorization-browser.config"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser.config.credentials",
+              "path": "/docs/apis/web/plugin-authorization-browser.config.credentials"
+            },
+            {
+              "id": "apis/web/plugin-authorization-browser.config.credentials.clienttype",
+              "path": "/docs/apis/web/plugin-authorization-browser.config.credentials.clienttype"
+            },
+            {
+              "id": "apis/web/plugin-authorization-node",
+              "path": "/docs/apis/web/plugin-authorization-node"
+            },
+            {
+              "id": "apis/web/plugin-authorization-node.authorization",
+              "path": "/docs/apis/web/plugin-authorization-node.authorization"
+            },
+            {
+              "id": "apis/web/plugin-authorization-node.config",
+              "path": "/docs/apis/web/plugin-authorization-node.config"
+            },
+            {
+              "id": "apis/web/plugin-authorization-node.config.credentials",
+              "path": "/docs/apis/web/plugin-authorization-node.config.credentials"
+            },
+            {
+              "id": "apis/web/plugin-device-manager",
+              "path": "/docs/apis/web/plugin-device-manager"
+            },
+            {
+              "id": "apis/web/plugin-device-manager.config",
+              "path": "/docs/apis/web/plugin-device-manager.config"
+            },
+            {
+              "id": "apis/web/plugin-device-manager.devicemanager",
+              "path": "/docs/apis/web/plugin-device-manager.devicemanager"
+            },
+            {
+              "id": "apis/web/plugin-logger",
+              "path": "/docs/apis/web/plugin-logger"
+            },
+            {
+              "id": "apis/web/plugin-logger.levels",
+              "path": "/docs/apis/web/plugin-logger.levels"
+            },
+            {
+              "id": "apis/web/plugin-logger.logger",
+              "path": "/docs/apis/web/plugin-logger.logger"
+            },
+            {
+              "id": "apis/web/plugin-logger.logger.client_logtobuffer",
+              "path": "/docs/apis/web/plugin-logger.logger.client_logtobuffer"
+            },
+            {
+              "id": "apis/web/plugin-logger.logger.logtobuffer",
+              "path": "/docs/apis/web/plugin-logger.logger.logtobuffer"
+            },
+            {
+              "id": "apis/web/plugin-meetings",
+              "path": "/docs/apis/web/plugin-meetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants",
+              "path": "/docs/apis/web/plugin-meetings.constants"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._active_",
+              "path": "/docs/apis/web/plugin-meetings.constants._active_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._answer_",
+              "path": "/docs/apis/web/plugin-meetings.constants._answer_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._call_",
+              "path": "/docs/apis/web/plugin-meetings.constants._call_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._conflict_",
+              "path": "/docs/apis/web/plugin-meetings.constants._conflict_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._conversation_url_",
+              "path": "/docs/apis/web/plugin-meetings.constants._conversation_url_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._created_",
+              "path": "/docs/apis/web/plugin-meetings.constants._created_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._error_",
+              "path": "/docs/apis/web/plugin-meetings.constants._error_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._forced_",
+              "path": "/docs/apis/web/plugin-meetings.constants._forced_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._id_",
+              "path": "/docs/apis/web/plugin-meetings.constants._id_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._idle_",
+              "path": "/docs/apis/web/plugin-meetings.constants._idle_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._in_",
+              "path": "/docs/apis/web/plugin-meetings.constants._in_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._in_lobby_",
+              "path": "/docs/apis/web/plugin-meetings.constants._in_lobby_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._in_meeting_",
+              "path": "/docs/apis/web/plugin-meetings.constants._in_meeting_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._inactive_",
+              "path": "/docs/apis/web/plugin-meetings.constants._inactive_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._incoming_",
+              "path": "/docs/apis/web/plugin-meetings.constants._incoming_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._join_",
+              "path": "/docs/apis/web/plugin-meetings.constants._join_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._joined_",
+              "path": "/docs/apis/web/plugin-meetings.constants._joined_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._left_",
+              "path": "/docs/apis/web/plugin-meetings.constants._left_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._locus_id_",
+              "path": "/docs/apis/web/plugin-meetings.constants._locus_id_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._meeting_",
+              "path": "/docs/apis/web/plugin-meetings.constants._meeting_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._meeting_center_",
+              "path": "/docs/apis/web/plugin-meetings.constants._meeting_center_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._meeting_id_",
+              "path": "/docs/apis/web/plugin-meetings.constants._meeting_id_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._meeting_link_",
+              "path": "/docs/apis/web/plugin-meetings.constants._meeting_link_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._meeting_uuid_",
+              "path": "/docs/apis/web/plugin-meetings.constants._meeting_uuid_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._move_media_",
+              "path": "/docs/apis/web/plugin-meetings.constants._move_media_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._none_",
+              "path": "/docs/apis/web/plugin-meetings.constants._none_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._not_in_meeting_",
+              "path": "/docs/apis/web/plugin-meetings.constants._not_in_meeting_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._observe_",
+              "path": "/docs/apis/web/plugin-meetings.constants._observe_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._people_",
+              "path": "/docs/apis/web/plugin-meetings.constants._people_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._personal_room_",
+              "path": "/docs/apis/web/plugin-meetings.constants._personal_room_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._receive_only_",
+              "path": "/docs/apis/web/plugin-meetings.constants._receive_only_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._remove_",
+              "path": "/docs/apis/web/plugin-meetings.constants._remove_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._requested_",
+              "path": "/docs/apis/web/plugin-meetings.constants._requested_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._resource_room_",
+              "path": "/docs/apis/web/plugin-meetings.constants._resource_room_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._room_",
+              "path": "/docs/apis/web/plugin-meetings.constants._room_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._s_line",
+              "path": "/docs/apis/web/plugin-meetings.constants._s_line"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._send_only_",
+              "path": "/docs/apis/web/plugin-meetings.constants._send_only_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._send_receive_",
+              "path": "/docs/apis/web/plugin-meetings.constants._send_receive_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._sip_bridge_",
+              "path": "/docs/apis/web/plugin-meetings.constants._sip_bridge_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._sip_uri_",
+              "path": "/docs/apis/web/plugin-meetings.constants._sip_uri_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._slides_",
+              "path": "/docs/apis/web/plugin-meetings.constants._slides_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._unknown_",
+              "path": "/docs/apis/web/plugin-meetings.constants._unknown_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._user_",
+              "path": "/docs/apis/web/plugin-meetings.constants._user_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._wait_",
+              "path": "/docs/apis/web/plugin-meetings.constants._wait_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants._webex_meeting_",
+              "path": "/docs/apis/web/plugin-meetings.constants._webex_meeting_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.alert",
+              "path": "/docs/apis/web/plugin-meetings.constants.alert"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.alternate_redirect_true",
+              "path": "/docs/apis/web/plugin-meetings.constants.alternate_redirect_true"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.answer",
+              "path": "/docs/apis/web/plugin-meetings.constants.answer"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.api",
+              "path": "/docs/apis/web/plugin-meetings.constants.api"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.audio",
+              "path": "/docs/apis/web/plugin-meetings.constants.audio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.audio_input",
+              "path": "/docs/apis/web/plugin-meetings.constants.audio_input"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.audio_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.audio_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.available_resolutions",
+              "path": "/docs/apis/web/plugin-meetings.constants.available_resolutions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.bnr_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.bnr_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.breakouts",
+              "path": "/docs/apis/web/plugin-meetings.constants.breakouts"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.calendar",
+              "path": "/docs/apis/web/plugin-meetings.constants.calendar"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.calendar_events",
+              "path": "/docs/apis/web/plugin-meetings.constants.calendar_events"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.calendar_events_api",
+              "path": "/docs/apis/web/plugin-meetings.constants.calendar_events_api"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.call",
+              "path": "/docs/apis/web/plugin-meetings.constants.call"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.call_removed_reason",
+              "path": "/docs/apis/web/plugin-meetings.constants.call_removed_reason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.claim",
+              "path": "/docs/apis/web/plugin-meetings.constants.claim"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.cmr_meetings",
+              "path": "/docs/apis/web/plugin-meetings.constants.cmr_meetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.complete",
+              "path": "/docs/apis/web/plugin-meetings.constants.complete"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.connection_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.connection_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.content",
+              "path": "/docs/apis/web/plugin-meetings.constants.content"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.controls",
+              "path": "/docs/apis/web/plugin-meetings.constants.controls"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.conversation_service",
+              "path": "/docs/apis/web/plugin-meetings.constants.conversation_service"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.conversation_url",
+              "path": "/docs/apis/web/plugin-meetings.constants.conversation_url"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.correlation_id",
+              "path": "/docs/apis/web/plugin-meetings.constants.correlation_id"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.decline",
+              "path": "/docs/apis/web/plugin-meetings.constants.decline"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.default_excluded_stats",
+              "path": "/docs/apis/web/plugin-meetings.constants.default_excluded_stats"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.default_get_stats_filter",
+              "path": "/docs/apis/web/plugin-meetings.constants.default_get_stats_filter"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.development",
+              "path": "/docs/apis/web/plugin-meetings.constants.development"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.dialer_regex",
+              "path": "/docs/apis/web/plugin-meetings.constants.dialer_regex"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.display_hints",
+              "path": "/docs/apis/web/plugin-meetings.constants.display_hints"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.embedded_app_types",
+              "path": "/docs/apis/web/plugin-meetings.constants.embedded_app_types"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.end",
+              "path": "/docs/apis/web/plugin-meetings.constants.end"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ended",
+              "path": "/docs/apis/web/plugin-meetings.constants.ended"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.error",
+              "path": "/docs/apis/web/plugin-meetings.constants.error"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.error_dictionary",
+              "path": "/docs/apis/web/plugin-meetings.constants.error_dictionary"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.event_triggers",
+              "path": "/docs/apis/web/plugin-meetings.constants.event_triggers"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.event_types",
+              "path": "/docs/apis/web/plugin-meetings.constants.event_types"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.events",
+              "path": "/docs/apis/web/plugin-meetings.constants.events"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.floor_action",
+              "path": "/docs/apis/web/plugin-meetings.constants.floor_action"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.full_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.full_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.gathering",
+              "path": "/docs/apis/web/plugin-meetings.constants.gathering"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.hecate",
+              "path": "/docs/apis/web/plugin-meetings.constants.hecate"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.host",
+              "path": "/docs/apis/web/plugin-meetings.constants.host"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.http_verbs",
+              "path": "/docs/apis/web/plugin-meetings.constants.http_verbs"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.https_protocol",
+              "path": "/docs/apis/web/plugin-meetings.constants.https_protocol"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ice_fail_timeout",
+              "path": "/docs/apis/web/plugin-meetings.constants.ice_fail_timeout"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ice_gathering_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.ice_gathering_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ice_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.ice_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ice_timeout",
+              "path": "/docs/apis/web/plugin-meetings.constants.ice_timeout"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.intent_to_join",
+              "path": "/docs/apis/web/plugin-meetings.constants.intent_to_join"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ipv4_regex",
+              "path": "/docs/apis/web/plugin-meetings.constants.ipv4_regex"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.join",
+              "path": "/docs/apis/web/plugin-meetings.constants.join"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.layout_types",
+              "path": "/docs/apis/web/plugin-meetings.constants.layout_types"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.leave",
+              "path": "/docs/apis/web/plugin-meetings.constants.leave"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.live",
+              "path": "/docs/apis/web/plugin-meetings.constants.live"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.local",
+              "path": "/docs/apis/web/plugin-meetings.constants.local"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.loci",
+              "path": "/docs/apis/web/plugin-meetings.constants.loci"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.locus",
+              "path": "/docs/apis/web/plugin-meetings.constants.locus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.locus_url",
+              "path": "/docs/apis/web/plugin-meetings.constants.locus_url"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.locusevent",
+              "path": "/docs/apis/web/plugin-meetings.constants.locusevent"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.locusinfo",
+              "path": "/docs/apis/web/plugin-meetings.constants.locusinfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.max_random_delay_for_meeting_info",
+              "path": "/docs/apis/web/plugin-meetings.constants.max_random_delay_for_meeting_info"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.media",
+              "path": "/docs/apis/web/plugin-meetings.constants.media"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.media_devices",
+              "path": "/docs/apis/web/plugin-meetings.constants.media_devices"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.media_peer_connection_name",
+              "path": "/docs/apis/web/plugin-meetings.constants.media_peer_connection_name"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.media_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.media_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.media_track_constraint",
+              "path": "/docs/apis/web/plugin-meetings.constants.media_track_constraint"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.mediacontent",
+              "path": "/docs/apis/web/plugin-meetings.constants.mediacontent"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meet",
+              "path": "/docs/apis/web/plugin-meetings.constants.meet"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meet_m",
+              "path": "/docs/apis/web/plugin-meetings.constants.meet_m"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_audio_state_machine",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_audio_state_machine"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_end_reason",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_end_reason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_errors",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_errors"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_info_failure_reason",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_info_failure_reason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_removed_reason",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_removed_reason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_state_machine",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_state_machine"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meeting_video_state_machine",
+              "path": "/docs/apis/web/plugin-meetings.constants.meeting_video_state_machine"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meetinginfo",
+              "path": "/docs/apis/web/plugin-meetings.constants.meetinginfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.meetings",
+              "path": "/docs/apis/web/plugin-meetings.constants.meetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.metrics_join_times_max_duration",
+              "path": "/docs/apis/web/plugin-meetings.constants.metrics_join_times_max_duration"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.moderator_false",
+              "path": "/docs/apis/web/plugin-meetings.constants.moderator_false"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.moderator_true",
+              "path": "/docs/apis/web/plugin-meetings.constants.moderator_true"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.mqa_inteval",
+              "path": "/docs/apis/web/plugin-meetings.constants.mqa_inteval"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.mqa_stats",
+              "path": "/docs/apis/web/plugin-meetings.constants.mqa_stats"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.network_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.network_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.network_type",
+              "path": "/docs/apis/web/plugin-meetings.constants.network_type"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.offline",
+              "path": "/docs/apis/web/plugin-meetings.constants.offline"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.online",
+              "path": "/docs/apis/web/plugin-meetings.constants.online"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.participant",
+              "path": "/docs/apis/web/plugin-meetings.constants.participant"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.participant_deltas",
+              "path": "/docs/apis/web/plugin-meetings.constants.participant_deltas"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.password_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.password_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.pc_bail_timeout",
+              "path": "/docs/apis/web/plugin-meetings.constants.pc_bail_timeout"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.peer_connection_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.peer_connection_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.provisional_type_dial_in",
+              "path": "/docs/apis/web/plugin-meetings.constants.provisional_type_dial_in"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.provisional_type_dial_out",
+              "path": "/docs/apis/web/plugin-meetings.constants.provisional_type_dial_out"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.pstn_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.pstn_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.quality_levels",
+              "path": "/docs/apis/web/plugin-meetings.constants.quality_levels"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.reachability",
+              "path": "/docs/apis/web/plugin-meetings.constants.reachability"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.ready",
+              "path": "/docs/apis/web/plugin-meetings.constants.ready"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.reconnection",
+              "path": "/docs/apis/web/plugin-meetings.constants.reconnection"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.recording_state",
+              "path": "/docs/apis/web/plugin-meetings.constants.recording_state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.remote",
+              "path": "/docs/apis/web/plugin-meetings.constants.remote"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.resource",
+              "path": "/docs/apis/web/plugin-meetings.constants.resource"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.retry_timeout",
+              "path": "/docs/apis/web/plugin-meetings.constants.retry_timeout"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.roap",
+              "path": "/docs/apis/web/plugin-meetings.constants.roap"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.self_roles",
+              "path": "/docs/apis/web/plugin-meetings.constants.self_roles"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.send_dtmf_endpoint",
+              "path": "/docs/apis/web/plugin-meetings.constants.send_dtmf_endpoint"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.sendrecv",
+              "path": "/docs/apis/web/plugin-meetings.constants.sendrecv"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.share",
+              "path": "/docs/apis/web/plugin-meetings.constants.share"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.share_peer_connection_name",
+              "path": "/docs/apis/web/plugin-meetings.constants.share_peer_connection_name"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.share_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.share_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.share_stopped_reason",
+              "path": "/docs/apis/web/plugin-meetings.constants.share_stopped_reason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.sip_uri",
+              "path": "/docs/apis/web/plugin-meetings.constants.sip_uri"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.stats",
+              "path": "/docs/apis/web/plugin-meetings.constants.stats"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.type",
+              "path": "/docs/apis/web/plugin-meetings.constants.type"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.use_uri_lookup_false",
+              "path": "/docs/apis/web/plugin-meetings.constants.use_uri_lookup_false"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.uuid_reg",
+              "path": "/docs/apis/web/plugin-meetings.constants.uuid_reg"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.valid_email_address",
+              "path": "/docs/apis/web/plugin-meetings.constants.valid_email_address"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.valid_pin",
+              "path": "/docs/apis/web/plugin-meetings.constants.valid_pin"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.valid_pmr_address",
+              "path": "/docs/apis/web/plugin-meetings.constants.valid_pmr_address"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.valid_pmr_link",
+              "path": "/docs/apis/web/plugin-meetings.constants.valid_pmr_link"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.video",
+              "path": "/docs/apis/web/plugin-meetings.constants.video"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.video_input",
+              "path": "/docs/apis/web/plugin-meetings.constants.video_input"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.video_resolutions",
+              "path": "/docs/apis/web/plugin-meetings.constants.video_resolutions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.video_status",
+              "path": "/docs/apis/web/plugin-meetings.constants.video_status"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.wbxappapi_service",
+              "path": "/docs/apis/web/plugin-meetings.constants.wbxappapi_service"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.webex_dot_com",
+              "path": "/docs/apis/web/plugin-meetings.constants.webex_dot_com"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.whiteboard",
+              "path": "/docs/apis/web/plugin-meetings.constants.whiteboard"
+            },
+            {
+              "id": "apis/web/plugin-meetings.constants.www_dot",
+              "path": "/docs/apis/web/plugin-meetings.constants.www_dot"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting",
+              "path": "/docs/apis/web/plugin-meetings.meeting"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default._constructor_",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default._constructor_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.acknowledge",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.acknowledge"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.addmedia",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.addmedia"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.admit",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.admit"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.attrs",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.attrs"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.audio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.audio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.breakouts",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.breakouts"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.callevents",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.callevents"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.cancelphoneinvite",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.cancelphoneinvite"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.canupdatemedia",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.canupdatemedia"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.changevideolayout",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.changevideolayout"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.clearmeetingdata",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.clearmeetingdata"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.closelocalshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.closelocalshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.closelocalstream",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.closelocalstream"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.closepeerconnections",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.closepeerconnections"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.closeremotestream",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.closeremotestream"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.closeremotetracks",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.closeremotetracks"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.controlsoptionsmanager",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.controlsoptionsmanager"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.conversationurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.conversationurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.correlationid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.correlationid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.createmediaconnection",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.createmediaconnection"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.decline",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.decline"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.deferjoin",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.deferjoin"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.destination",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.destination"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.destinationtype",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.destinationtype"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.deviceurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.deviceurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.dialindevicestatus",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.dialindevicestatus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.dialinurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.dialinurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.dialoutdevicestatus",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.dialoutdevicestatus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.dialouturl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.dialouturl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.disablebnr",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.disablebnr"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.disconnectphoneaudio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.disconnectphoneaudio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.effects",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.effects"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.enablebnr",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.enablebnr"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.endcallinitiatejoinreq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.endcallinitiatejoinreq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.endjoinreqresp",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.endjoinreqresp"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.endlocalsdpgenremotesdprecvdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.endlocalsdpgenremotesdprecvdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.endmeetingforall",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.endmeetingforall"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.fetchmeetinginfo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.fetchmeetinginfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.fetchmeetinginfotimeoutid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.fetchmeetinginfotimeoutid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.floorgrantpending",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.floorgrantpending"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.forwardevent",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.forwardevent"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getanalyzermetricsprepayload",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getanalyzermetricsprepayload"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getcallinitiatejoinreq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getcallinitiatejoinreq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getdevices",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getdevices"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getjoinreqresp",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getjoinreqresp"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getlocalsdpgenremotesdprecvdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getlocalsdpgenremotesdprecvdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getmediaconnectiondebugid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getmediaconnectiondebugid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getmediastreams",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getmediastreams"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getmembers",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getmembers"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getsendingmediadelayduration",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getsendingmediadelayduration"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getsetupdelayduration",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getsetupdelayduration"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.getsupporteddevices",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.getsupporteddevices"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.gettotaljmt",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.gettotaljmt"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.guest",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.guest"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.handledatachannelurlchange",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.handledatachannelurlchange"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.handleroapfailure",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.handleroapfailure"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.hasjoinedonce",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.hasjoinedonce"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.haswebsocketconnected",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.haswebsocketconnected"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.hostid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.hostid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.id",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.id"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.inmeetingactions",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.inmeetingactions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.invite",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.invite"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isaudioconnected",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isaudioconnected"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isaudiomuted",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isaudiomuted"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isaudioself",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isaudioself"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isbnrenabled",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isbnrenabled"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.islocalsharelive",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.islocalsharelive"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.ismultistream",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.ismultistream"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isreactionssupported",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isreactionssupported"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isroapinprogress",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isroapinprogress"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.issharing",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.issharing"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.istranscriptionsupported",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.istranscriptionsupported"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isvideoconnected",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isvideoconnected"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isvideomuted",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isvideomuted"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.isvideoself",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.isvideoself"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.join",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.join"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.joinedwith",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.joinedwith"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.joinwithmedia",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.joinwithmedia"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.keepalivetimerid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.keepalivetimerid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.lastvideolayoutinfo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.lastvideolayoutinfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.leave",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.leave"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.lockmeeting",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.lockmeeting"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.locusid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.locusid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.locusinfo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.locusinfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.locusurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.locusurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mediaconnections",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mediaconnections"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mediaid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mediaid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.medianegotiatedevent",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.medianegotiatedevent"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mediaproperties",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mediaproperties"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mediarequestmanagers",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mediarequestmanagers"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetingfinitestatemachine",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetingfinitestatemachine"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetinginfo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetinginfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetinginfofailurereason",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetinginfofailurereason"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetingjoinurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetingjoinurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetingnumber",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetingnumber"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetingrequest",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetingrequest"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.meetingstate",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.meetingstate"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.members",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.members"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.movefrom",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.movefrom"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.moveto",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.moveto"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mute",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mute"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.muteaudio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.muteaudio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.mutevideo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.mutevideo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.namespace",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.namespace"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.networkqualitymonitor",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.networkqualitymonitor"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.networkstatus",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.networkstatus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.options",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.options"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.orgid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.orgid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.owner",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.owner"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.parsemeetinginfo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.parsemeetinginfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.partner",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.partner"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.passwordstatus",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.passwordstatus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.pauserecording",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.pauserecording"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.permissiontoken",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.permissiontoken"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.policy",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.policy"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.processnextqueuedmediaupdate",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.processnextqueuedmediaupdate"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.publishtracks",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.publishtracks"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.queuedmediaupdates",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.queuedmediaupdates"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.receiveslotmanager",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.receiveslotmanager"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.reconnect",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.reconnect"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.reconnectionmanager",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.reconnectionmanager"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.recording",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.recording"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.recordingcontroller",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.recordingcontroller"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.refreshcaptcha",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.refreshcaptcha"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.remotemediamanager",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.remotemediamanager"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.remove",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.remove"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.requiredcaptcha",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.requiredcaptcha"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.resource",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.resource"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.resourceid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.resourceid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.resourceurl",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.resourceurl"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.resumerecording",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.resumerecording"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.roap",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.roap"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.roapseq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.roapseq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.selfid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.selfid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.senddtmf",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.senddtmf"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.sendreaction",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.sendreaction"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setdisallowunmute",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setdisallowunmute"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setendcallinitiatejoinreq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setendcallinitiatejoinreq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setendjoinreqresp",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setendjoinreqresp"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setendlocalsdpgenremotesdprecvdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setendlocalsdpgenremotesdprecvdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setendsendingmediadelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setendsendingmediadelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setendsetupdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setendsetupdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setlocalsharetrack",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setlocalsharetrack"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setlocaltracks",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setlocaltracks"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setlocalvideoquality",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setlocalvideoquality"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setmeetingquality",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setmeetingquality"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setmercurylistener",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setmercurylistener"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setmuteonentry",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setmuteonentry"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setremotequalitylevel",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setremotequalitylevel"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setsipuri",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setsipuri"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setstartcallinitiatejoinreq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setstartcallinitiatejoinreq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setstartjoinreqresp",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setstartjoinreqresp"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setstartlocalsdpgenremotesdprecvdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setstartlocalsdpgenremotesdprecvdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setstartsendingmediadelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setstartsendingmediadelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setstartsetupdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setstartsetupdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setupbreakoutslistener",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setupbreakoutslistener"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setupmediaconnectionlisteners",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setupmediaconnectionlisteners"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.setupstatsanalyzereventhandlers",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.setupstatsanalyzereventhandlers"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.sharescreen",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.sharescreen"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.sharestatus",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.sharestatus"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.sipuri",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.sipuri"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startcallinitiatejoinreq",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startcallinitiatejoinreq"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startjoinreqresp",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startjoinreqresp"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startkeepalive",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startkeepalive"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startlocalsdpgenremotesdprecvdelay",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startlocalsdpgenremotesdprecvdelay"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startrecording",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startrecording"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.startwhiteboardshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.startwhiteboardshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.state",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.state"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.statsanalyzer",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.statsanalyzer"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.stopkeepalive",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.stopkeepalive"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.stopreceivingtranscription",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.stopreceivingtranscription"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.stoprecording",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.stoprecording"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.stopshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.stopshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.stopwhiteboardshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.stopwhiteboardshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.togglereactions",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.togglereactions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.transcription",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.transcription"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.transfer",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.transfer"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.type",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.type"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unlockmeeting",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unlockmeeting"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unmuteaudio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unmuteaudio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unmutevideo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unmutevideo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unpublishtracks",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unpublishtracks"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unsetlocalsharetrack",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unsetlocalsharetrack"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unsetlocalvideotrack",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unsetlocalvideotrack"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unsetpeerconnections",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unsetpeerconnections"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unsetremotestream",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unsetremotestream"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.unsetremotetracks",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.unsetremotetracks"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updateaudio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updateaudio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updatellmconnection",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updatellmconnection"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updatemedia",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updatemedia"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updatemediaconnections",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updatemediaconnections"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updateshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updateshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.updatevideo",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.updatevideo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.uploadlogs",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.uploadlogs"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.usephoneaudio",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.usephoneaudio"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.userid",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.userid"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.verifypassword",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.verifypassword"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.video",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.video"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.default.wirelessshare",
+              "path": "/docs/apis/web/plugin-meetings.meeting.default.wirelessshare"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meeting.media_update_type",
+              "path": "/docs/apis/web/plugin-meetings.meeting.media_update_type"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings",
+              "path": "/docs/apis/web/plugin-meetings.meetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings._constructor_",
+              "path": "/docs/apis/web/plugin-meetings.meetings._constructor_"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.create",
+              "path": "/docs/apis/web/plugin-meetings.meetings.create"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.fetchuserpreferredwebexsite",
+              "path": "/docs/apis/web/plugin-meetings.meetings.fetchuserpreferredwebexsite"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.geohintinfo",
+              "path": "/docs/apis/web/plugin-meetings.meetings.geohintinfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getallmeetings",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getallmeetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getgeohint",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getgeohint"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getlogger",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getlogger"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getmeetingbytype",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getmeetingbytype"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getpersonalmeetingroom",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getpersonalmeetingroom"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getreachability",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getreachability"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.getscheduledmeetings",
+              "path": "/docs/apis/web/plugin-meetings.meetings.getscheduledmeetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.loggerrequest",
+              "path": "/docs/apis/web/plugin-meetings.meetings.loggerrequest"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.media",
+              "path": "/docs/apis/web/plugin-meetings.meetings.media"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.meetingcollection",
+              "path": "/docs/apis/web/plugin-meetings.meetings.meetingcollection"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.meetinginfo",
+              "path": "/docs/apis/web/plugin-meetings.meetings.meetinginfo"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.namespace",
+              "path": "/docs/apis/web/plugin-meetings.meetings.namespace"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.personalmeetingroom",
+              "path": "/docs/apis/web/plugin-meetings.meetings.personalmeetingroom"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.preferredwebexsite",
+              "path": "/docs/apis/web/plugin-meetings.meetings.preferredwebexsite"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.reachability",
+              "path": "/docs/apis/web/plugin-meetings.meetings.reachability"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.register",
+              "path": "/docs/apis/web/plugin-meetings.meetings.register"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.registered",
+              "path": "/docs/apis/web/plugin-meetings.meetings.registered"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.request",
+              "path": "/docs/apis/web/plugin-meetings.meetings.request"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.setreachability",
+              "path": "/docs/apis/web/plugin-meetings.meetings.setreachability"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.startreachability",
+              "path": "/docs/apis/web/plugin-meetings.meetings.startreachability"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.syncmeetings",
+              "path": "/docs/apis/web/plugin-meetings.meetings.syncmeetings"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.unregister",
+              "path": "/docs/apis/web/plugin-meetings.meetings.unregister"
+            },
+            {
+              "id": "apis/web/plugin-meetings.meetings.uploadlogs",
+              "path": "/docs/apis/web/plugin-meetings.meetings.uploadlogs"
+            },
+            {
+              "id": "apis/web/plugin-meetings.reactions",
+              "path": "/docs/apis/web/plugin-meetings.reactions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.reactions.reactions",
+              "path": "/docs/apis/web/plugin-meetings.reactions.reactions"
+            },
+            {
+              "id": "apis/web/plugin-meetings.reactions.skintones",
+              "path": "/docs/apis/web/plugin-meetings.reactions.skintones"
+            },
+            {
+              "id": "apis/web/plugin-meetings.triggerproxy",
+              "path": "/docs/apis/web/plugin-meetings.triggerproxy"
+            },
+            {
+              "id": "apis/web/plugin-memberships",
+              "path": "/docs/apis/web/plugin-memberships"
+            },
+            {
+              "id": "apis/web/plugin-memberships.memberships",
+              "path": "/docs/apis/web/plugin-memberships.memberships"
+            },
+            {
+              "id": "apis/web/plugin-messages",
+              "path": "/docs/apis/web/plugin-messages"
+            },
+            {
+              "id": "apis/web/plugin-messages.messages",
+              "path": "/docs/apis/web/plugin-messages.messages"
+            },
+            {
+              "id": "apis/web/plugin-people",
+              "path": "/docs/apis/web/plugin-people"
+            },
+            {
+              "id": "apis/web/plugin-people.people",
+              "path": "/docs/apis/web/plugin-people.people"
+            },
+            {
+              "id": "apis/web/plugin-rooms",
+              "path": "/docs/apis/web/plugin-rooms"
+            },
+            {
+              "id": "apis/web/plugin-rooms.rooms",
+              "path": "/docs/apis/web/plugin-rooms.rooms"
+            },
+            {
+              "id": "apis/web/plugin-team-memberships",
+              "path": "/docs/apis/web/plugin-team-memberships"
+            },
+            {
+              "id": "apis/web/plugin-team-memberships.teammemberships",
+              "path": "/docs/apis/web/plugin-team-memberships.teammemberships"
+            },
+            {
+              "id": "apis/web/plugin-teams",
+              "path": "/docs/apis/web/plugin-teams"
+            },
+            {
+              "id": "apis/web/plugin-teams.teams",
+              "path": "/docs/apis/web/plugin-teams.teams"
+            },
+            {
+              "id": "apis/web/plugin-webhooks",
+              "path": "/docs/apis/web/plugin-webhooks"
+            },
+            {
+              "id": "apis/web/plugin-webhooks.webhooks",
+              "path": "/docs/apis/web/plugin-webhooks.webhooks"
+            },
+            {
+              "id": "apis/web/recipe-private-web-client",
+              "path": "/docs/apis/web/recipe-private-web-client"
+            },
+            {
+              "id": "apis/web/recipe-private-web-client.webex",
+              "path": "/docs/apis/web/recipe-private-web-client.webex"
             },
             {
               "id": "intro",
-              "path": "/docs/intro",
-              "sidebar": "tutorialSidebar"
+              "path": "/docs/intro"
             },
             {
-              "id": "use-case",
-              "path": "/docs/use-case",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/authorization",
+              "path": "/docs/meeting/authorization",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/Ad-hoc-Space-Meetings",
-              "path": "/docs/Web/advancedFeature/Ad-hoc-Space-Meetings",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/developer-account",
+              "path": "/docs/meeting/developer-account",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/create-a-document",
-              "path": "/docs/Web/advancedFeature/create-a-document",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/intro",
+              "path": "/docs/meeting/intro",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/deploy-your-site",
-              "path": "/docs/Web/advancedFeature/deploy-your-site",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/use-case",
+              "path": "/docs/meeting/use-case",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/effects",
-              "path": "/docs/Web/advancedFeature/effects",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "path": "/docs/meeting/Web/advancedFeature/Ad-hoc-Space-Meetings",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/mediaQuality",
-              "path": "/docs/Web/advancedFeature/mediaQuality",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/create-a-document",
+              "path": "/docs/meeting/Web/advancedFeature/create-a-document",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/meetingFeature",
-              "path": "/docs/Web/advancedFeature/meetingFeature",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/deploy-your-site",
+              "path": "/docs/meeting/Web/advancedFeature/deploy-your-site",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/TLS-443-Support",
-              "path": "/docs/Web/advancedFeature/TLS-443-Support",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/effects",
+              "path": "/docs/meeting/Web/advancedFeature/effects",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/advancedFeature/Unified-Space-Meetings-(USM)",
-              "path": "/docs/Web/advancedFeature/Unified-Space-Meetings-(USM)",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/mediaQuality",
+              "path": "/docs/meeting/Web/advancedFeature/mediaQuality",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/Background-Noise-Reduction",
-              "path": "/docs/Web/basicFeature/Background-Noise-Reduction",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/meetingFeature",
+              "path": "/docs/meeting/Web/advancedFeature/meetingFeature",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/create-a-blog-post",
-              "path": "/docs/Web/basicFeature/create-a-blog-post",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/TLS-443-Support",
+              "path": "/docs/meeting/Web/advancedFeature/TLS-443-Support",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/create-a-page",
-              "path": "/docs/Web/basicFeature/create-a-page",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "path": "/docs/meeting/Web/advancedFeature/Unified-Space-Meetings-(USM)",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/guestIssuer",
-              "path": "/docs/Web/basicFeature/guestIssuer",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/Background-Noise-Reduction",
+              "path": "/docs/meeting/Web/basicFeature/Background-Noise-Reduction",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/joinMeeting",
-              "path": "/docs/Web/basicFeature/joinMeeting",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/create-a-blog-post",
+              "path": "/docs/meeting/Web/basicFeature/create-a-blog-post",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
-              "path": "/docs/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/create-a-page",
+              "path": "/docs/meeting/Web/basicFeature/create-a-page",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/schedulemeeting",
-              "path": "/docs/Web/basicFeature/schedulemeeting",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/guestIssuer",
+              "path": "/docs/meeting/Web/basicFeature/guestIssuer",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/screenshare",
-              "path": "/docs/Web/basicFeature/screenshare",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/joinMeeting",
+              "path": "/docs/meeting/Web/basicFeature/joinMeeting",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/token",
-              "path": "/docs/Web/basicFeature/token",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "path": "/docs/meeting/Web/basicFeature/Password---Captcha-Flow-in-Web-JS-SDK",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/trackmanagement",
-              "path": "/docs/Web/basicFeature/trackmanagement",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/schedulemeeting",
+              "path": "/docs/meeting/Web/basicFeature/schedulemeeting",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/basicFeature/Webex-Transcription",
-              "path": "/docs/Web/basicFeature/Webex-Transcription",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/screenshare",
+              "path": "/docs/meeting/Web/basicFeature/screenshare",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/introduction",
-              "path": "/docs/Web/introduction",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/token",
+              "path": "/docs/meeting/Web/basicFeature/token",
+              "sidebar": "meeting"
             },
             {
-              "id": "Web/markdown-features",
-              "path": "/docs/Web/markdown-features",
-              "sidebar": "tutorialSidebar"
+              "id": "meeting/Web/basicFeature/trackmanagement",
+              "path": "/docs/meeting/Web/basicFeature/trackmanagement",
+              "sidebar": "meeting"
+            },
+            {
+              "id": "meeting/Web/basicFeature/Webex-Transcription",
+              "path": "/docs/meeting/Web/basicFeature/Webex-Transcription",
+              "sidebar": "meeting"
+            },
+            {
+              "id": "meeting/Web/introduction",
+              "path": "/docs/meeting/Web/introduction",
+              "sidebar": "meeting"
+            },
+            {
+              "id": "meeting/Web/markdown-features",
+              "path": "/docs/meeting/Web/markdown-features",
+              "sidebar": "meeting"
             },
             {
               "id": "/category/advanced-feature",
               "path": "/docs/category/advanced-feature",
-              "sidebar": "tutorialSidebar"
+              "sidebar": "meeting"
             },
             {
               "id": "/category/basic-feature",
               "path": "/docs/category/basic-feature",
-              "sidebar": "tutorialSidebar"
+              "sidebar": "meeting"
             }
           ],
           "draftIds": [],
           "sidebars": {
-            "tutorialSidebar": {
+            "meeting": {
               "link": {
-                "path": "/docs/intro",
-                "label": "intro"
+                "path": "/docs/meeting/intro",
+                "label": "meeting/intro"
               }
             }
           }

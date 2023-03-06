@@ -70,5 +70,10 @@
     "response-time": "^2.3.2",
     "supertest": "^3.4.2",
     "uuid": "^3.3.2"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

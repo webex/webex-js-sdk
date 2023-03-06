@@ -51,5 +51,10 @@
     "safe-buffer": "^5.2.0",
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }

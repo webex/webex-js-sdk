@@ -57,5 +57,10 @@
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
+  },
+  "scripts": {
+    "types": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "doc:api": "api-extractor run --local --verbose",
+    "doc:md": "api-documenter markdown -o ./api/markdown -i ./api"
   }
 }
