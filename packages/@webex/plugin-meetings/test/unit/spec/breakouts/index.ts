@@ -1,7 +1,5 @@
 import {assert, expect} from '@webex/test-helper-chai';
-import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-import BreakoutCollection from '@webex/plugin-meetings/src/breakouts/collection';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {BREAKOUTS} from '@webex/plugin-meetings/src/constants';
 import sinon from 'sinon';
@@ -496,20 +494,36 @@ describe('plugin-meetings', () => {
         );
 
         breakouts.set('url', 'url');
-        breakouts.breakoutGroupId = 'breakoutGroupId';
+        await breakouts.getBreakout();
 
         const result = await breakouts.start();
         await breakouts.start({id: 'id', someOtherParam: 'someOtherParam'});
 
-        const arg = webex.request.getCall(0).args[0];
+        const arg = webex.request.getCall(1).args[0];
         const argObj1 = arg.body.groups[0];
-        const argObj2 = webex.request.getCall(1).args[0].body.groups[0];
+        const argObj2 = webex.request.getCall(2).args[0].body.groups[0];
 
         assert.equal(arg.uri, 'url');
         assert.equal(arg.method, 'PUT');
-        assert.deepEqual(argObj1, {id:'breakoutGroupId', action: 'START', allowBackToMain: false, allowToJoinLater: false});
+        assert.deepEqual(argObj1, {id:'groupId', action: 'START', allowBackToMain: false, allowToJoinLater: false});
         assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam'});
         assert.deepEqual(result, {body: getBOResponse('OPEN')});
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.start(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+
       });
     });
 
@@ -522,20 +536,36 @@ describe('plugin-meetings', () => {
         );
 
         breakouts.set('url', 'url');
-        breakouts.breakoutGroupId = 'breakoutGroupId';
         breakouts.set('delayCloseTime', 60);
+        await breakouts.getBreakout();
 
         const result = await breakouts.end();
         await breakouts.end({id: 'id', someOtherParam: 'someOtherParam'});
-        const arg = webex.request.getCall(0).args[0];
+        const arg = webex.request.getCall(1).args[0];
         const argObj1 = arg.body.groups[0];
-        const argObj2 = webex.request.getCall(1).args[0].body.groups[0];
+        const argObj2 = webex.request.getCall(2).args[0].body.groups[0];
 
         assert.equal(arg.uri, 'url');
         assert.equal(arg.method, 'PUT');
-        assert.deepEqual(argObj1, {id:'breakoutGroupId', action: 'CLOSE', delayCloseTime: 60});
+        assert.deepEqual(argObj1, {id:'groupId', action: 'CLOSE', delayCloseTime: 60});
         assert.deepEqual(argObj2, {id:'id', action: 'CLOSE', delayCloseTime: 60, someOtherParam: 'someOtherParam'});
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.end(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+
       });
     });
 
@@ -557,6 +587,8 @@ describe('plugin-meetings', () => {
         assert.equal(arg2.uri, 'url?editlock=true');
         assert.equal(arg1.method, 'GET');
         assert.deepEqual(result, {body: getBOResponse('PENDING')});
+        assert.deepEqual(breakouts.groups, result.body.groups);
+        assert.equal(breakouts.breakoutGroupId, 'groupId');
       });
     });
 

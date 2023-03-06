@@ -2652,8 +2652,8 @@ const createBreakoutOperations = ()=>{
         if(res.body.groups?.length){
           groupId = res.body.groups[0].id;
         }else{
-          const obj = [{'sessions': [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}]}];
-          meeting.breakouts.create(obj).then((res)=>{
+          const sessions = [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}];
+          meeting.breakouts.create(sessions).then((res)=>{
             groupId = res.body.groups[0].id;
           })
         }
@@ -2663,17 +2663,17 @@ const createBreakoutOperations = ()=>{
       endBtn.disabled = false;
       startBtn.disabled = true;
       if(groupId){
-          meeting.breakouts.start({id: groupId});
+          meeting.breakouts.start();
       }else{
         meeting.breakouts.getBreakout().then((res)=>{
-          meeting.breakouts.start({id: res.body.groups[0].id});
+          meeting.breakouts.start();
         })
       }
     });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;
       countDown = countDown<0?0:countDown;
-      meeting.breakouts.end({id: groupId});
+      meeting.breakouts.end();
       setTimeout(()=>{
         endBtn.disabled = true;
         startBtn.disabled = false;
@@ -2710,7 +2710,7 @@ function toggleBreakout() {
   const createOneBreakoutSessionButton = (breakoutSession) => {
     const button = document.createElement('button');
 
-    button.innerText = 'CreateOneBreakoutSession';
+    button.innerText = 'Create One Breakout Session';
     button.id = 'btn-creatBreakout';
 
     button.onclick = () => {
@@ -2718,6 +2718,7 @@ function toggleBreakout() {
       breakoutSession.create(sessions).then((result)=>{
         if (result.body.groups) {
           button.disabled = true;
+          document.getElementById('startBtn').disabled = false;
         }
       }).catch((error) => {
         console.error('Breatout#createOneBreakoutSession :: ', error.sdkMessage);
@@ -2748,6 +2749,7 @@ function toggleBreakout() {
 
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
+    document.getElementById('createBO').disabled = !enableBox.checked;
     if(enableBox.checked) {
       newBreakoutDiv.appendChild(createOneBreakoutSessionButton(meeting.breakouts));
       newBreakoutDiv.appendChild(createDeleteSessionButton(meeting.breakouts));

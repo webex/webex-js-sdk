@@ -10,7 +10,7 @@ import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
-import BreakoutEditLockedError from './edit-lock-error';
+import {boServiceErrorHandler} from './utils';
 
 /**
  * @class Breakouts
@@ -61,10 +61,7 @@ const Breakouts = WebexPlugin.extend({
        */
       fn() {
         if (this.groups?.length) {
-          const activedGroup = this.groups.find(({a}) => a !== 'CLOSED');
-          if (activedGroup) {
-            return activedGroup.id;
-          }
+          return this.groups[0].id;
         }
 
         return '';
@@ -388,13 +385,7 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
-          LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
-
-          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
-        }
-
-        return Promise.reject(error);
+        return Promise.reject(boServiceErrorHandler(error));
       });
 
     if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
@@ -423,16 +414,10 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
-          LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
-
-          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
-        }
-
-        return Promise.reject(error);
+        return Promise.reject(boServiceErrorHandler(error));
       });
 
-    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+    if (breakInfo.body?.groups) {
       this.set('groups', breakInfo.body.groups);
     }
 
@@ -460,6 +445,8 @@ const Breakouts = WebexPlugin.extend({
       body: {
         groups: [payload],
       },
+    }).catch((error) => {
+      return Promise.reject(boServiceErrorHandler(error));
     });
   },
 
@@ -484,6 +471,8 @@ const Breakouts = WebexPlugin.extend({
       body: {
         groups: [payload],
       },
+    }).catch((error) => {
+      return Promise.reject(boServiceErrorHandler(error));
     });
   },
 
@@ -492,11 +481,17 @@ const Breakouts = WebexPlugin.extend({
    * @param {boolean} editlock -- lock operations of the breakout sessions
    * @returns {Promise}
    */
-  getBreakout(editlock) {
-    return this.request({
+  async getBreakout(editlock) {
+    const breakout = await this.request({
       method: HTTP_VERBS.GET,
       uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
     });
+
+    if (breakout.body?.groups) {
+      this.set('groups', breakout.body.groups);
+    }
+
+    return breakout;
   },
 });
 
