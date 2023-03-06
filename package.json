@@ -12,7 +12,7 @@
     "./packages/webex",
     "./packages/config/*",
     "./packages/legacy/*",
-    "./packages/tools/*"
+    "./packages/tools/cli-tools"
   ],
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
