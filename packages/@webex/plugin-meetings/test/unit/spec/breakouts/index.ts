@@ -47,7 +47,7 @@ const getBOResponse = (status: string) => {
   };
 };
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -456,6 +456,12 @@ describe('plugin-meetings', () => {
     describe('#broadcast',  () => {
       it('makes the request as expected', async () => {
         breakouts.breakoutRequest.broadcast = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('OPEN'),
+          })
+        );
+        await breakouts.getBreakout();
         let result = await breakouts.broadcast('hello');
         assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
           url: 'url',
