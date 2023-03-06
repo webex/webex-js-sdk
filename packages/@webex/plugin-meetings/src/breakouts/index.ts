@@ -291,9 +291,7 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   broadcast(message, options) {
-    const breakoutGroupId = this.isInMainSession
-      ? this.breakouts.filter((breakout) => !breakout.isMain)[0]?.groupId
-      : this.groupId;
+    const {breakoutGroupId} = this;
     if (!breakoutGroupId) {
       throw new Error('Cannot broadcast, no breakout session found');
     }
@@ -388,7 +386,7 @@ const Breakouts = WebexPlugin.extend({
         return Promise.reject(boServiceErrorHandler(error));
       });
 
-    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+    if (breakInfo.body?.groups) {
       this.set('groups', breakInfo.body.groups);
     }
 

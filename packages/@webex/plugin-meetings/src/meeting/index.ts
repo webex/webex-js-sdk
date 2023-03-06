@@ -512,8 +512,6 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-  breakoutServiceUrl: string;
-  breakoutInfo: any;
 
   namespace = MEETINGS;
 
@@ -7189,45 +7187,6 @@ export default class Meeting extends StatelessWebexPlugin {
       enable,
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
-    });
-  }
-
-  /**
-   * Make enable breakout resource
-   * return breakout resource info
-   * @returns {Promise}
-   */
-  private async enableBreakout() {
-    const breakoutUrl = `${this.breakoutServiceUrl}/breakout/`;
-
-    await this.meetingRequest
-      .enableBreakout({breakoutUrl, locusUrl: this.locusUrl})
-      .then((response) => {
-        this.breakoutInfo = response.body;
-      });
-  }
-
-  /**
-   * Method to enable or disable the meeting breakout session
-   * @param  {boolean} enable - enable or disable breakout
-   * @returns {Promise}
-   * @public
-   * @memberof Meeting
-   */
-  public toggleBreakout(enable: boolean) {
-    const breakoutResource = this.locusInfo?.controls?.breakout;
-
-    if (!breakoutResource) {
-      this.enableBreakout();
-    } else {
-      this.breakoutInfo = this.locusInfo?.controls?.breakout;
-    }
-
-    const breakoutUrl = this.breakoutInfo.url;
-
-    return this.meetingRequest.toggleBreakout({
-      enable,
-      breakoutUrl,
     });
   }
 
