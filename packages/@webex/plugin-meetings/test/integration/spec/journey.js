@@ -591,10 +591,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: bob.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'SCREEN SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
           testUtils
             .waitForEvents([{scope: alice.meeting, event: 'media:ready'}])
@@ -631,10 +631,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'SCREEN SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
           testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]).then((response) => {
             console.log('MEDIA:READY event ', response[0].result);
@@ -692,10 +692,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: bob.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'WHITEBOARD SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'WHITEBOARD SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
         ]).then(() => {
           assert.equal(alice.meeting.isSharing, false);
@@ -720,10 +720,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'WHITEBOARD SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'WHITEBOARD SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
         ]).then(() => {
           assert.equal(bob.meeting.isSharing, false);
@@ -765,10 +765,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: bob.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'WHITEBOARD SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'WHITEBOARD SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
         ]).then(() => {
           assert.equal(alice.meeting.isSharing, false);
@@ -791,10 +791,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'SCREEN SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
           testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]).then((response) => {
             console.log('MEDIA:READY event ', response[0].result);
@@ -834,10 +834,10 @@ skipInNode(describe)('plugin-meetings', () => {
           testUtils
             .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
             .then((response) => {
-              console.log(
-                'WHITEBOARD SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
+              // console.log(
+              //   'WHITEBOARD SHARE RESPONSE ',
+              //   JSON.stringify(response, testUtils.getCircularReplacer())
+              // );
             }),
         ]).then(() => {
           assert.equal(bob.meeting.isSharing, false);
