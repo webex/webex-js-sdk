@@ -128,6 +128,8 @@ const Support = WebexPlugin.extend({
       'correlationId',
       'meetingId',
       'surveySessionId',
+      'productAreaTag',
+      'issueTypeTag',
     ]
       .map((key) => {
         if (metadata[key]) {
