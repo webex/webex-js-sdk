@@ -45,44 +45,59 @@ A `jasmine.config.js` configuration file must be consumed within the target pack
 const Jasmine = require('jasmine');
 
 const { config, reporter } = require('@webex/jasmine-config');
-const { Command } = require('@webex/cli-tools');
+const { Commands } = require('@webex/cli-tools');
 
-// Setup a standard set of arguments to consume
-const { mod, silent } = new Command({
-  options: [
-    {
-      description: 'perform module tests',
-      name: 'mod', // For identifying module tests.
-      type: 'boolean',
-    },
-    {
-      description: 'remove reporters',
-      name: 'silent', // For identifying if the reporter should be deactivated.
-      type: 'boolean',
-    },
-  ],
-}).results;
+// Configure the CLI options for integration tests.
+const integration = {
+  config: {
+    name: 'integration',
+    description: 'Perform integration tests',
+    options: [
+      {
+        description: 'Perform integration tests against the module',
+        name: 'mod',
+      },
+      {
+        description: 'Remove all reporters',
+        name: 'silent',
+      },
+    ],
+  },
 
-// Create a new Jasmine instance and set up the targets.
-const jasmine = new Jasmine();
-const targets = [];
+  // Handle the provided options.
+  handler: (options) => {
+    const { mod, silent } = options;
 
-config(jasmine);
-jasmine.clearReporters();
+    // Construct a new Jasmine instance and define target files to test.
+    const jasmine = new Jasmine();
+    const targets = [];
 
-if (mod) { // If a module, target the module tests.
-  targets.push(
-    './test/module/**/*.test.js',
-    './test/module/**/*.spec.js',
-  );
-}
+    // Mount the common configuration to the Jasmine instance.
+    config(jasmine);
+    jasmine.clearReporters();
 
-if (!silent) { // If silent, remove the reporter.
-  reporter(jasmine);
-}
+    // Add module tests as the target if provided.
+    if (mod) {
+      targets.push(
+        './test/module/**/*.test.js',
+        './test/module/**/*.spec.js',
+      );
+    }
 
-// Execute the test runner.
-jasmine.execute(targets);
+    // Silence reporters if provided.
+    if (!silent) {
+      reporter(jasmine);
+    }
+
+    // Run Jasmine test suite.
+    jasmine.execute(targets);
+  },
+};
+
+// Setup a new Commands instance, provide the configuration, and execute.
+const commands = new Commands();
+commands.mount(integration);
+commands.process();
 ```
 
 With the above-defined configuration, the following script[s] can be ammended to the packages `./package.json` file.

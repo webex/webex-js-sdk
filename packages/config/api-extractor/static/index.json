@@ -5,17 +5,17 @@
   },
   "apiReport": {
     "enabled": true,
-    "reportFileName": "<unscopedPackageName>.api.md",
+    "reportFileName": "index.api.md",
     "reportFolder": "<projectFolder>/dist/docs/metadata/",
     "reportTempFolder": "<projectFolder>/dist/docs/metadata/"
   },
   "docModel": {
     "enabled": true,
-    "apiJsonFilePath": "<projectFolder>/dist/docs/metadata/<unscopedPackageName>.api.json"
+    "apiJsonFilePath": "<projectFolder>/dist/docs/metadata/index.api.json"
   },
   "dtsRollup": {
     "enabled": true,
-    "untrimmedFilePath": "<projectFolder>/dist/docs/metadata/<unscopedPackageName>.d.ts"
+    "untrimmedFilePath": "<projectFolder>/dist/docs/metadata/index.d.ts"
   },
   "tsdocMetadata": {},
   "mainEntryPointFilePath": "<projectFolder>/dist/types/index.d.ts",
