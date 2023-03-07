@@ -103,6 +103,31 @@ export class RemoteMedia extends EventsScope {
   }
 
   /**
+   * Supply the width and height of the video element
+   * to restrict the requested resolution to this size
+   * @param width width of the video element
+   * @param height height of the video element
+   */
+  public setSizeHint(width, height) {
+    // only base on height for now
+    let fs: number;
+
+    if (height < 135) {
+      // 90p translated to a FS
+      fs = 60;
+    } else if (height < 270) {
+      // 180p translated to a FS
+      fs = 225;
+    } else if (height < 540) {
+      fs = 920;
+    } else {
+      fs = 3600;
+    }
+
+    this.receiveSlot.setMaxFs(fs);
+  }
+
+  /**
    * Invalidates the remote media by clearing the reference to a receive slot and
    * cancelling the media request.
    * After this call the remote media is unusable.

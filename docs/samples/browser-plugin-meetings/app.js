@@ -1934,8 +1934,32 @@ async function getStatsForVideoPane(meeting, videoPane) {
   return result;
 }
 
+const remoteMediaIds = {};
+
+function setSizeHint() {
+  const sizeHintValue =  document.getElementById('size-hint-input').value;
+  const remoteMediaId = document.getElementById('remote-media-selector').value;
+
+  let [width, height] = sizeHintValue.split(',');
+
+  remoteMediaIds[remoteMediaId].setSizeHint(parseInt(width), parseInt(height))
+}
+
+function addRemoteMediaOption(remoteMedia) {
+  remoteMediaIds[remoteMedia.id] = remoteMedia;
+  const select = document.getElementById('remote-media-selector');
+
+  const option = document.createElement('option');
+  option.value = remoteMedia.id;
+  option.text = remoteMedia.id;
+
+  select.add(option);
+}
+
 function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   const videoPane = allVideoPanes[paneGroupId][paneId];
+
+  addRemoteMediaOption(remoteMedia);
 
   videoPane.remoteMedia = remoteMedia;
   videoPane.videoEl.srcObject = remoteMedia.stream;
