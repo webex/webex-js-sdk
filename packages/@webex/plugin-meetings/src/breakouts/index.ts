@@ -383,7 +383,9 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        return Promise.reject(boServiceErrorHandler(error));
+        return Promise.reject(
+          boServiceErrorHandler(error, 'Breakouts#create --> Edit lock token mismatch')
+        );
       });
 
     if (breakInfo.body?.groups) {
@@ -412,7 +414,9 @@ const Breakouts = WebexPlugin.extend({
         },
       })
       .catch((error) => {
-        return Promise.reject(boServiceErrorHandler(error));
+        return Promise.reject(
+          boServiceErrorHandler(error, 'Breakouts#clearSessions --> Edit lock token mismatch')
+        );
       });
 
     if (breakInfo.body?.groups) {
@@ -430,7 +434,7 @@ const Breakouts = WebexPlugin.extend({
   start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
-      id: this.breakoutGroupId || '',
+      id: this.breakoutGroupId,
       action,
       allowBackToMain: false,
       allowToJoinLater: false,
@@ -444,7 +448,9 @@ const Breakouts = WebexPlugin.extend({
         groups: [payload],
       },
     }).catch((error) => {
-      return Promise.reject(boServiceErrorHandler(error));
+      return Promise.reject(
+        boServiceErrorHandler(error, 'Breakouts#start --> Edit lock token mismatch')
+      );
     });
   },
 
@@ -470,7 +476,9 @@ const Breakouts = WebexPlugin.extend({
         groups: [payload],
       },
     }).catch((error) => {
-      return Promise.reject(boServiceErrorHandler(error));
+      return Promise.reject(
+        boServiceErrorHandler(error, 'Breakouts#end --> Edit lock token mismatch')
+      );
     });
   },
 
