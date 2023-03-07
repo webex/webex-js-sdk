@@ -10,6 +10,7 @@ import {BREAKOUTS, HTTP_VERBS, MEETINGS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
+import BreakoutEditLockedError from './edit-lock-error';
 
 /**
  * @class Breakouts
@@ -34,6 +35,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
+    groups: 'array', // appears when create breakouts
     hasBreakoutStarted: 'boolean', // appears when one or more breakouts started(active)
   },
 
@@ -382,6 +384,77 @@ const Breakouts = WebexPlugin.extend({
         enableBreakoutSession: enable,
       },
     });
+  },
+
+  /**
+   * Create new breakout sessions
+   * @param {object} sessions -- breakout session group
+   * @returns {Promise}
+   */
+  async create(sessions) {
+    // @ts-ignore
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              sessions,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
+          LoggerProxy.logger.info(`Breakouts#create --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
+        }
+
+        return Promise.reject(error);
+      });
+
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+    }
+
+    return Promise.resolve(breakInfo);
+  },
+
+  /**
+   * Delete all breakout sessions
+   * @returns {Promise}
+   */
+  async clearSessions() {
+    // @ts-ignore
+    const breakInfo = await this.webex
+      .request({
+        method: HTTP_VERBS.PUT,
+        uri: this.url,
+        body: {
+          groups: [
+            {
+              action: BREAKOUTS.ACTION_TYPES.DELETE,
+            },
+          ],
+        },
+      })
+      .catch((error) => {
+        if (error.body && error.body.errorCode === BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH) {
+          LoggerProxy.logger.info(`Breakouts#clearSessions --> Edit lock token mismatch`);
+
+          return Promise.reject(new BreakoutEditLockedError('Edit lock token mismatch', error));
+        }
+
+        return Promise.reject(error);
+      });
+
+    if (breakInfo.body && breakInfo.body.groups && breakInfo.body.groups) {
+      this.set('groups', breakInfo.body.groups);
+    }
+
+    return Promise.resolve(breakInfo);
   },
 });
 
