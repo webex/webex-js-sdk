@@ -1,4 +1,5 @@
 import {isEmpty} from 'lodash';
+import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/internal-media-core';
 
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import Metrics from '../metrics';
@@ -390,11 +391,11 @@ MeetingUtil.unlockMeeting = (actions, request, locusUrl) => {
   return Promise.reject(new PermissionError('Unlock not allowed, due to joined property.'));
 };
 
-MeetingUtil.handleAudioLogging = (audioTrack) => {
+MeetingUtil.handleAudioLogging = (audioTrack: LocalMicrophoneTrack | null) => {
   const LOG_HEADER = 'MeetingUtil#handleAudioLogging -->';
 
   if (audioTrack) {
-    const settings = audioTrack.getSettings();
+    const settings = audioTrack.underlyingTrack.getSettings();
     const {deviceId} = settings;
 
     LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${deviceId}`);
@@ -402,11 +403,11 @@ MeetingUtil.handleAudioLogging = (audioTrack) => {
   }
 };
 
-MeetingUtil.handleVideoLogging = (videoTrack) => {
+MeetingUtil.handleVideoLogging = (videoTrack: LocalCameraTrack | null) => {
   const LOG_HEADER = 'MeetingUtil#handleVideoLogging -->';
 
   if (videoTrack) {
-    const settings = videoTrack.getSettings();
+    const settings = videoTrack.underlyingTrack.getSettings();
     const {deviceId} = settings;
 
     LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${deviceId}`);

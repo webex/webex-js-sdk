@@ -10,9 +10,11 @@ describe('createMediaConnection', () => {
   };
   const fakeAudioTrack = {
     id: 'audio track',
+    underlyingTrack: 'underlying audio track',
   };
   const fakeVideoTrack = {
     id: 'video track',
+    underlyingTrack: 'underlying video track',
   };
 
   afterEach(() => {
@@ -80,9 +82,9 @@ describe('createMediaConnection', () => {
       },
       {
         send: {
-          audio: fakeAudioTrack,
-          video: fakeVideoTrack,
-          screenShareVideo: null,
+          audio: fakeAudioTrack.underlyingTrack,
+          video: fakeVideoTrack.underlyingTrack,
+          screenShareVideo: undefined,
         },
         receive: {
           audio: true,
@@ -190,9 +192,9 @@ describe('createMediaConnection', () => {
       },
       {
         send: {
-          audio: fakeAudioTrack,
-          video: null,
-          screenShareVideo: fakeVideoTrack,
+          audio: fakeAudioTrack.underlyingTrack,
+          video: undefined,
+          screenShareVideo: fakeVideoTrack.underlyingTrack,
         },
         receive: {
           audio: true,

@@ -605,7 +605,7 @@ skipInNode(describe)('plugin-meetings', () => {
         ]).then(() => {
           // TODO: Re-eanable Safari when screensharing issues have been resolved
           if (!isBrowser('safari')) {
-            assert.equal(alice.meeting.mediaProperties.shareTrack.getConstraints().height, 720);
+            assert.equal(alice.meeting.mediaProperties.shareTrack.underlyingTrack.getConstraints().height, 720);
           }
           assert.equal(alice.meeting.isSharing, true);
           assert.equal(alice.meeting.shareStatus, 'local_share_active');
@@ -646,7 +646,7 @@ skipInNode(describe)('plugin-meetings', () => {
           // TODO: Re-eanable Safari when screensharing issues have been resolved
           if (!isBrowser('safari')) {
             assert.equal(
-              bob.meeting.mediaProperties.shareTrack.getConstraints().height,
+              bob.meeting.mediaProperties.shareTrack.underlyingTrack.getConstraints().height,
               heightResolution
             );
           }
@@ -806,7 +806,7 @@ skipInNode(describe)('plugin-meetings', () => {
           // TODO: Re-eanable Safari when screensharing issues have been resolved
           if (!isBrowser('safari')) {
             assert.equal(
-              bob.meeting.mediaProperties.shareTrack.getConstraints().height,
+              bob.meeting.mediaProperties.shareTrack.underlyingTrack.getConstraints().height,
               heightResolution
             );
           }
