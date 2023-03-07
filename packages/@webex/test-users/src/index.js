@@ -190,6 +190,7 @@ export function createTestUser(options = {}) {
       'squaredRoomModeration',
       'squaredInviter',
       'webExSquared',
+      'basicMessage',
     ],
     idbrokerUrl,
     machineType: options.machineType,
