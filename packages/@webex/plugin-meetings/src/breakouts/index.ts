@@ -439,7 +439,7 @@ const Breakouts = WebexPlugin.extend({
   start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
-      id: this.breakoutGroupId || '',
+      id: this.breakoutGroupId,
       action,
       allowBackToMain: false,
       allowToJoinLater: false,

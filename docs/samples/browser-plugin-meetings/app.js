@@ -500,7 +500,6 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
 
           return getMediaStreams().then(() => addMedia());
         }
-        createBreakoutOperations();
       })
       .catch(() => {
         // join failed, so allow  user decide on multistream again
@@ -2772,6 +2771,7 @@ function toggleBreakout() {
 <<<<<<< HEAD
   const enableBox = document.getElementById("enable-breakout"),
 <<<<<<< HEAD
+<<<<<<< HEAD
         meeting = getCurrentMeeting();
 =======
         meeting = getCurrentMeeting(),
@@ -2817,10 +2817,14 @@ function toggleBreakout() {
     return button;
   };
 >>>>>>> dd1188dfe... feat: breakout service apis intergration (enable, create, start, end)
+=======
+        meeting = getCurrentMeeting();
+>>>>>>> be7d835fd... fix: requested changes
 
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   var enableBox = document.getElementById("enable-breakout");
@@ -2842,6 +2846,8 @@ function toggleBreakout() {
       newBreakoutDiv.innerHTML = ""
     }
 >>>>>>> dd1188dfe... feat: breakout service apis intergration (enable, create, start, end)
+=======
+>>>>>>> be7d835fd... fix: requested changes
   }
 }
 
