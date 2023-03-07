@@ -2652,7 +2652,7 @@ const createBreakoutOperations = ()=>{
       }
       sessionList.forEach((session)=>{
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${session.name}</td><td>true</td><td>true</td><td>false</td><td>false</td><td>false</td><td></td>`;
+        tr.innerHTML = `<td>${session.name}</td><td>YES</td><td>YES</td><td>NO</td><td>NO</td><td>NO</td><td></td>`;
         breakoutTable.querySelector('table').lastChild.appendChild(tr);
       })
     }
