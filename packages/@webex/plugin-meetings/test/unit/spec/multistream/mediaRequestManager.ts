@@ -62,7 +62,6 @@ describe('MediaRequestManager', () => {
             off: sinon.stub(),
             sourceState: 'live',
             wcmeReceiveSlot: fakeWcmeSlots[index],
-            resetSourceState: sinon.stub(),
           } as unknown as ReceiveSlot)
       );
   });
@@ -607,78 +606,6 @@ describe('MediaRequestManager', () => {
     // calling commit now should not cause any requests to be sent out
     mediaRequestManager.commit();
     checkMediaRequestsSent([]);
-  });
-
-  it('calls resetSourceState() on slots that are stopped being used', () => {
-    const requestIds = [
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[0], fakeReceiveSlots[1]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[2], fakeReceiveSlots[3]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addReceiverSelectedRequest(100, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS),
-      addReceiverSelectedRequest(200, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS),
-    ];
-
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 100,
-        receiveSlot: fakeWcmeSlots[4],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 200,
-        receiveSlot: fakeWcmeSlots[5],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-    ]);
-
-    // cancel 2 of the requests
-    mediaRequestManager.cancelRequest(requestIds[1], false);
-    mediaRequestManager.cancelRequest(requestIds[3], false);
-
-    mediaRequestManager.commit();
-
-    // expect only the 2 remaining requests to be sent out
-    checkMediaRequestsSent([
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 100,
-        receiveSlot: fakeWcmeSlots[4],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-    ]);
-
-    // and that the receive slots of the 2 cancelled ones had resetSourceState() called
-    assert.calledOnce(fakeReceiveSlots[2].resetSourceState);
-    assert.calledOnce(fakeReceiveSlots[3].resetSourceState);
-    assert.calledOnce(fakeReceiveSlots[5].resetSourceState);
   });
 
   it('re-sends media requests after degradation preferences are set', () => {

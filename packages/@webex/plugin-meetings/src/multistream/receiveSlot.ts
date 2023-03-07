@@ -154,17 +154,4 @@ export class ReceiveSlot extends EventsScope {
   get wcmeReceiveSlot(): WcmeReceiveSlot {
     return this.mcReceiveSlot;
   }
-
-  /**
-   * Resets the source state to the default 'no source' value.
-   * This function should be called on receive slots that are
-   * no longer part of a media request. It's needed because WCME
-   * does not send any more events on such slots, so the sourceState
-   * value would not represent the truth anymore.
-   */
-  public resetSourceState() {
-    this.#sourceState = 'no source';
-    this.#csi = undefined;
-    this.#memberId = undefined;
-  }
 }
