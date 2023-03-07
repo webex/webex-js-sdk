@@ -152,4 +152,23 @@ describe('ReceiveSlot', () => {
       assert.notCalled(findMemberIdCallbackStub);
     });
   });
+
+  describe('setMaxFs()', () => {
+    it('emits the correct event', () => {
+      sinon.stub(receiveSlot, 'emit');
+      receiveSlot.setMaxFs(100);
+
+      assert.calledOnceWithExactly(
+        receiveSlot.emit,
+        {
+          file: 'meeting/receiveSlot',
+          function: 'findMemberId',
+        },
+        ReceiveSlotEvents.MaxFsUpdate,
+        {
+          maxFs: 100,
+        }
+      );
+    })
+  });
 });

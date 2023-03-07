@@ -113,10 +113,8 @@ export class RemoteMedia extends EventsScope {
     let fs: number;
 
     if (height < 135) {
-      // 90p translated to a FS
       fs = 60;
     } else if (height < 270) {
-      // 180p translated to a FS
       fs = 225;
     } else if (height < 540) {
       fs = 920;

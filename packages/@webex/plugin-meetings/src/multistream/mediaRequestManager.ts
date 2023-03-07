@@ -57,6 +57,8 @@ const CODEC_DEFAULTS = {
   },
 };
 
+const DEBOUNCED_SOURCE_UPDATE_TIME = 10;
+
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
@@ -88,7 +90,10 @@ export class MediaRequestManager {
     this.slotsActiveInLastMediaRequest = {};
     this.degradationPreferences = degradationPreferences;
     this.sourceUpdateListener = this.commit.bind(this);
-    this.debouncedSourceUpdateListener = debounce(this.sourceUpdateListener, 10);
+    this.debouncedSourceUpdateListener = debounce(
+      this.sourceUpdateListener,
+      DEBOUNCED_SOURCE_UPDATE_TIME
+    );
   }
 
   private resetInactiveReceiveSlots() {
