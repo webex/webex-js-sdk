@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.36](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.35...v3.0.0-beta.36) (2023-03-07)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** changed SDK to use webrtc-core local tracks internally ([#2638](https://github.com/webex/webex-js-sdk/issues/2638)) ([cb27441](https://github.com/webex/webex-js-sdk/commit/cb2744143e0dd6d0563b69c9c1c8756219627afe))
+
 ## [3.0.0-beta.35](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.34...v3.0.0-beta.35) (2023-03-03)
 
 
