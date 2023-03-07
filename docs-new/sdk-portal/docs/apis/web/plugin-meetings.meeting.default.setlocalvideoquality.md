@@ -14,13 +14,13 @@ setLocalVideoQuality(level: string): any;
 
 ## Parameters
 
-|  Parameter | Type | Description |
-|  --- | --- | --- |
-|  level | string |  |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| level     | string |             |
 
 **Returns:**
 
 any
 
-{<!-- -->Promise<MediaStream>} localStream
+{<!-- -->Promise} localStream
 

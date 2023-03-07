@@ -6,8 +6,8 @@ frontend:
         - yarn install --immutable
     build:
       commands:
-        - yarn run samples:build
+        - yarn workspace sdk-portal run build
   artifacts:
-    baseDirectory: docs/
+    baseDirectory: docs-new/sdk-portal/build
     files:
       - '**/*'

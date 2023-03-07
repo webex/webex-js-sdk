@@ -14,17 +14,17 @@ create(destination: string, type?: string, useRandomDelayForInfo?: boolean): any
 
 ## Parameters
 
-|  Parameter | Type | Description |
-|  --- | --- | --- |
-|  destination | string | sipURL, spaceId, phonenumber, or locus object<!-- -->} |
-|  type | string | _(Optional)_ the optional specified type, such as locusId |
-|  useRandomDelayForInfo | boolean | _(Optional)_ whether a random delay should be added to fetching meeting info |
+| Parameter             | Type    | Description                                                                  |
+| --------------------- | ------- | ---------------------------------------------------------------------------- |
+| destination           | string  | sipURL, spaceId, phonenumber, or locus object<!-- -->}                       |
+| type                  | string  | _(Optional)_ the optional specified type, such as locusId                    |
+| useRandomDelayForInfo | boolean | _(Optional)_ whether a random delay should be added to fetching meeting info |
 
 **Returns:**
 
 any
 
-{<!-- -->Promise<Meeting>} A new Meeting.
+{<!-- -->Promise} A new Meeting.
 
  Meetings
 
