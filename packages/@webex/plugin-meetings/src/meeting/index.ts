@@ -547,6 +547,8 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.id = uuid.v4();
+
+    console.warn('marcin was here');
     /**
      * Correlation ID used for network tracking of meeting join
      * @instance
