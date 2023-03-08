@@ -7,7 +7,7 @@ import {
   CodecInfo as WcmeCodecInfo,
   H264Codec,
 } from '@webex/internal-media-core';
-import {cloneDeep} from 'lodash';
+import {cloneDeep, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -44,6 +44,7 @@ export interface MediaRequest {
   policyInfo: PolicyInfo;
   receiveSlots: Array<ReceiveSlot>;
   codecInfo?: CodecInfo;
+  preferredMaxFs?: number;
 }
 
 export type MediaRequestId = string;
@@ -55,6 +56,8 @@ const CODEC_DEFAULTS = {
     maxMbps: 245760,
   },
 };
+
+const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
@@ -73,6 +76,8 @@ export class MediaRequestManager {
 
   private sourceUpdateListener: () => void;
 
+  private debouncedSourceUpdateListener: () => void;
+
   constructor(
     degradationPreferences: DegradationPreferences,
     sendMediaRequestsCallback: SendMediaRequestsCallback
@@ -82,6 +87,10 @@ export class MediaRequestManager {
     this.clientRequests = {};
     this.degradationPreferences = degradationPreferences;
     this.sourceUpdateListener = this.commit.bind(this);
+    this.debouncedSourceUpdateListener = debounce(
+      this.sourceUpdateListener,
+      DEBOUNCED_SOURCE_UPDATE_TIME
+    );
   }
 
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
@@ -106,6 +115,7 @@ export class MediaRequestManager {
       Object.entries(clientRequests).forEach(([id, mr]) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
+            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
             mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
             maxFsLimits[i]
           );
@@ -183,6 +193,10 @@ export class MediaRequestManager {
 
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+      rs.on(ReceiveSlotEvents.MaxFsUpdate, ({maxFs}) => {
+        mediaRequest.preferredMaxFs = maxFs;
+        this.debouncedSourceUpdateListener();
+      });
     });
 
     if (commit) {

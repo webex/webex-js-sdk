@@ -3,6 +3,7 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import FakeTimers from '@sinonjs/fake-timers';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -728,4 +729,41 @@ describe('MediaRequestManager', () => {
       },
     ]);
   });
+
+  it('respects the preferredMaxFs if set', () => {
+    sendMediaRequestsCallback.resetHistory();
+    const clock = FakeTimers.install({now: Date.now()});
+
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+
+    sendMediaRequestsCallback.resetHistory();
+
+
+    const maxFsHandlerCall = fakeReceiveSlots[0].on.getCall(1);
+
+    const maxFsHandler = maxFsHandlerCall.args[1];
+    const eventName = maxFsHandlerCall.args[0];
+
+    assert.equal(eventName, 'maxFsUpdate');
+
+    const preferredFrameSize = 100;
+
+    maxFsHandler({maxFs: preferredFrameSize});
+
+    clock.tick(999);
+
+    assert.notCalled(sendMediaRequestsCallback);
+
+    clock.tick(1);
+
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: fakeWcmeSlots.slice(0, 10),
+        maxFs: preferredFrameSize,
+      },
+    ]);
+  });
+
 });
