@@ -145,6 +145,8 @@ export default class ControlsOptionsManager {
     const body = muteUnmuteAll ? {audio: {}} : {};
     for (const [key, value] of Object.entries(setting)) {
       LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${key} [${value}]`);
+      // mute unmute all has different body structure than toggling disable hard mute
+      // or mute on entry by themselves
       if (muteUnmuteAll) {
         if (Util?.[`${value ? CAN_SET : CAN_UNSET}${Setting.muted}`](this.displayHints)) {
           body.audio[camelCase(key)] = value;
