@@ -19,8 +19,8 @@ describe('plugin-meetings', () => {
   beforeEach(() => {
     meeting = {
       mediaProperties: {
-        audioTrack: 'fake audio track',
-        videoTrack: 'fake video track',
+        audioTrack: {id: 'fake audio track', setMuted: sinon.stub()},
+        videoTrack: {id: 'fake video track', setMuted: sinon.stub()},
       },
       remoteMuted: false,
       unmuteAllowed: true,
@@ -38,7 +38,6 @@ describe('plugin-meetings', () => {
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
 
     MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocus);
-    Media.setLocalTrack = sinon.stub();
   });
 
   afterEach(() => {
@@ -110,8 +109,8 @@ describe('plugin-meetings', () => {
       audio.handleServerLocalUnmuteRequired(meeting);
       await testUtils.flushPromises();
 
-      // check that local track was enabled
-      assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.audioTrack);
+      // check that local track was unmuted
+      assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, false);
 
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
@@ -161,8 +160,8 @@ describe('plugin-meetings', () => {
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
       assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, false, undefined, meeting);
 
-      // and local track should be enabled
-      assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.audioTrack);
+      // and local track should be unmuted
+      assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, false);
 
       assert.isFalse(audio.isMuted());
       assert.isFalse(audio.isSelf());
@@ -183,37 +182,37 @@ describe('plugin-meetings', () => {
       it('disables/enables the local audio track when audio is muted/unmuted', async () => {
         // mute
         audio.handleClientRequest(meeting, true);
-        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.audioTrack);
+        assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, true);
 
-        // even when calling mute when it's already muted should still call setLocalTrack
+        // even when calling mute when it's already muted should still call setMuted
         audio.handleClientRequest(meeting, true);
-        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.audioTrack);
+        assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, true);
 
         // unmute
         audio.handleClientRequest(meeting, false);
-        assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.audioTrack);
+        assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, false);
 
-        // even when calling unmute when it's already unmuted should still call setLocalTrack
+        // even when calling unmute when it's already unmuted should still call setMuted
         audio.handleClientRequest(meeting, false);
-        assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.audioTrack);
+        assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, false);
       });
 
       it('disables/enables the local video track when video is muted/unmuted', async () => {
         // mute
         video.handleClientRequest(meeting, true);
-        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, true);
 
-        // even when calling mute when it's already muted should still call setLocalTrack
+        // even when calling mute when it's already muted should still call setMuted
         video.handleClientRequest(meeting, false);
-        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, true);
 
         // unmute
         video.handleClientRequest(meeting, false);
-        assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, false);
 
-        // even when calling unmute when it's already unmuted should still call setLocalTrack
+        // even when calling unmute when it's already unmuted should still call setMuted
         video.handleClientRequest(meeting, false);
-        assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, false);
       });
 
       it('returns correct value in isMuted()/isSelf() methods after client mute/unmute requests', async () => {
@@ -389,11 +388,11 @@ describe('plugin-meetings', () => {
         assert.isTrue(video.isSelf());
 
         // check local mute is done, but not remote one
-        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, true);
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, true, meeting);
         assert.notCalled(meeting.members.muteMember);
 
-        Media.setLocalTrack.resetHistory();
+        meeting.mediaProperties.videoTrack.setMuted.resetHistory();
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
         meeting.members.muteMember.resetHistory();
 
@@ -403,7 +402,7 @@ describe('plugin-meetings', () => {
         assert.isFalse(video.isMuted());
         assert.isFalse(video.isSelf());
 
-        assert.calledWith(Media.setLocalTrack, true, meeting.mediaProperties.videoTrack);
+        assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, false);
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, false, meeting);
         assert.notCalled(meeting.members.muteMember);
       });

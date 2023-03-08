@@ -476,7 +476,7 @@ export default class ReconnectionManager {
 
       if (wasSharing) {
         // Stop the share streams if user tried to rejoin
-        Media.stopTracks(this.meeting.mediaProperties.shareTrack);
+        this.meeting.setLocalShareTrack(null);
         this.meeting.isSharing = false;
         if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
           this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
