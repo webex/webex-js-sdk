@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.43.0](https://github.com/webex/webex-js-sdk/compare/v2.42.0...v2.43.0) (2023-03-08)
+
+
+### Features
+
+* **config:** update configurations ([#2649](https://github.com/webex/webex-js-sdk/issues/2649)) ([3ae0854](https://github.com/webex/webex-js-sdk/commit/3ae085446b50c32dbccbd5f48afc19759ccfd556))
+
 ## [2.42.0](https://github.com/webex/webex-js-sdk/compare/v2.41.0...v2.42.0) (2023-03-03)
 
 
