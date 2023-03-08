@@ -12,7 +12,7 @@ import {CSI, ReceiveSlot} from './receiveSlot';
  * so this manager has a pool in order to re-use the slots that were released earlier.
  */
 export class ReceiveSlotManager {
-  private allocatedSlots: {[key in MediaType]: ReceiveSlot[]};
+  allocatedSlots: {[key in MediaType]: ReceiveSlot[]};
 
   private freeSlots: {[key in MediaType]: ReceiveSlot[]};
 

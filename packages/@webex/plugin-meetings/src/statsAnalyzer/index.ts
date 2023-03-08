@@ -28,6 +28,7 @@ import {
   getVideoSenderMqa,
   getVideoReceiverMqa,
 } from './mqaUtil';
+import {ReceiveSlot} from '../multistream/receiveSlot';
 
 export const EVENTS = {
   MEDIA_QUALITY: 'MEDIA_QUALITY',
@@ -74,17 +75,20 @@ export class StatsAnalyzer extends EventsScope {
   statsInterval: NodeJS.Timeout;
   statsResults: any;
   statsStarted: any;
+  receiveSlotCallback: (csi: number) => ReceiveSlot;
 
   /**
    * Creates a new instance of StatsAnalyzer
    * @constructor
    * @public
    * @param {Object} config SDK Configuration Object
+   * @param {Function} receiveSlotCallback Callback used to access receive slots.
    * @param {Object} networkQualityMonitor class for assessing network characteristics (jitter, packetLoss, latency)
    * @param {Object} statsResults Default properties for stats
    */
   constructor(
     config: any,
+    receiveSlotCallback: (csi: number) => ReceiveSlot = () => undefined,
     networkQualityMonitor: object = {},
     statsResults: object = defaultStats
   ) {
@@ -98,6 +102,7 @@ export class StatsAnalyzer extends EventsScope {
     this.mqaSentCount = -1;
     this.lastMqaDataSent = {};
     this.lastEmittedStartStopEvent = {};
+    this.receiveSlotCallback = receiveSlotCallback;
   }
 
   /**
@@ -974,10 +979,15 @@ export class StatsAnalyzer extends EventsScope {
         result.packetsReceived;
 
       if (this.statsResults[mediaType][sendrecvType].packetsReceived === 0) {
-        LoggerProxy.logger.info(
-          `StatsAnalyzer:index#processInboundRTPResult --> No packets received for ${mediaType} `,
-          this.statsResults[mediaType][sendrecvType].packetsReceived
-        );
+        const receiveSlot = this.receiveSlotCallback(result.ssrc);
+        if (receiveSlot) {
+          LoggerProxy.logger.info(
+            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "${
+              receiveSlot.id || ''
+            }"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`,
+            this.statsResults[mediaType][sendrecvType].packetsReceived
+          );
+        }
       }
 
       //  Check the over all packet Lost ratio
