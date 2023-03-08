@@ -1,11 +1,11 @@
-import Command from './command';
+import Commands from './commands';
 
 export type {
-  CommandOptionType,
-  CommandOption,
-  CommandConfig,
-} from './command';
+  CommandsCommand,
+  CommandsConfig,
+  CommandsOption,
+} from './commands';
 
 export {
-  Command,
+  Commands,
 };

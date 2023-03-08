@@ -3244,6 +3244,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/glob@npm:*":
+  version: 8.1.0
+  resolution: "@types/glob@npm:8.1.0"
+  dependencies:
+    "@types/minimatch": ^5.1.2
+    "@types/node": "*"
+  checksum: 9101f3a9061e40137190f70626aa0e202369b5ec4012c3fabe6f5d229cce04772db9a94fa5a0eb39655e2e4ad105c38afbb4af56a56c0996a8c7d4fc72350e3d
+  languageName: node
+  linkType: hard
+
 "@types/graceful-fs@npm:^4.1.3":
   version: 4.1.6
   resolution: "@types/graceful-fs@npm:4.1.6"
@@ -3432,6 +3442,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/minimatch@npm:^5.1.2":
+  version: 5.1.2
+  resolution: "@types/minimatch@npm:5.1.2"
+  checksum: 0391a282860c7cb6fe262c12b99564732401bdaa5e395bee9ca323c312c1a0f45efbf34dce974682036e857db59a5c9b1da522f3d6055aeead7097264c8705a8
+  languageName: node
+  linkType: hard
+
 "@types/minimist@npm:^1.2.0":
   version: 1.2.2
   resolution: "@types/minimist@npm:1.2.2"
@@ -3584,6 +3601,16 @@ __metadata:
     "@types/mime": "*"
     "@types/node": "*"
   checksum: 2e078bdc1e458c7dfe69e9faa83cc69194b8896cce57cb745016580543c7ab5af07fdaa8ac1765eb79524208c81017546f66056f44d1204f812d72810613de36
+  languageName: node
+  linkType: hard
+
+"@types/shelljs@npm:^0":
+  version: 0.8.11
+  resolution: "@types/shelljs@npm:0.8.11"
+  dependencies:
+    "@types/glob": "*"
+    "@types/node": "*"
+  checksum: 559b81efba72f2b231485b26510aad68cccfe98dc74087d67dafd5511462997884db0ef18e0e56bf61a3a5789aa65a54dc04845a488bb0528d4a699e6151b99c
   languageName: node
   linkType: hard
 
@@ -4504,7 +4531,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/cli-tools@workspace:packages/tools/cli":
+"@webex/cli-tools@workspace:^, @webex/cli-tools@workspace:packages/tools/cli":
   version: 0.0.0-use.local
   resolution: "@webex/cli-tools@workspace:packages/tools/cli"
   dependencies:
@@ -4512,17 +4539,19 @@ __metadata:
     "@microsoft/api-extractor": ^7.34.4
     "@types/eslint": ^8
     "@types/jasmine": ^4
+    "@types/shelljs": ^0
     "@webex/api-extractor-config": "workspace:^"
     "@webex/eslint-config": "workspace:^"
     "@webex/jasmine-config": "workspace:^"
     "@webex/nyc-config": "workspace:^"
     "@webex/typescript-config": "workspace:^"
+    commander: ^10.0.0
     eslint: ^8.35.0
     jasmine: ^4.5.0
     nyc: ^15.1.0
     rimraf: ^4.1.2
+    shelljs: ^0.8.5
     typescript: ^4.9.5
-    yargs: ^17.7.1
   languageName: unknown
   linkType: soft
 
@@ -4560,6 +4589,17 @@ __metadata:
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
     urlsafe-base64: ^1.0.0
+  languageName: unknown
+  linkType: soft
+
+"@webex/esbuild-config@workspace:packages/config/esbuild":
+  version: 0.0.0-use.local
+  resolution: "@webex/esbuild-config@workspace:packages/config/esbuild"
+  dependencies:
+    "@webex/eslint-config": "workspace:^"
+    eslint: ^8.35.0
+  peerDependencies:
+    esbuild: ^0.17.11
   languageName: unknown
   linkType: soft
 
@@ -12828,7 +12868,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^7.0.5, glob@npm:^7.1.0, glob@npm:^7.1.1, glob@npm:^7.1.2, glob@npm:^7.1.3, glob@npm:^7.1.4, glob@npm:^7.1.6, glob@npm:^7.1.7, glob@npm:^7.2.0":
+"glob@npm:^7.0.0, glob@npm:^7.0.5, glob@npm:^7.1.0, glob@npm:^7.1.1, glob@npm:^7.1.2, glob@npm:^7.1.3, glob@npm:^7.1.4, glob@npm:^7.1.6, glob@npm:^7.1.7, glob@npm:^7.2.0":
   version: 7.2.3
   resolution: "glob@npm:7.2.3"
   dependencies:
@@ -14000,6 +14040,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"interpret@npm:^1.0.0":
+  version: 1.4.0
+  resolution: "interpret@npm:1.4.0"
+  checksum: 2e5f51268b5941e4a17e4ef0575bc91ed0ab5f8515e3cf77486f7c14d13f3010df9c0959f37063dcc96e78d12dc6b0bb1b9e111cdfe69771f4656d2993d36155
+  languageName: node
+  linkType: hard
+
 "interpret@npm:^2.2.0":
   version: 2.2.0
   resolution: "interpret@npm:2.2.0"
@@ -14795,10 +14842,10 @@ __metadata:
   version: 4.0.3
   resolution: "istanbul-lib-instrument@npm:4.0.3"
   dependencies:
-    "@babel/core": ^7.7.5
-    "@istanbuljs/schema": ^0.1.2
-    istanbul-lib-coverage: ^3.0.0
-    semver: ^6.3.0
+    "@babel/core": "npm:^7.7.5"
+    "@istanbuljs/schema": "npm:^0.1.2"
+    istanbul-lib-coverage: "npm:^3.0.0"
+    semver: "npm:^6.3.0"
   checksum: fa1171d3022b1bb8f6a734042620ac5d9ee7dc80f3065a0bb12863e9f0494d0eefa3d86608fcc0254ab2765d29d7dad8bdc42e5f8df2f9a1fbe85ccc59d76cb9
   languageName: node
   linkType: hard
@@ -20613,6 +20660,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rechoir@npm:^0.6.2":
+  version: 0.6.2
+  resolution: "rechoir@npm:0.6.2"
+  dependencies:
+    resolve: ^1.1.6
+  checksum: fe76bf9c21875ac16e235defedd7cbd34f333c02a92546142b7911a0f7c7059d2e16f441fe6fb9ae203f459c05a31b2bcf26202896d89e390eda7514d5d2702b
+  languageName: node
+  linkType: hard
+
 "rechoir@npm:^0.7.0":
   version: 0.7.1
   resolution: "rechoir@npm:0.7.1"
@@ -21011,7 +21067,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@npm:^1.1.4, resolve@npm:^1.10.0, resolve@npm:^1.13.1, resolve@npm:^1.14.2, resolve@npm:^1.17.0, resolve@npm:^1.20.0, resolve@npm:^1.22.0, resolve@npm:^1.22.1, resolve@npm:^1.4.0, resolve@npm:^1.9.0, resolve@npm:~1.22.1":
+"resolve@npm:^1.1.4, resolve@npm:^1.1.6, resolve@npm:^1.10.0, resolve@npm:^1.13.1, resolve@npm:^1.14.2, resolve@npm:^1.17.0, resolve@npm:^1.20.0, resolve@npm:^1.22.0, resolve@npm:^1.22.1, resolve@npm:^1.4.0, resolve@npm:^1.9.0, resolve@npm:~1.22.1":
   version: 1.22.1
   resolution: "resolve@npm:1.22.1"
   dependencies:
@@ -21051,7 +21107,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@^1.1.4#~builtin<compat/resolve>, resolve@patch:resolve@^1.10.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.13.1#~builtin<compat/resolve>, resolve@patch:resolve@^1.14.2#~builtin<compat/resolve>, resolve@patch:resolve@^1.17.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.20.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.22.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.22.1#~builtin<compat/resolve>, resolve@patch:resolve@^1.4.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.9.0#~builtin<compat/resolve>, resolve@patch:resolve@~1.22.1#~builtin<compat/resolve>":
+"resolve@patch:resolve@^1.1.4#~builtin<compat/resolve>, resolve@patch:resolve@^1.1.6#~builtin<compat/resolve>, resolve@patch:resolve@^1.10.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.13.1#~builtin<compat/resolve>, resolve@patch:resolve@^1.14.2#~builtin<compat/resolve>, resolve@patch:resolve@^1.17.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.20.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.22.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.22.1#~builtin<compat/resolve>, resolve@patch:resolve@^1.4.0#~builtin<compat/resolve>, resolve@patch:resolve@^1.9.0#~builtin<compat/resolve>, resolve@patch:resolve@~1.22.1#~builtin<compat/resolve>":
   version: 1.22.1
   resolution: "resolve@patch:resolve@npm%3A1.22.1#~builtin<compat/resolve>::version=1.22.1&hash=c3c19d"
   dependencies:
@@ -21833,6 +21889,19 @@ __metadata:
   version: 1.7.4
   resolution: "shell-quote@npm:1.7.4"
   checksum: 2874ea9c1a7c3ebfc9ec5734a897e16533d0d06f2e4cddc22ba3d1cab5cdc07d0f825364c1b1e39abe61236f44d8e60e933c7ad7349ce44de4f5dddc7b4354e9
+  languageName: node
+  linkType: hard
+
+"shelljs@npm:^0.8.5":
+  version: 0.8.5
+  resolution: "shelljs@npm:0.8.5"
+  dependencies:
+    glob: ^7.0.0
+    interpret: ^1.0.0
+    rechoir: ^0.6.2
+  bin:
+    shjs: bin/shjs
+  checksum: 7babc46f732a98f4c054ec1f048b55b9149b98aa2da32f6cf9844c434b43c6251efebd6eec120937bd0999e13811ebd45efe17410edb3ca938f82f9381302748
   languageName: node
   linkType: hard
 
@@ -23615,7 +23684,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.6.4, typescript@npm:^4.7.4, typescript@npm:^4.9.5":
+"typescript@npm:^4.6.4, typescript@npm:^4.7.4":
+  version: 4.9.4
+  resolution: "typescript@npm:4.9.4"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: e782fb9e0031cb258a80000f6c13530288c6d63f1177ed43f770533fdc15740d271554cdae86701c1dd2c83b082cea808b07e97fd68b38a172a83dbf9e0d0ef9
+  languageName: node
+  linkType: hard
+
+"typescript@npm:^4.9.5":
   version: 4.9.5
   resolution: "typescript@npm:4.9.5"
   bin:
@@ -23635,7 +23714,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^4.6.4#~builtin<compat/typescript>, typescript@patch:typescript@^4.7.4#~builtin<compat/typescript>, typescript@patch:typescript@^4.9.5#~builtin<compat/typescript>":
+"typescript@patch:typescript@^4.6.4#~builtin<compat/typescript>, typescript@patch:typescript@^4.7.4#~builtin<compat/typescript>":
+  version: 4.9.4
+  resolution: "typescript@patch:typescript@npm%3A4.9.4#~builtin<compat/typescript>::version=4.9.4&hash=23ec76"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 3e2ab0772908676d9b9cb83398c70003a3b08e1c6b3b122409df9f4b520f2fdaefa20c3d7d57dce283fed760ac94b3ce94d4a7fa875127b67852904425a1f0dc
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@^4.9.5#~builtin<compat/typescript>":
   version: 4.9.5
   resolution: "typescript@patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=23ec76"
   bin:
@@ -24245,7 +24334,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"validator@npm:^13.0.0, validator@npm:^13.7.0":
+"validator@npm:^13.0.0":
+  version: 13.7.0
+  resolution: "validator@npm:13.7.0"
+  checksum: 2b83283de1222ca549a7ef57f46e8d49c6669213348db78b7045bce36a3b5843ff1e9f709ebf74574e06223461ee1f264f8cc9a26a0060a79a27de079d8286ef
+  languageName: node
+  linkType: hard
+
+"validator@npm:^13.7.0":
   version: 13.9.0
   resolution: "validator@npm:13.9.0"
   checksum: e2c936f041f61faa42bafd17c6faddf939498666cd82e88d733621c286893730b008959f4cb12ab3e236148a4f3805c30b85e3dcf5e0efd8b0cbcd36c02bfc0c
@@ -24704,6 +24800,8 @@ __metadata:
     "@commitlint/config-conventional": ^17.1.0
     "@sinonjs/fake-timers": ^6.0.1
     "@types/format-util": ^1
+    "@types/jasmine": ^4
+    "@types/shelljs": ^0
     "@typescript-eslint/eslint-plugin": ^5.38.1
     "@typescript-eslint/parser": ^5.38.1
     "@wdio/allure-reporter": ^7.19.5
@@ -24716,6 +24814,7 @@ __metadata:
     "@wdio/sauce-service": ^7.19.5
     "@wdio/spec-reporter": ^7.19.5
     "@wdio/static-server-service": ^7.19.5
+    "@webex/cli-tools": "workspace:^"
     appium-adb: ^8.17.0
     babel-loader: ^8.2.2
     babel-plugin-lodash: ^3.3.4
@@ -24760,6 +24859,7 @@ __metadata:
     husky: ^7.0.4
     intern: ^4.10.1
     istanbul: ^0.4.5
+    jasmine: ^4.5.0
     jest: ^29.3.1
     jest-environment-jsdom: ^29.1.2
     jest-html-reporters: ^3.0.11
@@ -24792,6 +24892,7 @@ __metadata:
     prettier: ^2.7.1
     rimraf: ^2.6.3
     serve-handler: ^6.1.3
+    shelljs: ^0.8.5
     sinon: ^9.2.4
     standard-version: ^9.1.1
     terser-webpack-plugin: ^4.2.3
@@ -25562,7 +25663,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:^17.0.0, yargs@npm:^17.2.1, yargs@npm:^17.3.1, yargs@npm:^17.5.1, yargs@npm:^17.7.1":
+"yargs@npm:^17.0.0, yargs@npm:^17.2.1, yargs@npm:^17.5.1":
+  version: 17.6.2
+  resolution: "yargs@npm:17.6.2"
+  dependencies:
+    cliui: "npm:^8.0.1"
+    escalade: "npm:^3.1.1"
+    get-caller-file: "npm:^2.0.5"
+    require-directory: "npm:^2.1.1"
+    string-width: "npm:^4.2.3"
+    y18n: "npm:^5.0.5"
+    yargs-parser: "npm:^21.1.1"
+  checksum: 47da1b0d854fa16d45a3ded57b716b013b2179022352a5f7467409da5a04a1eef5b3b3d97a2dfc13e8bbe5f2ffc0afe3bc6a4a72f8254e60f5a4bd7947138643
+  languageName: node
+  linkType: hard
+
+"yargs@npm:^17.3.1":
   version: 17.7.1
   resolution: "yargs@npm:17.7.1"
   dependencies:

@@ -1,154 +1,164 @@
-const yargs = require('yargs');
+const { Command: Commander } = require('commander');
 
-const { Command } = require('@webex/cli-tools');
+const { Commands } = require('@webex/cli-tools');
 
-const { configFixture, optionFixture, parseSyncFixture } = require('./command.fixture');
+const { generateCommandFixture } = require('./command.fixture');
 
-describe('Command', () => {
-  const argv = [...process.argv];
-
-  beforeEach(() => {
-    process.argv.push(`--${optionFixture.name}`, `"${optionFixture.default}"`);
-  });
-
-  afterEach(() => {
-    process.argv = [...argv];
-  });
-
+describe('Commands', () => {
   describe('instance', () => {
-    let command;
+    describe('constructor()', () => {
+      it('should create a new program', () => {
+        const commands = new Commands();
 
-    beforeEach(() => {
-      command = new Command(configFixture);
-    });
-
-    describe('results', () => {
-      let parseSyncSpy;
-
-      beforeEach(() => {
-        parseSyncSpy = spyOn(command.args, 'parseSync')
-          .and.callFake(() => parseSyncFixture);
-      });
-
-      it('should call the "parseSync" method of "command.args" and return results', () => {
-        const { results } = command;
-
-        expect(parseSyncSpy).toHaveBeenCalledTimes(1);
-        expect(results).toBeDefined();
-      });
-
-      it('should map all values into an explicit keyed object for returning', () => {
-        const { results } = command;
-
-        expect(results).toEqual({
-          [optionFixture.name]: parseSyncFixture[optionFixture.name],
-        });
-      });
-
-      it('should return an empty object when no configuration options are provided', () => {
-        command.setConfig({});
-
-        const { results } = command;
-
-        expect(results).toEqual({});
+        expect(commands.program instanceof Commander).toBe(true);
       });
     });
 
-    describe('setConfig()', () => {
-      let setOptionSpy;
+    describe('mount()', () => {
+      const spies = {};
+      let commands;
+      let fixture;
 
       beforeEach(() => {
-        setOptionSpy = spyOn(command, 'setOption');
+        fixture = generateCommandFixture();
+        commands = new Commands();
+        const { program } = commands;
+
+        spies.command = spyOn(program, 'command').and.returnValue(program);
+        spies.description = spyOn(program, 'description').and.returnValue(program);
+        spies.option = spyOn(program, 'option').and.returnValue(program);
+        spies.action = spyOn(program, 'action').and.returnValue();
       });
 
-      it('should attempt to call "setOption" for each option in the provided config', () => {
-        command.setConfig(configFixture);
+      it('should call "program.command" with the provided name', () => {
+        commands.mount(fixture);
 
-        expect(setOptionSpy).toHaveBeenCalledTimes(configFixture.options.length);
+        expect(spies.command).toHaveBeenCalledOnceWith(fixture.config.name);
+      });
+
+      it('should call "program.description" with the provided description', () => {
+        commands.mount(fixture);
+
+        expect(spies.description).toHaveBeenCalledOnceWith(fixture.config.description);
+      });
+
+      it('should call "program.option" for each provided option', () => {
+        commands.mount(fixture);
+
+        expect(spies.option).toHaveBeenCalledTimes(2);
+      });
+
+      it('should mount only the name of the option as a param when no type or alias is provided', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        delete option.alias;
+        delete option.type;
+
+        commands.mount(fixture);
+
+        const expected = `--${option.name}`;
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          expected,
+          jasmine.any(String),
+          jasmine.any(String),
+        );
+      });
+
+      it('should mount only the name and alias of the option as a param when no type is provided', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        delete option.type;
+
+        commands.mount(fixture);
+
+        const expected = `-${option.alias}, --${option.name}`;
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          expected,
+          jasmine.any(String),
+          jasmine.any(String),
+        );
+      });
+
+      it('should mount name, type, and alias when all are provided', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        commands.mount(fixture);
+
+        const expected = `-${option.alias}, --${option.name} <${option.type}>`;
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          expected,
+          jasmine.any(String),
+          jasmine.any(String),
+        );
+      });
+
+      it('should mount the description', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        commands.mount(fixture);
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          jasmine.any(String),
+          option.description,
+          jasmine.any(String),
+        );
+      });
+
+      it('should mount the default when provided', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        commands.mount(fixture);
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          jasmine.any(String),
+          jasmine.any(String),
+          option.default,
+        );
+      });
+
+      it('should mount undefined when the default is not provided', () => {
+        fixture.config.options.pop();
+        const [option] = fixture.config.options;
+
+        delete option.default;
+
+        commands.mount(fixture);
+
+        expect(spies.option).toHaveBeenCalledOnceWith(
+          jasmine.any(String),
+          jasmine.any(String),
+          undefined,
+        );
+      });
+    });
+
+    describe('process()', () => {
+      const spies = {};
+      let commands;
+
+      beforeEach(() => {
+        commands = new Commands();
+        const { program } = commands;
+
+        spies.parse = spyOn(program, 'parse').and.returnValue(undefined);
       });
 
       it('should return itself', () => {
-        const result = command.setConfig(configFixture);
-
-        expect(result).toBe(command);
-      });
-    });
-
-    describe('setOption()', () => {
-      let setOptionSpy;
-
-      beforeEach(() => {
-        setOptionSpy = spyOn(Command, 'setOption');
+        expect(commands.process()).toBe(commands);
       });
 
-      it('should call the "Command.setOption" static method', () => {
-        command.setOption(optionFixture);
+      it('should call the local "program" method: "parse"', () => {
+        commands.process();
 
-        expect(setOptionSpy).toHaveBeenCalledTimes(1);
-      });
-
-      it('should call the "Command.setOption" static method with the provided option', () => {
-        command.setOption(optionFixture);
-
-        expect(setOptionSpy).toHaveBeenCalledWith(command.args, optionFixture);
-      });
-
-      it('should return itself', () => {
-        const result = command.setOption(optionFixture);
-
-        expect(result).toBe(command);
-      });
-    });
-  });
-
-  describe('static', () => {
-    describe('args', () => {
-      it('should be an interpreted yargs object', () => {
-        const yargsObject = yargs(process.argv.slice(Command.CONSTANTS.ARGS_INDEX));
-
-        expect(Command.args).toEqual(yargsObject);
-      });
-    });
-
-    describe('CONSTANTS', () => {
-      it('should contain all expected keys', () => {
-        expect(Object.keys(Command.CONSTANTS)).toEqual([
-          'ARGS_INDEX',
-        ]);
-      });
-    });
-
-    describe('setOption()', () => {
-      let args;
-      let optionSpy;
-
-      beforeEach(() => {
-        args = { option: () => {} };
-        optionSpy = spyOn(args, 'option');
-      });
-
-      it('should call the provided "args.option" object method', () => {
-        Command.setOption(args, optionFixture);
-
-        expect(optionSpy).toHaveBeenCalledTimes(1);
-      });
-
-      it('should provide the option to the "args.option" object method', () => {
-        Command.setOption(args, optionFixture);
-
-        expect(optionSpy).toHaveBeenCalledOnceWith(optionFixture.name, {
-          alias: optionFixture.alias,
-          default: optionFixture.default,
-          describe: optionFixture.description,
-          demandOption: optionFixture.required,
-          type: optionFixture.type,
-        });
-      });
-
-      it('should return the provided "args" object', () => {
-        const result = Command.setOption(args, optionFixture);
-
-        expect(result).toBe(args);
+        expect(spies.parse).toHaveBeenCalledTimes(1);
       });
     });
   });

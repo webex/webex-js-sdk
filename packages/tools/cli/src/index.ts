@@ -1,13 +1,22 @@
 import {
-  Command,
+  Commands,
+} from './models';
+
+import {
+  Executor,
+} from './utils';
+
+export type {
+  CommandsCommand,
+  CommandsConfig,
+  CommandsOption,
 } from './models';
 
 export type {
-  CommandOptionType,
-  CommandOption,
-  CommandConfig,
-} from './models';
+  ExecutorConfig,
+} from './utils';
 
 export {
-  Command,
+  Commands,
+  Executor,
 };

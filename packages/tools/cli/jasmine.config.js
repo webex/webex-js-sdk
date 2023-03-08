@@ -1,38 +1,48 @@
 const Jasmine = require('jasmine');
 
 const { config, reporter } = require('@webex/jasmine-config');
-const { Command } = require('@webex/cli-tools');
+const { Commands } = require('@webex/cli-tools');
 
-const { mod, silent } = new Command({
-  options: [
-    {
-      description: 'perform module tests',
-      name: 'mod',
-      type: 'boolean',
-    },
-    {
-      description: 'remove reporters',
-      name: 'silent',
-      type: 'boolean',
-    },
-  ],
-}).results;
+const integration = {
+  config: {
+    name: 'integration',
+    description: 'Perform integration tests',
+    options: [
+      {
+        description: 'Perform integration tests against the module',
+        name: 'mod',
+      },
+      {
+        description: 'Remove all reporters',
+        name: 'silent',
+      },
+    ],
+  },
 
-const jasmine = new Jasmine();
-const targets = [];
+  handler: (options) => {
+    const { mod, silent } = options;
 
-config(jasmine);
-jasmine.clearReporters();
+    const jasmine = new Jasmine();
+    const targets = [];
 
-if (mod) {
-  targets.push(
-    './test/module/**/*.test.js',
-    './test/module/**/*.spec.js',
-  );
-}
+    config(jasmine);
+    jasmine.clearReporters();
 
-if (!silent) {
-  reporter(jasmine);
-}
+    if (mod) {
+      targets.push(
+        './test/module/**/*.test.js',
+        './test/module/**/*.spec.js',
+      );
+    }
 
-jasmine.execute(targets);
+    if (!silent) {
+      reporter(jasmine);
+    }
+
+    jasmine.execute(targets);
+  },
+};
+
+const commands = new Commands();
+commands.mount(integration);
+commands.process();

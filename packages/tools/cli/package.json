@@ -10,16 +10,11 @@
   "type": "commonjs",
   "main": "./dist/module/index.js",
   "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": "./dist/module/index.js",
-    "./config": "./config.js",
-    "./reporter": "./test/helpers/reporter.js"
-  },
   "files": [
-    "./static"
+    "./dist"
   ],
   "scripts": {
-    "build": "yarn build:src",
+    "build": "yarn build:src && yarn build:docs",
     "build:docs": "yarn build:docs:metadata && yarn build:docs:markdown",
     "build:docs:metadata": "api-extractor run -c ./api-extractor.config.json",
     "build:docs:markdown": "api-documenter markdown --input-folder ./dist/docs/metadata --output-folder ./dist/docs/markdown",
@@ -31,7 +26,7 @@
     "test:coverage": "nyc yarn test:integration --silent",
     "test:coverage:report": "nyc --reporter=lcov yarn test:integration --silent",
     "test:integration": "yarn test:integration:module",
-    "test:integration:module": "node ./jasmine.config.js --mod",
+    "test:integration:module": "node ./jasmine.config.js integration --mod",
     "test:static": "yarn test:static:style && yarn test:static:syntax",
     "test:static:style": "eslint ./src/**/*.*",
     "test:static:syntax": "tsc --noEmit"
@@ -41,6 +36,7 @@
     "@microsoft/api-extractor": "^7.34.4",
     "@types/eslint": "^8",
     "@types/jasmine": "^4",
+    "@types/shelljs": "^0",
     "@webex/api-extractor-config": "workspace:^",
     "@webex/eslint-config": "workspace:^",
     "@webex/jasmine-config": "workspace:^",
@@ -53,6 +49,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "yargs": "^17.7.1"
+    "commander": "^10.0.0",
+    "shelljs": "^0.8.5"
   }
 }
