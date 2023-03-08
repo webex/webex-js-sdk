@@ -226,6 +226,12 @@ describe('RemoteMedia', () => {
   });
 
   describe('setSizeHint()', () => {
+
+    it('works if the receive slot is undefined', () => {
+      remoteMedia.receiveSlot = undefined;
+      remoteMedia.setSizeHint(100, 100);
+    });
+
     forEach(
       [
         {height: 134, fs: 60},
