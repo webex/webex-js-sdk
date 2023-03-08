@@ -823,7 +823,7 @@ describe('MediaRequestManager', () => {
 
     maxFsHandler({maxFs: preferredFrameSize});
 
-    clock.tick(9);
+    clock.tick(999);
 
     assert.notCalled(sendMediaRequestsCallback);
 

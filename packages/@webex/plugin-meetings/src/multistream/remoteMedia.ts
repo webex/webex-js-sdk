@@ -115,14 +115,14 @@ export class RemoteMedia extends EventsScope {
     if (height < 135) {
       fs = 60;
     } else if (height < 270) {
-      fs = 225;
+      fs = 240;
     } else if (height < 540) {
       fs = 920;
     } else {
       fs = 3600;
     }
 
-    this.receiveSlot.setMaxFs(fs);
+    this.receiveSlot?.setMaxFs(fs);
   }
 
   /**

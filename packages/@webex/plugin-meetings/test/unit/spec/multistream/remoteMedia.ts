@@ -229,8 +229,8 @@ describe('RemoteMedia', () => {
     forEach(
       [
         {height: 134, fs: 60},
-        {height: 135, fs: 225},
-        {height: 269, fs: 225},
+        {height: 135, fs: 240},
+        {height: 269, fs: 240},
         {height: 270, fs: 920},
         {height: 539, fs: 920},
         {height: 540, fs: 3600},

@@ -1934,7 +1934,7 @@ async function getStatsForVideoPane(meeting, videoPane) {
   return result;
 }
 
-const remoteMediaIds = {};
+let remoteMediaIds = {};
 
 function setSizeHint() {
   const sizeHintValue =  document.getElementById('size-hint-input').value;
@@ -1954,6 +1954,10 @@ function addRemoteMediaOption(remoteMedia) {
   option.text = remoteMedia.id;
 
   select.add(option);
+}
+
+function clearRemoteMedia() {
+  remoteMediaIds = {};
 }
 
 function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
@@ -2053,6 +2057,7 @@ function setupMultistreamEventListeners(meeting) {
     console.log('memberVideoPanes:', memberVideoPanes);
     console.log('screenShareVideo:', screenShareVideo);
 
+    clearRemoteMedia();
     currentVideoPaneList.length = 0;
     clearAllMultistreamVideoElements();
     createVideoElementsForLayout(layoutId);

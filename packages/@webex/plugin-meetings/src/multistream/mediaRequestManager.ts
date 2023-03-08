@@ -57,7 +57,7 @@ const CODEC_DEFAULTS = {
   },
 };
 
-const DEBOUNCED_SOURCE_UPDATE_TIME = 10;
+const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
