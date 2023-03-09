@@ -71,7 +71,9 @@ describe('plugin-meetings', () => {
       });
 
       const mockTrack = {
-        getSettings: fakeDevice,
+        underlyingTrack: {
+          getSettings: fakeDevice,
+        }
       };
 
       it('#log - should log [info, warn, error, log] to console', () => {

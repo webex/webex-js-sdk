@@ -3,7 +3,13 @@
  */
 /* globals navigator */
 
-import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
+import {
+  LocalCameraTrack,
+  LocalDisplayTrack,
+  LocalMicrophoneTrack,
+  RoapMediaConnection,
+  MultistreamRoapMediaConnection,
+} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {AUDIO_INPUT, VIDEO_INPUT, MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
@@ -42,22 +48,6 @@ const {isBrowser} = BrowserDetection();
  * Extends and enhances adapter.js, i.e., the "media" file from the web client.
  */
 const Media: any = {};
-
-/**
- * @param {boolean} enabled
- * @param {MediaStreamTrack} track
- * @returns {Boolean}
- * @public
- */
-Media.setLocalTrack = (enabled: boolean, track: MediaStreamTrack) => {
-  if (track) {
-    track.enabled = enabled;
-
-    return true;
-  }
-
-  return false;
-};
 
 /**
  * format the media array for send
@@ -121,7 +111,7 @@ Media.getLocalMedia = (options: any, config: object) => {
  * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
  * @param {boolean} [options.enableExtmap] applicable only to non-multistream connections
  * @param {Object} [options.turnServerInfo]
- * @returns {RoapMediaConnection}
+ * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
  */
 Media.createMediaConnection = (
   isMultistream: boolean,
@@ -133,9 +123,9 @@ Media.createMediaConnection = (
         receiveVideo: boolean;
         receiveShare: boolean;
       };
-      audioTrack?: MediaStreamTrack;
-      videoTrack?: MediaStreamTrack;
-      shareTrack?: MediaStreamTrack;
+      audioTrack?: LocalMicrophoneTrack;
+      videoTrack?: LocalCameraTrack;
+      shareTrack?: LocalDisplayTrack;
     };
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
@@ -194,9 +184,9 @@ Media.createMediaConnection = (
     },
     {
       send: {
-        audio: audioTrack,
-        video: videoTrack,
-        screenShareVideo: shareTrack,
+        audio: audioTrack?.underlyingTrack,
+        video: videoTrack?.underlyingTrack,
+        screenShareVideo: shareTrack?.underlyingTrack,
       },
       receive: {
         audio: mediaDirection.receiveAudio,

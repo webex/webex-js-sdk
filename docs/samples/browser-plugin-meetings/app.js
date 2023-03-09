@@ -36,6 +36,7 @@ const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
+const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
 
 // Disable screenshare on join in Safari patch
@@ -493,6 +494,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
           updatePublishedEvents(payload);
         });
 
+        createBreakoutOperations();
         if (withMedia) {
           clearMediaDeviceList();
 
@@ -539,6 +541,8 @@ function leaveMeeting(meetingId) {
       meetingsJoinCaptchaElm.value = '';
       meetingsJoinMultistreamElm.disabled = false;
       enableMultistreamControls(false);
+      breakoutHostOperation.innerHTML = '';
+      breakoutTable.innerHTML = '';
     });
 }
 
@@ -1215,22 +1219,7 @@ function toggleBNR() {
     return;
   }
 
-  if (bnrEnabled) {
-    meeting.disableBNR().then((success) => {
-      if (success) {
-        bnrEnabled = false;
-        toggleBnrBtn.innerText = 'Enable BNR';
-      }
-    });
-  }
-  else {
-    meeting.enableBNR().then((success) => {
-      if (success) {
-        bnrEnabled = true;
-        toggleBnrBtn.innerText = 'Disable BNR';
-      }
-    });
-  }
+  console.log('BNR not supported');
 }
 
 let publishedLocalShareAudioTrack = null; // todo: stop and unset these on "unpublished" event (SPARK-399694)
@@ -1385,7 +1374,7 @@ function getLocalMediaSettings() {
   const meeting = getCurrentMeeting();
 
   if (meeting && meeting.mediaProperties.videoTrack) {
-    const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+    const videoSettings = meeting.mediaProperties.videoTrack?.underlyingTrack.getSettings();
     const {frameRate, height} = videoSettings;
 
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
@@ -1949,8 +1938,36 @@ async function getStatsForVideoPane(meeting, videoPane) {
   return result;
 }
 
+let remoteMediaIds = {};
+
+function setSizeHint() {
+  const sizeHintValue =  document.getElementById('size-hint-input').value;
+  const remoteMediaId = document.getElementById('remote-media-selector').value;
+
+  let [width, height] = sizeHintValue.split(',');
+
+  remoteMediaIds[remoteMediaId].setSizeHint(parseInt(width), parseInt(height))
+}
+
+function addRemoteMediaOption(remoteMedia) {
+  remoteMediaIds[remoteMedia.id] = remoteMedia;
+  const select = document.getElementById('remote-media-selector');
+
+  const option = document.createElement('option');
+  option.value = remoteMedia.id;
+  option.text = remoteMedia.id;
+
+  select.add(option);
+}
+
+function clearRemoteMedia() {
+  remoteMediaIds = {};
+}
+
 function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   const videoPane = allVideoPanes[paneGroupId][paneId];
+
+  addRemoteMediaOption(remoteMedia);
 
   videoPane.remoteMedia = remoteMedia;
   videoPane.videoEl.srcObject = remoteMedia.stream;
@@ -2044,6 +2061,7 @@ function setupMultistreamEventListeners(meeting) {
     console.log('memberVideoPanes:', memberVideoPanes);
     console.log('screenShareVideo:', screenShareVideo);
 
+    clearRemoteMedia();
     currentVideoPaneList.length = 0;
     clearAllMultistreamVideoElements();
     createVideoElementsForLayout(layoutId);
@@ -2622,11 +2640,129 @@ function transferHostToMember(transferButton) {
   }
 }
 
+const createButton = (text, func) => {
+  const button = document.createElement('button');
+
+  button.onclick = (e) => func(e.target);
+  button.innerText = text;
+  button.setAttribute('type', 'button');
+
+  return button;
+}
+
+const createBreakoutOperations = ()=>{
+  const isHostUser = meeting.members.hostId === meeting.userId;
+  const hostOperationsEl = document.createElement('div');
+  let groupId = '';
+  let sessionList = [];
+  if(isHostUser && meetingsBreakoutSupportElm.checked){
+    breakoutHostOperation.innerHTML = '';
+    const hostOperationsTitleEl = document.createElement('h3');
+    hostOperationsTitleEl.innerText = 'Host Operations';
+    hostOperationsTitleEl.setAttribute('style', 'margin-top:0');
+    const createSessionRow = ()=>{
+      if(!breakoutTable.querySelector('table')){
+        viewBreakouts();
+      }
+      sessionList.forEach((session)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${session.name}</td><td>YES</td><td>YES</td><td>NO</td><td>NO</td><td>NO</td><td></td>`;
+        breakoutTable.querySelector('table').lastChild.appendChild(tr);
+      })
+    }
+    const createBtn = createButton('Create Breakout Sessions', async ()=>{
+      await meeting.breakouts.getBreakout().then((res)=>{
+        createBtn.disabled = true;
+        deleteBtn.disabled = false;
+        startBtn.disabled = false;
+        if(res.body.groups?.length){
+          const group = res.body.groups[0];
+          const {id, sessions} = group;
+          groupId = id;
+          sessionList = sessions
+        }else{
+          sessionList = [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}];
+          meeting.breakouts.create(sessionList).then((res)=>{
+            groupId = res.body.groups[0].id;
+          })
+        }
+        createSessionRow();
+      })
+    });
+    const startBtn = createButton('Start Breakout Sessions', ()=>{
+      endBtn.disabled = false;
+      startBtn.disabled = true;
+      deleteBtn.disabled = true;
+      if(groupId){
+          meeting.breakouts.start();
+      }else{
+        meeting.breakouts.getBreakout().then((res)=>{
+          meeting.breakouts.start();
+        })
+      }
+    });
+    const endBtn = createButton('End Breakout Sessions', ()=>{
+      let countDown = meeting.breakouts.delayCloseTime;
+      countDown = countDown<0?0:countDown;
+      meeting.breakouts.end().then(()=>{
+        setTimeout(() => {
+          createSessionRow();
+        }, 500);
+      });
+      setTimeout(()=>{
+        endBtn.disabled = true;
+        startBtn.disabled = false;
+        deleteBtn.disabled = false;
+      }, countDown*1000);
+      if(countDown>0){
+        const intervalId = setInterval(()=>{
+          endBtn.innerText = `End Breakout Sessions in (${--countDown}s)`;
+          endBtn.disabled = true;
+          if(countDown === 0){
+            clearInterval(intervalId);
+            endBtn.innerText = 'End Breakout Sessions';
+          }
+        }, 1000)
+      }
+    })
+
+    const deleteBtn = createButton('Delete Breakout Sessions',() => {
+      meeting.breakouts.clearSessions().then((result) => {
+        if (result.body) {
+          createBtn.disabled = false;
+          deleteBtn.disabled = true;
+          startBtn.disabled = true;
+          endBtn.disabled = true;
+          breakoutTable.querySelector('table').lastChild.innerHTML = '';
+        }
+      }).catch((error) => {
+        console.error('Breatout#createBreakoutSessions :: ', error.sdkMessage);
+      });
+    });
+
+    createBtn.disabled = true;
+    deleteBtn.disabled = true;
+    startBtn.disabled = true;
+    endBtn.disabled = true;
+    startBtn.id = 'startBO';
+    endBtn.id = 'endBO';
+    createBtn.id = 'createBO';
+    deleteBtn.id = 'deleteBO';
+    hostOperationsEl.appendChild(hostOperationsTitleEl);
+    hostOperationsEl.appendChild(createBtn);
+    hostOperationsEl.appendChild(deleteBtn);
+    hostOperationsEl.appendChild(startBtn);
+    hostOperationsEl.appendChild(endBtn);
+    breakoutHostOperation.appendChild(hostOperationsEl);
+  }
+}
 function toggleBreakout() {
-  var enableBox = document.getElementById("enable-breakout");
-  const meeting = getCurrentMeeting();
+  const enableBox = document.getElementById("enable-breakout"),
+        meeting = getCurrentMeeting();
+
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
+    document.getElementById('createBO').disabled = !enableBox.checked;
   }
 }
 
@@ -2875,16 +3011,6 @@ function viewParticipants() {
     label.setAttribute('for', id);
 
     return label;
-  }
-
-  function createButton(text, func) {
-    const button = document.createElement('button');
-
-    button.onclick = (e) => func(e.target);
-    button.innerText = text;
-    button.setAttribute('type', 'button');
-
-    return button;
   }
 
   function createHeadRow() {

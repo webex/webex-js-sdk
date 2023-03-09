@@ -1,4 +1,10 @@
-import {ConnectionState, Event} from '@webex/internal-media-core';
+import {
+  ConnectionState,
+  Event,
+  LocalCameraTrack,
+  LocalMicrophoneTrack,
+  LocalDisplayTrack,
+} from '@webex/internal-media-core';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -7,7 +13,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioTrack: any;
+  audioTrack: LocalMicrophoneTrack | null;
   localQualityLevel: any;
   mediaDirection: any;
   mediaSettings: any;
@@ -16,9 +22,9 @@ export default class MediaProperties {
   remoteQualityLevel: any;
   remoteShare: any;
   remoteVideoTrack: any;
-  shareTrack: any;
+  shareTrack: LocalDisplayTrack | null;
   videoDeviceId: any;
-  videoTrack: any;
+  videoTrack: LocalCameraTrack | null;
   namespace = MEETINGS;
 
   /**
@@ -28,9 +34,9 @@ export default class MediaProperties {
   constructor(options: any = {}) {
     this.webrtcMediaConnection = null;
     this.mediaDirection = options.mediaDirection;
-    this.videoTrack = options.videoTrack;
-    this.audioTrack = options.audioTrack;
-    this.shareTrack = options.shareTrack;
+    this.videoTrack = options.videoTrack || null;
+    this.audioTrack = options.audioTrack || null;
+    this.shareTrack = options.shareTrack || null;
     this.remoteShare = options.remoteShare;
     this.remoteAudioTrack = options.remoteAudioTrack;
     this.remoteVideoTrack = options.remoteVideoTrack;
@@ -60,11 +66,11 @@ export default class MediaProperties {
     this.webrtcMediaConnection = mediaPeerConnection;
   }
 
-  setLocalVideoTrack(videoTrack) {
+  setLocalVideoTrack(videoTrack: LocalCameraTrack | null) {
     this.videoTrack = videoTrack;
   }
 
-  setLocalAudioTrack(audioTrack) {
+  setLocalAudioTrack(audioTrack: LocalMicrophoneTrack | null) {
     this.audioTrack = audioTrack;
   }
 
@@ -72,7 +78,7 @@ export default class MediaProperties {
     this.localQualityLevel = localQualityLevel;
   }
 
-  setLocalShareTrack(shareTrack) {
+  setLocalShareTrack(shareTrack: LocalDisplayTrack | null) {
     this.shareTrack = shareTrack;
   }
 

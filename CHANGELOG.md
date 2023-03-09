@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.39](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.38...v3.0.0-beta.39) (2023-03-08)
+
+
+### Features
+
+* **meetings:** export RemoteMedia class ([#2655](https://github.com/webex/webex-js-sdk/issues/2655)) ([08cd2d5](https://github.com/webex/webex-js-sdk/commit/08cd2d508b89fbfd011cc2be8e0ffbe63411f2d2))
+* provide size hint remote media ([#2653](https://github.com/webex/webex-js-sdk/issues/2653)) ([1a1c3b7](https://github.com/webex/webex-js-sdk/commit/1a1c3b7e1a5b5824894dec6fb23ec43dd472b387))
+
+## [3.0.0-beta.38](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.37...v3.0.0-beta.38) (2023-03-07)
+
+
+### Bug Fixes
+
+* remove code for resetting of source state ([#2652](https://github.com/webex/webex-js-sdk/issues/2652)) ([84b5b61](https://github.com/webex/webex-js-sdk/commit/84b5b611701a5ae932f8cd825ce1a938293b72c3))
+
+## [3.0.0-beta.37](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.35...v3.0.0-beta.37) (2023-03-07)
+
+
+### Bug Fixes
+
+* added converged org id to .env.defaults ([#2644](https://github.com/webex/webex-js-sdk/issues/2644)) ([09097c2](https://github.com/webex/webex-js-sdk/commit/09097c2d39d7bdff7bf6bd4f274f1193bf716515))
+* **plugin-meetings:** add optional chaining around stats lookup ([#2648](https://github.com/webex/webex-js-sdk/issues/2648)) ([4ded82a](https://github.com/webex/webex-js-sdk/commit/4ded82ade0d0e13808a421a10a1a0bf4db12bbaf))
+* **plugin-meetings:** changed SDK to use webrtc-core local tracks internally ([#2638](https://github.com/webex/webex-js-sdk/issues/2638)) ([cb27441](https://github.com/webex/webex-js-sdk/commit/cb2744143e0dd6d0563b69c9c1c8756219627afe))
+
+## [3.0.0-beta.36](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.35...v3.0.0-beta.36) (2023-03-07)
+
+
+### Bug Fixes
+
+* added converged org id to .env.defaults ([#2644](https://github.com/webex/webex-js-sdk/issues/2644)) ([09097c2](https://github.com/webex/webex-js-sdk/commit/09097c2d39d7bdff7bf6bd4f274f1193bf716515))
+* **plugin-meetings:** changed SDK to use webrtc-core local tracks internally ([#2638](https://github.com/webex/webex-js-sdk/issues/2638)) ([cb27441](https://github.com/webex/webex-js-sdk/commit/cb2744143e0dd6d0563b69c9c1c8756219627afe))
+
+## [3.0.0-beta.35](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.34...v3.0.0-beta.35) (2023-03-03)
+
+
+### Features
+
+* **reachability:** add join cookie ([#2634](https://github.com/webex/webex-js-sdk/issues/2634)) ([1d2b353](https://github.com/webex/webex-js-sdk/commit/1d2b3530909680ae2bf7188faadeca9b89733368))
+
 ## [3.0.0-beta.34](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.33...v3.0.0-beta.34) (2023-02-27)
 
 

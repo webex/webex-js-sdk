@@ -6,6 +6,7 @@ import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multist
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import { forEach } from 'lodash';
 
 describe('RemoteMedia', () => {
   let remoteMedia;
@@ -21,6 +22,7 @@ describe('RemoteMedia', () => {
     fakeReceiveSlot.csi = 999;
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
+    fakeReceiveSlot.setMaxFs = sinon.stub();
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
@@ -221,5 +223,31 @@ describe('RemoteMedia', () => {
         assert.strictEqual(eventEmitted, false);
       });
     });
+  });
+
+  describe('setSizeHint()', () => {
+
+    it('works if the receive slot is undefined', () => {
+      remoteMedia.receiveSlot = undefined;
+      remoteMedia.setSizeHint(100, 100);
+    });
+
+    forEach(
+      [
+        {height: 134, fs: 60},
+        {height: 135, fs: 240},
+        {height: 269, fs: 240},
+        {height: 270, fs: 920},
+        {height: 539, fs: 920},
+        {height: 540, fs: 3600},
+      ],
+      ({height, fs}) => {
+        it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {
+          remoteMedia.setSizeHint(100, height);
+
+          assert.calledOnceWithExactly(fakeReceiveSlot.setMaxFs, fs);
+        });
+      }
+    );
   });
 });

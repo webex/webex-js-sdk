@@ -7,7 +7,7 @@ import {
   CodecInfo as WcmeCodecInfo,
   H264Codec,
 } from '@webex/internal-media-core';
-import {cloneDeep} from 'lodash';
+import {cloneDeep, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -44,6 +44,7 @@ export interface MediaRequest {
   policyInfo: PolicyInfo;
   receiveSlots: Array<ReceiveSlot>;
   codecInfo?: CodecInfo;
+  preferredMaxFs?: number;
 }
 
 export type MediaRequestId = string;
@@ -55,6 +56,8 @@ const CODEC_DEFAULTS = {
     maxMbps: 245760,
   },
 };
+
+const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
@@ -69,11 +72,11 @@ export class MediaRequestManager {
 
   private clientRequests: {[key: MediaRequestId]: MediaRequest};
 
-  private slotsActiveInLastMediaRequest: {[key: ReceiveSlotId]: ReceiveSlot};
-
   private degradationPreferences: DegradationPreferences;
 
   private sourceUpdateListener: () => void;
+
+  private debouncedSourceUpdateListener: () => void;
 
   constructor(
     degradationPreferences: DegradationPreferences,
@@ -82,34 +85,12 @@ export class MediaRequestManager {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
     this.clientRequests = {};
-    this.slotsActiveInLastMediaRequest = {};
     this.degradationPreferences = degradationPreferences;
     this.sourceUpdateListener = this.commit.bind(this);
-  }
-
-  private resetInactiveReceiveSlots() {
-    const activeSlots: {[key: ReceiveSlotId]: ReceiveSlot} = {};
-
-    // create a map of all currently used slot ids
-    Object.values(this.clientRequests).forEach((request) =>
-      request.receiveSlots.forEach((slot) => {
-        activeSlots[slot.id] = slot;
-      })
+    this.debouncedSourceUpdateListener = debounce(
+      this.sourceUpdateListener,
+      DEBOUNCED_SOURCE_UPDATE_TIME
     );
-
-    // when we stop using some receive slots and they are not included in the new media request,
-    // we will never get a 'no source' notification for them, so we reset their state,
-    // so that the client doesn't try to display their video anymore
-    for (const [slotId, slot] of Object.entries(this.slotsActiveInLastMediaRequest)) {
-      if (!(slotId in activeSlots)) {
-        LoggerProxy.logger.info(
-          `multistream:mediaRequestManager --> resetting sourceState to "no source" for slot ${slot.id}`
-        );
-        slot.resetSourceState();
-      }
-    }
-
-    this.slotsActiveInLastMediaRequest = activeSlots;
   }
 
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
@@ -134,6 +115,7 @@ export class MediaRequestManager {
       Object.entries(clientRequests).forEach(([id, mr]) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
+            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
             mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
             maxFsLimits[i]
           );
@@ -201,8 +183,6 @@ export class MediaRequestManager {
     });
 
     this.sendMediaRequestsCallback(wcmeMediaRequests);
-
-    this.resetInactiveReceiveSlots();
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
@@ -213,6 +193,10 @@ export class MediaRequestManager {
 
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+      rs.on(ReceiveSlotEvents.MaxFsUpdate, ({maxFs}) => {
+        mediaRequest.preferredMaxFs = maxFs;
+        this.debouncedSourceUpdateListener();
+      });
     });
 
     if (commit) {
@@ -240,6 +224,5 @@ export class MediaRequestManager {
 
   public reset() {
     this.clientRequests = {};
-    this.slotsActiveInLastMediaRequest = {};
   }
 }
