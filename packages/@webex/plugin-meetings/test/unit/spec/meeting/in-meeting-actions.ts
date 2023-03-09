@@ -17,6 +17,8 @@ describe('plugin-meetings', () => {
         canUnsetMuteOnEntry: null,
         canSetDisallowUnmute: null,
         canUnsetDisallowUnmute: null,
+        canSetMuted: null,
+        canUnsetMuted: null,
         canStopRecording: null,
         canRaiseHand: null,
         canLowerAllHands: null,
