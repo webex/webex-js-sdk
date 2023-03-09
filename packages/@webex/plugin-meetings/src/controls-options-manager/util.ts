@@ -13,7 +13,7 @@ const canUnsetDisallowUnmute = (displayHints: Array<string>): boolean =>
   displayHints.includes(DISPLAY_HINTS.DISABLE_HARD_MUTE);
 
 // 'Muted' in the context of controls options manager refers to mute/unmute all.
-// This was chosen because locus uses "muted" in the /controls API 
+// This was chosen because locus uses "muted" in the /controls API
 const canSetMuted = (displayHints: Array<string>): boolean =>
   displayHints.includes(DISPLAY_HINTS.MUTE_ALL);
 
