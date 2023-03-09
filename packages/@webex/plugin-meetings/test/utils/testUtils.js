@@ -195,7 +195,7 @@ const delayedTest = (callback, timeout) =>
     }, timeout);
   });
 
-const addMedia = (user, options = {}) => {
+const addMedia = async (user, options = {}) => {
   const mediaReadyPromises = Array.isArray(options.expectedMediaReadyTypes)
     ? options.expectedMediaReadyTypes.reduce((output, expectedMediaReadyType) => {
       if (typeof expectedMediaReadyType !== 'string') {
@@ -219,31 +219,36 @@ const addMedia = (user, options = {}) => {
 
   user.meeting.on('media:ready', mediaReady);
 
-  return user.meeting
-    .getMediaStreams({
-      sendAudio: true,
-      sendVideo: true,
-      sendShare: false,
-    })
-    .then(([localStream, localShare]) =>
-      user.meeting.addMedia({
-        mediaSettings: {
-          sendAudio: true,
-          sendVideo: true,
-          sendShare: false,
-          receiveShare: true,
-          receiveAudio: true,
-          receiveVideo: true,
-        },
-        localShare,
-        localStream,
-      })
-    )
-    .then(() => Promise.all(Object.values(mediaReadyPromises).map((defer) => defer.promise)))
-    .then(() => {
-      assert.exists(user.meeting.mediaProperties.audioTrack, 'audioTrack not present');
-      assert.exists(user.meeting.mediaProperties.videoTrack, 'videoTrack not present');
+  const [localStream, localShare] = await user.meeting
+      .getMediaStreams({
+        sendAudio: true,
+        sendVideo: true,
+        sendShare: false,
+      });
+
+  if (options.multistream) {
+    await user.meeting.addMedia({});
+
+    await user.meeting.publishTracks({microphone: localStream.getAudioTracks()[0], camera: localStream.getVideoTracks()[0]})
+  } else {
+    await user.meeting.addMedia({
+      mediaSettings: {
+        sendAudio: true,
+        sendVideo: true,
+        sendShare: false,
+        receiveShare: true,
+        receiveAudio: true,
+        receiveVideo: true,
+      },
+      localShare,
+      localStream,
     });
+  }
+
+  await Promise.all(Object.values(mediaReadyPromises).map((defer) => defer.promise));
+
+  assert.exists(user.meeting.mediaProperties.audioTrack, 'audioTrack not present');
+  assert.exists(user.meeting.mediaProperties.videoTrack, 'videoTrack not present');
 };
 
 const waitUntil = (waitTime) =>

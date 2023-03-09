@@ -492,23 +492,23 @@ export class StatsAnalyzer extends EventsScope {
       const getCurrentStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.statsResults[cur].recv[value] || 0), 0);
+          .reduce((prev, cur) => prev + (this.statsResults[cur]?.recv[value] || 0), 0);
 
       const getPreviousStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.lastStatsResults[cur].recv[value] || 0), 0);
+          .reduce((prev, cur) => prev + (this.lastStatsResults[cur]?.recv[value] || 0), 0);
 
       const getCurrentResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.statsResults.resolutions[cur].recv[value] || 0), 0);
+          .reduce((prev, cur) => prev + (this.statsResults.resolutions[cur]?.recv[value] || 0), 0);
 
       const getPreviousResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
           .reduce(
-            (prev, cur) => prev + (this.lastStatsResults.resolutions[cur].recv[value] || 0),
+            (prev, cur) => prev + (this.lastStatsResults.resolutions[cur]?.recv[value] || 0),
             0
           );
 

@@ -1,7 +1,6 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 import PermissionError from '../common/errors/permission';
-import Media from '../media';
 import MeetingUtil from './util';
 import {AUDIO, VIDEO} from '../constants';
 
@@ -114,10 +113,11 @@ class MuteState {
    * @returns {void}
    */
   public applyClientStateLocally(meeting?: any) {
-    Media.setLocalTrack(
-      !this.state.client.localMute,
-      this.type === AUDIO ? meeting.mediaProperties.audioTrack : meeting.mediaProperties.videoTrack
-    );
+    if (this.type === AUDIO) {
+      meeting.mediaProperties.audioTrack?.setMuted(this.state.client.localMute);
+    } else {
+      meeting.mediaProperties.videoTrack?.setMuted(this.state.client.localMute);
+    }
   }
 
   /**
