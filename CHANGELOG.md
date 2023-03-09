@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.41](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.40...v3.0.0-beta.41) (2023-03-09)
+
+
+### Features
+
+* **internal-plugin-support:** allow productAreaTag and issueTypeTag to be in log metadata ([#2650](https://github.com/webex/webex-js-sdk/issues/2650)) ([3d3d95a](https://github.com/webex/webex-js-sdk/commit/3d3d95abe0efb51a32f1bc745a7156ef88eb7b2c))
+
 ## [3.0.0-beta.40](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.39...v3.0.0-beta.40) (2023-03-09)
 
 
