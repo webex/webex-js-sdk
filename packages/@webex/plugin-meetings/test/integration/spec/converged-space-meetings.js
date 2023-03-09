@@ -142,9 +142,9 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: chris.meeting, event: 'media:negotiated'},
         ]);
 
-        const addMediaAlice = testUtils.addMedia(alice, {expectedMediaReadyTypes: ['local']});
-        const addMediaBob = testUtils.addMedia(bob, {expectedMediaReadyTypes: ['local']});
-        const addMediaChris = testUtils.addMedia(chris, {expectedMediaReadyTypes: ['local']});
+        const addMediaAlice = testUtils.addMedia(alice, {multistream: true, expectedMediaReadyTypes: ['local']});
+        const addMediaBob = testUtils.addMedia(bob, {multistream: true, expectedMediaReadyTypes: ['local']});
+        const addMediaChris = testUtils.addMedia(chris, {multistream: true, expectedMediaReadyTypes: ['local']});
 
         await addMediaAlice;
         await addMediaBob;

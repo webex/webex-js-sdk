@@ -119,17 +119,26 @@ breakout.remove(participant)
 // This can only be done when breakouts are inactive
 breakout.delete()
 
-// Create a breakout session
-breakouts.create(sessionName)
+/*
+Create breakout sessions, Type is array
+Format: [{'name':'session1', "anyoneCanJoin" : true}]
+*/
+breakouts.create(sessions)
+
+// Delete all breakout sessions
+breakouts.clearSessions()
 
 // Rename an existing breakout session
 breakout.rename(newSessionName)
 
-// Start breakout sessions
-breakouts.start()
+// Start breakout sessions with necessary params
+breakouts.start(params)
 
-// End breakout sessions
-breakouts.end()
+// End breakout sessions with necessary params
+breakouts.end(params)
+
+// get breakout sessions with/without param editlock
+breakouts.getBreakout(editlock?)
 
 // Enable breakout sessions
 breakouts.enable()

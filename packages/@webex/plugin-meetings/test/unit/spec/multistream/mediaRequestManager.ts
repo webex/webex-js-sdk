@@ -3,6 +3,7 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import FakeTimers from '@sinonjs/fake-timers';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -62,7 +63,6 @@ describe('MediaRequestManager', () => {
             off: sinon.stub(),
             sourceState: 'live',
             wcmeReceiveSlot: fakeWcmeSlots[index],
-            resetSourceState: sinon.stub(),
           } as unknown as ReceiveSlot)
       );
   });
@@ -609,78 +609,6 @@ describe('MediaRequestManager', () => {
     checkMediaRequestsSent([]);
   });
 
-  it('calls resetSourceState() on slots that are stopped being used', () => {
-    const requestIds = [
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[0], fakeReceiveSlots[1]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[2], fakeReceiveSlots[3]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addReceiverSelectedRequest(100, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS),
-      addReceiverSelectedRequest(200, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS),
-    ];
-
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 100,
-        receiveSlot: fakeWcmeSlots[4],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 200,
-        receiveSlot: fakeWcmeSlots[5],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-    ]);
-
-    // cancel 2 of the requests
-    mediaRequestManager.cancelRequest(requestIds[1], false);
-    mediaRequestManager.cancelRequest(requestIds[3], false);
-
-    mediaRequestManager.commit();
-
-    // expect only the 2 remaining requests to be sent out
-    checkMediaRequestsSent([
-      {
-        policy: 'active-speaker',
-        priority: 255,
-        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-      },
-      {
-        policy: 'receiver-selected',
-        csi: 100,
-        receiveSlot: fakeWcmeSlots[4],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-      },
-    ]);
-
-    // and that the receive slots of the 2 cancelled ones had resetSourceState() called
-    assert.calledOnce(fakeReceiveSlots[2].resetSourceState);
-    assert.calledOnce(fakeReceiveSlots[3].resetSourceState);
-    assert.calledOnce(fakeReceiveSlots[5].resetSourceState);
-  });
-
   it('re-sends media requests after degradation preferences are set', () => {
     // set max macroblocks limit
     mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
@@ -801,4 +729,41 @@ describe('MediaRequestManager', () => {
       },
     ]);
   });
+
+  it('respects the preferredMaxFs if set', () => {
+    sendMediaRequestsCallback.resetHistory();
+    const clock = FakeTimers.install({now: Date.now()});
+
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+
+    sendMediaRequestsCallback.resetHistory();
+
+
+    const maxFsHandlerCall = fakeReceiveSlots[0].on.getCall(1);
+
+    const maxFsHandler = maxFsHandlerCall.args[1];
+    const eventName = maxFsHandlerCall.args[0];
+
+    assert.equal(eventName, 'maxFsUpdate');
+
+    const preferredFrameSize = 100;
+
+    maxFsHandler({maxFs: preferredFrameSize});
+
+    clock.tick(999);
+
+    assert.notCalled(sendMediaRequestsCallback);
+
+    clock.tick(1);
+
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: fakeWcmeSlots.slice(0, 10),
+        maxFs: preferredFrameSize,
+      },
+    ]);
+  });
+
 });

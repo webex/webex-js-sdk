@@ -11,6 +11,7 @@ import EventsScope from '../common/events/events-scope';
 
 export const ReceiveSlotEvents = {
   SourceUpdate: 'sourceUpdate',
+  MaxFsUpdate: 'maxFsUpdate',
 };
 
 export type {SourceState} from '@webex/internal-media-core';
@@ -79,6 +80,25 @@ export class ReceiveSlot extends EventsScope {
    */
   public get csi() {
     return this.#csi;
+  }
+
+  /**
+   * Set the max frame size for this slot
+   * @param newFs frame size
+   */
+  public setMaxFs(newFs) {
+    // emit event for media request manager to listen to
+
+    this.emit(
+      {
+        file: 'meeting/receiveSlot',
+        function: 'findMemberId',
+      },
+      ReceiveSlotEvents.MaxFsUpdate,
+      {
+        maxFs: newFs,
+      }
+    );
   }
 
   /**
@@ -153,18 +173,5 @@ export class ReceiveSlot extends EventsScope {
    */
   get wcmeReceiveSlot(): WcmeReceiveSlot {
     return this.mcReceiveSlot;
-  }
-
-  /**
-   * Resets the source state to the default 'no source' value.
-   * This function should be called on receive slots that are
-   * no longer part of a media request. It's needed because WCME
-   * does not send any more events on such slots, so the sourceState
-   * value would not represent the truth anymore.
-   */
-  public resetSourceState() {
-    this.#sourceState = 'no source';
-    this.#csi = undefined;
-    this.#memberId = undefined;
   }
 }

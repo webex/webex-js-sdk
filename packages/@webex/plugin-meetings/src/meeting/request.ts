@@ -23,10 +23,10 @@ import {
   PARTICIPANT,
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
+  REACHABILITY,
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
 } from '../constants';
-import {Reaction} from '../reactions/reactions.type';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 
 /**
@@ -35,6 +35,11 @@ import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
 
+  /**
+   * Constructor
+   * @param {Object} attrs
+   * @param {Object} options
+   */
   constructor(attrs: any, options: any) {
     super(attrs, options);
     this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
@@ -42,6 +47,32 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       trailing: true,
     });
   }
+
+  /**
+   * Returns joinCookie from boundedStorage if present.
+   * @returns {Object} joinCookie
+   */
+  private getJoinCookie = async () => {
+    // @ts-ignore
+    const joinCookieRaw = await this.webex.boundedStorage
+      .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
+      .catch(() => {});
+
+    if (joinCookieRaw) {
+      try {
+        const joinCookie = JSON.parse(joinCookieRaw);
+        if (joinCookie) {
+          return joinCookie;
+        }
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
+        );
+      }
+    }
+
+    return null;
+  };
 
   /**
    * Make a network request to join a meeting
@@ -99,6 +130,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
     let url = '';
 
+    const joinCookie = await this.getJoinCookie();
+
     const body: any = {
       asResourceOccupant,
       device: {
@@ -115,6 +148,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       supportsNativeLobby: 1,
       clientMediaPreferences: {
         preferTranscoding: preferTranscoding ?? true,
+        joinCookie,
       },
     };
 
