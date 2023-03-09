@@ -2681,16 +2681,22 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Admit the guest(s) to the call once they are waiting.
    * If the host/cohost is in a breakout session, the locus url
-   * of the session must be provided. If the loucs url is not
-   * passed in, the function will do the check.
+   * of the session must be provided as the authorizingLocusUrl.
+   * Regardless of host/cohost location, the locus Id (lid) in
+   * the path should be the locus Id of the main, which means the
+   * locus url of the api call must be from the main session.
+   * If these loucs urls are not provided, the function will do the check.
    * @param {Array} memberIds
-   * @param {Object} sessionLocusUrls
+   * @param {Object} sessionLocusUrls: {authorizingLocusUrl, mainLocusUrl}
    * @returns {Promise} see #members.admitMembers
    * @public
    * @memberof Meeting
    */
-  public admit(memberIds: Array<any>, sessionLocusUrls?: any) {
-    let locusUrls: any = sessionLocusUrls;
+  public admit(
+    memberIds: Array<any>,
+    sessionLocusUrls?: {authorizingLocusUrl: string; mainLocusUrl: string}
+  ) {
+    let locusUrls = sessionLocusUrls;
     if (!locusUrls) {
       const {locusUrl, mainLocusUrl} = this.breakouts;
       if (locusUrl && mainLocusUrl) {
