@@ -526,6 +526,9 @@ export const LOCUS = {
 export const BREAKOUTS = {
   STATUS: {
     CLOSING: 'CLOSING',
+    CLOSED: 'CLOSED',
+    PENDING: 'PENDING',
+    OPEN: 'OPEN',
   },
   EVENTS: {
     BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
@@ -543,7 +546,9 @@ export const BREAKOUTS = {
     REQUESTED: 'requested',
   },
   BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
-  ACTION_TYPES: {
+  ACTION: {
+    START: 'START',
+    CLOSE: 'CLOSE',
     DELETE: 'DELETE',
   },
   ERROR_CODE: {

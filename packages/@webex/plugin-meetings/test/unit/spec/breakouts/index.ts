@@ -1,13 +1,51 @@
 import {assert, expect} from '@webex/test-helper-chai';
-import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-import BreakoutCollection from '@webex/plugin-meetings/src/breakouts/collection';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {BREAKOUTS} from '@webex/plugin-meetings/src/constants';
-import sinon from "sinon";
+import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from "@webex/plugin-meetings/src/breakouts/edit-lock-error";
+
+const getBOResponse = (status: string) => {
+  return {
+    url: 'url',
+    locusUrl: 'locusUrl',
+    mainGroupId: 'mainGroupId',
+    mainSessionId: 'mainSessionId',
+    groups: [
+      {
+        id: 'groupId',
+        type: 'BREAKOUT',
+        status,
+        duration: 60000,
+        durationSetting: 60000,
+        delayCloseTime: 60,
+        allowBackToMain: true,
+        allowToJoinLater: true,
+        startTime: '2023-02-01T23:08:43.200Z',
+        sessions: [
+          {
+            name: 'Breakout Session 1',
+            subConfId: 1,
+            anyoneCanJoin: false,
+            locusUrl: 'locusUrl',
+            venueUrl: 'venueUrl',
+            allowed: ['allowed id1', 'allowed id2'],
+            id: 'sessionId1',
+          },
+          {
+            name: 'Breakout Session 2',
+            anyoneCanJoin: true,
+            locusUrl: 'locusUrl',
+            allowed: ['allowed id3', 'allowed id4'],
+            id: 'sessionId2',
+          },
+        ],
+      },
+    ],
+  };
+};
 
 describe('plugin-meetings', () => {
   describe('Breakouts', () => {
@@ -43,7 +81,7 @@ describe('plugin-meetings', () => {
 
         assert.isFalse(called);
 
-        breakouts.set({'status': BREAKOUTS.STATUS.CLOSING});
+        breakouts.set({status: BREAKOUTS.STATUS.CLOSING});
 
         assert.isTrue(called);
       });
@@ -67,7 +105,7 @@ describe('plugin-meetings', () => {
 
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.MESSAGE, (event) => {
           message = event;
-        })
+        });
 
         breakouts.currentBreakoutSession.sessionId = 'sessionId';
 
@@ -76,14 +114,14 @@ describe('plugin-meetings', () => {
             senderUserId: 'senderUserId',
             sentTime: 'sentTime',
             message: 'message',
-          }
+          },
         });
 
         assert.deepEqual(message, {
-          senderUserId: "senderUserId",
+          senderUserId: 'senderUserId',
           sentTime: 'sentTime',
           message: 'message',
-          sessionId: 'sessionId'
+          sessionId: 'sessionId',
         });
       });
     });
@@ -99,13 +137,13 @@ describe('plugin-meetings', () => {
 
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.MEMBERS_UPDATE, () => {
           called = true;
-        })
+        });
         breakouts.handleRosterUpdate = sinon.stub();
 
         callback({
           data: {
-            locus: 'locus'
-          }
+            locus: 'locus',
+          },
         });
 
         assert.isTrue(called);
@@ -126,7 +164,7 @@ describe('plugin-meetings', () => {
           enableBreakoutSession: true,
           startTime: 'startTime',
           status: 'active',
-          locusUrl: 'locusUrl'
+          locusUrl: 'locusUrl',
         });
 
         assert.equal(breakouts.allowBackToMain, true);
@@ -155,7 +193,6 @@ describe('plugin-meetings', () => {
     });
 
     describe('#updateBreakoutSessions', () => {
-
       const checkBreakout = (breakout, sessionId, state) => {
         assert.deepEqual(breakout.attributes, {
           active: false,
@@ -167,12 +204,11 @@ describe('plugin-meetings', () => {
           requested: false,
           url: 'url',
           sessionId,
-          ...{[state]: true}
+          ...{[state]: true},
         });
-      }
+      };
 
       it('works', () => {
-
         breakouts.set('url', 'url');
 
         const payload = {
@@ -182,8 +218,8 @@ describe('plugin-meetings', () => {
             allowed: [{sessionId: 'sessionId3'}],
             assignedCurrent: [{sessionId: 'sessionId4'}],
             requested: [{sessionId: 'sessionId5'}],
-          }
-        }
+          },
+        };
 
         breakouts.updateBreakoutSessions(payload);
 
@@ -192,7 +228,7 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId3'), 'sessionId3', 'allowed');
         checkBreakout(breakouts.breakouts.get('sessionId4'), 'sessionId4', 'assignedCurrent');
         checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
-      })
+      });
     });
 
     describe('#locusUrlUpdate', () => {
@@ -224,7 +260,7 @@ describe('plugin-meetings', () => {
         const breakout = breakouts.breakouts.models[0];
         breakout.parseRoster = sinon.stub();
 
-        const locus = {controls: {breakout: {sessionId: 'sessionId'}}}
+        const locus = {controls: {breakout: {sessionId: 'sessionId'}}};
 
         breakouts.handleRosterUpdate(locus);
         assert.calledOnceWithExactly(breakout.parseRoster, locus);
@@ -232,18 +268,21 @@ describe('plugin-meetings', () => {
     });
 
     describe('#queryRosters', () => {
-
       it('makes the expected query', async () => {
-
-        webex.request.returns(Promise.resolve({
-          body: {
-            rosters: [{
-              locus: 'locus1'
-            }, {
-              locus: 'locus2'
-            }]
-          }
-        }));
+        webex.request.returns(
+          Promise.resolve({
+            body: {
+              rosters: [
+                {
+                  locus: 'locus1',
+                },
+                {
+                  locus: 'locus2',
+                },
+              ],
+            },
+          })
+        );
 
         breakouts.set('url', 'url');
         breakouts.set('locusUrl', 'test');
@@ -254,7 +293,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(webex.request, {
           uri: 'url/roster',
-          qs: { locusUrl: 'dGVzdA==' }
+          qs: {locusUrl: 'dGVzdA=='},
         });
         assert.calledTwice(breakouts.handleRosterUpdate);
 
@@ -263,7 +302,7 @@ describe('plugin-meetings', () => {
       });
 
       it('logs the error if the query fails', async () => {
-        const error = new Error('something went wrong')
+        const error = new Error('something went wrong');
         webex.request.rejects(error);
         LoggerProxy.logger.error = sinon.stub();
 
@@ -290,7 +329,7 @@ describe('plugin-meetings', () => {
     describe('isInMainSession', () => {
       it('returns true when sessionType is MAIN', () => {
         assert.equal(breakouts.isInMainSession, false);
-        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN)
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         assert.equal(breakouts.isInMainSession, true);
       });
     });
@@ -417,6 +456,12 @@ describe('plugin-meetings', () => {
     describe('#broadcast',  () => {
       it('makes the request as expected', async () => {
         breakouts.breakoutRequest.broadcast = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('OPEN'),
+          })
+        );
+        await breakouts.getBreakout();
         let result = await breakouts.broadcast('hello');
         assert.calledWithExactly(breakouts.breakoutRequest.broadcast, {
           url: 'url',
@@ -443,6 +488,113 @@ describe('plugin-meetings', () => {
           breakouts.broadcast('hello');
         }
         expect(fn).to.throw(/no breakout session found/);
+      });
+    });
+
+    describe('#start', () => {
+      it('should start breakout sessions', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('OPEN'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        await breakouts.getBreakout();
+
+        const result = await breakouts.start();
+        await breakouts.start({id: 'id', someOtherParam: 'someOtherParam'});
+
+        const arg = webex.request.getCall(1).args[0];
+        const argObj1 = arg.body.groups[0];
+        const argObj2 = webex.request.getCall(2).args[0].body.groups[0];
+
+        assert.equal(arg.uri, 'url');
+        assert.equal(arg.method, 'PUT');
+        assert.deepEqual(argObj1, {id:'groupId', action: 'START', allowBackToMain: false, allowToJoinLater: false});
+        assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam'});
+        assert.deepEqual(result, {body: getBOResponse('OPEN')});
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.start(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+
+      });
+    });
+
+    describe('#end', () => {
+      it('should end breakout sessions', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('CLOSING'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        breakouts.set('delayCloseTime', 60);
+        await breakouts.getBreakout();
+
+        const result = await breakouts.end();
+        await breakouts.end({id: 'id', someOtherParam: 'someOtherParam'});
+        const arg = webex.request.getCall(1).args[0];
+        const argObj1 = arg.body.groups[0];
+        const argObj2 = webex.request.getCall(2).args[0].body.groups[0];
+
+        assert.equal(arg.uri, 'url');
+        assert.equal(arg.method, 'PUT');
+        assert.deepEqual(argObj1, {id:'groupId', action: 'CLOSE', delayCloseTime: 60});
+        assert.deepEqual(argObj2, {id:'id', action: 'CLOSE', delayCloseTime: 60, someOtherParam: 'someOtherParam'});
+        assert.deepEqual(result, {body: getBOResponse('CLOSING')});
+      });
+
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(Promise.reject({
+          body: {
+            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+            "message":"Edit lock token mismatch"
+          }
+        }));
+
+        await assert.isRejected(
+          breakouts.end(),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+
+      });
+    });
+
+    describe('#getBreakout', () => {
+      it('should get breakout sessions', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('PENDING'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        const result = await breakouts.getBreakout();
+        await breakouts.getBreakout(true);
+        const arg1 = webex.request.getCall(0).args[0];
+        const arg2 = webex.request.getCall(1).args[0];
+
+        assert.equal(arg1.uri, 'url');
+        assert.equal(arg2.uri, 'url?editlock=true');
+        assert.equal(arg1.method, 'GET');
+        assert.deepEqual(result, {body: getBOResponse('PENDING')});
+        assert.deepEqual(breakouts.groups, result.body.groups);
+        assert.equal(breakouts.breakoutGroupId, 'groupId');
       });
     });
 
@@ -480,7 +632,7 @@ describe('plugin-meetings', () => {
           body: {
             groups: [
               {
-                action: BREAKOUTS.ACTION_TYPES.DELETE,
+                action: BREAKOUTS.ACTION.DELETE,
               },
             ],
           }
