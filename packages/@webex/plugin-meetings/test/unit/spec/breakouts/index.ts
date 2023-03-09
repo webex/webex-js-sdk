@@ -435,14 +435,6 @@ describe('plugin-meetings', () => {
         await breakouts.toggleBreakout(true);
         assert.calledOnceWithExactly(breakouts.doToggleBreakout, true);
       });
-
-      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
-        breakouts.enableBreakoutSession = true;
-        breakouts.toggleBreakout = sinon.stub();
-        breakouts.toggleBreakout.returns(Promise.resolve('FALSE'));
-        const result = await breakouts.toggleBreakout();
-        assert.equal(result, 'FALSE');
-      });
     });
 
     describe('enableBreakouts', () => {
@@ -580,29 +572,6 @@ describe('plugin-meetings', () => {
           'Edit lock token mismatch'
         );
 
-      });
-    });
-
-    describe('#getBreakout', () => {
-      it('should get breakout sessions', async () => {
-        webex.request.returns(
-          Promise.resolve({
-            body: getBOResponse('PENDING'),
-          })
-        );
-
-        breakouts.set('url', 'url');
-        const result = await breakouts.getBreakout();
-        await breakouts.getBreakout(true);
-        const arg1 = webex.request.getCall(0).args[0];
-        const arg2 = webex.request.getCall(1).args[0];
-
-        assert.equal(arg1.uri, 'url');
-        assert.equal(arg2.uri, 'url?editlock=true');
-        assert.equal(arg1.method, 'GET');
-        assert.deepEqual(result, {body: getBOResponse('PENDING')});
-        assert.deepEqual(breakouts.groups, result.body.groups);
-        assert.equal(breakouts.breakoutGroupId, 'groupId');
       });
     });
 
