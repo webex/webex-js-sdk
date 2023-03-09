@@ -73,7 +73,6 @@ describe('plugin-meetings', () => {
 
                 assert.equal(ControlsOptionsUtil.canUnsetMuted(locusInfo.parsedLocus.info.userDisplayHints), true);
               });
-        
               it('rejects when correct display hint is not present', () => {
                 assert.equal(ControlsOptionsUtil.canSetMuted(locusInfo.parsedLocus.info.userDisplayHints), false);
               });
