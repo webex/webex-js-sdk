@@ -28,6 +28,7 @@ import {
   getVideoSenderMqa,
   getVideoReceiverMqa,
 } from './mqaUtil';
+import TaskQueue from '../common/taskQueue';
 
 export const EVENTS = {
   MEDIA_QUALITY: 'MEDIA_QUALITY',
@@ -74,6 +75,7 @@ export class StatsAnalyzer extends EventsScope {
   statsInterval: NodeJS.Timeout;
   statsResults: any;
   statsStarted: any;
+  taskQueue: TaskQueue;
 
   /**
    * Creates a new instance of StatsAnalyzer
@@ -98,6 +100,13 @@ export class StatsAnalyzer extends EventsScope {
     this.mqaSentCount = -1;
     this.lastMqaDataSent = {};
     this.lastEmittedStartStopEvent = {};
+    this.taskQueue = new TaskQueue({
+      scheduler: (task) => {
+        task();
+
+        return () => {};
+      },
+    });
   }
 
   /**
@@ -448,7 +457,6 @@ export class StatsAnalyzer extends EventsScope {
     if (!this.lastEmittedStartStopEvent[mediaType]) {
       this.lastEmittedStartStopEvent[mediaType] = {};
     }
-
     const lastEmittedEvent = isLocal
       ? this.lastEmittedStartStopEvent[mediaType].local
       : this.lastEmittedStartStopEvent[mediaType].remote;
@@ -789,55 +797,43 @@ export class StatsAnalyzer extends EventsScope {
 
     LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Collecting Stats');
 
-    return this.mediaConnection.getTransceiverStats().then((transceiverStats) => {
-      transceiverStats.video.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `video-recv-${i}`, false)
-      );
-      transceiverStats.audio.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
-      );
-      transceiverStats.screenShareVideo.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `video-share-recv-${i}`, false)
-      );
-      transceiverStats.screenShareAudio.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `audio-share-recv-${i}`, false)
-      );
+    return this.mediaConnection
+      .getTransceiverStats()
+      .then(({video, audio, screenShareVideo, screenShareAudio}) => {
+        const entries = [
+          {type: 'video-recv-', receivers: video.receivers, isSender: false},
+          {type: 'audio-recv-', receivers: audio.receivers, isSender: false},
+          {type: 'video-share-recv-', receivers: screenShareVideo.receivers, isSender: false},
+          {type: 'audio-share-recv-', receivers: screenShareAudio.receivers, isSender: false},
+          {type: 'video-send', receivers: video.senders, isSender: true},
+          {type: 'audio-send', receivers: audio.senders, isSender: true},
+          {type: 'video-share-send', receivers: screenShareVideo.senders, isSender: true},
+          {type: 'audio-share-send', receivers: screenShareAudio.senders, isSender: true},
+        ];
+        const tasks = entries.map(({receivers, type, isSender}, idx) => {
+          return this.taskQueue.addTask(() => {
+            receivers.forEach((receiver, i) => {
+              if (isSender && i > 0) {
+                throw new Error('Stats Analyzer does not support multiple senders.');
+              }
+              this.filterAndParseGetStatsResults(receiver, `${type}${isSender ? '' : i}`, isSender);
+            });
+          });
+        });
 
-      transceiverStats.video.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'video-send', true);
-      });
-      transceiverStats.audio.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'audio-send', true);
-      });
-      transceiverStats.screenShareVideo.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'video-share-send', true);
-      });
-      transceiverStats.screenShareAudio.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'audio-share-send', true);
-      });
+        return Promise.all(tasks);
+      })
+      .then(() => {
+        this.compareLastStatsResult();
 
-      this.compareLastStatsResult();
+        // Save the last results to compare with the current
+        // DO Deep copy, for some reason it takes the reference all the time rather then old value set
+        this.lastStatsResults = JSON.parse(JSON.stringify(this.statsResults));
 
-      // Save the last results to compare with the current
-      // DO Deep copy, for some reason it takes the reference all the time rather then old value set
-      this.lastStatsResults = JSON.parse(JSON.stringify(this.statsResults));
-
-      LoggerProxy.logger.trace(
-        'StatsAnalyzer:index#getStatsAndParse --> Finished Collecting Stats'
-      );
-    });
+        LoggerProxy.logger.trace(
+          'StatsAnalyzer:index#getStatsAndParse --> Finished Collecting Stats'
+        );
+      });
   }
 
   /**

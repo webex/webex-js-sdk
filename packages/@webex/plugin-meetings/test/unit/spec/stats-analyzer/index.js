@@ -212,7 +212,8 @@ describe('plugin-meetings', () => {
       };
 
       const progressTime = async () => {
-        await clock.tickAsync(initialConfig.analyzerInterval);
+        // needed after analyzerInterval to execute the task in the queue
+        await clock.tickAsync(initialConfig.analyzerInterval * 1.5); // extra time
         await testUtils.flushPromises();
       };
 
