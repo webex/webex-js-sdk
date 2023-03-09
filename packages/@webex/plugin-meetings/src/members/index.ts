@@ -296,7 +296,7 @@ export default class Members extends StatelessWebexPlugin {
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
 
-      this.receiveSlotManager.updateMemberIds();
+      this.receiveSlotManager?.updateMemberIds();
 
       Trigger.trigger(
         this,

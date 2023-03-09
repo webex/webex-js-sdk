@@ -547,7 +547,9 @@ export const BREAKOUTS = {
     REQUESTED: 'requested',
   },
   BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
-  ACTION_TYPES: {
+  ACTION: {
+    START: 'START',
+    CLOSE: 'CLOSE',
     DELETE: 'DELETE',
   },
   ERROR_CODE: {

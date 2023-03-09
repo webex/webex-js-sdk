@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.40](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.39...v3.0.0-beta.40) (2023-03-09)
+
+
+### Features
+
+* add start and end apis for breakout sessions feature Spark-400363 ([#2646](https://github.com/webex/webex-js-sdk/issues/2646)) ([7bbab5c](https://github.com/webex/webex-js-sdk/commit/7bbab5cf5e2b6bbcebfda8c2b8c12d6eadeb31ac))
+
 ## [3.0.0-beta.39](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.38...v3.0.0-beta.39) (2023-03-08)
 
 
