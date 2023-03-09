@@ -35,6 +35,7 @@ const Breakouts = WebexPlugin.extend({
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
+    mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
   },
 
@@ -107,6 +108,10 @@ const Breakouts = WebexPlugin.extend({
    */
   locusUrlUpdate(locusUrl) {
     this.set('locusUrl', locusUrl);
+    const {isInMainSession, mainLocusUrl} = this;
+    if (isInMainSession || !mainLocusUrl) {
+      this.set('mainLocusUrl', locusUrl);
+    }
   },
 
   /**
