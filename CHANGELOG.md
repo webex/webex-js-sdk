@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.39](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.38...v3.0.0-beta.39) (2023-03-08)
+
+
+### Features
+
+* **meetings:** export RemoteMedia class ([#2655](https://github.com/webex/webex-js-sdk/issues/2655)) ([08cd2d5](https://github.com/webex/webex-js-sdk/commit/08cd2d508b89fbfd011cc2be8e0ffbe63411f2d2))
+* provide size hint remote media ([#2653](https://github.com/webex/webex-js-sdk/issues/2653)) ([1a1c3b7](https://github.com/webex/webex-js-sdk/commit/1a1c3b7e1a5b5824894dec6fb23ec43dd472b387))
+
 ## [3.0.0-beta.38](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.37...v3.0.0-beta.38) (2023-03-07)
 
 
