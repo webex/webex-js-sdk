@@ -61,6 +61,27 @@ describe('plugin-meetings', () => {
               });
             });
 
+            describe('canSetMuteAll', () => {
+              it('can mute all', () => {
+                locusInfo.parsedLocus.info.userDisplayHints.push('MUTE_ALL');
+
+                assert.equal(ControlsOptionsUtil.canSetMuted(locusInfo.parsedLocus.info.userDisplayHints), true);
+              });
+
+              it('can unmute all', () => {
+                locusInfo.parsedLocus.info.userDisplayHints.push('UNMUTE_ALL');
+
+                assert.equal(ControlsOptionsUtil.canUnsetMuted(locusInfo.parsedLocus.info.userDisplayHints), true);
+              });
+
+              it('rejects when correct display hint is not present', () => {
+                assert.equal(ControlsOptionsUtil.canSetMuted(locusInfo.parsedLocus.info.userDisplayHints), false);
+              });
+
+              it('rejects when correct display hint is not present', () => {
+                assert.equal(ControlsOptionsUtil.canUnsetMuted(locusInfo.parsedLocus.info.userDisplayHints), false);
+              });
+            });
         });
     });
 });

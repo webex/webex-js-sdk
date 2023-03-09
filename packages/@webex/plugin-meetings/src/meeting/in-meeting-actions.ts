@@ -17,6 +17,8 @@ interface IInMeetingActions {
   canUnsetMuteOnEntry?: boolean;
   canSetDisallowUnmute?: boolean;
   canUnsetDisallowUnmute?: boolean;
+  canSetMuted?: boolean;
+  canUnsetMuted?: boolean;
   canAssignHost?: boolean;
   canStartRecording?: boolean;
   canPauseRecording?: boolean;
@@ -35,6 +37,8 @@ interface IInMeetingActions {
   isRealTimeTranslationEnabled?: boolean;
   canSelectSpokenLanguages?: boolean;
   waitingForOthersToJoin?: boolean;
+  canEnableReactions?: boolean;
+  canSendReactions?: boolean;
 }
 
 /**
@@ -69,6 +73,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUnsetDisallowUnmute = null;
 
+  canSetMuted = null;
+
+  canUnsetMuted = null;
+
   canRaiseHand = null;
 
   canLowerAllHands = null;
@@ -95,6 +103,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   waitingForOthersToJoin = null;
 
+  canEnableReactions = null;
+
+  canSendReactions = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -109,6 +121,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canUnsetMuteOnEntry: this.canUnsetMuteOnEntry,
     canSetDisallowUnmute: this.canSetDisallowUnmute,
     canUnsetDisallowUnmute: this.canUnsetDisallowUnmute,
+    canSetMuted: this.canSetMuted,
+    canUnsetMuted: this.canUnsetMuted,
     canStartRecording: this.canStartRecording,
     canPauseRecording: this.canPauseRecording,
     canResumeRecording: this.canResumeRecording,
@@ -126,6 +140,8 @@ export default class InMeetingActions implements IInMeetingActions {
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
     canSelectSpokenLanguages: this.canSelectSpokenLanguages,
     waitingForOthersToJoin: this.waitingForOthersToJoin,
+    canEnableReactions: this.canEnableReactions,
+    canSendReactions: this.canSendReactions,
   });
 
   /**
