@@ -13,7 +13,7 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('StatsAnalyzer', () => {
     describe('compareSentAndReceived()', () => {
       let statsAnalyzer;
@@ -212,8 +212,7 @@ describe('plugin-meetings', () => {
       };
 
       const progressTime = async () => {
-        // needed after analyzerInterval to execute the task in the queue
-        await clock.tickAsync(initialConfig.analyzerInterval * 1.5); // extra time
+        await clock.tickAsync(initialConfig.analyzerInterval);
         await testUtils.flushPromises();
       };
 

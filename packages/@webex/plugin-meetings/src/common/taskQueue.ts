@@ -9,9 +9,9 @@ type TaskQueueOptions = {
   scheduler?: TaskQueueScheduler;
 };
 
-const timout = (task) => setTimeout(task, 1000 / 16);
+const timout = (task) => setTimeout(task, 1000 / 60);
 const defaultSchedulerFactory = (): TaskQueueScheduler => {
-  const scheduler = window.requestIdleCallback || window.requestIdleCallback || timout;
+  const scheduler = window.requestIdleCallback || window.requestAnimationFrame || timout;
   const cancel = window.cancelIdleCallback || window.cancelAnimationFrame || clearTimeout;
 
   return (task) => {
@@ -25,7 +25,7 @@ const defaultSchedulerFactory = (): TaskQueueScheduler => {
  * Execute tasks asynchronously in fifo order.
  *
  * Task scheduler can be customised.
- * The default scheduler is the `requestIdleCallback` API which falls back to `requestIdleCallback` or `setTimeout`
+ * The default scheduler is the `requestIdleCallback` API which falls back to `requestAnimationFrame` or `setTimeout`
  *
  * Ideal for breaking up long running tasks.
  * @link https://web.dev/long-tasks-devtools/
