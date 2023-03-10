@@ -23,7 +23,7 @@ import {
   PC_BAIL_TIMEOUT,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import {ConnectionState, Event, Errors, ErrorType, LocalTrackEvents, RemoteTrackType} from '@webex/internal-media-core';
+import {ConnectionState, Event, Errors, ErrorType, LocalTrackEvents, RemoteTrackType, MediaType} from '@webex/internal-media-core';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import * as MuteStateModule from '@webex/plugin-meetings/src/meeting/muteState';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
@@ -47,8 +47,8 @@ import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detectio
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
-import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex-errors';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -274,6 +274,86 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.screenShareAudio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
+
+        describe('creates ReceiveSlot manager instance', () => {
+          let mockReceiveSlotManagerCtor;
+          let providedCreateSlotCallback;
+          let providedFindMemberIdByCsiCallback;
+
+          beforeEach(() => {
+            mockReceiveSlotManagerCtor = sinon.stub(ReceiveSlotManagerModule, 'ReceiveSlotManager').callsFake((createSlotCallback, findMemberIdByCsiCallback) => {
+              providedCreateSlotCallback = createSlotCallback;
+              providedFindMemberIdByCsiCallback = findMemberIdByCsiCallback;
+
+              return {updateMemberIds: sinon.stub()};
+            });
+
+            meeting = new Meeting(
+              {
+                userId: uuid1,
+                resource: uuid2,
+                deviceUrl: uuid3,
+                locus: {url: url1},
+                destination: testDestination,
+                destinationType: _MEETING_ID_,
+              },
+              {
+                parent: webex,
+              }
+            );
+
+            meeting.mediaProperties.webrtcMediaConnection = {createReceiveSlot: sinon.stub()};
+          });
+
+          it('calls ReceiveSlotManager constructor', () => {
+            assert.calledOnce(mockReceiveSlotManagerCtor);
+            assert.isDefined(providedCreateSlotCallback);
+            assert.isDefined(providedFindMemberIdByCsiCallback);
+          });
+
+          it('calls createReceiveSlot on the webrtc media connection in the createSlotCallback', async () => {
+            assert.isDefined(providedCreateSlotCallback);
+
+            await providedCreateSlotCallback(MediaType.VideoMain);
+
+            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.createReceiveSlot);
+            assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.createReceiveSlot, MediaType.VideoMain);
+          });
+
+          it('rejects createSlotCallback if there is no webrtc media connection', () => {
+            assert.isDefined(providedCreateSlotCallback);
+
+            meeting.mediaProperties.webrtcMediaConnection.createReceiveSlot.rejects({});
+
+            assert.isRejected(providedCreateSlotCallback(MediaType.VideoMain));
+          });
+
+          it('calls findMemberByCsi in findMemberIdByCsiCallback and returns the right value', () => {
+            assert.isDefined(providedFindMemberIdByCsiCallback);
+
+            const fakeMember = {id: 'aaa-bbb'};
+
+            sinon.stub(meeting.members, 'findMemberByCsi').returns(fakeMember)
+
+            const memberId = providedFindMemberIdByCsiCallback(123);
+
+            assert.calledOnce(meeting.members.findMemberByCsi);
+            assert.calledWith(meeting.members.findMemberByCsi, 123);
+            assert.equal(memberId, fakeMember.id);
+          });
+
+          it('returns undefined if findMemberByCsi does not find the member', () => {
+            assert.isDefined(providedFindMemberIdByCsiCallback);
+
+            sinon.stub(meeting.members, 'findMemberByCsi').returns(undefined)
+
+            const memberId = providedFindMemberIdByCsiCallback(123);
+
+            assert.calledOnce(meeting.members.findMemberByCsi);
+            assert.calledWith(meeting.members.findMemberByCsi, 123);
+            assert.equal(memberId, undefined);
+          });
+        })
       });
       describe('#invite', () => {
         it('should have #invite', () => {
