@@ -8,9 +8,9 @@ describe('common/taskQueue', () => {
   let queue;
 
   beforeEach(() => {
-    cancelScheduler = sinon.stub().returns();
     scheduler = sinon.fake((task) => {
-      task();
+      const id = setTimeout(task);
+      cancelScheduler = sinon.fake(() => clearTimeout(id));
       return cancelScheduler;
     });
     queue = new TaskQueue({scheduler});
@@ -67,14 +67,24 @@ describe('common/taskQueue', () => {
     queue = new TaskQueue({scheduler});
 
     const task = sinon.fake();
-    const error = sinon.fake();
 
-    const promise = queue.addTask(task).catch(error);
+    const promise = queue.addTask(task);
 
     queue.clear();
 
-    await promise;
-    assert.calledOnce(error);
+    assert.isRejected(promise, 'Task was cancelled');
+    assert.calledOnce(cancelScheduler);
+  });
+
+  itª('cleans resources after a task fails', async () => {
+    const errorHandler = sinon.stub();
+    const task = () => {
+      throw 'Failing task';
+    };
+
+    await queue.addTask(task).catch(errorHandler);
+
+    assert.calledWith(errorHandler, 'Failing task');
     assert.calledOnce(cancelScheduler);
   });
 

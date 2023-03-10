@@ -9,15 +9,15 @@ type TaskQueueOptions = {
   scheduler?: TaskQueueScheduler;
 };
 
-const timout = (task) => setTimeout(task, 1000 / 60);
+const timeout = (task) => setTimeout(task, 1000 / 60);
 const defaultSchedulerFactory = (): TaskQueueScheduler => {
-  const scheduler = window.requestIdleCallback || window.requestAnimationFrame || timout;
+  const scheduler = window.requestIdleCallback || window.requestAnimationFrame || timeout;
   const cancel = window.cancelIdleCallback || window.cancelAnimationFrame || clearTimeout;
 
   return (task) => {
-    const handler: any = scheduler(task);
+    const handle: any = scheduler(task);
 
-    return () => cancel(handler);
+    return () => cancel(handle);
   };
 };
 
@@ -50,12 +50,32 @@ export default class TaskQueue<TResult = void> {
       this.running = true;
       this.currentTask = this.queue.shift();
       this.cancelSchedule = this.scheduler(() => {
-        const result = this.currentTask.task();
-        this.currentTask.defer.resolve(result);
-        this.running = false;
-        this.run();
+        try {
+          const result = this.currentTask.task();
+          this.currentTask.defer.resolve(result);
+          this.running = false;
+          this.run();
+        } catch (error) {
+          this.stopRunning(error);
+        }
       });
     }
+  };
+
+  /**
+   * Stop runner, reject last task and clean up resources
+   *
+   * @param {string|Error} error
+   * @private
+   * @returns {void}
+   */
+  private stopRunning = (error) => {
+    if (this.running) {
+      this.cancelSchedule();
+      this.running = false;
+      this.currentTask.defer.reject(error);
+    }
+    this.queue.length = 0;
   };
 
   /**
@@ -76,11 +96,6 @@ export default class TaskQueue<TResult = void> {
    * @returns {void}
    */
   public clear() {
-    if (this.running) {
-      this.cancelSchedule();
-      this.currentTask.defer.reject('Task was cancelled');
-      this.running = false;
-    }
-    this.queue.length = 0;
+    this.stopRunning('Task was cancelled');
   }
 }

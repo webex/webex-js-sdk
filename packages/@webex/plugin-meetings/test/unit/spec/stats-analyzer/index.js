@@ -13,7 +13,7 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('StatsAnalyzer', () => {
     describe('compareSentAndReceived()', () => {
       let statsAnalyzer;
