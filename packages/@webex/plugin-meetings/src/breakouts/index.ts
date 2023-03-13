@@ -36,7 +36,6 @@ const Breakouts = WebexPlugin.extend({
     locusUrl: 'string', // the current locus url
     breakoutServiceUrl: 'string', // the current breakout resouce url
     groups: 'array', // appears when create breakouts
-    hasBreakoutStarted: 'boolean', // appears when one or more breakouts started(active)
   },
 
   children: {
@@ -132,7 +131,7 @@ const Breakouts = WebexPlugin.extend({
           body: {rosters},
         } = result;
 
-        rosters.forEach(({locus}) => {
+        rosters?.forEach(({locus}) => {
           this.handleRosterUpdate(locus);
         });
 
@@ -158,35 +157,6 @@ const Breakouts = WebexPlugin.extend({
     }
 
     session.parseRoster(locus);
-  },
-
-  /**
-   * To judge is there any breakout session started in meeting
-   * @param {Object} params // locus breakout dto object
-   * @returns {boolean}
-   */
-  hasBreakoutSessionStarted(params) {
-    if (!params) {
-      return false;
-    }
-    if (
-      params.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-      params.status === BREAKOUTS.STATUS.OPEN
-    ) {
-      // Joined a breakout
-      return true;
-    }
-    const otherBreakout = params.groups ? params.groups[0] : null;
-    if (
-      otherBreakout &&
-      otherBreakout.type === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-      otherBreakout.status === BREAKOUTS.STATUS.OPEN
-    ) {
-      // Other breakout started
-      return true;
-    }
-
-    return false;
   },
 
   /**
@@ -229,6 +199,7 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     this.set(params);
+    this.set('groups', params.groups);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -245,11 +216,10 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.set('enableBreakoutSession', params.enableBreakoutSession);
-    this.set('hasBreakoutStarted', this.hasBreakoutSessionStarted(params));
   },
 
   /**
-   * Updates the information about self available breakouts
+   * Updates the information about available breakouts
    * @param {Object} payload
    * @returns {void}
    */
@@ -273,10 +243,6 @@ const Breakouts = WebexPlugin.extend({
           breakouts[sessionId][state] = true;
         });
       });
-
-      if (payload.breakoutSessions[BREAKOUTS.SESSION_STATES.ACTIVE]?.length > 0) {
-        this.set('hasBreakoutStarted', true);
-      }
     }
 
     forEach(breakouts, (breakout: typeof Breakout) => {

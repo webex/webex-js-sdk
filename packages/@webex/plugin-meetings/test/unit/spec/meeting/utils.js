@@ -419,5 +419,33 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('canManageBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canManageBreakout(['BREAKOUT_MANAGEMENT']), true);
+        assert.deepEqual(MeetingUtil.canManageBreakout([]), false);
+      });
+    });
+
+    describe('canAdmitLobbyToBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canAdmitLobbyToBreakout(['DISABLE_LOBBY_TO_BREAKOUT']), false);
+        assert.deepEqual(MeetingUtil.canAdmitLobbyToBreakout([]), true);
+      });
+    });
+
+    describe('canUserAskForHelp', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canUserAskForHelp(['DISABLE_ASK_FOR_HELP']), false);
+        assert.deepEqual(MeetingUtil.canUserAskForHelp([]), true);
+      });
+    });
+
+    describe('enabledBreakoutPreassignments', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.enabledBreakoutPreassignments(['DISABLE_BREAKOUT_PREASSIGNMENTS']), false);
+        assert.deepEqual(MeetingUtil.enabledBreakoutPreassignments([]), true);
+      });
+    });
   })
 });

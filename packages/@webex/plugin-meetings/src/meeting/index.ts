@@ -2309,6 +2309,14 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.canSendReactions,
             payload.info.userDisplayHints
           ),
+          canManageBreakout: MeetingUtil.canManageBreakout(payload.info.userDisplayHints),
+          canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(
+            payload.info.userDisplayHints
+          ),
+          enabledBreakoutPreassignments: MeetingUtil.enabledBreakoutPreassignments(
+            payload.info.userDisplayHints
+          ),
+          canUserAskForHelp: MeetingUtil.canUserAskForHelp(payload.info.userDisplayHints),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);

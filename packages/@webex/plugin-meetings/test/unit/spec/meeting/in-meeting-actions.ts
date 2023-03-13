@@ -33,6 +33,10 @@ describe('plugin-meetings', () => {
         waitingForOthersToJoin: null,
         canEnableReactions: null,
         canSendReactions: null,
+        canManageBreakout: null,
+        canAdmitLobbyToBreakout: null,
+        canUserAskForHelp: null,
+        enabledBreakoutPreassignments: null,
         ...expected
       };
 
@@ -72,7 +76,11 @@ describe('plugin-meetings', () => {
       'canSelectSpokenLanguages',
       'waitingForOthersToJoin',
       'canEnableReactions',
-      'canSendReactions'
+      'canSendReactions',
+      'canManageBreakout',
+      'canAdmitLobbyToBreakout',
+      'canUserAskForHelp',
+      'enabledBreakoutPreassignments'
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
