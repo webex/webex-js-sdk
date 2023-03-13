@@ -604,21 +604,24 @@ export class RemoteMediaManager extends EventsScope {
    * Allocates receive slots to all video panes in the current selected layout
    */
   private allocateSlotsToVideoPaneGroups() {
+    // TODO: porentially could be optimized (and the one in which is being called from)
     this.receiveSlotAllocations = {activeSpeaker: {}, receiverSelected: {}};
 
-    this.currentLayout?.activeSpeakerVideoPaneGroups?.forEach((group) => {
-      this.receiveSlotAllocations.activeSpeaker[group.id] = {slots: []};
+    this.currentLayout?.activeSpeakerVideoPaneGroups
+      ?.sort((a, b) => (a.priority > b.priority ? 1 : -1))
+      ?.forEach((group) => {
+        this.receiveSlotAllocations.activeSpeaker[group.id] = {slots: []};
 
-      for (let paneIndex = 0; paneIndex < group.numPanes; paneIndex += 1) {
-        // allocate a slot from the "unused" list
-        const freeSlot = this.slots.video.unused.pop();
+        for (let paneIndex = 0; paneIndex < group.numPanes; paneIndex += 1) {
+          // allocate a slot from the "unused" list
+          const freeSlot = this.slots.video.unused.shift();
 
-        if (freeSlot) {
-          this.slots.video.activeSpeaker.push(freeSlot);
-          this.receiveSlotAllocations.activeSpeaker[group.id].slots.push(freeSlot);
+          if (freeSlot) {
+            this.slots.video.activeSpeaker.push(freeSlot);
+            this.receiveSlotAllocations.activeSpeaker[group.id].slots.push(freeSlot);
+          }
         }
-      }
-    });
+      });
 
     this.currentLayout?.memberVideoPanes?.forEach((memberPane) => {
       // check if there is existing slot for this csi
@@ -658,6 +661,13 @@ export class RemoteMediaManager extends EventsScope {
       this.slots.video.activeSpeaker.length +
       this.slots.video.receiverSelected.length;
 
+    // move all no longer needed receiver-selected slots to "unused"
+    this.trimReceiverSelectedSlots();
+
+    // move all active speaker slots to "unused"
+    this.slots.video.unused.push(...this.slots.video.activeSpeaker);
+    this.slots.video.activeSpeaker.length = 0;
+
     // ensure we have enough total slots for current layout
     if (totalNumSlots < requiredNumSlots) {
       let numSlotsToCreate = requiredNumSlots - totalNumSlots;
@@ -671,13 +681,6 @@ export class RemoteMediaManager extends EventsScope {
         numSlotsToCreate -= 1;
       }
     }
-
-    // move all no longer needed receiver-selected slots to "unused"
-    this.trimReceiverSelectedSlots();
-
-    // move all active speaker slots to "unused"
-    this.slots.video.unused.push(...this.slots.video.activeSpeaker);
-    this.slots.video.activeSpeaker.length = 0;
 
     // allocate the slots to the right panes / pane groups
     this.allocateSlotsToVideoPaneGroups();
