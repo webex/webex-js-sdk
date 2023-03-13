@@ -427,6 +427,13 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('isSuppressBreakoutSupport', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport(['UCF_SUPPRESS_BREAKOUTS_SUPPORT']), true);
+        assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport([]), false);
+      });
+    });
+
     describe('canAdmitLobbyToBreakout', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canAdmitLobbyToBreakout(['DISABLE_LOBBY_TO_BREAKOUT']), false);

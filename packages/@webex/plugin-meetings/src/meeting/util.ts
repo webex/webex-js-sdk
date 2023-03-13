@@ -378,6 +378,9 @@ MeetingUtil.bothLeaveAndEndMeetingAvailable = (displayHints) =>
 MeetingUtil.canManageBreakout = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT);
 
+MeetingUtil.isSuppressBreakoutSupport = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.UCF_SUPPRESS_BREAKOUTS_SUPPORT);
+
 MeetingUtil.canAdmitLobbyToBreakout = (displayHints) =>
   !displayHints.includes(DISPLAY_HINTS.DISABLE_LOBBY_TO_BREAKOUT);
 
