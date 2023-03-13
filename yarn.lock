@@ -4883,7 +4883,7 @@ __metadata:
     debug: ^4.3.4
     isomorphic-webcrypto: ^2.3.8
     lodash: ^4.17.21
-    node-jose: ^2.0.0
+    node-jose: ^2.2.0
     node-kms: ^0.4.0
     node-scr: ^0.3.0
     pkijs: ^2.1.84
@@ -18578,7 +18578,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-jose@npm:^2.0.0":
+"node-jose@npm:^2.0.0, node-jose@npm:^2.2.0":
   version: 2.2.0
   resolution: "node-jose@npm:2.2.0"
   dependencies:
