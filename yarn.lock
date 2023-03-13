@@ -5024,7 +5024,6 @@ __metadata:
     "@sinonjs/fake-timers": ^6.0.1
     "@webex/common": "workspace:^"
     "@webex/common-timers": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
