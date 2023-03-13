@@ -111,6 +111,31 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
+   * assign participants to breakout session
+   * @param {Array} sessions
+   * @param {object} groupPayload
+   * @returns {void}
+   */
+  assign(sessions: any[], groupPayload: any = {}) {
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            allowBackToMain: true,
+            allowToJoinLater: true,
+            delayCloseTime: 60,
+            duration: 0,
+            id: this.groupId,
+            sessions,
+            ...groupPayload,
+          },
+        ],
+      },
+    });
+  },
+  /*
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options
