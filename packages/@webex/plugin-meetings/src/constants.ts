@@ -554,6 +554,7 @@ export const BREAKOUTS = {
   ERROR_CODE: {
     EDIT_LOCK_TOKEN_MISMATCH: 201409024,
   },
+  DEFAULT_DURATION: 60000,
 };
 
 export const LOCUSINFO = {

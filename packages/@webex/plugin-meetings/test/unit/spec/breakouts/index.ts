@@ -511,8 +511,8 @@ describe('plugin-meetings', () => {
 
         assert.equal(arg.uri, 'url');
         assert.equal(arg.method, 'PUT');
-        assert.deepEqual(argObj1, {id:'groupId', action: 'START', allowBackToMain: false, allowToJoinLater: false});
-        assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam'});
+        assert.deepEqual(argObj1, {id:'groupId', action: 'START', allowBackToMain: false, allowToJoinLater: false, duration: BREAKOUTS.DEFAULT_DURATION});
+        assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam', duration: BREAKOUTS.DEFAULT_DURATION});
         assert.deepEqual(result, {body: getBOResponse('OPEN')});
       });
 

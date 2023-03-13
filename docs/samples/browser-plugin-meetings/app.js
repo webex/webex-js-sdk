@@ -2664,6 +2664,7 @@ const createBreakoutOperations = ()=>{
       if(!breakoutTable.querySelector('table')){
         viewBreakouts();
       }
+      breakoutTable.querySelector('table').lastChild.innerHTML = '';
       sessionList.forEach((session)=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${session.name}</td><td>YES</td><td>YES</td><td>NO</td><td>NO</td><td>NO</td><td></td>`;
