@@ -228,9 +228,6 @@
       "envify"
     ]
   },
-  "publishConfig": {
-    "registry": "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-release-npm"
-  },
   "standard-version": {
     "scripts": {
       "postbump": "yarn run build:skip-samples && yarn run build:script && git add packages/webex/umd/*.js",
