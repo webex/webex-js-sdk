@@ -345,13 +345,17 @@ describe('plugin-meetings', () => {
           ciUserUuid: conversation.participants.items[1].entryUUID,
         });
 
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation
+        });
+
         await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
         assert.calledWith(
-          webex.internal.conversation.get,
-          {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true}
-        );
+          webex.request,
+          conversationUrl,
+        )
 
         assert.calledWith(webex.request, {
           method: 'POST',
