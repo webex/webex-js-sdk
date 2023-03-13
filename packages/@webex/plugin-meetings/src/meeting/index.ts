@@ -33,7 +33,12 @@ import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
-import {trigger, mediaType, error as MetricsError, eventType} from '../metrics/config';
+import {
+  trigger,
+  mediaType as MetricsMediaType,
+  error as MetricsError,
+  eventType,
+} from '../metrics/config';
 import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from './request';
 import Members from '../members/index';
@@ -90,7 +95,7 @@ import {
   MeetingInfoV2CaptchaError,
 } from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
-import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
+import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 import {
   RemoteMediaManager,
@@ -609,7 +614,16 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
-    this.receiveSlotManager = new ReceiveSlotManager(this);
+    this.receiveSlotManager = new ReceiveSlotManager(
+      (mediaType: MediaType) => {
+        if (!this.mediaProperties?.webrtcMediaConnection) {
+          return Promise.reject(new Error('Webrtc media connection is missing'));
+        }
+
+        return this.mediaProperties.webrtcMediaConnection.createReceiveSlot(mediaType);
+      },
+      (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
+    );
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -3436,7 +3450,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.postEvent({
             event: eventType.MUTED,
             meeting: this,
-            data: {trigger: trigger.USER_INTERACTION, mediaType: mediaType.AUDIO},
+            data: {trigger: trigger.USER_INTERACTION, mediaType: MetricsMediaType.AUDIO},
           });
         })
         .catch((error) => {
@@ -3489,7 +3503,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.postEvent({
             event: eventType.UNMUTED,
             meeting: this,
-            data: {trigger: trigger.USER_INTERACTION, mediaType: mediaType.AUDIO},
+            data: {trigger: trigger.USER_INTERACTION, mediaType: MetricsMediaType.AUDIO},
           });
         })
         .catch((error) => {
@@ -3541,7 +3555,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.postEvent({
             event: eventType.MUTED,
             meeting: this,
-            data: {trigger: trigger.USER_INTERACTION, mediaType: mediaType.VIDEO},
+            data: {trigger: trigger.USER_INTERACTION, mediaType: MetricsMediaType.VIDEO},
           });
         })
         .catch((error) => {
@@ -3593,7 +3607,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.postEvent({
             event: eventType.UNMUTED,
             meeting: this,
-            data: {trigger: trigger.USER_INTERACTION, mediaType: mediaType.VIDEO},
+            data: {trigger: trigger.USER_INTERACTION, mediaType: MetricsMediaType.VIDEO},
           });
         })
         .catch((error) => {
