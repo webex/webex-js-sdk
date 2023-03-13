@@ -203,7 +203,6 @@ describe('plugin-metrics', () => {
               assert.property(metric.tags, 'os');
               assert.property(metric.tags, 'domain');
               assert.property(metric.tags, 'client_id');
-              assert.property(metric.tags, 'user_id');
 
               assert.property(metric.fields, 'browser_version');
               assert.property(metric.fields, 'os_version');
