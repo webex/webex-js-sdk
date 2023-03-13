@@ -65,15 +65,13 @@ webex.rooms.create({ title: `My First Room` }).then(room => {
 
 #### _A note on browser usage_
 
-We provide a built, minified version of the SDK, that includes `window.Webex`. You can access it via [unpkg](https://unpkg.com/), [jsdelivr](https://jsdelivr.com/), or [gitcdn.xyz](https://gitcdn.xyz/).
+We provide a built, minified version of the SDK, that includes `window.Webex`. You can access it via [unpkg](https://unpkg.com/) or [jsdelivr](https://jsdelivr.com/).
 
 ```html
 <!-- unpkg -->
 <script src="https://unpkg.com/webex/umd/webex.min.js"></script>
 <!-- jsdelivr -->
 <script src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
-<!-- gitcdn -->
-<script src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/webex/umd/webex.min.js"></script>
 ```
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
