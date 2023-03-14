@@ -699,6 +699,122 @@ describe('RemoteMediaManager', () => {
       });
     });
 
+    it('releases slots and reallocates slots when switching to layouts in correct order', async () => {
+
+      const config = cloneDeep(DefaultTestConfiguration);
+      let count = 0;
+
+      fakeReceiveSlotManager.allocateSlot = sinon.stub().callsFake((mediaType) => {
+        switch (mediaType) {
+          case MediaType.AudioMain:
+            return Promise.resolve(fakeAudioSlot);
+          case MediaType.VideoMain:
+            return Promise.resolve(new FakeSlot(MediaType.VideoMain, `fake video ${count++}`));
+          case MediaType.AudioSlides:
+            return Promise.resolve(fakeScreenShareAudioSlot);
+          case MediaType.VideoSlides:
+            return Promise.resolve(fakeScreenShareVideoSlot);
+        }
+        throw new Error(`invalid mediaType: ${mediaType}`);
+      })
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+        "fake video 6",
+        "fake video 7",
+        "fake video 8",
+      ]);
+
+      // switch to "OnePlusFive" layout that requires 3 less video slots (6)
+      const onePlusFivePromise = remoteMediaManager.setLayout('OnePlusFive');
+
+      assert.deepEqual(remoteMediaManager.slots.video.unused.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+        "fake video 6",
+        "fake video 7",
+        "fake video 8",
+      ]);
+      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.length, 0);
+
+      await onePlusFivePromise;
+
+      assert.deepEqual(remoteMediaManager.slots.video.unused, []);
+
+      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5"
+      ]);
+
+      // verify that 3 main video slots were released
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 3);
+      fakeReceiveSlotManager.releaseSlot.getCalls().forEach((call) => {
+        const slot = call.args[0];
+
+        assert.strictEqual(slot.mediaType, MediaType.VideoMain);
+      });
+
+      const allEqualPromise = remoteMediaManager.setLayout('AllEqual');
+
+      assert.deepEqual(remoteMediaManager.slots.video.unused.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+      ]);
+
+      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.length, 0);
+
+      await allEqualPromise;
+
+      assert.deepEqual(remoteMediaManager.slots.video.unused, []);
+
+      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+        "fake video 10",
+        "fake video 11",
+        "fake video 12",
+      ]);
+
+       // verify that 3 main video slots were allocated
+       assert.callCount(fakeReceiveSlotManager.allocateSlot, 3);
+       fakeReceiveSlotManager.allocateSlot.getCalls().forEach((call) => {
+         const mediaType = call.args[0];
+
+         assert.strictEqual(mediaType, MediaType.VideoMain);
+       });
+    });
+
     it('stops all current video remoteMedia instances when switching to new layout', async () => {
       const audioStopStubs = [];
       const videoStopStubs = [];
