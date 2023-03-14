@@ -1,6 +1,6 @@
 {
   "name": "@webex/common",
-  "version": "2.43.1",
+  "version": "2.43.2",
   "description": "Common utilities for Cisco Webex",
   "license": "MIT",
   "main": "dist/index.js",
