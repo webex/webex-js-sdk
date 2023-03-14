@@ -89,7 +89,7 @@ describe('plugin-metrics', () => {
       webex.credentials = new Credentials(undefined, {parent: webex});
       sinon.stub(webex.credentials, 'getClientToken').returns(Promise.resolve('token'));
 
-      webex.internal = {...webex.internal, device: {userId: 'userId'}};
+      webex.internal = {...webex.internal};
       webex.config = {
         ...webex.config,
         appName: 'appName',
@@ -203,7 +203,6 @@ describe('plugin-metrics', () => {
               assert.property(metric.tags, 'os');
               assert.property(metric.tags, 'domain');
               assert.property(metric.tags, 'client_id');
-              assert.property(metric.tags, 'user_id');
 
               assert.property(metric.fields, 'browser_version');
               assert.property(metric.fields, 'os_version');
