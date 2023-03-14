@@ -84,6 +84,7 @@ describe('plugin-meetings', () => {
       let pc;
       let networkQualityMonitor;
       let statsAnalyzer;
+      let mqeData;
 
       let receivedEventsData = {
         local: {},
@@ -153,6 +154,9 @@ describe('plugin-meetings', () => {
                     type: 'inbound-rtp',
                     framesDecoded: 0,
                     bytesReceived: 1,
+                    frameHeight: 720,
+                    frameWidth: 1280,
+                    framesReceived: 1,
                   },
                 ],
               },
@@ -198,6 +202,9 @@ describe('plugin-meetings', () => {
         statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STOPPED, (data) => {
           receivedEventsData.remote.stopped = data;
         });
+        statsAnalyzer.on(EVENTS.MEDIA_QUALITY, ({data}) => {
+          mqeData = data;
+        });
       });
 
       afterEach(() => {
@@ -222,6 +229,12 @@ describe('plugin-meetings', () => {
         assert.deepEqual(receivedEventsData.local.stopped, expected.local?.stopped);
         assert.deepEqual(receivedEventsData.remote.started, expected.remote?.started);
         assert.deepEqual(receivedEventsData.remote.stopped, expected.remote?.stopped);
+      };
+
+      const checkMqeData = () => {
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedFrameSize, 3600);
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedHeight, 720);
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedWidth, 1280);
       };
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for audio', async () => {
@@ -302,6 +315,15 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         checkReceivedEvent({expected: {remote: {stopped: {type: 'video'}}}});
+      });
+
+      it('emits the correct MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        // Check that the mqe data has been emitted and is correctly computed.
+        checkMqeData();
       });
     });
   });
