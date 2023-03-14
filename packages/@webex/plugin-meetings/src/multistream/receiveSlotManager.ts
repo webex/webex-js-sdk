@@ -1,11 +1,13 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
-import {MediaType} from '@webex/internal-media-core';
-
+import {MediaType, ReceiveSlot as WcmeReceiveSlot} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
-import Meeting from '../meeting';
 
-import {CSI, ReceiveSlot} from './receiveSlot';
+import {FindMemberIdCallback, ReceiveSlot} from './receiveSlot';
+
+export type CreateSlotCallback = (mediaType: MediaType) => Promise<WcmeReceiveSlot>;
+
+export type {CSI, FindMemberIdCallback} from './receiveSlot';
 
 /**
  * Manages all receive slots used by a meeting. WMCE receive slots cannot be ever deleted,
@@ -16,13 +18,18 @@ export class ReceiveSlotManager {
 
   private freeSlots: {[key in MediaType]: ReceiveSlot[]};
 
-  private meeting: Meeting;
+  private createSlotCallback: CreateSlotCallback;
+
+  private findMemberIdByCsiCallback: FindMemberIdCallback;
 
   /**
    * Constructor
    * @param {Meeting} meeting
    */
-  constructor(meeting) {
+  constructor(
+    createSlotCallback: CreateSlotCallback,
+    findMemberIdByCsiCallback: FindMemberIdCallback
+  ) {
     this.allocatedSlots = {
       [MediaType.AudioMain]: [],
       [MediaType.VideoMain]: [],
@@ -35,7 +42,8 @@ export class ReceiveSlotManager {
       [MediaType.AudioSlides]: [],
       [MediaType.VideoSlides]: [],
     };
-    this.meeting = meeting;
+    this.createSlotCallback = createSlotCallback;
+    this.findMemberIdByCsiCallback = findMemberIdByCsiCallback;
   }
 
   /**
@@ -45,10 +53,6 @@ export class ReceiveSlotManager {
    * @returns {Promise<ReceiveSlot>}
    */
   async allocateSlot(mediaType: MediaType): Promise<ReceiveSlot> {
-    if (!this.meeting?.mediaProperties?.webrtcMediaConnection) {
-      return Promise.reject(new Error('Webrtc media connection is missing'));
-    }
-
     // try to use one of the free ones
     const availableSlot = this.freeSlots[mediaType].pop();
 
@@ -61,15 +65,9 @@ export class ReceiveSlotManager {
     }
 
     // we have to create a new one
-    const wcmeReceiveSlot =
-      await this.meeting.mediaProperties.webrtcMediaConnection.createReceiveSlot(mediaType);
+    const wcmeReceiveSlot = await this.createSlotCallback(mediaType);
 
-    const receiveSlot = new ReceiveSlot(
-      mediaType,
-      wcmeReceiveSlot,
-      // @ts-ignore
-      (csi: CSI) => this.meeting.members.findMemberByCsi(csi)?.id
-    );
+    const receiveSlot = new ReceiveSlot(mediaType, wcmeReceiveSlot, this.findMemberIdByCsiCallback);
 
     this.allocatedSlots[mediaType].push(receiveSlot);
     LoggerProxy.logger.log(`new receive slot allocated: ${receiveSlot.id}`);

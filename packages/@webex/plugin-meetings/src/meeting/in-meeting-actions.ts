@@ -17,6 +17,8 @@ interface IInMeetingActions {
   canUnsetMuteOnEntry?: boolean;
   canSetDisallowUnmute?: boolean;
   canUnsetDisallowUnmute?: boolean;
+  canSetMuted?: boolean;
+  canUnsetMuted?: boolean;
   canAssignHost?: boolean;
   canStartRecording?: boolean;
   canPauseRecording?: boolean;
@@ -75,6 +77,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUnsetDisallowUnmute = null;
 
+  canSetMuted = null;
+
+  canUnsetMuted = null;
+
   canRaiseHand = null;
 
   canLowerAllHands = null;
@@ -126,6 +132,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canSetMuteOnEntry: this.canSetMuteOnEntry,
     canUnsetMuteOnEntry: this.canUnsetMuteOnEntry,
     canSetDisallowUnmute: this.canSetDisallowUnmute,
+    canSetMuted: this.canSetMuted,
+    canUnsetMuted: this.canUnsetMuted,
     canUnsetDisallowUnmute: this.canUnsetDisallowUnmute,
     canStartRecording: this.canStartRecording,
     canPauseRecording: this.canPauseRecording,
