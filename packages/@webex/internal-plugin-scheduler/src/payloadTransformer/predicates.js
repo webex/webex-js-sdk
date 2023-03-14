@@ -2,7 +2,10 @@
  * Predicates are used to validate whether or not a transformer should be
  * triggered, and with what data.
  */
-const exampleGeneralPredicate = {
+
+import {has} from 'lodash';
+
+const transformSchedulerData = {
   /**
    * Name of the transformer to be called.
    *
@@ -11,7 +14,7 @@ const exampleGeneralPredicate = {
    *
    * @type {string}
    */
-  name: 'exampleGeneralTransformer',
+  name: 'transformSchedulerData',
 
   /**
    * Direction this predicate should process on. This allows for different
@@ -19,7 +22,7 @@ const exampleGeneralPredicate = {
    *
    * @type {'inbound' | 'outbound' | undefined}
    */
-  direction: undefined,
+  direction: 'inbound',
 
   /**
    * Test is used to validate if the `extract()` method should be called to be
@@ -29,7 +32,15 @@ const exampleGeneralPredicate = {
    * @param {Object} data - Data from the event or request
    * @returns {boolean} - Whether to process the `extract()` method.
    */
-  test: (ctx, data) => Promise.resolve(!!data.value),
+  test: (ctx, data) => {
+    return Promise.resolve(
+      data.options &&
+        data.options.service === 'calendar' &&
+        data.options.resource.indexOf('schedulerData') > -1 &&
+        data.method === 'GET' &&
+        has(data, 'body.seriesId')
+    );
+  },
 
   /**
    * Extract a given set of data from a request or event to be processed by the
@@ -38,31 +49,54 @@ const exampleGeneralPredicate = {
    * @param {Object} data - Data from the event or request
    * @returns {any} - Data to send to the named transform.
    */
-  extract: (data) => Promise.resolve(data.value),
+  extract: (data) => Promise.resolve(data.body),
 };
 
-// NOTE - additional predicate examples [start]
-
-const exampleInboundPredicate = {
-  name: 'exampleInboundTransformer',
-  direction: 'inbound',
-  test: (ctx, data) => Promise.resolve(!!data.inboundValue),
-  extract: (data) => Promise.resolve(data.inboundValue),
-};
-
-const exampleOutboundPredicate = {
-  name: 'exampleOutboundTransformer',
+const transformSchedulerRequest = {
+  name: 'transformSchedulerRequest',
   direction: 'outbound',
-  test: (ctx, data) => Promise.resolve(!!data.outboundValue),
-  extract: (data) => Promise.resolve(data.outboundValue),
+  test: (ctx, data) => {
+    return Promise.resolve(
+      data.service === 'calendar' &&
+        data.resource.indexOf('calendarEvents') > -1 &&
+        (data.method === 'POST' || data.method === 'PATCH') &&
+        (has(data, 'body.attendees') ||
+          has(data, 'body.notes') ||
+          has(data, 'body.subject') ||
+          has(data, 'body.webexOptions'))
+    );
+  },
+  extract: (data) => Promise.resolve(data.body),
 };
 
-// NOTE - additional predicate examples [end]
+const transformFreeBusyRequest = {
+  name: 'transformFreeBusyRequest',
+  direction: 'outbound',
+  test: (ctx, data) => {
+    return Promise.resolve(
+      data.service === 'calendar' &&
+        data.resource.indexOf('freebusy') > -1 &&
+        data.method === 'POST' &&
+        has(data, 'body.emails')
+    );
+  },
+  extract: (data) => Promise.resolve(data.body),
+};
+
+const transformFreeBusyResponse = {
+  name: 'transformFreeBusyResponse',
+  direction: 'inbound',
+  test: (ctx, data) => {
+    return Promise.resolve(has(data, 'calendarFreeBusyScheduleResponse'));
+  },
+  extract: (data) => Promise.resolve(data.calendarFreeBusyScheduleResponse),
+};
 
 const predicates = {
-  exampleGeneralPredicate,
-  exampleInboundPredicate,
-  exampleOutboundPredicate,
+  transformSchedulerData,
+  transformSchedulerRequest,
+  transformFreeBusyRequest,
+  transformFreeBusyResponse,
 };
 
 export default predicates;

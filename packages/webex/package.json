@@ -45,6 +45,7 @@
     "@babel/polyfill": "^7.12.1",
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
+    "@webex/internal-plugin-scheduler": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-presence": "workspace:^",
     "@webex/internal-plugin-support": "workspace:^",

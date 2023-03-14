@@ -12,6 +12,7 @@ require('@webex/plugin-authorization');
 // explicitly load wdm, since we're relying on preDiscoveryServices and the
 // url interceptor
 require('@webex/internal-plugin-calendar');
+require('@webex/internal-plugin-scheduler');
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-presence');
 require('@webex/internal-plugin-support');

@@ -5,13 +5,7 @@
  * When these properties mount/update, `this.webex` object emits `change:config`.
  */
 const config = {
-  scheduler: {
-    configurationBoolean: true,
-    configurationString: 'hello',
-    configurationNumber: 1234,
-    configurationArray: [1, 2, 3, 4],
-    configurationObject: {a: 1, b: 2, c: 3},
-  },
+  scheduler: {},
 };
 
 export default config;

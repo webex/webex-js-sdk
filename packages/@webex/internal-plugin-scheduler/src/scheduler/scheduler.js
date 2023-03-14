@@ -1,3 +1,4 @@
+import btoa from 'btoa';
 import {WebexPlugin} from '@webex/webex-core';
 
 import CONSTANTS from './scheduler.constants';
@@ -5,35 +6,26 @@ import CONSTANTS from './scheduler.constants';
 /**
  * Scheduler WebexPlugin class.
  */
-class Scheduler extends WebexPlugin {
+const Scheduler = WebexPlugin.extend({
   /**
    * Namespace, or key, to register a `Scheduler` class object to within the
    * `webex.internal` object. Note that only one instance of this class can be
    * used against a single `webex` class instance.
    */
-  namespace = CONSTANTS.NAMESPACE;
+  namespace: CONSTANTS.NAMESPACE,
 
   /**
-   * @param {Object} args Arguments for constructing a new Scheduler instance.
+   * registered value indicating events registration is successful
+   * @instance
+   * @type {Boolean}
+   * @memberof Calendar
    */
-  constructor(...args) {
-    super(...args); // Required to properly mount the singleton class instance.
+  registered: false,
 
-    /**
-     * The `this.request` method should now be available for usage.
-     * See `http-core` for this tooling.
-     */
-
-    /**
-     * The mercury connection is available for initialization
-     */
-
-    /**
-     * The `this.logger` object should now be available for usage.
-     * `this.logger.log()`, `this.logger.error()`, `this.logger.warn()`, etc.
-     */
-    this.logger.log('plugin example constructed'); // example, remove this.
-  }
+  /**
+   * Cache all rpc event request locally
+   * */
+  rpcEventRequests: [],
 
   /**
    * WebexPlugin initialize method. This triggers once Webex has completed its
@@ -49,108 +41,251 @@ class Scheduler extends WebexPlugin {
     this.listenToOnce(this.webex, 'change:config', () => {
       /* ...perform actions once the configuration object is mounted... */
     });
-
     // Used to perform actions after webex is fully qualified and ready for
     // operation.
     this.listenToOnce(this.webex, 'ready', () => {
       /* ...perform actions once the webex object is fully qualified... */
+      this.register()
+        .then(() => {
+          this.logger.log('webex.internal.scheduler - register successfully.');
+        })
+        .catch((error) => {
+          this.logger.log('webex.internal.scheduler - register failed: {}', error);
+        });
     });
-  }
+  },
 
   /**
-   * Example request usage. `this.request` returns a promise using XHR. and the
-   * `request` npm package.
-   * @returns {void}
+   * Explicitly sets up the scheduler plugin by registering
+   * the device, connecting to mercury, and listening for calendar events.
+   * @returns {Promise}
+   * @public
+   * @memberof Calendar
    */
-  exampleRequestUsage() {
-    // Simple example
-    this.request({
-      method: 'GET', // method to use for this request
-      service: 'example-service', // `service` is federated from U2C. See `this.webex.services.list()` at runtime.
-      resource: 'example/resource/path', // full resource path,
-    });
+  register() {
+    if (!this.webex.canAuthorize) {
+      this.logger.error(
+        'internal-plugin-scheduler -> register#ERROR, unable to register, SDK cannot authorize'
+      );
 
-    // Complex example
+      return Promise.reject(new Error('SDK cannot authorize'));
+    }
+
+    if (this.registered) {
+      this.logger.info('internal-plugin-scheduler -> register#INFO, plugin already registered');
+
+      return Promise.resolve();
+    }
+
+    return this.webex.internal.device
+      .register()
+      .then(() => this.webex.internal.mercury.connect())
+      .then(() => {
+        this.listenForEvents();
+        this.trigger(CONSTANTS.SCHEDULER_REGISTERED);
+        this.registered = true;
+      })
+      .catch((error) => {
+        this.logger.error(
+          `internal-plugin-scheduler -> register#ERROR, Unable to register, ${error.message}`
+        );
+
+        return Promise.reject(error);
+      });
+  },
+
+  /**
+   * Explicitly tears down the scheduler plugin by unregister
+   * the device, disconnecting from mercury, and stops listening to calendar events
+   *
+   * @returns {Promise}
+   * @public
+   * @memberof Calendar
+   */
+  unregister() {
+    if (!this.registered) {
+      this.logger.info(
+        'internal-plugin-scheduler -> unregister#INFO, Calendar plugin already unregistered'
+      );
+
+      return Promise.resolve();
+    }
+
+    this.stopListeningForEvents();
+
+    return this.webex.internal.mercury
+      .disconnect()
+      .then(() => this.webex.internal.device.unregister())
+      .then(() => {
+        this.trigger(CONSTANTS.SCHEDULER_UNREGISTERED);
+        this.registered = false;
+      });
+  },
+
+  /**
+   * registers for calendar events through mercury
+   * @returns {undefined}
+   * @private
+   */
+  listenForEvents() {
+    // Calendar mercury events listener
+    this.webex.internal.mercury.on('event:calendar.free_busy', (envelope) => {
+      this._handleFreeBusy(envelope.data);
+    });
+    // this.webex.internal.mercury.on('all', (event) => {
+    //   this.logger.log(`@@@@@@@@@ tracking mercury.on: ${event}`);
+    // });
+  },
+
+  /**
+   * unregisteres all the calendar events from mercury
+   * @returns {undefined}
+   * @private
+   */
+  stopListeningForEvents() {
+    this.webex.internal.mercury.off('event:calendar.free_busy');
+  },
+
+  /**
+   * handles freebusy events, do we need to cache it in memory?
+   * @param {Object} data
+   * @returns {undefined}
+   * @private
+   */
+  _handleFreeBusy(data) {
+    this.processMeetingEvent(data).then((decryptedData) => {
+      let response = {};
+      if (decryptedData && decryptedData.calendarFreeBusyScheduleResponse) {
+        response = decryptedData.calendarFreeBusyScheduleResponse;
+      }
+      if (response && response.requestId && response.requestId in this.rpcEventRequests) {
+        this.logger.log(
+          `webex.internal.scheduler - receive requests, requestId: ${response.requestId}`
+        );
+        delete response.encryptionKeyUrl;
+        const {resolve} = this.rpcEventRequests[response.requestId];
+        resolve(response);
+        delete this.rpcEventRequests[response.requestId];
+      } else {
+        this.logger.log('webex.internal.scheduler - receive other requests.');
+      }
+    });
+  },
+
+  /**
+   * Decrypts an encrypted incoming calendar event
+   * @param {Object} event
+   * @returns {Promise} Resolves with a decrypted calendar event
+   */
+  processMeetingEvent(event) {
+    return this.webex.transform('inbound', event).then(() => event);
+  },
+
+  /**
+   * Create calendar event
+   * @param {object} [data] meeting payload data
+   * @returns {Promise} Resolves with creating calendar event response
+   * */
+  createCalendarEvent(data) {
     return this.request({
-      uri: 'https://www.example.com', // a URI can be used in place of service/resource.
       method: 'POST',
-      headers: {
-        accept: 'application/json',
-        authorization: 'example-token',
-        'x-custom-header': 'x-custom-header-example-value',
-      },
-      body: {
-        'example-param-a': 'example-param-a-value',
-        'example-param-b': 'example-param-b-value',
-        'example-param-c': 'example-param-c-value',
-      },
+      service: 'calendar',
+      body: data,
+      resource: 'calendarEvents/sync',
     });
-  }
+  },
 
   /**
-   * Example event usage. Note that an event engine is mapped to `this`
-   * upon extending the `WebexPlugin` class constructor. This includes
-   * the following methods:
-   * `this.listenTo()`, `this.stopListening()`, `this.trigger()`, `this.on()`, etc.
-   *
-   * Note that all methods provided as event handlers should be associated with
-   * a namespace so that they can be referenced/destroyed if/when necessary.
-   *
-   * @returns {void}
-   */
-  exampleEventUsage() {
-    // listen for locally scoped events [using on, internal]
-    this.on('event:scope', (event) => {
-      this.logger.log(event);
+   * Update calendar event
+   * @param {string} [id] calendar event id
+   * @param {object} [data] meeting payload data
+   * @returns {Promise} Resolves with updating calendar event response
+   * */
+  updateCalendarEvent(id, data) {
+    return this.request({
+      method: 'PATCH',
+      service: 'calendar',
+      body: data,
+      resource: `calendarEvents/${btoa(id)}/sync`,
     });
-
-    // stop listening for locally scoped events.
-    this.off('event:scope', () => {
-      /* use previous `on` method param namespace instead of arrow function */
-    });
-
-    // listen for scoped events [using on, external], replace `this.webex` with `webex` namespace.
-    this.webex.internal.scheduler.on('event:scope', (event) => {
-      this.logger.log(event);
-    });
-
-    // stop listening for scoped events [using on, external], replace `this.webex` with `webex` namespace.
-    this.webex.internal.scheduler.off('event:scope', () => {
-      /* use previous `on` method param namespace instead of arrow function */
-    });
-
-    // listen for scoped events [using listenTo(), plugin-to-plugin].
-    this.listenTo(this.webex.pluginName, 'event:scope', (event) => {
-      this.logger.log(event);
-    });
-
-    // stop listening for scoped events [using listenTo(), plugin-to-plugin].
-    this.stopListening(this.webex.pluginName, 'event:scope', () => {
-      /* use previous `listenTo` method param namespace instead of arrow function */
-    });
-  }
+  },
 
   /**
-   * Example mercury connection setup. See the above `exampleEventUsage()` for
-   * event usage definition.
-   *
-   * @returns {void}
-   */
-  exampleMercuryConnection() {
-    this.webex.internal.mercury.connect().then(() => {
-      // Scope this listener to a trackable namespace
-      this.handler = (event) => {
-        this.logger.log(event);
-        this.trigger('event:scope', event);
-      };
-
-      // Start handling events.
-      this.listenTo(this.webex.internal.mercury, 'event:scope', this.handler);
-
-      // Stop handling events.
-      this.stopListening(this.webex.internal.mercury, 'event:scope', this.handler);
+   * Delete calendar event
+   * @param {string} [id] calendar event id
+   * @returns {Promise} Resolves with deleting calendar event response
+   * */
+  deleteCalendarEvent(id) {
+    return this.request({
+      method: 'DELETE',
+      service: 'calendar',
+      resource: `calendarEvents/${btoa(id)}/sync`,
     });
-  }
-}
+  },
+
+  /**
+   * @typedef QuerySchedulerDataOptions
+   * @param {string} [siteName] it is site full url, must have. Example: ccctest.dmz.webex.com
+   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for.
+   *                      Example: 040000008200E00074C5B7101A82E008000000004A99F11A0841D9010000000000000000100000009EE499D4A71C1A46B51494C70EC7BFE5
+   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for. Example: 7f318aa9-887c-6e94-802a-8dc8e6eb1a0a
+   * @param {string} [scheduleTemplateId] it template id.
+   * @param {string} [sessionTypeId] it session type id.
+   * @param {string} [organizerCIUserId] required in schedule-on-behalf case. It is the organizer's CI UUID.
+   * @param {boolean} [usmPreference]
+   */
+  /**
+   * Get scheduler data from calendar service
+   * @param {QuerySchedulerDataOptions} [query] the command parameters for fetching scheduler data.
+   * @returns {Promise} Resolves with a decrypted scheduler data
+   * */
+  getSchedulerData(query) {
+    const {
+      siteName,
+      id,
+      clientMeetingId,
+      scheduleTemplateId,
+      sessionTypeId,
+      organizerCIUserId,
+      usmPreference,
+    } = query;
+
+    let url = `schedulerData?siteName=${siteName}`;
+    url += id ? `&id=${btoa(id)}` : '';
+    url += clientMeetingId ? `&clientMeetingId=${btoa(clientMeetingId)}` : '';
+    url += scheduleTemplateId ? `&scheduleTemplateId=${scheduleTemplateId}` : '';
+    url += sessionTypeId ? `&sessionTypeId=${sessionTypeId}` : '';
+    url += organizerCIUserId ? `&organizerCIUserId=${organizerCIUserId}` : '';
+    url += usmPreference ? `&usmPreference=${usmPreference}` : '';
+
+    return this.request({
+      method: 'GET',
+      service: 'calendar',
+      resource: url,
+    });
+  },
+
+  /**
+   * Get free busy status from calendar service
+   * @param {Object} [postData] the command parameters for fetching free busy status.
+   * @returns {Promise} Resolves with a decrypted response
+   * */
+  getFreeBusy(postData) {
+    return new Promise((resolve, reject) => {
+      this.request({
+        method: 'POST',
+        service: 'calendar',
+        body: postData,
+        resource: 'freebusy',
+      })
+        .then(() => {
+          this.rpcEventRequests[postData.requestId] = {resolve, reject};
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  },
+});
 
 export default Scheduler;
