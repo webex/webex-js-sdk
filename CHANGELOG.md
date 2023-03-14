@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.43](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.42...v3.0.0-beta.43) (2023-03-14)
+
+
+### Features
+
+* **meetings:** mute all ([#2667](https://github.com/webex/webex-js-sdk/issues/2667)) ([c198945](https://github.com/webex/webex-js-sdk/commit/c19894556bab55b5707638a607e350a41a1ffdb5))
+
 ## [3.0.0-beta.42](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.41...v3.0.0-beta.42) (2023-03-13)
 
 
