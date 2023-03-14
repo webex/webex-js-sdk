@@ -5040,7 +5040,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-scheduler@workspace:packages/@webex/internal-plugin-scheduler":
+"@webex/internal-plugin-scheduler@workspace:^, @webex/internal-plugin-scheduler@workspace:packages/@webex/internal-plugin-scheduler":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-scheduler@workspace:packages/@webex/internal-plugin-scheduler"
   dependencies:
@@ -5057,6 +5057,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     ampersand-collection: ^2.0.2
     ampersand-state: ^5.0.3
+    btoa: ^1.2.1
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
     lodash: ^4.17.21
@@ -24923,6 +24924,7 @@ __metadata:
     "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-presence": "workspace:^"
+    "@webex/internal-plugin-scheduler": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
     "@webex/plugin-attachment-actions": "workspace:^"
     "@webex/plugin-authorization": "workspace:^"
