@@ -130,6 +130,36 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#admitMembers', () => {
+      let members;
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersRequest.admitMember = sinon.stub().returns(Promise.resolve(true));
+      });
+      it('should return error if param memberIds is not provided', async () => {
+        let error;
+        await members.admitMembers().catch((e) => {
+          error = e;
+        });
+        assert.deepEqual(error, new ParameterError('No member ids provided to admit.'));
+      });
+
+      it('should call membersRequest.admitMember as expected', async () => {
+        await members.admitMembers(['uuid']);
+        const arg1 = members.membersRequest.admitMember.getCall(0).args[0];
+        assert.equal(arg1.sessionLocusUrls, undefined);
+        assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
+        assert.deepEqual(arg1.memberIds, ['uuid']);
+
+        const sessionLocusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+        await members.admitMembers(['uuid'], sessionLocusUrls);
+        const arg2 = members.membersRequest.admitMember.getCall(1).args[0];
+        assert.equal(arg2.sessionLocusUrls, sessionLocusUrls);
+        assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
+        assert.deepEqual(arg1.memberIds, ['uuid']);
+      });
+    });
+
     describe('#sendDialPadKey', () => {
       it('should throw a rejection when calling sendDialPadKey with no tones', async () => {
         const members = createMembers({url: url1});

@@ -38,5 +38,53 @@ describe('plugin-meetings', () => {
         );
       });
     });
+    describe('#getAdmitMemberRequestBody', () => {
+      it('returns the correct request body', () => {
+        const option1 = {memberIds: ['uuid']};
+
+        assert.deepEqual(MembersUtil.getAdmitMemberRequestBody(option1), {
+          admit: {participantIds: ['uuid']},
+        });
+
+        const option2 = {
+          memberIds: ['uuid'],
+          sessionLocusUrls: {authorizingLocusUrl: 'authorizingLocusUrl'},
+        };
+
+        assert.deepEqual(MembersUtil.getAdmitMemberRequestBody(option2), {
+          admit: {participantIds: ['uuid']},
+          authorizingLocusUrl: 'authorizingLocusUrl',
+        });
+      });
+    });
+    describe('#getAdmitMemberRequestParams', () => {
+      it('returns the correct request params', () => {
+        const format1 = {memberIds: ['uuid'], locusUrl: 'locusUrl'};
+
+        assert.deepEqual(MembersUtil.getAdmitMemberRequestParams(format1), {
+          method: 'PUT',
+          uri: 'locusUrl/controls',
+          body: {admit: {participantIds: ['uuid']}},
+        });
+
+        const format2 = {
+          memberIds: ['uuid'],
+          sessionLocusUrls: {
+            authorizingLocusUrl: 'authorizingLocusUrl',
+            mainLocusUrl: 'mainLocusUrl',
+          },
+          locusUrl: 'locusUrl',
+        };
+
+        assert.deepEqual(MembersUtil.getAdmitMemberRequestParams(format2), {
+          method: 'PUT',
+          uri: 'mainLocusUrl/controls',
+          body: {
+            admit: {participantIds: ['uuid']},
+            authorizingLocusUrl: 'authorizingLocusUrl',
+          },
+        });
+      });
+    });
   });
 });
