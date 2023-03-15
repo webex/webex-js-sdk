@@ -448,10 +448,10 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('enabledBreakoutPreassignments', () => {
+    describe('isBreakoutPreassignmentsEnabled', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.enabledBreakoutPreassignments(['DISABLE_BREAKOUT_PREASSIGNMENTS']), false);
-        assert.deepEqual(MeetingUtil.enabledBreakoutPreassignments([]), true);
+        assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled(['DISABLE_BREAKOUT_PREASSIGNMENTS']), false);
+        assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled([]), true);
       });
     });
   })

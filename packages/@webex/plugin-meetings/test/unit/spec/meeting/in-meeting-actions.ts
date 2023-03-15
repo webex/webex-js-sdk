@@ -38,7 +38,7 @@ describe('plugin-meetings', () => {
         canManageBreakout: null,
         canAdmitLobbyToBreakout: null,
         canUserAskForHelp: null,
-        enabledBreakoutPreassignments: null,
+        isBreakoutPreassignmentsEnabled: null,
         ...expected
       };
 
@@ -82,7 +82,7 @@ describe('plugin-meetings', () => {
       'canManageBreakout',
       'canAdmitLobbyToBreakout',
       'canUserAskForHelp',
-      'enabledBreakoutPreassignments'
+      'isBreakoutPreassignmentsEnabled'
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

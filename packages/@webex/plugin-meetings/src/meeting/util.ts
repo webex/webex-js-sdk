@@ -384,7 +384,7 @@ MeetingUtil.isSuppressBreakoutSupport = (displayHints) =>
 MeetingUtil.canAdmitLobbyToBreakout = (displayHints) =>
   !displayHints.includes(DISPLAY_HINTS.DISABLE_LOBBY_TO_BREAKOUT);
 
-MeetingUtil.enabledBreakoutPreassignments = (displayHints) =>
+MeetingUtil.isBreakoutPreassignmentsEnabled = (displayHints) =>
   !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_PREASSIGNMENTS);
 
 MeetingUtil.canUserAskForHelp = (displayHints) =>
