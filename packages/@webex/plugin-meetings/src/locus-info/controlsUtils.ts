@@ -48,6 +48,10 @@ ControlsUtils.parse = (controls: any) => {
       : null;
   }
 
+  if (controls && controls.video) {
+    parsedControls.videoEnabled = controls.video.enabled;
+  }
+
   return parsedControls;
 };
 
@@ -94,6 +98,10 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       ),
 
       hasBreakoutChanged: !isEqual(previous?.breakout, current?.breakout),
+
+      hasVideoEnabledChanged:
+        newControls.video?.enabled !== undefined &&
+        !isEqual(previous?.videoEnabled, current?.videoEnabled),
     },
   };
 };

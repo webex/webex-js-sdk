@@ -139,10 +139,11 @@ MembersUtil.generateRemoveMemberOptions = (removal, locusUrl) => ({
   locusUrl,
 });
 
-MembersUtil.generateMuteMemberOptions = (memberId, status, locusUrl) => ({
+MembersUtil.generateMuteMemberOptions = (memberId, status, locusUrl, isAudio) => ({
   memberId,
   muted: status,
   locusUrl,
+  isAudio,
 });
 
 MembersUtil.generateRaiseHandMemberOptions = (memberId, status, locusUrl) => ({
@@ -157,8 +158,9 @@ MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locus
 });
 
 MembersUtil.getMuteMemberRequestParams = (options) => {
+  const property = options.isAudio === false ? 'video' : 'audio';
   const body = {
-    audio: {
+    [property]: {
       muted: options.muted,
     },
   };
