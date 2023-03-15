@@ -402,6 +402,18 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.members.admitMembers);
           assert.calledWith(meeting.members.admitMembers, [uuid1]);
         });
+        it('should call from a breakout session if caller is in a breakout session', async () => {
+          const locusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+          await meeting.admit([uuid1], locusUrls);
+          assert.calledOnce(meeting.members.admitMembers);
+          assert.calledWith(meeting.members.admitMembers, [uuid1], locusUrls);
+
+          meeting.breakouts.set('locusUrl', 'authorizingLocusUrl');
+          meeting.breakouts.set('mainLocusUrl', 'mainLocusUrl');
+          await meeting.admit([uuid1]);
+          const args = meeting.members.admitMembers.getCall(1).args;
+          assert.deepEqual(args, [[uuid1], locusUrls]);
+        });
       });
       describe('#getMembers', () => {
         it('should have #getMembers', () => {

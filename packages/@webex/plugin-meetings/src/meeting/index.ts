@@ -2290,6 +2290,8 @@ export default class Meeting extends StatelessWebexPlugin {
           canUnsetMuteOnEntry: ControlsOptionsUtil.canUnsetMuteOnEntry(
             payload.info.userDisplayHints
           ),
+          canSetMuted: ControlsOptionsUtil.canSetMuted(payload.info.userDisplayHints),
+          canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(payload.info.userDisplayHints),
           canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
           canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
           canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
@@ -2693,14 +2695,32 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Admit the guest(s) to the call once they are waiting
+   * Admit the guest(s) to the call once they are waiting.
+   * If the host/cohost is in a breakout session, the locus url
+   * of the session must be provided as the authorizingLocusUrl.
+   * Regardless of host/cohost location, the locus Id (lid) in
+   * the path should be the locus Id of the main, which means the
+   * locus url of the api call must be from the main session.
+   * If these loucs urls are not provided, the function will do the check.
    * @param {Array} memberIds
+   * @param {Object} sessionLocusUrls: {authorizingLocusUrl, mainLocusUrl}
    * @returns {Promise} see #members.admitMembers
    * @public
    * @memberof Meeting
    */
-  public admit(memberIds: Array<any>) {
-    return this.members.admitMembers(memberIds);
+  public admit(
+    memberIds: Array<any>,
+    sessionLocusUrls?: {authorizingLocusUrl: string; mainLocusUrl: string}
+  ) {
+    let locusUrls = sessionLocusUrls;
+    if (!locusUrls) {
+      const {locusUrl, mainLocusUrl} = this.breakouts;
+      if (locusUrl && mainLocusUrl) {
+        locusUrls = {authorizingLocusUrl: locusUrl, mainLocusUrl};
+      }
+    }
+
+    return this.members.admitMembers(memberIds, locusUrls);
   }
 
   /**
@@ -6214,6 +6234,27 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setDisallowUnmute(enabled: boolean) {
     return this.controlsOptionsManager.setDisallowUnmute(enabled);
+  }
+
+  /**
+   * set the mute all flag for participants if you're the host
+   * @returns {Promise}
+   * @param {boolean} mutedEnabled
+   * @param {boolean} disallowUnmuteEnabled
+   * @param {boolean} muteOnEntryEnabled
+   * @public
+   * @memberof Meeting
+   */
+  public setMuteAll(
+    mutedEnabled: boolean,
+    disallowUnmuteEnabled: boolean,
+    muteOnEntryEnabled: boolean
+  ) {
+    return this.controlsOptionsManager.setMuteAll(
+      mutedEnabled,
+      disallowUnmuteEnabled,
+      muteOnEntryEnabled
+    );
   }
 
   /**
