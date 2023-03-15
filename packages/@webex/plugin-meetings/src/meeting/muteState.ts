@@ -52,8 +52,9 @@ class MuteState {
       },
       server: {
         localMute: false,
-        remoteMute: type === AUDIO ? meeting.remoteMuted : meeting.remoteVideoMuted,
-        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : meeting.unmuteVideoAllowed,
+        // because remoteVideoMuted and unmuteVideoAllowed are updated seperately, they might be undefined
+        remoteMute: type === AUDIO ? meeting.remoteMuted : meeting.remoteVideoMuted ?? false,
+        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : meeting.unmuteVideoAllowed ?? true,
       },
       syncToServerInProgress: false,
     };
