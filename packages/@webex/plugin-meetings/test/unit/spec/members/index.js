@@ -151,12 +151,57 @@ describe('plugin-meetings', () => {
         assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
         assert.deepEqual(arg1.memberIds, ['uuid']);
 
-        const sessionLocusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+        const sessionLocusUrls = {
+          authorizingLocusUrl: 'authorizingLocusUrl',
+          mainLocusUrl: 'mainLocusUrl',
+        };
         await members.admitMembers(['uuid'], sessionLocusUrls);
         const arg2 = members.membersRequest.admitMember.getCall(1).args[0];
         assert.equal(arg2.sessionLocusUrls, sessionLocusUrls);
         assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
         assert.deepEqual(arg1.memberIds, ['uuid']);
+      });
+    });
+
+    describe('#muteMember', () => {
+      const testMuteMember = async (mute, isAudio) => {
+        sandbox.spy(MembersUtil, 'generateMuteMemberOptions');
+
+        const locusUrl = 'locus-url';
+        const members = createMembers({url: locusUrl});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'muteMember');
+
+        const memberId = 'bob';
+
+        await members.muteMember(memberId, mute, isAudio);
+        assert.calledOnce(MembersUtil.generateMuteMemberOptions);
+        assert.calledWith(
+          MembersUtil.generateMuteMemberOptions,
+          memberId,
+          mute,
+          members.locusUrl,
+          isAudio
+        );
+
+        assert.calledOnce(membersRequest.muteMember);
+        assert.calledWith(membersRequest.muteMember, {memberId, muted: mute, locusUrl, isAudio});
+      };
+
+      it('invokes expected functions when muteMember is called for mute=true, isAudio=true', async () => {
+        testMuteMember(true, true);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=true, isAudio=false', async () => {
+        testMuteMember(true, false);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=false, isAudio=true', async () => {
+        testMuteMember(false, true);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=false, isAudio=false', async () => {
+        testMuteMember(false, false);
       });
     });
 

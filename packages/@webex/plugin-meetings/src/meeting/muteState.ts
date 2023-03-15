@@ -52,9 +52,8 @@ class MuteState {
       },
       server: {
         localMute: false,
-        // initial values available only for audio (REMOTE_MUTE_VIDEO_MISSING_IMPLEMENTATION)
-        remoteMute: type === AUDIO ? meeting.remoteMuted : false,
-        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : true,
+        remoteMute: type === AUDIO ? meeting.remoteMuted : meeting.remoteVideoMuted,
+        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : meeting.unmuteVideoAllowed,
       },
       syncToServerInProgress: false,
     };
@@ -241,35 +240,28 @@ class MuteState {
    * @returns {Promise}
    */
   private sendRemoteMuteRequestToServer(meeting?: any) {
-    if (this.type === AUDIO) {
-      const remoteMute = this.state.client.localMute;
+    const remoteMute = this.state.client.localMute;
 
-      LoggerProxy.logger.info(
-        `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`
-      );
+    LoggerProxy.logger.info(
+      `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`
+    );
 
-      return meeting.members
-        .muteMember(meeting.members.selfId, remoteMute)
-        .then(() => {
-          LoggerProxy.logger.info(
-            `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: remote mute:${remoteMute} applied to server`
-          );
+    return meeting.members
+      .muteMember(meeting.members.selfId, remoteMute, this.type === AUDIO)
+      .then(() => {
+        LoggerProxy.logger.info(
+          `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: remote mute:${remoteMute} applied to server`
+        );
 
-          this.state.server.remoteMute = remoteMute;
-        })
-        .catch((remoteUpdateError) => {
-          LoggerProxy.logger.warn(
-            `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: failed to apply remote mute ${remoteMute} to server: ${remoteUpdateError}`
-          );
+        this.state.server.remoteMute = remoteMute;
+      })
+      .catch((remoteUpdateError) => {
+        LoggerProxy.logger.warn(
+          `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: failed to apply remote mute ${remoteMute} to server: ${remoteUpdateError}`
+        );
 
-          return Promise.reject(remoteUpdateError);
-        });
-    }
-
-    // for now we don't need to support remote muting of video (REMOTE_MUTE_VIDEO_MISSING_IMPLEMENTATION)
-    this.state.server.remoteMute = this.state.client.localMute;
-
-    return Promise.resolve();
+        return Promise.reject(remoteUpdateError);
+      });
   }
 
   /**
@@ -285,8 +277,12 @@ class MuteState {
     LoggerProxy.logger.info(
       `Meeting:muteState#handleServerRemoteMuteUpdate --> ${this.type}: updating server remoteMute to (${muted})`
     );
-    this.state.server.remoteMute = muted;
-    this.state.server.unmuteAllowed = unmuteAllowed;
+    if (muted !== undefined) {
+      this.state.server.remoteMute = muted;
+    }
+    if (unmuteAllowed !== undefined) {
+      this.state.server.unmuteAllowed = unmuteAllowed;
+    }
   }
 
   /**
@@ -328,6 +324,28 @@ class MuteState {
     return (
       this.state.client.localMute || this.state.server.localMute || this.state.server.remoteMute
     );
+  }
+
+  /**
+   * Returns true if the user is remotely muted
+   *
+   * @public
+   * @memberof MuteState
+   * @returns {Boolean}
+   */
+  public isRemotelyMuted() {
+    return this.state.server.remoteMute;
+  }
+
+  /**
+   * Returns true if unmute is allowed
+   *
+   * @public
+   * @memberof MuteState
+   * @returns {Boolean}
+   */
+  public isUnmuteAllowed() {
+    return this.state.server.unmuteAllowed;
   }
 
   /**

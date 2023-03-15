@@ -780,11 +780,12 @@ export default class Members extends StatelessWebexPlugin {
    * Audio mutes another member in a meeting
    * @param {String} memberId
    * @param {boolean} [mute] default true
+   * @param {boolean} [isAudio] default true
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public muteMember(memberId: string, mute = true) {
+  public muteMember(memberId: string, mute = true, isAudio = true) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -797,7 +798,7 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The member id must be defined to mute the member.')
       );
     }
-    const options = MembersUtil.generateMuteMemberOptions(memberId, mute, this.locusUrl);
+    const options = MembersUtil.generateMuteMemberOptions(memberId, mute, this.locusUrl, isAudio);
 
     return this.membersRequest.muteMember(options);
   }
