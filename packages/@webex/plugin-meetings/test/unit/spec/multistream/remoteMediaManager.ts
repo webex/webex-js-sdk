@@ -740,6 +740,18 @@ describe('RemoteMediaManager', () => {
         "fake video 8",
       ]);
 
+      assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["main"].slots.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+        "fake video 6",
+        "fake video 7",
+        "fake video 8",
+      ])
+
       // switch to "OnePlusFive" layout that requires 3 less video slots (6)
       const onePlusFivePromise = remoteMediaManager.setLayout('OnePlusFive');
 
@@ -768,6 +780,17 @@ describe('RemoteMediaManager', () => {
         "fake video 4",
         "fake video 5"
       ]);
+
+      assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["mainBigOne"].slots.map((slot: any) => slot.id), [
+        "fake video 0",
+      ])
+      assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["secondarySetOfSmallPanes"].slots.map((slot: any) => slot.id), [
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5"
+      ])
 
       // verify that 3 main video slots were released
       assert.callCount(fakeReceiveSlotManager.releaseSlot, 3);
@@ -805,6 +828,18 @@ describe('RemoteMediaManager', () => {
         "fake video 11",
         "fake video 12",
       ]);
+
+      assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["main"].slots.map((slot: any) => slot.id), [
+        "fake video 0",
+        "fake video 1",
+        "fake video 2",
+        "fake video 3",
+        "fake video 4",
+        "fake video 5",
+        "fake video 10",
+        "fake video 11",
+        "fake video 12"
+      ])
 
        // verify that 3 main video slots were allocated
        assert.callCount(fakeReceiveSlotManager.allocateSlot, 3);
