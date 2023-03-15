@@ -123,6 +123,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canSetMuted: this.canSetMuted,
     canUnsetMuted: this.canUnsetMuted,
     canUnsetDisallowUnmute: this.canUnsetDisallowUnmute,
+    canSetMuted: this.canSetMuted,
+    canUnsetMuted: this.canUnsetMuted,
     canStartRecording: this.canStartRecording,
     canPauseRecording: this.canPauseRecording,
     canResumeRecording: this.canResumeRecording,
