@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import 'jsdom-global/register';
-import {cloneDeep, isEqual} from 'lodash';
+import {cloneDeep, forEach, isEqual} from 'lodash';
 import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
@@ -2180,6 +2180,43 @@ describe('plugin-meetings', () => {
           sandbox.restore();
           sandbox = null;
         });
+
+        forEach(
+          [
+            {receiveAudio: true, sendAudio: true, enableMultistreamAudio: true},
+            {receiveAudio: true, sendAudio: false, enableMultistreamAudio: true},
+            {receiveAudio: false, sendAudio: true, enableMultistreamAudio: true},
+            {receiveAudio: false, sendAudio: false, enableMultistreamAudio: false},
+          ],
+          ({receiveAudio, sendAudio, enableMultistreamAudio}) => {
+            it(`should call enableMultistreamAudio with ${enableMultistreamAudio} if it is a multistream connection and receiveAudio: ${receiveAudio} sendAudio: ${sendAudio}`, async () => {
+              const mediaSettings = {
+                sendAudio,
+                receiveAudio,
+                sendVideo: true,
+                receiveVideo: true,
+                sendShare: true,
+                receiveShare: true,
+                isSharing: true,
+              };
+
+              meeting.mediaProperties.webrtcMediaConnection = {
+                enableMultistreamAudio: sinon.stub().resolves('some value'),
+              };
+              meeting.isMultistream = true;
+
+              const result = await meeting.updateMedia({
+                  mediaSettings,
+              });
+
+              assert.calledOnceWithExactly(
+                meeting.mediaProperties.webrtcMediaConnection.enableMultistreamAudio,
+                enableMultistreamAudio
+              );
+              assert.equal(result, 'some value');
+            });
+          }
+        );
 
         it('should use a queue if currently busy', async () => {
           const mediaSettings = {

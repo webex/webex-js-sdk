@@ -5139,7 +5139,6 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a webrtc media connection
    *
    * @param {Object} turnServerInfo TURN server information
-   * @param {Object} mediaSettings media settings
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   createMediaConnection(turnServerInfo) {
@@ -5250,7 +5249,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.preMedia(localStream, localShare, mediaSettings);
 
-        const mc = this.createMediaConnection(turnServerInfo, mediaSettings);
+        const mc = this.createMediaConnection(turnServerInfo);
 
         if (this.isMultistream) {
           this.remoteMediaManager = new RemoteMediaManager(

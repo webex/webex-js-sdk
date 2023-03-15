@@ -117,7 +117,7 @@ Media.createMediaConnection = (
   isMultistream: boolean,
   debugId: string,
   options: {
-    mediaProperties?: {
+    mediaProperties: {
       mediaDirection?: {
         receiveAudio: boolean;
         receiveVideo: boolean;
