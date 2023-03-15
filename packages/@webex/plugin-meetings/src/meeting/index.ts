@@ -5139,6 +5139,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a webrtc media connection
    *
    * @param {Object} turnServerInfo TURN server information
+   * @param {Object} mediaSettings media settings
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   createMediaConnection(turnServerInfo) {
@@ -5249,7 +5250,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.preMedia(localStream, localShare, mediaSettings);
 
-        const mc = this.createMediaConnection(turnServerInfo);
+        const mc = this.createMediaConnection(turnServerInfo, mediaSettings);
 
         if (this.isMultistream) {
           this.remoteMediaManager = new RemoteMediaManager(
@@ -5541,9 +5542,9 @@ export default class Meeting extends StatelessWebexPlugin {
     const LOG_HEADER = 'Meeting:index#updateMedia -->';
 
     if (this.isMultistream) {
-      throw new Error(
-        'updateMedia() is not supported with multistream, use publishTracks/unpublishTracks instead'
-      );
+      const audioEnabled = options.mediaSettings?.sendAudio || options.mediaSettings?.receiveAudio;
+
+      return this.mediaProperties.webrtcMediaConnection.enableMultistreamAudio(audioEnabled);
     }
     if (!this.canUpdateMedia()) {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.ALL, options);

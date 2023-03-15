@@ -122,6 +122,9 @@ Media.createMediaConnection = (
         receiveAudio: boolean;
         receiveVideo: boolean;
         receiveShare: boolean;
+        sendAudio: boolean;
+        sendVideo: boolean;
+        sendShare: boolean;
       };
       audioTrack?: LocalMicrophoneTrack;
       videoTrack?: LocalCameraTrack;
@@ -153,6 +156,10 @@ Media.createMediaConnection = (
     return new MultistreamRoapMediaConnection(
       {
         iceServers,
+        enableMainAudio:
+          mediaProperties.mediaDirection?.sendAudio || mediaProperties.mediaDirection?.receiveAudio,
+        enableMainVideo:
+          mediaProperties.mediaDirection?.sendVideo || mediaProperties.mediaDirection?.receiveVideo,
       },
       debugId
     );
