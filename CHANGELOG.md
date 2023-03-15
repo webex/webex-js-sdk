@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.44](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.43...v3.0.0-beta.44) (2023-03-15)
+
+
+### Features
+
+* Host/Cohost - Admit user in lobby to main meeting from Breakout Session SPARK-400367 ([#2658](https://github.com/webex/webex-js-sdk/issues/2658)) ([c43e6b3](https://github.com/webex/webex-js-sdk/commit/c43e6b36212608e4f0d3f1edbb3467382e98aafa))
+* **remote-video-mute:** respect remote video mute ([#2665](https://github.com/webex/webex-js-sdk/issues/2665)) ([e6b684b](https://github.com/webex/webex-js-sdk/commit/e6b684b2b25f30360e9152f290fe6bd474066508))
+
 ## [3.0.0-beta.43](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.42...v3.0.0-beta.43) (2023-03-14)
 
 
