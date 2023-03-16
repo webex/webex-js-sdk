@@ -244,14 +244,6 @@ const Scheduler = WebexPlugin.extend({
       usmPreference,
     } = query;
 
-    // let url = `schedulerData?siteName=${siteName}`;
-    // url += id ? `&id=${base64.encode(id)}` : '';
-    // url += clientMeetingId ? `&clientMeetingId=${base64.encode(clientMeetingId)}` : '';
-    // url += scheduleTemplateId ? `&scheduleTemplateId=${scheduleTemplateId}` : '';
-    // url += sessionTypeId ? `&sessionTypeId=${sessionTypeId}` : '';
-    // url += organizerCIUserId ? `&organizerCIUserId=${organizerCIUserId}` : '';
-    // url += usmPreference ? `&usmPreference=${usmPreference}` : '';
-
     return this.request({
       method: 'GET',
       service: 'calendar',

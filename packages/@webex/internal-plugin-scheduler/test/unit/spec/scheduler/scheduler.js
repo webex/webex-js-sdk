@@ -1,8 +1,6 @@
-import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 
 import Scheduler from '@webex/internal-plugin-scheduler';
-import sinon from "sinon";
 
 import CONSTANTS from '@webex/internal-plugin-scheduler/src/scheduler/scheduler.constants';
 import { base64 } from "@webex/common";
@@ -26,27 +24,27 @@ describe('plugin-scheduler', () => {
 
       webex.canAuthorize = true;
       webex.internal.device = {
-        register: sinon.stub().returns(Promise.resolve()),
-        unregister: sinon.stub().returns(Promise.resolve()),
+        register: jest.fn().mockResolvedValue({}),
+        unregister: jest.fn().mockResolvedValue({}),
       };
       webex.internal.mercury = {
-        connect: sinon.stub().returns(Promise.resolve()),
-        disconnect: sinon.stub().returns(Promise.resolve()),
-        on: sinon.stub().callsFake((event, callback) => {
+        connect: jest.fn().mockResolvedValue({}),
+        disconnect: jest.fn().mockResolvedValue({}),
+        on: jest.fn().mockImplementation((event, callback) => {
           if (event === 'event:calendar.free_busy') {
             callback({data: {calendarFreeBusyScheduleResponse: {calendarFreeBusyItems: []}}});
           }
         }),
-        off: sinon.spy(),
+        off: jest.fn(),
       };
-      webex.transform = sinon.stub().returns(Promise.resolve());
+      webex.transform = jest.fn().mockResolvedValue({});
       webex.internal.encryption = {
         kms: {
-          createUnboundKeys: sinon.stub().returns(Promise.resolve([{
+          createUnboundKeys: jest.fn().mockResolvedValue([{
             uri: 'kms://kms-us-int.wbx2.com/keys/xxxx-xxxx-xxxx-xxxx'
-          }]))
+          }])
         },
-        encryptText: sinon.stub().returns(Promise.resolve('encryptedText'))
+        encryptText: jest.fn().mockResolvedValue('encryptedText')
       };
     });
 
@@ -56,19 +54,19 @@ describe('plugin-scheduler', () => {
     describe('properties', () => {
       describe('request', () => {
         it('should be mounted', () => {
-          assert.exists(scheduler.request);
+          expect(scheduler.request).toBeDefined();
         });
       });
 
       describe('logger', () => {
         it('should be mounted', () => {
-          assert.exists(scheduler.logger);
+          expect(scheduler.logger).toBeDefined();
         });
       });
 
       describe('rpcEventRequests', () => {
         it('should be mounted', () => {
-          assert.exists(scheduler.rpcEventRequests);
+          expect(scheduler.rpcEventRequests).toBeDefined();
         });
       });
     });
@@ -87,15 +85,15 @@ describe('plugin-scheduler', () => {
       describe('#register()', () => {
         it('on scheduler register call mercury registration', async () => {
           await scheduler.register();
-          assert.calledOnce(webex.internal.device.register);
-          assert.callCount(webex.internal.mercury.on, 1);
-          assert.equal(scheduler.registered, true);
+          expect(webex.internal.device.register).toHaveBeenCalledTimes(1);
+          expect(webex.internal.mercury.on).toHaveBeenCalledTimes(1);
+          expect(scheduler.registered).toBe(true);
         });
         it('should trigger `scheduler:registered` event', async () => {
-          const spy = sinon.spy();
+          const spy = jest.fn();
           scheduler.on(CONSTANTS.SCHEDULER_REGISTERED, spy);
           await scheduler.register();
-          assert.calledOnce(spy);
+          expect(spy).toHaveBeenCalledTimes(1);
         });
       });
 
@@ -103,16 +101,16 @@ describe('plugin-scheduler', () => {
         it('should call `mercury.unregister` and `device.unregister`', async () => {
           await scheduler.register();
           await scheduler.unregister();
-          assert.callCount(webex.internal.mercury.off, 1);
-          assert.calledOnce(webex.internal.mercury.disconnect);
-          assert.calledOnce(webex.internal.device.unregister);
+          expect(webex.internal.mercury.off).toHaveBeenCalledTimes(1);
+          expect(webex.internal.mercury.disconnect).toHaveBeenCalledTimes(1);
+          expect(webex.internal.device.unregister).toHaveBeenCalledTimes(1);
         });
         it('should trigger `scheduler:unregistered` event', async () => {
-          const spy = sinon.spy();
+          const spy = jest.fn();
           await scheduler.register();
           scheduler.on(CONSTANTS.SCHEDULER_UNREGISTERED, spy);
           await scheduler.unregister();
-          assert.calledOnce(spy);
+          expect(spy).toHaveBeenCalledTimes(1);
         });
       });
 
@@ -123,38 +121,44 @@ describe('plugin-scheduler', () => {
             clientMeetingId: "abcdabcd-abcd-abcd-abcd-00000000"
           };
 
-          webex.request = sinon.stub().returns(
-            Promise.resolve({
-              body: {
-                encryptedSubject: "My Meeting 1",
-                schedulerPreferences: {
-                  uiControlAttributes: {
-                    displayHostSaveMeetingTemplate: true
-                  },
-                  webexOptions: {
-                    sessionTypeId: 3
-                  }
+          webex.request = jest.fn().mockResolvedValue({
+            body: {
+              encryptedSubject: "My Meeting 1",
+              schedulerPreferences: {
+                uiControlAttributes: {
+                  displayHostSaveMeetingTemplate: true
+                },
+                webexOptions: {
+                  sessionTypeId: 3
                 }
               }
-            })
-          );
+            }
+          });
 
           const res = await scheduler.getSchedulerData(query);
 
-          assert.equal(res.body.encryptedSubject, "My Meeting 1");
-          assert.equal(res.body.schedulerPreferences.uiControlAttributes.
-            displayHostSaveMeetingTemplate, true);
-          assert.equal(res.body.schedulerPreferences.webexOptions.sessionTypeId, 3);
-          assert.calledWith(webex.request, {
+          expect(res.body.encryptedSubject).toBe("My Meeting 1");
+          expect(res.body.schedulerPreferences.uiControlAttributes.displayHostSaveMeetingTemplate).toBe(true);
+          expect(res.body.schedulerPreferences.webexOptions.sessionTypeId).toBe(3);
+          expect(webex.request).toHaveBeenCalledWith({
             method: "GET",
             service: "calendar",
-            resource: `schedulerData?siteName=${query.siteName}&clientMeetingId=${base64.encode(query.clientMeetingId)}`
+            resource: 'schedulerData',
+            qs: {
+              siteName: query.siteName,
+              id: null,
+              clientMeetingId: base64.encode(query.clientMeetingId),
+              scheduleTemplateId: undefined,
+              sessionTypeId: undefined,
+              organizerCIUserId: undefined,
+              usmPreference: undefined,
+            },
           });
         });
       });
 
       describe("#createCalendarEvent()", () => {
-        it("should create an calender event", async () => {
+        it("should create an calendar event", async () => {
           const data = {
             encryptionKeyUrl: 'kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3',
             notes: 'This is Agenda',
@@ -162,20 +166,18 @@ describe('plugin-scheduler', () => {
             webexOptions: '{}'
           };
 
-          webex.request = sinon.stub().returns(
-            Promise.resolve({
-              body: {
-                meetingId: 'abcdabcd-abcd-abcd-abcd-00000000',
-                globalMeetingId: 'xxxx-xxxx-xxxx-xxxx'
-              }
-            })
-          );
+          webex.request = jest.fn().mockResolvedValue({
+            body: {
+              meetingId: 'abcdabcd-abcd-abcd-abcd-00000000',
+              globalMeetingId: 'xxxx-xxxx-xxxx-xxxx'
+            }
+          });
 
           const res = await scheduler.createCalendarEvent(data);
 
-          assert.equal(res.body.meetingId, 'abcdabcd-abcd-abcd-abcd-00000000');
-          assert.equal(res.body.globalMeetingId, 'xxxx-xxxx-xxxx-xxxx');
-          assert.calledWith(webex.request, {
+          expect(res.body.meetingId).toBe('abcdabcd-abcd-abcd-abcd-00000000');
+          expect(res.body.globalMeetingId).toBe('xxxx-xxxx-xxxx-xxxx');
+          expect(webex.request).toHaveBeenCalledWith({
             method: "POST",
             service: "calendar",
             body: data,
@@ -185,7 +187,7 @@ describe('plugin-scheduler', () => {
       });
 
       describe("#updateCalendarEvent()", () => {
-        it("should update an calender event", async () => {
+        it("should update a calendar event", async () => {
           const id = 'abcdabcd-abcd-abcd-abcd-00000000';
           const data = {
             encryptionKeyUrl: 'kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3',
@@ -194,20 +196,18 @@ describe('plugin-scheduler', () => {
             webexOptions: '{}'
           };
 
-          webex.request = sinon.stub().returns(
-            Promise.resolve({
-              body: {
-                meetingId: 'abcdabcd-abcd-abcd-abcd-00000000',
-                globalMeetingId: 'xxxx-xxxx-xxxx-xxxx'
-              }
-            })
-          );
+          webex.request = jest.fn().mockResolvedValue({
+            body: {
+              meetingId: 'abcdabcd-abcd-abcd-abcd-00000000',
+              globalMeetingId: 'xxxx-xxxx-xxxx-xxxx'
+            }
+          });
 
           const res = await scheduler.updateCalendarEvent(id, data);
 
-          assert.equal(res.body.meetingId, 'abcdabcd-abcd-abcd-abcd-00000000');
-          assert.equal(res.body.globalMeetingId, 'xxxx-xxxx-xxxx-xxxx');
-          assert.calledWith(webex.request, {
+          expect(res.body.meetingId).toBe('abcdabcd-abcd-abcd-abcd-00000000');
+          expect(res.body.globalMeetingId).toBe('xxxx-xxxx-xxxx-xxxx');
+          expect(webex.request).toHaveBeenCalledWith({
             method: "PATCH",
             service: "calendar",
             body: data,
@@ -217,19 +217,16 @@ describe('plugin-scheduler', () => {
       });
 
       describe("#deleteCalendarEvent()", () => {
-        it("should delete an calender event", async () => {
+        it("should delete a calendar event", async () => {
           const id = 'abcdabcd-abcd-abcd-abcd-00000000';
 
-          webex.request = sinon.stub().returns(
-            Promise.resolve({
-              body: {
-              }
-            })
-          );
+          webex.request = jest.fn().mockResolvedValue({
+            body: {}
+          });
 
           await scheduler.deleteCalendarEvent(id);
 
-          assert.calledWith(webex.request, {
+          expect(webex.request).toHaveBeenCalledWith({
             method: "DELETE",
             service: "calendar",
             resource: `calendarEvents/${base64.encode(id)}/sync`,
