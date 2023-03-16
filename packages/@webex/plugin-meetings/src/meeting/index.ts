@@ -17,7 +17,6 @@ import {
 
 import {
   MeetingNotActiveError,
-  createMeetingsError,
   UserInLobbyError,
   NoMediaEstablishedYetError,
   UserNotJoinedError,
@@ -2416,6 +2415,30 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED, (payload) => {
+      if (payload) {
+        if (this.video) {
+          payload.muted = payload.muted ?? this.video.isRemotelyMuted();
+          payload.unmuteAllowed = payload.unmuteAllowed ?? this.video.isUnmuteAllowed();
+          this.video.handleServerRemoteMuteUpdate(payload.muted, payload.unmuteAllowed);
+        }
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoSelfListener',
+          },
+          payload.muted
+            ? EVENT_TRIGGERS.MEETING_SELF_VIDEO_MUTED_BY_OTHERS
+            : EVENT_TRIGGERS.MEETING_SELF_VIDEO_UNMUTED_BY_OTHERS,
+          {
+            payload,
+          }
+        );
+      }
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED, (payload) => {
       if (payload) {
         if (this.audio) {
@@ -2703,14 +2726,32 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Admit the guest(s) to the call once they are waiting
+   * Admit the guest(s) to the call once they are waiting.
+   * If the host/cohost is in a breakout session, the locus url
+   * of the session must be provided as the authorizingLocusUrl.
+   * Regardless of host/cohost location, the locus Id (lid) in
+   * the path should be the locus Id of the main, which means the
+   * locus url of the api call must be from the main session.
+   * If these loucs urls are not provided, the function will do the check.
    * @param {Array} memberIds
+   * @param {Object} sessionLocusUrls: {authorizingLocusUrl, mainLocusUrl}
    * @returns {Promise} see #members.admitMembers
    * @public
    * @memberof Meeting
    */
-  public admit(memberIds: Array<any>) {
-    return this.members.admitMembers(memberIds);
+  public admit(
+    memberIds: Array<any>,
+    sessionLocusUrls?: {authorizingLocusUrl: string; mainLocusUrl: string}
+  ) {
+    let locusUrls = sessionLocusUrls;
+    if (!locusUrls) {
+      const {locusUrl, mainLocusUrl} = this.breakouts;
+      if (locusUrl && mainLocusUrl) {
+        locusUrls = {authorizingLocusUrl: locusUrl, mainLocusUrl};
+      }
+    }
+
+    return this.members.admitMembers(memberIds, locusUrls);
   }
 
   /**

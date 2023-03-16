@@ -24,6 +24,9 @@ describe('plugin-meetings', () => {
       },
       remoteMuted: false,
       unmuteAllowed: true,
+      remoteVideoMuted: false,
+      unmuteVideoAllowed: true,
+
       locusInfo: {
         onFullLocus: sinon.stub(),
       },
@@ -75,15 +78,16 @@ describe('plugin-meetings', () => {
     });
 
     it('initialises correctly for video', async () => {
-      // setup fields related to audio remote state
-      meeting.remoteMuted = true;
-      meeting.unmuteAllowed = false;
-      // create a new video MuteState intance
+      // setup fields related to video remote state
+      meeting.remoteVideoMuted = false;
+      meeting.unmuteVideoAllowed = false;
+
+      // create a new video MuteState instance
       video = createMuteState(VIDEO, meeting, {sendVideo: true});
 
       assert.isFalse(video.isMuted());
       assert.isFalse(video.state.server.remoteMute);
-      assert.isTrue(video.state.server.unmuteAllowed);
+      assert.isFalse(video.state.server.unmuteAllowed);
     });
 
     it('takes remote mute into account when reporting current state', async () => {
@@ -167,6 +171,30 @@ describe('plugin-meetings', () => {
       assert.isFalse(audio.isSelf());
     });
 
+    it('does local video unmute if localVideoUnmuteRequired is received', async () => {
+      // first we need to mute
+      await video.handleClientRequest(meeting, true);
+
+      assert.isTrue(video.isMuted());
+      assert.isTrue(video.isSelf());
+
+      MeetingUtil.remoteUpdateAudioVideo.resetHistory();
+
+      // now simulate server requiring us to locally unmute
+      video.handleServerLocalUnmuteRequired(meeting);
+      await testUtils.flushPromises();
+
+      // check that local track was unmuted
+      assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, false);
+
+      // and local unmute was sent to server
+      assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, false, meeting);
+
+      assert.isFalse(video.isMuted());
+      assert.isFalse(video.isSelf());
+    });
+
     describe('#isLocallyMuted()', () => {
       it('does not consider remote mute status for audio', async () => {
         // simulate being already remote muted
@@ -175,6 +203,15 @@ describe('plugin-meetings', () => {
         audio = createMuteState(AUDIO, meeting, {sendAudio: true});
 
         assert.isFalse(audio.isLocallyMuted());
+      });
+
+      it('does not consider remote mute status for video', async () => {
+        // simulate being already remote muted
+        meeting.remoteVideoMuted = true;
+        // create a new MuteState intance
+        video = createMuteState(VIDEO, meeting, {sendVideo: true});
+
+        assert.isFalse(video.isLocallyMuted());
       });
     });
 
@@ -238,10 +275,39 @@ describe('plugin-meetings', () => {
 
         // check that remote unmute was sent to server
         assert.calledOnce(meeting.members.muteMember);
-        assert.calledWith(meeting.members.muteMember, meeting.members.selfId, false);
+        assert.calledWith(meeting.members.muteMember, meeting.members.selfId, false, true);
 
         assert.isFalse(audio.isMuted());
         assert.isFalse(audio.isSelf());
+      });
+
+      it('does video remote unmute when unmuting and remote mute is on', async () => {
+        // simulate remote mute
+        video.handleServerRemoteMuteUpdate(true, true);
+
+        // unmute
+        await video.handleClientRequest(meeting, false);
+
+        // check that remote unmute was sent to server
+        assert.calledOnce(meeting.members.muteMember);
+        assert.calledWith(meeting.members.muteMember, meeting.members.selfId, false, false);
+
+        assert.isFalse(video.isMuted());
+        assert.isFalse(video.isSelf());
+      });
+
+      it('does not video remote unmute when unmuting and remote mute is off', async () => {
+        // simulate remote mute
+        video.handleServerRemoteMuteUpdate(false, true);
+
+        // unmute
+        await video.handleClientRequest(meeting, false);
+
+        // check that remote unmute was sent to server
+        assert.notCalled(meeting.members.muteMember);
+
+        assert.isFalse(video.isMuted());
+        assert.isFalse(video.isSelf());
       });
 
       it('resolves client request promise once the server is updated', async () => {

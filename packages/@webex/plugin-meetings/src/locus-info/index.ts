@@ -64,6 +64,13 @@ export default class LocusInfo extends EventsScope {
   url: any;
   services: any;
 
+  /**
+   * Constructor
+   * @param {boolean} updateMeeting true if the meeting should be updated
+   * @param {object} webex
+   * @param {string} meetingId
+   * @returns {undefined}
+   */
   constructor(updateMeeting, webex, meetingId) {
     super();
     this.parsedLocus = {
@@ -685,6 +692,7 @@ export default class LocusInfo extends EventsScope {
           hasTranscribeChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
+          hasVideoEnabledChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -766,6 +774,8 @@ export default class LocusInfo extends EventsScope {
       if (hasEntryExitToneChanged) {
         const {entryExitTone} = current;
 
+        this.updateMeeting({entryExitTone});
+
         this.emitScoped(
           {
             file: 'locus-info',
@@ -776,8 +786,26 @@ export default class LocusInfo extends EventsScope {
             entryExitTone,
           }
         );
+      }
 
-        this.updateMeeting({entryExitTone});
+      // videoEnabled is handled differently than other controls,
+      // to fit with audio mute status logic
+      if (hasVideoEnabledChanged) {
+        const {videoEnabled} = current;
+
+        this.updateMeeting({unmuteVideoAllowed: videoEnabled});
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED,
+          {
+            // muted: not part of locus.controls
+            unmuteAllowed: videoEnabled,
+          }
+        );
       }
 
       this.controls = controls;
@@ -1118,6 +1146,19 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.SELF_MODERATOR_CHANGED,
           self
+        );
+      }
+      if (parsedSelves.updates.isVideoMutedByOthersChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
+          {
+            muted: parsedSelves.current.remoteVideoMuted,
+            // unmuteAllowed: not part of .self
+          }
         );
       }
       if (parsedSelves.updates.localAudioUnmuteRequiredByServer) {
