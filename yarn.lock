@@ -4262,7 +4262,7 @@ __metadata:
     debug: "npm:^4.3.4"
     isomorphic-webcrypto: "npm:^2.3.8"
     lodash: "npm:^4.17.21"
-    node-jose: "npm:^2.0.0"
+    node-jose: "npm:^2.2.0"
     node-kms: "npm:^0.4.0"
     node-scr: "npm:^0.3.0"
     pkijs: "npm:^2.1.84"
@@ -16908,6 +16908,23 @@ __metadata:
     process: "npm:^0.11.10"
     uuid: "npm:^8.3.2"
   checksum: 429790c7367cb59d38214632451ad25e15652c4c47de1e7197e9f1eadafbaae419413a58bde41c587466d15fcb557ea3934581f5aa2e72aaf32b53255a2ac753
+  languageName: node
+  linkType: hard
+
+"node-jose@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "node-jose@npm:2.2.0"
+  dependencies:
+    base64url: "npm:^3.0.1"
+    buffer: "npm:^6.0.3"
+    es6-promise: "npm:^4.2.8"
+    lodash: "npm:^4.17.21"
+    long: "npm:^5.2.0"
+    node-forge: "npm:^1.2.1"
+    pako: "npm:^2.0.4"
+    process: "npm:^0.11.10"
+    uuid: "npm:^9.0.0"
+  checksum: 2e141195451f05d513d11836d71ea0eb0b0b514815d129ec249402a3088e51e9caafbf86f65d635d9e2b1ff9e3c585de79384a429bafd91a0ed887805a9e4add
   languageName: node
   linkType: hard
 

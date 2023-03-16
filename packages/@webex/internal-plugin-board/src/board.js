@@ -307,6 +307,8 @@ const Board = WebexPlugin.extend({
 
   /**
    * Deletes Contents from a Channel except the ones listed in contentsToKeep
+   *
+   * THIS API HAS CHANGED!!! SEE SPARK-412694. NEEDS UPDATING.
    * @memberof Board.BoardService
    * @param  {Board~Channel} channel
    * @param  {Array<Board~Content>} contentsToKeep Array of board objects (curves, text, and images) with valid contentId (received from server)
