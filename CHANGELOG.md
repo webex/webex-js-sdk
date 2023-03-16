@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.44.1](https://github.com/webex/webex-js-sdk/compare/v2.44.0...v2.44.1) (2023-03-16)
+
+
+### Bug Fixes
+
+* **metrics:** remove org_id, client_id and user_id tags from operational metrics ([#2641](https://github.com/webex/webex-js-sdk/issues/2641)) ([c138b24](https://github.com/webex/webex-js-sdk/commit/c138b24ec58470691471f61108ea17654c2aac06))
+
 ## [2.44.0](https://github.com/webex/webex-js-sdk/compare/v2.43.2...v2.44.0) (2023-03-14)
 
 
