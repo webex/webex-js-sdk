@@ -1,0 +1,45 @@
+{
+  "name": "@webex/test-legacy",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "type": "commonjs",
+  "main": "./static/index.js",
+  "files": [
+    "./static"
+  ],
+  "peerDependencies": {
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1"
+  },
+  "dependencies": {
+    "karma-browserify": "^8.1.0",
+    "karma-browserstack-launcher": "^1.6.0",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^3.1.1",
+    "karma-coverage": "^2.2.0",
+    "karma-edgium-launcher": "^4.0.0-0",
+    "karma-firefox-launcher": "^2.1.2",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-junit-reporter": "^2.0.1",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-opera-launcher": "^1.0.0",
+    "karma-safari-launcher": "^1.0.0",
+    "karma-sauce-launcher": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/karma-browserstack-launcher": "^1",
+    "@types/karma-chai": "^0",
+    "@types/karma-chrome-launcher": "^3",
+    "@types/karma-coverage": "^2",
+    "@types/karma-firefox-launcher": "^2",
+    "@types/karma-ie-launcher": "^1",
+    "@types/karma-junit-reporter": "^2",
+    "@types/karma-mocha-reporter": "^2"
+  }
+}
