@@ -5,7 +5,7 @@
 
 import {has} from 'lodash';
 
-const transformSchedulerData = {
+const transformExample = {
   /**
    * Name of the transformer to be called.
    *
@@ -14,7 +14,7 @@ const transformSchedulerData = {
    *
    * @type {string}
    */
-  name: 'transformSchedulerData',
+  name: 'transformExample',
 
   /**
    * Direction this predicate should process on. This allows for different
@@ -33,13 +33,7 @@ const transformSchedulerData = {
    * @returns {boolean} - Whether to process the `extract()` method.
    */
   test: (ctx, data) => {
-    return Promise.resolve(
-      data.options &&
-        data.options.service === 'calendar' &&
-        data.options.resource.indexOf('schedulerData') > -1 &&
-        data.method === 'GET' &&
-        has(data, 'body.seriesId')
-    );
+    return Promise.resolve(has(data, 'body.someNodeWhichYouWantToCheck'));
   },
 
   /**
@@ -52,51 +46,8 @@ const transformSchedulerData = {
   extract: (data) => Promise.resolve(data.body),
 };
 
-const transformSchedulerRequest = {
-  name: 'transformSchedulerRequest',
-  direction: 'outbound',
-  test: (ctx, data) => {
-    return Promise.resolve(
-      data.service === 'calendar' &&
-        data.resource.indexOf('calendarEvents') > -1 &&
-        (data.method === 'POST' || data.method === 'PATCH') &&
-        (has(data, 'body.attendees') ||
-          has(data, 'body.notes') ||
-          has(data, 'body.subject') ||
-          has(data, 'body.webexOptions'))
-    );
-  },
-  extract: (data) => Promise.resolve(data.body),
-};
-
-const transformFreeBusyRequest = {
-  name: 'transformFreeBusyRequest',
-  direction: 'outbound',
-  test: (ctx, data) => {
-    return Promise.resolve(
-      data.service === 'calendar' &&
-        data.resource.indexOf('freebusy') > -1 &&
-        data.method === 'POST' &&
-        has(data, 'body.emails')
-    );
-  },
-  extract: (data) => Promise.resolve(data.body),
-};
-
-const transformFreeBusyResponse = {
-  name: 'transformFreeBusyResponse',
-  direction: 'inbound',
-  test: (ctx, data) => {
-    return Promise.resolve(has(data, 'calendarFreeBusyScheduleResponse'));
-  },
-  extract: (data) => Promise.resolve(data.calendarFreeBusyScheduleResponse),
-};
-
 const predicates = {
-  transformSchedulerData,
-  transformSchedulerRequest,
-  transformFreeBusyRequest,
-  transformFreeBusyResponse,
+  transformExample, // leave an example here
 };
 
 export default predicates;

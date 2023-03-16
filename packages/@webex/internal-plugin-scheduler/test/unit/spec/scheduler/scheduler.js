@@ -5,6 +5,7 @@ import Scheduler from '@webex/internal-plugin-scheduler';
 import sinon from "sinon";
 
 import CONSTANTS from '@webex/internal-plugin-scheduler/src/scheduler/scheduler.constants';
+import { base64 } from "@webex/common";
 
 /**
  * Unit tests are not used against services.
@@ -39,6 +40,14 @@ describe('plugin-scheduler', () => {
         off: sinon.spy(),
       };
       webex.transform = sinon.stub().returns(Promise.resolve());
+      webex.internal.encryption = {
+        kms: {
+          createUnboundKeys: sinon.stub().returns(Promise.resolve([{
+            uri: 'kms://kms-us-int.wbx2.com/keys/xxxx-xxxx-xxxx-xxxx'
+          }]))
+        },
+        encryptText: sinon.stub().returns(Promise.resolve('encryptedText'))
+      };
     });
 
     /**
@@ -139,7 +148,7 @@ describe('plugin-scheduler', () => {
           assert.calledWith(webex.request, {
             method: "GET",
             service: "calendar",
-            resource: `schedulerData?siteName=${query.siteName}&clientMeetingId=${btoa(query.clientMeetingId)}`
+            resource: `schedulerData?siteName=${query.siteName}&clientMeetingId=${base64.encode(query.clientMeetingId)}`
           });
         });
       });
@@ -202,7 +211,7 @@ describe('plugin-scheduler', () => {
             method: "PATCH",
             service: "calendar",
             body: data,
-            resource: `calendarEvents/${btoa(id)}/sync`,
+            resource: `calendarEvents/${base64.encode(id)}/sync`,
           });
         });
       });
@@ -223,7 +232,7 @@ describe('plugin-scheduler', () => {
           assert.calledWith(webex.request, {
             method: "DELETE",
             service: "calendar",
-            resource: `calendarEvents/${btoa(id)}/sync`,
+            resource: `calendarEvents/${base64.encode(id)}/sync`,
           });
         });
       });

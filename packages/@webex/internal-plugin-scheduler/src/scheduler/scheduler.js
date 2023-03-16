@@ -1,7 +1,9 @@
-import btoa from 'btoa';
+import {base64} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
 import CONSTANTS from './scheduler.constants';
+import EncryptHelper from './scheduler.encrypt.helper';
+import DecryptHelper from './scheduler.decrypt.helper';
 
 /**
  * Scheduler WebexPlugin class.
@@ -132,9 +134,6 @@ const Scheduler = WebexPlugin.extend({
     this.webex.internal.mercury.on('event:calendar.free_busy', (envelope) => {
       this._handleFreeBusy(envelope.data);
     });
-    // this.webex.internal.mercury.on('all', (event) => {
-    //   this.logger.log(`@@@@@@@@@ tracking mercury.on: ${event}`);
-    // });
   },
 
   /**
@@ -153,10 +152,10 @@ const Scheduler = WebexPlugin.extend({
    * @private
    */
   _handleFreeBusy(data) {
-    this.processMeetingEvent(data).then((decryptedData) => {
+    DecryptHelper.decryptFreeBusyResponse(this, data).then(() => {
       let response = {};
-      if (decryptedData && decryptedData.calendarFreeBusyScheduleResponse) {
-        response = decryptedData.calendarFreeBusyScheduleResponse;
+      if (data && data.calendarFreeBusyScheduleResponse) {
+        response = data.calendarFreeBusyScheduleResponse;
       }
       if (response && response.requestId && response.requestId in this.rpcEventRequests) {
         this.logger.log(
@@ -173,25 +172,18 @@ const Scheduler = WebexPlugin.extend({
   },
 
   /**
-   * Decrypts an encrypted incoming calendar event
-   * @param {Object} event
-   * @returns {Promise} Resolves with a decrypted calendar event
-   */
-  processMeetingEvent(event) {
-    return this.webex.transform('inbound', event).then(() => event);
-  },
-
-  /**
    * Create calendar event
    * @param {object} [data] meeting payload data
    * @returns {Promise} Resolves with creating calendar event response
    * */
   createCalendarEvent(data) {
-    return this.request({
-      method: 'POST',
-      service: 'calendar',
-      body: data,
-      resource: 'calendarEvents/sync',
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() => {
+      return this.request({
+        method: 'POST',
+        service: 'calendar',
+        body: data,
+        resource: 'calendarEvents/sync',
+      });
     });
   },
 
@@ -202,11 +194,13 @@ const Scheduler = WebexPlugin.extend({
    * @returns {Promise} Resolves with updating calendar event response
    * */
   updateCalendarEvent(id, data) {
-    return this.request({
-      method: 'PATCH',
-      service: 'calendar',
-      body: data,
-      resource: `calendarEvents/${btoa(id)}/sync`,
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() => {
+      return this.request({
+        method: 'PATCH',
+        service: 'calendar',
+        body: data,
+        resource: `calendarEvents/${base64.encode(id)}/sync`,
+      });
     });
   },
 
@@ -219,7 +213,7 @@ const Scheduler = WebexPlugin.extend({
     return this.request({
       method: 'DELETE',
       service: 'calendar',
-      resource: `calendarEvents/${btoa(id)}/sync`,
+      resource: `calendarEvents/${base64.encode(id)}/sync`,
     });
   },
 
@@ -250,40 +244,59 @@ const Scheduler = WebexPlugin.extend({
       usmPreference,
     } = query;
 
-    let url = `schedulerData?siteName=${siteName}`;
-    url += id ? `&id=${btoa(id)}` : '';
-    url += clientMeetingId ? `&clientMeetingId=${btoa(clientMeetingId)}` : '';
-    url += scheduleTemplateId ? `&scheduleTemplateId=${scheduleTemplateId}` : '';
-    url += sessionTypeId ? `&sessionTypeId=${sessionTypeId}` : '';
-    url += organizerCIUserId ? `&organizerCIUserId=${organizerCIUserId}` : '';
-    url += usmPreference ? `&usmPreference=${usmPreference}` : '';
+    // let url = `schedulerData?siteName=${siteName}`;
+    // url += id ? `&id=${base64.encode(id)}` : '';
+    // url += clientMeetingId ? `&clientMeetingId=${base64.encode(clientMeetingId)}` : '';
+    // url += scheduleTemplateId ? `&scheduleTemplateId=${scheduleTemplateId}` : '';
+    // url += sessionTypeId ? `&sessionTypeId=${sessionTypeId}` : '';
+    // url += organizerCIUserId ? `&organizerCIUserId=${organizerCIUserId}` : '';
+    // url += usmPreference ? `&usmPreference=${usmPreference}` : '';
 
     return this.request({
       method: 'GET',
       service: 'calendar',
-      resource: url,
+      resource: 'schedulerData',
+      qs: {
+        siteName,
+        id: id ? base64.encode(id) : null,
+        clientMeetingId: clientMeetingId ? base64.encode(clientMeetingId) : null,
+        scheduleTemplateId,
+        sessionTypeId,
+        organizerCIUserId,
+        usmPreference,
+      },
+    }).then((response) => {
+      // internal-plugin-calendar's transformer cover it, it will cause ours failed.
+      // So currently, I have to comment out 3 internal-plugin-calendar's transformers in local running.
+      return DecryptHelper.decryptSchedulerDataResponse(this, response.body).then(() => {
+        delete response.body.encryptionKeyUrl;
+
+        return response;
+      });
     });
   },
 
   /**
    * Get free busy status from calendar service
-   * @param {Object} [postData] the command parameters for fetching free busy status.
+   * @param {Object} [data] the command parameters for fetching free busy status.
    * @returns {Promise} Resolves with a decrypted response
    * */
-  getFreeBusy(postData) {
+  getFreeBusy(data) {
     return new Promise((resolve, reject) => {
-      this.request({
-        method: 'POST',
-        service: 'calendar',
-        body: postData,
-        resource: 'freebusy',
-      })
-        .then(() => {
-          this.rpcEventRequests[postData.requestId] = {resolve, reject};
+      EncryptHelper.encryptFreeBusyRequest(this, data).then(() => {
+        this.request({
+          method: 'POST',
+          service: 'calendar',
+          body: data,
+          resource: 'freebusy',
         })
-        .catch((error) => {
-          reject(error);
-        });
+          .then(() => {
+            this.rpcEventRequests[data.requestId] = {resolve, reject};
+          })
+          .catch((error) => {
+            reject(error);
+          });
+      });
     });
   },
 });
