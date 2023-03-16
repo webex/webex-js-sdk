@@ -33,6 +33,7 @@
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/plugin-authorization-node": "workspace:^",
     "@webex/webex-core": "workspace:^",
+    "jsonwebtoken": "^9.0.0",
     "uuid": "^3.3.2"
   }
 }
