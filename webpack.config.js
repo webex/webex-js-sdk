@@ -6,6 +6,7 @@ const glob = require('glob');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
+const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
 
 dotenv.config();
@@ -150,5 +151,16 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
             },
           }),
         ]),
+    new CircularDependencyPlugin({
+      // exclude detection of files based on a RegExp
+      exclude: /a\.js|node_modules/,
+      // add errors to webpack instead of warnings
+      failOnError: false,
+      // allow import cycles that include an asyncronous import,
+      // e.g. via import(/* webpackMode: "weak" */ './file.js')
+      allowAsyncCycles: false,
+      // set the current working directory for displaying module paths
+      cwd: process.cwd(),
+    }),
   ],
 });

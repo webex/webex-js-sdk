@@ -69,5 +69,5 @@ export interface Command<Options> {
    * @param options - Parsed options from a Commands instance.
    * @returns - Empty Promise.
    */
-  handler: (options: Options) => Promise<void>;
+  handler: (options: Options) => Promise<any>;
 }

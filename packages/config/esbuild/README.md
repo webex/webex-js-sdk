@@ -43,13 +43,13 @@ const esbuild = require('esbuild');
 // Other default configurations may be available.
 const { cli } = require('@webex/esbuild-config');
 
+// Import the local package definition in order to process dependencies dynamically
+const definition = require('./package.json');
+
+// Build the source code.
 esbuild.buildSync({
   ...cli, // default configuration object merge.
-  ...{
-    external: [
-      // list of dependencies to ignore when bundling.
-    ],
-  },
+  ...{ external: Object.keys(definition.dependencies) }, // list of dependencies to ignore when bundling.
 });
 ```
 

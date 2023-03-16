@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-metrics",
-  "version": "2.43.1",
+  "version": "2.44.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -26,7 +26,6 @@
   "dependencies": {
     "@webex/common": "workspace:^",
     "@webex/common-timers": "workspace:^",
-    "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-metrics": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",

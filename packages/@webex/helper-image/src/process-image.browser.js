@@ -4,7 +4,7 @@
 
 import {pick} from 'lodash';
 
-import {orient} from './index';
+import {orient} from './orient';
 /* eslint-env browser */
 
 /**
