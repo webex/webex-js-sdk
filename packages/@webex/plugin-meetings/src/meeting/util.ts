@@ -375,6 +375,21 @@ MeetingUtil.bothLeaveAndEndMeetingAvailable = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) ||
   displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING);
 
+MeetingUtil.canManageBreakout = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT);
+
+MeetingUtil.isSuppressBreakoutSupport = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.UCF_SUPPRESS_BREAKOUTS_SUPPORT);
+
+MeetingUtil.canAdmitLobbyToBreakout = (displayHints) =>
+  !displayHints.includes(DISPLAY_HINTS.DISABLE_LOBBY_TO_BREAKOUT);
+
+MeetingUtil.isBreakoutPreassignmentsEnabled = (displayHints) =>
+  !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_PREASSIGNMENTS);
+
+MeetingUtil.canUserAskForHelp = (displayHints) =>
+  !displayHints.includes(DISPLAY_HINTS.DISABLE_ASK_FOR_HELP);
+
 MeetingUtil.lockMeeting = (actions, request, locusUrl) => {
   if (actions && actions.canLock) {
     return request.lockMeeting({locusUrl, lock: true});
