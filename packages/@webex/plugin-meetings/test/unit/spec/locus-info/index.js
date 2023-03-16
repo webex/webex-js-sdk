@@ -82,6 +82,7 @@ describe('plugin-meetings', () => {
             meetingContainerUrl: 'http://new-url.com',
           },
           entryExitTone: {enabled: true, mode: 'foo'},
+          video: {enabled: true},
         };
       });
 
@@ -291,7 +292,7 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED,
           {
-            breakout: 'new breakout'
+            breakout: 'new breakout',
           }
         );
       });
@@ -416,6 +417,39 @@ describe('plugin-meetings', () => {
           // check that no calls in emitScoped are for CONTROLS_ENTRY_EXIT_TONE_UPDATED
           assert.notEqual(x.args[1], LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED);
         });
+      });
+
+      it('should update videoEnabled when changed', () => {
+        locusInfo.controls = {};
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED,
+          {unmuteAllowed: true}
+        );
+
+        assert.equal(mockMeeting.unmuteVideoAllowed, true);
+      });
+
+      it('should not update videoEnabled when unchanged', () => {
+        locusInfo.controls = {videoEnabled: true};
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        locusInfo.emitScoped.getCalls().forEach((x) => {
+          // check that no calls in emitScoped are for CONTROLS_VIDEO_ENABLED_UPDATED
+          assert.notEqual(x.args[1], LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED);
+        });
+
+        assert.equal(mockMeeting.unmuteVideoAllowed, undefined);
       });
     });
 
@@ -683,6 +717,83 @@ describe('plugin-meetings', () => {
         );
       });
 
+      describe('SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED', () => {
+        it('should emit event when video muted on entry', () => {
+          // usually "previous self" is just undefined when we get first self from locus
+          locusInfo.self = undefined;
+          const selfWithMutedByOthers = cloneDeep(self);
+
+          // remoteVideoMuted
+          selfWithMutedByOthers.controls.video.muted = true;
+
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithMutedByOthers, []);
+
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
+            {muted: true}
+          );
+
+          // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
+          locusInfo.self = cloneDeep(self);
+          locusInfo.self.controls.video = {};
+
+          locusInfo.updateSelf(selfWithMutedByOthers, []);
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
+            {muted: true}
+          );
+        });
+
+        it('should not emit event when not muted on entry', () => {
+          locusInfo.self = undefined;
+          const selfWithMutedByOthersFalse = cloneDeep(self);
+
+          selfWithMutedByOthersFalse.controls.video.muted = false;
+
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithMutedByOthersFalse, []);
+
+          // we might get some calls to emitScoped, but we need to check that none of them are for SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED
+          locusInfo.emitScoped.getCalls().forEach((x) => {
+            assert.notEqual(x.args[1], LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED);
+          });
+        });
+
+        it('should emit event when remoteVideoMuted changed', () => {
+          locusInfo.self = self;
+          const selfWithMutedByOthers = cloneDeep(self);
+
+          selfWithMutedByOthers.controls.video.muted = true;
+
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithMutedByOthers, []);
+
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
+            {muted: true}
+          );
+        });
+      });
+
       it('should trigger SELF_MEETING_BREAKOUTS_CHANGED when breakouts changed', () => {
         locusInfo.self = self;
         const selfWithBreakoutsChanged = cloneDeep(self);
@@ -701,19 +812,23 @@ describe('plugin-meetings', () => {
           LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED,
           {
             breakoutSessions: {
-              active: [{
-                name: 'new name',
-                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
-                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
-              }],
-              allowed: [{
-                name: 'Breakout session 2',
-                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
-                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
-              }]
-            }
+              active: [
+                {
+                  name: 'new name',
+                  groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                  sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                  sessionType: 'BREAKOUT',
+                },
+              ],
+              allowed: [
+                {
+                  name: 'Breakout session 2',
+                  groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                  sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                  sessionType: 'BREAKOUT',
+                },
+              ],
+            },
           }
         );
       });
@@ -1205,8 +1320,8 @@ describe('plugin-meetings', () => {
         const newLocus = {
           self: {
             reason: 'MOVED',
-            state: 'LEFT'
-          }
+            state: 'LEFT',
+          },
         };
 
         locusInfo.updateControls = sinon.stub();

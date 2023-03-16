@@ -39,7 +39,7 @@ describe('plugin-meetings', () => {
               name: 'Breakout session 2',
               groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
               sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-              sessionType: 'BREAKOUT'
+              sessionType: 'BREAKOUT',
             },
           ],
           allowed: [
@@ -47,9 +47,9 @@ describe('plugin-meetings', () => {
               name: 'Breakout session 2',
               groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
               sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-              sessionType: 'BREAKOUT'
+              sessionType: 'BREAKOUT',
             },
-          ]
+          ],
         });
       });
 
@@ -78,7 +78,10 @@ describe('plugin-meetings', () => {
 
     describe('getBreakouts', () => {
       it('should return breakout sessions', () => {
-        assert.deepEqual(SelfUtils.getBreakouts({controls: {breakout: {sessions: 'SESSIONS'}}}), 'SESSIONS');
+        assert.deepEqual(
+          SelfUtils.getBreakouts({controls: {breakout: {sessions: 'SESSIONS'}}}),
+          'SESSIONS'
+        );
       });
     });
 
@@ -91,10 +94,10 @@ describe('plugin-meetings', () => {
                 name: 'Breakout session 2',
                 groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
                 sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
+                sessionType: 'BREAKOUT',
               },
-            ]
-          }
+            ],
+          },
         };
         const previous = {
           breakoutSessions: {
@@ -103,10 +106,10 @@ describe('plugin-meetings', () => {
                 name: 'Breakout session 2',
                 groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
                 sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
+                sessionType: 'BREAKOUT',
               },
-            ]
-          }
+            ],
+          },
         };
 
         assert.isTrue(SelfUtils.breakoutsChanged(previous, current));
@@ -120,10 +123,10 @@ describe('plugin-meetings', () => {
                 name: 'Breakout session 2',
                 groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
                 sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
+                sessionType: 'BREAKOUT',
               },
-            ]
-          }
+            ],
+          },
         };
         const previous = {
           breakoutSessions: {
@@ -132,10 +135,10 @@ describe('plugin-meetings', () => {
                 name: 'Breakout session 2',
                 groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
                 sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-                sessionType: 'BREAKOUT'
+                sessionType: 'BREAKOUT',
               },
-            ]
-          }
+            ],
+          },
         };
 
         assert.isFalse(SelfUtils.breakoutsChanged(previous, current));
@@ -264,6 +267,26 @@ describe('plugin-meetings', () => {
       delete customSelf.state;
 
       assert.deepEqual(SelfUtils.isJoined(customSelf), false);
+    });
+  });
+
+  describe('videoMutedByOthersChanged', () => {
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: true}, {remoteVideoMuted: false}),
+        true
+      );
+    });
+
+    it('returns true if changed from undefined', () => {
+      assert.equal(SelfUtils.videoMutedByOthersChanged({}, {remoteVideoMuted: false}), true);
+    });
+
+    it('returns false if not changed', () => {
+      assert.equal(
+        SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: false}, {remoteVideoMuted: false}),
+        false
+      );
     });
   });
 });

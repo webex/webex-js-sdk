@@ -32,6 +32,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
     const pstnDevices = self.devices.filter((device) => PSTN_DEVICE_TYPE === device.deviceType);
 
     return {
+      remoteVideoMuted: SelfUtils.getRemoteVideoMuted(self),
       remoteMuted: SelfUtils.getRemoteMuted(self),
       unmuteAllowed: SelfUtils.getUnmuteAllowed(self),
       localAudioUnmuteRequested: SelfUtils.getLocalAudioUnmuteRequested(self),
@@ -93,6 +94,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
 
   updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(current);
   updates.isUserAdmitted = SelfUtils.isUserAdmitted(previous, current);
+  updates.isVideoMutedByOthersChanged = SelfUtils.videoMutedByOthersChanged(previous, current);
   updates.isMutedByOthersChanged = SelfUtils.mutedByOthersChanged(previous, current);
   updates.localAudioUnmuteRequestedByServer = SelfUtils.localAudioUnmuteRequestedByServer(
     previous,
@@ -237,6 +239,19 @@ SelfUtils.getSelfIdentity = (self: any) => {
 };
 
 /**
+ * get the "remote video mute" property from the self object
+ * @param {Object} self
+ * @returns {Boolean}
+ */
+SelfUtils.getRemoteVideoMuted = (self: any) => {
+  if (!self || !self.controls || !self.controls.video) {
+    return null;
+  }
+
+  return self.controls.video.muted;
+};
+
+/**
  * get the "remote mute" property from the self object
  * @param {Object} self
  * @returns {Boolean}
@@ -349,6 +364,25 @@ SelfUtils.isUserAdmitted = (oldSelf: object, changedSelf: object) => {
   }
 
   return SelfUtils.isLocusUserUnadmitted(oldSelf) && SelfUtils.isLocusUserAdmitted(changedSelf);
+};
+
+SelfUtils.videoMutedByOthersChanged = (oldSelf, changedSelf) => {
+  if (!changedSelf) {
+    throw new ParameterError(
+      'New self must be defined to determine if self was video muted by others.'
+    );
+  }
+
+  if (!oldSelf || oldSelf.remoteVideoMuted === null) {
+    if (changedSelf.remoteVideoMuted) {
+      return true; // this happens when host disables "Allow start video"
+    }
+
+    // we don't want to be sending the 'meeting:self:videoUnmutedByOthers' notification on meeting join
+    return false;
+  }
+
+  return oldSelf.remoteVideoMuted !== changedSelf.remoteVideoMuted;
 };
 
 SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {

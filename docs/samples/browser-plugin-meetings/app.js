@@ -2664,6 +2664,7 @@ const createBreakoutOperations = ()=>{
       if(!breakoutTable.querySelector('table')){
         viewBreakouts();
       }
+      breakoutTable.querySelector('table').lastChild.innerHTML = '';
       sessionList.forEach((session)=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${session.name}</td><td>YES</td><td>YES</td><td>NO</td><td>NO</td><td>NO</td><td></td>`;
@@ -3025,6 +3026,27 @@ function viewBreakouts(event) {
     assignControls.appendChild(createAssignSessionButton(breakoutSession));
     moveControls.appendChild(createMoveSessionButton(breakoutSession));
 
+
+    // members prop of main breakout session should register the members:update event
+    // otherwise 'members:update' event will not be triggered
+    const {isMain, members: {_events, membersCollection}, members} = breakoutSession
+    if(isMain && (!_events || !_events['members:update'])){
+      members.on('members:update', (res) => {
+        console.log('member update', res);
+        const newMembers = membersCollection.getAll();
+        const oldMembers = meeting.members.membersCollection.getAll();
+        for( let a in newMembers){
+          if(oldMembers[a]){
+            const name = oldMembers[a].name;
+            meeting.members.membersCollection.set(a, {...newMembers[a], name});
+          }else{
+            meeting.members.membersCollection.set(a, newMembers[a]);
+          }
+        }
+        viewParticipants();
+        populateStageSelector();
+      });
+    }
   });
 
   thead.appendChild(theadRow);
@@ -3112,7 +3134,7 @@ function viewParticipants() {
     radio.name = 'participant-select';
 
     label1.appendChild(radio);
-    label1.innerHTML = label1.innerHTML.concat(member.participant.person.name);
+    label1.innerHTML = label1.innerHTML.concat(member.name);
 
     td1.appendChild(label1);
     td2.appendChild(label2);
