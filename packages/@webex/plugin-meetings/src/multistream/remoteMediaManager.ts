@@ -601,8 +601,12 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
-   *  Allocates receive slots to all active speaker video panes
-   *  in the current selected layout
+   * Allocates receive slots to all active speaker video panes
+   * in the current selected layout.
+   *
+   * Allocation tries to keep the same order of the slots between the previous
+   * layout and the new one. Sorting helps making sure that highest priority slots
+   * go in the same order in the new layout.
    */
   private allocateSlotsToActiveSpeakerPaneGroups() {
     this.currentLayout?.activeSpeakerVideoPaneGroups
@@ -612,7 +616,7 @@ export class RemoteMediaManager extends EventsScope {
         this.receiveSlotAllocations.activeSpeaker[group.id] = {slots: []};
 
         for (let paneIndex = 0; paneIndex < group.numPanes; paneIndex += 1) {
-          // allocate a slot from the "unused" list
+          // allocate a slot from the "unused" list, by grabbing in same order (shift) as previous layout
           const freeSlot = this.slots.video.unused.shift();
 
           if (freeSlot) {
@@ -654,7 +658,7 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
-   * Checks and creates that we have enough slots for the current layout.
+   * Ensures that we have enough slots for the current layout.
    */
   private async refillRequiredSlotsIfNeeded() {
     const requiredNumSlots = this.getRequiredNumVideoSlotsForLayout(this.currentLayout);

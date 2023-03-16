@@ -753,22 +753,7 @@ describe('RemoteMediaManager', () => {
       ])
 
       // switch to "OnePlusFive" layout that requires 3 less video slots (6)
-      const onePlusFivePromise = remoteMediaManager.setLayout('OnePlusFive');
-
-      assert.deepEqual(remoteMediaManager.slots.video.unused.map((slot: any) => slot.id), [
-        "fake video 0",
-        "fake video 1",
-        "fake video 2",
-        "fake video 3",
-        "fake video 4",
-        "fake video 5",
-        "fake video 6",
-        "fake video 7",
-        "fake video 8",
-      ]);
-      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.length, 0);
-
-      await onePlusFivePromise;
+      await remoteMediaManager.setLayout('OnePlusFive');
 
       assert.deepEqual(remoteMediaManager.slots.video.unused, []);
 
@@ -781,9 +766,12 @@ describe('RemoteMediaManager', () => {
         "fake video 5"
       ]);
 
+      // we're checking that the slots are in the same order as in the previous layout
+      // first one goes into main
       assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["mainBigOne"].slots.map((slot: any) => slot.id), [
         "fake video 0",
       ])
+      // and rest go in the pips
       assert.deepEqual(remoteMediaManager.receiveSlotAllocations.activeSpeaker["secondarySetOfSmallPanes"].slots.map((slot: any) => slot.id), [
         "fake video 1",
         "fake video 2",
@@ -800,23 +788,11 @@ describe('RemoteMediaManager', () => {
         assert.strictEqual(slot.mediaType, MediaType.VideoMain);
       });
 
-      const allEqualPromise = remoteMediaManager.setLayout('AllEqual');
-
-      assert.deepEqual(remoteMediaManager.slots.video.unused.map((slot: any) => slot.id), [
-        "fake video 0",
-        "fake video 1",
-        "fake video 2",
-        "fake video 3",
-        "fake video 4",
-        "fake video 5",
-      ]);
-
-      assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.length, 0);
-
-      await allEqualPromise;
+      await remoteMediaManager.setLayout('AllEqual');
 
       assert.deepEqual(remoteMediaManager.slots.video.unused, []);
 
+      // checking that slots are in the same order as in previous layout + 3 new ones
       assert.deepEqual(remoteMediaManager.slots.video.activeSpeaker.map((slot: any) => slot.id), [
         "fake video 0",
         "fake video 1",
