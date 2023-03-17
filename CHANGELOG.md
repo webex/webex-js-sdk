@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.48](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.47...v3.0.0-beta.48) (2023-03-17)
+
+
+### Features
+
+* **reachability:** add clientMediaIP ([#2635](https://github.com/webex/webex-js-sdk/issues/2635)) ([297a642](https://github.com/webex/webex-js-sdk/commit/297a642850bad4ced54cf76092f9d94bb28c4e69))
+
 ## [3.0.0-beta.47](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.46...v3.0.0-beta.47) (2023-03-17)
 
 
