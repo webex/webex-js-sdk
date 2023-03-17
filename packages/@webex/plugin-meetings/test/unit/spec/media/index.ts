@@ -3,6 +3,7 @@ import Media from '@webex/plugin-meetings/src/media/index';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
+import { forEach } from 'lodash';
 
 describe('createMediaConnection', () => {
   const fakeRoapMediaConnection = {
@@ -103,6 +104,16 @@ describe('createMediaConnection', () => {
       .returns(fakeRoapMediaConnection);
 
     Media.createMediaConnection(true, 'some debug id', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        }
+      },
       turnServerInfo: {
         url: 'turn server url',
         username: 'turn username',
@@ -120,9 +131,47 @@ describe('createMediaConnection', () => {
             credential: 'turn password',
           },
         ],
+        enableMainAudio: true,
+        enableMainVideo: true,
       },
       'some debug id'
     );
+  });
+
+  forEach([
+    {sendAudio: true, receiveAudio: true, sendVideo: true, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: true, receiveAudio: false, sendVideo: true, receiveVideo: false, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: false, receiveAudio: true, sendVideo: false, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: false, receiveAudio: false, sendVideo: false, receiveVideo: false, enableMainAudio: false, enableMainVideo: false,},
+  ], ({sendAudio, sendVideo, receiveAudio, receiveVideo, enableMainAudio, enableMainVideo}) => {
+    it(`sets enableMainVideo to ${enableMainVideo} and enableMainAudio to ${enableMainAudio} when sendAudio: ${sendAudio} sendVideo: ${sendVideo} receiveAudio: ${receiveAudio} receiveVideo: ${receiveVideo}`, () => {
+      const multistreamRoapMediaConnectionConstructorStub = sinon
+        .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
+        .returns(fakeRoapMediaConnection);
+
+      Media.createMediaConnection(true, 'some debug id', {
+        mediaProperties: {
+          mediaDirection: {
+            sendAudio,
+            sendVideo,
+            sendShare: false,
+            receiveAudio,
+            receiveVideo,
+            receiveShare: true,
+          },
+        },
+      });
+      assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+      assert.calledWith(
+        multistreamRoapMediaConnectionConstructorStub,
+        {
+          iceServers: [],
+          enableMainAudio,
+          enableMainVideo,
+        },
+        'some debug id'
+      );
+    });
   });
 
   it('passes empty ICE servers array to MultistreamRoapMediaConnection if turnServerInfo is undefined (multistream enabled)', () => {
@@ -130,12 +179,25 @@ describe('createMediaConnection', () => {
       .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(true, 'debug string', {});
+    Media.createMediaConnection(true, 'debug string', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        },
+      },
+    });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
+        enableMainAudio: true,
+        enableMainVideo: true,
       },
       'debug string'
     );
