@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.46](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.45...v3.0.0-beta.46) (2023-03-16)
+
+
+### Bug Fixes
+
+* **conversations:** various general packages ([#2680](https://github.com/webex/webex-js-sdk/issues/2680)) ([fa65653](https://github.com/webex/webex-js-sdk/commit/fa65653bdd77fa3455aa9de5c3c693cf9edf7014))
+
+## [3.0.0-beta.45](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.44...v3.0.0-beta.45) (2023-03-16)
+
+
+### Bug Fixes
+
+* **duplicate-panes:** refactor slot allocation ([#2673](https://github.com/webex/webex-js-sdk/issues/2673)) ([51233e5](https://github.com/webex/webex-js-sdk/commit/51233e505577495c35bae5fe7da8ed58361121b5))
+
 ## [3.0.0-beta.44](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.43...v3.0.0-beta.44) (2023-03-15)
 
 
