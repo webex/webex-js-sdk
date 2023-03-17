@@ -47,7 +47,7 @@ const getBOResponse = (status: string) => {
   };
 };
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
@@ -738,9 +738,23 @@ describe('plugin-meetings', () => {
     });
 
     describe('#assign', () => {
-      it('assign attendee to a breakout session', async () => {
+      it('assign members and emails to a breakout session', async () => {
         breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
-        const params = {assigned: []};
+        const params = [{id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com']}];
+        const result = await breakouts.assign(params);
+        assert.calledOnceWithExactly(breakouts.assign, params);
+        assert.equal(result, 'ASSIGN_RETURN_VALUE');
+      });
+      it('assign only members to a breakout session', async () => {
+        breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        const params = [{id: 'sessionId', memberIds: ['111']}];
+        const result = await breakouts.assign(params);
+        assert.calledOnceWithExactly(breakouts.assign, params);
+        assert.equal(result, 'ASSIGN_RETURN_VALUE');
+      });
+      it('assign only emails to a breakout session', async () => {
+        breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        const params = [{id: 'sessionId', emails: ['111@cisco.com']}];
         const result = await breakouts.assign(params);
         assert.calledOnceWithExactly(breakouts.assign, params);
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
