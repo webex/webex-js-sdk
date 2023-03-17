@@ -3,14 +3,14 @@ const Jasmine = require('jasmine');
 const { config, reporter } = require('@webex/jasmine-config');
 const { Commands } = require('@webex/cli-tools');
 
-const integration = {
+const test = {
   config: {
-    name: 'integration',
-    description: 'Perform integration tests',
+    name: 'test',
+    description: 'Perform tests',
     options: [
       {
         description: 'Perform integration tests against the module',
-        name: 'mod',
+        name: 'integration',
       },
       {
         description: 'Remove all reporters',
@@ -20,7 +20,7 @@ const integration = {
   },
 
   handler: (options) => {
-    const { mod, silent } = options;
+    const { integration, silent } = options;
 
     const jasmine = new Jasmine();
     const targets = [];
@@ -28,10 +28,10 @@ const integration = {
     config(jasmine);
     jasmine.clearReporters();
 
-    if (mod) {
+    if (integration) {
       targets.push(
-        './test/module/**/*.test.js',
-        './test/module/**/*.spec.js',
+        './test/integration/**/*.test.js',
+        './test/integration/**/*.spec.js',
       );
     }
 
@@ -44,5 +44,5 @@ const integration = {
 };
 
 const commands = new Commands();
-commands.mount(integration);
+commands.mount(test);
 commands.process();

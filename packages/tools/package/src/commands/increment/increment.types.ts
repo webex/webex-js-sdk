@@ -7,12 +7,12 @@ export interface Options {
   /**
    * Major version to increment by.
    */
-  major: string;
+  major?: string;
 
   /**
    * Minor version to increment by.
    */
-  minor: string;
+  minor?: string;
 
   /**
    * Packages to increment
@@ -25,12 +25,12 @@ export interface Options {
   /**
    * Patch version to increment by.
    */
-  patch: string;
+  patch?: string;
 
   /**
    * Release version to increment by.
    */
-  release: string;
+  release?: string;
 
   /**
    * Git reference to collect changed packages since.

@@ -33,14 +33,12 @@
     "clean:coverage": "rimraf ./test/coverage",
     "clean:dist": "rimraf ./dist",
     "start": "node ./dist/cli/index.js",
-    "test": "yarn test:static && yarn test:integration && yarn test:coverage",
-    "test:coverage": "nyc node ./jasmine.config.js integration --mod --silent",
+    "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
+    "test:coverage": "nyc node ./jasmine.config.js test --integration --silent",
     "test:coverage:report": "nyc --reporter=lcov yarn test:coverage",
-    "test:integration": "yarn test:integration:module",
-    "test:integration:module": "node ./jasmine.config.js integration --mod",
-    "test:static": "yarn test:static:style && yarn test:static:syntax",
-    "test:static:style": "eslint ./src/**/*.*",
-    "test:static:syntax": "tsc --noEmit"
+    "test:integration": "node ./jasmine.config.js test --integration",
+    "test:style": "eslint ./src/**/*.*",
+    "test:syntax": "tsc --noEmit"
   },
   "devDependencies": {
     "@microsoft/api-documenter": "^7.21.5",
