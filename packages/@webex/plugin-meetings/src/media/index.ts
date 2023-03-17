@@ -105,7 +105,7 @@ Media.getLocalMedia = (options: any, config: object) => {
  * @param {boolean} isMultistream
  * @param {string} debugId string useful for debugging (will appear in media connection logs)
  * @param {Object} options
- * @param {Object} [options.mediaProperties] only applicable to non-multistream connections, contains mediaDirection and local tracks:
+ * @param {Object} [options.mediaProperties] contains mediaDirection and local tracks:
  *                                 audioTrack, videoTrack and shareTrack
  * @param {string} [options.remoteQualityLevel] LOW|MEDIUM|HIGH applicable only to non-multistream connections
  * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
