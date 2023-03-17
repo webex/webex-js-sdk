@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.47](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.46...v3.0.0-beta.47) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing frame sizes for mqe ([#2666](https://github.com/webex/webex-js-sdk/issues/2666)) ([7434e66](https://github.com/webex/webex-js-sdk/commit/7434e6670ca8ebb523c6d03aee39ed650a172078))
+
 ## [3.0.0-beta.46](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.45...v3.0.0-beta.46) (2023-03-16)
 
 
