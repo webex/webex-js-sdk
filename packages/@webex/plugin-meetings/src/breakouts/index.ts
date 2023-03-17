@@ -508,10 +508,14 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * assign participants to breakout session
-   * @param {Array} sessions
+   * @param {Object} params
    * @returns {void}
    */
-  assign(sessions: any[]) {
+  assign(params = {}) {
+    const sessions = Object.entries(params).map((item) => {
+      return {id: item[0], assigned: item[1]};
+    });
+
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
