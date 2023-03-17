@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.49](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.48...v3.0.0-beta.49) (2023-03-17)
+
+
+### Bug Fixes
+
+* **remote-video-mute:** fixed remote video mute ([#2683](https://github.com/webex/webex-js-sdk/issues/2683)) ([c2fa0a4](https://github.com/webex/webex-js-sdk/commit/c2fa0a4b8ad240382667030224b33280fcf8f929))
+
 ## [3.0.0-beta.48](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.47...v3.0.0-beta.48) (2023-03-17)
 
 
