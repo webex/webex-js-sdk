@@ -109,26 +109,6 @@ const Breakout = WebexPlugin.extend({
   parseRoster(locus) {
     this.members.locusParticipantsUpdate(locus);
   },
-
-  /**
-   * assign participants to breakout session
-   * @param {Array} sessions
-   * @returns {void}
-   */
-  assign(sessions: any[]) {
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
-        groups: [
-          {
-            id: this.groupId,
-            sessions,
-          },
-        ],
-      },
-    });
-  },
   /*
    * Broadcast message to this breakout session's participants
    * @param {String} message

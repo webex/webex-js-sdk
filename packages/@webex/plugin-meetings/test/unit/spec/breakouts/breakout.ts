@@ -142,15 +142,5 @@ describe('plugin-meetings', () => {
         assert.equal(result, undefined);
       });
     });
-
-    describe('#assign', () => {
-      it('assign attendee to a breakout session', async () => {
-        breakout.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
-        const params = {assigned: []};
-        const result = await breakout.assign(params);
-        assert.calledOnceWithExactly(breakout.assign, params);
-        assert.equal(result, 'ASSIGN_RETURN_VALUE');
-      });
-    });
   });
 });

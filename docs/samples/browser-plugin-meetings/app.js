@@ -2958,7 +2958,7 @@ function viewBreakouts(event) {
     const {members} = meeting.members.membersCollection;
     const assigned = Object.values(members).map(member=>member.id)
     button.onclick = () => {
-      breakoutSession.assign([{
+      meeting.breakouts.assign([{
         anyoneCanJoin: true,
         id: breakoutSession.sessionId,
         name: breakoutSession.name,
@@ -2979,15 +2979,11 @@ function viewBreakouts(event) {
       meeting.breakouts.breakouts.forEach(bo => {
         if (bo.sessionId !== breakoutSession.sessionId && !bo.isMain){
           // move to main
-          breakoutSession.assign([{
-            anyoneCanJoin: true,
+          meeting.breakouts.assign([{
             id: breakoutSession.sessionId,
-            name: breakoutSession.name,
             assigned:[],
           },{
-            anyoneCanJoin: true,
             id: bo.sessionId,
-            name: bo.name,
             assigned,
           }])
         }

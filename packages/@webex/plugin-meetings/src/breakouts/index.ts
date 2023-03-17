@@ -505,6 +505,26 @@ const Breakouts = WebexPlugin.extend({
 
     return breakout;
   },
+
+  /**
+   * assign participants to breakout session
+   * @param {Array} sessions
+   * @returns {void}
+   */
+  assign(sessions: any[]) {
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            id: this.breakoutGroupId,
+            sessions,
+          },
+        ],
+      },
+    });
+  },
 });
 
 export default Breakouts;
