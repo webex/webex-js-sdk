@@ -25,6 +25,11 @@ export interface Option {
   name: string;
 
   /**
+   * Whether this option is required to process the associated Command.
+   */
+  required?: boolean;
+
+  /**
    * Type of this Option.
    */
   type?: string;

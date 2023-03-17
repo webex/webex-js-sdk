@@ -27,6 +27,7 @@ describe('Commands', () => {
         spies.command = spyOn(program, 'command').and.returnValue(program);
         spies.description = spyOn(program, 'description').and.returnValue(program);
         spies.option = spyOn(program, 'option').and.returnValue(program);
+        spies.requiredOption = spyOn(program, 'requiredOption').and.returnValue(program);
         spies.action = spyOn(program, 'action').and.returnValue();
       });
 
@@ -48,8 +49,14 @@ describe('Commands', () => {
         expect(spies.option).toHaveBeenCalledTimes(2);
       });
 
+      it('should call "program.requiredOption" for each required option', () => {
+        commands.mount(fixture);
+
+        expect(spies.requiredOption).toHaveBeenCalledTimes(1);
+      });
+
       it('should mount only the name of the option as a param when no type or alias is provided', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         delete option.alias;
@@ -67,7 +74,7 @@ describe('Commands', () => {
       });
 
       it('should mount only the name and alias of the option as a param when no type is provided', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         delete option.type;
@@ -84,7 +91,7 @@ describe('Commands', () => {
       });
 
       it('should mount name, type, and alias when all are provided', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         commands.mount(fixture);
@@ -99,7 +106,7 @@ describe('Commands', () => {
       });
 
       it('should mount the description', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         commands.mount(fixture);
@@ -112,7 +119,7 @@ describe('Commands', () => {
       });
 
       it('should mount the default when provided', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         commands.mount(fixture);
@@ -125,7 +132,7 @@ describe('Commands', () => {
       });
 
       it('should mount undefined when the default is not provided', () => {
-        fixture.config.options.pop();
+        fixture.config.options = fixture.config.options.slice(0, 1);
         const [option] = fixture.config.options;
 
         delete option.default;
