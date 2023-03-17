@@ -1108,33 +1108,41 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   public syncMeetings() {
-    return this.request.getActiveMeetings().then((locusArray) => {
-      const activeLocusUrl = [];
+    return this.request
+      .getActiveMeetings()
+      .then((locusArray) => {
+        const activeLocusUrl = [];
 
-      if (locusArray?.loci && locusArray.loci.length > 0) {
-        locusArray.loci.forEach((locus) => {
-          activeLocusUrl.push(locus.url);
-          this.handleLocusEvent({
-            locus,
-            locusUrl: locus.url,
+        if (locusArray?.loci && locusArray.loci.length > 0) {
+          locusArray.loci.forEach((locus) => {
+            activeLocusUrl.push(locus.url);
+            this.handleLocusEvent({
+              locus,
+              locusUrl: locus.url,
+            });
           });
-        });
-      }
-      const meetingsCollection = this.meetingCollection.getAll();
+        }
+        const meetingsCollection = this.meetingCollection.getAll();
 
-      if (Object.keys(meetingsCollection).length > 0) {
-        // Some time the mercury event is missed after mercury reconnect
-        // if sync returns no locus then clear all the meetings
-        for (const meeting of Object.values(meetingsCollection)) {
-          // @ts-ignore
-          if (!activeLocusUrl.includes(meeting.locusUrl)) {
-            // destroy function also uploads logs
+        if (Object.keys(meetingsCollection).length > 0) {
+          // Some time the mercury event is missed after mercury reconnect
+          // if sync returns no locus then clear all the meetings
+          for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+            if (!activeLocusUrl.includes(meeting.locusUrl)) {
+              // destroy function also uploads logs
+              // @ts-ignore
+              this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+            }
           }
         }
-      }
-    });
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
+        );
+        throw new Error('Failed to sync meetings');
+      });
   }
 
   /**
