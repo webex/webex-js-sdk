@@ -509,12 +509,16 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * assign participants to breakout session
-   * @param {Object} params
+   * @param {Array} sessions
    * @returns {void}
    */
-  assign(params = {}) {
-    const sessions = Object.entries(params).map((item) => {
-      return {id: item[0], assigned: item[1]};
+  assign(sessions: any[]) {
+    const internalSessions = sessions.map((item) => {
+      return {
+        id: item.id,
+        assigned: item.memberIds,
+        assignedEmails: item.emails,
+      };
     });
 
     return this.request({
@@ -524,7 +528,7 @@ const Breakouts = WebexPlugin.extend({
         groups: [
           {
             id: this.breakoutGroupId,
-            sessions,
+            sessions: internalSessions,
           },
         ],
       },

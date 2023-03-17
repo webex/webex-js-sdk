@@ -131,8 +131,10 @@ breakout.rename(newSessionName)
 breakouts.start(params)
 
 // Assign a particpant/participants to breakouts/a breakout
-// params should be like: {[sessionId]: [...participantIds]}
-breakouts.assign(params)
+// sessions should be like: [{id:'xx',memberIds:['111'],emails:['111@ss.com']},...]
+breakouts.assign(sessions)
+
+[{id:'xxx',userIds:['111'],emails:['111@aa.com']}]
 
 // End breakout sessions with necessary params
 breakouts.end(params)

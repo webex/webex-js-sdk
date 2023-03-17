@@ -2958,9 +2958,10 @@ function viewBreakouts(event) {
     const {members} = meeting.members.membersCollection;
     const assigned = Object.values(members).map(member=>member.id)
     button.onclick = () => {
-      meeting.breakouts.assign({
-        [breakoutSession.sessionId]: assigned
-      });
+      meeting.breakouts.assign([{
+        id: breakoutSession.sessionId,
+        memberIds: assigned,
+      }]);
     };
 
     return button;
@@ -2976,10 +2977,13 @@ function viewBreakouts(event) {
       meeting.breakouts.breakouts.forEach(bo => {
         if (bo.sessionId !== breakoutSession.sessionId && !bo.isMain){
           // move to main
-          meeting.breakouts.assign({
-            [breakoutSession.sessionId]:[],
-            [bo.sessionId]: assigned
-          })
+          meeting.breakouts.assign([{
+            id: breakoutSession.sessionId,
+            memberIds:[],
+          },{
+            id: bo.sessionId,
+            memberIds: assigned,
+          }])
         }
       });
 
