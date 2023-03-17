@@ -3142,7 +3142,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/babel__core@npm:^7.1.14":
+"@types/babel__core@npm:^7, @types/babel__core@npm:^7.1.14":
   version: 7.20.0
   resolution: "@types/babel__core@npm:7.20.0"
   dependencies:
@@ -3392,6 +3392,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/fs-extra@npm:^11":
+  version: 11.0.1
+  resolution: "@types/fs-extra@npm:11.0.1"
+  dependencies:
+    "@types/jsonfile": "*"
+    "@types/node": "*"
+  checksum: 3e930346e5d84f419deb8ced1c582beef8cb20d0bd8a0eb145a37d75bab0572a1895f0e48a0d681d386b3a58b9a992b2d2acecc464bcaec2548f53ea00718651
+  languageName: node
+  linkType: hard
+
 "@types/fs-extra@npm:^9.0.1, @types/fs-extra@npm:^9.0.4":
   version: 9.0.13
   resolution: "@types/fs-extra@npm:9.0.13"
@@ -3544,6 +3554,15 @@ __metadata:
   version: 0.0.29
   resolution: "@types/json5@npm:0.0.29"
   checksum: e60b153664572116dfea673c5bda7778dbff150498f44f998e34b5886d8afc47f16799280e4b6e241c0472aef1bc36add771c569c68fc5125fc2ae519a3eb9ac
+  languageName: node
+  linkType: hard
+
+"@types/jsonfile@npm:*":
+  version: 6.1.1
+  resolution: "@types/jsonfile@npm:6.1.1"
+  dependencies:
+    "@types/node": "*"
+  checksum: 0f8fe0a9221a00e8413cffba723dfe16553868724b830237256fb0052ecd5cac96498189d1235a001cfa815f352008261c9ceb373f0aa58227f891e0c7a12c4d
   languageName: node
   linkType: hard
 
@@ -4680,21 +4699,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/build-legacy@workspace:^, @webex/build-legacy@workspace:packages/legacy/build":
-  version: 0.0.0-use.local
-  resolution: "@webex/build-legacy@workspace:packages/legacy/build"
-  dependencies:
-    "@webex/babel-config-legacy": "workspace:^"
-    glob: ^7.1.4
-    mkdirp: ^0.5.1
-    yargs: ^16.2.0
-  peerDependencies:
-    "@babel/core": ^7.17.10
-  bin:
-    webex-build-legacy: ./static/cli.js
-  languageName: unknown
-  linkType: soft
-
 "@webex/cli-tools@workspace:^, @webex/cli-tools@workspace:packages/tools/cli":
   version: 0.0.0-use.local
   resolution: "@webex/cli-tools@workspace:packages/tools/cli"
@@ -5081,11 +5085,11 @@ __metadata:
   dependencies:
     "@babel/core": ^7.17.10
     "@webex/babel-config-legacy": "workspace:^"
-    "@webex/build-legacy": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-flag": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
@@ -5352,6 +5356,39 @@ __metadata:
     babylon: ^6.18.0
     doctrine: ^2.1.0
     lodash: ^4.17.21
+  languageName: unknown
+  linkType: soft
+
+"@webex/legacy-tools@workspace:^, @webex/legacy-tools@workspace:packages/legacy/tools":
+  version: 0.0.0-use.local
+  resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
+  dependencies:
+    "@babel/core": ^7.17.10
+    "@microsoft/api-documenter": ^7.21.5
+    "@microsoft/api-extractor": ^7.34.4
+    "@types/babel__core": ^7
+    "@types/eslint": ^8
+    "@types/fs-extra": ^11
+    "@types/jasmine": ^4
+    "@webex/api-extractor-config": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:^"
+    "@webex/cli-tools": "workspace:^"
+    "@webex/esbuild-config": "workspace:^"
+    "@webex/eslint-config": "workspace:^"
+    "@webex/jasmine-config": "workspace:^"
+    "@webex/nyc-config": "workspace:^"
+    "@webex/typescript-config": "workspace:^"
+    esbuild: ^0.17.11
+    eslint: ^8.35.0
+    fs-extra: ^11.1.0
+    glob: ^9.3.0
+    jasmine: ^4.5.0
+    nyc: ^15.1.0
+    rimraf: ^4.1.2
+    typescript: ^4.9.5
+    yargs: ^16.2.0
+  bin:
+    webex-legacy-tools: ./dist/cli/index.js
   languageName: unknown
   linkType: soft
 
@@ -12606,7 +12643,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fs-extra@npm:^11.0.0":
+"fs-extra@npm:^11.0.0, fs-extra@npm:^11.1.0":
   version: 11.1.0
   resolution: "fs-extra@npm:11.1.0"
   dependencies:
@@ -13179,6 +13216,18 @@ __metadata:
     minipass: ^4.2.4
     path-scurry: ^1.6.1
   checksum: ef9b1c32491e6b532bdd0d2abcc3c9f48e83446609e11285869156982fc5a756dfbaa6f59f797712343bd1e22500ac15708692806633653fde4ef67c85e2aab7
+  languageName: node
+  linkType: hard
+
+"glob@npm:^9.3.0":
+  version: 9.3.0
+  resolution: "glob@npm:9.3.0"
+  dependencies:
+    fs.realpath: ^1.0.0
+    minimatch: ^7.4.1
+    minipass: ^4.2.4
+    path-scurry: ^1.6.1
+  checksum: 9beb4f1cdc9585412efd991a9786c1ee6816dfd0537494fd552c333fa3d4b041fce5681bce21d14651e41479f60866e10a35a2ce2571fd40b7cf73842ea12192
   languageName: node
   linkType: hard
 
