@@ -419,5 +419,40 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('canManageBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canManageBreakout(['BREAKOUT_MANAGEMENT']), true);
+        assert.deepEqual(MeetingUtil.canManageBreakout([]), false);
+      });
+    });
+
+    describe('isSuppressBreakoutSupport', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport(['UCF_SUPPRESS_BREAKOUTS_SUPPORT']), true);
+        assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport([]), false);
+      });
+    });
+
+    describe('canAdmitLobbyToBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canAdmitLobbyToBreakout(['DISABLE_LOBBY_TO_BREAKOUT']), false);
+        assert.deepEqual(MeetingUtil.canAdmitLobbyToBreakout([]), true);
+      });
+    });
+
+    describe('canUserAskForHelp', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canUserAskForHelp(['DISABLE_ASK_FOR_HELP']), false);
+        assert.deepEqual(MeetingUtil.canUserAskForHelp([]), true);
+      });
+    });
+
+    describe('isBreakoutPreassignmentsEnabled', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled(['DISABLE_BREAKOUT_PREASSIGNMENTS']), false);
+        assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled([]), true);
+      });
+    });
   })
 });

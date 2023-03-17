@@ -156,7 +156,7 @@ const ShareActivity = WebexPlugin.extend({
    */
   add(file, options) {
     options = options || {};
-    options.claimedFileType = file.displayName.substring(file.displayName.lastIndexOf('.'));
+    options.claimedFileType = file.name.substring(file.name.lastIndexOf('.'));
     let upload = this.uploads.get(file);
 
     if (upload) {

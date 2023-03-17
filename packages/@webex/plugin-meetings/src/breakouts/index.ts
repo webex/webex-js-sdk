@@ -136,7 +136,7 @@ const Breakouts = WebexPlugin.extend({
           body: {rosters},
         } = result;
 
-        rosters.forEach(({locus}) => {
+        rosters?.forEach(({locus}) => {
           this.handleRosterUpdate(locus);
         });
 
@@ -204,6 +204,7 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     this.set(params);
+    this.set('groups', params.groups);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,

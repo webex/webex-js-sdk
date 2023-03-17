@@ -338,13 +338,11 @@ describe('plugin-board', () => {
               assert.isFalse(channelPage.hasNext());
               channelsReceived = channelsReceived.concat(channelPage.items);
 
-              channelsCreated.sort((a, b) => a.createdTime - b.createdTime);
-              channelsReceived.sort((a, b) => a.createdTime - b.createdTime);
-
               if (channelsCreated.length === channelsReceived.length) {
-                channelsReceived.forEach((channel, i) => {
-                  delete channel.format;
-                  assert.deepEqual(channel, channelsCreated[i]);
+                channelsReceived.forEach((received) => {
+                  const created = channelsCreated.find((channel) => channel.channelId === received.channelId);
+
+                  assert.deepEqual(received, created);
                 });
               }
             })
@@ -496,7 +494,8 @@ describe('plugin-board', () => {
       });
     });
 
-    describe('#deletePartialContent()', () => {
+    // THE SERVICE API FOR REMOVING PARTIAL CONTENT HAS CHANGED. SEE SPARK-412694.
+    describe.skip('#deletePartialContent()', () => {
       after(() => participants[0].webex.internal.board.deleteAllContent(board));
 
       it('deletes some contents from the specified board', () => {

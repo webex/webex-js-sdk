@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.48](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.47...v3.0.0-beta.48) (2023-03-17)
+
+
+### Features
+
+* **reachability:** add clientMediaIP ([#2635](https://github.com/webex/webex-js-sdk/issues/2635)) ([297a642](https://github.com/webex/webex-js-sdk/commit/297a642850bad4ced54cf76092f9d94bb28c4e69))
+
+## [3.0.0-beta.47](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.46...v3.0.0-beta.47) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing frame sizes for mqe ([#2666](https://github.com/webex/webex-js-sdk/issues/2666)) ([7434e66](https://github.com/webex/webex-js-sdk/commit/7434e6670ca8ebb523c6d03aee39ed650a172078))
+
+## [3.0.0-beta.46](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.45...v3.0.0-beta.46) (2023-03-16)
+
+
+### Bug Fixes
+
+* **conversations:** various general packages ([#2680](https://github.com/webex/webex-js-sdk/issues/2680)) ([fa65653](https://github.com/webex/webex-js-sdk/commit/fa65653bdd77fa3455aa9de5c3c693cf9edf7014))
+
+## [3.0.0-beta.45](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.44...v3.0.0-beta.45) (2023-03-16)
+
+
+### Bug Fixes
+
+* **duplicate-panes:** refactor slot allocation ([#2673](https://github.com/webex/webex-js-sdk/issues/2673)) ([51233e5](https://github.com/webex/webex-js-sdk/commit/51233e505577495c35bae5fe7da8ed58361121b5))
+
 ## [3.0.0-beta.44](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.43...v3.0.0-beta.44) (2023-03-15)
 
 
