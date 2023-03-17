@@ -199,12 +199,11 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   videoReceiver.streams[0].common.framesDropped =
     statsResults.resolutions[mediaType][sendrecvType].framesDropped - lastFramesDropped;
   videoReceiver.streams[0].receivedHeight =
-    statsResults.resolutions[mediaType][sendrecvType].height;
-  videoReceiver.streams[0].receivedWidth = statsResults.resolutions[mediaType][sendrecvType].width;
+    statsResults.resolutions[mediaType][sendrecvType].height || 0;
+  videoReceiver.streams[0].receivedWidth =
+    statsResults.resolutions[mediaType][sendrecvType].width || 0;
   videoReceiver.streams[0].receivedFrameSize =
-    (statsResults.resolutions[mediaType][sendrecvType].height *
-      statsResults.resolutions[mediaType][sendrecvType].height) /
-    256;
+    (videoReceiver.streams[0].receivedHeight * videoReceiver.streams[0].receivedWidth) / 256;
 
   videoReceiver.streams[0].receivedKeyFrames =
     statsResults[mediaType][sendrecvType].keyFramesDecoded - lastKeyFramesDecoded || 0;
@@ -284,10 +283,9 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
     ? (totalFrameSentInaMin * 100) / 60
     : 0;
   videoSender.streams[0].transmittedHeight =
-    statsResults.resolutions[mediaType][sendrecvType].height;
-  videoSender.streams[0].transmittedWidth = statsResults.resolutions[mediaType][sendrecvType].width;
+    statsResults.resolutions[mediaType][sendrecvType].height || 0;
+  videoSender.streams[0].transmittedWidth =
+    statsResults.resolutions[mediaType][sendrecvType].width || 0;
   videoSender.streams[0].transmittedFrameSize =
-    (statsResults.resolutions[mediaType][sendrecvType].height *
-      statsResults.resolutions[mediaType][sendrecvType].width) /
-    254;
+    (videoSender.streams[0].transmittedHeight * videoSender.streams[0].transmittedWidth) / 256;
 };

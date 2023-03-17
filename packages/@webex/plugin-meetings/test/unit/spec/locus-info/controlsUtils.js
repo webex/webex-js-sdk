@@ -39,64 +39,122 @@ describe('plugin-meetings', () => {
 
         assert.equal(parsedControls.entryExitTone, null);
       });
-    });
-  });
 
-  describe('getControls', () => {
-    it('returns hasEntryExitToneChanged = true when mode changed', () => {
-      const newControls = {
-        entryExitTone: {
-          enabled: true,
-          mode: 'bar',
-        },
-      };
-      const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+      describe('videoEnabled', () => {
+        it('returns expected', () => {
+          const result = ControlsUtils.parse({video: {enabled: true}});
+          assert.deepEqual(result, {
+            video: {
+              enabled: true,
+            },
+            videoEnabled: true,
+          });
+        });
 
-      assert.equal(updates.hasEntryExitToneChanged, true);
-    });
+        it('returns expected from undefined', () => {
+          const result = ControlsUtils.parse();
+          assert.deepEqual(result, {});
+        });
 
-    it('returns hasEntryExitToneChanged = true when enabled changed', () => {
-      const newControls = {
-        entryExitTone: {
-          enabled: false,
-          mode: 'foo',
-        },
-      };
-      const {updates} = ControlsUtils.getControls(defaultControls, newControls);
-
-      assert.equal(updates.hasEntryExitToneChanged, true);
+        it('returns expected from undefined controls', () => {
+          const result = ControlsUtils.parse({});
+          assert.deepEqual(result, {});
+        });
+      });
     });
 
-    it('returns hasEntryExitToneChanged = false when nothing changed', () => {
-      const newControls = {
-        entryExitTone: {
-          enabled: true,
-          mode: 'foo',
-        },
-      };
-      const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+    describe('getControls', () => {
+      it('returns hasEntryExitToneChanged = true when mode changed', () => {
+        const newControls = {
+          entryExitTone: {
+            enabled: true,
+            mode: 'bar',
+          },
+        };
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
-      assert.equal(updates.hasEntryExitToneChanged, false);
-    });
+        assert.equal(updates.hasEntryExitToneChanged, true);
+      });
 
-    it('returns hasBreakoutChanged = true when it has changed', () => {
-      const newControls = {
-        breakout: 'breakout'
-      };
+      it('returns hasEntryExitToneChanged = true when enabled changed', () => {
+        const newControls = {
+          entryExitTone: {
+            enabled: false,
+            mode: 'foo',
+          },
+        };
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
-      const {updates} = ControlsUtils.getControls({breakout: 'old breakout'}, newControls);
+        assert.equal(updates.hasEntryExitToneChanged, true);
+      });
 
-      assert.equal(updates.hasBreakoutChanged, true);
-    });
+      it('returns hasEntryExitToneChanged = false when nothing changed', () => {
+        const newControls = {
+          entryExitTone: {
+            enabled: true,
+            mode: 'foo',
+          },
+        };
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
-    it('returns hasBreakoutChanged = false when it has not changed', () => {
-      const newControls = {
-        breakout: 'breakout'
-      };
+        assert.equal(updates.hasEntryExitToneChanged, false);
+      });
 
-      const {updates} = ControlsUtils.getControls({breakout: 'breakout'}, newControls);
+      it('returns hasBreakoutChanged = true when it has changed', () => {
+        const newControls = {
+          breakout: 'breakout',
+        };
 
-      assert.equal(updates.hasBreakoutChanged, false);
+        const {updates} = ControlsUtils.getControls({breakout: 'old breakout'}, newControls);
+
+        assert.equal(updates.hasBreakoutChanged, true);
+      });
+
+      it('returns hasBreakoutChanged = false when it has not changed', () => {
+        const newControls = {
+          breakout: 'breakout',
+        };
+
+        const {updates} = ControlsUtils.getControls({breakout: 'breakout'}, newControls);
+
+        assert.equal(updates.hasBreakoutChanged, false);
+      });
+
+      describe('videoEnabled', () => {
+        const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
+          const result = ControlsUtils.getControls(oldControls, newControls);
+
+          let expectedPrevious = oldControls;
+          if (Object.keys(oldControls).length) {
+            expectedPrevious = {
+              ...expectedPrevious,
+              ...{videoEnabled: oldControls.video.enabled},
+            };
+          }
+          const expectedCurrent = {...newControls, ...{videoEnabled: newControls.video.enabled}};
+
+          assert.deepEqual(result.previous, expectedPrevious);
+          assert.deepEqual(result.current, expectedCurrent);
+          if (updatedProperty !== undefined) {
+            assert.deepEqual(
+              result.updates.hasVideoEnabledChanged,
+              !isEqual(oldControls, newControls)
+            );
+          }
+        };
+
+        it('returns expected from undefined', () => {
+          testVideoEnabled({}, {video: {enabled: true}});
+        });
+
+        it('returns expected from defined', () => {
+          testVideoEnabled({video: {enabled: false}}, {video: {enabled: true}});
+        });
+
+        it('returns expected for unchanged', () => {
+          testVideoEnabled({video: {enabled: false}}, {video: {enabled: false}});
+        });
+      });
     });
   });
 });

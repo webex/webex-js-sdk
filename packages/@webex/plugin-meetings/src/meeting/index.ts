@@ -17,7 +17,6 @@ import {
 
 import {
   MeetingNotActiveError,
-  createMeetingsError,
   UserInLobbyError,
   NoMediaEstablishedYetError,
   UserNotJoinedError,
@@ -2325,6 +2324,14 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.canSendReactions,
             payload.info.userDisplayHints
           ),
+          canManageBreakout: MeetingUtil.canManageBreakout(payload.info.userDisplayHints),
+          canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(
+            payload.info.userDisplayHints
+          ),
+          isBreakoutPreassignmentsEnabled: MeetingUtil.isBreakoutPreassignmentsEnabled(
+            payload.info.userDisplayHints
+          ),
+          canUserAskForHelp: MeetingUtil.canUserAskForHelp(payload.info.userDisplayHints),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -2408,6 +2415,30 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED, (payload) => {
+      if (payload) {
+        if (this.video) {
+          payload.muted = payload.muted ?? this.video.isRemotelyMuted();
+          payload.unmuteAllowed = payload.unmuteAllowed ?? this.video.isUnmuteAllowed();
+          this.video.handleServerRemoteMuteUpdate(payload.muted, payload.unmuteAllowed);
+        }
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoSelfListener',
+          },
+          payload.muted
+            ? EVENT_TRIGGERS.MEETING_SELF_VIDEO_MUTED_BY_OTHERS
+            : EVENT_TRIGGERS.MEETING_SELF_VIDEO_UNMUTED_BY_OTHERS,
+          {
+            payload,
+          }
+        );
+      }
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED, (payload) => {
       if (payload) {
         if (this.audio) {

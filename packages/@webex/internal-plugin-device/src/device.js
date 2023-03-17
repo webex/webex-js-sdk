@@ -645,9 +645,9 @@ const Device = WebexPlugin.extend({
     delete body.services;
     delete body.serviceHostMap;
 
-    const {etag} = response.headers;
+    const {etag} = response.headers || {};
 
-    if (this.etag && this.etag === etag) {
+    if (this.etag && etag && this.etag === etag) {
       // If current etag matches the previous one and we have sent
       // If-None-Match header the developer and entitlement feature
       // toggles will not be returned

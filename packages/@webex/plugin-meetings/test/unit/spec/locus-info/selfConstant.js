@@ -109,6 +109,10 @@ export const self = {
       requestedToUnmute: false,
       meta: {},
     },
+    video: {
+      muted: false,
+      meta: {},
+    },
     breakout: {
       sessions: {
         active: [
@@ -116,7 +120,7 @@ export const self = {
             name: 'Breakout session 2',
             groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
             sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-            sessionType: 'BREAKOUT'
+            sessionType: 'BREAKOUT',
           },
         ],
         allowed: [
@@ -124,15 +128,15 @@ export const self = {
             name: 'Breakout session 2',
             groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
             sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
-            sessionType: 'BREAKOUT'
+            sessionType: 'BREAKOUT',
           },
-        ]
+        ],
       },
       meta: {
         modifiedBy: '347ef89e-e1be-40a3-849c-731bdd935e62',
         lastModified: '2023-01-10T10:10:06.813Z',
-        readOnly: true
-      }
+        readOnly: true,
+      },
     },
     localRecord: {
       recording: false,
