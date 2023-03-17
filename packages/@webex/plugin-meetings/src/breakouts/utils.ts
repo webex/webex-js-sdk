@@ -26,13 +26,13 @@ export const getBroadcastRoles = (options): string[] => {
  */
 export const boServiceErrorHandler = (error: any, message: string): any => {
   const errorCode = error?.body?.errorCode;
-  const {EDIT_LOCK_TOKEN_MISMATCH} = BREAKOUTS.ERROR_CODE;
+  const {EDIT_LOCK_TOKEN_MISMATCH, EDIT_NOT_AUTHORIZED} = BREAKOUTS.ERROR_CODE;
+  LoggerProxy.logger.info(message);
   switch (errorCode) {
     case EDIT_LOCK_TOKEN_MISMATCH:
-      LoggerProxy.logger.info(message);
-
       return new BreakoutEditLockedError('Edit lock token mismatch', error);
-
+    case EDIT_NOT_AUTHORIZED:
+      return new BreakoutEditLockedError('Not authorized to interact with edit lock', error);
     default:
       return error;
   }

@@ -34,9 +34,11 @@ const Breakouts = WebexPlugin.extend({
     status: 'string', // only present when in a breakout session
     url: 'string', // appears from the moment you enable breakouts
     locusUrl: 'string', // the current locus url
-    breakoutServiceUrl: 'string', // the current breakout resouce url
+    breakoutServiceUrl: 'string', // the current breakout resource url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    editLock: 'object', // appears when getBreakout info editlock = true
+    intervalID: 0,
   },
 
   children: {
@@ -115,7 +117,7 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * Update the current breakout resouce url
+   * Update the current breakout resource url
    * @param {string} breakoutServiceUrl
    * @returns {void}
    */
@@ -336,7 +338,7 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * Make the meeting enbale or disable breakout session
+   * Make the meeting enable or disable breakout session
    * @param {boolean} enable
    * @returns {Promise}
    */
@@ -376,17 +378,30 @@ const Breakouts = WebexPlugin.extend({
    */
   async create(sessions) {
     // @ts-ignore
+    const bodyInfo =
+      this.editLock && !!this.editLock.token
+        ? {
+            groups: [
+              {
+                sessions,
+              },
+            ],
+            editlock: {
+              token: this.editLock.token,
+            },
+          }
+        : {
+            groups: [
+              {
+                sessions,
+              },
+            ],
+          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: {
-          groups: [
-            {
-              sessions,
-            },
-          ],
-        },
+        body: bodyInfo,
       })
       .catch((error) => {
         return Promise.reject(
@@ -398,6 +413,9 @@ const Breakouts = WebexPlugin.extend({
       this.set('groups', breakInfo.body.groups);
     }
 
+    // clear edit lock info after save breakout session info
+    this._clearEditLockInfo();
+
     return Promise.resolve(breakInfo);
   },
 
@@ -407,17 +425,30 @@ const Breakouts = WebexPlugin.extend({
    */
   async clearSessions() {
     // @ts-ignore
+    const bodyInfo =
+      this.editLock && !!this.editLock.token
+        ? {
+            groups: [
+              {
+                action: BREAKOUTS.ACTION.DELETE,
+              },
+            ],
+            editlock: {
+              token: this.editLock.token,
+            },
+          }
+        : {
+            groups: [
+              {
+                action: BREAKOUTS.ACTION.DELETE,
+              },
+            ],
+          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: {
-          groups: [
-            {
-              action: BREAKOUTS.ACTION.DELETE,
-            },
-          ],
-        },
+        body: bodyInfo,
       })
       .catch((error) => {
         return Promise.reject(
@@ -503,8 +534,95 @@ const Breakouts = WebexPlugin.extend({
     if (breakout.body?.groups) {
       this.set('groups', breakout.body.groups);
     }
+    if (breakout.body?.editlock && editlock) {
+      this.set('editLock', breakout.body.editlock);
+    }
 
     return breakout;
+  },
+
+  /**
+   * enable and edit lock breakout
+   * @returns {void}
+   */
+  async enableAndLockBreakout() {
+    if (this.enableBreakoutSession) {
+      this.lockBreakout();
+    } else {
+      const info = await this.enableBreakouts();
+
+      if (info.body) {
+        this.lockBreakout();
+      }
+    }
+  },
+
+  /**
+   * send breakout edit lock
+   * @returns {void}
+   */
+  async lockBreakout() {
+    if (this.editLock && !!this.editLock.token) {
+      if (this.editLock.state === BREAKOUTS.EDIT_LOCK_STATUS.LOCKED) {
+        throw new Error('Breakout already locked');
+      } else {
+        this.keepEditLockAlive();
+      }
+    } else {
+      const breakout = await this.getBreakout(true);
+      if (breakout.body?.editlock) {
+        this.keepEditLockAlive();
+      }
+    }
+  },
+
+  /**
+   * keep edit lock alive
+   * @returns {void}
+   */
+  keepEditLockAlive() {
+    if (this.editLock && !!this.editLock.token) {
+      const ttl = this.editLock.ttl < 30 ? 30 : this.editLock.ttl;
+      this.intervalID = setInterval(() => {
+        this.request({
+          method: HTTP_VERBS.PUT,
+          uri: `${this.url}/editlock/${this.editLock.token}`,
+        }).catch((error) => {
+          this._clearEditLockInfo();
+
+          return Promise.reject(boServiceErrorHandler(error, 'Breakouts#keepEditLockAlive'));
+        });
+      }, (ttl / 2) * 1000);
+    }
+  },
+
+  /**
+   * unlock edit breakout
+   * @returns {void}
+   */
+  unLockEditBreakout() {
+    this.request({
+      method: HTTP_VERBS.DELETE,
+      uri: `${this.url}/editlock/${this.editLock.token}`,
+    })
+      .then(() => {
+        this._clearEditLockInfo();
+      })
+      .catch((error) => {
+        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#keepEditLockAlive'));
+      });
+  },
+
+  /**
+   * clear interval and edit lock info
+   * @private
+   * @returns {void}
+   */
+  _clearEditLockInfo() {
+    if (this.intervalID) {
+      clearInterval(this.intervalID);
+    }
+    this.set('editLock', {});
   },
 });
 
