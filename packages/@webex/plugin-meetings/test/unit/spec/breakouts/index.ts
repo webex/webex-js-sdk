@@ -703,5 +703,111 @@ describe('plugin-meetings', () => {
         );
       });
     });
+
+    describe('enableAndLockBreakout', () => {
+
+      it('enableBreakoutSession is true', async () => {
+
+        breakouts.enableBreakoutSession = true;
+
+        breakouts.lockBreakout = sinon.stub().resolves();
+
+        breakouts.enableAndLockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.lockBreakout);
+
+      });
+
+      it('enableBreakoutSession is false', async () => {
+
+        breakouts.enableBreakoutSession = false;
+
+        breakouts.enableBreakouts = sinon.stub().resolves();
+
+        breakouts.enableAndLockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.enableBreakouts);
+
+      });
+
+    });
+
+    describe('lockBreakout', () => {
+
+      it('lock breakout is true', async () => {
+
+        breakouts.editLock = {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        };
+
+        breakouts.keepEditLockAlive = sinon.stub().resolves();
+
+        breakouts.lockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
+
+      });
+
+      it('lock breakout throw error', () => {
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
+          state: 'LOCKED',
+        });
+        
+        assert.throws(() => {
+          breakouts.lockBreakout();
+        }, 'Breakout already locked');
+      });
+
+      it('lock breakout without editLock', async () => {
+
+        breakouts.getBreakout = sinon.stub().resolves();
+
+        breakouts.lockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.getBreakout, true);
+      });
+
+    });
+
+    describe('unLockEditBreakout', () => {
+      it('unLock edit breakout request as expected', async () => {
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
+          state: 'LOCKED',
+        });
+
+        breakouts.unLockEditBreakout();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'DELETE',
+          uri: 'url/editlock/2ad57140-01b5-4bd0-a5a7-4dccdc06904c'
+        });
+
+      });
+    });
+
+    describe('keepEditLockAlive', () => {
+
+      it('keep edit lock', async () => {
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+
+        assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
+
+      });
+
+    });
   });
 });
