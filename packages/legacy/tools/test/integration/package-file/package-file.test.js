@@ -191,15 +191,9 @@ describe('PackageFile', () => {
 
       const spies = {};
 
-      const resolvers = {
-        fsExtra: {
-          mkdirp: (route, method) => { method(); },
-        },
-      };
-
       beforeEach(() => {
         spies.fsExtra = {
-          mkdirp: spyOn(fsExtra, 'mkdirp').and.callFake(resolvers.fsExtra.mkdirp),
+          ensureDir: spyOn(fsExtra, 'ensureDir').and.resolveTo(undefined),
         };
 
         spies.fs = {
@@ -207,18 +201,12 @@ describe('PackageFile', () => {
         };
       });
 
-      it('should call "fsExtra.mkdirp" with the destination and resolving function', () => PackageFile.write(config)
+      it('should call "fsExtra.ensureDir()" with the destination and resolving function', () => PackageFile.write(config)
         .then(() => {
-          expect(spies.fsExtra.mkdirp.calls.all()[0].args[0]).toBe(
+          expect(spies.fsExtra.ensureDir.calls.all()[0].args[0]).toBe(
             path.dirname(config.destination),
           );
         }));
-
-      it('should reject if "fsExtra.mkdirp" results in an error', () => {
-        spies.fsExtra.mkdirp.and.callFake((route, method) => { method(new Error()); });
-
-        return expectAsync(PackageFile.write(config)).toBeRejected();
-      });
 
       it('should call "fs.writeFile" with the destination and data', () => PackageFile.write(config)
         .then(() => {

@@ -91,15 +91,7 @@ class PackageFile {
    * @returns - Nothing.
    */
   protected static write({ data, destination }: { data: string, destination: string }): Promise<void> {
-    return new Promise((resolve, reject) => {
-      fsExtra.mkdirp(path.dirname(destination), (error) => {
-        if (error) {
-          reject(error);
-        }
-
-        resolve(undefined);
-      });
-    })
+    return fsExtra.ensureDir(path.dirname(destination))
       .then(() => fs.writeFile(destination, data))
       .then(() => undefined);
   }
