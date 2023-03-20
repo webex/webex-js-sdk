@@ -262,20 +262,24 @@ const Scheduler = WebexPlugin.extend({
    * */
   getFreeBusy(data) {
     return new Promise((resolve, reject) => {
-      EncryptHelper.encryptFreeBusyRequest(this, data).then(() => {
-        this.request({
-          method: 'POST',
-          service: 'calendar',
-          body: data,
-          resource: 'freebusy',
-        })
-          .then(() => {
-            this.rpcEventRequests[data.requestId] = {resolve, reject};
+      EncryptHelper.encryptFreeBusyRequest(this, data)
+        .then(() => {
+          this.request({
+            method: 'POST',
+            service: 'calendar',
+            body: data,
+            resource: 'freebusy',
           })
-          .catch((error) => {
-            reject(error);
-          });
-      });
+            .then(() => {
+              this.rpcEventRequests[data.requestId] = {resolve, reject};
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        })
+        .catch((error) => {
+          reject(error);
+        });
     });
   },
 });
