@@ -750,17 +750,17 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('lock breakout throw error', () => {
 
-        breakouts.set('editLock', {
+      it('lock breakout throw error', async () => {
+        
+        breakouts.editLock = {
           ttl: 30,
           token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
           state: 'LOCKED',
-        });
-        
-        assert.throws(() => {
-          breakouts.lockBreakout();
-        }, 'Breakout already locked');
+       
+        };
+
+        await expect(breakouts.lockBreakout()).to.be.rejectedWith('Breakout already locked');
       });
 
       it('lock breakout without editLock', async () => {
@@ -794,7 +794,9 @@ describe('plugin-meetings', () => {
 
     describe('keepEditLockAlive', () => {
 
-      it('keep edit lock', async () => {
+      it('keep edit lock', () => {
+
+        const clock = sinon.useFakeTimers()
 
         breakouts.set('editLock', {
           ttl: 30,
@@ -803,11 +805,15 @@ describe('plugin-meetings', () => {
         });
 
         breakouts.keepEditLockAlive();
+        clock.tick(15001);
 
-        assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
 
+        clock.restore();
       });
-
     });
   });
 });

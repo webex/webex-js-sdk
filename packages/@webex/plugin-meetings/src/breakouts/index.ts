@@ -609,7 +609,7 @@ const Breakouts = WebexPlugin.extend({
         this._clearEditLockInfo();
       })
       .catch((error) => {
-        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#keepEditLockAlive'));
+        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
       });
   },
 
