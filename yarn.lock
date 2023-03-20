@@ -5089,12 +5089,14 @@ __metadata:
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-flag": "workspace:^"
+    "@webex/jest-config-legacy": "workspace:^"
     "@webex/legacy-tools": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
+    jest: ^29.5.0
     lodash: ^4.17.21
     prettier: ^2.7.1
   languageName: unknown
@@ -5341,6 +5343,16 @@ __metadata:
     jasmine-spec-reporter: ^7.0.0
   peerDependencies:
     jasmine: ^4.5.0
+  languageName: unknown
+  linkType: soft
+
+"@webex/jest-config-legacy@workspace:^, @webex/jest-config-legacy@workspace:packages/legacy/jest":
+  version: 0.0.0-use.local
+  resolution: "@webex/jest-config-legacy@workspace:packages/legacy/jest"
+  dependencies:
+    jest: ^29.3.1
+    jest-environment-jsdom: ^29.1.2
+    ts-jest: ^29.0.3
   languageName: unknown
   linkType: soft
 
@@ -15876,7 +15888,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest@npm:^29.3.1":
+"jest@npm:^29.3.1, jest@npm:^29.5.0":
   version: 29.5.0
   resolution: "jest@npm:29.5.0"
   dependencies:
