@@ -1,6 +1,6 @@
 {
   "name": "webex",
-  "version": "2.44.1",
+  "version": "2.45.0",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
