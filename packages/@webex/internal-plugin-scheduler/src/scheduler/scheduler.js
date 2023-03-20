@@ -220,13 +220,18 @@ const Scheduler = WebexPlugin.extend({
   /**
    * @typedef QuerySchedulerDataOptions
    * @param {string} [siteName] it is site full url, must have. Example: ccctest.dmz.webex.com
-   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for.
+   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for. It should be base64 encoded.
    *                      Example: 040000008200E00074C5B7101A82E008000000004A99F11A0841D9010000000000000000100000009EE499D4A71C1A46B51494C70EC7BFE5
-   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for. Example: 7f318aa9-887c-6e94-802a-8dc8e6eb1a0a
+   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for. It should be base64 encoded.
+   *                      Example: 7f318aa9-887c-6e94-802a-8dc8e6eb1a0a
    * @param {string} [scheduleTemplateId] it template id.
    * @param {string} [sessionTypeId] it session type id.
    * @param {string} [organizerCIUserId] required in schedule-on-behalf case. It is the organizer's CI UUID.
    * @param {boolean} [usmPreference]
+   * @param {string} [webexMeetingId] webex side meeting UUID
+   * @param {string} [eventId] event ID.
+   * @param {string} [icalUid] icalendar UUID.
+   * @param {string} [thirdPartyType] third part type, such as: Microsoft
    */
   /**
    * Get scheduler data from calendar service
@@ -234,29 +239,11 @@ const Scheduler = WebexPlugin.extend({
    * @returns {Promise} Resolves with a decrypted scheduler data
    * */
   getSchedulerData(query) {
-    const {
-      siteName,
-      id,
-      clientMeetingId,
-      scheduleTemplateId,
-      sessionTypeId,
-      organizerCIUserId,
-      usmPreference,
-    } = query;
-
     return this.request({
       method: 'GET',
       service: 'calendar',
       resource: 'schedulerData',
-      qs: {
-        siteName,
-        id: id ? base64.encode(id) : null,
-        clientMeetingId: clientMeetingId ? base64.encode(clientMeetingId) : null,
-        scheduleTemplateId,
-        sessionTypeId,
-        organizerCIUserId,
-        usmPreference,
-      },
+      qs: query || {},
     }).then((response) => {
       // internal-plugin-calendar's transformer cover it, it will cause ours failed.
       // So currently, I have to comment out 3 internal-plugin-calendar's transformers in local running.

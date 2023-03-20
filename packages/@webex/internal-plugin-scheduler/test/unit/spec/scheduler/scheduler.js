@@ -118,7 +118,7 @@ describe('plugin-scheduler', () => {
         it("should fetch meeting scheduler data", async () => {
           const query = {
             siteName: "scheduler01.dmz.webex.com",
-            clientMeetingId: "abcdabcd-abcd-abcd-abcd-00000000"
+            clientMeetingId: "YWJjZGFiY2QtYWJjZC1hYmNkLWFiY2QtMDAwMDAwMDA"
           };
 
           webex.request = jest.fn().mockResolvedValue({
@@ -146,12 +146,7 @@ describe('plugin-scheduler', () => {
             resource: 'schedulerData',
             qs: {
               siteName: query.siteName,
-              id: null,
-              clientMeetingId: base64.encode(query.clientMeetingId),
-              scheduleTemplateId: undefined,
-              sessionTypeId: undefined,
-              organizerCIUserId: undefined,
-              usmPreference: undefined,
+              clientMeetingId: query.clientMeetingId,
             },
           });
         });
