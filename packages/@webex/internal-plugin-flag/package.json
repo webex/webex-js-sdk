@@ -17,7 +17,7 @@
   "scripts": {
     "build": "yarn build:src",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
-    "test": "yarn test:lint",
+    "test": "yarn test:style",
     "test:style": "eslint ./src/**/*.*"
   },
   "browserify": {
