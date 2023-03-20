@@ -45,10 +45,16 @@ class Commands {
       .description(description);
 
     options.forEach((option) => {
-      const definition = option.type ? `--${option.name} <${option.type}>` : `--${option.name}`;
+      const definition = option.type && option.type !== 'boolean'
+        ? `--${option.name} <${option.type}>`
+        : `--${option.name}`;
       const namespace = option.alias ? `-${option.alias}, ${definition}` : definition;
 
-      cmd.option(namespace, option.description, option.default);
+      if (option.required) {
+        cmd.requiredOption(namespace, option.description, option.default);
+      } else {
+        cmd.option(namespace, option.description, option.default);
+      }
     });
 
     cmd.action((opts) => command.handler(opts));

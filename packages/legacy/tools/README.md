@@ -1,10 +1,10 @@
-# @webex/build-legacy
+# @webex/legacy-tools
 
 [![icense: mit](https://img.shields.io/badge/License-MIT-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 ![state: beta](https://img.shields.io/badge/State\-Beta-blue?style=flat-square)
 ![scope: internal](https://img.shields.io/badge/Scope-Internal-red?style=flat-square)
 
-This package is an internal and private plugin used as a shared module when applying a common build workflow to legacy modules within this project.
+This package is an internal and private plugin used as a shared module when applying a common tooling workflow to legacy modules within this project.
 
 * [Installation](#installation)
 * [Usage](#usage)
@@ -15,18 +15,19 @@ This package is an internal and private plugin used as a shared module when appl
 
 Since this package is marked `private` as a part of its definition, it can only be consumed locally within this project.
 
-This package is meant to be consumed as a **dev-dependency**, and requires the following peer-dependencies:
+This package is meant to be consumed as a **dev-dependency**, and requires the following localized dependencies:
 
-* `@babel/core`
+* `@babel/core` - *Peer development dependency*.
+* `@webex/babel-config-legacy` - *Development dependency*.
 
 Installation, local to this project, can be performed by using the following commands:
 
 ```bash
 # Project root installation.
-yarn add --dev @webex/build-legacy @babel/core
+yarn add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core
 
 # Package installation.
-yarn workspace @{scope}/{package} add --dev @webex/build-legacy @babel/core
+yarn workspace @{scope}/{package} add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core
 ```
 
 ## Usage
@@ -45,7 +46,7 @@ This package is expected to be used as a CLI or Module within a consuming packag
   /* ... */
   "scripts": {
     /* ... */
-    "{script-name}": "webex-build-legacy {arguments} {--help}"
+    "{script-name}": "webex-legacy-tools {command} {arguments} {--help}"
   }
 }
 ```
@@ -58,10 +59,10 @@ To consume this package as a module:
 
 ```js
 // ESM
-import {File, Package} from '@webex/build-legacy';
+import {File, Package} from '@webex/legacy-tools';
 
 // CJS
-const {File, Package} = require('@webex/build-legacy');
+const {File, Package} = require('@webex/legacy-tools');
 
 // Build all package files.
 Package.build(arguments);
@@ -70,10 +71,13 @@ Package.build(arguments);
 File.build(arguments);
 ```
 
-For arguments for each class, see their respective source code JSDoc documentation:
+For arguments for each class, see the built documentation by executing the following command:
 
-* [`File`](https://github.com/webex/webex-js-sdk/blob/master/packages/legacy/build/static/utils/file/file.js)
-* [`Package`](https://github.com/webex/webex-js-sdk/blob/master/packages/legacy/build/static/utils/package/package.js)
+```bash
+yarn workspace @webex/legacy-tools build
+```
+
+Then, navigate to the `./dist/docs/markdown/index.md` file.
 
 ## Contribute
 

@@ -32,7 +32,7 @@ import type { Options } from './increment.types';
  */
 const increment: CommandsCommand<Options> = {
   /**
-   * Configuration Object for this Increment Command configuration.
+   * Configuration Object for this increment Command configuration.
    */
   config: CONSTANTS.CONFIG,
 
@@ -58,10 +58,10 @@ const increment: CommandsCommand<Options> = {
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then((packs) => {
         const incrementBy: Partial<PackageVersion> = {
-          major: parseInt(options.major, 10),
-          minor: parseInt(options.minor, 10),
-          patch: parseInt(options.patch, 10),
-          release: parseInt(options.release, 10),
+          major: options.major ? parseInt(options.major, 10) : undefined,
+          minor: options.minor ? parseInt(options.minor, 10) : undefined,
+          patch: options.patch ? parseInt(options.patch, 10) : undefined,
+          release: options.release ? parseInt(options.release, 10) : undefined,
         };
 
         packs.forEach((pack) => pack.incrementVersion(incrementBy));
