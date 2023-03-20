@@ -16,6 +16,7 @@ const ignorePatterns = [
   '*.json',
   '**/*.json',
   '*.lock',
+  '*.config.*',
   // end decorator
 ];
 
