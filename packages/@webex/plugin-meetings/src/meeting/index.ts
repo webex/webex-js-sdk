@@ -5571,14 +5571,16 @@ export default class Meeting extends StatelessWebexPlugin {
   ) {
     const LOG_HEADER = 'Meeting:index#updateMedia -->';
 
-    if (this.isMultistream) {
-      throw new Error(
-        'updateMedia() is not supported with multistream, use publishTracks/unpublishTracks instead'
-      );
-    }
     if (!this.canUpdateMedia()) {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.ALL, options);
     }
+
+    if (this.isMultistream) {
+      const audioEnabled = options.mediaSettings?.sendAudio || options.mediaSettings?.receiveAudio;
+
+      return this.mediaProperties.webrtcMediaConnection.enableMultistreamAudio(audioEnabled);
+    }
+
     const {localStream, localShare, mediaSettings} = options;
 
     const previousSendShareStatus = this.mediaProperties.mediaDirection.sendShare;

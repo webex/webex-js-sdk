@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.49](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.48...v3.0.0-beta.49) (2023-03-17)
+
+
+### Bug Fixes
+
+* **remote-video-mute:** fixed remote video mute ([#2683](https://github.com/webex/webex-js-sdk/issues/2683)) ([c2fa0a4](https://github.com/webex/webex-js-sdk/commit/c2fa0a4b8ad240382667030224b33280fcf8f929))
+
+## [3.0.0-beta.48](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.47...v3.0.0-beta.48) (2023-03-17)
+
+
+### Features
+
+* **reachability:** add clientMediaIP ([#2635](https://github.com/webex/webex-js-sdk/issues/2635)) ([297a642](https://github.com/webex/webex-js-sdk/commit/297a642850bad4ced54cf76092f9d94bb28c4e69))
+
+## [3.0.0-beta.47](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.46...v3.0.0-beta.47) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing frame sizes for mqe ([#2666](https://github.com/webex/webex-js-sdk/issues/2666)) ([7434e66](https://github.com/webex/webex-js-sdk/commit/7434e6670ca8ebb523c6d03aee39ed650a172078))
+
 ## [3.0.0-beta.46](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.45...v3.0.0-beta.46) (2023-03-16)
 
 
