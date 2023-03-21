@@ -69,15 +69,7 @@ const Metrics = WebexPlugin.extend({
       // eslint-disable-next-line no-undef
       domain:
         typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser', // Check what else we could measure
-      client_id: this.webex.credentials.config.client_id,
-      user_id: this.webex.internal.device.userId,
     };
-
-    try {
-      payload.tags.org_id = this.webex.credentials.getOrgId();
-    } catch {
-      this.logger.info('metrics: unable to get orgId');
-    }
 
     payload.fields = {
       ...props.fields,
@@ -86,6 +78,7 @@ const Metrics = WebexPlugin.extend({
       sdk_version: this.webex.version,
       platform: 'Web',
       spark_user_agent: getSparkUserAgent(this.webex),
+      client_id: this.webex.credentials.config.client_id,
     };
 
     payload.type = props.type || this.webex.config.metrics.type;
