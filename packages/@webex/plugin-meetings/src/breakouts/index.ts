@@ -624,8 +624,8 @@ const Breakouts = WebexPlugin.extend({
       clearInterval(this.intervalID);
     }
     this.set('editLock', {});
-  }
-  
+  },
+
   /**
    * assign participants to breakout session
    * @param {Array} sessions
