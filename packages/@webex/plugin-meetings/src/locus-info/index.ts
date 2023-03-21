@@ -801,7 +801,7 @@ export default class LocusInfo extends EventsScope {
             file: 'locus-info',
             function: 'updateControls',
           },
-          LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED,
+          LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
           {
             // muted: not part of locus.controls
             unmuteAllowed: videoEnabled,

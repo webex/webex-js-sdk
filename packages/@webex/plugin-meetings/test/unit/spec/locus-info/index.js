@@ -431,7 +431,7 @@ describe('plugin-meetings', () => {
             file: 'locus-info',
             function: 'updateControls',
           },
-          LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED,
+          LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
           {unmuteAllowed: true}
         );
 
@@ -445,8 +445,8 @@ describe('plugin-meetings', () => {
         locusInfo.updateControls(newControls);
 
         locusInfo.emitScoped.getCalls().forEach((x) => {
-          // check that no calls in emitScoped are for CONTROLS_VIDEO_ENABLED_UPDATED
-          assert.notEqual(x.args[1], LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED);
+          // check that no calls in emitScoped are for SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED
+          assert.notEqual(x.args[1], LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED);
         });
 
         assert.equal(mockMeeting.unmuteVideoAllowed, undefined);
