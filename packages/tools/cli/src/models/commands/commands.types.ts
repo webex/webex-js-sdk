@@ -12,7 +12,7 @@ export interface Option {
   /**
    * Default value to use when no value is provided.
    */
-  default?: string;
+  default?: boolean | string | Array<string>;
 
   /**
    * Description to present when requestiong help for this Option.

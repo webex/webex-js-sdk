@@ -1411,7 +1411,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/register@npm:^7.17.7, @babel/register@npm:^7.18.9":
+"@babel/register@npm:^7.17.7, @babel/register@npm:^7.18.9, @babel/register@npm:^7.21.0":
   version: 7.21.0
   resolution: "@babel/register@npm:7.21.0"
   dependencies:
@@ -3228,6 +3228,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/chai@npm:*":
+  version: 4.3.4
+  resolution: "@types/chai@npm:4.3.4"
+  checksum: 571184967beb03bf64c4392a13a7d44e72da9af5a1e83077ff81c39cf59c0fda2a5c78d2005084601cf8f3d11726608574d8b5b4a0e3e9736792807afd926cd0
+  languageName: node
+  linkType: hard
+
 "@types/chai@npm:~4.2.20":
   version: 4.2.22
   resolution: "@types/chai@npm:4.2.22"
@@ -3566,6 +3573,61 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/karma-chai@npm:^0":
+  version: 0.1.3
+  resolution: "@types/karma-chai@npm:0.1.3"
+  dependencies:
+    "@types/chai": "*"
+  checksum: a7bcf63c9e33d3f1ff82bd4f14d088810b27dea209163fa9818609bb39801c1907e768fb2824e4eab2905a9107360f9df6d36028b8816d57b39f053b64e33228
+  languageName: node
+  linkType: hard
+
+"@types/karma-chrome-launcher@npm:^3":
+  version: 3.1.1
+  resolution: "@types/karma-chrome-launcher@npm:3.1.1"
+  dependencies:
+    "@types/karma": "*"
+  checksum: 9e37f732cb845d26b8e4c6c10d6600b20dd6dc276ebd7c868166257f76eff8585c3842cdaab36de65bcf7075c60cfb66abef10e30b044ca63d577c3b677eb805
+  languageName: node
+  linkType: hard
+
+"@types/karma-firefox-launcher@npm:^2":
+  version: 2.1.1
+  resolution: "@types/karma-firefox-launcher@npm:2.1.1"
+  dependencies:
+    "@types/karma": "*"
+  checksum: a08eb13438e43e636737bd622b11f1473296f9338b2b8d734be57d4007b510fa523110c7bee0940c13aa7062aa5a4cef9a7e101f2ca2d7697c3ee091756dfa5b
+  languageName: node
+  linkType: hard
+
+"@types/karma-ie-launcher@npm:^1":
+  version: 1.0.1
+  resolution: "@types/karma-ie-launcher@npm:1.0.1"
+  dependencies:
+    "@types/karma": "*"
+  checksum: 578510c1e4021daa7e4063a59683aaf91924b3c8530adc3c12c50a45cbefcb9761a59246f723298724ae1415fff10ab97d5d0170f18bba15548ac52202dd84cb
+  languageName: node
+  linkType: hard
+
+"@types/karma-mocha-reporter@npm:^2":
+  version: 2.2.1
+  resolution: "@types/karma-mocha-reporter@npm:2.2.1"
+  dependencies:
+    "@types/karma": "*"
+  checksum: 92a47ba0be8e68a71561856bd2a130ab978cca66444cc08bc3904c242d1be41e417d72d4250c34649cca6aa52fdde9d36b4a4514469397a914dc5a54a384aac3
+  languageName: node
+  linkType: hard
+
+"@types/karma@npm:*, @types/karma@npm:^6":
+  version: 6.3.3
+  resolution: "@types/karma@npm:6.3.3"
+  dependencies:
+    "@types/node": "*"
+    log4js: ^6.4.1
+  checksum: 623d6c0575c26d9f0513ccadbfec1c563dd7826e1a2cd4e5b2f6fea26aac366627ac25336e26256efa726f57cc65c607715ae123a3cc903913309c9b8919dcad
+  languageName: node
+  linkType: hard
+
 "@types/keyv@npm:^3.1.1, @types/keyv@npm:^3.1.4":
   version: 3.1.4
   resolution: "@types/keyv@npm:3.1.4"
@@ -3639,7 +3701,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/mocha@npm:^10.0.0":
+"@types/mocha@npm:^10, @types/mocha@npm:^10.0.0":
   version: 10.0.1
   resolution: "@types/mocha@npm:10.0.1"
   checksum: 224ea9fce7b1734ccdb9aa99a622d902a538ce1847bca7fd22c5fb38adcf3ed536f50f48f587085db988a4bb3c2eb68f4b98e1cd6a38bc5547bd3bbbedc54495
@@ -4682,7 +4744,6 @@ __metadata:
     "@babel/plugin-proposal-optional-chaining": ^7.14.5
     "@babel/plugin-syntax-async-generators": ^7.8.4
     "@babel/plugin-transform-classes": ^7.14.9
-    "@babel/plugin-transform-runtime": ^7.14.5
     "@babel/polyfill": ^7.12.1
     "@babel/preset-env": ^7.17.10
     "@babel/preset-typescript": ^7.18.6
@@ -4757,6 +4818,15 @@ __metadata:
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
     urlsafe-base64: ^1.0.0
+  languageName: unknown
+  linkType: soft
+
+"@webex/env-config-legacy@workspace:^, @webex/env-config-legacy@workspace:packages/legacy/env":
+  version: 0.0.0-use.local
+  resolution: "@webex/env-config-legacy@workspace:packages/legacy/env"
+  dependencies:
+    dotenv: ^16.0.3
+    find-yarn-workspace-root: ^2.0.0
   languageName: unknown
   linkType: soft
 
@@ -5084,6 +5154,7 @@ __metadata:
   resolution: "@webex/internal-plugin-flag@workspace:packages/@webex/internal-plugin-flag"
   dependencies:
     "@babel/core": ^7.17.10
+    "@types/mocha": ^10
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-conversation": "workspace:^"
@@ -5098,6 +5169,7 @@ __metadata:
     eslint: ^8.24.0
     jest: ^29.5.0
     lodash: ^4.17.21
+    mocha: ^10.2.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
@@ -5376,25 +5448,50 @@ __metadata:
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
   dependencies:
     "@babel/core": ^7.17.10
+    "@babel/register": ^7.21.0
     "@microsoft/api-documenter": ^7.21.5
     "@microsoft/api-extractor": ^7.34.4
     "@types/babel__core": ^7
     "@types/eslint": ^8
     "@types/fs-extra": ^11
     "@types/jasmine": ^4
+    "@types/karma": ^6
+    "@types/karma-chai": ^0
+    "@types/karma-chrome-launcher": ^3
+    "@types/karma-firefox-launcher": ^2
+    "@types/karma-ie-launcher": ^1
+    "@types/karma-mocha-reporter": ^2
+    "@types/mocha": ^10
     "@webex/api-extractor-config": "workspace:^"
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/cli-tools": "workspace:^"
+    "@webex/env-config-legacy": "workspace:^"
     "@webex/esbuild-config": "workspace:^"
     "@webex/eslint-config": "workspace:^"
     "@webex/jasmine-config": "workspace:^"
     "@webex/nyc-config": "workspace:^"
     "@webex/typescript-config": "workspace:^"
+    babelify: ^10.0.0
+    browserify: ^17.0.0
+    browserify-middleware: ^8.1.1
     esbuild: ^0.17.11
     eslint: ^8.35.0
     fs-extra: ^11.1.0
     glob: ^9.3.0
     jasmine: ^4.5.0
+    jest: ^29.5.0
+    karma: ^6.4.1
+    karma-browserify: ^8.1.0
+    karma-chai: ^0.1.0
+    karma-chrome-launcher: ^3.1.1
+    karma-edgium-launcher: ^4.0.0-0
+    karma-firefox-launcher: ^2.1.2
+    karma-ie-launcher: ^1.0.0
+    karma-mocha: ^2.0.1
+    karma-mocha-reporter: ^2.2.5
+    karma-opera-launcher: ^1.0.0
+    karma-safari-launcher: ^1.0.0
+    mocha: ^10.2.0
     nyc: ^15.1.0
     rimraf: ^4.1.2
     typescript: ^4.9.5
@@ -10616,6 +10713,13 @@ __metadata:
   dependencies:
     is-obj: ^2.0.0
   checksum: d5775790093c234ef4bfd5fbe40884ff7e6c87573e5339432870616331189f7f5d86575c5b5af2dcf0f61172990f4f734d07844b1f23482fff09e3c4bead05ea
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^16.0.3":
+  version: 16.0.3
+  resolution: "dotenv@npm:16.0.3"
+  checksum: afcf03f373d7a6d62c7e9afea6328e62851d627a4e73f2e12d0a8deae1cd375892004f3021883f8aec85932cd2834b091f568ced92b4774625b321db83b827f8
   languageName: node
   linkType: hard
 
@@ -16423,7 +16527,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"karma-chrome-launcher@npm:^3.1.0":
+"karma-chrome-launcher@npm:^3.1.0, karma-chrome-launcher@npm:^3.1.1":
   version: 3.1.1
   resolution: "karma-chrome-launcher@npm:3.1.1"
   dependencies:
@@ -16455,7 +16559,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"karma-firefox-launcher@npm:^2.1.0":
+"karma-firefox-launcher@npm:^2.1.0, karma-firefox-launcher@npm:^2.1.2":
   version: 2.1.2
   resolution: "karma-firefox-launcher@npm:2.1.2"
   dependencies:
@@ -16539,7 +16643,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"karma@npm:^6.3.2":
+"karma@npm:^6.3.2, karma@npm:^6.4.1":
   version: 6.4.1
   resolution: "karma@npm:6.4.1"
   dependencies:
@@ -18585,7 +18689,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mocha@npm:^10.0.0":
+"mocha@npm:^10.0.0, mocha@npm:^10.2.0":
   version: 10.2.0
   resolution: "mocha@npm:10.2.0"
   dependencies:
