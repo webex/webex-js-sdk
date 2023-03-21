@@ -504,11 +504,54 @@ describe('plugin-meetings', () => {
             selfIdentity: '123',
             selfId: '2',
             hostId: '3',
+            breakout: undefined,
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
         // for this specific test, we are double-checking that each of the id's
         // are being correctly grabbed from locusInfo.parsedLocus within updateParticipants
+      });
+
+      it('should call with breakout control info', () => {
+        const breakout = {
+          groupId: 'groupId',
+          sessionId: 'sessionId',
+          sessionType: 'sessionType',
+        };
+        locusInfo.parsedLocus = {
+          controls: {
+            record: {
+              modifiedBy: '1',
+            },
+          },
+          self: {
+            selfIdentity: '123',
+            selfId: '2',
+          },
+          host: {
+            hostId: '3',
+          },
+        };
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateParticipants({}, breakout);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateParticipants',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
+          {
+            participants: {},
+            recordingId: '1',
+            selfIdentity: '123',
+            selfId: '2',
+            hostId: '3',
+            breakout,
+          }
+        );
       });
 
       it('should update the deltaParticipants object', () => {
@@ -1443,6 +1486,22 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.locusInfo.onFullLocus);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
+      });
+
+      it('onDeltaLocus handle delta data', () => {
+        fakeLocus.participants = {};
+        const fakeBreakout = {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'MAIN',
+        };
+
+        fakeLocus.controls = {
+          breakout: fakeBreakout
+        };
+        locusInfo.updateParticipants = sinon.stub();
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, fakeBreakout);
       });
     });
 

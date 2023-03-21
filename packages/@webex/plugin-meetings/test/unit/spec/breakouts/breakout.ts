@@ -22,6 +22,7 @@ describe('plugin-meetings', () => {
       breakout = new Breakout({}, {parent: breakouts});
       breakout.groupId = 'groupId';
       breakout.sessionId = 'sessionId';
+      breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
@@ -139,7 +140,28 @@ describe('plugin-meetings', () => {
         const locusData = {some: 'data'};
         const result = breakout.parseRoster(locusData);
 
-        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
+        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData, {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+        });
+        assert.equal(result, undefined);
+      })
+    })
+
+    describe('#clearMembers', () => {
+      it('calls clearMembers', () => {
+        breakout.members = {
+          clearMembers: sinon.stub()
+        };
+
+        const result = breakout.clearMembers();
+
+        assert.calledOnceWithExactly(breakout.members.clearMembers, {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+        });
         assert.equal(result, undefined);
       })
     })

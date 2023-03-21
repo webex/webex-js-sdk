@@ -164,7 +164,7 @@ const Breakouts = WebexPlugin.extend({
     session.parseRoster(locus);
   },
   /**
-   *
+   * update current joined breakout session's roster list
    * @param {Object} locus // locus object
    * @returns {void}
    */
@@ -172,9 +172,6 @@ const Breakouts = WebexPlugin.extend({
     const sessionId = breakout?.sessionId;
     const groupId = breakout?.groupId;
     if (this.sessionId !== sessionId || this.groupId !== groupId) {
-      return;
-    }
-    if (!this.currentBreakoutSession) {
       return;
     }
 
