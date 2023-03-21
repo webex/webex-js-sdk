@@ -191,15 +191,17 @@ const Scheduler = WebexPlugin.extend({
    * Update calendar event
    * @param {string} [id] calendar event id
    * @param {object} [data] meeting payload data
+   * @param {object} [query] the query parameters for specific usage
    * @returns {Promise} Resolves with updating calendar event response
    * */
-  updateCalendarEvent(id, data) {
+  updateCalendarEvent(id, data, query) {
     return EncryptHelper.encryptCalendarEventRequest(this, data).then(() => {
       return this.request({
         method: 'PATCH',
         service: 'calendar',
         body: data,
         resource: `calendarEvents/${base64.encode(id)}/sync`,
+        qs: query || {},
       });
     });
   },

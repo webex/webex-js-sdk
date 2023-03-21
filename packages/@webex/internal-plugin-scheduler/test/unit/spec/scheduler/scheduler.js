@@ -190,6 +190,7 @@ describe('plugin-scheduler', () => {
             subject: 'My Meeting 1',
             webexOptions: '{}'
           };
+          const query = {};
 
           webex.request = jest.fn().mockResolvedValue({
             body: {
@@ -207,6 +208,7 @@ describe('plugin-scheduler', () => {
             service: "calendar",
             body: data,
             resource: `calendarEvents/${base64.encode(id)}/sync`,
+            qs: query,
           });
         });
       });
