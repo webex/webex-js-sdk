@@ -814,6 +814,73 @@ describe('plugin-meetings', () => {
 
         clock.restore();
       });
+
+      it('keep edit lock, ttl < 30, also using 30', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 20,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(15001);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
+      it('keep edit lock, ttl > 30, using the ttl', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 50,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(25001);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
+      it('keep edit lock, throw error, clearInterval', async() => {
+
+        breakouts._clearEditLockInfo = sinon.stub();
+
+        const error = new Error('something went wrong');
+        webex.request.rejects(error);
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(15001);
+
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(breakouts._clearEditLockInfo);
+
+        clock.restore();
+      });
     });
   });
 });

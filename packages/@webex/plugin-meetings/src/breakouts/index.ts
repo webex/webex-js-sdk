@@ -583,7 +583,8 @@ const Breakouts = WebexPlugin.extend({
   keepEditLockAlive() {
     if (this.editLock && !!this.editLock.token) {
       const ttl = this.editLock.ttl < 30 ? BREAKOUTS.DEFAULT_TTL : this.editLock.ttl;
-      this.intervalID = setInterval(() => {
+
+      this.intervalID = window.setInterval(() => {
         this.request({
           method: HTTP_VERBS.PUT,
           uri: `${this.url}/editlock/${this.editLock.token}`,
