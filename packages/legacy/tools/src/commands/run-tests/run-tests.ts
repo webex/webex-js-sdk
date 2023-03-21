@@ -1,12 +1,12 @@
 import type { CommandsCommand } from '@webex/cli-tools';
 
 import { Package } from '../../models';
-import type { PackageBuildConfig } from '../../models';
+import type { PackageTestConfig } from '../../models';
 
-import CONSTANTS from './build.constants';
+import CONSTANTS from './run-tests.constants';
 
 /**
- * The build Command configuration Object. This Command is used to build legacy
+ * The run-tests Command configuration Object. This Command is used to test legacy
  * packages within this project.
  *
  * @remarks
@@ -16,35 +16,35 @@ import CONSTANTS from './build.constants';
  * @example
  * ```js
  * const { Commands } = require('@webex/cli-tools');
- * const build = require('./relative/path/build.js');
+ * const runTests = require('./relative/path/run-tests.js');
  *
  * const commands = new Commands();
- * commands.mount(build);
+ * commands.mount(runTests);
  * commands.mount(otherCommandConfig);
  * commands.process();
  * ```
  *
  * @public
  */
-const build: CommandsCommand<PackageBuildConfig> = {
+const runTests: CommandsCommand<PackageTestConfig> = {
   /**
-   * Configuration Object for this build Command configuration.
+   * Configuration Object for this run-tests Command configuration.
    */
   config: CONSTANTS.CONFIG,
 
   /**
-   * Handles building legacy packages based on the provided Options from a
+   * Handles testing legacy packages based on the provided Options from a
    * Commands class instance.
    *
    * @param options - Options provided from the CLI interface.
    * @returns - Promise that resolves once the process is complete.
    */
-  handler: (options: PackageBuildConfig) => {
+  handler: (options: PackageTestConfig) => {
     const pack = new Package();
 
-    return pack.build(options)
+    return pack.test(options)
       .then(() => undefined);
   },
 };
 
-export default build;
+export default runTests;

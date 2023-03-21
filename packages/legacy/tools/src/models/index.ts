@@ -4,6 +4,9 @@ import PackageFile from './package-file';
 export type {
   PackageBuildConfig,
   PackageData,
+  PackageTestBrowser,
+  PackageTestConfig,
+  PackageTestRunner,
 } from './package';
 
 export type {
