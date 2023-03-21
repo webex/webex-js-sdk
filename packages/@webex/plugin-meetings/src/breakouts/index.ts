@@ -624,6 +624,34 @@ const Breakouts = WebexPlugin.extend({
       clearInterval(this.intervalID);
     }
     this.set('editLock', {});
+  }
+  
+  /**
+   * assign participants to breakout session
+   * @param {Array} sessions
+   * @returns {void}
+   */
+  assign(sessions: any[]) {
+    const internalSessions = sessions.map((item) => {
+      return {
+        id: item.id,
+        assigned: item.memberIds,
+        assignedEmails: item.emails,
+      };
+    });
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body: {
+        groups: [
+          {
+            id: this.breakoutGroupId,
+            sessions: internalSessions,
+          },
+        ],
+      },
+    });
   },
 });
 
