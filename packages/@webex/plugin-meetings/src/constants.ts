@@ -565,6 +565,7 @@ export const BREAKOUTS = {
     NOT_LOCKED: 'NOT_LOCKED',
     UNKNOWN: 'UNKNOWN',
   },
+  DEFAULT_TTL: 30,
 };
 
 export const LOCUSINFO = {
