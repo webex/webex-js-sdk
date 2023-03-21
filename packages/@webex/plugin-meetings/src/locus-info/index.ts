@@ -337,7 +337,7 @@ export default class LocusInfo extends EventsScope {
    */
   onDeltaLocus(locus: any) {
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, locus.controls?.breakout);
     this.isMeetingActive();
   }
 
@@ -655,11 +655,11 @@ export default class LocusInfo extends EventsScope {
   /**
    *
    * @param {Object} participants new participants object
-   * @param {boolen} deltaParticpantFlag  delta event
+   * @param {object} breakout  new controls of breakout
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object) {
+  updateParticipants(participants: object, breakout?: object) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -672,6 +672,7 @@ export default class LocusInfo extends EventsScope {
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
         hostId: this.parsedLocus.host && this.parsedLocus.host.hostId,
+        breakout,
       }
     );
   }

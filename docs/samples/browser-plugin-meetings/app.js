@@ -2993,7 +2993,22 @@ function viewBreakouts(event) {
       });
     }
   });
+  const createCurrentSessionMembersTable = () => {
+    if (!meeting.breakouts || !meeting.breakouts.currentBreakoutSession || !meeting.breakouts.currentBreakoutSession.members) {
+      return;
+    }
+    const {members} = meeting.breakouts.currentBreakoutSession.members.membersCollection;
+    if (Object.keys(members).length < 1) {
+      return ;
+    }
+    const membersTableTitle = document.createElement('h3');
 
+    const containerDiv = document.createElement('div');
+    membersTableTitle.innerText = 'Membership in current ' + meeting.breakouts.currentBreakoutSession.name;
+    containerDiv.appendChild(membersTableTitle);
+    containerDiv.appendChild(createMembersTable(members));
+    return containerDiv;
+  }
   thead.appendChild(theadRow);
   tbody.appendChild(tbodyRow);
   table.appendChild(thead);
@@ -3018,6 +3033,10 @@ function viewBreakouts(event) {
   selfIsHost && hasBreakoutSessions && currentBreakoutInformationEl.appendChild(createBroadcastDiv(meeting.breakouts.currentBreakoutSession));
   breakoutTable.innerHTML = '';
   breakoutTable.appendChild(currentBreakoutInformationEl);
+
+  const currentBOSessionMembers = createCurrentSessionMembersTable();
+  currentBOSessionMembers && breakoutTable.appendChild(currentBOSessionMembers);
+
   const breakoutTableTitle = document.createElement('h3');
 
   breakoutTableTitle.innerText = 'Other Sessions';
@@ -3025,7 +3044,7 @@ function viewBreakouts(event) {
   breakoutTable.appendChild(table);
 }
 
-function viewParticipants() {
+function createMembersTable(members) {
   function createLabel(id, value = '') {
     const label = document.createElement('label');
 
@@ -3099,34 +3118,33 @@ function viewParticipants() {
     return tr;
   }
 
-  function createTable(members) {
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const tbody = document.createElement('tbody');
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
 
-    thead.appendChild(createHeadRow());
+  thead.appendChild(createHeadRow());
 
-    Object.entries(members).forEach(([key, value]) => {
-      if (value.status !== 'NOT_IN_MEETING') {
-        const row = createRow(value);
+  Object.entries(members).forEach(([key, value]) => {
+    if (value.status !== 'NOT_IN_MEETING') {
+      const row = createRow(value);
 
-        tbody.appendChild(row);
-      }
-    });
+      tbody.appendChild(row);
+    }
+  });
 
-    table.appendChild(thead);
-    table.appendChild(tbody);
+  table.appendChild(thead);
+  table.appendChild(tbody);
 
-    return table;
-  }
-
+  return table;
+};
+function viewParticipants() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
     emptyParticipants();
     const {members} = meeting.members.membersCollection;
 
-    participantTable.appendChild(createTable(members));
+    participantTable.appendChild(createMembersTable(members));
 
     const btnDiv = document.createElement('div');
 

@@ -311,6 +311,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEMBERS_UPDATE: 'members:update',
+  MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
   MEMBERS_SELF_UPDATE: 'members:self:update',

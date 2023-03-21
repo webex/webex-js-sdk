@@ -283,15 +283,36 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * when switching current breakout sessions, need clear the members first
+   * @param {Object} session
+   * @returns {void}
+   * @private
+   * @memberof Members
+   */
+  clearMembers(session?: object) {
+    this.membersCollection.reset();
+    Trigger.trigger(
+      this,
+      {
+        file: 'members',
+        function: 'clearMembers',
+      },
+      EVENT_TRIGGERS.MEMBERS_CLEAR,
+      {session}
+    );
+  }
+
+  /**
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
    * @param {Object} payload.participants
+   * @param {Object} session
    * @returns {undefined}
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object}) {
+  locusParticipantsUpdate(payload: {participants: object}, session?: object) {
     if (payload) {
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
@@ -308,6 +329,7 @@ export default class Members extends StatelessWebexPlugin {
         {
           delta,
           full,
+          session,
         }
       );
     }
