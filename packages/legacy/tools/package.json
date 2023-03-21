@@ -1,0 +1,71 @@
+{
+  "name": "@webex/legacy-tools",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "type": "commonjs",
+  "main": "./dist/module/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": "./dist/module/index.js",
+    "./cli": "./dist/cli/index.js",
+    "./docs": "./dist/docs/metadata/index.api.json"
+  },
+  "bin": {
+    "webex-legacy-tools": "./dist/cli/index.js"
+  },
+  "files": [
+    "./static"
+  ],
+  "scripts": {
+    "build": "yarn build:src && yarn build:docs",
+    "build:docs": "yarn build:docs:metadata && yarn build:docs:markdown",
+    "build:docs:metadata": "api-extractor run -c ./api-extractor.config.json",
+    "build:docs:markdown": "api-documenter markdown --input-folder ./dist/docs/metadata --output-folder ./dist/docs/markdown",
+    "build:src": "yarn build:src:module && yarn build:src:cli",
+    "build:src:module": "tsc",
+    "build:src:cli": "node ./esbuild.config.js",
+    "clean": "yarn clean:coverage && yarn clean:dist",
+    "clean:coverage": "rimraf ./test/coverage",
+    "clean:dist": "rimraf ./dist",
+    "start": "node ./dist/cli/index.js",
+    "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
+    "test:coverage": "nyc node ./jasmine.config.js test --integration --silent",
+    "test:coverage:report": "nyc --reporter=lcov yarn test:coverage",
+    "test:integration": "node ./jasmine.config.js test --integration",
+    "test:style": "eslint ./src/**/*.*",
+    "test:syntax": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@microsoft/api-documenter": "^7.21.5",
+    "@microsoft/api-extractor": "^7.34.4",
+    "@types/babel__core": "^7",
+    "@types/eslint": "^8",
+    "@types/fs-extra": "^11",
+    "@types/jasmine": "^4",
+    "@webex/api-extractor-config": "workspace:^",
+    "@webex/esbuild-config": "workspace:^",
+    "@webex/eslint-config": "workspace:^",
+    "@webex/jasmine-config": "workspace:^",
+    "@webex/nyc-config": "workspace:^",
+    "@webex/typescript-config": "workspace:^",
+    "esbuild": "^0.17.11",
+    "eslint": "^8.35.0",
+    "jasmine": "^4.5.0",
+    "nyc": "^15.1.0",
+    "rimraf": "^4.1.2",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "@babel/core": "^7.17.10",
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/cli-tools": "workspace:^",
+    "fs-extra": "^11.1.0",
+    "glob": "^9.3.0",
+    "yargs": "^16.2.0"
+  }
+}

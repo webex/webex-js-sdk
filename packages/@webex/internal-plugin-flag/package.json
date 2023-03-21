@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-flag",
-  "version": "2.44.1",
+  "version": "2.46.0",
   "description": "",
   "license": "MIT",
   "author": "Saurabh Jain <saurjai3@cisco.com>",
@@ -15,10 +15,11 @@
     "node": ">=14"
   },
   "scripts": {
-    "build": "yarn build:source",
-    "build:source": "webex-build-legacy -jtm",
-    "static": "yarn static:lint",
-    "static:lint": "eslint ./src/**/*.*"
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "jest"
   },
   "browserify": {
     "transform": [
@@ -39,9 +40,11 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@webex/babel-config-legacy": "workspace:^",
-    "@webex/build-legacy": "workspace:^",
     "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "eslint": "^8.24.0",
+    "jest": "^29.5.0",
     "prettier": "^2.7.1"
   }
 }
