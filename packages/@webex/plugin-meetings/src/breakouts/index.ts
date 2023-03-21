@@ -38,7 +38,7 @@ const Breakouts = WebexPlugin.extend({
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
     editLock: 'object', // appears when getBreakout info editlock = true
-    intervalID: 0,
+    intervalID: 'number',
   },
 
   children: {
@@ -582,7 +582,7 @@ const Breakouts = WebexPlugin.extend({
    */
   keepEditLockAlive() {
     if (this.editLock && !!this.editLock.token) {
-      const ttl = this.editLock.ttl < 30 ? 30 : this.editLock.ttl;
+      const ttl = this.editLock.ttl < 30 ? BREAKOUTS.DEFAULT_TTL : this.editLock.ttl;
       this.intervalID = setInterval(() => {
         this.request({
           method: HTTP_VERBS.PUT,
