@@ -1141,7 +1141,7 @@ export default class Meetings extends WebexPlugin {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );
-        throw new Error('Failed to sync meetings');
+        throw new Error(error);
       });
   }
 

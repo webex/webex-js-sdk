@@ -23,7 +23,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         LoggerProxy.logger.error(
           `Meetings:request#getActiveMeetings --> failed to get locus details, ${error}`
         );
-        throw new Error('Failed to get locus details');
+        throw new Error(error);
       });
   }
 
@@ -72,7 +72,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
               LoggerProxy.logger.error(
                 `Meetings:request#determineRedirections --> failed to get locus details from url: ${url}, reason: ${error}`
               );
-              throw new Error('Failed to get locus details');
+              throw new Error(error);
             })
         )
       ).then(() => Promise.resolve(responseBody));
