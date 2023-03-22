@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-authorization-browser",
-  "version": "2.46.0",
+  "version": "2.47.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -36,6 +36,7 @@
     "@webex/storage-adapter-local-storage": "workspace:^",
     "@webex/storage-adapter-spec": "workspace:^",
     "@webex/webex-core": "workspace:^",
+    "jose": "^4.13.1",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
   }

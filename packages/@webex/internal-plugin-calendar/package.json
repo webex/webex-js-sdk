@@ -19,7 +19,7 @@
       "envify"
     ]
   },
-  "version": "2.46.0",
+  "version": "2.47.0",
   "devDependencies": {
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",

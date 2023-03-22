@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.47.0](https://github.com/webex/webex-js-sdk/compare/v2.46.0...v2.47.0) (2023-03-21)
+
+
+### Features
+
+* added create jwt method in authorization ([#2682](https://github.com/webex/webex-js-sdk/issues/2682)) ([ec242d6](https://github.com/webex/webex-js-sdk/commit/ec242d68a5d6846bb7852915cd9ae6500a606a6e))
+
 ## [2.46.0](https://github.com/webex/webex-js-sdk/compare/v2.45.0...v2.46.0) (2023-03-20)
 
 
