@@ -1,7 +1,12 @@
 const glob = require('glob');
 const path = require('path');
 
-const { Package, PackageFile } = require('@webex/legacy-tools');
+const {
+  Jest,
+  Mocha,
+  Package,
+  PackageFile,
+} = require('@webex/legacy-tools');
 
 describe('Package', () => {
   describe('instance', () => {
@@ -109,6 +114,154 @@ describe('Package', () => {
       it('should resolve to itself', () => pack.build(config)
         .then((result) => {
           expect(result).toBe(pack);
+        }));
+    });
+
+    describe('test()', () => {
+      let config;
+
+      const spies = {};
+
+      const results = {
+        Package: {
+          getFiles: ['file1.js', 'file2.js', 'file3.js'],
+        },
+      };
+
+      beforeEach(() => {
+        config = {
+          integration: true,
+          unit: true,
+        };
+
+        spies.Package = {
+          getFiles: spyOn(Package, 'getFiles').and.resolveTo(results.Package.getFiles),
+        };
+
+        spies.path = {
+          join: spyOn(path, 'join').and.callThrough(),
+        };
+
+        spies.Jest = {
+          test: spyOn(Jest, 'test').and.resolveTo(undefined),
+        };
+
+        spies.Mocha = {
+          test: spyOn(Mocha, 'test').and.resolveTo(undefined),
+        };
+      });
+
+      it('should attempt to join the package root with the test directory', () => pack.test(config)
+        .then(() => {
+          expect(spies.path.join.calls.all()[0].args).toEqual([
+            pack.data.packageRoot,
+            Package.CONSTANTS.TEST_DIRECTORIES.ROOT,
+          ]);
+        }));
+
+      it('should attempt to get files within the unit test directory if unit is provided', () => {
+        const testDirectory = path.join(
+          pack.data.packageRoot,
+          Package.CONSTANTS.TEST_DIRECTORIES.ROOT,
+        );
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
+              location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.UNIT),
+              pattern: Package.CONSTANTS.PATTERNS.TEST,
+            }]);
+          });
+      });
+
+      it('should not attempt to get files within the unit test directory if unit is not provided', () => {
+        const testDirectory = path.join(
+          pack.data.packageRoot,
+          Package.CONSTANTS.TEST_DIRECTORIES.ROOT,
+        );
+
+        config.unit = false;
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Package.getFiles).toHaveBeenCalledTimes(1);
+            expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
+              location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
+              pattern: Package.CONSTANTS.PATTERNS.TEST,
+            }]);
+          });
+      });
+
+      it('should attempt to get files within the integration test directory if integration is provided', () => {
+        const testDirectory = path.join(
+          pack.data.packageRoot,
+          Package.CONSTANTS.TEST_DIRECTORIES.ROOT,
+        );
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Package.getFiles.calls.all()[1].args).toEqual([{
+              location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
+              pattern: Package.CONSTANTS.PATTERNS.TEST,
+            }]);
+          });
+      });
+
+      it('should not attempt to get files within the integration test directory if integration is not provided', () => {
+        const testDirectory = path.join(
+          pack.data.packageRoot,
+          Package.CONSTANTS.TEST_DIRECTORIES.ROOT,
+        );
+
+        config.integration = false;
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Package.getFiles).toHaveBeenCalledTimes(1);
+            expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
+              location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.UNIT),
+              pattern: Package.CONSTANTS.PATTERNS.TEST,
+            }]);
+          });
+      });
+
+      it('should call "Jest.test()" with files if the located unit files are greater than 0', () => pack.test(config)
+        .then(() => {
+          expect(spies.Jest.test).toHaveBeenCalledTimes(1);
+          expect(spies.Jest.test.calls.all()[0].args).toEqual([{
+            files: results.Package.getFiles,
+          }]);
+        }));
+
+      it('should call "Jest.test()" with files if the located unit files 0 or less', () => {
+        spies.Package.getFiles.and.resolveTo([]);
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Jest.test).toHaveBeenCalledTimes(0);
+          });
+      });
+
+      it('should call "Mocha.test()" with files if the located unit files are greater than 0', () => pack.test(config)
+        .then(() => {
+          expect(spies.Mocha.test).toHaveBeenCalledTimes(1);
+          expect(spies.Jest.test.calls.all()[0].args).toEqual([{
+            files: results.Package.getFiles,
+          }]);
+        }));
+
+      it('should call "Mocha.test()" with files if the located unit files 0 or less', () => {
+        spies.Package.getFiles.and.resolveTo([]);
+
+        return pack.test(config)
+          .then(() => {
+            expect(spies.Mocha.test).toHaveBeenCalledTimes(0);
+          });
+      });
+
+      it('should return itself', () => pack.test(config)
+        .then((self) => {
+          expect(self).toBe(pack);
         }));
     });
   });

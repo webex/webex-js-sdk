@@ -17,9 +17,10 @@
   "scripts": {
     "build": "yarn build:src",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
-    "test": "yarn test:style && yarn test:unit",
+    "test": "yarn test:style && yarn test:unit && yarn test:integration",
+    "test:integration": "webex-legacy-tools test --integration",
     "test:style": "eslint ./src/**/*.*",
-    "test:unit": "jest"
+    "test:unit": "webex-legacy-tools test --unit"
   },
   "browserify": {
     "transform": [
@@ -39,12 +40,13 @@
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
+    "@types/mocha": "^10",
     "@webex/babel-config-legacy": "workspace:^",
     "@webex/eslint-config-legacy": "workspace:^",
     "@webex/jest-config-legacy": "workspace:^",
     "@webex/legacy-tools": "workspace:^",
     "eslint": "^8.24.0",
-    "jest": "^29.5.0",
+    "mocha": "^10.2.0",
     "prettier": "^2.7.1"
   }
 }
