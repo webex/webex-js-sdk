@@ -880,12 +880,9 @@ describe('plugin-meetings', () => {
         });
 
         breakouts.keepEditLockAlive();
-        clock.tick(25001);
+        clock.tick(24099);
 
-        assert.calledOnceWithExactly(webex.request, {
-          method: 'PUT',
-          uri: 'url/editlock/token'
-        });
+        assert.notCalled(webex.request);
 
         clock.restore();
       });
@@ -914,6 +911,31 @@ describe('plugin-meetings', () => {
 
         clock.restore();
       });
+
+      it('keep edit lock, do not call until reached ttl', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(14999);
+
+        assert.notCalled(webex.request);
+
+        clock.tick(15000);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
     });
     
     describe('#assign', () => {
