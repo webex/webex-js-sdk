@@ -24,7 +24,7 @@ import CaptchaError from '../common/errors/captcha-error';
 
 const MeetingUtil: any = {};
 
-MeetingUtil.parseLocusJoin = (response) => {
+MeetingUtil.parseLocusJoin = (meeting, response) => {
   const parsed: any = {};
 
   // First todo: add check for existance
@@ -33,6 +33,7 @@ MeetingUtil.parseLocusJoin = (response) => {
   parsed.locusUrl = parsed.locus.url;
   parsed.locusId = parsed.locus.url.split('/').pop();
   parsed.selfId = parsed.locus.self.id;
+  parsed.controls = parsed.locus.controls;
 
   // we need mediaId before making roap calls
   parsed.mediaConnections.forEach((mediaConnection) => {
@@ -40,6 +41,11 @@ MeetingUtil.parseLocusJoin = (response) => {
       parsed.mediaId = mediaConnection.mediaId;
     }
   });
+
+  // We need to confirm whether to call queryPreAssignments
+  if (parsed.controls.breakout && parsed.controls.breakout.hasBreakoutPreAssignments) {
+    meeting.breakouts.queryPreAssignments();
+  }
 
   return parsed;
 };
@@ -120,7 +126,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
         },
       });
 
-      return MeetingUtil.parseLocusJoin(res);
+      return MeetingUtil.parseLocusJoin(meeting, res);
     });
 };
 

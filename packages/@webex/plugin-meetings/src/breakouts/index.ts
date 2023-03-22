@@ -26,6 +26,7 @@ const Breakouts = WebexPlugin.extend({
     allowBackToMain: 'boolean', // only present when in a breakout session
     delayCloseTime: 'number', // appears once breakouts start
     enableBreakoutSession: 'boolean', // appears from the moment you enable breakouts
+    hasBreakoutPreAssignments: 'boolean', // appears from the moment you enable breakouts
     groupId: 'string', // appears from the moment you enable breakouts
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
@@ -533,6 +534,23 @@ const Breakouts = WebexPlugin.extend({
         ],
       },
     });
+  },
+
+  /**
+   * The pre-assignments need to be queried when "hasBreakoutPreAssignments" is true
+   * @returns {void}
+   */
+  queryPreAssignments() {
+    this.webex
+      .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
+      .then((result) => {
+        if (result.body?.groups) {
+          this.set('groups', result.body.groups);
+        }
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
+      });
   },
 });
 
