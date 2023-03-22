@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.51](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.50...v3.0.0-beta.51) (2023-03-21)
+
+
+### Features
+
+* assign attendees to bo session ([#2668](https://github.com/webex/webex-js-sdk/issues/2668)) ([278491d](https://github.com/webex/webex-js-sdk/commit/278491d58b9b3a437cf5c6d7ee0814ee9cc3410e))
+
+## [3.0.0-beta.50](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.49...v3.0.0-beta.50) (2023-03-21)
+
+
+### Bug Fixes
+
+* **metrics:** remove org_id, client_id and user_id tags from operational metrics ([#2681](https://github.com/webex/webex-js-sdk/issues/2681)) ([372840d](https://github.com/webex/webex-js-sdk/commit/372840de69c8d42bd40e5d97557e2e3c04ec585f))
+
 ## [3.0.0-beta.49](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.48...v3.0.0-beta.49) (2023-03-17)
 
 
