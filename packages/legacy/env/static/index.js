@@ -4,3 +4,4 @@ const {config} = require('dotenv');
 const rootDirectory = workspacesRoot();
 
 config({path: `${rootDirectory}/.env`});
+config({path: `${rootDirectory}/.env.default`});

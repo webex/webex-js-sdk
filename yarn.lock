@@ -5167,7 +5167,6 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
-    jest: ^29.5.0
     lodash: ^4.17.21
     mocha: ^10.2.0
     prettier: ^2.7.1
