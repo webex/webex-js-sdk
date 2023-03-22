@@ -927,7 +927,7 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(webex.request);
 
-        clock.tick(15000);
+        clock.tick(1);
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
           uri: 'url/editlock/token'
