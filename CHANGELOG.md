@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.48.0](https://github.com/webex/webex-js-sdk/compare/v2.47.0...v2.48.0) (2023-03-22)
+
+
+### Features
+
+* **legacy/tools:** elevate testing ([#2692](https://github.com/webex/webex-js-sdk/issues/2692)) ([d9fa6ef](https://github.com/webex/webex-js-sdk/commit/d9fa6efcca9b67783e0b71ae0c79ef64f9a9eb78))
+
 ## [2.47.0](https://github.com/webex/webex-js-sdk/compare/v2.46.0...v2.47.0) (2023-03-21)
 
 
