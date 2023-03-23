@@ -2112,6 +2112,11 @@ function setupMultistreamEventListeners(meeting) {
     stopForcedScreenShareViewLayout(meeting);
   });
 
+  meeting.on('meeting:reconnectionStarting', () => {
+    // User should manually restart sharing after reconnection, so stop sharing here.
+    this.stopScreenShare();
+  });
+
   meetingsWithMultistreamListeners[meeting.id] = true;
 }
 
