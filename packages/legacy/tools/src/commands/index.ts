@@ -1,9 +1,7 @@
 import build from './build';
-
-export type {
-  BuildOptions,
-} from './build';
+import runTests from './run-tests';
 
 export {
   build,
+  runTests,
 };

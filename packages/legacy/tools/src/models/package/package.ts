@@ -1,10 +1,12 @@
 import glob from 'glob';
 import path from 'path';
 
+import { Jest, Mocha } from '../../utils';
+
 import PackageFile from '../package-file';
 
 import CONSTANTS from './package.constants';
-import type { BuildConfig, Data } from './package.types';
+import type { BuildConfig, Data, TestConfig } from './package.types';
 
 /**
  * The Package class, which represents an entire local JavaScript package.
@@ -40,6 +42,10 @@ class Package {
 
   /**
    * Build this Package instance.
+   *
+   * @remarks
+   * This will require the following localized dependencies to build:
+   * `babel`-[`@babel/*`, `babel.config-json`]
    *
    * @param config - Build configuration Object.
    * @returns - Promise resolving to this Package instance.
@@ -82,6 +88,47 @@ class Package {
   }
 
   /**
+   * Test this Package instance.
+   *
+   * @remarks
+   * This will require the following localized dependencies for each type of
+   * test: `unit`-[`jest`, `jest.config.js`]::`integration`-[`@babel/*`, `babel.config.json`]
+   *
+   * @param config - Test configuration Object.
+   * @returns - Promise resolving to this Package instance.
+   */
+  public test(config: TestConfig): Promise<this> {
+    const testDirectory = path.join(this.data.packageRoot, CONSTANTS.TEST_DIRECTORIES.ROOT);
+
+    const unitTestFileCollector = config.unit
+      ? Package.getFiles({
+        location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.UNIT),
+        pattern: CONSTANTS.PATTERNS.TEST,
+      })
+      : Promise.resolve([]);
+
+    const integrationTestFileCollector = config.integration
+      ? Package.getFiles({
+        location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
+        pattern: CONSTANTS.PATTERNS.TEST,
+      })
+      : Promise.resolve([]);
+
+    return Promise.all([unitTestFileCollector, integrationTestFileCollector])
+      .then(async ([unitFiles, integrationFiles]) => {
+        if (unitFiles.length > 0) {
+          await Jest.test({ files: unitFiles });
+        }
+
+        if (integrationFiles.length > 0) {
+          await Mocha.test({ files: integrationFiles });
+        }
+
+        return this;
+      });
+  }
+
+  /**
    * Get an Array of file paths based on a provided pattern and location.
    *
    * @param options - Options for getting files.
@@ -91,6 +138,10 @@ class Package {
     const target = path.join(location, pattern);
 
     return glob.glob(target);
+  }
+
+  public static get CONSTANTS() {
+    return CONSTANTS;
   }
 }
 

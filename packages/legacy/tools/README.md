@@ -67,6 +67,9 @@ const {File, Package} = require('@webex/legacy-tools');
 // Build all package files.
 Package.build(arguments);
 
+// Test package files.
+Package.test(arguments);
+
 // Build a specific file.
 File.build(arguments);
 ```

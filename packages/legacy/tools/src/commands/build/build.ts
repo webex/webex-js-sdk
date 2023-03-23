@@ -1,9 +1,9 @@
-import { CommandsCommand } from '@webex/cli-tools';
+import type { CommandsCommand } from '@webex/cli-tools';
 
 import { Package } from '../../models';
+import type { PackageBuildConfig } from '../../models';
 
 import CONSTANTS from './build.constants';
-import type { Options } from './build.types';
 
 /**
  * The build Command configuration Object. This Command is used to build legacy
@@ -26,7 +26,7 @@ import type { Options } from './build.types';
  *
  * @public
  */
-const build: CommandsCommand<Options> = {
+const build: CommandsCommand<PackageBuildConfig> = {
   /**
    * Configuration Object for this build Command configuration.
    */
@@ -39,7 +39,7 @@ const build: CommandsCommand<Options> = {
    * @param options - Options provided from the CLI interface.
    * @returns - Promise that resolves once the process is complete.
    */
-  handler: (options: Options) => {
+  handler: (options: PackageBuildConfig) => {
     const pack = new Package();
 
     return pack.build(options)
