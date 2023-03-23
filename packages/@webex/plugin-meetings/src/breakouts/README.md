@@ -143,6 +143,15 @@ breakouts.getBreakout(editlock?)
 // Enable breakout sessions
 breakouts.enable()
 
+// Enable and lock breakout 
+breakouts.enableAndLockBreakout()
+
+// Lock breakout
+breakouts.lockBreakout()
+
+// Unlock breakout
+breakouts.unLockEditBreakout()
+
 // Disable breakout sessions
 breakouts.disable()
 
