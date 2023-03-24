@@ -22,7 +22,7 @@ describe('webex-core', () => {
       );
 
       describe('#downscope()', () => {
-        it('retrieves an access token with a subset of scopes', () => {
+        it('retrieves access token with a subset of scopes', () => {
           webex = new WebexCore({credentials: user.token});
           const allScope = webex.credentials.config.scope;
           const apiScope = filterScope('spark:kms', allScope);

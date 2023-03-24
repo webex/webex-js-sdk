@@ -80,7 +80,7 @@ describe('plugin-conversation', function () {
           email = makeEmailAddress();
         });
 
-        it('invites the other user', () =>
+        it('invites other user', () =>
           webex.internal.conversation.create({participants: [email]}).then((conversation) => {
             assert.isConversation(conversation);
             assert.isOneOnOneConversation(conversation);

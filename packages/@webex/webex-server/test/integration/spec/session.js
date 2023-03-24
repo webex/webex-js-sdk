@@ -172,6 +172,7 @@ describe('/api/v1/session/invoke*', () => {
         '../../../../',
         'test-helper-server/static/sample-image-small-one.png'
       );
+      
       let conversation;
 
       return testUsers.create({count: 3}).then(([user, ...users]) =>

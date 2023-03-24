@@ -37,7 +37,7 @@ nodeOnly(describe)('plugin-authorization-node', () => {
     });
 
     describe('#requestAccessTokenFromJwt', () => {
-      it('exchanges a JWT for an appid access token', () => {
+      it('exchanges JWT for an appid access token', () => {
         const userId = uuid.v4();
         const displayName = `test-${userId}`;
 
