@@ -53,7 +53,7 @@ describe('Encryption', function () {
   after(() => webex && webex.internal.mercury.disconnect());
 
   describe('#decryptBinary()', () => {
-    it('decrypts a binary file', () =>
+    it('decrypts binary file', () =>
       webex.internal.encryption.encryptBinary(FILE).then(({scr, cdata}) => {
         scr.loc = 'file:///file.enc';
 

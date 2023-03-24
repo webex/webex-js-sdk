@@ -33,7 +33,6 @@ describe('webex-core', () => {
             },
           },
         });
-
         assert.equal(webex.config.credentials.authorizeUrl, authorizeUrl);
       });
     });
