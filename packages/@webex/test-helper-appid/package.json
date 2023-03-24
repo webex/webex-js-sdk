@@ -23,7 +23,7 @@
     "@webex/test-helper-make-local-url": "workspace:^",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "safe-buffer": "^5.2.0",
     "uuid": "^3.3.2",
     "whatwg-fetch": "^2.0.4"
