@@ -41,6 +41,12 @@ The following are methods available to attendees of a meeting:
 ```javascript
 // Join a breakout
 // This can be used when the participant is in the main session or in a different breakout session
+// when call join function, should send message to metrics
+/* Breakout Sessions created during meetings allow participants to move into smaller breakout sessions and then 
+   return to the main meeting at a later time. These moves can be initiated by the user or by the meeting 
+   host/co-host.  The goal of this metric is to track these moves in production by instrumenting them for 
+   analysis from the end user's experience perspective.
+*/
 breakout.join();
 
 // Leave a breakout
