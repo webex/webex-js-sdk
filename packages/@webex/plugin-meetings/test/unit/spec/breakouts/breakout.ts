@@ -6,7 +6,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
     let breakout;
