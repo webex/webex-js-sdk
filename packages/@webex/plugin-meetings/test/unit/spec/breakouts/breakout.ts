@@ -3,9 +3,10 @@ import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import Members from '@webex/plugin-meetings/src/members';
 import MockWebex from '@webex/test-helper-mock-webex';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
     let breakout;
@@ -21,6 +22,15 @@ describe('plugin-meetings', () => {
       breakout.groupId = 'groupId';
       breakout.sessionId = 'sessionId';
       breakout.url = 'url';
+      breakout.collection = {
+        parent: {
+          meeting: {
+            deref() {
+              return 'activeMeetingId';
+            },
+          },
+        },
+      };
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -44,6 +54,11 @@ describe('plugin-meetings', () => {
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+      it('send metrics as expected', async () => {
+        Metrics.postEvent = sinon.stub();
+        await breakout.join();
+        assert.calledTwice(Metrics.postEvent);
       });
     });
 

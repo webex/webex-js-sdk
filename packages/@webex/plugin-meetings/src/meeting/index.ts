@@ -552,7 +552,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.id = uuid.v4();
     /**
-     * Correlation ID used for network tracking of meeting join
+     * Correlation ID used for network tracking of meeting
      * @instance
      * @type {String}
      * @readonly
@@ -609,7 +609,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.breakouts = new Breakouts({}, {parent: this.webex});
+    this.breakouts = new Breakouts({meeting: new WeakRef(this)}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */

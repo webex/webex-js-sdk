@@ -39,6 +39,7 @@ const Breakouts = WebexPlugin.extend({
     groups: 'array', // appears when create breakouts
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
+    meeting: 'object',
   },
 
   children: {
@@ -255,6 +256,7 @@ const Breakouts = WebexPlugin.extend({
     forEach(breakouts, (breakout: typeof Breakout) => {
       // eslint-disable-next-line no-param-reassign
       breakout.url = this.url;
+      breakout.parent = this;
     });
 
     this.breakouts.set(Object.values(breakouts));
