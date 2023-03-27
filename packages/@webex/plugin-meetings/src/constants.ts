@@ -11,6 +11,7 @@ export const ANSWER = 'answer';
 
 export const CALL = 'call';
 export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
 export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
@@ -93,6 +94,7 @@ export const _JOINED_ = 'JOINED';
 
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
+export const _MOVED_ = 'MOVED';
 
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';

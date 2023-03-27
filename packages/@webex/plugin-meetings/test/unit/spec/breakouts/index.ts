@@ -190,16 +190,6 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
       });
-
-      it('clear current session members if session switched', () => {
-        breakouts.currentBreakoutSession.clearMembers = sinon.stub();
-        breakouts.updateBreakout({
-          sessionId: 'sessionId2',
-          groupId: 'groupId',
-          sessionType: 'sessionType',
-        });
-        assert.calledOnceWithExactly(breakouts.currentBreakoutSession.clearMembers)
-      });
     });
 
     describe('#updateBreakoutSessions', () => {
@@ -277,20 +267,13 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#handleCurrentBreakoutRosterUpdated', () => {
-      it('do nothing if not update current breakout session', () => {
-        breakouts.handleCurrentBreakoutRosterUpdated({breakout: {sessionId: 'sessionId2'}});
-      });
-
-      it('calls parse roster if it update to current session', () => {
-
-        breakouts.currentBreakoutSession.parseRoster = sinon.stub();
-
-        const participants = {};
-        const params = {breakout: {sessionId: 'sessionId', groupId: 'groupId'}, participants};
-
-        breakouts.handleCurrentBreakoutRosterUpdated(params);
-        assert.calledOnceWithExactly(breakouts.currentBreakoutSession.parseRoster, {participants});
+    describe('#isActiveBreakout', () => {
+      it('return is current is breakout with active status', () => {
+        assert.equal(breakouts.isActiveBreakout, false);
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.BREAKOUT);
+        assert.equal(breakouts.isActiveBreakout, false);
+        breakouts.set('status', BREAKOUTS.STATUS.OPEN);
+        assert.equal(breakouts.isActiveBreakout, true);
       });
     });
 

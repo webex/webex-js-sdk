@@ -212,33 +212,26 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: url1});
         members.membersCollection.setAll(fakeMembersCollection);
         Trigger.trigger = sinon.stub();
-        const fakeSession = {
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-        }
-        members.clearMembers(fakeSession);
+        members.clearMembers();
         assert.deepEqual(members.membersCollection.members, {});
         assert.calledWith(Trigger.trigger, members, {
           file: 'members',
           function: 'clearMembers',
-        }, EVENT_TRIGGERS.MEMBERS_CLEAR, {session: fakeSession})
+        }, EVENT_TRIGGERS.MEMBERS_CLEAR, {})
       });
     });
     describe('#locusParticipantsUpdate', () => {
       it('should send member update event with session info', () => {
         const members = createMembers({url: url1});
         Trigger.trigger = sinon.stub();
-        const fakeSession = {
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-        };
         const fakePayload = {
           participants: {
             forEach: sinon.stub(),
           },
+          isReplace: true,
         };
 
-        members.locusParticipantsUpdate(fakePayload, fakeSession);
+        members.locusParticipantsUpdate(fakePayload);
 
         assert.calledWith(Trigger.trigger, members, {
           file: 'members',
@@ -246,7 +239,7 @@ describe('plugin-meetings', () => {
         }, EVENT_TRIGGERS.MEMBERS_UPDATE, {
           delta: {added: [], updated: []},
           full: {},
-          session: fakeSession
+          isReplace: true,
         })
       });
     });

@@ -516,6 +516,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
+  webexMeetingId: string;
 
   namespace = MEETINGS;
 
@@ -1826,11 +1827,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusParticipantsListener() {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS, (payload) => {
-      if (payload.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT) {
-        this.breakouts.handleCurrentBreakoutRosterUpdated(payload);
-      } else {
-        this.members.locusParticipantsUpdate(payload);
-      }
+      this.members.locusParticipantsUpdate(payload);
     });
   }
 

@@ -2971,27 +2971,6 @@ function viewBreakouts(event) {
     appendSession(tdRequested, breakoutSession.requested);
 
     tdControls.appendChild(createJoinSessionButton(breakoutSession));
-
-    // members prop of main breakout session should register the members:update event
-    // otherwise 'members:update' event will not be triggered
-    const {isMain, members: {_events, membersCollection}, members} = breakoutSession
-    if(isMain && (!_events || !_events['members:update'])){
-      members.on('members:update', (res) => {
-        console.log('member update', res);
-        const newMembers = membersCollection.getAll();
-        const oldMembers = meeting.members.membersCollection.getAll();
-        for( let a in newMembers){
-          if(oldMembers[a]){
-            const name = oldMembers[a].name;
-            meeting.members.membersCollection.set(a, {...newMembers[a], name});
-          }else{
-            meeting.members.membersCollection.set(a, newMembers[a]);
-          }
-        }
-        viewParticipants();
-        populateStageSelector();
-      });
-    }
   });
   const createCurrentSessionMembersTable = () => {
     if (!meeting.breakouts || !meeting.breakouts.currentBreakoutSession || !meeting.breakouts.currentBreakoutSession.members) {
@@ -3033,10 +3012,6 @@ function viewBreakouts(event) {
   selfIsHost && hasBreakoutSessions && currentBreakoutInformationEl.appendChild(createBroadcastDiv(meeting.breakouts.currentBreakoutSession));
   breakoutTable.innerHTML = '';
   breakoutTable.appendChild(currentBreakoutInformationEl);
-
-  const currentBOSessionMembers = createCurrentSessionMembersTable();
-  currentBOSessionMembers && breakoutTable.appendChild(currentBOSessionMembers);
-
   const breakoutTableTitle = document.createElement('h3');
 
   breakoutTableTitle.innerText = 'Other Sessions';

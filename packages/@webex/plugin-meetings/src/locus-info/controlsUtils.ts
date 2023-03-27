@@ -119,4 +119,22 @@ ControlsUtils.getId = (controls: any) => {
   return null;
 };
 
+/**
+ * Extract the id from the record controls object
+ * @param {LocusControls} oldControls
+ * @param {LocusControls} controls
+ * @returns {String|null}
+ */
+ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
+  // no breakout case
+  if (!oldControls?.breakout || !controls?.breakout) {
+    return false;
+  }
+
+  return (
+    oldControls.breakout.groupId !== controls.breakout.groupId ||
+    oldControls.breakout.sessionId !== controls.breakout.sessionId
+  );
+};
+
 export default ControlsUtils;

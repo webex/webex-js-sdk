@@ -54,6 +54,19 @@ const Breakouts = WebexPlugin.extend({
         return this.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
       },
     },
+    isActiveBreakout: {
+      deps: ['sessionType', 'status'],
+      /**
+       * Returns true if the breakout status is active
+       * @returns {boolean}
+       */
+      fn() {
+        return (
+          this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+          (this.status === BREAKOUTS.STATUS.OPEN || this.status === BREAKOUTS.STATUS.CLOSING)
+        );
+      },
+    },
     breakoutGroupId: {
       deps: ['groups'],
       /**
@@ -163,20 +176,7 @@ const Breakouts = WebexPlugin.extend({
 
     session.parseRoster(locus);
   },
-  /**
-   * update current joined breakout session's roster list
-   * @param {Object} locus // locus object
-   * @returns {void}
-   */
-  handleCurrentBreakoutRosterUpdated({breakout, participants}) {
-    const sessionId = breakout?.sessionId;
-    const groupId = breakout?.groupId;
-    if (this.sessionId !== sessionId || this.groupId !== groupId) {
-      return;
-    }
 
-    this.currentBreakoutSession.parseRoster({participants});
-  },
   /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}
@@ -216,10 +216,6 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   updateBreakout(params) {
-    if (this.sessionId !== params.sessionId || this.groupId !== params.groupId) {
-      this.currentBreakoutSession.clearMembers();
-    }
-
     this.set(params);
     this.set('groups', params.groups);
 

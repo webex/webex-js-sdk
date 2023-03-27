@@ -11,6 +11,7 @@ import sinon from 'sinon';
 import uuid from 'uuid';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
@@ -478,7 +479,7 @@ describe('plugin-meetings', () => {
             it('tests the sync meeting calls for not existing meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+              assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
               assert.calledOnce(initialSetup);
               assert.calledOnce(webex.meetings.create);
               assert.calledWith(webex.meetings.request.getActiveMeetings);
@@ -739,7 +740,7 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
@@ -769,7 +770,7 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
@@ -794,7 +795,7 @@ describe('plugin-meetings', () => {
               eventType: test1,
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
@@ -826,7 +827,7 @@ describe('plugin-meetings', () => {
 
           it('should not try to match USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(true));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 3);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -843,7 +844,7 @@ describe('plugin-meetings', () => {
           });
           it('should try to match non-USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(false));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -1366,6 +1367,160 @@ describe('plugin-meetings', () => {
           LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED,
           EVENT_TRIGGERS.MEETING_SELF_REQUESTED_TO_UNMUTE
         );
+      });
+    });
+
+    describe('#isNeedHandleMainLocus', () => {
+      let meeting;
+      let newLocus;
+      beforeEach(() => {
+        meeting = {
+          controls: {},
+          self: {},
+        };
+        newLocus = {
+          controls: {},
+          self: {},
+        }
+      });
+      afterEach(() => {
+        sinon.restore();
+      });
+      it('check normal case will return true', () => {
+        sinon.stub(webex.meetings.meetingCollection, 'getActiveBreakoutLocus').returns(null);
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, true);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> this is a normal main session locusDTO update case'
+        );
+      });
+
+      it('check self joined and joined on this device, return true', () => {
+        sinon.stub(webex.meetings.meetingCollection, 'getActiveBreakoutLocus').returns(null);
+        newLocus.self.state = 'JOINED';
+        sinon.stub(MeetingsUtil, 'joinedOnThisDevice').returns(true);
+
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, true);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self this device shown as JOINED in the main session'
+        );
+      });
+
+      it('check self joined and joined on this device, return false', () => {
+        sinon.stub(webex.meetings.meetingCollection, 'getActiveBreakoutLocus').returns({joinedWith: {replaces: [{
+              replaceAt: '2023-03-27T02:17:02.506Z',
+            }]}});
+        newLocus.self.state = 'JOINED';
+        sinon.stub(MeetingsUtil, 'joinedOnThisDevice').returns(true);
+        sinon.stub(MeetingsUtil, 'getThisDevice').returns({
+          replaces: [{
+            replaceAt: '2023-03-27T02:17:01.506Z'
+          }]
+        })
+
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          `Meetings:index#isNeedHandleMainLocus --> this is expired main joined status locus_dto replacedAt 2023-03-27T02:17:01.506Z bo replacedAt 2023-03-27T02:17:02.506Z`
+        );
+      });
+
+      it('check current is in breakout join with this device, return false', () => {
+        sinon.stub(webex.meetings.meetingCollection, 'getActiveBreakoutLocus').returns({
+          joinedWith: {
+            correlationId: '111',
+          },
+        });
+        newLocus.controls.breakout = {url: 'url'};
+        meeting.correlationId = '111';
+
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          `Meetings:index#isNeedHandleMainLocus --> there is active breakout session and joined on this device, and don't need to handle main session: url`
+        );
+      });
+
+      it('check self is moved and removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'MOVED';
+        newLocus.self.removed = true;
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+        );
+      });
+    });
+
+    describe('#isNeedHandleLocusDTO', () => {
+      let meeting;
+      let newLocus;
+      beforeEach(() => {
+        meeting = {
+          controls: {},
+          self: {},
+        };
+        newLocus = {
+          controls: {},
+          self: {},
+        }
+      });
+      afterEach(() => {
+        sinon.restore();
+      });
+      it('initial DTO , joined breakout session, return true', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'BREAKOUT',
+        };
+        newLocus.self.state = 'JOINED';
+        newLocus.fullState = {
+          active: true,
+        };
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(null, newLocus);
+        assert.equal(result, true);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          `Meetings:index#isNeedHandleLocusDTO --> the first breakout session locusDTO active status: true`
+        );
+      });
+      it('others go to check isNeedHandleMainLocus', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'MAIN',
+        };
+        newLocus.self.state = 'JOINED';
+
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, true);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> this is a normal main session locusDTO update case'
+        );
+      });
+      it('joined breakout session, self status is moved, return false', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'BREAKOUT',
+        };
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'MOVED';
+
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, false);
       });
     });
   });

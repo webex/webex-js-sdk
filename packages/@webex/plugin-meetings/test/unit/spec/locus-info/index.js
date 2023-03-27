@@ -504,7 +504,7 @@ describe('plugin-meetings', () => {
             selfIdentity: '123',
             selfId: '2',
             hostId: '3',
-            breakout: undefined,
+            isReplace: undefined,
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
@@ -513,11 +513,6 @@ describe('plugin-meetings', () => {
       });
 
       it('should call with breakout control info', () => {
-        const breakout = {
-          groupId: 'groupId',
-          sessionId: 'sessionId',
-          sessionType: 'sessionType',
-        };
         locusInfo.parsedLocus = {
           controls: {
             record: {
@@ -534,7 +529,7 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({}, breakout);
+        locusInfo.updateParticipants({}, true);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -549,7 +544,7 @@ describe('plugin-meetings', () => {
             selfIdentity: '123',
             selfId: '2',
             hostId: '3',
-            breakout,
+            isReplace: true,
           }
         );
       });
@@ -1493,15 +1488,24 @@ describe('plugin-meetings', () => {
         const fakeBreakout = {
           sessionId: 'sessionId',
           groupId: 'groupId',
-          sessionType: 'MAIN',
         };
 
         fakeLocus.controls = {
           breakout: fakeBreakout
         };
+        locusInfo.controls = {
+          breakout: {
+            sessionId: 'sessionId',
+            groupId: 'groupId',
+          }
+        }
         locusInfo.updateParticipants = sinon.stub();
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, fakeBreakout);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
+
+        fakeBreakout.sessionId = 'sessionId2';
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
       });
     });
 
