@@ -385,6 +385,29 @@ export default class ReconnectionManager {
       'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.'
     );
 
+    const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
+
+    if (wasSharing) {
+      // Stop the share streams if user tried to reconnect
+      this.meeting.setLocalShareTrack(null);
+      this.meeting.isSharing = false;
+      if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
+        this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
+      }
+      this.meeting.mediaProperties.mediaDirection.sendShare = false;
+      Trigger.trigger(
+        this.meeting,
+        {
+          file: 'reconnection-manager/index',
+          function: 'executeReconnection',
+        },
+        EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+        {
+          reason: SHARE_STOPPED_REASON.MEDIA_RECONNECTION,
+        }
+      );
+    }
+
     if (networkDisconnect) {
       try {
         await this.reconnectMercuryWebSocket();
@@ -400,8 +423,6 @@ export default class ReconnectionManager {
         throw error;
       }
     }
-
-    const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     try {
       LoggerProxy.logger.info(

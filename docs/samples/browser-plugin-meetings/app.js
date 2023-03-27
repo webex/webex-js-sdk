@@ -2097,6 +2097,12 @@ function setupMultistreamEventListeners(meeting) {
     updateVideoPanesForActiveSpeaker();
   });
 
+  meeting.on('meeting:stoppedSharingLocal', () => {
+    publishedLocalShareAudioTrack = null;
+    publishedLocalShareVideoTrack = null;
+    meetingStreamsLocalShare.srcObject = null;
+  });
+
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
 
@@ -2110,11 +2116,6 @@ function setupMultistreamEventListeners(meeting) {
 
   meeting.on('meeting:stoppedSharingRemote', () => {
     stopForcedScreenShareViewLayout(meeting);
-  });
-
-  meeting.on('meeting:reconnectionStarting', () => {
-    // User should manually restart sharing after reconnection, so stop sharing here.
-    this.stopScreenShare();
   });
 
   meetingsWithMultistreamListeners[meeting.id] = true;
