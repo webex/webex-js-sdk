@@ -124,8 +124,7 @@ const Breakout = WebexPlugin.extend({
       sessionType: this.sessionType,
     });
   },
-
-  /**
+  /*
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options

@@ -5,7 +5,7 @@ import {BREAKOUTS} from '@webex/plugin-meetings/src/constants';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
-import BreakoutEditLockedError from "@webex/plugin-meetings/src/breakouts/edit-lock-error";
+import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
 
 const getBOResponse = (status: string) => {
   return {
@@ -357,13 +357,13 @@ describe('plugin-meetings', () => {
           enableBreakoutSession: true,
           startTime: 'startTime',
           status: 'active',
-          locusUrl: 'locusUrl'
+          locusUrl: 'locusUrl',
         });
         const payload = {
           breakoutSessions: {
             active: [{sessionId: 'sessionId1'}],
-          }
-        }
+          },
+        };
         breakouts.updateBreakoutSessions(payload);
 
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
@@ -373,8 +373,8 @@ describe('plugin-meetings', () => {
         const payload2 = {
           breakoutSessions: {
             active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
-          }
-        }
+          },
+        };
         breakouts.updateBreakoutSessions(payload2);
         breakouts.set('sessionType', 'BREAKOUT');
         result = breakouts.getMainSession();
@@ -383,12 +383,12 @@ describe('plugin-meetings', () => {
       it('throw error if cannot find main session', () => {
         const fn = () => {
           breakouts.getMainSession();
-        }
+        };
         expect(fn).to.throw(/no main session found/);
       });
     });
 
-    describe('#askAllToReturn',  () => {
+    describe('#askAllToReturn', () => {
       it('makes the request as expected', async () => {
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         breakouts.currentBreakoutSession.sessionId = 'sessionId';
@@ -399,8 +399,8 @@ describe('plugin-meetings', () => {
           uri: 'url/requestMove',
           body: {
             groupId: 'groupId',
-            sessionId: 'sessionId'
-          }
+            sessionId: 'sessionId',
+          },
         });
       });
     });
@@ -413,16 +413,18 @@ describe('plugin-meetings', () => {
     });
 
     describe('#toggleBreakout', () => {
-      it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async() => {
+      it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async () => {
         breakouts.enableBreakoutSession = undefined;
-        breakouts.enableBreakouts = sinon.stub().resolves(({body: {
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          name: 'name',
-          current: true,
-          sessionType: 'sessionType',
-          url: 'url'
-        }}))
+        breakouts.enableBreakouts = sinon.stub().resolves({
+          body: {
+            sessionId: 'sessionId',
+            groupId: 'groupId',
+            name: 'name',
+            current: true,
+            sessionType: 'sessionType',
+            url: 'url',
+          },
+        });
         breakouts.updateBreakout = sinon.stub().resolves();
         breakouts.doToggleBreakout = sinon.stub().resolves();
 
@@ -434,12 +436,12 @@ describe('plugin-meetings', () => {
           name: 'name',
           current: true,
           sessionType: 'sessionType',
-          url: 'url'
+          url: 'url',
         });
         assert.calledOnceWithExactly(breakouts.doToggleBreakout, false);
       });
 
-      it('enableBreakoutSession is exist, run toggleBreakout', async() => {
+      it('enableBreakoutSession is exist, run toggleBreakout', async () => {
         breakouts.enableBreakoutSession = true;
         breakouts.doToggleBreakout = sinon.stub().resolves();
         await breakouts.toggleBreakout(true);
@@ -455,17 +457,19 @@ describe('plugin-meetings', () => {
           method: 'POST',
           uri: 'breakoutServiceUrl',
           body: {
-            locusUrl: 'locusUrl'
-          }
+            locusUrl: 'locusUrl',
+          },
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
 
-    describe('#broadcast',  () => {
+    describe('#broadcast', () => {
       it('makes the request as expected', async () => {
-        breakouts.breakoutRequest.broadcast = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+        breakouts.breakoutRequest.broadcast = sinon
+          .stub()
+          .returns(Promise.resolve('REQUEST_RETURN_VALUE'));
         webex.request.returns(
           Promise.resolve({
             body: getBOResponse('OPEN'),
@@ -477,7 +481,7 @@ describe('plugin-meetings', () => {
           url: 'url',
           message: 'hello',
           options: undefined,
-          groupId: 'groupId'
+          groupId: 'groupId',
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
@@ -487,16 +491,16 @@ describe('plugin-meetings', () => {
           url: 'url',
           groupId: 'groupId',
           message: 'hello',
-          options: {presenters: true, cohosts: true}
+          options: {presenters: true, cohosts: true},
         });
-        assert.equal(result, 'REQUEST_RETURN_VALUE')
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
 
       it('throw error if no breakout group id found', () => {
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         const fn = () => {
           breakouts.broadcast('hello');
-        }
+        };
         expect(fn).to.throw(/no breakout session found/);
       });
     });
@@ -521,25 +525,39 @@ describe('plugin-meetings', () => {
 
         assert.equal(arg.uri, 'url');
         assert.equal(arg.method, 'PUT');
-        assert.deepEqual(argObj1, {id:'groupId', action: 'START', allowBackToMain: false, allowToJoinLater: false, duration: BREAKOUTS.DEFAULT_DURATION});
-        assert.deepEqual(argObj2, {id:'id', action: 'START', allowBackToMain: false, allowToJoinLater: false, someOtherParam: 'someOtherParam', duration: BREAKOUTS.DEFAULT_DURATION});
+        assert.deepEqual(argObj1, {
+          id: 'groupId',
+          action: 'START',
+          allowBackToMain: false,
+          allowToJoinLater: false,
+          duration: BREAKOUTS.DEFAULT_DURATION,
+        });
+        assert.deepEqual(argObj2, {
+          id: 'id',
+          action: 'START',
+          allowBackToMain: false,
+          allowToJoinLater: false,
+          someOtherParam: 'someOtherParam',
+          duration: BREAKOUTS.DEFAULT_DURATION,
+        });
         assert.deepEqual(result, {body: getBOResponse('OPEN')});
       });
 
       it('rejects when edit lock token mismatch', async () => {
-        webex.request.returns(Promise.reject({
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        }));
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
 
         await assert.isRejected(
           breakouts.start(),
           BreakoutEditLockedError,
           'Edit lock token mismatch'
         );
-
       });
     });
 
@@ -563,25 +581,31 @@ describe('plugin-meetings', () => {
 
         assert.equal(arg.uri, 'url');
         assert.equal(arg.method, 'PUT');
-        assert.deepEqual(argObj1, {id:'groupId', action: 'CLOSE', delayCloseTime: 60});
-        assert.deepEqual(argObj2, {id:'id', action: 'CLOSE', delayCloseTime: 60, someOtherParam: 'someOtherParam'});
+        assert.deepEqual(argObj1, {id: 'groupId', action: 'CLOSE', delayCloseTime: 60});
+        assert.deepEqual(argObj2, {
+          id: 'id',
+          action: 'CLOSE',
+          delayCloseTime: 60,
+          someOtherParam: 'someOtherParam',
+        });
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
       });
 
       it('rejects when edit lock token mismatch', async () => {
-        webex.request.returns(Promise.reject({
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        }));
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
 
         await assert.isRejected(
           breakouts.end(),
           BreakoutEditLockedError,
           'Edit lock token mismatch'
         );
-
       });
     });
 
@@ -615,8 +639,8 @@ describe('plugin-meetings', () => {
           method: 'PUT',
           uri: 'url',
           body: {
-            enableBreakoutSession: true
-          }
+            enableBreakoutSession: true,
+          },
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
@@ -625,15 +649,19 @@ describe('plugin-meetings', () => {
 
     describe('delete', () => {
       it('makes the request as expected', async () => {
-        webex.request.returns(Promise.resolve({
-          body: {
-            groups: [{
-              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
-              status : "CLOSE",
-              type : "BREAKOUT",
-            }]
-          }
-        }));
+        webex.request.returns(
+          Promise.resolve({
+            body: {
+              groups: [
+                {
+                  id: '455556a4-37cd-4baa-89bc-8730581a1cc0',
+                  status: 'CLOSE',
+                  type: 'BREAKOUT',
+                },
+              ],
+            },
+          })
+        );
 
         const result = await breakouts.clearSessions();
         assert.calledOnceWithExactly(webex.request, {
@@ -645,72 +673,302 @@ describe('plugin-meetings', () => {
                 action: BREAKOUTS.ACTION.DELETE,
               },
             ],
-          }
+          },
         });
 
-        assert.equal(breakouts.groups[0].status, "CLOSE")
+        assert.equal(breakouts.groups[0].status, 'CLOSE');
       });
 
       it('rejects when edit lock token mismatch', async () => {
-        webex.request.returns(Promise.reject({
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        }));
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
 
         await assert.isRejected(
           breakouts.clearSessions(),
           BreakoutEditLockedError,
           'Edit lock token mismatch'
         );
-
       });
     });
 
     describe('create', () => {
       it('response not include groups info', async () => {
-        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+        const sessions = [{name: 'session1', anyoneCanJoin: true}];
         const result = await breakouts.create(sessions);
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
-
       });
 
       it('response include groups info', async () => {
-        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+        const sessions = [{name: 'session1', anyoneCanJoin: true}];
 
-        webex.request.returns(Promise.resolve({
-          body: {
-            groups: [{
-              id : "455556a4-37cd-4baa-89bc-8730581a1cc0",
-              status : "PENDING",
-              type : "BREAKOUT",
-            }]
-          }
-        }));
+        webex.request.returns(
+          Promise.resolve({
+            body: {
+              groups: [
+                {
+                  id: '455556a4-37cd-4baa-89bc-8730581a1cc0',
+                  status: 'PENDING',
+                  type: 'BREAKOUT',
+                },
+              ],
+            },
+          })
+        );
 
         const result = await breakouts.create(sessions);
 
-        assert.equal(breakouts.groups[0].id, "455556a4-37cd-4baa-89bc-8730581a1cc0")
-
+        assert.equal(breakouts.groups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
       });
 
       it('rejects when edit lock token mismatch', async () => {
-        const sessions = [{'name':'session1', "anyoneCanJoin" : true}];
+        const sessions = [{name: 'session1', anyoneCanJoin: true}];
 
-        webex.request.returns(Promise.reject({
-          body: {
-            "errorCode":BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
-            "message":"Edit lock token mismatch"
-          }
-        }));
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
 
         await assert.isRejected(
           breakouts.create(sessions),
           BreakoutEditLockedError,
           'Edit lock token mismatch'
         );
+      });
+    });
+
+    describe('enableAndLockBreakout', () => {
+
+      it('enableBreakoutSession is true', async () => {
+
+        breakouts.enableBreakoutSession = true;
+
+        breakouts.lockBreakout = sinon.stub().resolves();
+
+        breakouts.enableAndLockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.lockBreakout);
+
+      });
+
+      it('enableBreakoutSession is false', async () => {
+
+        breakouts.enableBreakoutSession = false;
+
+        breakouts.enableBreakouts = sinon.stub().resolves();
+
+        breakouts.enableAndLockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.enableBreakouts);
+
+      });
+
+    });
+
+    describe('lockBreakout', () => {
+
+      it('lock breakout is true', async () => {
+
+        breakouts.editLock = {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        };
+
+        breakouts.keepEditLockAlive = sinon.stub().resolves();
+
+        breakouts.lockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
+
+      });
+
+
+      it('lock breakout throw error', async () => {
+        
+        breakouts.editLock = {
+          ttl: 30,
+          token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
+          state: 'LOCKED',
+       
+        };
+
+        await expect(breakouts.lockBreakout()).to.be.rejectedWith('Breakout already locked');
+      });
+
+      it('lock breakout without editLock', async () => {
+
+        breakouts.getBreakout = sinon.stub().resolves();
+
+        breakouts.lockBreakout();
+
+        assert.calledOnceWithExactly(breakouts.getBreakout, true);
+      });
+
+    });
+
+    describe('unLockEditBreakout', () => {
+      it('unLock edit breakout request as expected', async () => {
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
+          state: 'LOCKED',
+        });
+
+        breakouts.unLockEditBreakout();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'DELETE',
+          uri: 'url/editlock/2ad57140-01b5-4bd0-a5a7-4dccdc06904c'
+        });
+
+      });
+    });
+
+    describe('keepEditLockAlive', () => {
+
+      it('keep edit lock', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(15001);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
+      it('keep edit lock, ttl < 30, also using 30', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 20,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(15001);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
+      it('keep edit lock, ttl > 30, using the ttl', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 50,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(24099);
+
+        assert.notCalled(webex.request);
+
+        clock.restore();
+      });
+
+      it('keep edit lock, throw error, clearInterval', async() => {
+
+        breakouts._clearEditLockInfo = sinon.stub();
+
+        const error = new Error('something went wrong');
+        webex.request.rejects(error);
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(15001);
+
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(breakouts._clearEditLockInfo);
+
+        clock.restore();
+      });
+
+      it('keep edit lock, do not call until reached ttl', () => {
+
+        const clock = sinon.useFakeTimers()
+
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+          state: 'UNLOCKED',
+        });
+
+        breakouts.keepEditLockAlive();
+        clock.tick(14999);
+
+        assert.notCalled(webex.request);
+
+        clock.tick(1);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url/editlock/token'
+        });
+
+        clock.restore();
+      });
+
+    });
+    
+    describe('#assign', () => {
+      it('assign members and emails to a breakout session', async () => {
+        breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        const params = [{id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com']}];
+        const result = await breakouts.assign(params);
+        assert.calledOnceWithExactly(breakouts.assign, params);
+        assert.equal(result, 'ASSIGN_RETURN_VALUE');
+      });
+      it('assign only members to a breakout session', async () => {
+        breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        const params = [{id: 'sessionId', memberIds: ['111']}];
+        const result = await breakouts.assign(params);
+        assert.calledOnceWithExactly(breakouts.assign, params);
+        assert.equal(result, 'ASSIGN_RETURN_VALUE');
+      });
+      it('assign only emails to a breakout session', async () => {
+        breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        const params = [{id: 'sessionId', emails: ['111@cisco.com']}];
+        const result = await breakouts.assign(params);
+        assert.calledOnceWithExactly(breakouts.assign, params);
+        assert.equal(result, 'ASSIGN_RETURN_VALUE');
       });
     });
   });

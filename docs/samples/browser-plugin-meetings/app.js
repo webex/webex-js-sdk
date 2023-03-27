@@ -2807,6 +2807,8 @@ function viewBreakouts(event) {
   const tdAssignedCurrent = document.createElement('td');
   const tdRequested = document.createElement('td');
   const tdControls = document.createElement('td');
+  const assignControls = document.createElement('td');
+  const moveControls = document.createElement('td');
 
   tbodyRow.appendChild(tdName);
   tbodyRow.appendChild(tdActive);
@@ -2815,6 +2817,8 @@ function viewBreakouts(event) {
   tbodyRow.appendChild(tdAssignedCurrent);
   tbodyRow.appendChild(tdRequested);
   tbodyRow.appendChild(tdControls);
+  tbodyRow.appendChild(assignControls);
+  tbodyRow.appendChild(moveControls);
 
   const createJoinSessionButton = (breakoutSession) => {
     const button = document.createElement('button');
@@ -2947,6 +2951,48 @@ function viewBreakouts(event) {
     return containerDiv;
   };
 
+  const createAssignSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Assign';
+    const {members} = meeting.members.membersCollection;
+    const assigned = Object.values(members).map(member=>member.id)
+    button.onclick = () => {
+      meeting.breakouts.assign([{
+        id: breakoutSession.sessionId,
+        memberIds: assigned,
+      }]);
+    };
+
+    return button;
+  }
+
+  const createMoveSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Move';
+    const {members} = meeting.members.membersCollection;
+    const assigned = Object.values(members).map(member=>member.id);
+    button.onclick = () => {
+      meeting.breakouts.breakouts.forEach(bo => {
+        if (bo.sessionId !== breakoutSession.sessionId && !bo.isMain){
+          // move to main
+          meeting.breakouts.assign([{
+            id: breakoutSession.sessionId,
+            memberIds:[],
+          },{
+            id: bo.sessionId,
+            memberIds: assigned,
+          }])
+        }
+      });
+
+
+    };
+
+    return button;
+  }
+
   const appendSession = (parentElement, isTrue) => {
     const sessionBooleanEl = document.createElement('div');
 
@@ -2971,6 +3017,9 @@ function viewBreakouts(event) {
     appendSession(tdRequested, breakoutSession.requested);
 
     tdControls.appendChild(createJoinSessionButton(breakoutSession));
+    assignControls.appendChild(createAssignSessionButton(breakoutSession));
+    moveControls.appendChild(createMoveSessionButton(breakoutSession));
+
   });
   const createCurrentSessionMembersTable = () => {
     if (!meeting.breakouts || !meeting.breakouts.currentBreakoutSession || !meeting.breakouts.currentBreakoutSession.members) {

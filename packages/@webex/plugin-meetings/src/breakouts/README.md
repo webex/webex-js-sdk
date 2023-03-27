@@ -107,10 +107,6 @@ note: None of these are currently implemented
 // Move a participant to breakout
 breakout.move(participant)
 
-// Assign a particpant to a breakout
-// Not sure whether there is any difference from move
-breakout.assign(participant)
-
 // Remove someone from a breakout session
 // This returns them to the main session
 breakout.remove(participant)
@@ -134,6 +130,10 @@ breakout.rename(newSessionName)
 // Start breakout sessions with necessary params
 breakouts.start(params)
 
+// Assign a particpant/participants to breakouts/a breakout
+// sessions should be like: [{id:'xx',memberIds:['111'],emails:['111@ss.com']},...]
+breakouts.assign(sessions)
+
 // End breakout sessions with necessary params
 breakouts.end(params)
 
@@ -142,6 +142,15 @@ breakouts.getBreakout(editlock?)
 
 // Enable breakout sessions
 breakouts.enable()
+
+// Enable and lock breakout 
+breakouts.enableAndLockBreakout()
+
+// Lock breakout
+breakouts.lockBreakout()
+
+// Unlock breakout
+breakouts.unLockEditBreakout()
 
 // Disable breakout sessions
 breakouts.disable()

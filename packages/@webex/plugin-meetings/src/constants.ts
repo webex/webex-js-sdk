@@ -483,6 +483,7 @@ export const HTTP_VERBS = {
   POST: 'POST',
   GET: 'GET',
   PATCH: 'PATCH',
+  DELETE: 'DELETE',
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceGatheringState
@@ -559,8 +560,15 @@ export const BREAKOUTS = {
   },
   ERROR_CODE: {
     EDIT_LOCK_TOKEN_MISMATCH: 201409024,
+    EDIT_NOT_AUTHORIZED: 201403007,
   },
   DEFAULT_DURATION: 60000,
+  EDIT_LOCK_STATUS: {
+    LOCKED: 'LOCKED',
+    NOT_LOCKED: 'NOT_LOCKED',
+    UNKNOWN: 'UNKNOWN',
+  },
+  DEFAULT_TTL: 30,
 };
 
 export const LOCUSINFO = {
