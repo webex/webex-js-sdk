@@ -48,10 +48,14 @@
 
               <form id="credentials">
                 <p class="note">
-                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for access token
+                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
+                  access token
                 </p>
                 <div>
-                  <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
+                  <input id="guest-name" name="guestName" placeholder="Guest Name" value="guest user" type="text">
+                  <button id="get-guest-token" class="btn-code" type="button" onclick=getGuestAccessToken()>generate
+                    Guest Token [prod only]</button>
+                  <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text">
                   <button id="access-token-save" class="btn-code" type="submit">webex.init()</button>
                   <p id="access-token-status" class="status-par">Not initialized</p>
                 </div>
@@ -660,6 +664,7 @@
       </section>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="../webex.min.js"></script>
   <script src="app.js"></script>
 </body>

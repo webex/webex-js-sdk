@@ -13,7 +13,6 @@
 // Globals
 let webex;
 let receiveTranscriptionOption;
-
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
@@ -28,6 +27,8 @@ const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
 const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
+const guestName = document.querySelector('#guest-name');
+const getGuestToken = document.querySelector('#get-guest-token');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -144,6 +145,8 @@ function initWebex(e) {
   integrationEnv.disabled = true;
   tokenElm.disabled = true;
   saveElm.disabled = true;
+  getGuestToken.disabled = true;
+  guestName.disable = true;
   authStatusElm.innerText = 'initializing...';
 
   webex = window.webex = Webex.init({
@@ -222,6 +225,24 @@ function unregister() {
         'Registered' :
         'Not Registered';
     });
+}
+
+
+async function getGuestAccessToken() {
+
+  await axios({
+    method: 'post',
+    url: 'https://2j1g168nf8.execute-api.us-east-1.amazonaws.com/dev/guest',
+    data: {
+      name: guestName.value
+    }
+  }).then(function (response) {
+    console.log("guest token response", response.data.body.token);
+    tokenElm.value = response.data.body.token
+  }).catch((e) =>{
+    console.error("Error fetching guest", e)
+  })
+
 }
 
 // Meetings Management Section --------------------------------------------------
