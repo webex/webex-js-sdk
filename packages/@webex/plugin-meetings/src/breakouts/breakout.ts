@@ -52,17 +52,6 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
-   * clear members collection
-   * @returns {void}
-   */
-  clearMembers() {
-    this.members.clearMembers({
-      sessionId: this.sessionId,
-      groupId: this.groupId,
-      sessionType: this.sessionType,
-    });
-  },
-  /**
    * Joins the breakout session
    * @returns {Promise}
    */

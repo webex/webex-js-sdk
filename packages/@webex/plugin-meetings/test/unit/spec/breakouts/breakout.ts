@@ -143,22 +143,5 @@ describe('plugin-meetings', () => {
         assert.equal(result, undefined);
       })
     })
-
-    describe('#clearMembers', () => {
-      it('calls clearMembers', () => {
-        breakout.members = {
-          clearMembers: sinon.stub()
-        };
-
-        const result = breakout.clearMembers();
-
-        assert.calledOnceWithExactly(breakout.members.clearMembers, {
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          sessionType: 'BREAKOUT',
-        });
-        assert.equal(result, undefined);
-      });
-    });
   });
 });
