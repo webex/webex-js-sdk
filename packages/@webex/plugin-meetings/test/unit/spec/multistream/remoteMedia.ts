@@ -240,8 +240,8 @@ describe('RemoteMedia', () => {
         {height: 270, fs: 920},
         {height: 539, fs: 920},
         {height: 540, fs: 3600},
-        {height: 899, fs: 3600},
-        {height: 900, fs: 8192},
+        {height: 720, fs: 3600},
+        {height: 721, fs: 8192},
       ],
       ({height, fs}) => {
         it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {
