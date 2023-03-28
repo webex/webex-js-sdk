@@ -232,6 +232,34 @@ export default class ReconnectionManager {
   }
 
   /**
+   * Stop the local share track.
+   *
+   * @param {string} reason a {@link SHARE_STOPPED_REASON}
+   * @returns {undefined}
+   * @private
+   * @memberof ReconnectionManager
+   */
+  private stopLocalShareTrack(reason: string) {
+    this.meeting.setLocalShareTrack(null);
+    this.meeting.isSharing = false;
+    if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
+      this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
+    }
+    this.meeting.mediaProperties.mediaDirection.sendShare = false;
+    Trigger.trigger(
+      this.meeting,
+      {
+        file: 'reconnection-manager/index',
+        function: 'stopLocalShareTrack',
+      },
+      EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+      {
+        reason,
+      }
+    );
+  }
+
+  /**
    * @public
    * @memberof ReconnectionManager
    * @returns {Boolean} true if reconnection operation is in progress
@@ -388,24 +416,7 @@ export default class ReconnectionManager {
     const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     if (wasSharing) {
-      // Stop the share streams if user tried to reconnect
-      this.meeting.setLocalShareTrack(null);
-      this.meeting.isSharing = false;
-      if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
-        this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
-      }
-      this.meeting.mediaProperties.mediaDirection.sendShare = false;
-      Trigger.trigger(
-        this.meeting,
-        {
-          file: 'reconnection-manager/index',
-          function: 'executeReconnection',
-        },
-        EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-        {
-          reason: SHARE_STOPPED_REASON.MEDIA_RECONNECTION,
-        }
-      );
+      this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
     }
 
     if (networkDisconnect) {
@@ -496,24 +507,7 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
 
       if (wasSharing) {
-        // Stop the share streams if user tried to rejoin
-        this.meeting.setLocalShareTrack(null);
-        this.meeting.isSharing = false;
-        if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
-          this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
-        }
-        this.meeting.mediaProperties.mediaDirection.sendShare = false;
-        Trigger.trigger(
-          this.meeting,
-          {
-            file: 'reconnection-manager/index',
-            function: 'rejoinMeeting',
-          },
-          EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-          {
-            reason: SHARE_STOPPED_REASON.MEETING_REJOIN,
-          }
-        );
+        this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEETING_REJOIN);
       }
     } catch (joinError) {
       this.rejoinAttempts += 1;
