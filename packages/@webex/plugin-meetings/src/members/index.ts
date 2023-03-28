@@ -313,7 +313,6 @@ export default class Members extends StatelessWebexPlugin {
   locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
     if (payload) {
       if (payload.isReplace) {
-        console.error('!!!clear first:', payload);
         this.clearMembers();
       }
       const delta = this.handleLocusInfoUpdatedParticipants(payload);

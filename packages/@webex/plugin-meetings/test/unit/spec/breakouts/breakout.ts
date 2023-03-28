@@ -139,11 +139,7 @@ describe('plugin-meetings', () => {
         const locusData = {some: 'data'};
         const result = breakout.parseRoster(locusData);
 
-        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData, {
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          sessionType: 'BREAKOUT',
-        });
+        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
         assert.equal(result, undefined);
       })
     })
