@@ -24,7 +24,7 @@ import {
   HTTPS_PROTOCOL,
   UUID_REG,
   VALID_EMAIL_ADDRESS,
-  DEFAULT_REQUEST_BODY,
+  DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -226,7 +226,7 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
   const {type, destination, password, captchaInfo} = options;
-  const body: any = {...DEFAULT_REQUEST_BODY};
+  const body: any = {...DEFAULT_MEETING_INFO_REQUEST_BODY};
 
   switch (type) {
     case _SIP_URI_:

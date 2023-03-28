@@ -3,7 +3,7 @@ import {
   HTTP_VERBS,
   _CONVERSATION_URL_,
   WBXAPPAPI_SERVICE,
-  DEFAULT_REQUEST_BODY,
+  DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -227,7 +227,9 @@ export default class MeetingInfoV2 {
 
     // If the body only contains the default properties, we don't have enough to
     // fetch the meeting info so don't bother trying.
-    if (!lodash.difference(Object.keys(body), Object.keys(DEFAULT_REQUEST_BODY)).length) {
+    if (
+      !lodash.difference(Object.keys(body), Object.keys(DEFAULT_MEETING_INFO_REQUEST_BODY)).length
+    ) {
       const err = new Error('Not enough information to fetch meeting info');
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE, {
         reason: err.message,
