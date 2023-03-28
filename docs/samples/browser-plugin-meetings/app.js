@@ -2097,6 +2097,12 @@ function setupMultistreamEventListeners(meeting) {
     updateVideoPanesForActiveSpeaker();
   });
 
+  meeting.on('meeting:stoppedSharingLocal', () => {
+    publishedLocalShareAudioTrack = null;
+    publishedLocalShareVideoTrack = null;
+    meetingStreamsLocalShare.srcObject = null;
+  });
+
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
 
