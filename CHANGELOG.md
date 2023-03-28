@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.53](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.52...v3.0.0-beta.53) (2023-03-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** stop screen share when disconnected ([#2696](https://github.com/webex/webex-js-sdk/issues/2696)) ([30c7190](https://github.com/webex/webex-js-sdk/commit/30c7190a7c4c457eed03ec63f830ff168f6a21a2))
+
 ## [3.0.0-beta.52](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.51...v3.0.0-beta.52) (2023-03-22)
 
 ## [3.0.0-beta.51](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.50...v3.0.0-beta.51) (2023-03-21)
