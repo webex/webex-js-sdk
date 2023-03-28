@@ -919,7 +919,7 @@ describe('plugin-meetings', () => {
       it('assign members and emails to a breakout session', async () => {
         breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
         const params = [
-          {id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com'], anyoneCanJoin: true},
+          {id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com'], anyone: true},
         ];
         const result = await breakouts.assign(params);
         assert.calledOnceWithExactly(breakouts.assign, params);
