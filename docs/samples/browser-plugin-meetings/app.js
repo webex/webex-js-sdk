@@ -3021,22 +3021,6 @@ function viewBreakouts(event) {
     moveControls.appendChild(createMoveSessionButton(breakoutSession));
 
   });
-  const createCurrentSessionMembersTable = () => {
-    if (!meeting.breakouts || !meeting.breakouts.currentBreakoutSession || !meeting.breakouts.currentBreakoutSession.members) {
-      return;
-    }
-    const {members} = meeting.breakouts.currentBreakoutSession.members.membersCollection;
-    if (Object.keys(members).length < 1) {
-      return ;
-    }
-    const membersTableTitle = document.createElement('h3');
-
-    const containerDiv = document.createElement('div');
-    membersTableTitle.innerText = 'Membership in current ' + meeting.breakouts.currentBreakoutSession.name;
-    containerDiv.appendChild(membersTableTitle);
-    containerDiv.appendChild(createMembersTable(members));
-    return containerDiv;
-  }
   thead.appendChild(theadRow);
   tbody.appendChild(tbodyRow);
   table.appendChild(thead);
