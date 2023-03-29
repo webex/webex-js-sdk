@@ -609,7 +609,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.breakouts = new Breakouts({meeting: new WeakRef(this)}, {parent: this.webex});
+    this.breakouts = new Breakouts({meeting: {id: this.id}}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */

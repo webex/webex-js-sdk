@@ -57,19 +57,19 @@ const Breakout = WebexPlugin.extend({
    * Joins the breakout session
    * @returns {Promise}
    */
-  join() {
+  async join() {
     const breakoutMoveId = uuid.v4();
-    const activeMeetingId = this.collection.parent.meeting.deref().id;
+    const {meetingId} = this.parent;
     Metrics.postEvent({
       event: eventType.MOVE_TO_BREAKOUT,
-      meetingId: activeMeetingId,
+      meetingId,
       data: {
         breakoutMoveId,
         breakoutSessionId: this.sessionId,
         breakoutGroupId: this.groupId,
       },
     });
-    const result = this.request({
+    const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
       body: {
@@ -77,16 +77,14 @@ const Breakout = WebexPlugin.extend({
         sessionId: this.sessionId,
       },
     });
-    result.then(() => {
-      Metrics.postEvent({
-        event: eventType.JOIN_BREAKOUT_RESPONSE,
-        meetingId: activeMeetingId,
-        data: {
-          breakoutMoveId,
-          breakoutSessionId: this.sessionId,
-          breakoutGroupId: this.groupId,
-        },
-      });
+    Metrics.postEvent({
+      event: eventType.JOIN_BREAKOUT_RESPONSE,
+      meetingId,
+      data: {
+        breakoutMoveId,
+        breakoutSessionId: this.sessionId,
+        breakoutGroupId: this.groupId,
+      },
     });
 
     return result;

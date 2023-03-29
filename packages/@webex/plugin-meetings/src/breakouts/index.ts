@@ -71,6 +71,16 @@ const Breakouts = WebexPlugin.extend({
         return '';
       },
     },
+    meetingId: {
+      deps: ['meeting'],
+      /**
+       * Returns the active meeting id
+       * @returns {string}
+       */
+      fn() {
+        return this.meeting.id;
+      },
+    },
   },
 
   /**
