@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.54](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.53...v3.0.0-beta.54) (2023-03-29)
+
 ## [3.0.0-beta.53](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.52...v3.0.0-beta.53) (2023-03-28)
 
 
