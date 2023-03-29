@@ -637,6 +637,7 @@ const Breakouts = WebexPlugin.extend({
         id: item.id,
         assigned: item.memberIds,
         assignedEmails: item.emails,
+        anyoneCanJoin: !!item.anyone,
       };
     });
 
