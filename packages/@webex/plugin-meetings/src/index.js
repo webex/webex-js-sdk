@@ -8,7 +8,7 @@ registerPlugin('meetings', Meetings, {
   config,
 });
 
-export * from './webrtc-core';
+export * from '@webex/media-helpers';
 
 export default Meetings;
 

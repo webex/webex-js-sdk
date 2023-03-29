@@ -954,12 +954,12 @@ async function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInp
   }
 
   if (isWebrtcCoreEnabled) {
-    localMedia.microphoneTrack = await webex.meetings.createMicrophoneTrack({...audioVideoInputDevices.audio});
+    localMedia.microphoneTrack = await webex.meetings.mediaHelpers.createMicrophoneTrack({...audioVideoInputDevices.audio});
 
     const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...audioVideoInputDevices.video};
 
     console.log('MeetingControls#getMediaStreams() :: getting camera track with constraints: ', videoConstraints);
-    localMedia.cameraTrack = await webex.meetings.createCameraTrack(videoConstraints);
+    localMedia.cameraTrack = await webex.meetings.mediaHelpers.createCameraTrack(videoConstraints);
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
@@ -1308,7 +1308,7 @@ async function startScreenShare() {
   console.log('MeetingControls#startScreenShare()');
   try {
     if (isMultistream) {
-      const localShareVideoTrack = await webex.meetings.createDisplayTrack();
+      const localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
 
       console.log('MeetingControls#startScreenShare() :: publishing share video track');
       await meeting.publishTracks({

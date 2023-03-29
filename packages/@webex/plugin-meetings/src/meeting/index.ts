@@ -18,7 +18,7 @@ import {
   LocalMicrophoneTrack,
   LocalTrackEvents,
   TrackMuteEvent,
-} from '../webrtc-core';
+} from '@webex/media-helpers';
 
 import {
   MeetingNotActiveError,

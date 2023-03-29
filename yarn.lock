@@ -4543,6 +4543,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/media-helpers@workspace:packages/@webex/media-helpers":
+  version: 0.0.0-use.local
+  resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
+  dependencies:
+    "@webex/internal-media-core": "npm:1.35.6"
+    "@webex/test-helper-chai": "workspace:^"
+    "@webex/test-helper-mock-webex": "workspace:^"
+    sinon: "npm:^9.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@webex/plugin-attachment-actions@workspace:^, @webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions"

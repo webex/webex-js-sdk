@@ -4,7 +4,7 @@
 /* globals navigator */
 
 import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
-import {LocalCameraTrack, LocalDisplayTrack, LocalMicrophoneTrack} from '../webrtc-core';
+import {LocalCameraTrack, LocalDisplayTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {AUDIO_INPUT, VIDEO_INPUT, MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
