@@ -654,6 +654,42 @@ const Breakouts = WebexPlugin.extend({
       },
     });
   },
+
+  /**
+   * assign participants dynamically after breakout sessions started,
+   * but currently it only used for admitting participants from lobby into breakout directly
+   * @param {Array} sessions
+   * @returns {void}
+   */
+  dynamicAssign(sessions: any[]) {
+    const updatedSessions = sessions.map((item) => {
+      return {
+        id: item.id,
+        participants: item.participants,
+        targetState: item.targetState,
+      };
+    });
+
+    const body = {
+      groups: [
+        {
+          id: this.breakoutGroupId,
+          sessions: updatedSessions,
+        },
+      ],
+      editlock: null,
+    };
+
+    if (this.editLock && this.editLock.token) {
+      body.editlock = this.editLock;
+    }
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: `${this.url}/dynamicAssign`,
+      body,
+    });
+  },
 });
 
 export default Breakouts;
