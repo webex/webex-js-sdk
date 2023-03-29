@@ -2967,6 +2967,7 @@ function viewBreakouts(event) {
       meeting.breakouts.assign([{
         id: breakoutSession.sessionId,
         memberIds: assigned,
+        anyone: true,
       }]);
     };
 
