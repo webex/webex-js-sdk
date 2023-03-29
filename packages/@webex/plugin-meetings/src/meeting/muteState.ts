@@ -194,8 +194,6 @@ class MuteState {
    */
   public handleLocalTrackMuteStateChange(meeting?: object, mute?: boolean) {
     if (this.ignoreMuteStateChange) {
-      console.log(`marcin: ignoring mute state change ${this.type} mute=${mute}`);
-
       return;
     }
     LoggerProxy.logger.info(
@@ -485,8 +483,6 @@ class MuteState {
    * @returns {Boolean}
    */
   public isUnmuteAllowed() {
-    console.log(`marcin: returning unmute allowed: ${this.state.server.unmuteAllowed}`);
-
     return this.state.server.unmuteAllowed;
   }
 
@@ -498,10 +494,6 @@ class MuteState {
    * @returns {Boolean}
    */
   public isLocallyMuted() {
-    console.log(
-      `marcin: ${this.type}: isLocallyMuted: localMute=${this.state.client.localMute} server localMute=${this.state.server.localMute}`
-    );
-
     return this.state.client.localMute || this.state.server.localMute;
   }
 

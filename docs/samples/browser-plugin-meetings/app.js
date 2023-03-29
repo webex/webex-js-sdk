@@ -19,8 +19,6 @@ let videoReceiveSlot;
 let isMultistream = false;
 let currentActiveSpeakersMemberIds = [];
 
-const isWebrtcCoreEnabled = true;
-
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
@@ -953,7 +951,9 @@ async function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInp
     return Promise.reject(new Error('No valid meeting object.'));
   }
 
-  if (isWebrtcCoreEnabled) {
+  if (isMultistream) {
+    console.log('MeetingControls#getMediaStreams() :: using webrtc-core local tracks')
+
     localMedia.microphoneTrack = await webex.meetings.mediaHelpers.createMicrophoneTrack({...audioVideoInputDevices.audio});
 
     const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...audioVideoInputDevices.video};
@@ -1046,33 +1046,13 @@ function getMediaDevices() {
 }
 
 async function publishTracks(meeting) {
-  if (isWebrtcCoreEnabled) {
-    console.log(`MeetingStreams#publishTracks() :: publishing local webrtc-core tracks: audio: ${localMedia.microphoneTrack ? 'yes': 'no'} and video: ${localMedia.cameraTrack ? 'yes': 'no'}`);
-    await meeting.publishTracks({
-      microphone: localMedia.microphoneTrack,
-      camera: localMedia.cameraTrack,
-    });
+  console.log(`MeetingStreams#publishTracks() :: publishing local webrtc-core tracks: audio: ${localMedia.microphoneTrack ? 'yes': 'no'} and video: ${localMedia.cameraTrack ? 'yes': 'no'}`);
+  await meeting.publishTracks({
+    microphone: localMedia.microphoneTrack,
+    camera: localMedia.cameraTrack,
+  });
 
-    return;
-  }
-
-  const [localStream] = currentMediaStreams;
-
-  // ignoring screen share here, as it can only be started once you're in the meeting via startScreenShare()
-
-  if (localStream) {
-    const localAudioTracks = localStream.getAudioTracks();
-    const localVideoTracks = localStream.getVideoTracks();
-
-    console.log(`MeetingStreams#publishTracks() :: publishing local audio (${localAudioTracks?.length > 0 ? 'yes': 'no'}) and video (${localVideoTracks?.length > 0 ? 'yes': 'no'})`);
-    await meeting.publishTracks({ // this needs undoing
-      microphone: localAudioTracks?.[0],
-      camera: localVideoTracks?.[0]
-    });
-  }
-  else {
-    console.error('cannot publish tracks - local stream missing');
-  }
+  return;
 }
 
 async function updateMedia() {
@@ -1223,12 +1203,14 @@ function toggleSendAudio() {
     return;
   }
 
-  if (isWebrtcCoreEnabled && isMultistream && localMedia.microphoneTrack) {
+  if (isMultistream && localMedia.microphoneTrack) {
     const newMuteValue = !localMedia.microphoneTrack.muted;
 
-    console.log(`marcin: calling localMedia.microphoneTrack.setMuted(${newMuteValue})`);
-    localMedia.microphoneTrack.setMuted(newMuteValue);
-
+    localMedia.microphoneTrack.setMuted(newMuteValue)
+      .then(() => {
+        console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
+      })
+      .catch(handleError);
     return;
   }
 
@@ -1263,11 +1245,14 @@ function toggleSendVideo() {
     return;
   }
 
-  if (isWebrtcCoreEnabled && isMultistream && localMedia.cameraTrack) {
+  if (isMultistream && localMedia.cameraTrack) {
     const newMuteValue = !localMedia.cameraTrack.muted;
 
-    console.log(`marcin: calling localMedia.cameraTrack.setMuted(${newMuteValue})`);
-    localMedia.cameraTrack.setMuted(newMuteValue);
+    localMedia.cameraTrack.setMuted(newMuteValue)
+      .then(() => {
+        console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
+      })
+      .catch(handleError);
 
     return;
   }
@@ -1387,7 +1372,7 @@ function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = localResolutionInp.value;
 
-  if (isWebrtcCoreEnabled && isMultistream) {
+  if (isMultistream) {
     const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...audioVideoInputDevices.video};
 
     console.log('MeetingControls#setLocalMeetingQuality() :: applying new constraints to camera track: ', videoConstraints);

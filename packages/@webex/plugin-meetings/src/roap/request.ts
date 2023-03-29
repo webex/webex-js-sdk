@@ -104,10 +104,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
 
     Metrics.postEvent({event: eventType.MEDIA_REQUEST, meetingId});
 
-    console.log(
-      `marcin: sending ROAP: audioMuted=${localSdpWithReachabilityData.audioMuted} videoMuted=${localSdpWithReachabilityData.videoMuted} type=${localSdpWithReachabilityData.roapMessage?.messageType}`
-    );
-
     // @ts-ignore
     return this.request({
       uri: mediaUrl,

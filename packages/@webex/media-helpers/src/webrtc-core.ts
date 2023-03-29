@@ -19,7 +19,6 @@ export {
   type TrackMuteEvent,
 } from '@webex/internal-media-core';
 
-// temporary hack: duplicate implementation in LocalMicrophoneTrack and LocalCameraTrack
 export class LocalMicrophoneTrack extends WcmeLocalMicrophoneTrack {
   private unmuteAllowed = true;
 
@@ -38,8 +37,6 @@ export class LocalMicrophoneTrack extends WcmeLocalMicrophoneTrack {
   }
 
   setMuted(muted: boolean): Promise<void> {
-    console.log(`marcin: mic setMuted hijacked! muted=${muted}, this=${this}`);
-
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         return Promise.reject(Error('Unmute is not allowed'));
@@ -69,8 +66,6 @@ export class LocalCameraTrack extends WcmeLocalCameraTrack {
   }
 
   setMuted(muted: boolean): Promise<void> {
-    console.log(`marcin: camera setMuted hijacked! muted=${muted}, this=${this}`);
-
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         return Promise.reject(Error('Unmute is not allowed'));

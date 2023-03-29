@@ -3182,7 +3182,7 @@ export default class Meeting extends StatelessWebexPlugin {
         JSON.stringify(this.mediaProperties.mediaSettings.audio)
       );
       this.mediaProperties.setLocalAudioTrack(localMicrophoneTrack);
-      if (this.audio) this.audio.applyClientStateLocally(this); // todo: this returns a promise
+      if (this.audio) this.audio.applyClientStateLocally(this);
     } else {
       this.mediaProperties.setLocalAudioTrack(null);
     }
