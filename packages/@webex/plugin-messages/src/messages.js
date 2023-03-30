@@ -159,8 +159,7 @@ const Messages = WebexPlugin.extend({
     };
 
     return this.request(options).then((res) => res.body);
-  },  
-  
+  },
   /**
    * Put an updated message and/or media content into a room instead of existing message.
    * @instance
@@ -207,7 +206,10 @@ const Messages = WebexPlugin.extend({
       Reflect.deleteProperty(message, 'file');
     }
 
-    if (message.files && isArray(message.files) && message.files.reduce((type, file) => type || typeof file !== 'string', false)) {
+    if (message.files &&
+        isArray(message.files) &&
+        message.files.reduce((type, file) => type || typeof file !== 'string', false)
+       ) {
       key = 'formData';
     }
 
