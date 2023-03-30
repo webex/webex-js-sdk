@@ -235,6 +235,7 @@ const Messages = WebexPlugin.extend({
       return this.request(options)
         .then((res) => res.body);
     }
+
     return null;
   },
 
