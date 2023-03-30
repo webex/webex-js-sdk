@@ -160,6 +160,77 @@ const Messages = WebexPlugin.extend({
 
     return this.request(options).then((res) => res.body);
   },
+  
+  
+  /**
+   * Put an updated message and/or media content into a room instead of existing message.
+   * @instance
+   * @memberof Messages
+   * @param {MessageObject} message
+   * @param {MessageObject} altMessage
+   * @returns {Promise<MessageObject>}
+   * @example
+   * webex.rooms.create({title: 'Create Message Example'})
+   *   .then(function(room) {
+   *     return webex.messages.create({
+   *       text: 'Howdy!',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     message = m;
+   *     return webex.messages.update(message,{markdown:`**What up**`});
+   *   })
+   *   .then(function(m) {
+   *     message = m;
+   *     return webex.messages.update(message.id,{roomId:message.roomId,text:'Howdy!'});
+   *   })
+   *   .then(function(message) {
+   *     var assert = require('assert');
+   *     assert(message.id);
+   *     assert(message.personId);
+   *     assert(message.personEmail);
+   *     assert(message.roomId);
+   *     assert(message.created);
+   *     return 'success';
+   *   });
+   *   // => success
+   */
+  update(message, altMessage) {
+    const id = message.id || message;
+    let key = 'body';
+
+    if (message.file) {
+      this.logger.warn('Supplying a single `file` property is deprecated; please supply a `files` array');
+      message.files = [message.file];
+      Reflect.deleteProperty(message, 'file');
+    }
+
+    if (message.files && isArray(message.files) && message.files.reduce((type, file) => type || typeof file !== 'string', false)) {
+      key = 'formData';
+    }
+
+    if (!altMessage.roomId && !message.roomId) {
+      this.logger.error('Error: RoomID is mandatory for message update call in one of the parameter, message or altMessage');
+
+    } else {
+      /* if altMessage doesnt contain RoomId use roomId from message object. 
+      I dont understand why RESTAPI call has RoomId Mandatory in body something webex Developers to clarity. 
+      In my opinion messageId provided in REST URL call should be enough to get roomID at serverside
+      */
+      altMessage.roomId = altMessage.roomId ? altMessage.roomId : message.roomId
+
+      const options = {
+        method: 'PUT',
+        service: 'hydra',
+        resource: 'messages/'.concat(id),
+        [key]: altMessage
+      };
+
+      return this.request(options)
+        .then((res) => res.body);
+    }
+  },
 
   /**
    * Returns a single message.
