@@ -5012,7 +5012,6 @@ __metadata:
     "@webex/test-helper-retry": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
-    btoa: ^1.2.1
     lodash: ^4.17.21
     sinon: ^9.2.4
     uuid: ^3.3.2

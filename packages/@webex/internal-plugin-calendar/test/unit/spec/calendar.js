@@ -2,10 +2,10 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from '@webex/test-helper-chai';
+import { assert, expect } from "@webex/test-helper-chai";
 import Calendar from '@webex/internal-plugin-calendar';
 import MockWebex from '@webex/test-helper-mock-webex';
-import btoa from 'btoa';
+import { base64 } from "@webex/common";
 import sinon from 'sinon';
 
 import {
@@ -48,6 +48,14 @@ describe('internal-plugin-calendar', () => {
         }),
         off: sinon.spy(),
       };
+      webex.internal.encryption = {
+        kms: {
+          createUnboundKeys: sinon.stub().resolves([{
+            uri: "kms://kms-us-int.wbx2.com/keys/xxxx-xxxx-xxxx-xxxx"
+          }])
+        },
+        encryptText: sinon.stub().resolves("encryptedText")
+      };
     });
 
     describe('Public Api Contract', () => {
@@ -55,7 +63,7 @@ describe('internal-plugin-calendar', () => {
         it('on calendar register call mercury registration', async () => {
           await webex.internal.calendar.register();
           assert.calledOnce(webex.internal.device.register);
-          assert.callCount(webex.internal.mercury.on, 5);
+          assert.callCount(webex.internal.mercury.on, 6);
           assert.equal(webex.internal.calendar.registered, true);
         });
         it('should trigger `calendar:register` event', async () => {
@@ -97,7 +105,7 @@ describe('internal-plugin-calendar', () => {
         it('should call `mercury.unregister` and `device.unregister`', async () => {
           await webex.internal.calendar.register();
           await webex.internal.calendar.unregister();
-          assert.callCount(webex.internal.mercury.off, 5);
+          assert.callCount(webex.internal.mercury.off, 6);
           assert.calledOnce(webex.internal.mercury.disconnect);
           assert.calledOnce(webex.internal.device.unregister);
         });
@@ -208,7 +216,7 @@ describe('internal-plugin-calendar', () => {
             .withArgs({
               method: 'GET',
               service: 'calendar',
-              resource: `calendarEvents/${btoa('calendar1')}/notes`,
+              resource: `calendarEvents/${base64.encode('calendar1')}/notes`,
             })
             .returns(
               Promise.resolve({
@@ -235,7 +243,7 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`,
+            resource: `calendarEvents/${base64.encode('calendar1')}/notes`,
           });
         });
 
@@ -269,7 +277,7 @@ describe('internal-plugin-calendar', () => {
             .withArgs({
               method: 'GET',
               service: 'calendar',
-              resource: `calendarEvents/${btoa('calendar1')}/notes`,
+              resource: `calendarEvents/${base64.encode('calendar1')}/notes`,
             })
             .returns(
               Promise.resolve({
@@ -298,7 +306,7 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa('calendar1')}/notes`,
+            resource: `calendarEvents/${base64.encode('calendar1')}/notes`,
           });
         });
       });
@@ -321,7 +329,7 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa(id)}/notes`,
+            resource: `calendarEvents/${base64.encode(id)}/notes`,
           });
         });
       });
@@ -344,7 +352,124 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             service: 'calendar',
-            resource: `calendarEvents/${btoa(id)}/participants`,
+            resource: `calendarEvents/${base64.encode(id)}/participants`,
+          });
+        });
+      });
+
+      describe("#getSchedulerData()", () => {
+        it("should fetch meeting calendar data", async () => {
+          const query = {
+            siteName: "scheduler01.dmz.webex.com",
+            clientMeetingId: "YWJjZGFiY2QtYWJjZC1hYmNkLWFiY2QtMDAwMDAwMDA"
+          };
+
+          webex.request = sinon.stub().resolves({
+            body: {
+              encryptedSubject: "My Meeting 1",
+              schedulerPreferences: {
+                uiControlAttributes: {
+                  displayHostSaveMeetingTemplate: true
+                },
+                webexOptions: {
+                  sessionTypeId: 3
+                }
+              }
+            }
+          });
+
+          const res = await webex.internal.calendar.getSchedulerData(query);
+
+          expect(res.body.encryptedSubject).to.equal("My Meeting 1");
+          expect(res.body.schedulerPreferences.uiControlAttributes.displayHostSaveMeetingTemplate).to.be.true;
+          expect(res.body.schedulerPreferences.webexOptions.sessionTypeId).to.equal(3);
+          assert.calledWith(webex.request, {
+            method: "GET",
+            service: "calendar",
+            resource: "schedulerData",
+            qs: {
+              siteName: query.siteName,
+              clientMeetingId: query.clientMeetingId
+            }
+          });
+        });
+      });
+
+      describe("#createCalendarEvent()", () => {
+        it("should create an calendar event", async () => {
+          const data = {
+            encryptionKeyUrl: "kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3",
+            notes: "This is Agenda",
+            subject: "My Meeting 1",
+            webexOptions: "{}"
+          };
+
+          webex.request = sinon.stub().resolves({
+            body: {
+              meetingId: "abcdabcd-abcd-abcd-abcd-00000000",
+              globalMeetingId: "xxxx-xxxx-xxxx-xxxx"
+            }
+          });
+
+          const res = await webex.internal.calendar.createCalendarEvent(data);
+
+          expect(res.body.meetingId).to.equal("abcdabcd-abcd-abcd-abcd-00000000");
+          expect(res.body.globalMeetingId).to.equal("xxxx-xxxx-xxxx-xxxx");
+          assert.calledWith(webex.request, {
+            method: "POST",
+            service: "calendar",
+            body: data,
+            resource: "calendarEvents/sync"
+          });
+        });
+      });
+
+      describe("#updateCalendarEvent()", () => {
+        it("should update a calendar event", async () => {
+          const id = "abcdabcd-abcd-abcd-abcd-00000000";
+          const data = {
+            encryptionKeyUrl: "kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3",
+            notes: "This is Agenda",
+            subject: "My Meeting 1",
+            webexOptions: "{}"
+          };
+          const query = {};
+
+          webex.request = sinon.stub().resolves({
+            body: {
+              meetingId: "abcdabcd-abcd-abcd-abcd-00000000",
+              globalMeetingId: "xxxx-xxxx-xxxx-xxxx"
+            }
+          });
+
+          const res = await webex.internal.calendar.updateCalendarEvent(id, data);
+
+          expect(res.body.meetingId).to.equal("abcdabcd-abcd-abcd-abcd-00000000");
+          expect(res.body.globalMeetingId).to.equal("xxxx-xxxx-xxxx-xxxx");
+          assert.calledWith(webex.request, {
+            method: "PATCH",
+            service: "calendar",
+            body: data,
+            resource: `calendarEvents/${base64.encode(id)}/sync`,
+            qs: query
+          });
+        });
+      });
+
+      describe("#deleteCalendarEvent()", () => {
+        it("should delete a calendar event", async () => {
+          const id = "abcdabcd-abcd-abcd-abcd-00000000";
+
+          webex.request = sinon.stub().resolves({
+            body: {}
+          });
+
+          await webex.internal.calendar.deleteCalendarEvent(id);
+
+          assert.calledWith(webex.request, {
+            method: "DELETE",
+            service: "calendar",
+            resource: `calendarEvents/${base64.encode(id)}/sync`
           });
         });
       });

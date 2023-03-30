@@ -20,7 +20,15 @@ registerInternalPlugin('calendar', Calendar, {
         name: 'transformMeetingNotes',
         direction: 'inbound',
         test(ctx, response) {
-          return Promise.resolve(has(response, 'body.encryptedNotes'));
+          return Promise.resolve(
+            has(response, 'body.encryptedNotes') &&
+              !(
+                response.options &&
+                response.options.service === 'calendar' &&
+                response.options.method === 'GET' &&
+                response.options.resource === 'schedulerData'
+              )
+          );
         },
         extract(response) {
           return Promise.resolve(response.body);
@@ -30,7 +38,15 @@ registerInternalPlugin('calendar', Calendar, {
         name: 'transformMeetingParticipants',
         direction: 'inbound',
         test(ctx, response) {
-          return Promise.resolve(has(response, 'body.encryptedParticipants'));
+          return Promise.resolve(
+            has(response, 'body.encryptedParticipants') &&
+              !(
+                response.options &&
+                response.options.service === 'calendar' &&
+                response.options.method === 'GET' &&
+                response.options.resource === 'schedulerData'
+              )
+          );
         },
         extract(response) {
           return Promise.resolve(response.body);
@@ -50,7 +66,15 @@ registerInternalPlugin('calendar', Calendar, {
         name: 'transformMeeting',
         direction: 'inbound',
         test(ctx, response) {
-          return Promise.resolve(has(response, 'body.seriesId'));
+          return Promise.resolve(
+            has(response, 'body.seriesId') &&
+              !(
+                response.options &&
+                response.options.service === 'calendar' &&
+                response.options.method === 'GET' &&
+                response.options.resource === 'schedulerData'
+              )
+          );
         },
         extract(response) {
           return Promise.resolve(response.body);
