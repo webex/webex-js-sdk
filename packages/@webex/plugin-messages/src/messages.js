@@ -159,8 +159,7 @@ const Messages = WebexPlugin.extend({
     };
 
     return this.request(options).then((res) => res.body);
-  },
-  
+  },  
   
   /**
    * Put an updated message and/or media content into a room instead of existing message.
@@ -201,7 +200,9 @@ const Messages = WebexPlugin.extend({
     let key = 'body';
 
     if (message.file) {
-      this.logger.warn('Supplying a single `file` property is deprecated; please supply a `files` array');
+      this.logger.warn(
+        'Supplying a single `file` property is deprecated; please supply a `files` array'
+                      );
       message.files = [message.file];
       Reflect.deleteProperty(message, 'file');
     }
@@ -211,25 +212,28 @@ const Messages = WebexPlugin.extend({
     }
 
     if (!altMessage.roomId && !message.roomId) {
-      this.logger.error('Error: RoomID is mandatory for message update call in one of the parameter, message or altMessage');
+      this.logger.error(
+        'Error: RoomID is mandatory for message update call in one of the parameter, message or altMessage'
+      );
 
     } else {
       /* if altMessage doesnt contain RoomId use roomId from message object. 
       I dont understand why RESTAPI call has RoomId Mandatory in body something webex Developers to clarity. 
       In my opinion messageId provided in REST URL call should be enough to get roomID at serverside
       */
-      altMessage.roomId = altMessage.roomId ? altMessage.roomId : message.roomId
+      altMessage.roomId = altMessage.roomId ? altMessage.roomId : message.roomId;
 
       const options = {
         method: 'PUT',
         service: 'hydra',
         resource: 'messages/'.concat(id),
-        [key]: altMessage
+        [key]: altMessage,
       };
 
       return this.request(options)
         .then((res) => res.body);
     }
+    return null;
   },
 
   /**
