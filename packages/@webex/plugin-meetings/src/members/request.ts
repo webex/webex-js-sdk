@@ -85,6 +85,19 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.request(requestParams);
   }
 
+  assignRoles(options: any) {
+    if (!options || !options.locusUrl || !options.memberId) {
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
+    }
+
+    const requestParams = MembersUtil.getRoleAssignmentMemberRequestParams(options);
+
+    // @ts-ignore
+    return this.request(requestParams);
+  }
+
   raiseOrLowerHandMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(

@@ -28,6 +28,7 @@ export default class Member {
   isSelf: any;
   isUser: any;
   isVideoMuted: any;
+  roles: any;
   name: any;
   participant: any;
   status: any;
@@ -228,6 +229,8 @@ export default class Member {
      * @memberof Member
      */
     this.isModeratorAssignmentProhibited = null;
+
+    this.roles = null;
     // TODO: more participant types
     // such as native client, web client, is a device, what type of phone, etc
     this.processParticipant(participant);
@@ -258,6 +261,7 @@ export default class Member {
       this.isModeratorAssignmentProhibited =
         MemberUtil.isModeratorAssignmentProhibited(participant);
       this.processStatus(participant);
+      this.processRoles(participant);
       // must be done last
       this.isNotAdmitted = MemberUtil.isNotAdmitted(participant, this.isGuest, this.status);
     }
@@ -425,6 +429,17 @@ export default class Member {
     } else if (MemberUtil.isDevice(participant)) {
       this.isHost = MemberUtil.isAssociatedSame(participant, hostId);
     }
+  }
+
+  /**
+   * process the roles that have been applied to this member
+   * @param {Object} participant
+   * @returns {undefined}
+   * @private
+   * @memberof Member
+   */
+  private processRoles(participant: object) {
+    this.roles = MemberUtil.extractControlRoles(participant);
   }
 
   /**

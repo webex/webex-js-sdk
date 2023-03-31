@@ -152,6 +152,12 @@ MembersUtil.generateRaiseHandMemberOptions = (memberId, status, locusUrl) => ({
   locusUrl,
 });
 
+MembersUtil.generateRoleAssignmentMemberOptions = (memberId, roles, locusUrl) => ({
+  memberId,
+  roles,
+  locusUrl,
+});
+
 MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locusUrl) => ({
   requestingParticipantId,
   locusUrl,
@@ -164,6 +170,21 @@ MembersUtil.getMuteMemberRequestParams = (options) => {
       muted: options.muted,
     },
   };
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+  return {
+    method: HTTP_VERBS.PATCH,
+    uri,
+    body,
+  };
+};
+
+MembersUtil.getRoleAssignmentMemberRequestParams = (options) => {
+  const body = {role: {roles: []}};
+  options.roles.forEach((role) => {
+    body.role.roles.push({type: role.type, hasRole: role.hasRole});
+  });
+
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
   return {
