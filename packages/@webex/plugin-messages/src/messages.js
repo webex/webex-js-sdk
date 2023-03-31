@@ -10,8 +10,8 @@ import {
   createEventEnvelope,
   getHydraClusterString,
 } from '@webex/common';
-import { Page, WebexPlugin } from '@webex/webex-core';
-import { cloneDeep, isArray } from 'lodash';
+import {Page, WebexPlugin} from '@webex/webex-core';
+import {cloneDeep, isArray} from 'lodash';
 
 const verbToType = {
   [SDK_EVENT.INTERNAL.ACTIVITY_VERB.SHARE]: SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED,
@@ -206,7 +206,8 @@ const Messages = WebexPlugin.extend({
       Reflect.deleteProperty(message, 'file');
     }
 
-    if (message.files &&
+    if (
+      message.files &&
       isArray(message.files) &&
       message.files.reduce((type, file) => type || typeof file !== 'string', false)
     ) {
@@ -217,7 +218,6 @@ const Messages = WebexPlugin.extend({
       this.logger.error(
         'Error: RoomID is mandatory for message update call in one of the parameter, message or altMessage'
       );
-
     } else {
       /* if altMessage doesnt contain RoomId use roomId from message object. 
       I dont understand why RESTAPI call has RoomId Mandatory in body something webex Developers to clarity. 
@@ -232,8 +232,7 @@ const Messages = WebexPlugin.extend({
         [key]: altMessage,
       };
 
-      return this.request(options)
-        .then((res) => res.body);
+      return this.request(options).then((res) => res.body);
     }
 
     return null;
@@ -401,7 +400,7 @@ const Messages = WebexPlugin.extend({
    * @param {Object} event.data.activity the activity that triggered the event
    * @returns {void}
    */
-  onWebexApiEvent({ data: { activity } }) {
+  onWebexApiEvent({data: {activity}}) {
     const type = verbToType[activity.verb];
 
     if (!type) {
@@ -424,9 +423,9 @@ const Messages = WebexPlugin.extend({
   getMessageEvent(activity, type) {
     const {
       id,
-      actor: { entryUUID: actorId, emailAddress },
-      object: { id: objectId },
-      target: { id: roomId, url: roomUrl, tags: roomTags },
+      actor: {entryUUID: actorId, emailAddress},
+      object: {id: objectId},
+      target: {id: roomId, url: roomUrl, tags: roomTags},
     } = activity;
 
     const cluster = getHydraClusterString(this.webex, roomUrl);
