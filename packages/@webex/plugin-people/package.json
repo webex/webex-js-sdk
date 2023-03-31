@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-people",
-  "version": "3.0.0-beta.57",
+  "version": "3.0.0-beta.58",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.58](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.57...v3.0.0-beta.58) (2023-03-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error when sync meetings fails ([#2684](https://github.com/webex/webex-js-sdk/issues/2684)) ([d483044](https://github.com/webex/webex-js-sdk/commit/d483044ee8c1ea572b7e92e12b1836bd90ce9e26))
+
 ## [3.0.0-beta.57](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.56...v3.0.0-beta.57) (2023-03-31)
 
 
