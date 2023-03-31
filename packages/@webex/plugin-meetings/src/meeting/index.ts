@@ -5251,7 +5251,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     let turnDiscoverySkippedReason;
     let turnServerUsed = false;
-    let turnServerInfo;
 
     if (this.meetingState !== FULL_STATE.ACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
@@ -5297,12 +5296,12 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.roap.doTurnDiscovery(this, false))
       .then((turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
-        ({turnServerInfo} = turnDiscoveryObject);
         turnServerUsed = !turnDiscoverySkippedReason;
 
-        return this.preMedia(localStream, localShare, mediaSettings);
-      })
-      .then(() => {
+        const {turnServerInfo} = turnDiscoveryObject;
+
+        this.preMedia(localStream, localShare, mediaSettings);
+
         const mc = this.createMediaConnection(turnServerInfo);
 
         if (this.isMultistream) {
@@ -5728,7 +5727,7 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         })
       )
-      .then(async () => {
+      .then(() => {
         this.setLocalAudioTrack(track);
         // todo: maybe this.mediaProperties.mediaDirection could be removed? it's duplicating stuff from webrtcMediaConnection
         this.mediaProperties.mediaDirection.sendAudio = sendAudio;
@@ -5736,8 +5735,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // audio state could be undefined if you have not sent audio before
         this.audio =
-          this.audio ||
-          (await createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, true));
+          this.audio || createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, true);
       });
   }
 
@@ -5786,15 +5784,14 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         })
       )
-      .then(async () => {
+      .then(() => {
         this.setLocalVideoTrack(track);
         this.mediaProperties.mediaDirection.sendVideo = sendVideo;
         this.mediaProperties.mediaDirection.receiveVideo = receiveVideo;
 
         // video state could be undefined if you have not sent video before
         this.video =
-          this.video ||
-          (await createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, true));
+          this.video || createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, true);
       });
   }
 
@@ -5905,7 +5902,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private async preMedia(localStream: MediaStream, localShare: MediaStream, mediaSettings: any) {
+  private preMedia(localStream: MediaStream, localShare: MediaStream, mediaSettings: any) {
     // eslint-disable-next-line no-warning-comments
     // TODO wire into default config. There's currently an issue with the stateless plugin or how we register
     // @ts-ignore - config coming from registerPlugin
@@ -5914,11 +5911,9 @@ export default class Meeting extends StatelessWebexPlugin {
     // for multistream, this.audio and this.video are created when publishTracks() is called
     if (!this.isMultistream) {
       this.audio =
-        this.audio ||
-        (await createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, true));
+        this.audio || createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, true);
       this.video =
-        this.video ||
-        (await createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, true));
+        this.video || createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, true);
     }
     // Validation is already done in addMedia so no need to check if the lenght is greater then 0
     this.setLocalTracks(localStream);
@@ -7280,9 +7275,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // audio mute state could be undefined if you have not sent audio before
       if (!this.audio) {
-        this.audio = await createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, false);
+        this.audio = createMuteState(AUDIO, this, this.mediaProperties.mediaDirection, false);
       } else {
-        await this.audio.handleLocalTrackChange(this);
+        this.audio.handleLocalTrackChange(this);
       }
 
       localTrack.on(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
@@ -7303,9 +7298,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // video state could be undefined if you have not sent video before
       if (!this.video) {
-        this.video = await createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, false);
+        this.video = createMuteState(VIDEO, this, this.mediaProperties.mediaDirection, false);
       } else {
-        await this.video.handleLocalTrackChange(this);
+        this.video.handleLocalTrackChange(this);
       }
 
       localTrack.on(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);

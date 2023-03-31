@@ -1206,11 +1206,9 @@ function toggleSendAudio() {
   if (isMultistream && localMedia.microphoneTrack) {
     const newMuteValue = !localMedia.microphoneTrack.muted;
 
-    localMedia.microphoneTrack.setMuted(newMuteValue)
-      .then(() => {
-        console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
-      })
-      .catch(handleError);
+    localMedia.microphoneTrack.setMuted(newMuteValue);
+
+    console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
   }
 
@@ -1248,12 +1246,9 @@ function toggleSendVideo() {
   if (isMultistream && localMedia.cameraTrack) {
     const newMuteValue = !localMedia.cameraTrack.muted;
 
-    localMedia.cameraTrack.setMuted(newMuteValue)
-      .then(() => {
-        console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
-      })
-      .catch(handleError);
+    localMedia.cameraTrack.setMuted(newMuteValue);
 
+    console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
   }
 
