@@ -804,6 +804,32 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * Assign role(s) to a member in the meeting
+   * @param {String} memberId
+   * @param {Array} roles - to assign an array of roles
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public assignRoles(memberId: string, roles: Array<{type: string; hasRole: boolean}>) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to raise/lower the hand of the member.')
+      );
+    }
+    const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
+
+    return this.membersRequest.assignRoles(options);
+  }
+
+  /**
    * Raise or lower the hand of a member in a meeting
    * @param {String} memberId
    * @param {boolean} [raise] - to raise hand (=true) or lower (=false), default: true

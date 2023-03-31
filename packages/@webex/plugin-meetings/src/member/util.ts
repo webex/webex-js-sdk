@@ -19,6 +19,31 @@ import ParameterError from '../common/errors/parameter';
 
 const MemberUtil: any = {};
 
+MemberUtil.getControlsRoles = (participant: any) => participant?.controls?.role?.roles;
+
+MemberUtil.hasRole = (participant: any, controlRole: string) =>
+  MemberUtil.getControlsRoles(participant)?.some(
+    (role) => role.type === controlRole && role.hasRole
+  );
+
+MemberUtil.isCohost = (participant: any) => MemberUtil.hasRole(participant, 'COHOST') || false;
+
+MemberUtil.isModerator = (participant: any) =>
+  MemberUtil.hasRole(participant, 'MODERATOR') || false;
+
+MemberUtil.isPresenter = (participant: any) =>
+  MemberUtil.hasRole(participant, 'PRESENTER') || false;
+
+MemberUtil.extractControlRoles = (participant: any) => {
+  const roles = {
+    cohost: MemberUtil.isCohost(participant),
+    moderator: MemberUtil.isModerator(participant),
+    presenter: MemberUtil.isPresenter(participant),
+  };
+
+  return roles;
+};
+
 /**
  * @param {Object} participant the locus participant
  * @returns {Boolean}
