@@ -7,11 +7,11 @@ import {
   CodecInfo as WcmeCodecInfo,
   H264Codec,
 } from '@webex/internal-media-core';
-import {cloneDeep, debounce} from 'lodash';
+import {cloneDeep, debounce, memoize} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotEvents, ReceiveSlotId} from './receiveSlot';
+import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
@@ -95,7 +95,8 @@ export class MediaRequestManager {
 
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
     this.degradationPreferences = degradationPreferences;
-    this.sendRequests(); // re-send requests after preferences are set
+    const degradedClientRequests = this.getDegradedClientRequests();
+    this.memoizedSendRequests(degradedClientRequests); // re-send requests after preferences are set
   }
 
   private getDegradedClientRequests() {
@@ -143,10 +144,9 @@ export class MediaRequestManager {
     return clientRequests;
   }
 
-  private sendRequests() {
+  private sendRequests(clientRequests: {[key: string]: MediaRequest}) {
     const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
-    const clientRequests = this.getDegradedClientRequests();
     const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
 
     // map all the client media requests to wcme media requests
@@ -185,6 +185,19 @@ export class MediaRequestManager {
     this.sendMediaRequestsCallback(wcmeMediaRequests);
   }
 
+  /**
+   * Memoized version of sendRequest.
+   * Avoids making requests if the degraded requests don't change.
+   *
+   * @param {Object} clientRequests - client requests
+   * @returns {void}
+   */
+  private memoizedSendRequests(clientRequests: {[key: string]: MediaRequest}) {
+    const memoized = memoize(this.sendRequests);
+
+    memoized(clientRequests);
+  }
+
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
@@ -219,7 +232,9 @@ export class MediaRequestManager {
   }
 
   public commit() {
-    return this.sendRequests();
+    const degradedClientRequests = this.getDegradedClientRequests();
+
+    this.memoizedSendRequests(degradedClientRequests);
   }
 
   public reset() {
