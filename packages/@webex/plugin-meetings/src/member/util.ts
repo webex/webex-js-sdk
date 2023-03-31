@@ -1,3 +1,4 @@
+import {IExternalRoles, ParticipantWithRoles, ServerRoles, ServerRoleShape} from './types';
 import {
   _USER_,
   _RESOURCE_ROOM_,
@@ -19,26 +20,53 @@ import ParameterError from '../common/errors/parameter';
 
 const MemberUtil: any = {};
 
-MemberUtil.getControlsRoles = (participant: any) => participant?.controls?.role?.roles;
+/**
+ * @param {Object} participant the locus participant
+ * @returns {[ServerRoleShape]}
+ */
+MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
+  participant?.controls?.role?.roles;
 
-MemberUtil.hasRole = (participant: any, controlRole: string) =>
+/**
+ * @param {Object} participant the locus participant
+ * @param {ServerRoles} controlRole the search role
+ * @returns {Boolean}
+ */
+MemberUtil.hasRole = (participant: any, controlRole: ServerRoles): boolean =>
   MemberUtil.getControlsRoles(participant)?.some(
     (role) => role.type === controlRole && role.hasRole
   );
 
-MemberUtil.isCohost = (participant: any) => MemberUtil.hasRole(participant, 'COHOST') || false;
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasCohost = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Cohost) || false;
 
-MemberUtil.isModerator = (participant: any) =>
-  MemberUtil.hasRole(participant, 'MODERATOR') || false;
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasModerator = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Moderator) || false;
 
-MemberUtil.isPresenter = (participant: any) =>
-  MemberUtil.hasRole(participant, 'PRESENTER') || false;
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasPresenter = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Presenter) || false;
 
-MemberUtil.extractControlRoles = (participant: any) => {
+/**
+ * @param {Object} participant the locus participant
+ * @returns {IExternalRoles}
+ */
+MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalRoles => {
   const roles = {
-    cohost: MemberUtil.isCohost(participant),
-    moderator: MemberUtil.isModerator(participant),
-    presenter: MemberUtil.isPresenter(participant),
+    cohost: MemberUtil.hasCohost(participant),
+    moderator: MemberUtil.hasModerator(participant),
+    presenter: MemberUtil.hasPresenter(participant),
   };
 
   return roles;

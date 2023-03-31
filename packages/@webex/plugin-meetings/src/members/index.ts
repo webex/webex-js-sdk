@@ -16,6 +16,7 @@ import MembersRequest from './request';
 import MembersUtil from './util';
 import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import {ServerRoleShape} from './types';
 
 /**
  * Members Update Event
@@ -806,12 +807,12 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Assign role(s) to a member in the meeting
    * @param {String} memberId
-   * @param {Array} roles - to assign an array of roles
+   * @param {[ServerRoleShape]} roles - to assign an array of roles
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public assignRoles(memberId: string, roles: Array<{type: string; hasRole: boolean}>) {
+  public assignRoles(memberId: string, roles: Array<ServerRoleShape>) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -821,7 +822,7 @@ export default class Members extends StatelessWebexPlugin {
     }
     if (!memberId) {
       return Promise.reject(
-        new ParameterError('The member id must be defined to raise/lower the hand of the member.')
+        new ParameterError('The member id must be defined to assign the roles to a member.')
       );
     }
     const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);

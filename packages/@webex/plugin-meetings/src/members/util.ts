@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-
+import {MemberId} from '../multistream/receiveSlot';
 import {
   HTTP_VERBS,
   CONTROLS,
@@ -11,6 +11,8 @@ import {
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
 } from '../constants';
+
+import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
 const MembersUtil: any = {};
 
@@ -152,7 +154,17 @@ MembersUtil.generateRaiseHandMemberOptions = (memberId, status, locusUrl) => ({
   locusUrl,
 });
 
-MembersUtil.generateRoleAssignmentMemberOptions = (memberId, roles, locusUrl) => ({
+/**
+ * @param {String} memberId
+ * @param {[ServerRoleShape]} roles
+ * @param {String} locusUrl
+ * @returns {RoleAssignmentOptions}
+ */
+MembersUtil.generateRoleAssignmentMemberOptions = (
+  memberId: string,
+  roles: Array<ServerRoleShape>,
+  locusUrl: string
+): RoleAssignmentOptions => ({
   memberId,
   roles,
   locusUrl,
@@ -179,7 +191,13 @@ MembersUtil.getMuteMemberRequestParams = (options) => {
   };
 };
 
-MembersUtil.getRoleAssignmentMemberRequestParams = (options) => {
+/**
+ * @param {RoleAssignmentOptions} options
+ * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
+ */
+MembersUtil.getRoleAssignmentMemberRequestParams = (
+  options: RoleAssignmentOptions
+): RoleAssignmentRequest => {
   const body = {role: {roles: []}};
   options.roles.forEach((role) => {
     body.role.roles.push({type: role.type, hasRole: role.hasRole});

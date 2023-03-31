@@ -85,6 +85,13 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.request(requestParams);
   }
 
+  /**
+   * Sends a request to the DTMF endpoint to send tones
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of PSTN user
+   * @returns {Promise}
+   */
   assignRoles(options: any) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
