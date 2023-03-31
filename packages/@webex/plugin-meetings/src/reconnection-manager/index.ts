@@ -452,10 +452,10 @@ export default class ReconnectionManager {
     // So that on rejoin it known what parametrs it was using
     if (!this.meeting || !this.webex.meetings.getMeetingByType(_ID_, this.meeting.id)) {
       LoggerProxy.logger.info(
-        'ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely '
+        'ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely.'
       );
 
-      throw new Error('Unable to rejoin a meeting already ended or inactive .');
+      throw new Error('Unable to rejoin a meeting already ended or inactive.');
     }
 
     LoggerProxy.logger.info(
