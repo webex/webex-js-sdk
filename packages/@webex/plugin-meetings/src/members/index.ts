@@ -827,7 +827,7 @@ export default class Members extends StatelessWebexPlugin {
     }
     const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
 
-    return this.membersRequest.assignRoles(options);
+    return this.membersRequest.assignRolesMember(options);
   }
 
   /**

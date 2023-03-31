@@ -1,5 +1,4 @@
 import uuid from 'uuid';
-import {MemberId} from '../multistream/receiveSlot';
 import {
   HTTP_VERBS,
   CONTROLS,

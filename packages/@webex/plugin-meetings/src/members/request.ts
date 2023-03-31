@@ -92,7 +92,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.memberId ID of PSTN user
    * @returns {Promise}
    */
-  assignRoles(options: any) {
+  assignRolesMember(options: any) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
