@@ -356,14 +356,14 @@ const Calendar = WebexPlugin.extend({
    * @returns {Promise} Resolves with creating calendar event response
    * */
   createCalendarEvent(data) {
-    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() => {
-      return this.request({
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() =>
+      this.request({
         method: 'POST',
         service: 'calendar',
         body: data,
         resource: 'calendarEvents/sync',
-      });
-    });
+      })
+    );
   },
 
   /**
@@ -374,15 +374,15 @@ const Calendar = WebexPlugin.extend({
    * @returns {Promise} Resolves with updating calendar event response
    * */
   updateCalendarEvent(id, data, query) {
-    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() => {
-      return this.request({
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() =>
+      this.request({
         method: 'PATCH',
         service: 'calendar',
         body: data,
         resource: `calendarEvents/${base64.encode(id)}/sync`,
         qs: query || {},
-      });
-    });
+      })
+    );
   },
 
   /**
@@ -426,11 +426,7 @@ const Calendar = WebexPlugin.extend({
       resource: 'schedulerData',
       qs: query || {},
     }).then((response) => {
-      return DecryptHelper.decryptSchedulerDataResponse(this, response.body).then(() => {
-        delete response.body.encryptionKeyUrl;
-
-        return response;
-      });
+      return DecryptHelper.decryptSchedulerDataResponse(this, response.body).then(() => response);
     });
   },
 
