@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.57](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.56...v3.0.0-beta.57) (2023-03-31)
+
+
+### Bug Fixes
+
+* added correlation id to logs ([#2707](https://github.com/webex/webex-js-sdk/issues/2707)) ([5725e32](https://github.com/webex/webex-js-sdk/commit/5725e3207835841fdda8c432d383a287000ef5cc))
+
 ## [3.0.0-beta.56](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.55...v3.0.0-beta.56) (2023-03-29)
 
 
