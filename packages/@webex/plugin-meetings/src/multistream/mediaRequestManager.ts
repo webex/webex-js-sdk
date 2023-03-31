@@ -193,7 +193,7 @@ export class MediaRequestManager {
    * @returns {void}
    */
   private memoizedSendRequests(clientRequests: {[key: string]: MediaRequest}) {
-    const memoized = memoize(this.sendRequests);
+    const memoized = memoize(this.sendRequests.bind(this));
 
     memoized(clientRequests);
   }
