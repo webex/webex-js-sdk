@@ -39,7 +39,7 @@ const Breakouts = WebexPlugin.extend({
     groups: 'array', // appears when create breakouts
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
-    meeting: 'object',
+    meetingId: 'string',
   },
 
   children: {
@@ -69,16 +69,6 @@ const Breakouts = WebexPlugin.extend({
         }
 
         return '';
-      },
-    },
-    meetingId: {
-      deps: ['meeting'],
-      /**
-       * Returns the active meeting id
-       * @returns {string}
-       */
-      fn() {
-        return this.meeting.id;
       },
     },
   },
