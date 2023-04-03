@@ -389,6 +389,7 @@ describe('plugin-meetings', () => {
     });
 
     [
+      {functionName: 'isSaveTranscriptsEnabled', displayHint: 'SAVE_TRANSCRIPTS_ENABLED'},
       {functionName: 'canEnableClosedCaption', displayHint: 'CAPTION_START'},
       {functionName: 'canStartTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_START'},
       {functionName: 'canStopTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_STOP'},
