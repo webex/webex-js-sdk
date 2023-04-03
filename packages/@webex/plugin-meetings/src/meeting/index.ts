@@ -2307,6 +2307,9 @@ export default class Meeting extends StatelessWebexPlugin {
           canStartTranscribing: MeetingUtil.canStartTranscribing(payload.info.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(payload.info.userDisplayHints),
           isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(payload.info.userDisplayHints),
+          isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(
+            payload.info.userDisplayHints
+          ),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(payload.info.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(payload.info.userDisplayHints),
           isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(
