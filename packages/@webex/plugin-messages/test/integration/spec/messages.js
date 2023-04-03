@@ -7,13 +7,13 @@ import '@webex/plugin-logger';
 import '@webex/plugin-rooms';
 import '@webex/plugin-people';
 import '@webex/plugin-messages';
-import WebexCore, {WebexHttpError} from '@webex/webex-core';
-import {SDK_EVENT} from '@webex/common';
-import {assert} from '@webex/test-helper-chai';
+import WebexCore, { WebexHttpError } from '@webex/webex-core';
+import { SDK_EVENT } from '@webex/common';
+import { assert } from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import testUsers from '@webex/test-helper-test-users';
 import fh from '@webex/test-helper-file';
-import {browserOnly, flaky, nodeOnly} from '@webex/test-helper-mocha';
+import { browserOnly, flaky, nodeOnly } from '@webex/test-helper-mocha';
 
 const debug = require('debug')('messages');
 
@@ -29,14 +29,14 @@ describe('plugin-messages', function () {
 
   before(() =>
     Promise.all([
-      testUsers.create({count: 1}),
-      testUsers.create({count: 1, config: {orgId: process.env.EU_PRIMARY_ORG_ID}}),
+      testUsers.create({ count: 1 }),
+      testUsers.create({ count: 1, config: { orgId: process.env.EU_PRIMARY_ORG_ID } }),
     ]).then(([user, usersEU]) => {
       [actor] = user;
       [actorEU] = usersEU;
 
-      webex = new WebexCore({credentials: actor.token});
-      webexEU = new WebexCore({credentials: actorEU.token});
+      webex = new WebexCore({ credentials: actor.token });
+      webexEU = new WebexCore({ credentials: actorEU.token });
 
       webex.people.get('me').then((person) => {
         actor = person;
@@ -54,8 +54,8 @@ describe('plugin-messages', function () {
 
     before(() =>
       Promise.all([
-        webex.rooms.create({title: 'Webex Test Room'}),
-        webexEU.rooms.create({title: 'Webex Test Room for EU'}),
+        webex.rooms.create({ title: 'Webex Test Room' }),
+        webexEU.rooms.create({ title: 'Webex Test Room for EU' }),
       ]).then(([r, rEU]) => {
         room = r;
         roomEU = rEU;
@@ -337,6 +337,94 @@ describe('plugin-messages', function () {
         );
       });
     });
+    describe('#update()', () => {
+      it('update a message in a room and validates the messages:update event, params message and altMessage objects', () => {
+        let message;
+        const text = 'This message will be updated';
+
+        beforeEach(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              text,
+            })
+            .then((m) => {
+              message = m;
+              validateMessage(m, text);
+            })
+        );
+
+        // "Block" this test with a promise that will
+        // resolve after the messages:created arrives.
+        const updated = new Promise((resolve) => {
+          webex.messages.on('updated', (event) => {
+            debug('message updated event called');
+            resolve(event);
+          });
+        });
+
+        text = 'This is updated message';
+
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .update({
+              message: message,
+              altMessage: { text: text },
+            })
+            .then(async (m) => {
+              message = m;
+              validateMessage(message, text);
+              const event = await updated;
+
+              validateMessageEvent(event, message, actor);
+            })
+        );
+      });
+      it('update a message in a room and validates the messages:update event, parameter messageId,  and altMessage with text and roomId', () => {
+        let message;
+        const text = 'This message will be updated';
+
+        beforeEach(() =>
+          webex.messages
+            .create({
+              roomId: room.id,
+              text,
+            })
+            .then((m) => {
+              message = m;
+              validateMessage(m, text);
+            })
+        );
+
+        // "Block" this test with a promise that will
+        // resolve after the messages:created arrives.
+        const updated = new Promise((resolve) => {
+          webex.messages.on('updated', (event) => {
+            debug('message updated event called');
+            resolve(event);
+          });
+        });
+
+        text = 'This is updated message';
+
+        return webex.messages.listen().then(() =>
+          webex.messages
+            .update({
+              message: message.id,
+              altMessage: {
+                roomId: room.id,
+                text: text
+              },
+            })
+            .then(async (m) => {
+              message = m;
+              validateMessage(message, text);
+              const event = await updated;
+              validateMessageEvent(event, message, actor);
+            })
+        );
+      });
+    });
 
     describe('#remove()', () => {
       let message;
@@ -433,7 +521,7 @@ describe('plugin-messages', function () {
       );
 
       it('returns all messages for a room', () =>
-        webex.messages.list({roomId: room.id}).then((messages) => {
+        webex.messages.list({ roomId: room.id }).then((messages) => {
           assert.isDefined(messages);
           assert.lengthOf(messages, 3);
           for (const message of messages) {
@@ -445,7 +533,7 @@ describe('plugin-messages', function () {
         const spy = sinon.spy();
 
         return webex.messages
-          .list({roomId: room.id, max: 2})
+          .list({ roomId: room.id, max: 2 })
           .then((messages) => {
             assert.lengthOf(messages, 2);
 
@@ -524,7 +612,7 @@ describe('plugin-messages', function () {
         });
 
         it('returns all messages for a room', () =>
-          webex.messages.list({roomId: room.id}).then((messages) => {
+          webex.messages.list({ roomId: room.id }).then((messages) => {
             assert.isDefined(messages);
             assert.lengthOf(messages.items, 2);
             for (const message of messages.items) {
@@ -536,7 +624,7 @@ describe('plugin-messages', function () {
           }));
 
         it('returns only the replies for particular message thread', () =>
-          webex.messages.list({roomId: room.id, parentId}).then((messages) => {
+          webex.messages.list({ roomId: room.id, parentId }).then((messages) => {
             assert.lengthOf(messages.items, 1);
             const message = messages.items[0];
 
