@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
+import {IExternalRoles, ParticipantWithRoles} from './types';
 
 import MemberUtil from './util';
 
@@ -28,6 +29,7 @@ export default class Member {
   isSelf: any;
   isUser: any;
   isVideoMuted: any;
+  roles: IExternalRoles;
   name: any;
   participant: any;
   status: any;
@@ -228,6 +230,14 @@ export default class Member {
      * @memberof Member
      */
     this.isModeratorAssignmentProhibited = null;
+
+    /**
+     * @instance
+     * @type {IExternalRoles}
+     * @public
+     * @memberof Member
+     */
+    this.roles = null;
     // TODO: more participant types
     // such as native client, web client, is a device, what type of phone, etc
     this.processParticipant(participant);
@@ -258,6 +268,7 @@ export default class Member {
       this.isModeratorAssignmentProhibited =
         MemberUtil.isModeratorAssignmentProhibited(participant);
       this.processStatus(participant);
+      this.processRoles(participant as ParticipantWithRoles);
       // must be done last
       this.isNotAdmitted = MemberUtil.isNotAdmitted(participant, this.isGuest, this.status);
     }
@@ -425,6 +436,17 @@ export default class Member {
     } else if (MemberUtil.isDevice(participant)) {
       this.isHost = MemberUtil.isAssociatedSame(participant, hostId);
     }
+  }
+
+  /**
+   * process the roles that have been applied to this member
+   * @param {Object} participant
+   * @returns {undefined}
+   * @private
+   * @memberof Member
+   */
+  private processRoles(participant: ParticipantWithRoles) {
+    this.roles = MemberUtil.extractControlRoles(participant);
   }
 
   /**

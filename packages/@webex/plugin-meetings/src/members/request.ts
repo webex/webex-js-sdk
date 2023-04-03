@@ -85,6 +85,26 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.request(requestParams);
   }
 
+  /**
+   * Sends a request to the DTMF endpoint to send tones
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of PSTN user
+   * @returns {Promise}
+   */
+  assignRolesMember(options: any) {
+    if (!options || !options.locusUrl || !options.memberId) {
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
+    }
+
+    const requestParams = MembersUtil.getRoleAssignmentMemberRequestParams(options);
+
+    // @ts-ignore
+    return this.request(requestParams);
+  }
+
   raiseOrLowerHandMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
