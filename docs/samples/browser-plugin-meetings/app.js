@@ -2097,6 +2097,12 @@ function setupMultistreamEventListeners(meeting) {
     updateVideoPanesForActiveSpeaker();
   });
 
+  meeting.on('meeting:stoppedSharingLocal', () => {
+    publishedLocalShareAudioTrack = null;
+    publishedLocalShareVideoTrack = null;
+    meetingStreamsLocalShare.srcObject = null;
+  });
+
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
 
@@ -2961,6 +2967,7 @@ function viewBreakouts(event) {
       meeting.breakouts.assign([{
         id: breakoutSession.sessionId,
         memberIds: assigned,
+        anyone: true,
       }]);
     };
 

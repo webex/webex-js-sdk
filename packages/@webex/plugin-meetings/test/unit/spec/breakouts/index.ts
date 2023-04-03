@@ -738,9 +738,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('enableAndLockBreakout', () => {
-
       it('enableBreakoutSession is true', async () => {
-
         breakouts.enableBreakoutSession = true;
 
         breakouts.lockBreakout = sinon.stub().resolves();
@@ -748,11 +746,9 @@ describe('plugin-meetings', () => {
         breakouts.enableAndLockBreakout();
 
         assert.calledOnceWithExactly(breakouts.lockBreakout);
-
       });
 
       it('enableBreakoutSession is false', async () => {
-
         breakouts.enableBreakoutSession = false;
 
         breakouts.enableBreakouts = sinon.stub().resolves();
@@ -760,15 +756,11 @@ describe('plugin-meetings', () => {
         breakouts.enableAndLockBreakout();
 
         assert.calledOnceWithExactly(breakouts.enableBreakouts);
-
       });
-
     });
 
     describe('lockBreakout', () => {
-
       it('lock breakout is true', async () => {
-
         breakouts.editLock = {
           ttl: 30,
           token: 'token',
@@ -780,36 +772,29 @@ describe('plugin-meetings', () => {
         breakouts.lockBreakout();
 
         assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
-
       });
 
-
       it('lock breakout throw error', async () => {
-        
         breakouts.editLock = {
           ttl: 30,
           token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
           state: 'LOCKED',
-       
         };
 
         await expect(breakouts.lockBreakout()).to.be.rejectedWith('Breakout already locked');
       });
 
       it('lock breakout without editLock', async () => {
-
         breakouts.getBreakout = sinon.stub().resolves();
 
         breakouts.lockBreakout();
 
         assert.calledOnceWithExactly(breakouts.getBreakout, true);
       });
-
     });
 
     describe('unLockEditBreakout', () => {
       it('unLock edit breakout request as expected', async () => {
-
         breakouts.set('editLock', {
           ttl: 30,
           token: '2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
@@ -819,17 +804,14 @@ describe('plugin-meetings', () => {
         breakouts.unLockEditBreakout();
         assert.calledOnceWithExactly(webex.request, {
           method: 'DELETE',
-          uri: 'url/editlock/2ad57140-01b5-4bd0-a5a7-4dccdc06904c'
+          uri: 'url/editlock/2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
         });
-
       });
     });
 
     describe('keepEditLockAlive', () => {
-
       it('keep edit lock', () => {
-
-        const clock = sinon.useFakeTimers()
+        const clock = sinon.useFakeTimers();
 
         breakouts.set('editLock', {
           ttl: 30,
@@ -842,15 +824,14 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
-          uri: 'url/editlock/token'
+          uri: 'url/editlock/token',
         });
 
         clock.restore();
       });
 
       it('keep edit lock, ttl < 30, also using 30', () => {
-
-        const clock = sinon.useFakeTimers()
+        const clock = sinon.useFakeTimers();
 
         breakouts.set('editLock', {
           ttl: 20,
@@ -863,15 +844,14 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
-          uri: 'url/editlock/token'
+          uri: 'url/editlock/token',
         });
 
         clock.restore();
       });
 
       it('keep edit lock, ttl > 30, using the ttl', () => {
-
-        const clock = sinon.useFakeTimers()
+        const clock = sinon.useFakeTimers();
 
         breakouts.set('editLock', {
           ttl: 50,
@@ -887,14 +867,13 @@ describe('plugin-meetings', () => {
         clock.restore();
       });
 
-      it('keep edit lock, throw error, clearInterval', async() => {
-
+      it('keep edit lock, throw error, clearInterval', async () => {
         breakouts._clearEditLockInfo = sinon.stub();
 
         const error = new Error('something went wrong');
         webex.request.rejects(error);
 
-        const clock = sinon.useFakeTimers()
+        const clock = sinon.useFakeTimers();
 
         breakouts.set('editLock', {
           ttl: 30,
@@ -913,8 +892,7 @@ describe('plugin-meetings', () => {
       });
 
       it('keep edit lock, do not call until reached ttl', () => {
-
-        const clock = sinon.useFakeTimers()
+        const clock = sinon.useFakeTimers();
 
         breakouts.set('editLock', {
           ttl: 30,
@@ -930,18 +908,19 @@ describe('plugin-meetings', () => {
         clock.tick(1);
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
-          uri: 'url/editlock/token'
+          uri: 'url/editlock/token',
         });
 
         clock.restore();
       });
-
     });
-    
+
     describe('#assign', () => {
       it('assign members and emails to a breakout session', async () => {
         breakouts.assign = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
-        const params = [{id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com']}];
+        const params = [
+          {id: 'sessionId', memberIds: ['111'], emails: ['111@cisco.com'], anyone: true},
+        ];
         const result = await breakouts.assign(params);
         assert.calledOnceWithExactly(breakouts.assign, params);
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
