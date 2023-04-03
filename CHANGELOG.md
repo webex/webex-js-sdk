@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.59](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.58...v3.0.0-beta.59) (2023-04-03)
+
+
+### Features
+
+* **plugin-meetings:** add new display hint ([#2714](https://github.com/webex/webex-js-sdk/issues/2714)) ([dde0fc1](https://github.com/webex/webex-js-sdk/commit/dde0fc1c353b1225b087484764deb14ff7565588))
+
 ## [3.0.0-beta.58](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.57...v3.0.0-beta.58) (2023-03-31)
 
 
