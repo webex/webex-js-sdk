@@ -41,6 +41,7 @@
  * @instance
  * @memberof Calendar
  */
+import {isArray} from 'lodash';
 import {base64} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
@@ -71,6 +72,38 @@ const Calendar = WebexPlugin.extend({
    * Cache all rpc event request locally
    * */
   rpcEventRequests: [],
+
+  /**
+   * Cache KMS encryptionKeyUrl
+   * */
+  encryptionKeyUrl: null,
+
+  /**
+   * WebexPlugin initialize method. This triggers once Webex has completed its
+   * initialization workflow.
+   *
+   * If the plugin is meant to perform startup actions, place them in this
+   * `initialize()` method instead of the `constructor()` method.
+   * @returns {void}
+   */
+  initialize() {
+    // Used to perform actions after webex is fully qualified and ready for
+    // operation.
+    this.listenToOnce(this.webex, 'ready', () => {
+      // Pre-fetch a KMS encryption key url to improve performance
+      this.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then((keys) => {
+        const key = isArray(keys) ? keys[0] : keys;
+        this.encryptionKeyUrl = key ? key.uri : null;
+        this.logger.info('calendar->bind a KMS encryption key url');
+        this.webex.internal.encryption
+          .getKey(this.encryptionKeyUrl, {onBehalfOf: null})
+          .then((retrievedKey) => {
+            this.encryptionKeyUrl = retrievedKey ? retrievedKey.uri : null;
+            this.logger.info('calendar->retrieve the KMS encryption key url and cache it');
+          });
+      });
+    });
+  },
 
   /**
    * Explicitly sets up the calendar plugin by registering
