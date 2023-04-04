@@ -39,7 +39,7 @@ const Breakouts = WebexPlugin.extend({
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
   },
-
+  isCallPreassignments: false,
   children: {
     currentBreakoutSession: Breakout,
   },
@@ -204,6 +204,7 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   updateBreakout(params) {
+    const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
     this.set('groups', params.groups);
 
@@ -221,7 +222,14 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
 
-    this.set('enableBreakoutSession', params.enableBreakoutSession);
+    // We need to call queryPreAssignments when enableBreakoutSession become true
+    if (
+      params.enableBreakoutSession &&
+      params.hasBreakoutPreAssignments &&
+      preEnableBreakoutSession !== params.enableBreakoutSession
+    ) {
+      this.queryPreAssignments();
+    }
   },
 
   /**
@@ -429,6 +437,7 @@ const Breakouts = WebexPlugin.extend({
     if (breakInfo.body?.groups) {
       this.set('groups', breakInfo.body.groups);
     }
+    this.isCallPreassignments = false;
 
     return Promise.resolve(breakInfo);
   },
@@ -541,16 +550,19 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   queryPreAssignments() {
-    this.webex
-      .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
-      .then((result) => {
-        if (result.body?.groups) {
-          this.set('groups', result.body.groups);
-        }
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
-      });
+    if (!this.isCallPreassignments) {
+      this.webex
+        .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
+        .then((result) => {
+          if (result.body?.groups) {
+            this.set('groups', result.body.groups);
+          }
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
+        });
+      this.isCallPreassignments = true;
+    }
   },
 });
 

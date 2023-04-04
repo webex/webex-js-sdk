@@ -2577,6 +2577,12 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    // We need to reinitialize  when user upgrades to host or cohost
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
+      this.breakouts.queryPreAssignments(payload);
+      // ...
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
       Trigger.trigger(
         this,

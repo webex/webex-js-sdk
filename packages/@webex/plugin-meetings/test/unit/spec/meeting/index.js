@@ -86,7 +86,7 @@ const {getBrowserName} = BrowserDetection();
 // Non-stubbed function
 const {getDisplayMedia} = Media;
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},
@@ -4515,6 +4515,19 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
+        });
+      });
+
+      describe('#setUpBreakoutsPreAssignmentsListener', () => {
+        it('listens to the self moderator or cohost upgrade event', () => {
+          meeting.breakouts.queryPreAssignments = sinon.stub();
+          const payload = 'payload';
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_MODERATOR_OR_COHOST_UPGRADE',
+            payload,
+          );
+          assert.calledOnceWithExactly(meeting.breakouts.queryPreAssignments, payload);
         });
       });
 

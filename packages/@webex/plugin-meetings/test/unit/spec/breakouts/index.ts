@@ -801,6 +801,7 @@ describe('plugin-meetings', () => {
             }
           })
         );
+        breakouts.isCallPreassignments = false;
         const result = await breakouts.queryPreAssignments();
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
@@ -816,6 +817,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
         assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
         assert.equal(breakouts.groups[0].type,'BREAKOUT');
+        assert.equal(breakouts.isCallPreassignments, true);
       });
 
       it('rejects when no pre-assignments created for this meeting', async () => {

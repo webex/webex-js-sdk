@@ -43,7 +43,12 @@ MeetingUtil.parseLocusJoin = (meeting, response) => {
   });
 
   // We need to confirm whether to call queryPreAssignments
-  if (parsed.controls.breakout && parsed.controls.breakout.hasBreakoutPreAssignments) {
+  if (
+    parsed.moderator &&
+    parsed.controls.breakout &&
+    parsed.controls.breakout.enableBreakoutSession &&
+    parsed.controls.breakout.hasBreakoutPreAssignments
+  ) {
     meeting.breakouts.queryPreAssignments();
   }
 
