@@ -86,7 +86,7 @@ const {getBrowserName} = BrowserDetection();
 // Non-stubbed function
 const {getDisplayMedia} = Media;
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},
