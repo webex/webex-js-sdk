@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.49.0](https://github.com/webex/webex-js-sdk/compare/v2.48.0...v2.49.0) (2023-04-03)
+
+
+### Features
+
+* Add feature to update already created message in the room ([#2708](https://github.com/webex/webex-js-sdk/issues/2708)) ([286b9ab](https://github.com/webex/webex-js-sdk/commit/286b9abc8526fc37b58be57964550ea44d936528))
+
 ## [2.48.0](https://github.com/webex/webex-js-sdk/compare/v2.47.0...v2.48.0) (2023-03-22)
 
 
