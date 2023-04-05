@@ -1,1 +1,14 @@
-export * from './webrtc-core';
+export {
+  LocalTrack,
+  LocalDisplayTrack,
+  LocalTrackEvents,
+  type TrackMuteEvent,
+  type ServerMuteReason,
+  LocalMicrophoneTrackEvents,
+  LocalCameraTrackEvents,
+  LocalMicrophoneTrack,
+  LocalCameraTrack,
+  createMicrophoneTrack,
+  createCameraTrack,
+  createDisplayTrack,
+} from './webrtc-core';
