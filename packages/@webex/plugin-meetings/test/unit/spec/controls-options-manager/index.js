@@ -3,7 +3,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import { HTTP_VERBS } from '@webex/plugin-meetings/src/constants';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
     describe('controls-options-manager tests', () => {
         describe('index', () => {
             let request;
@@ -153,6 +153,30 @@ describe('plugin-meetings', () => {
 
               it('can set mute all when the display hint is available mutedEnabled=true', () => {
                 manager.setDisplayHints(['MUTE_ALL', 'ENABLE_HARD_MUTE', 'ENABLE_MUTE_ON_ENTRY']);
+
+                const result = manager.setMuteAll(true, true, true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
+                method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('can set mute all when the display hint is available mutedEnabled=true', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'ENABLE_MUTE_ON_ENTRY']);
+
+                const result = manager.setMuteAll(true, true, true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
+                method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('can set mute all when the display hint is available mutedEnabled=true', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
 
                 const result = manager.setMuteAll(true, true, true);
 
