@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.50.0](https://github.com/webex/webex-js-sdk/compare/v2.49.0...v2.50.0) (2023-04-05)
+
+
+### Features
+
+* **internal-plugin-calendar:** support scheduling/updating/deleting meeting via calendar service ([#2706](https://github.com/webex/webex-js-sdk/issues/2706)) ([a899e18](https://github.com/webex/webex-js-sdk/commit/a899e18eb292d8ed453b2f2bd4c1f382570045ca))
+
 ## [2.49.0](https://github.com/webex/webex-js-sdk/compare/v2.48.0...v2.49.0) (2023-04-03)
 
 
