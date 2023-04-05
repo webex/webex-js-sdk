@@ -5264,13 +5264,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.statsAnalyzer = new StatsAnalyzer(
             // @ts-ignore - config coming from registerPlugin
             this.config.stats,
-            (ssrc: number) => {
-              const receiveSlots = Object.keys(this.receiveSlotManager.allocatedSlots)
-                .map((key) => this.receiveSlotManager.allocatedSlots[key])
-                .flat();
-
-              return receiveSlots.find((r) => ssrc && r.wcmeReceiveSlot.id.ssrc === ssrc);
-            },
+            (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
             this.networkQualityMonitor
           );
           this.setupStatsAnalyzerEventHandlers();

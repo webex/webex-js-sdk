@@ -12,7 +12,7 @@ import {CSI, ReceiveSlot} from './receiveSlot';
  * so this manager has a pool in order to re-use the slots that were released earlier.
  */
 export class ReceiveSlotManager {
-  allocatedSlots: {[key in MediaType]: ReceiveSlot[]};
+  private allocatedSlots: {[key in MediaType]: ReceiveSlot[]};
 
   private freeSlots: {[key in MediaType]: ReceiveSlot[]};
 
@@ -152,5 +152,17 @@ export class ReceiveSlotManager {
         slot.findMemberId();
       });
     });
+  }
+
+  /**
+   * Find a receive slot by a ssrc.
+   *
+   * @param ssrc - The ssrc of the receive slot to find.
+   * @returns - The receive slot with this ssrc, undefined if not found.
+   */
+  findReceiveSlotBySsrc(ssrc: number): ReceiveSlot | undefined {
+    return Object.values(this.allocatedSlots)
+      .flat()
+      .find((r) => ssrc && r.wcmeReceiveSlot.id.ssrc === ssrc);
   }
 }

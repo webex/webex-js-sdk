@@ -528,7 +528,8 @@ export class StatsAnalyzer extends EventsScope {
           currentStats.totalPacketsSent === 0
         ) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent`
+            `StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent`,
+            currentStats.totalPacketsSent
           );
         } else {
           if (
@@ -536,7 +537,8 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.totalAudioEnergy === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No audio Energy present`
+              `StatsAnalyzer:index#compareLastStatsResult --> No audio Energy present`,
+              currentStats.totalAudioEnergy
             );
           }
 
@@ -570,14 +572,16 @@ export class StatsAnalyzer extends EventsScope {
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received`
+            `StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received`,
+            currentPacketsReceived
           );
         } else if (
           currentSamplesReceived === previousSamplesReceived ||
           currentSamplesReceived === 0
         ) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No audio samples received`
+            `StatsAnalyzer:index#compareLastStatsResult --> No audio samples received`,
+            currentSamplesReceived
           );
         }
 
@@ -594,7 +598,8 @@ export class StatsAnalyzer extends EventsScope {
           currentStats.totalPacketsSent === 0
         ) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent`
+            `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent`,
+            currentStats.totalPacketsSent
           );
         } else {
           if (
@@ -602,7 +607,8 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.framesEncoded === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No video Frames Encoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No video Frames Encoded`,
+              currentStats.framesEncoded
             );
           }
 
@@ -612,7 +618,8 @@ export class StatsAnalyzer extends EventsScope {
             this.statsResults.resolutions['video-send'].send.framesSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No video Frames sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No video Frames sent`,
+              this.statsResults.resolutions['video-send'].send.framesSent
             );
           }
         }
@@ -648,24 +655,28 @@ export class StatsAnalyzer extends EventsScope {
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets received`
+            `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets received`,
+            currentPacketsReceived
           );
         } else {
           if (currentFramesReceived === previousFramesReceived || currentFramesReceived === 0) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No video frames received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No video frames received`,
+              currentFramesReceived
             );
           }
 
           if (currentFramesDecoded === previousFramesDecoded || currentFramesDecoded === 0) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No video frames decoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No video frames decoded`,
+              currentFramesDecoded
             );
           }
 
           if (currentFramesDropped - previousFramesDropped > 10) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> video frames are getting dropped`
+              `StatsAnalyzer:index#compareLastStatsResult --> video frames are getting dropped`,
+              currentFramesDropped - previousFramesDropped
             );
           }
         }
@@ -684,7 +695,8 @@ export class StatsAnalyzer extends EventsScope {
           currentStats.totalPacketsSent === 0
         ) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent`
+            `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent`,
+            currentStats.totalPacketsSent
           );
         } else {
           if (
@@ -692,7 +704,8 @@ export class StatsAnalyzer extends EventsScope {
             currentStats.framesEncoded === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No share frames getting encoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No share frames getting encoded`,
+              currentStats.framesEncoded
             );
           }
 
@@ -702,7 +715,8 @@ export class StatsAnalyzer extends EventsScope {
             this.statsResults.resolutions['video-share-send'].send.framesSent === 0
           ) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No share frames sent`
+              `StatsAnalyzer:index#compareLastStatsResult --> No share frames sent`,
+              this.statsResults.resolutions['video-share-send'].send.framesSent
             );
           }
         }
@@ -740,24 +754,28 @@ export class StatsAnalyzer extends EventsScope {
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets received`
+            `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets received`,
+            currentPacketsReceived
           );
         } else {
           if (currentFramesReceived === previousFramesReceived || currentFramesReceived === 0) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No share frames received`
+              `StatsAnalyzer:index#compareLastStatsResult --> No share frames received`,
+              currentFramesReceived
             );
           }
 
           if (currentFramesDecoded === previousFramesDecoded || currentFramesDecoded === 0) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> No share frames decoded`
+              `StatsAnalyzer:index#compareLastStatsResult --> No share frames decoded`,
+              currentFramesDecoded
             );
           }
 
           if (currentFramesDropped - previousFramesDropped > 10) {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#compareLastStatsResult --> share frames are getting dropped`
+              `StatsAnalyzer:index#compareLastStatsResult --> share frames are getting dropped`,
+              currentFramesDropped - previousFramesDropped
             );
           }
         }
@@ -930,6 +948,10 @@ export class StatsAnalyzer extends EventsScope {
 
     if (result.bytesReceived) {
       let kilobytes = 0;
+      const receiveSlot = this.receiveSlotCallback(result.ssrc);
+      const idAndCsi = `id: "${receiveSlot.id || ''}"${
+        receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''
+      }`;
 
       if (!this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived) {
         this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived =
@@ -979,12 +1001,9 @@ export class StatsAnalyzer extends EventsScope {
         result.packetsReceived;
 
       if (this.statsResults[mediaType][sendrecvType].packetsReceived === 0) {
-        const receiveSlot = this.receiveSlotCallback(result.ssrc);
         if (receiveSlot) {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "${
-              receiveSlot.id || ''
-            }"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`,
+            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}`,
             this.statsResults[mediaType][sendrecvType].packetsReceived
           );
         }
@@ -999,7 +1018,7 @@ export class StatsAnalyzer extends EventsScope {
           : 0;
       if (this.statsResults[mediaType][sendrecvType].currentPacketLossRatio > 3) {
         LoggerProxy.logger.info(
-          'StatsAnalyzer:index#processInboundRTPResult --> Packets getting lost from the receiver ',
+          `StatsAnalyzer:index#processInboundRTPResult --> Packets getting lost from the receiver with slot ${idAndCsi}`,
           this.statsResults[mediaType][sendrecvType].currentPacketLossRatio
         );
       }
