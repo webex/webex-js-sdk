@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.60](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.59...v3.0.0-beta.60) (2023-04-05)
+
+
+### Bug Fixes
+
+* updated @webex/internal-media-core ([#2716](https://github.com/webex/webex-js-sdk/issues/2716)) ([c2a4a1e](https://github.com/webex/webex-js-sdk/commit/c2a4a1e6975f8fd600e404d359afeec7f87d198f))
+
 ## [3.0.0-beta.59](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.58...v3.0.0-beta.59) (2023-04-03)
 
 
