@@ -41,8 +41,8 @@
  * @instance
  * @memberof Calendar
  */
-
-import btoa from 'btoa';
+import {isArray} from 'lodash';
+import {base64} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
 import CalendarCollection from './collection';
@@ -54,6 +54,9 @@ import {
   CALENDAR_UPDATED,
 } from './constants';
 
+import EncryptHelper from './calendar.encrypt.helper';
+import DecryptHelper from './calendar.decrypt.helper';
+
 const Calendar = WebexPlugin.extend({
   namespace: 'Calendar',
 
@@ -64,6 +67,43 @@ const Calendar = WebexPlugin.extend({
    * @memberof Calendar
    */
   registered: false,
+
+  /**
+   * Cache all rpc event request locally
+   * */
+  rpcEventRequests: [],
+
+  /**
+   * Cache KMS encryptionKeyUrl
+   * */
+  encryptionKeyUrl: null,
+
+  /**
+   * WebexPlugin initialize method. This triggers once Webex has completed its
+   * initialization workflow.
+   *
+   * If the plugin is meant to perform startup actions, place them in this
+   * `initialize()` method instead of the `constructor()` method.
+   * @returns {void}
+   */
+  initialize() {
+    // Used to perform actions after webex is fully qualified and ready for
+    // operation.
+    this.listenToOnce(this.webex, 'ready', () => {
+      // Pre-fetch a KMS encryption key url to improve performance
+      this.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then((keys) => {
+        const key = isArray(keys) ? keys[0] : keys;
+        this.encryptionKeyUrl = key ? key.uri : null;
+        this.logger.info('calendar->bind a KMS encryption key url');
+        this.webex.internal.encryption
+          .getKey(this.encryptionKeyUrl, {onBehalfOf: null})
+          .then((retrievedKey) => {
+            this.encryptionKeyUrl = retrievedKey ? retrievedKey.uri : null;
+            this.logger.info('calendar->retrieve the KMS encryption key url and cache it');
+          });
+      });
+    });
+  },
 
   /**
    * Explicitly sets up the calendar plugin by registering
@@ -148,6 +188,9 @@ const Calendar = WebexPlugin.extend({
     this.webex.internal.mercury.on('event:calendar.meeting.delete', (envelope) => {
       this._handleDelete(envelope.data);
     });
+    this.webex.internal.mercury.on('event:calendar.free_busy', (envelope) => {
+      this._handleFreeBusy(envelope.data);
+    });
   },
 
   /**
@@ -161,6 +204,7 @@ const Calendar = WebexPlugin.extend({
     this.webex.internal.mercury.off('event:calendar.meeting.update');
     this.webex.internal.mercury.off('event:calendar.meeting.update.minimal');
     this.webex.internal.mercury.off('event:calendar.meeting.delete');
+    this.webex.internal.mercury.off('event:calendar.free_busy');
   },
 
   /**
@@ -197,6 +241,32 @@ const Calendar = WebexPlugin.extend({
     const item = CalendarCollection.remove(data.calendarMeetingExternal.id);
 
     this.trigger(CALENDAR_DELETE, item);
+  },
+
+  /**
+   * handles free_busy events
+   * @param {Object} data
+   * @returns {undefined}
+   * @private
+   */
+  _handleFreeBusy(data) {
+    DecryptHelper.decryptFreeBusyResponse(this, data).then(() => {
+      let response = {};
+      if (data && data.calendarFreeBusyScheduleResponse) {
+        response = data.calendarFreeBusyScheduleResponse;
+      }
+      if (response && response.requestId && response.requestId in this.rpcEventRequests) {
+        this.logger.log(
+          `webex.internal.calendar - receive requests, requestId: ${response.requestId}`
+        );
+        delete response.encryptionKeyUrl;
+        const {resolve} = this.rpcEventRequests[response.requestId];
+        resolve(response);
+        delete this.rpcEventRequests[response.requestId];
+      } else {
+        this.logger.log('webex.internal.calendar - receive other requests.');
+      }
+    });
   },
 
   /**
@@ -253,7 +323,7 @@ const Calendar = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'calendar',
-      resource: `calendarEvents/${btoa(id)}/participants`,
+      resource: `calendarEvents/${base64.encode(id)}/participants`,
     });
   },
 
@@ -266,7 +336,7 @@ const Calendar = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'calendar',
-      resource: `calendarEvents/${btoa(id)}/notes`,
+      resource: `calendarEvents/${base64.encode(id)}/notes`,
     });
   },
 
@@ -311,6 +381,114 @@ const Calendar = WebexPlugin.extend({
 
         return Promise.all(promises).then(() => meetingObjects);
       });
+  },
+
+  /**
+   * Create calendar event
+   * @param {object} [data] meeting payload data
+   * @returns {Promise} Resolves with creating calendar event response
+   * */
+  createCalendarEvent(data) {
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() =>
+      this.request({
+        method: 'POST',
+        service: 'calendar',
+        body: data,
+        resource: 'calendarEvents/sync',
+      })
+    );
+  },
+
+  /**
+   * Update calendar event
+   * @param {string} [id] calendar event id
+   * @param {object} [data] meeting payload data
+   * @param {object} [query] the query parameters for specific usage
+   * @returns {Promise} Resolves with updating calendar event response
+   * */
+  updateCalendarEvent(id, data, query) {
+    return EncryptHelper.encryptCalendarEventRequest(this, data).then(() =>
+      this.request({
+        method: 'PATCH',
+        service: 'calendar',
+        body: data,
+        resource: `calendarEvents/${base64.encode(id)}/sync`,
+        qs: query || {},
+      })
+    );
+  },
+
+  /**
+   * Delete calendar event
+   * @param {string} [id] calendar event id
+   * @returns {Promise} Resolves with deleting calendar event response
+   * */
+  deleteCalendarEvent(id) {
+    return this.request({
+      method: 'DELETE',
+      service: 'calendar',
+      resource: `calendarEvents/${base64.encode(id)}/sync`,
+    });
+  },
+
+  /**
+   * @typedef QuerySchedulerDataOptions
+   * @param {string} [siteName] it is site full url, must have. Example: ccctest.dmz.webex.com
+   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for. It should be base64 encoded.
+   *                      Example: 040000008200E00074C5B7101A82E008000000004A99F11A0841D9010000000000000000100000009EE499D4A71C1A46B51494C70EC7BFE5
+   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for. It should be base64 encoded.
+   *                      Example: 7f318aa9-887c-6e94-802a-8dc8e6eb1a0a
+   * @param {string} [scheduleTemplateId] it template id.
+   * @param {string} [sessionTypeId] it session type id.
+   * @param {string} [organizerCIUserId] required in schedule-on-behalf case. It is the organizer's CI UUID.
+   * @param {boolean} [usmPreference]
+   * @param {string} [webexMeetingId] webex side meeting UUID
+   * @param {string} [eventId] event ID.
+   * @param {string} [icalUid] icalendar UUID.
+   * @param {string} [thirdPartyType] third part type, such as: Microsoft
+   */
+  /**
+   * Get scheduler data from calendar service
+   * @param {QuerySchedulerDataOptions} [query] the command parameters for fetching scheduler data.
+   * @returns {Promise} Resolves with a decrypted scheduler data
+   * */
+  getSchedulerData(query) {
+    return this.request({
+      method: 'GET',
+      service: 'calendar',
+      resource: 'schedulerData',
+      qs: query || {},
+    }).then((response) => {
+      return DecryptHelper.decryptSchedulerDataResponse(this, response.body).then(() => response);
+    });
+  },
+
+  /**
+   * Get free busy status from calendar service
+   * @param {Object} [data] the command parameters for fetching free busy status.
+   * @returns {Promise} Resolves with a decrypted response
+   * */
+  getFreeBusy(data) {
+    return new Promise((resolve, reject) => {
+      EncryptHelper.encryptFreeBusyRequest(this, data)
+        .then(() => {
+          this.request({
+            method: 'POST',
+            service: 'calendar',
+            body: data,
+            resource: 'freebusy',
+          })
+            .then(() => {
+              this.rpcEventRequests[data.requestId] = {resolve, reject};
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
   },
 });
 
