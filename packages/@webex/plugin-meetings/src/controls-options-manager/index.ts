@@ -147,8 +147,13 @@ export default class ControlsOptionsManager {
     const body: Record<string, any> = {};
     let error: PermissionError;
 
+    let shouldSkipCheckToMergeBody = false;
+
     Object.entries(setting).forEach(([key, value]) => {
-      if (!Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)) {
+      if (
+        !shouldSkipCheckToMergeBody &&
+        !Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)
+      ) {
         error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
       }
 
@@ -158,6 +163,7 @@ export default class ControlsOptionsManager {
 
       switch (key) {
         case Setting.muted:
+          shouldSkipCheckToMergeBody = true;
           body.audio = body.audio
             ? {...body.audio, [camelCase(key)]: value}
             : {[camelCase(key)]: value};
