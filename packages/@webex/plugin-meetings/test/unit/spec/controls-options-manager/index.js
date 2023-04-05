@@ -3,7 +3,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import { HTTP_VERBS } from '@webex/plugin-meetings/src/constants';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
     describe('controls-options-manager tests', () => {
         describe('index', () => {
             let request;
