@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.61](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.60...v3.0.0-beta.61) (2023-04-05)
+
+
+### Features
+
+* **multistream:** improve logging for setLayout ([#2715](https://github.com/webex/webex-js-sdk/issues/2715)) ([7f3396e](https://github.com/webex/webex-js-sdk/commit/7f3396e38e67830ca534d8fad220a9485d0382ca))
+
 ## [3.0.0-beta.60](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.59...v3.0.0-beta.60) (2023-04-05)
 
 
