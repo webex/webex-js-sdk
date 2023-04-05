@@ -55,7 +55,7 @@ describe('plugin-meetings', () => {
 
         statsAnalyzer = new StatsAnalyzer(
           initialConfig,
-          () => undefined,
+          () => ({}),
           networkQualityMonitor,
           defaultStats
         );
@@ -189,7 +189,7 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, () => undefined, networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;

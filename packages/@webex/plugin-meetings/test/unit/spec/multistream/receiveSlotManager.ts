@@ -14,7 +14,7 @@ describe('ReceiveSlotManager', () => {
 
   beforeEach(() => {
     fakeWcmeSlot = {
-      id: 'fake wcme slot',
+      id: {ssrc: 1},
     };
     fakeMeeting = {
       mediaProperties: {
@@ -32,6 +32,7 @@ describe('ReceiveSlotManager', () => {
         id: `fake sdk receive slot ${fakeReceiveSlots.length + 1}`,
         mediaType,
         findMemberId: sinon.stub(),
+        wcmeReceiveSlot: fakeWcmeSlot,
       };
 
       fakeReceiveSlots.push(fakeReceiveSlot);
@@ -174,7 +175,6 @@ describe('ReceiveSlotManager', () => {
   });
 
   describe('updateMemberIds', () => {
-
     it('calls findMemberId() on all allocated receive slots', async () => {
       const audioSlots: ReceiveSlot[] = [];
       const videoSlots: ReceiveSlot[] = [];
@@ -193,9 +193,17 @@ describe('ReceiveSlotManager', () => {
 
       assert.strictEqual(fakeReceiveSlots.length, audioSlots.length + videoSlots.length);
 
-      fakeReceiveSlots.forEach(slot => {
+      fakeReceiveSlots.forEach((slot) => {
         assert.calledOnce(slot.findMemberId);
       });
+    });
+  });
+
+  describe('findReceiveSlotBySsrc', () => {
+    it('finds a receive slot with a specific id', async () => {
+      await receiveSlotManager.allocateSlot(MediaType.VideoMain);
+      assert.exists(receiveSlotManager.findReceiveSlotBySsrc(1));
+      assert.strictEqual(receiveSlotManager.findReceiveSlotBySsrc(2), undefined);
     });
   });
 });
