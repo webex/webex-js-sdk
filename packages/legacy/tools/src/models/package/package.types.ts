@@ -88,9 +88,14 @@ export interface TestConfig {
   karmaDebug?: boolean;
 
   /**
+   * Which port to use for karma debugging and fixtures.
+   */
+  karmaPort?: string;
+
+  /**
    * Which test runner to use.
    */
-  runner?: Array<TestRunner>;
+  runner?: TestRunner;
 
   /**
    * Override the default test targets for reading files.

@@ -1,3 +1,8 @@
+/**
+ * Core configuration Object for Mocha.
+ *
+ * @public
+ */
 const CONFIG = {
   diff: true,
   bail: true,

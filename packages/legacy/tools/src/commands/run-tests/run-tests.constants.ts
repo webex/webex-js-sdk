@@ -33,6 +33,12 @@ const CONFIG: CommandsConfig = {
       type: 'boolean',
     },
     {
+      alias: 'port',
+      description: 'Port to run the Karma server on',
+      name: 'karma-port',
+      type: 'string',
+    },
+    {
       description: 'Test runner to use.',
       name: 'runner',
       type: 'array',

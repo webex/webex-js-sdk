@@ -19,15 +19,16 @@ This package is meant to be consumed as a **dev-dependency**, and requires the f
 
 * `@babel/core` - *Peer development dependency*.
 * `@webex/babel-config-legacy` - *Development dependency*.
+* `@webex/jest-config-legacy` - *Development dependency*.
 
 Installation, local to this project, can be performed by using the following commands:
 
 ```bash
 # Project root installation.
-yarn add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core
+yarn add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core @webex/jest-config-legacy
 
 # Package installation.
-yarn workspace @{scope}/{package} add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core
+yarn workspace @{scope}/{package} add --dev @webex/legacy-tools @webex/babel-config-legacy @babel/core @webex/jest-config-legacy
 ```
 
 ## Usage
@@ -36,7 +37,41 @@ This package is expected to be used with [Babel](https://babeljs.io/).
 
 This package was intended to be used with [@webex/babel-config-legacy](https://github.com/webex/webex-js-sdk/tree/master/packages/legacy/babel), but should support most babel configurations.
 
+This package was intended to be used with [@webex/jest-config-legacy](https://github.com/webex/webex-js-sdk/tree/master/packages/legacy/jest), but should support most jest configurations.
+
 This package is expected to be used as a CLI or Module within a consuming package.
+
+### General Consumption
+
+In order to consume this package, it is recommended that the following files exist within the consuming package:
+
+* `./babel.config.js` - **Building**, **Testing [All]**
+* `./jest.config.js` - **Testing [Unit]**
+* `./process` - **Testing [Browser]**
+
+See the below sections for the intended contents of each file:
+
+```js
+// ./babel.config.js
+const babelConfigLegacy = require('@webex/babel-config-legacy');
+
+module.exports = babelConfigLegacy;
+```
+
+```js
+// ./jest.config.js
+const config = require('@webex/jest-config-legacy');
+
+module.exports = config;
+```
+
+```js
+// ./process
+module.exports = {browser: true};
+```
+
+This sets up the appropriate configurations for each of the tools needed by various portions of this package. Once these configurations are present, the CLI and Module workflows for this package should become executable.
+
 
 ### CLI Consumption
 
