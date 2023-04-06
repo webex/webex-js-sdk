@@ -1,10 +1,8 @@
 import url from 'url';
 
 import btoa from 'btoa';
-import {
-  // @ts-ignore
-  deconstructHydraId,
-} from '@webex/common';
+// @ts-ignore
+import {deconstructHydraId} from '@webex/common';
 
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';

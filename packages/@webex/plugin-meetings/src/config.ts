@@ -1,7 +1,5 @@
-import {
-  // @ts-ignore
-  deviceType,
-} from '@webex/common';
+// @ts-ignore
+import {deviceType} from '@webex/common';
 
 export default {
   // TODO: this needs to be defaulted

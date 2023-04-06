@@ -5,9 +5,11 @@ import util from 'util';
 
 import {includes} from 'lodash';
 import uuid from 'uuid';
+// @ts-ignore
 import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
+// @ts-ignore
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEETING_ERRORS} from '../constants';

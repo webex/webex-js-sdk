@@ -1,9 +1,7 @@
 import url from 'url';
 
-import {
-  // @ts-ignore
-  deconstructHydraId,
-} from '@webex/common';
+// @ts-ignore
+import {deconstructHydraId} from '@webex/common';
 
 import {
   _SIP_URI_,
