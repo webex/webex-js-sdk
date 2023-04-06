@@ -12,7 +12,7 @@ import CONSTANTS from './mocha.constants';
  */
 class Mocha {
   /**
-   * Run Jest tests against the provided files.
+   * Run Mocha tests against the provided files.
    *
    * @param options - Options object.
    * @returns - Empty Promise.

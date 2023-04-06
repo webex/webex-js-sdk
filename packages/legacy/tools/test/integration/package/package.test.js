@@ -3,6 +3,7 @@ const path = require('path');
 
 const {
   Jest,
+  Karma,
   Mocha,
   Package,
   PackageFile,
@@ -149,6 +150,10 @@ describe('Package', () => {
         spies.Mocha = {
           test: spyOn(Mocha, 'test').and.resolveTo(undefined),
         };
+
+        spies.Karma = {
+          test: spyOn(Karma, 'test').and.resolveTo(undefined),
+        };
       });
 
       it('should attempt to join the package root with the test directory', () => pack.test(config)
@@ -225,7 +230,7 @@ describe('Package', () => {
           });
       });
 
-      it('should call "Jest.test()" with files if the located unit files are greater than 0', () => pack.test(config)
+      it('should call "Jest.test()" with files when runner is set to "jest"', () => pack.test({ ...config, runner: 'jest' })
         .then(() => {
           expect(spies.Jest.test).toHaveBeenCalledTimes(1);
           expect(spies.Jest.test.calls.all()[0].args).toEqual([{
@@ -233,27 +238,55 @@ describe('Package', () => {
           }]);
         }));
 
-      it('should call "Jest.test()" with files if the located unit files 0 or less', () => {
+      it('should not call "Jest.test()" with files if the located unit files 0 or less when runner is set to "jest"', () => {
         spies.Package.getFiles.and.resolveTo([]);
 
-        return pack.test(config)
+        return pack.test({ ...config, runner: 'jest' })
           .then(() => {
             expect(spies.Jest.test).toHaveBeenCalledTimes(0);
           });
       });
 
-      it('should call "Mocha.test()" with files if the located unit files are greater than 0', () => pack.test(config)
+      it('should call "Mocha.test()" with files if the located unit and integration files are greater than 0 when runner is set to "mocha"', () => pack.test({ ...config, runner: 'mocha' })
         .then(() => {
           expect(spies.Mocha.test).toHaveBeenCalledTimes(1);
-          expect(spies.Jest.test.calls.all()[0].args).toEqual([{
-            files: results.Package.getFiles,
+          expect(spies.Mocha.test.calls.all()[0].args).toEqual([{
+            files: [...results.Package.getFiles, ...results.Package.getFiles],
           }]);
         }));
 
-      it('should call "Mocha.test()" with files if the located unit files 0 or less', () => {
+      it('should not call "Mocha.test()" with files if the located unit and integration files 0 or less when runner is set to "mocha"', () => {
         spies.Package.getFiles.and.resolveTo([]);
 
-        return pack.test(config)
+        return pack.test({ ...config, runner: 'mocha' })
+          .then(() => {
+            expect(spies.Mocha.test).toHaveBeenCalledTimes(0);
+          });
+      });
+
+      it('should call "Karma.test()" with files if the located unit and integration files are greater than 0 when runner is set to "karma"', () => {
+        const karmaBrowsers = ['chrome', 'firefox'];
+        const karmaDebug = true;
+        const karmaPort = '1234';
+        const runner = 'karma';
+
+        return pack.test({
+          ...config, karmaBrowsers, karmaDebug, karmaPort, runner,
+        })
+          .then(() => {
+            expect(spies.Karma.test).toHaveBeenCalledTimes(1);
+            expect(spies.Karma.test.calls.all()[0].args[0].browsers).toEqual(karmaBrowsers);
+            expect(spies.Karma.test.calls.all()[0].args[0].debug).toBe(karmaDebug);
+            expect(spies.Karma.test.calls.all()[0].args[0].port).toBe(karmaPort);
+            expect(spies.Karma.test.calls.all()[0].args[0].files)
+              .toEqual([...results.Package.getFiles, ...results.Package.getFiles]);
+          });
+      });
+
+      it('should not call "Karma.test()" with files if the located unit and integration files 0 or less when runner is set to "karma"', () => {
+        spies.Package.getFiles.and.resolveTo([]);
+
+        return pack.test({ ...config, runner: 'karma' })
           .then(() => {
             expect(spies.Mocha.test).toHaveBeenCalledTimes(0);
           });

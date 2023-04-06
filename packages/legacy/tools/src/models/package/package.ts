@@ -1,7 +1,7 @@
 import glob from 'glob';
 import path from 'path';
 
-import { Jest, Mocha } from '../../utils';
+import { Jest, Karma, Mocha } from '../../utils';
 
 import PackageFile from '../package-file';
 
@@ -116,12 +116,33 @@ class Package {
 
     return Promise.all([unitTestFileCollector, integrationTestFileCollector])
       .then(async ([unitFiles, integrationFiles]) => {
-        if (unitFiles.length > 0) {
-          await Jest.test({ files: unitFiles });
+        if (config.runner === 'jest') {
+          const testFiles = [...unitFiles];
+
+          if (testFiles.length > 0) {
+            await Jest.test({ files: testFiles });
+          }
         }
 
-        if (integrationFiles.length > 0) {
-          await Mocha.test({ files: integrationFiles });
+        if (config.runner === 'mocha') {
+          const testFiles = [...unitFiles, ...integrationFiles];
+
+          if (testFiles.length > 0) {
+            await Mocha.test({ files: testFiles });
+          }
+        }
+
+        if (config.runner === 'karma') {
+          const testFiles = [...unitFiles, ...integrationFiles];
+
+          if (testFiles.length > 0) {
+            await Karma.test({
+              browsers: config.karmaBrowsers,
+              debug: config.karmaDebug,
+              files: testFiles,
+              port: config.karmaPort,
+            });
+          }
         }
 
         return this;

@@ -4,9 +4,9 @@
 
 import '@webex/internal-plugin-device';
 import {partition} from 'lodash';
-import {WebexPlugin} from '@webex/webex-core';
+import * as WebexCore from '@webex/webex-core';
 
-const Feature = WebexPlugin.extend({
+const Feature = WebexCore.WebexPlugin.extend({
   namespace: 'Feature',
 
   /**
@@ -122,7 +122,7 @@ const Feature = WebexPlugin.extend({
   },
 
   initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+    Reflect.apply(WebexCore.WebexPlugin.prototype.initialize, this, args);
 
     this.listenToAndRun(
       this.webex,
