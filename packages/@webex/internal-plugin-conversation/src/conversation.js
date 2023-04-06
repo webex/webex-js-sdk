@@ -310,9 +310,10 @@ const Conversation = WebexPlugin.extend({
    * delete a reaction
    * @param {Object} conversation
    * @param {Object} reactionId
+   * @param {string} recipientId id of person receiving reaction in direct in-meeting chat
    * @returns {Promise<Activity>}
    */
-  deleteReaction(conversation, reactionId) {
+  deleteReaction(conversation, reactionId, recipientId) {
     const deleteReactionPayload = {
       actor: {objectType: 'person', id: this.webex.internal.device.userId},
       object: {
@@ -327,6 +328,11 @@ const Conversation = WebexPlugin.extend({
       verb: 'delete',
     };
 
+    // not sure if we need this for delete
+    if (recipientId) {
+      deleteReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+    }
+
     return this.sendReaction(conversation, deleteReactionPayload);
   },
 
@@ -335,9 +341,10 @@ const Conversation = WebexPlugin.extend({
    * @param {Object} conversation
    * @param {Object} displayName must be 'celebrate', 'heart', 'thumbsup', 'smiley', 'haha', 'confused', 'sad'
    * @param {Object} activity activity object from convo we are reacting to
+   * @param {string} recipientId id of person receiving reaction in direct in-meeting chat
    * @returns {Promise<Activity>}
    */
-  addReaction(conversation, displayName, activity) {
+  addReaction(conversation, displayName, activity, recipientId) {
     return this.createReactionHmac(displayName, activity).then((hmac) => {
       const addReactionPayload = {
         actor: {objectType: 'person', id: this.webex.internal.device.userId},
@@ -357,6 +364,10 @@ const Conversation = WebexPlugin.extend({
           hmac,
         },
       };
+
+      if (recipientId) {
+        addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+      }
 
       return this.sendReaction(conversation, addReactionPayload);
     });
@@ -1051,6 +1062,10 @@ const Conversation = WebexPlugin.extend({
           id: activity.parentActivityId || activity.parent.id,
           type: activity.activityType || activity.parent.type,
         };
+      }
+
+      if (activity.recipients) {
+        act.recipients = activity.recipients;
       }
 
       if (isString(act.actor)) {
