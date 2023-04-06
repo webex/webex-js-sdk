@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.51.0](https://github.com/webex/webex-js-sdk/compare/v2.50.0...v2.51.0) (2023-04-06)
+
+
+### Features
+
+* **legacy/tools:** elevate karma ([#2718](https://github.com/webex/webex-js-sdk/issues/2718)) ([d69198d](https://github.com/webex/webex-js-sdk/commit/d69198db398d3b72d1a454593e21a9ba362db8d4))
+
 ## [2.50.0](https://github.com/webex/webex-js-sdk/compare/v2.49.0...v2.50.0) (2023-04-05)
 
 
