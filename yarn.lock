@@ -13346,18 +13346,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^9.3.2":
-  version: 9.3.2
-  resolution: "glob@npm:9.3.2"
-  dependencies:
-    fs.realpath: ^1.0.0
-    minimatch: ^7.4.1
-    minipass: ^4.2.4
-    path-scurry: ^1.6.1
-  checksum: f3d188e9f70e24fa729a63ca197bcdb36d838677abec1fb9bbfe4b7620063bf90dc0f8d195203d632abfdfa049fad0edf22f93c60076de67cef20c23bcbfaee8
-  languageName: node
-  linkType: hard
-
 "glob@npm:~7.1.1, glob@npm:~7.1.7":
   version: 7.1.7
   resolution: "glob@npm:7.1.7"
@@ -25225,7 +25213,6 @@ __metadata:
     "@wdio/spec-reporter": ^7.19.5
     "@wdio/static-server-service": ^7.19.5
     "@webex/cli-tools": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
     "@webex/package-tools": "workspace:^"
     appium-adb: ^8.17.0
     babel-loader: ^8.2.2
@@ -25267,7 +25254,7 @@ __metadata:
     firefox-profile: ^4.0.0
     fs-extra: ^8.1.0
     geckodriver: ^3.0.1
-    glob: ^9.3.2
+    glob: ^7.1.4
     humanize-string: ^1.0.2
     husky: ^7.0.4
     intern: ^4.10.1
