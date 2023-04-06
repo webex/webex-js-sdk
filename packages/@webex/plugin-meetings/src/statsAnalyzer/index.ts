@@ -949,9 +949,9 @@ export class StatsAnalyzer extends EventsScope {
     if (result.bytesReceived) {
       let kilobytes = 0;
       const receiveSlot = this.receiveSlotCallback(result.ssrc);
-      const idAndCsi = `id: "${receiveSlot.id || ''}"${
-        receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''
-      }`;
+      const idAndCsi = receiveSlot
+        ? `id: "${receiveSlot.id || ''}"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`
+        : '';
 
       if (!this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived) {
         this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived =

@@ -163,6 +163,6 @@ export class ReceiveSlotManager {
   findReceiveSlotBySsrc(ssrc: number): ReceiveSlot | undefined {
     return Object.values(this.allocatedSlots)
       .flat()
-      .find((r) => ssrc && r.wcmeReceiveSlot.id.ssrc === ssrc);
+      .find((r) => ssrc && r.wcmeReceiveSlot?.id?.ssrc === ssrc);
   }
 }
