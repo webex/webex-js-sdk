@@ -5135,15 +5135,24 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-feature@workspace:packages/@webex/internal-plugin-feature"
   dependencies:
+    "@babel/core": ^7.17.10
+    "@types/mocha": ^10
+    "@webex/babel-config-legacy": "workspace:^"
+    "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-feature": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
+    "@webex/jest-config-legacy": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mocha": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
+    eslint: ^8.24.0
     lodash: ^4.17.21
+    mocha: ^10.2.0
+    prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
@@ -5472,6 +5481,7 @@ __metadata:
     babelify: ^10.0.0
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
+    envify: ^4.1.0
     esbuild: ^0.17.11
     eslint: ^8.35.0
     fs-extra: ^11.1.0
@@ -13333,6 +13343,18 @@ __metadata:
     minipass: ^4.2.4
     path-scurry: ^1.6.1
   checksum: 9beb4f1cdc9585412efd991a9786c1ee6816dfd0537494fd552c333fa3d4b041fce5681bce21d14651e41479f60866e10a35a2ce2571fd40b7cf73842ea12192
+  languageName: node
+  linkType: hard
+
+"glob@npm:^9.3.2":
+  version: 9.3.2
+  resolution: "glob@npm:9.3.2"
+  dependencies:
+    fs.realpath: ^1.0.0
+    minimatch: ^7.4.1
+    minipass: ^4.2.4
+    path-scurry: ^1.6.1
+  checksum: f3d188e9f70e24fa729a63ca197bcdb36d838677abec1fb9bbfe4b7620063bf90dc0f8d195203d632abfdfa049fad0edf22f93c60076de67cef20c23bcbfaee8
   languageName: node
   linkType: hard
 
@@ -25203,6 +25225,7 @@ __metadata:
     "@wdio/spec-reporter": ^7.19.5
     "@wdio/static-server-service": ^7.19.5
     "@webex/cli-tools": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
     "@webex/package-tools": "workspace:^"
     appium-adb: ^8.17.0
     babel-loader: ^8.2.2
@@ -25244,7 +25267,7 @@ __metadata:
     firefox-profile: ^4.0.0
     fs-extra: ^8.1.0
     geckodriver: ^3.0.1
-    glob: ^7.1.4
+    glob: ^9.3.2
     humanize-string: ^1.0.2
     husky: ^7.0.4
     intern: ^4.10.1
