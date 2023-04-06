@@ -41,8 +41,9 @@ describe('plugin-conversation', () => {
         const recipientId = 'example-recipient-id';
         const expected = {items: [{id: recipientId, objectType: 'person'}]}
         conversation.sendReaction = sinon.stub().returns(Promise.resolve())
+        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'))
         
-        return conversation.deleteReaction({}, 'example-display-name', {}, recipientId)
+        return conversation.addReaction({}, 'example-display-name', {}, recipientId)
           .then(() => {
             assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
           });
