@@ -1,6 +1,6 @@
 {
   "name": "@webex/storage-adapter-local-storage",
-  "version": "3.0.0-beta.62",
+  "version": "3.0.0-beta.63",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

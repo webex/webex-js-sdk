@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.63](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.62...v3.0.0-beta.63) (2023-04-07)
+
+
+### Features
+
+* **conversation:** add recipients to reactions ([#2720](https://github.com/webex/webex-js-sdk/issues/2720)) ([d60fef3](https://github.com/webex/webex-js-sdk/commit/d60fef3dcb8bf25696df26c951e4ae426e2b2ddb))
+
 ## [3.0.0-beta.62](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.61...v3.0.0-beta.62) (2023-04-05)
 
 ## [3.0.0-beta.61](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.60...v3.0.0-beta.61) (2023-04-05)
