@@ -74,7 +74,7 @@ jobs:
 
       - name: Validate Lock Hash
         run: |
-          PREV_HASH=${{ steps.generate-package-matrix.outputs.packages }}
+          PREV_HASH=${{ steps.lock-hash.outputs.packages }}
           NEXT_HASH=${{ hashFiles('**/yarn.lock') }}
 
           VALIDATED=0; [ "$PREV_HASH" == "$NEXT_HASH" ] && VALIDATED=1
