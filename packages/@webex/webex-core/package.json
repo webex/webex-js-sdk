@@ -48,7 +48,6 @@
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/plugin-logger": "workspace:^",
     "@webex/storage-adapter-spec": "workspace:^",
-    "@webex/webex-core": "workspace:^",
     "ampersand-collection": "^2.0.2",
     "ampersand-events": "^2.0.2",
     "ampersand-state": "^5.0.3",
