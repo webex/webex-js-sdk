@@ -67,13 +67,18 @@ jobs:
 
       - id: lock-hash
         name: Store Lock Hash
-        run: echo "hash=$(echo ${{ hashFiles('**/yarn.lock') }})" >> $GITHUB_OUTPUT
+        run: |
+          cat ./yarn.lock
+
+          echo "hash=$(echo ${{ hashFiles('**/yarn.lock') }})" >> $GITHUB_OUTPUT
 
       - name: Install Dependencies
         run: yarn
 
       - name: Validate Lock Hash
         run: |
+          cat ./yarn.lock
+
           PREV_HASH=${{ steps.lock-hash.outputs.hash }}
           NEXT_HASH=${{ hashFiles('**/yarn.lock') }}
 
