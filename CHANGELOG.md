@@ -2,6 +2,73 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.63](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.62...v3.0.0-beta.63) (2023-04-07)
+
+
+### Features
+
+* **conversation:** add recipients to reactions ([#2720](https://github.com/webex/webex-js-sdk/issues/2720)) ([d60fef3](https://github.com/webex/webex-js-sdk/commit/d60fef3dcb8bf25696df26c951e4ae426e2b2ddb))
+
+## [3.0.0-beta.62](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.61...v3.0.0-beta.62) (2023-04-05)
+
+## [3.0.0-beta.61](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.60...v3.0.0-beta.61) (2023-04-05)
+
+
+### Features
+
+* **multistream:** improve logging for setLayout ([#2715](https://github.com/webex/webex-js-sdk/issues/2715)) ([7f3396e](https://github.com/webex/webex-js-sdk/commit/7f3396e38e67830ca534d8fad220a9485d0382ca))
+
+## [3.0.0-beta.60](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.59...v3.0.0-beta.60) (2023-04-05)
+
+
+### Bug Fixes
+
+* updated @webex/internal-media-core ([#2716](https://github.com/webex/webex-js-sdk/issues/2716)) ([c2a4a1e](https://github.com/webex/webex-js-sdk/commit/c2a4a1e6975f8fd600e404d359afeec7f87d198f))
+
+## [3.0.0-beta.59](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.58...v3.0.0-beta.59) (2023-04-03)
+
+
+### Features
+
+* **plugin-meetings:** add new display hint ([#2714](https://github.com/webex/webex-js-sdk/issues/2714)) ([dde0fc1](https://github.com/webex/webex-js-sdk/commit/dde0fc1c353b1225b087484764deb14ff7565588))
+
+## [3.0.0-beta.58](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.57...v3.0.0-beta.58) (2023-03-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error when sync meetings fails ([#2684](https://github.com/webex/webex-js-sdk/issues/2684)) ([d483044](https://github.com/webex/webex-js-sdk/commit/d483044ee8c1ea572b7e92e12b1836bd90ce9e26))
+
+## [3.0.0-beta.57](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.56...v3.0.0-beta.57) (2023-03-31)
+
+
+### Bug Fixes
+
+* added correlation id to logs ([#2707](https://github.com/webex/webex-js-sdk/issues/2707)) ([5725e32](https://github.com/webex/webex-js-sdk/commit/5725e3207835841fdda8c432d383a287000ef5cc))
+
+## [3.0.0-beta.56](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.55...v3.0.0-beta.56) (2023-03-29)
+
+
+### Bug Fixes
+
+* **meetings:** set controls to switch ([#2703](https://github.com/webex/webex-js-sdk/issues/2703)) ([8234ec1](https://github.com/webex/webex-js-sdk/commit/8234ec10248d7d457911306acb0a6977c25ee025))
+
+## [3.0.0-beta.55](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.54...v3.0.0-beta.55) (2023-03-29)
+
+
+### Features
+
+* provided size hint chooses 1080 above 720px height ([#2701](https://github.com/webex/webex-js-sdk/issues/2701)) ([7ef6d42](https://github.com/webex/webex-js-sdk/commit/7ef6d42c4e8e8cc2e8ee128c8e74065180c6759a))
+
+## [3.0.0-beta.54](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.53...v3.0.0-beta.54) (2023-03-29)
+
+## [3.0.0-beta.53](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.52...v3.0.0-beta.53) (2023-03-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** stop screen share when disconnected ([#2696](https://github.com/webex/webex-js-sdk/issues/2696)) ([30c7190](https://github.com/webex/webex-js-sdk/commit/30c7190a7c4c457eed03ec63f830ff168f6a21a2))
+
 ## [3.0.0-beta.52](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.51...v3.0.0-beta.52) (2023-03-22)
 
 ## [3.0.0-beta.51](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.50...v3.0.0-beta.51) (2023-03-21)

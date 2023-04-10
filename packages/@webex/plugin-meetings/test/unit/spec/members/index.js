@@ -304,6 +304,83 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#assignRoles', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          generateRoleAssignmentMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateRoleAssignmentMemberOptions'
+          ),
+          assignRolesMember: sandbox.spy(members.membersRequest, 'assignRolesMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.generateRoleAssignmentMemberOptions);
+        assert.notCalled(spies.assignRolesMember);
+      };
+
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRoles,
+        expectedLocusUrl
+      ) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(
+          spies.generateRoleAssignmentMemberOptions,
+          expectedMemberId,
+          expectedRoles,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.assignRolesMember, {
+          memberId: expectedMemberId,
+          roles: expectedRoles,
+          locusUrl: expectedLocusUrl,
+        });
+        assert.strictEqual(resultPromise, spies.assignRolesMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no member id', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.assignRoles();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to assign the roles to a member.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.assignRoles(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with roles', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.assignRoles(memberId, [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}]);
+
+        await checkValid(resultPromise, spies, memberId, [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}], url1);
+      });
+    });
+
     describe('#raiseOrLowerHand', () => {
       const setup = (locusUrl) => {
         const members = createMembers({url: locusUrl});
