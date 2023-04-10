@@ -361,13 +361,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   doToggleBreakout(enable) {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...{enableBreakoutSession: enable},
+    };
+
     // @ts-ignore
     return this.webex.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        enableBreakoutSession: enable,
-      },
+      body,
     });
   },
 
@@ -377,31 +380,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   async create(sessions) {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...{groups: [{sessions}]},
+    };
     // @ts-ignore
-    const bodyInfo =
-      this.editLock && !!this.editLock.token
-        ? {
-            groups: [
-              {
-                sessions,
-              },
-            ],
-            editlock: {
-              token: this.editLock.token,
-            },
-          }
-        : {
-            groups: [
-              {
-                sessions,
-              },
-            ],
-          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: bodyInfo,
+        body,
       })
       .catch((error) => {
         return Promise.reject(
@@ -424,31 +412,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   async clearSessions() {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
+    };
     // @ts-ignore
-    const bodyInfo =
-      this.editLock && !!this.editLock.token
-        ? {
-            groups: [
-              {
-                action: BREAKOUTS.ACTION.DELETE,
-              },
-            ],
-            editlock: {
-              token: this.editLock.token,
-            },
-          }
-        : {
-            groups: [
-              {
-                action: BREAKOUTS.ACTION.DELETE,
-              },
-            ],
-          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: bodyInfo,
+        body,
       })
       .catch((error) => {
         return Promise.reject(
@@ -479,12 +452,17 @@ const Breakouts = WebexPlugin.extend({
       ...params,
     };
 
+    const body = {
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock?.token, refresh: true}}
+        : {}),
+      ...{groups: [payload]},
+    };
+
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        groups: [payload],
-      },
+      body,
     }).catch((error) => {
       return Promise.reject(
         boServiceErrorHandler(error, 'Breakouts#start --> Edit lock token mismatch')
@@ -507,12 +485,15 @@ const Breakouts = WebexPlugin.extend({
       ...params,
     };
 
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...{groups: [payload]},
+    };
+
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        groups: [payload],
-      },
+      body,
     }).catch((error) => {
       return Promise.reject(
         boServiceErrorHandler(error, 'Breakouts#end --> Edit lock token mismatch')
@@ -536,6 +517,7 @@ const Breakouts = WebexPlugin.extend({
     }
     if (breakout.body?.editlock && editlock) {
       this.set('editLock', breakout.body.editlock);
+      this.keepEditLockAlive();
     }
 
     return breakout;
