@@ -4,7 +4,12 @@ import path from 'path';
 import { Yarn } from '../../utils';
 
 import CONSTANTS from './package.constants';
-import type { Config, Data, Version } from './package.types';
+import type {
+  Config,
+  Data,
+  Definition,
+  Version,
+} from './package.types';
 
 /**
  * The Package class.
@@ -63,9 +68,7 @@ class Package {
   public apply(): Promise<this> {
     const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
 
-    return fs.readFile(packageDefinitionPath)
-      .then((buffer) => buffer.toString())
-      .then((data) => JSON.parse(data))
+    return Package.readDefinition({ definitionPath: packageDefinitionPath })
       .then((definition) => ({
         ...definition,
         version: Package.parseVersionObjectToString(this.data.version),
@@ -79,21 +82,22 @@ class Package {
   }
 
   /**
-   * Set the version of this Package instance.
+   * Determine if a provided script exists within this Package.
    *
-   * @param version - Version Object to update this Package instance with.
-   * @returns - This Package instance.
+   * @param scriptName - Name of the script to validate this Package has.
+   * @returns - Promise resolving to whether or not the script exists.
    */
-  public setVersion(version: Partial<Version> = {}): this {
-    this.data.version = {
-      major: Number.isInteger(version.major) ? version.major as number : this.data.version.major,
-      minor: Number.isInteger(version.minor) ? version.minor as number : this.data.version.minor,
-      patch: Number.isInteger(version.patch) ? version.patch as number : this.data.version.patch,
-      release: Number.isInteger(version.release) ? version.release as number : this.data.version.release,
-      tag: version.tag || this.data.version.tag,
-    };
+  public hasScript(scriptName: string): Promise<boolean> {
+    const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
 
-    return this;
+    return Package.readDefinition({ definitionPath: packageDefinitionPath })
+      .then((definition) => {
+        if (!definition.scripts || !definition.scripts[scriptName]) {
+          return false;
+        }
+
+        return true;
+      });
   }
 
   /**
@@ -149,6 +153,24 @@ class Package {
 
         return this;
       });
+  }
+
+  /**
+   * Set the version of this Package instance.
+   *
+   * @param version - Version Object to update this Package instance with.
+   * @returns - This Package instance.
+   */
+  public setVersion(version: Partial<Version> = {}): this {
+    this.data.version = {
+      major: Number.isInteger(version.major) ? version.major as number : this.data.version.major,
+      minor: Number.isInteger(version.minor) ? version.minor as number : this.data.version.minor,
+      patch: Number.isInteger(version.patch) ? version.patch as number : this.data.version.patch,
+      release: Number.isInteger(version.release) ? version.release as number : this.data.version.release,
+      tag: version.tag || this.data.version.tag,
+    };
+
+    return this;
   }
 
   /**
@@ -210,6 +232,25 @@ class Package {
       semanticVersion,
       version.tag && version.tag !== CONSTANTS.STABLE_TAG ? `-${version.tag}.${version.release}` : '',
     ].join('');
+  }
+
+  /**
+   * Read a definition file using the provided options.
+   *
+   * @example
+   * ```js
+   * Package.readDefinition({ definitionPath })
+   *   .then((definition) => console.log(definition));
+   * ```
+   *
+   * @param options - Options to use when reading a file definition.
+   * @returns - Promise resolving to the package definition.
+   */
+  public static readDefinition({ definitionPath }: { definitionPath: string }): Promise<Definition> {
+    return fs.readFile(definitionPath)
+      .then((buffer) => buffer.toString())
+      .then((data) => JSON.parse(data))
+      .then((definition: Definition) => definition);
   }
 }
 

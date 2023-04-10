@@ -31,6 +31,26 @@ export interface Version {
 }
 
 /**
+ * Package definition object.
+ *
+ * @remarks
+ * This is a common shape for `package.json` files.
+ *
+ * @public
+ */
+export interface Definition {
+  /**
+   * Version of the parsed package definition.
+   */
+  version?: string;
+
+  /**
+   * Scripts associated with the parsed package definition.
+   */
+  scripts?: Record<string, string>;
+}
+
+/**
  * Package constructor configuration Object.
  *
  * @public

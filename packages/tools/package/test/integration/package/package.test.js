@@ -63,10 +63,11 @@ describe('Package', () => {
       beforeEach(() => {
         pack.setVersion(Package.parseVersionStringToObject(version));
 
+        spies.Package = {
+          readDefinition: spyOn(Package, 'readDefinition').and.resolveTo(definition),
+        };
+
         spies.fs = {
-          readFile: spyOn(fs, 'readFile').and.resolveTo(
-            Buffer.from(JSON.stringify(definition), 'utf8'),
-          ),
           writeFile: spyOn(fs, 'writeFile').and.resolveTo(undefined),
         };
 
@@ -90,7 +91,9 @@ describe('Package', () => {
 
       it('should attempt to read the file at the package definition location', () => pack.apply()
         .then(() => {
-          expect(spies.fs.readFile).toHaveBeenCalledOnceWith(examplePath);
+          expect(spies.Package.readDefinition).toHaveBeenCalledOnceWith({
+            definitionPath: examplePath,
+          });
         }));
 
       it('should attempt to write the local version to the file at the definition location', () => {
@@ -103,111 +106,64 @@ describe('Package', () => {
       });
     });
 
-    describe('setVersion', () => {
-      const exampleTag = 'example-replacement-tag';
-      const exampleVersion = 1234;
-      const versionString = '1.2.3-example-tag.4';
-      const versionObject = Package.parseVersionStringToObject(versionString);
+    describe('hasScript()', () => {
+      const examplePath = 'example-path';
+      const exampleScript = 'example-script';
+      const definition = {
+        scripts: {
+          [exampleScript]: 'example-execution',
+        },
+      };
+      const spies = {};
 
       beforeEach(() => {
-        pack.data.version = {
-          ...versionObject,
+        spies.Package = {
+          readDefinition: spyOn(Package, 'readDefinition').and.resolveTo(definition),
+        };
+
+        spies.path = {
+          join: spyOn(path, 'join').and.returnValue(examplePath),
         };
       });
 
-      it('should return itself', () => {
-        expect(pack.setVersion({})).toBe(pack);
+      it('should return a promise that resolves to a boolean', () => pack.hasScript(exampleScript)
+        .then((results) => {
+          expect(typeof results).toBe('boolean');
+        }));
+
+      it('should attempt to ammend the package definition file to the package path', () => pack.hasScript(exampleScript)
+        .then(() => {
+          expect(spies.path.join).toHaveBeenCalledOnceWith(
+            pack.data.location,
+            Package.CONSTANTS.PACKAGE_DEFINITION_FILE,
+          );
+        }));
+
+      it('should attempt to read the file at the package definition location', () => pack.hasScript(examplePath)
+        .then(() => {
+          expect(spies.Package.readDefinition).toHaveBeenCalledOnceWith({
+            definitionPath: examplePath,
+          });
+        }));
+
+      it('should return false if the definition has no scripts', () => {
+        spies.Package.readDefinition.and.resolveTo({});
+
+        return pack.hasScript(exampleScript)
+          .then((results) => {
+            expect(results).toBe(false);
+          });
       });
 
-      it('should not update the version if no version was provided', () => {
-        pack.setVersion();
+      it('should return false if the definition does not have the provided script', () => pack.hasScript('another-example-script')
+        .then((results) => {
+          expect(results).toBe(false);
+        }));
 
-        expect(pack.data.version).toEqual(versionObject);
-      });
-
-      it('should set the major version when the major version is provided', () => {
-        pack.setVersion({ major: exampleVersion });
-
-        expect(pack.data.version.major).toBe(exampleVersion);
-      });
-
-      it('should assign the orignal major version when the major version is not a number', () => {
-        pack.setVersion({ major: `${exampleVersion}` });
-
-        expect(pack.data.version.major).toBe(versionObject.major);
-      });
-
-      it('should assign the orignal major version when the major version is not provided', () => {
-        pack.setVersion({ major: undefined });
-
-        expect(pack.data.version.major).toBe(versionObject.major);
-      });
-
-      it('should set the minor version when the minor version is provided', () => {
-        pack.setVersion({ minor: exampleVersion });
-
-        expect(pack.data.version.minor).toBe(exampleVersion);
-      });
-
-      it('should assign the orignal minor version when the minor version is not a number', () => {
-        pack.setVersion({ minor: `${exampleVersion}` });
-
-        expect(pack.data.version.minor).toBe(versionObject.minor);
-      });
-
-      it('should assign the orignal minor version when the minor version is not provided', () => {
-        pack.setVersion({ minor: undefined });
-
-        expect(pack.data.version.minor).toBe(versionObject.minor);
-      });
-
-      it('should set the patch version when the patch version is provided', () => {
-        pack.setVersion({ patch: exampleVersion });
-
-        expect(pack.data.version.patch).toBe(exampleVersion);
-      });
-
-      it('should assign the orignal patch version when the patch version is not a number', () => {
-        pack.setVersion({ patch: `${exampleVersion}` });
-
-        expect(pack.data.version.patch).toBe(versionObject.patch);
-      });
-
-      it('should assign the orignal patch version when the patch version is not provided', () => {
-        pack.setVersion({ patch: undefined });
-
-        expect(pack.data.version.patch).toBe(versionObject.patch);
-      });
-
-      it('should set the release version when the release version is provided', () => {
-        pack.setVersion({ release: exampleVersion });
-
-        expect(pack.data.version.release).toBe(exampleVersion);
-      });
-
-      it('should assign the orignal release version when the patch version is not a number', () => {
-        pack.setVersion({ release: `${exampleVersion}` });
-
-        expect(pack.data.version.release).toBe(versionObject.release);
-      });
-
-      it('should assign the orignal release version when the patch version is not provided', () => {
-        pack.setVersion({ release: undefined });
-
-        expect(pack.data.version.release).toBe(versionObject.release);
-      });
-
-      it('should set the tag when the tag is provided', () => {
-        pack.setVersion({ tag: exampleTag });
-
-        expect(pack.data.version.tag).toBe(exampleTag);
-      });
-
-      it('should set the tag to the original tag when the tag is not provided', () => {
-        pack.setVersion({ tag: undefined });
-
-        expect(pack.data.version.tag).toBe(versionObject.tag);
-      });
+      it('should return true if the definition has the provided script', () => pack.hasScript(exampleScript)
+        .then((results) => {
+          expect(results).toBe(true);
+        }));
     });
 
     describe('incrementVersion()', () => {
@@ -359,6 +315,113 @@ describe('Package', () => {
           });
       });
     });
+
+    describe('setVersion', () => {
+      const exampleTag = 'example-replacement-tag';
+      const exampleVersion = 1234;
+      const versionString = '1.2.3-example-tag.4';
+      const versionObject = Package.parseVersionStringToObject(versionString);
+
+      beforeEach(() => {
+        pack.data.version = {
+          ...versionObject,
+        };
+      });
+
+      it('should return itself', () => {
+        expect(pack.setVersion({})).toBe(pack);
+      });
+
+      it('should not update the version if no version was provided', () => {
+        pack.setVersion();
+
+        expect(pack.data.version).toEqual(versionObject);
+      });
+
+      it('should set the major version when the major version is provided', () => {
+        pack.setVersion({ major: exampleVersion });
+
+        expect(pack.data.version.major).toBe(exampleVersion);
+      });
+
+      it('should assign the orignal major version when the major version is not a number', () => {
+        pack.setVersion({ major: `${exampleVersion}` });
+
+        expect(pack.data.version.major).toBe(versionObject.major);
+      });
+
+      it('should assign the orignal major version when the major version is not provided', () => {
+        pack.setVersion({ major: undefined });
+
+        expect(pack.data.version.major).toBe(versionObject.major);
+      });
+
+      it('should set the minor version when the minor version is provided', () => {
+        pack.setVersion({ minor: exampleVersion });
+
+        expect(pack.data.version.minor).toBe(exampleVersion);
+      });
+
+      it('should assign the orignal minor version when the minor version is not a number', () => {
+        pack.setVersion({ minor: `${exampleVersion}` });
+
+        expect(pack.data.version.minor).toBe(versionObject.minor);
+      });
+
+      it('should assign the orignal minor version when the minor version is not provided', () => {
+        pack.setVersion({ minor: undefined });
+
+        expect(pack.data.version.minor).toBe(versionObject.minor);
+      });
+
+      it('should set the patch version when the patch version is provided', () => {
+        pack.setVersion({ patch: exampleVersion });
+
+        expect(pack.data.version.patch).toBe(exampleVersion);
+      });
+
+      it('should assign the orignal patch version when the patch version is not a number', () => {
+        pack.setVersion({ patch: `${exampleVersion}` });
+
+        expect(pack.data.version.patch).toBe(versionObject.patch);
+      });
+
+      it('should assign the orignal patch version when the patch version is not provided', () => {
+        pack.setVersion({ patch: undefined });
+
+        expect(pack.data.version.patch).toBe(versionObject.patch);
+      });
+
+      it('should set the release version when the release version is provided', () => {
+        pack.setVersion({ release: exampleVersion });
+
+        expect(pack.data.version.release).toBe(exampleVersion);
+      });
+
+      it('should assign the orignal release version when the patch version is not a number', () => {
+        pack.setVersion({ release: `${exampleVersion}` });
+
+        expect(pack.data.version.release).toBe(versionObject.release);
+      });
+
+      it('should assign the orignal release version when the patch version is not provided', () => {
+        pack.setVersion({ release: undefined });
+
+        expect(pack.data.version.release).toBe(versionObject.release);
+      });
+
+      it('should set the tag when the tag is provided', () => {
+        pack.setVersion({ tag: exampleTag });
+
+        expect(pack.data.version.tag).toBe(exampleTag);
+      });
+
+      it('should set the tag to the original tag when the tag is not provided', () => {
+        pack.setVersion({ tag: undefined });
+
+        expect(pack.data.version.tag).toBe(versionObject.tag);
+      });
+    });
   });
 
   describe('static', () => {
@@ -484,6 +547,30 @@ describe('Package', () => {
 
         expect(parsed).toBe(expected);
       });
+    });
+
+    describe('readDefinition()', () => {
+      const definition = {};
+      const definitionPath = 'example-definition-path';
+      const spies = {};
+
+      beforeEach(() => {
+        spies.fs = {
+          readFile: spyOn(fs, 'readFile').and.resolveTo(
+            Buffer.from(JSON.stringify(definition), 'utf8'),
+          ),
+        };
+      });
+
+      it('should return a promise resolving in the found definition', () => Package.readDefinition({ definitionPath })
+        .then((results) => {
+          expect(results).toEqual(definition);
+        }));
+
+      it('should attempt to read the file at the provided definition path', () => Package.readDefinition({ definitionPath })
+        .then(() => {
+          expect(spies.fs.readFile).toHaveBeenCalledOnceWith(definitionPath);
+        }));
     });
   });
 });
