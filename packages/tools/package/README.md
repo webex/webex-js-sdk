@@ -44,11 +44,12 @@ webex-package-tools --help
 This package can also be consumed as a module. Note that this is not an explicitly intended use-case, but may provide more flexibility when performing complicated workflows.
 
 ```js
-const { increment, list, Package, Yarn } = require('@webex/package-tools');
+const { increment, list, Package, scripts } = require('@webex/package-tools');
 
 // Execute a command. See API documentation or CLI help for more information.
 increment.handle(options);
 list.handle(options);
+scripts.handle(options);
 
 // Manage a package. See API documentation for more information.
 const pack = new Package(options);

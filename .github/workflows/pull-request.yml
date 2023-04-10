@@ -1,0 +1,449 @@
+name: Pull Request CI
+run-name: ${{ github.actor }} is running Pull Request CI
+
+on:
+  pull_request_target:
+    types: [opened, labeled, reopened, synchronize]
+  workflow_dispatch:
+
+env:
+  rid: ${{ github.run_id }}-${{ github.run_number }}
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Labels
+        run: |
+          HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
+          FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
+
+          HAS_VALIDATED_LABEL=${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
+          VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
+
+          echo from base $FROM_BASE
+          echo validated $VALIDATED
+
+          if [[ $FROM_BASE == 1 || $VALIDATED == 1 ]]
+          then
+            echo 'pull request is validated, running tests'
+            exit 0
+          else
+            echo 'pull request is not validated, exiting'
+            exit 1
+          fi
+
+
+  initialize:
+    name: Initialize Project
+    needs: validate
+    runs-on: ubuntu-latest
+
+    outputs:
+      lock-hash: ${{ steps.lock-hash.outputs.hash }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - id: validate-dependencies
+        name: Validate Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - id: lock-hash
+        name: Store Lock Hash
+        run: echo "hash=$(echo ${{ hashFiles('**/yarn.lock') }})" >> $GITHUB_OUTPUT
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Validate Lock Hash
+        run: |
+          PREV_HASH=${{ steps.generate-package-matrix.outputs.packages }}
+          NEXT_HASH=${{ hashFiles('**/yarn.lock') }}
+
+          VALIDATED=0; [ "$PREV_HASH" == "$NEXT_HASH" ] && VALIDATED=1
+
+          if [[ $VALIDATED == 1 ]]
+          then
+            echo 'lock file has been validated, proceeding'
+            exit 0
+          else
+            echo 'lock file has changed after initialization'
+            echo 'usually, updating and ammending the lock file in this pull request can resolve this issue'
+            exit 1
+          fi
+
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        if: steps.validate-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+  build:
+    name: Build Packages
+    needs: initialize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build
+        run: yarn workspaces foreach --topological-dev -p run build:src
+
+      - name: Cache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+    
+
+  generate-package-matrix:
+    name: Determine Changed Packages
+    needs: build
+    runs-on: ubuntu-latest
+
+    outputs:
+      packages: ${{ steps.generate-package-matrix.outputs.packages }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Update Main Branch
+        run: git fetch origin ${{ github.event.pull_request.base.ref }} --unshallow
+
+      - id: generate-package-matrix
+        name: Generate Package Matrix
+        run: echo "packages=$(yarn package-tools list --private --recursive --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
+
+      - name: Display Package Matrix
+        run: echo "generated package matrix - ${{ steps.generate-package-matrix.outputs.packages }}"
+
+
+  test-browser:
+    name: ( ${{ matrix.package }} ) Test - Browser
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Browser Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:browser)" >> $GITHUB_OUTPUT
+
+      - name: Test - Browser
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:browser
+
+
+  test-coverage:
+    name: ( ${{ matrix.package }} ) Test - Coverage
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Coverage Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:coverage)" >> $GITHUB_OUTPUT
+
+      - name: Test - Coverage
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:coverage
+
+
+  test-integration:
+    name: ( ${{ matrix.package }} ) Test - Integration
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Integration Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:integration)" >> $GITHUB_OUTPUT
+
+      - name: Test - Integration
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:integration
+
+
+  test-style:
+    name: ( ${{ matrix.package }} ) Test - Style
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Style Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:style)" >> $GITHUB_OUTPUT
+
+      - name: Test - Style
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:style
+
+  test-syntax:
+    name: ( ${{ matrix.package }} ) Test - Syntax
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Syntax Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:syntax)" >> $GITHUB_OUTPUT
+
+      - name: Test - Syntax
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:syntax
+
+
+  test-unit:
+    name: ( ${{ matrix.package }} ) Test - Unit
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - id: has-script
+        name: Has Unit Test Script
+        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:unit)" >> $GITHUB_OUTPUT
+
+      - name: Test - Unit
+        if: steps.has-script.outputs.executable == 'true'
+        run: yarn workspace ${{ matrix.package }} test:unit

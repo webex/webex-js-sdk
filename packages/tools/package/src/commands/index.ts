@@ -1,5 +1,6 @@
 import increment from './increment';
 import list from './list';
+import scripts from './scripts';
 
 export type {
   IncrementOptions,
@@ -9,7 +10,12 @@ export type {
   ListOptions,
 } from './list';
 
+export type {
+  ScriptsOptions,
+} from './scripts';
+
 export {
   increment,
   list,
+  scripts,
 };

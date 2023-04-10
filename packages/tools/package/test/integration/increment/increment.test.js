@@ -123,6 +123,22 @@ describe('increment', () => {
         });
     });
 
+    it('should not increment any packages when the version details provided are undefined', () => increment.handler({})
+      .then((results) => {
+        const expected = {
+          major: undefined,
+          minor: undefined,
+          patch: undefined,
+          release: undefined,
+        };
+
+        expect(spies.package.incrementVersion).toHaveBeenCalledTimes(options.packages.length);
+
+        results.forEach((item, index) => {
+          expect(spies.package.incrementVersion.calls.all()[index].args[0]).toEqual(expected);
+        });
+      }));
+
     it('should only resolve with Package objects included in the packages option', () => {
       const targetPackages = [options.packages[0], options.packages[1]];
 
