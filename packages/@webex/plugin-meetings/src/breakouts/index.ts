@@ -584,16 +584,18 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   unLockEditBreakout() {
-    this.request({
-      method: HTTP_VERBS.DELETE,
-      uri: `${this.url}/editlock/${this.editLock.token}`,
-    })
-      .then(() => {
-        this._clearEditLockInfo();
+    if (this.editLock && !!this.editLock.token) {
+      this.request({
+        method: HTTP_VERBS.DELETE,
+        uri: `${this.url}/editlock/${this.editLock.token}`,
       })
-      .catch((error) => {
-        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
-      });
+        .then(() => {
+          this._clearEditLockInfo();
+        })
+        .catch((error) => {
+          return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
+        });
+    }
   },
 
   /**

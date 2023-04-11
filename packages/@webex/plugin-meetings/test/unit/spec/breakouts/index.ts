@@ -857,6 +857,12 @@ describe('plugin-meetings', () => {
           uri: 'url/editlock/2ad57140-01b5-4bd0-a5a7-4dccdc06904c',
         });
       });
+
+      it('do not call unLock if edit lock info not exist ', async () => {
+        
+        breakouts.unLockEditBreakout();
+        assert.notCalled(webex.request);
+      });
     });
 
     describe('keepEditLockAlive', () => {
