@@ -19,7 +19,7 @@
     "@webex/internal-plugin-voicea": "workspace:^",
     "@webex/plugin-meetings": "workspace:^",
     "@webex/webex-core": "workspace:^",
-    "uuid": "^3.3.2"
+    "uuid": "^9.0.0"
   },
   "browserify": {
     "transform": [

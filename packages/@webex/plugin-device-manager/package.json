@@ -33,6 +33,6 @@
     "@webex/test-helper-chai": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "lodash": "^4.17.21",
-    "uuid": "^3.3.2"
+    "uuid": "^9.0.0"
   }
 }

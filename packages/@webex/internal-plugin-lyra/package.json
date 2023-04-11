@@ -38,6 +38,6 @@
     "@webex/internal-plugin-mercury": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "bowser": "^2.11.0",
-    "uuid": "^3.3.2"
+    "uuid": "^9.0.0"
   }
 }

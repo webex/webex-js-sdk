@@ -25,7 +25,7 @@
     "express": "^4.17.1",
     "jsonwebtoken": "^9.0.0",
     "safe-buffer": "^5.2.0",
-    "uuid": "^3.3.2",
+    "uuid": "^9.0.0",
     "whatwg-fetch": "^2.0.4"
   }
 }

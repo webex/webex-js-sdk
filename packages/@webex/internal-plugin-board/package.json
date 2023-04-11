@@ -40,6 +40,6 @@
     "ampersand-collection": "^2.0.2",
     "es6-promise-series": "^0.2.2",
     "lodash": "^4.17.21",
-    "uuid": "^3.3.2"
+    "uuid": "^9.0.0"
   }
 }

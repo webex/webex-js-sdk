@@ -196,7 +196,7 @@
     "terser-webpack-plugin": "^4.2.3",
     "ts-jest": "^29.0.3",
     "typescript": "^4.7.4",
-    "uuid": "^3.3.2",
+    "uuid": "^9.0.0",
     "wd": "^1.14.0",
     "wdio-chromedriver-service": "^7.3.2",
     "wdio-geckodriver-service": "^2.1.1",
