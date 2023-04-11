@@ -362,7 +362,7 @@ const Breakouts = WebexPlugin.extend({
    */
   doToggleBreakout(enable) {
     const body = {
-      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{enableBreakoutSession: enable},
     };
 
@@ -381,7 +381,7 @@ const Breakouts = WebexPlugin.extend({
    */
   async create(sessions) {
     const body = {
-      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{groups: [{sessions}]},
     };
     // @ts-ignore
@@ -413,7 +413,7 @@ const Breakouts = WebexPlugin.extend({
    */
   async clearSessions() {
     const body = {
-      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
     };
     // @ts-ignore
@@ -454,7 +454,7 @@ const Breakouts = WebexPlugin.extend({
 
     const body = {
       ...(this.editLock && !!this.editLock.token
-        ? {editlock: {token: this.editLock?.token, refresh: true}}
+        ? {editlock: {token: this.editLock.token, refresh: true}}
         : {}),
       ...{groups: [payload]},
     };
@@ -486,7 +486,7 @@ const Breakouts = WebexPlugin.extend({
     };
 
     const body = {
-      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock?.token}} : {}),
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{groups: [payload]},
     };
 
