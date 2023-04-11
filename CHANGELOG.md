@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.66](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.65...v3.0.0-beta.66) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** duplicate-SCRs - remove duplicates temp fix ([#2722](https://github.com/webex/webex-js-sdk/issues/2722)) ([40e2862](https://github.com/webex/webex-js-sdk/commit/40e2862e61f2864c0b1342248eee3467ff037420))
+
 ## [3.0.0-beta.65](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.64...v3.0.0-beta.65) (2023-04-11)
 
 
