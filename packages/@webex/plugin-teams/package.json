@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-teams",
-  "version": "3.0.0-beta.63",
+  "version": "3.0.0-beta.64",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
