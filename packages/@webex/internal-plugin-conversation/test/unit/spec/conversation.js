@@ -35,6 +35,47 @@ describe('plugin-conversation', () => {
       webex.internal.services.getServiceFromClusterId = sinon.stub().returns({url: convoUrl});
     });
 
+    describe('addReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]}
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
+        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'))
+        
+        return conversation.addReaction({}, 'example-display-name', {}, recipientId)
+          .then(() => {
+            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+          });
+      });
+    });
+
+    describe('deleteReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]}
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
+        
+        return conversation.deleteReaction({}, 'example-reaction-id', recipientId)
+          .then(() => {
+            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+          });
+      });
+    });
+
+    describe('prepare()', () => {
+      it('should ammend activity recipients to the returned object', () => {
+        const {conversation} = webex.internal;
+        const activity = { recipients: 'example-recipients' };
+
+        return conversation.prepare(activity)
+          .then((results) => {
+            assert.deepEqual(results.recipients, activity.recipients);
+        });
+      });
+    });
+
     describe('processInmeetingchatEvent()', () => {
       beforeEach(() => {
         webex.transform = sinon.stub().callsFake((obj) => Promise.resolve(obj));
