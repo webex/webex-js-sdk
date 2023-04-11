@@ -5501,7 +5501,7 @@ __metadata:
     nyc: ^15.1.0
     rimraf: ^4.1.2
     typescript: ^4.9.5
-    yargs: ^16.2.0
+    yargs: ^17.7.1
   bin:
     webex-legacy-tools: ./dist/cli/index.js
   languageName: unknown
@@ -25304,7 +25304,7 @@ __metadata:
     webpack-cli: ^4.8.0
     webpack-dev-server: ^4.3.1
     yakbak: ^5.0.1
-    yargs: ^16.2.0
+    yargs: ^17.7.1
   dependenciesMeta:
     "@ciscospark/test-users-legacy":
       optional: true
@@ -26075,7 +26075,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:^17.3.1":
+"yargs@npm:^17.3.1, yargs@npm:^17.7.1":
   version: 17.7.1
   resolution: "yargs@npm:17.7.1"
   dependencies:
