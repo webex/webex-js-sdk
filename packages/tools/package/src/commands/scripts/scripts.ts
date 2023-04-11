@@ -46,7 +46,7 @@ const scripts: CommandsCommand<Options> = {
   handler: (options: Options) => {
     const rootDir = process.cwd();
 
-    return Yarn.list()
+    return Yarn.list({ noPrivate: false })
       .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
         location: path.join(rootDir, location),
         name,
