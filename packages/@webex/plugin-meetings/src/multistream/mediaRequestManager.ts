@@ -7,11 +7,11 @@ import {
   CodecInfo as WcmeCodecInfo,
   H264Codec,
 } from '@webex/internal-media-core';
-import {cloneDeep, debounce} from 'lodash';
+import {cloneDeep, debounce, isEmpty} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotEvents, ReceiveSlotId} from './receiveSlot';
+import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
@@ -78,6 +78,8 @@ export class MediaRequestManager {
 
   private debouncedSourceUpdateListener: () => void;
 
+  private previousWCMEMediaRequests: Array<WcmeMediaRequest> = [];
+
   constructor(
     degradationPreferences: DegradationPreferences,
     sendMediaRequestsCallback: SendMediaRequestsCallback
@@ -143,6 +145,36 @@ export class MediaRequestManager {
     return clientRequests;
   }
 
+  /**
+   * Returns true if two media requests are the same, false otherwise.
+   *
+   * @param {WcmeMediaRequest} mediaRequestA - Media request A for comparison.
+   * @param {WcmeMediaRequest} mediaRequestB - Media request B for comparison.
+   * @returns {boolean} - Whether they are equal.
+   */
+  // eslint-disable-next-line class-methods-use-this
+  public isEqual(mediaRequestA: WcmeMediaRequest, mediaRequestB: WcmeMediaRequest) {
+    return (
+      JSON.stringify(mediaRequestA._toJmpScrRequest()) ===
+      JSON.stringify(mediaRequestB._toJmpScrRequest())
+    );
+  }
+
+  /**
+   * Compares new media requests to previous ones and determines
+   * if they are the same.
+   *
+   * @param {WcmeMediaRequest[]} newRequests - Array with new requests.
+   * @returns {boolean} - True if they are equal, false otherwise.
+   */
+  private checkIsNewRequestsEqualToPrev(newRequests: WcmeMediaRequest[]) {
+    return (
+      !isEmpty(this.previousWCMEMediaRequests) &&
+      this.previousWCMEMediaRequests.length === newRequests.length &&
+      this.previousWCMEMediaRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
+    );
+  }
+
   private sendRequests() {
     const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
@@ -182,7 +214,17 @@ export class MediaRequestManager {
       );
     });
 
-    this.sendMediaRequestsCallback(wcmeMediaRequests);
+    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/jmp-multistream)
+    // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
+    if (!this.checkIsNewRequestsEqualToPrev(wcmeMediaRequests)) {
+      this.sendMediaRequestsCallback(wcmeMediaRequests);
+      this.previousWCMEMediaRequests = wcmeMediaRequests;
+      LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
+    } else {
+      LoggerProxy.logger.info(
+        `multistream:sendRequests --> detected duplicate WCME requests, skipping them... `
+      );
+    }
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
