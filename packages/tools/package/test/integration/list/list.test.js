@@ -69,7 +69,7 @@ describe('list', () => {
 
     it('should call "proces.stdout.write()" with the package list items as a string array', () => list.handler(options)
       .then(() => {
-        const expected = `[${listResolve.map(({ name }) => `"${name}"`).join(', ')}]`;
+        const expected = listResolve.map(({ name }) => name).join(',');
 
         expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
       }));

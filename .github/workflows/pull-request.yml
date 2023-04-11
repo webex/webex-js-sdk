@@ -185,10 +185,6 @@ jobs:
     needs: generate-package-matrix
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
-
     steps:
       - name: Checkout Project
         uses: actions/checkout@v3
@@ -217,23 +213,14 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - id: has-script
-        name: Has Browser Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:browser)" >> $GITHUB_OUTPUT
-
       - name: Test - Browser
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:browser
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:browser
 
 
   test-coverage:
-    name: ( ${{ matrix.package }} ) Test - Coverage
+    name: Test - Coverage
     needs: generate-package-matrix
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
 
     steps:
       - name: Checkout Project
@@ -263,23 +250,14 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - id: has-script
-        name: Has Coverage Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:coverage)" >> $GITHUB_OUTPUT
-
       - name: Test - Coverage
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:coverage
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:coverage
 
 
   test-integration:
-    name: ( ${{ matrix.package }} ) Test - Integration
+    name: Test - Integration
     needs: generate-package-matrix
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
 
     steps:
       - name: Checkout Project
@@ -309,23 +287,14 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - id: has-script
-        name: Has Integration Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:integration)" >> $GITHUB_OUTPUT
-
       - name: Test - Integration
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:integration
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:integration
 
 
   test-style:
-    name: ( ${{ matrix.package }} ) Test - Style
+    name: Test - Style
     needs: generate-package-matrix
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
 
     steps:
       - name: Checkout Project
@@ -354,23 +323,14 @@ jobs:
 
       - name: Synchronize Packages
         run: yarn
-
-      - id: has-script
-        name: Has Style Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:style)" >> $GITHUB_OUTPUT
 
       - name: Test - Style
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:style
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:style
 
   test-syntax:
-    name: ( ${{ matrix.package }} ) Test - Syntax
+    name: Test - Syntax
     needs: generate-package-matrix
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
 
     steps:
       - name: Checkout Project
@@ -400,23 +360,14 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - id: has-script
-        name: Has Syntax Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:syntax)" >> $GITHUB_OUTPUT
-
       - name: Test - Syntax
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:syntax
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:syntax
 
 
   test-unit:
-    name: ( ${{ matrix.package }} ) Test - Unit
+    name: Test - Unit
     needs: generate-package-matrix
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package: ${{ fromJson(needs.generate-package-matrix.outputs.packages) }}
 
     steps:
       - name: Checkout Project
@@ -446,10 +397,5 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - id: has-script
-        name: Has Unit Test Script
-        run: echo "executable=$(yarn package-tools scripts --package ${{ matrix.package }} --script test:unit)" >> $GITHUB_OUTPUT
-
       - name: Test - Unit
-        if: steps.has-script.outputs.executable == 'true'
-        run: yarn workspace ${{ matrix.package }} test:unit
+        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:unit

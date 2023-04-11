@@ -68,6 +68,7 @@ describe('scripts', () => {
     it('should call "Yarn.list()" with the since option', () => scripts.handler(options)
       .then(() => {
         expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
+        expect(spies.Yarn.list).toHaveBeenCalledOnceWith({ noPrivate: false });
       }));
 
     it('should return a Promise that resolves to true if the script exists', () => scripts.handler(options)
