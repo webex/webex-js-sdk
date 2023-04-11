@@ -47,7 +47,6 @@
   },
   "dependencies": {
     "@webex/internal-plugin-device": "workspace:^",
-    "@webex/internal-plugin-feature": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "lodash": "^4.17.21"
