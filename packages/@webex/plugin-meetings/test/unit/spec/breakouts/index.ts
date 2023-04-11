@@ -996,5 +996,35 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
       });
     });
+
+    describe('#dynamicAssign', () => {
+      it('should make a PUT request with correct body and return the result', async () => {
+        breakouts.dynamicAssign = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+
+        const expectedBody = {
+          groups: [
+            {
+              id: 'breakoutGroup1',
+              sessions: [
+                {
+                  id: 'session1',
+                  participants: ['participant1', 'participant2'],
+                  targetState: 'JOINED',
+                },
+              ],
+            },
+          ],
+          editlock: {
+            token: 'abcdefg',
+          },
+        };
+
+        const result = await breakouts.dynamicAssign(expectedBody);
+
+        assert.calledOnceWithExactly(breakouts.dynamicAssign, expectedBody);
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
   });
 });

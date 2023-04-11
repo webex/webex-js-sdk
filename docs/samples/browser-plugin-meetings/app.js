@@ -2585,19 +2585,6 @@ function inviteMember(addButton) {
   }
 }
 
-function admitMember(admitButton) {
-  const meeting = getCurrentMeeting();
-  const participantID = getRadioValue('participant-select');
-
-  if (meeting) {
-    meeting.admit([participantID]).then((res) => {
-      console.log(res, 'participant has been admitted');
-    }).catch((err) => {
-      console.log('unable to admit participant', err);
-    });
-  }
-}
-
 function removeMember(removeButton) {
   const meeting = getCurrentMeeting();
   const participantID = getRadioValue('participant-select');
@@ -2773,6 +2760,85 @@ function toggleBreakout() {
   }
 }
 
+const createAdmitDiv = () => {
+
+  const containerDiv = document.createElement('div');
+  let boSelector = null;
+
+  if (meeting.breakouts.currentBreakoutSession && meeting.breakouts.breakouts.length) {
+    boSelector = document.createElement('select');
+    boSelector.style.display = 'inline-block';
+    const allSession = document.createElement('option');
+    allSession.text = 'Main meeting';
+    boSelector.appendChild(allSession);
+    const breakoutSession = meeting.breakouts.currentBreakoutSession;
+    if (breakoutSession.isMain) {
+      allSession.value = "Main";
+    } else {
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    }
+    meeting.breakouts.breakouts.forEach((breakoutSession) => {
+      if (breakoutSession.isMain) {
+        allSession.value = "Main";
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    })
+  }
+
+  const button = document.createElement('button');
+  button.innerText = 'Admit';
+
+  button.onclick = () => {
+    function admitMemberToMin(participant) {
+      const meeting = getCurrentMeeting();
+      if (meeting) {
+        meeting.admit([participant]).then((res) => {
+          console.log(res, 'participant has been admitted');
+        }).catch((err) => {
+          console.log('unable to admit participant', err);
+        });
+      }
+    }
+
+    function admitMemberToBreakout(participant, boId) {
+      const meeting = getCurrentMeeting();
+      if (meeting) {
+        meeting.breakouts.dynamicAssign([{
+          id: boId,
+          participants: [participant],
+          targetState: "JOINED",
+        }]).then((res) => {
+          console.log(res, 'participant has been admitted');
+        }).catch((err) => {
+          console.log('unable to admit participant', err);
+        });
+      }
+    }
+
+    const participantID = getRadioValue('participant-select');
+    const targetBo = boSelector?.value;
+
+    if (!targetBo || targetBo === 'Main') {
+      admitMemberToMin(participantID);
+    } else {
+      admitMemberToBreakout(participantID, targetBo);
+    }
+  };
+
+  if (boSelector) {
+    containerDiv.appendChild(boSelector);
+  }
+  containerDiv.appendChild(button);
+
+  return containerDiv;
+};
 function viewBreakouts(event) {
   const meeting = getCurrentMeeting();
 
@@ -3141,8 +3207,11 @@ function viewParticipants() {
     td2.appendChild(label2);
     td3.appendChild(label3);
 
-    if (member.isInLobby) td4.appendChild(createButton('Admit', admitMember));
-    else td4.appendChild(label4);
+    if (member.isInLobby) {
+      td4.appendChild(createAdmitDiv());
+    } else {
+      td4.appendChild(label4);
+    }
 
     td5.appendChild(label5);
 
