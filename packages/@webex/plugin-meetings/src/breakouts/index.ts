@@ -486,7 +486,9 @@ const Breakouts = WebexPlugin.extend({
     };
 
     const body = {
-      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock.token, refresh: true}}
+        : {}),
       ...{groups: [payload]},
     };
 
