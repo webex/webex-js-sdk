@@ -47,7 +47,7 @@ const list: CommandsCommand<Options> = {
   })
     .then((packageDetails) => packageDetails.map(({ name }: YarnListPackage) => name))
     .then((packageNames: Array<string>) => {
-      const output = `[${packageNames.map((packageName) => `"${packageName}"`).join(', ')}]`;
+      const output = packageNames.map((packageName) => packageName).join(',');
       process.stdout.write(output);
     }),
 };
