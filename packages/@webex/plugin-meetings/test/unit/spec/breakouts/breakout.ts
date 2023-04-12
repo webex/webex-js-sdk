@@ -24,11 +24,7 @@ describe('plugin-meetings', () => {
       breakout.url = 'url';
       breakout.collection = {
         parent: {
-          meeting: {
-            deref() {
-              return 'activeMeetingId';
-            },
-          },
+          meetingId: 'activeMeetingId',
         },
       };
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
@@ -42,8 +38,8 @@ describe('plugin-meetings', () => {
 
     describe('#join', () => {
       it('makes the request as expected', async () => {
+        Metrics.postEvent = sinon.stub();
         const result = await breakout.join();
-
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
           uri: 'url/move',
