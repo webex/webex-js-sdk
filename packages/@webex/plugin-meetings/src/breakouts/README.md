@@ -134,6 +134,11 @@ breakouts.start(params)
 // sessions should be like: [{id:'xx',memberIds:['111'],emails:['111@ss.com',anyone: true]},...]
 breakouts.assign(sessions)
 
+// Dynammic assign a particpant/participants to breakouts/main (not used by now)
+// Admit lobby waiting participants to a breakout directly
+// sessions should be like: [{id:'xx',participants:['111'],targetState:'JOINED'},...]
+breakouts.dynamicAssign(sessions)
+
 // End breakout sessions with necessary params
 breakouts.end(params)
 
