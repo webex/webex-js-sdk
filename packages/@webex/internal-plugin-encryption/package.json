@@ -24,11 +24,18 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-make-local-url": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1",
     "sinon": "^9.2.4"
   },
   "dependencies": {
@@ -36,7 +43,6 @@
     "@webex/common-timers": "workspace:^",
     "@webex/http-core": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
-    "@webex/internal-plugin-encryption": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",
     "@webex/test-helper-file": "workspace:^",
     "@webex/webex-core": "workspace:^",
@@ -51,5 +57,14 @@
     "safe-buffer": "^5.2.0",
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9"
+  },
+  "scripts": {
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
+    "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
   }
 }

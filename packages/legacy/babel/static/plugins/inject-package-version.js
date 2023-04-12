@@ -4,14 +4,14 @@
 
 const t = require('@babel/types');
 
-const {version} = require('../../package.json');
-
 /**
  * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
  * have the correct version property
  * @returns {Object}
  */
 module.exports = function injectPackageVersion() {
+  const version = 'modern';
+
   return {
     visitor: {
       /**
