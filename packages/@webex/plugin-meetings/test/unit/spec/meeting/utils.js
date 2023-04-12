@@ -273,7 +273,6 @@ describe('plugin-meetings', () => {
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
       });
-
     });
 
     describe('getUserDisplayHintsFromLocusInfo', () => {
