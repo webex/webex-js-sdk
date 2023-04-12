@@ -38,8 +38,8 @@ const Breakouts = WebexPlugin.extend({
     breakoutServiceUrl: 'string', // the current breakout resouce url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
   },
-  isCallPreassignments: false, // Controlling the lifecycle of the pre-assign API
   children: {
     currentBreakoutSession: Breakout,
   },
@@ -437,7 +437,7 @@ const Breakouts = WebexPlugin.extend({
     if (breakInfo.body?.groups) {
       this.set('groups', breakInfo.body.groups);
     }
-    this.isCallPreassignments = false;
+    this.shouldFetchPreassignments = false;
 
     return Promise.resolve(breakInfo);
   },
@@ -550,7 +550,7 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   queryPreAssignments() {
-    if (!this.isCallPreassignments) {
+    if (!this.shouldFetchPreassignments) {
       this.webex
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
         .then((result) => {
@@ -561,7 +561,7 @@ const Breakouts = WebexPlugin.extend({
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
         });
-      this.isCallPreassignments = true;
+      this.shouldFetchPreassignments = true;
     }
   },
 });
