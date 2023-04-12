@@ -552,28 +552,28 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('clears all the requests on reset()', () => {
+  it('avoids sending duplicate requests and clears all the requests on reset()', () => {
     // send some requests and commit them one by one
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, true);
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, true);
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
     addActiveSpeakerRequest(
       255,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
       ACTIVE_SPEAKER_MAX_FS,
-      true
+      false
     );
     addActiveSpeakerRequest(
       254,
       [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
       ACTIVE_SPEAKER_MAX_FS,
-      true
+      false
     );
 
-    sendMediaRequestsCallback.resetHistory();
+    // nothing should be sent out as we didn't commit the requests
+    assert.notCalled(sendMediaRequestsCallback);
 
-    // check that when calling commit() all requests are re-sent again
+
     mediaRequestManager.commit();
-
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
@@ -601,6 +601,13 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
+
+    // check that when calling commit()
+    // all requests are not re-sent again (avoid duplicate requests)
+    mediaRequestManager.commit();
+
+    assert.notCalled(sendMediaRequestsCallback);
+
     // now reset everything
     mediaRequestManager.reset();
 
@@ -608,6 +615,46 @@ describe('MediaRequestManager', () => {
     mediaRequestManager.commit();
     checkMediaRequestsSent([]);
   });
+
+  it('makes sure to call requests correctly after reset was called and another request was added', () => {
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+
+    assert.notCalled(sendMediaRequestsCallback);
+
+
+    mediaRequestManager.commit();
+    checkMediaRequestsSent([
+      {
+        policy: 'receiver-selected',
+        csi: 1500,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+    ]);
+
+    // now reset everything
+    mediaRequestManager.reset();
+
+     // calling commit now should not cause any requests to be sent out
+     mediaRequestManager.commit();
+     checkMediaRequestsSent([]);
+
+     //add new request
+    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
+
+    // commit
+    mediaRequestManager.commit();
+
+    // check the new request was sent
+    checkMediaRequestsSent([
+      {
+        policy: 'receiver-selected',
+        csi: 1501,
+        receiveSlot: fakeWcmeSlots[1],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+    ])
+  })
 
   it('re-sends media requests after degradation preferences are set', () => {
     // set max macroblocks limit

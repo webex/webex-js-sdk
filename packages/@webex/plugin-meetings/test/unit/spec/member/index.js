@@ -19,4 +19,28 @@ describe('member', () => {
 
     assert.calledOnceWithExactly(MemberUtil.isHandRaised, participant);
   });
+
+  describe('roles', () => {
+    it('checks that processParticipant calls processRoles', () => {
+      const participant = {};
+
+      const member = new Member({});
+  
+      sinon.spy(member, 'processRoles');
+      member.processParticipant(participant);
+  
+      assert.calledOnceWithExactly(member.processRoles, participant);
+    });
+
+    it('checks that processRoles calls extractControlRoles', () => {
+      const participant = {};
+
+      const member = new Member({});
+  
+      sinon.spy(MemberUtil, 'extractControlRoles');
+      member.processParticipant(participant);
+  
+      assert.calledOnceWithExactly(MemberUtil.extractControlRoles, participant);
+    });
+  })
 });

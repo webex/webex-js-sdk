@@ -57,6 +57,19 @@ const Breakouts = WebexPlugin.extend({
         return this.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
       },
     },
+    isActiveBreakout: {
+      deps: ['sessionType', 'status'],
+      /**
+       * Returns true if the breakout status is active
+       * @returns {boolean}
+       */
+      fn() {
+        return (
+          this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+          (this.status === BREAKOUTS.STATUS.OPEN || this.status === BREAKOUTS.STATUS.CLOSING)
+        );
+      },
+    },
     breakoutGroupId: {
       deps: ['groups'],
       /**
@@ -362,13 +375,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   doToggleBreakout(enable) {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
+      ...{enableBreakoutSession: enable},
+    };
+
     // @ts-ignore
     return this.webex.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        enableBreakoutSession: enable,
-      },
+      body,
     });
   },
 
@@ -378,31 +394,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   async create(sessions) {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
+      ...{groups: [{sessions}]},
+    };
     // @ts-ignore
-    const bodyInfo =
-      this.editLock && !!this.editLock.token
-        ? {
-            groups: [
-              {
-                sessions,
-              },
-            ],
-            editlock: {
-              token: this.editLock.token,
-            },
-          }
-        : {
-            groups: [
-              {
-                sessions,
-              },
-            ],
-          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: bodyInfo,
+        body,
       })
       .catch((error) => {
         return Promise.reject(
@@ -425,31 +426,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {Promise}
    */
   async clearSessions() {
+    const body = {
+      ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
+      ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
+    };
     // @ts-ignore
-    const bodyInfo =
-      this.editLock && !!this.editLock.token
-        ? {
-            groups: [
-              {
-                action: BREAKOUTS.ACTION.DELETE,
-              },
-            ],
-            editlock: {
-              token: this.editLock.token,
-            },
-          }
-        : {
-            groups: [
-              {
-                action: BREAKOUTS.ACTION.DELETE,
-              },
-            ],
-          };
     const breakInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
-        body: bodyInfo,
+        body,
       })
       .catch((error) => {
         return Promise.reject(
@@ -480,12 +466,17 @@ const Breakouts = WebexPlugin.extend({
       ...params,
     };
 
+    const body = {
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock.token, refresh: true}}
+        : {}),
+      ...{groups: [payload]},
+    };
+
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        groups: [payload],
-      },
+      body,
     }).catch((error) => {
       return Promise.reject(
         boServiceErrorHandler(error, 'Breakouts#start --> Edit lock token mismatch')
@@ -508,12 +499,17 @@ const Breakouts = WebexPlugin.extend({
       ...params,
     };
 
+    const body = {
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock.token, refresh: true}}
+        : {}),
+      ...{groups: [payload]},
+    };
+
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
-      body: {
-        groups: [payload],
-      },
+      body,
     }).catch((error) => {
       return Promise.reject(
         boServiceErrorHandler(error, 'Breakouts#end --> Edit lock token mismatch')
@@ -537,6 +533,7 @@ const Breakouts = WebexPlugin.extend({
     }
     if (breakout.body?.editlock && editlock) {
       this.set('editLock', breakout.body.editlock);
+      this.keepEditLockAlive();
     }
 
     return breakout;
@@ -603,16 +600,18 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   unLockEditBreakout() {
-    this.request({
-      method: HTTP_VERBS.DELETE,
-      uri: `${this.url}/editlock/${this.editLock.token}`,
-    })
-      .then(() => {
-        this._clearEditLockInfo();
+    if (this.editLock && !!this.editLock.token) {
+      this.request({
+        method: HTTP_VERBS.DELETE,
+        uri: `${this.url}/editlock/${this.editLock.token}`,
       })
-      .catch((error) => {
-        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
-      });
+        .then(() => {
+          this._clearEditLockInfo();
+        })
+        .catch((error) => {
+          return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
+        });
+    }
   },
 
   /**
@@ -653,6 +652,42 @@ const Breakouts = WebexPlugin.extend({
           },
         ],
       },
+    });
+  },
+
+  /**
+   * assign participants dynamically after breakout sessions started,
+   * but currently it only used for admitting participants from lobby into breakout directly
+   * @param {Array} sessions
+   * @returns {void}
+   */
+  dynamicAssign(sessions: any[]) {
+    const updatedSessions = sessions.map((item) => {
+      return {
+        id: item.id,
+        participants: item.participants,
+        targetState: item.targetState,
+      };
+    });
+
+    const body = {
+      groups: [
+        {
+          id: this.breakoutGroupId,
+          sessions: updatedSessions,
+        },
+      ],
+      editlock: null,
+    };
+
+    if (this.editLock && this.editLock.token) {
+      body.editlock = this.editLock;
+    }
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: `${this.url}/dynamicAssign`,
+      body,
     });
   },
 });

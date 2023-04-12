@@ -22,6 +22,7 @@ describe('plugin-meetings', () => {
       breakout = new Breakout({}, {parent: breakouts});
       breakout.groupId = 'groupId';
       breakout.sessionId = 'sessionId';
+      breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
       breakout.collection = {
         parent: {
@@ -171,7 +172,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
         assert.equal(result, undefined);
-      });
-    });
+      })
+    })
   });
 });
