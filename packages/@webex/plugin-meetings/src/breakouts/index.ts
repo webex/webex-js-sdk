@@ -39,7 +39,7 @@ const Breakouts = WebexPlugin.extend({
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
   },
-  isCallPreassignments: false,
+  isCallPreassignments: false, // Controlling the lifecycle of the pre-assign API
   children: {
     currentBreakoutSession: Breakout,
   },
