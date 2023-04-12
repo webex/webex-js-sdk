@@ -2,7 +2,6 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import {createMuteState} from '@webex/plugin-meetings/src/meeting/muteState';
-import Media from '@webex/plugin-meetings/src/media/index';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {AUDIO, VIDEO} from '@webex/plugin-meetings/src/constants';
 
@@ -16,11 +15,20 @@ describe('plugin-meetings', () => {
 
   const fakeLocus = {info: 'this is a fake locus'};
 
+  const createFakeLocalTrack = (id) => {
+    return {
+      id,
+      setMuted: sinon.stub(),
+      setServerMuted: sinon.stub(),
+      setUnmuteAllowed: sinon.stub(),
+     };
+  };
+
   beforeEach(() => {
     meeting = {
       mediaProperties: {
-        audioTrack: {id: 'fake audio track', setMuted: sinon.stub()},
-        videoTrack: {id: 'fake video track', setMuted: sinon.stub()},
+        audioTrack: createFakeLocalTrack('fake audio track'),
+        videoTrack: createFakeLocalTrack('fake video track'),
       },
       remoteMuted: false,
       unmuteAllowed: true,
@@ -35,8 +43,9 @@ describe('plugin-meetings', () => {
         muteMember: sinon.stub().resolves(),
       },
     };
-    audio = createMuteState(AUDIO, meeting, {sendAudio: true});
-    video = createMuteState(VIDEO, meeting, {sendVideo: true});
+
+    audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
+    video = createMuteState(VIDEO, meeting, {sendVideo: true}, true);
 
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
 
@@ -49,8 +58,8 @@ describe('plugin-meetings', () => {
 
   describe('mute state library', () => {
     it('does not create an audio instance if we are not sending audio', async () => {
-      assert.isNull(createMuteState(AUDIO, meeting, {sendAudio: false}));
-      assert.isNull(createMuteState(AUDIO, meeting, {}));
+      assert.isNull(createMuteState(AUDIO, meeting, {sendAudio: false}, true));
+      assert.isNull(createMuteState(AUDIO, meeting, {}, true));
     });
 
     it('does not create a video instance if we are not sending video', async () => {
@@ -94,7 +103,7 @@ describe('plugin-meetings', () => {
       assert.isFalse(audio.isMuted());
 
       // simulate remote mute
-      audio.handleServerRemoteMuteUpdate(true, true);
+      audio.handleServerRemoteMuteUpdate(meeting, true, true);
 
       assert.isTrue(audio.isMuted());
       assert.isFalse(audio.isSelf());
@@ -268,7 +277,7 @@ describe('plugin-meetings', () => {
 
       it('does remote unmute when unmuting and remote mute is on', async () => {
         // simulate remote mute
-        audio.handleServerRemoteMuteUpdate(true, true);
+        audio.handleServerRemoteMuteUpdate(meeting, true, true);
 
         // unmute
         await audio.handleClientRequest(meeting, false);
@@ -283,7 +292,7 @@ describe('plugin-meetings', () => {
 
       it('does video remote unmute when unmuting and remote mute is on', async () => {
         // simulate remote mute
-        video.handleServerRemoteMuteUpdate(true, true);
+        video.handleServerRemoteMuteUpdate(meeting, true, true);
 
         // unmute
         await video.handleClientRequest(meeting, false);
@@ -298,7 +307,7 @@ describe('plugin-meetings', () => {
 
       it('does not video remote unmute when unmuting and remote mute is off', async () => {
         // simulate remote mute
-        video.handleServerRemoteMuteUpdate(false, true);
+        video.handleServerRemoteMuteUpdate(meeting, false, true);
 
         // unmute
         await video.handleClientRequest(meeting, false);
@@ -348,7 +357,7 @@ describe('plugin-meetings', () => {
 
       it('rejects client request promise if server request for remote mute fails', async () => {
         // we only send remote mute requests when we're unmuting, so first we need to do a remote mute
-        audio.handleServerRemoteMuteUpdate(true, true);
+        audio.handleServerRemoteMuteUpdate(meeting, true, true);
 
         // setup the stub to simulate server error response
         meeting.members.muteMember = sinon.stub().rejects();
@@ -433,7 +442,7 @@ describe('plugin-meetings', () => {
       });
 
       it('rejects client request to unmute if hard mute is used', (done) => {
-        audio.handleServerRemoteMuteUpdate(true, false);
+        audio.handleServerRemoteMuteUpdate(meeting, true, false);
 
         audio
           .handleClientRequest(meeting, false)
