@@ -292,6 +292,16 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isActiveBreakout', () => {
+      it('return is current is breakout with active status', () => {
+        assert.equal(breakouts.isActiveBreakout, false);
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.BREAKOUT);
+        assert.equal(breakouts.isActiveBreakout, false);
+        breakouts.set('status', BREAKOUTS.STATUS.OPEN);
+        assert.equal(breakouts.isActiveBreakout, true);
+      });
+    });
+
     describe('#queryRosters', () => {
       it('makes the expected query', async () => {
         webex.request.returns(
