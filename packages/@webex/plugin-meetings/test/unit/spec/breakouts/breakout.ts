@@ -5,7 +5,8 @@ import Members from '@webex/plugin-meetings/src/members';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
-
+import {eventType} from '../../../../src/metrics/config';
+import uuid from 'uuid';
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
@@ -53,8 +54,27 @@ describe('plugin-meetings', () => {
       });
       it('send metrics as expected', async () => {
         Metrics.postEvent = sinon.stub();
+        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         await breakout.join();
         assert.calledTwice(Metrics.postEvent);
+        assert.calledWithMatch(Metrics.postEvent, {
+          event: eventType.MOVE_TO_BREAKOUT,
+          meetingId: 'activeMeetingId',
+          data: {
+            breakoutMoveId: 'breakoutMoveId',
+            breakoutSessionId: 'sessionId',
+            breakoutGroupId: 'groupId',
+          },
+        });
+        assert.calledWithMatch((Metrics.postEvent as any).secondCall, {
+          event: eventType.JOIN_BREAKOUT_RESPONSE,
+          meetingId: 'activeMeetingId',
+          data: {
+            breakoutMoveId: 'breakoutMoveId',
+            breakoutSessionId: 'sessionId',
+            breakoutGroupId: 'groupId',
+          },
+        });
       });
     });
 
