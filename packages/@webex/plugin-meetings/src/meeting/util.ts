@@ -24,7 +24,7 @@ import CaptchaError from '../common/errors/captcha-error';
 
 const MeetingUtil: any = {};
 
-MeetingUtil.parseLocusJoin = (meeting, response) => {
+MeetingUtil.parseLocusJoin = (response) => {
   const parsed: any = {};
 
   // First todo: add check for existance
@@ -40,16 +40,6 @@ MeetingUtil.parseLocusJoin = (meeting, response) => {
       parsed.mediaId = mediaConnection.mediaId;
     }
   });
-
-  // We need to confirm whether to call queryPreAssignments
-  if (
-    parsed.moderator &&
-    parsed.controls.breakout &&
-    parsed.controls.breakout.enableBreakoutSession &&
-    parsed.controls.breakout.hasBreakoutPreAssignments
-  ) {
-    meeting.breakouts.queryPreAssignments();
-  }
 
   return parsed;
 };
@@ -130,7 +120,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
         },
       });
 
-      return MeetingUtil.parseLocusJoin(meeting, res);
+      return MeetingUtil.parseLocusJoin(res);
     });
 };
 
