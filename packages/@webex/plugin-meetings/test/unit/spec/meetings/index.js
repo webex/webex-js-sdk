@@ -31,7 +31,7 @@ import {
   EVENT_TRIGGERS,
 } from '../../../../src/constants';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   const logger = {
     log: () => {},
     info: () => {},
@@ -710,6 +710,7 @@ describe('plugin-meetings', () => {
         });
         describe('there was not a meeting', () => {
           let initialSetup;
+          const webExMeetingId = '123456';
 
           beforeEach(() => {
             initialSetup = sinon.stub().returns(true);
@@ -736,12 +737,16 @@ describe('plugin-meetings', () => {
                     callbackAddress: uri1,
                   },
                 },
+                info: {
+                  webExMeetingId
+                },
               },
               eventType: 'locus.difference',
               locusUrl: url1,
             });
             assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', webExMeetingId);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
               id: uuid1,
@@ -755,6 +760,9 @@ describe('plugin-meetings', () => {
                   callbackAddress: uri1,
                 },
               },
+              info: {
+                webExMeetingId
+              },
             });
           });
           it('should setup the meeting by difference event without replaces', async () => {
@@ -766,12 +774,16 @@ describe('plugin-meetings', () => {
                     callbackAddress: uri1,
                   },
                 },
+                info: {
+                  webExMeetingId
+                },
               },
               eventType: 'locus.difference',
               locusUrl: url1,
             });
             assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', webExMeetingId);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
               id: uuid1,
@@ -779,6 +791,9 @@ describe('plugin-meetings', () => {
                 callBackInfo: {
                   callbackAddress: uri1,
                 },
+              },
+              info: {
+                webExMeetingId
               },
             });
           });
@@ -791,12 +806,16 @@ describe('plugin-meetings', () => {
                     callbackAddress: uri1,
                   },
                 },
+                info: {
+                  webExMeetingId
+                },
               },
               eventType: test1,
               locusUrl: url1,
             });
             assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', webExMeetingId);
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
               id: uuid1,
@@ -804,6 +823,9 @@ describe('plugin-meetings', () => {
                 callBackInfo: {
                   callbackAddress: uri1,
                 },
+              },
+              info: {
+                webExMeetingId
               },
             });
           });
@@ -1411,7 +1433,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('check self joined and joined on this device, return false', () => {
+      it('if newLocus replaceAt time is expired, then return false', () => {
         sinon.stub(webex.meetings.meetingCollection, 'getActiveBreakoutLocus').returns({joinedWith: {replaces: [{
               replaceAt: '2023-03-27T02:17:02.506Z',
             }]}});

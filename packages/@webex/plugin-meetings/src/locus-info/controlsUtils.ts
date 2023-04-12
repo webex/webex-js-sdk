@@ -120,10 +120,11 @@ ControlsUtils.getId = (controls: any) => {
 };
 
 /**
- * Extract the id from the record controls object
+ * check whether to replace the meeting's members or not.
+ * For case joined breakout session, need replace meeting's members
  * @param {LocusControls} oldControls
  * @param {LocusControls} controls
- * @returns {String|null}
+ * @returns {Boolean}
  */
 ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
   // no breakout case
