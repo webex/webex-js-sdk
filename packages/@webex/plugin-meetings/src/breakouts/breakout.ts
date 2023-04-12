@@ -59,7 +59,7 @@ const Breakout = WebexPlugin.extend({
    */
   async join() {
     const breakoutMoveId = uuid.v4();
-    const {meetingId} = this.parent;
+    const {meetingId} = this.collection.parent;
     Metrics.postEvent({
       event: eventType.MOVE_TO_BREAKOUT,
       meetingId,

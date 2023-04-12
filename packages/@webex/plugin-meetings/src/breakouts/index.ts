@@ -256,7 +256,6 @@ const Breakouts = WebexPlugin.extend({
     forEach(breakouts, (breakout: typeof Breakout) => {
       // eslint-disable-next-line no-param-reassign
       breakout.url = this.url;
-      breakout.parent = this;
     });
 
     this.breakouts.set(Object.values(breakouts));
