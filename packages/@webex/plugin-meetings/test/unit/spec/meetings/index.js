@@ -31,7 +31,7 @@ import {
   EVENT_TRIGGERS,
 } from '../../../../src/constants';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   const logger = {
     log: () => {},
     info: () => {},
