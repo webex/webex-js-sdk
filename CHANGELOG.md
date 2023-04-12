@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.66](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.65...v3.0.0-beta.66) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** duplicate-SCRs - remove duplicates temp fix ([#2722](https://github.com/webex/webex-js-sdk/issues/2722)) ([40e2862](https://github.com/webex/webex-js-sdk/commit/40e2862e61f2864c0b1342248eee3467ff037420))
+
+## [3.0.0-beta.65](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.64...v3.0.0-beta.65) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** dynamic assignment API for admitting user from lobby to breakout ([#2705](https://github.com/webex/webex-js-sdk/issues/2705)) ([6b2366c](https://github.com/webex/webex-js-sdk/commit/6b2366c78a49fd374bceee3c7161c3f554bdf050))
+
+## [3.0.0-beta.64](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.63...v3.0.0-beta.64) (2023-04-11)
+
 ## [3.0.0-beta.63](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.62...v3.0.0-beta.63) (2023-04-07)
 
 
