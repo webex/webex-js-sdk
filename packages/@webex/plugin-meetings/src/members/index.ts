@@ -284,6 +284,25 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * clear member collection
+   * @returns {void}
+   * @private
+   * @memberof Members
+   */
+  clearMembers() {
+    this.membersCollection.reset();
+    Trigger.trigger(
+      this,
+      {
+        file: 'members',
+        function: 'clearMembers',
+      },
+      EVENT_TRIGGERS.MEMBERS_CLEAR,
+      {}
+    );
+  }
+
+  /**
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
@@ -292,8 +311,11 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object}) {
+  locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
     if (payload) {
+      if (payload.isReplace) {
+        this.clearMembers();
+      }
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
 
@@ -309,6 +331,7 @@ export default class Members extends StatelessWebexPlugin {
         {
           delta,
           full,
+          isReplace: !!payload.isReplace,
         }
       );
     }

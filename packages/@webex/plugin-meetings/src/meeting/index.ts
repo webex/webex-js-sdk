@@ -516,6 +516,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
+  webexMeetingId: string;
 
   namespace = MEETINGS;
 

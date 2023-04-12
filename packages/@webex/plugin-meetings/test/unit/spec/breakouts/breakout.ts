@@ -20,6 +20,7 @@ describe('plugin-meetings', () => {
       breakout = new Breakout({}, {parent: breakouts});
       breakout.groupId = 'groupId';
       breakout.sessionId = 'sessionId';
+      breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
@@ -140,7 +141,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
         assert.equal(result, undefined);
-      });
-    });
+      })
+    })
   });
 });

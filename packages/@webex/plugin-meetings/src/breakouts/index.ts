@@ -56,6 +56,19 @@ const Breakouts = WebexPlugin.extend({
         return this.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
       },
     },
+    isActiveBreakout: {
+      deps: ['sessionType', 'status'],
+      /**
+       * Returns true if the breakout status is active
+       * @returns {boolean}
+       */
+      fn() {
+        return (
+          this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+          (this.status === BREAKOUTS.STATUS.OPEN || this.status === BREAKOUTS.STATUS.CLOSING)
+        );
+      },
+    },
     breakoutGroupId: {
       deps: ['groups'],
       /**
