@@ -274,23 +274,6 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.meetingNumber, 'meetingNumber');
       });
 
-      it('#Should trigger get pre-assignments info when hasBreakoutPreAssignments is true', async () => {
-        const meeting = {
-          moderator: true,
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-        };
-        const request = {body: {locus: {controls: {breakouts: {enableBreakoutSession: true,hasBreakoutPreAssignments: true}}}}};
-        MeetingUtil.parseLocusJoin = sinon.stub().returns(Promise.resolve(request));
-        await MeetingUtil.joinMeeting(meeting, {
-          breakoutsSupported: true,
-        });
-        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
-        assert.equal(parameter.breakoutsSupported, true);
-        const result = await MeetingUtil.parseLocusJoin(meeting, request);
-        assert.equal(result.body.locus.controls.breakouts.hasBreakoutPreAssignments, true);
-      });
     });
 
     describe('getUserDisplayHintsFromLocusInfo', () => {

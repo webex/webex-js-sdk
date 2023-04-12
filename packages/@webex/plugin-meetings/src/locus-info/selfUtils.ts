@@ -71,7 +71,6 @@ SelfUtils.parse = (self: any, deviceId: string) => {
 };
 
 SelfUtils.getBreakouts = (self) => self?.controls?.breakout?.sessions;
-SelfUtils.isModerator = (self) => !!self?.moderator;
 
 SelfUtils.getLayout = (self) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
