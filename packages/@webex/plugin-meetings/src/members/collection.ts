@@ -37,4 +37,12 @@ export default class MembersCollection {
   getAll() {
     return this.members;
   }
+
+  /**
+   * @returns {void}
+   * reset members
+   */
+  reset() {
+    this.members = {};
+  }
 }

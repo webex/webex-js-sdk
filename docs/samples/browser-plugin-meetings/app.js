@@ -2097,6 +2097,12 @@ function setupMultistreamEventListeners(meeting) {
     updateVideoPanesForActiveSpeaker();
   });
 
+  meeting.on('meeting:stoppedSharingLocal', () => {
+    publishedLocalShareAudioTrack = null;
+    publishedLocalShareVideoTrack = null;
+    meetingStreamsLocalShare.srcObject = null;
+  });
+
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
 
@@ -2579,19 +2585,6 @@ function inviteMember(addButton) {
   }
 }
 
-function admitMember(admitButton) {
-  const meeting = getCurrentMeeting();
-  const participantID = getRadioValue('participant-select');
-
-  if (meeting) {
-    meeting.admit([participantID]).then((res) => {
-      console.log(res, 'participant has been admitted');
-    }).catch((err) => {
-      console.log('unable to admit participant', err);
-    });
-  }
-}
-
 function removeMember(removeButton) {
   const meeting = getCurrentMeeting();
   const participantID = getRadioValue('participant-select');
@@ -2767,6 +2760,85 @@ function toggleBreakout() {
   }
 }
 
+const createAdmitDiv = () => {
+
+  const containerDiv = document.createElement('div');
+  let boSelector = null;
+
+  if (meeting.breakouts.currentBreakoutSession && meeting.breakouts.breakouts.length) {
+    boSelector = document.createElement('select');
+    boSelector.style.display = 'inline-block';
+    const allSession = document.createElement('option');
+    allSession.text = 'Main meeting';
+    boSelector.appendChild(allSession);
+    const breakoutSession = meeting.breakouts.currentBreakoutSession;
+    if (breakoutSession.isMain) {
+      allSession.value = "Main";
+    } else {
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    }
+    meeting.breakouts.breakouts.forEach((breakoutSession) => {
+      if (breakoutSession.isMain) {
+        allSession.value = "Main";
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = breakoutSession.sessionId;
+      option.text = breakoutSession.name;
+      boSelector.appendChild(option);
+    })
+  }
+
+  const button = document.createElement('button');
+  button.innerText = 'Admit';
+
+  button.onclick = () => {
+    function admitMemberToMin(participant) {
+      const meeting = getCurrentMeeting();
+      if (meeting) {
+        meeting.admit([participant]).then((res) => {
+          console.log(res, 'participant has been admitted');
+        }).catch((err) => {
+          console.log('unable to admit participant', err);
+        });
+      }
+    }
+
+    function admitMemberToBreakout(participant, boId) {
+      const meeting = getCurrentMeeting();
+      if (meeting) {
+        meeting.breakouts.dynamicAssign([{
+          id: boId,
+          participants: [participant],
+          targetState: "JOINED",
+        }]).then((res) => {
+          console.log(res, 'participant has been admitted');
+        }).catch((err) => {
+          console.log('unable to admit participant', err);
+        });
+      }
+    }
+
+    const participantID = getRadioValue('participant-select');
+    const targetBo = boSelector?.value;
+
+    if (!targetBo || targetBo === 'Main') {
+      admitMemberToMin(participantID);
+    } else {
+      admitMemberToBreakout(participantID, targetBo);
+    }
+  };
+
+  if (boSelector) {
+    containerDiv.appendChild(boSelector);
+  }
+  containerDiv.appendChild(button);
+
+  return containerDiv;
+};
 function viewBreakouts(event) {
   const meeting = getCurrentMeeting();
 
@@ -2807,6 +2879,8 @@ function viewBreakouts(event) {
   const tdAssignedCurrent = document.createElement('td');
   const tdRequested = document.createElement('td');
   const tdControls = document.createElement('td');
+  const assignControls = document.createElement('td');
+  const moveControls = document.createElement('td');
 
   tbodyRow.appendChild(tdName);
   tbodyRow.appendChild(tdActive);
@@ -2815,6 +2889,8 @@ function viewBreakouts(event) {
   tbodyRow.appendChild(tdAssignedCurrent);
   tbodyRow.appendChild(tdRequested);
   tbodyRow.appendChild(tdControls);
+  tbodyRow.appendChild(assignControls);
+  tbodyRow.appendChild(moveControls);
 
   const createJoinSessionButton = (breakoutSession) => {
     const button = document.createElement('button');
@@ -2947,6 +3023,49 @@ function viewBreakouts(event) {
     return containerDiv;
   };
 
+  const createAssignSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Assign';
+    const {members} = meeting.members.membersCollection;
+    const assigned = Object.values(members).map(member=>member.id)
+    button.onclick = () => {
+      meeting.breakouts.assign([{
+        id: breakoutSession.sessionId,
+        memberIds: assigned,
+        anyone: true,
+      }]);
+    };
+
+    return button;
+  }
+
+  const createMoveSessionButton = (breakoutSession) => {
+    const button = document.createElement('button');
+
+    button.innerText = 'Move';
+    const {members} = meeting.members.membersCollection;
+    const assigned = Object.values(members).map(member=>member.id);
+    button.onclick = () => {
+      meeting.breakouts.breakouts.forEach(bo => {
+        if (bo.sessionId !== breakoutSession.sessionId && !bo.isMain){
+          // move to main
+          meeting.breakouts.assign([{
+            id: breakoutSession.sessionId,
+            memberIds:[],
+          },{
+            id: bo.sessionId,
+            memberIds: assigned,
+          }])
+        }
+      });
+
+
+    };
+
+    return button;
+  }
+
   const appendSession = (parentElement, isTrue) => {
     const sessionBooleanEl = document.createElement('div');
 
@@ -2971,29 +3090,10 @@ function viewBreakouts(event) {
     appendSession(tdRequested, breakoutSession.requested);
 
     tdControls.appendChild(createJoinSessionButton(breakoutSession));
+    assignControls.appendChild(createAssignSessionButton(breakoutSession));
+    moveControls.appendChild(createMoveSessionButton(breakoutSession));
 
-    // members prop of main breakout session should register the members:update event
-    // otherwise 'members:update' event will not be triggered
-    const {isMain, members: {_events, membersCollection}, members} = breakoutSession
-    if(isMain && (!_events || !_events['members:update'])){
-      members.on('members:update', (res) => {
-        console.log('member update', res);
-        const newMembers = membersCollection.getAll();
-        const oldMembers = meeting.members.membersCollection.getAll();
-        for( let a in newMembers){
-          if(oldMembers[a]){
-            const name = oldMembers[a].name;
-            meeting.members.membersCollection.set(a, {...newMembers[a], name});
-          }else{
-            meeting.members.membersCollection.set(a, newMembers[a]);
-          }
-        }
-        viewParticipants();
-        populateStageSelector();
-      });
-    }
   });
-
   thead.appendChild(theadRow);
   tbody.appendChild(tbodyRow);
   table.appendChild(thead);
@@ -3025,7 +3125,7 @@ function viewBreakouts(event) {
   breakoutTable.appendChild(table);
 }
 
-function viewParticipants() {
+function createMembersTable(members) {
   function createLabel(id, value = '') {
     const label = document.createElement('label');
 
@@ -3085,8 +3185,11 @@ function viewParticipants() {
     td2.appendChild(label2);
     td3.appendChild(label3);
 
-    if (member.isInLobby) td4.appendChild(createButton('Admit', admitMember));
-    else td4.appendChild(label4);
+    if (member.isInLobby) {
+      td4.appendChild(createAdmitDiv());
+    } else {
+      td4.appendChild(label4);
+    }
 
     td5.appendChild(label5);
 
@@ -3099,34 +3202,33 @@ function viewParticipants() {
     return tr;
   }
 
-  function createTable(members) {
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const tbody = document.createElement('tbody');
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
 
-    thead.appendChild(createHeadRow());
+  thead.appendChild(createHeadRow());
 
-    Object.entries(members).forEach(([key, value]) => {
-      if (value.status !== 'NOT_IN_MEETING') {
-        const row = createRow(value);
+  Object.entries(members).forEach(([key, value]) => {
+    if (value.status !== 'NOT_IN_MEETING') {
+      const row = createRow(value);
 
-        tbody.appendChild(row);
-      }
-    });
+      tbody.appendChild(row);
+    }
+  });
 
-    table.appendChild(thead);
-    table.appendChild(tbody);
+  table.appendChild(thead);
+  table.appendChild(tbody);
 
-    return table;
-  }
-
+  return table;
+};
+function viewParticipants() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
     emptyParticipants();
     const {members} = meeting.members.membersCollection;
 
-    participantTable.appendChild(createTable(members));
+    participantTable.appendChild(createMembersTable(members));
 
     const btnDiv = document.createElement('div');
 

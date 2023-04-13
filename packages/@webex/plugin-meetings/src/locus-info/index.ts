@@ -276,8 +276,9 @@ export default class LocusInfo extends EventsScope {
     this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
+    const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -336,8 +337,9 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   onDeltaLocus(locus: any) {
+    const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
   }
 
@@ -653,13 +655,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   *
+   * update meeting's members
    * @param {Object} participants new participants object
-   * @param {boolen} deltaParticpantFlag  delta event
+   * @param {Boolean} isReplace is replace the whole members
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object) {
+  updateParticipants(participants: object, isReplace?: boolean) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -672,6 +674,7 @@ export default class LocusInfo extends EventsScope {
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
         hostId: this.parsedLocus.host && this.parsedLocus.host.hostId,
+        isReplace,
       }
     );
   }
@@ -800,7 +803,7 @@ export default class LocusInfo extends EventsScope {
             file: 'locus-info',
             function: 'updateControls',
           },
-          LOCUSINFO.EVENTS.CONTROLS_VIDEO_ENABLED_UPDATED,
+          LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED,
           {
             // muted: not part of locus.controls
             unmuteAllowed: videoEnabled,
