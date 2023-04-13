@@ -8,6 +8,12 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
+  SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
+  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
+  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
+  EXAMPLE_VALUE: ${{ secrets.EXAMPLE_VALUE }}
+  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
+  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
 
 jobs:
   validate:
