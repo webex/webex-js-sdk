@@ -1,4 +1,4 @@
-import '@babel/register';
+import Babel from '@babel/register';
 import '@webex/env-config-legacy';
 
 import MochaRunner from 'mocha';
@@ -18,6 +18,11 @@ class Mocha {
    * @returns - Empty Promise.
    */
   public static test({ files }: { files: Array<string> }) {
+    Babel({
+      extensions: ['.js', '.ts'],
+      sourceMaps: true,
+    });
+
     const config = CONSTANTS.CONFIG;
 
     const mochaRunner = new MochaRunner(config);
@@ -25,7 +30,13 @@ class Mocha {
     files.forEach((file) => mochaRunner.addFile(file));
 
     return new Promise((resolve) => {
-      mochaRunner.run(resolve);
+      mochaRunner.run((failures) => {
+        if (failures !== 0) {
+          process.exit(1);
+        }
+
+        resolve(undefined);
+      });
     });
   }
 

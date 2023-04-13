@@ -45,5 +45,4 @@ coverage
 # patch-package
 patches.hash
 bundle.js.map
-webex-server
 junit.xml

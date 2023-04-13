@@ -1,5 +1,3 @@
-
-
 # @webex/cli-tools
 
 [![icense: mit](https://img.shields.io/badge/License-MIT-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)

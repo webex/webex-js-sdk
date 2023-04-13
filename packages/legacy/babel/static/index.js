@@ -22,7 +22,7 @@ const config = {
     ],
     '@babel/plugin-proposal-export-default-from',
     '@babel/plugin-proposal-export-namespace-from',
-    'lodash',
+    // 'lodash',
     '@babel/plugin-proposal-nullish-coalescing-operator',
     '@babel/plugin-proposal-object-rest-spread',
     '@babel/plugin-proposal-optional-chaining',

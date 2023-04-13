@@ -123,8 +123,11 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
       - name: Build
-        run: yarn workspaces foreach --topological-dev -p run build:src
+        run: yarn workspaces foreach --parallel --verbose run build:src
 
       - name: Cache Distributables
         uses: actions/cache@v3
@@ -139,7 +142,8 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      packages: ${{ steps.generate-package-matrix.outputs.packages }}
+      changed: ${{ steps.generate-package-matrix-changed.outputs.changed }}
+      recursive: ${{ steps.generate-package-matrix-recursive.outputs.recursive }}
 
     steps:
       - name: Checkout Project
@@ -172,16 +176,22 @@ jobs:
       - name: Update Main Branch
         run: git fetch origin ${{ github.event.pull_request.base.ref }} --unshallow
 
-      - id: generate-package-matrix
+      - id: generate-package-matrix-recursive
         name: Generate Package Matrix
-        run: echo "packages=$(yarn package-tools list --private --recursive --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
+        run: echo "recursive=$(yarn package-tools list --private --recursive --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
+
+      - id: generate-package-matrix-changed
+        name: Generate Package Matrix
+        run: echo "changed=$(yarn package-tools list --private --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
 
       - name: Display Package Matrix
-        run: echo "generated package matrix - ${{ steps.generate-package-matrix.outputs.packages }}"
+        run: |
+          echo "changed packages - ${{ steps.generate-package-matrix-changed.outputs.changed}}"
+          echo "changed packages and dependents - ${{ steps.generate-package-matrix-recursive.outputs.recursive }}"
 
 
   test-browser:
-    name: ( ${{ matrix.package }} ) Test - Browser
+    name: Test - Browser
     needs: generate-package-matrix
     runs-on: ubuntu-latest
 
@@ -214,7 +224,7 @@ jobs:
         run: yarn
 
       - name: Test - Browser
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:browser
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
 
 
   test-coverage:
@@ -251,7 +261,7 @@ jobs:
         run: yarn
 
       - name: Test - Coverage
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:coverage
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:coverage
 
 
   test-integration:
@@ -288,7 +298,7 @@ jobs:
         run: yarn
 
       - name: Test - Integration
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:integration
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
 
 
   test-style:
@@ -325,7 +335,7 @@ jobs:
         run: yarn
 
       - name: Test - Style
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:style
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:style
 
   test-syntax:
     name: Test - Syntax
@@ -361,7 +371,7 @@ jobs:
         run: yarn
 
       - name: Test - Syntax
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:syntax
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}'  run test:syntax
 
 
   test-unit:
@@ -398,4 +408,4 @@ jobs:
         run: yarn
 
       - name: Test - Unit
-        run: yarn workspaces foreach --verbose --from '{${{ needs.generate-package-matrix.outputs.packages }}}' run test:unit
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
