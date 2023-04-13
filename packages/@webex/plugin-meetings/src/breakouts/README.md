@@ -41,6 +41,12 @@ The following are methods available to attendees of a meeting:
 ```javascript
 // Join a breakout
 // This can be used when the participant is in the main session or in a different breakout session
+// when call join function, should send message to metrics
+/* Breakout Sessions created during meetings allow participants to move into smaller breakout sessions and then 
+   return to the main meeting at a later time. These moves can be initiated by the user or by the meeting 
+   host/co-host.  The goal of this metric is to track these moves in production by instrumenting them for 
+   analysis from the end user's experience perspective.
+*/
 breakout.join();
 
 // Leave a breakout
@@ -131,8 +137,13 @@ breakout.rename(newSessionName)
 breakouts.start(params)
 
 // Assign a particpant/participants to breakouts/a breakout
-// sessions should be like: [{id:'xx',memberIds:['111'],emails:['111@ss.com']},...]
+// sessions should be like: [{id:'xx',memberIds:['111'],emails:['111@ss.com',anyone: true]},...]
 breakouts.assign(sessions)
+
+// Dynammic assign a particpant/participants to breakouts/main (not used by now)
+// Admit lobby waiting participants to a breakout directly
+// sessions should be like: [{id:'xx',participants:['111'],targetState:'JOINED'},...]
+breakouts.dynamicAssign(sessions)
 
 // End breakout sessions with necessary params
 breakouts.end(params)
@@ -142,6 +153,15 @@ breakouts.getBreakout(editlock?)
 
 // Enable breakout sessions
 breakouts.enable()
+
+// Enable and lock breakout 
+breakouts.enableAndLockBreakout()
+
+// Lock breakout
+breakouts.lockBreakout()
+
+// Unlock breakout
+breakouts.unLockEditBreakout()
 
 // Disable breakout sessions
 breakouts.disable()

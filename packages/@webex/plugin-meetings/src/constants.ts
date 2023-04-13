@@ -11,6 +11,7 @@ export const ANSWER = 'answer';
 
 export const CALL = 'call';
 export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
 export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
@@ -93,6 +94,7 @@ export const _JOINED_ = 'JOINED';
 
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
+export const _MOVED_ = 'MOVED';
 
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
@@ -311,6 +313,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEMBERS_UPDATE: 'members:update',
+  MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
   MEMBERS_SELF_UPDATE: 'members:self:update',
@@ -379,6 +382,7 @@ export const CALL_REMOVED_REASON = {
 export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
   MEETING_REJOIN: 'MEETING_REJOIN',
+  MEDIA_RECONNECTION: 'MEDIA_RECONNECTION',
 };
 
 export const EVENTS = {
@@ -480,6 +484,7 @@ export const HTTP_VERBS = {
   POST: 'POST',
   GET: 'GET',
   PATCH: 'PATCH',
+  DELETE: 'DELETE',
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceGatheringState
@@ -556,8 +561,15 @@ export const BREAKOUTS = {
   },
   ERROR_CODE: {
     EDIT_LOCK_TOKEN_MISMATCH: 201409024,
+    EDIT_NOT_AUTHORIZED: 201403007,
   },
   DEFAULT_DURATION: 60000,
+  EDIT_LOCK_STATUS: {
+    LOCKED: 'LOCKED',
+    NOT_LOCKED: 'NOT_LOCKED',
+    UNKNOWN: 'UNKNOWN',
+  },
+  DEFAULT_TTL: 30,
 };
 
 export const LOCUSINFO = {
@@ -777,6 +789,7 @@ export const DISPLAY_HINTS = {
   DISPLAY_NON_ENGLISH_ASR: 'DISPLAY_NON_ENGLISH_ASR',
   TRANSCRIPTION_CONTROL_START: 'TRANSCRIPTION_CONTROL_START',
   TRANSCRIPTION_CONTROL_STOP: 'TRANSCRIPTION_CONTROL_STOP',
+  SAVE_TRANSCRIPTS_ENABLED: 'SAVE_TRANSCRIPTS_ENABLED',
   WEBEX_ASSISTANT_STATUS_ACTIVE: 'WEBEX_ASSISTANT_STATUS_ACTIVE',
   WAITING_FOR_OTHERS: 'WAITING_FOR_OTHERS',
   ENABLE_REACTIONS: 'ENABLE_REACTIONS',
@@ -789,6 +802,7 @@ export const DISPLAY_HINTS = {
   DISABLE_HARD_MUTE: 'DISABLE_HARD_MUTE',
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
+  PRESENTER_CONTROL: 'PRESENTER_CONTROL',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',

@@ -140,32 +140,54 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   private setControls(setting: {[key in Setting]?: boolean}): Promise<any> {
-    const muteUnmuteAll = Object.keys(setting).includes(Setting.muted);
+    LoggerProxy.logger.log(
+      `ControlsOptionsManager:index#setControls --> ${JSON.stringify(setting)}`
+    );
 
-    const body = muteUnmuteAll ? {audio: {}} : {};
-    for (const [key, value] of Object.entries(setting)) {
-      LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${key} [${value}]`);
-      // mute unmute all has different body structure than toggling disable hard mute
-      // or mute on entry by themselves
-      if (muteUnmuteAll) {
-        if (Util?.[`${value ? CAN_SET : CAN_UNSET}${Setting.muted}`](this.displayHints)) {
-          body.audio[camelCase(key)] = value;
-        } else {
-          return Promise.reject(
-            new PermissionError(
-              `${Setting.muted} [${value}] not allowed, due to moderator property.`
-            )
-          );
-        }
-      } else if (Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)) {
-        body[camelCase(key)] = {
-          [ENABLED]: value,
-        };
-      } else {
-        return Promise.reject(
-          new PermissionError(`${key} [${value}] not allowed, due to moderator property.`)
-        );
+    const body: Record<string, any> = {};
+    let error: PermissionError;
+
+    let shouldSkipCheckToMergeBody = false;
+
+    Object.entries(setting).forEach(([key, value]) => {
+      if (
+        !shouldSkipCheckToMergeBody &&
+        !Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)
+      ) {
+        error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
       }
+
+      if (error) {
+        return;
+      }
+
+      switch (key) {
+        case Setting.muted:
+          shouldSkipCheckToMergeBody = true;
+          body.audio = body.audio
+            ? {...body.audio, [camelCase(key)]: value}
+            : {[camelCase(key)]: value};
+          break;
+
+        case Setting.disallowUnmute:
+        case Setting.muteOnEntry:
+          if (Object.keys(setting).includes(Setting.muted)) {
+            body.audio = body.audio
+              ? {...body.audio, [camelCase(key)]: value}
+              : {[camelCase(key)]: value};
+            body.audio[camelCase(key)] = value;
+          } else {
+            body[camelCase(key)] = {[ENABLED]: value};
+          }
+          break;
+
+        default:
+          error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
+      }
+    });
+
+    if (error) {
+      return Promise.reject(error);
     }
 
     // @ts-ignore

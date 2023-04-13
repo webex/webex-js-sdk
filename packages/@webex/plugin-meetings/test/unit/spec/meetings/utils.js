@@ -62,5 +62,51 @@ describe('plugin-meetings', () => {
         assert.equal(MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences), '');
       });
     });
+
+    describe('#getThisDevice', () => {
+      it('return null if no devices in self', () => {
+        const newLocus = {};
+        assert.equal(MeetingsUtil.getThisDevice(newLocus), null);
+      });
+      it('return first device as this device', () => {
+        const newLocus = {
+          self: {
+            devices: [{state: 'JOINED'}]
+          }
+        };
+        assert.deepEqual(MeetingsUtil.getThisDevice(newLocus), {state: 'JOINED'});
+      })
+    });
+
+    describe('#joinedOnThisDevice', () => {
+      it('return false if no devices in self', () => {
+        const newLocus = {};
+        assert.equal(MeetingsUtil.joinedOnThisDevice(null, newLocus), false);
+      });
+      it('return true if joined on this device', () => {
+        const newLocus = {
+          self: {
+            devices: [{state: 'JOINED', correlationId: '111'}]
+          }
+        };
+        const meeting = {
+          correlationId: '111'
+        };
+
+        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus), true);
+      });
+      it('return true if selfMoved on this device', () => {
+        const newLocus = {
+          self: {
+            devices: [{state: 'LEFT', reason: 'MOVED', correlationId: '111'}]
+          }
+        };
+        const meeting = {
+          correlationId: '111'
+        };
+
+        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus), true);
+      });
+    });
   });
 });
