@@ -1,6 +1,8 @@
 import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
 import {getBroadcastRoles, boServiceErrorHandler} from '@webex/plugin-meetings/src/breakouts/utils';
 import BreakoutEditLockedError from '../../../../src/breakouts/edit-lock-error';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {BREAKOUTS} from '../../../../src/constants';
 
 describe('plugin-meetings', () => {
@@ -32,14 +34,19 @@ describe('plugin-meetings', () => {
         handledError = boServiceErrorHandler();
         assert.equal(handledError, undefined);
 
+        LoggerProxy.logger.info = sinon.stub();
         //Edit lock token mismatch error
         const tokenMismatchError = {
           body: {errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH},
         };
-        handledError = boServiceErrorHandler(tokenMismatchError);
+        handledError = boServiceErrorHandler(tokenMismatchError, 'log message for mismatch');
         assert.deepEqual(
           handledError,
           new BreakoutEditLockedError('Edit lock token mismatch', tokenMismatchError)
+        );
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'log message for mismatch',
         );
       });
     });
