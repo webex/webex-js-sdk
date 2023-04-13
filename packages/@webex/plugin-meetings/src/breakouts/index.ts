@@ -39,6 +39,7 @@ const Breakouts = WebexPlugin.extend({
     groups: 'array', // appears when create breakouts
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
+    meetingId: 'string',
   },
 
   children: {

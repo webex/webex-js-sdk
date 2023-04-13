@@ -3,8 +3,10 @@ import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import Members from '@webex/plugin-meetings/src/members';
 import MockWebex from '@webex/test-helper-mock-webex';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
-
+import {eventType} from '../../../../src/metrics/config';
+import uuid from 'uuid';
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
@@ -22,6 +24,11 @@ describe('plugin-meetings', () => {
       breakout.sessionId = 'sessionId';
       breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
+      breakout.collection = {
+        parent: {
+          meetingId: 'activeMeetingId',
+        },
+      };
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
     });
 
@@ -33,8 +40,8 @@ describe('plugin-meetings', () => {
 
     describe('#join', () => {
       it('makes the request as expected', async () => {
+        Metrics.postEvent = sinon.stub();
         const result = await breakout.join();
-
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
           uri: 'url/move',
@@ -45,6 +52,30 @@ describe('plugin-meetings', () => {
         });
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+      it('send metrics as expected', async () => {
+        Metrics.postEvent = sinon.stub();
+        uuid.v4 = sinon.stub().returns('breakoutMoveId');
+        await breakout.join();
+        assert.calledTwice(Metrics.postEvent);
+        assert.calledWithMatch(Metrics.postEvent, {
+          event: eventType.MOVE_TO_BREAKOUT,
+          meetingId: 'activeMeetingId',
+          data: {
+            breakoutMoveId: 'breakoutMoveId',
+            breakoutSessionId: 'sessionId',
+            breakoutGroupId: 'groupId',
+          },
+        });
+        assert.calledWithMatch((Metrics.postEvent as any).secondCall, {
+          event: eventType.JOIN_BREAKOUT_RESPONSE,
+          meetingId: 'activeMeetingId',
+          data: {
+            breakoutMoveId: 'breakoutMoveId',
+            breakoutSessionId: 'sessionId',
+            breakoutGroupId: 'groupId',
+          },
+        });
       });
     });
 
