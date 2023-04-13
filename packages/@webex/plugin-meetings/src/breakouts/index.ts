@@ -517,6 +517,34 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Host or cohost update breakout sessions
+   * @param {Object} params
+   * @param {String} params.id
+   * @returns {Promise}
+   */
+  update(params: {id: string}) {
+    if (!params.id) {
+      return Promise.reject(new Error('Missing breakout group id'));
+    }
+    const payload = {...params};
+
+    const body = {
+      ...(this.editLock?.token ? {editlock: {token: this.editLock.token, refresh: true}} : {}),
+      ...{groups: [payload]},
+    };
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body,
+    }).catch((error) => {
+      return Promise.reject(
+        boServiceErrorHandler(error, 'Breakouts#update --> Edit lock token mismatch')
+      );
+    });
+  },
+
+  /**
    * get existed breakout sessions
    * @param {boolean} editlock -- lock operations of the breakout sessions
    * @returns {Promise}
@@ -530,7 +558,7 @@ const Breakouts = WebexPlugin.extend({
     if (breakout.body?.groups) {
       this.set('groups', breakout.body.groups);
     }
-    if (breakout.body?.editlock && editlock) {
+    if (editlock && breakout.body?.editlock?.token) {
       this.set('editLock', breakout.body.editlock);
       this.keepEditLockAlive();
     }
@@ -580,6 +608,9 @@ const Breakouts = WebexPlugin.extend({
   keepEditLockAlive() {
     if (this.editLock && !!this.editLock.token) {
       const ttl = this.editLock.ttl < 30 ? BREAKOUTS.DEFAULT_TTL : this.editLock.ttl;
+      if (this.intervalID) {
+        window.clearInterval(this.intervalID);
+      }
 
       this.intervalID = window.setInterval(() => {
         this.request({

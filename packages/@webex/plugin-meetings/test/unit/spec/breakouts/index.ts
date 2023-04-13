@@ -53,7 +53,7 @@ const getBOResponseWithEditLockInfo = (status: string) => {
     locusUrl: 'locusUrl',
     mainGroupId: 'mainGroupId',
     mainSessionId: 'mainSessionId',
-    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a"},
+    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a", token: 'token1'},
     groups: [
       {
         sessions: [
@@ -530,6 +530,35 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#update', () => {
+      it('makes the request as expected', async () => {
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+        const result = await breakouts.update(params);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: true},
+            groups: [params],
+          },
+        });
+      });
+      it('throw error if missing id in params', async () => {
+        const params = {
+          sessions: [{name: 'Session 1'}],
+        };
+        await breakouts.update(params).catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing breakout group id');
+        });
+      });
+    });
+
     describe('#start', () => {
       it('should start breakout sessions', async () => {
         webex.request.returns(
@@ -667,11 +696,11 @@ describe('plugin-meetings', () => {
         breakouts.keepEditLockAlive = sinon.stub().resolves();
         const result = await breakouts.getBreakout();
         await breakouts.getBreakout(true);
-        
+
         assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
       });
 
-      
+
     });
 
     describe('doToggleBreakout', () => {
@@ -869,7 +898,7 @@ describe('plugin-meetings', () => {
       });
 
       it('do not call unLock if edit lock info not exist ', async () => {
-        
+
         breakouts.unLockEditBreakout();
         assert.notCalled(webex.request);
       });
