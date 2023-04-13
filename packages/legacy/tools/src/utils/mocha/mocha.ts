@@ -30,7 +30,13 @@ class Mocha {
     files.forEach((file) => mochaRunner.addFile(file));
 
     return new Promise((resolve) => {
-      mochaRunner.run(resolve);
+      mochaRunner.run((failures) => {
+        if (failures !== 0) {
+          process.exit(1);
+        }
+
+        resolve(undefined);
+      });
     });
   }
 

@@ -67,11 +67,33 @@ describe('list', () => {
         }));
       }));
 
-    it('should call "proces.stdout.write()" with the package list items as a string array', () => list.handler(options)
+    it('should call "process.stdout.write()" with the package list items as a string array when more than 1 is found', () => list.handler(options)
       .then(() => {
-        const expected = listResolve.map(({ name }) => name).join(',');
+        const expected = `{${listResolve.map(({ name }) => name).join(',')}}`;
 
         expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
       }));
+
+    it('should call "process.stdout.write()" with a single package name when the found packages is 1', () => {
+      spies.Yarn.list.and.resolveTo([listResolve[0]]);
+
+      return list.handler(options)
+        .then(() => {
+          const expected = listResolve[0].name;
+
+          expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
+        });
+    });
+
+    it('should call "process.stdout.write()" with "{}" when the found packages is 0', () => {
+      spies.Yarn.list.and.resolveTo([]);
+
+      return list.handler(options)
+        .then(() => {
+          const expected = '{}';
+
+          expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
+        });
+    });
   });
 });
