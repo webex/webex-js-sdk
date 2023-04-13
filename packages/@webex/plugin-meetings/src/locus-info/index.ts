@@ -1151,6 +1151,18 @@ export default class LocusInfo extends EventsScope {
           self
         );
       }
+      // When the user upgrades to moderator or cohost
+      if (parsedSelves.updates.isUpgradeToModeratorOrCohost) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
+          self
+        );
+      }
+      //
       if (parsedSelves.updates.isVideoMutedByOthersChanged) {
         this.emitScoped(
           {

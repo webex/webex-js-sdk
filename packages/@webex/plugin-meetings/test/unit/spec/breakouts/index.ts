@@ -1007,6 +1007,85 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('queryPreAssignments', () => {
+      it('makes the expected query', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: {
+              "groups": [
+                {
+                  "sessions": [
+                    {
+                      "name": "Breakout session 1",
+                      "assignedEmails": [
+                        "a@a.com",
+                        "b@b.com",
+                        "jial2@cisco.com"
+                      ],
+                      "anyoneCanJoin": false
+                    },
+                    {
+                      "name": "Breakout session 2",
+                      "anyoneCanJoin": false
+                    },
+                    {
+                      "name": "Breakout session 3",
+                      "assignedEmails": [
+                        "c@c.com"
+                      ],
+                      "anyoneCanJoin": false
+                    }
+                  ],
+                  "unassignedInvitees": {
+                    "emails": [
+                      "d@d.com"
+                    ]
+                  },
+                  "type": "BREAKOUT"
+                }
+              ]
+            }
+          })
+        );
+        breakouts.shouldFetchPreassignments = false;
+        const result = await breakouts.queryPreAssignments();
+        const arg = webex.request.getCall(0).args[0];
+        assert.equal(arg.uri, 'url/preassignments');
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
+        assert.equal(breakouts.groups[0].sessions[0].name,'Breakout session 1');
+        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[0].assignedEmails.toString(), ["a@a.com", "b@b.com", "jial2@cisco.com"].toString());
+        assert.equal(breakouts.groups[0].sessions[1].name,'Breakout session 2');
+        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[1].assignedEmails, undefined);
+        assert.equal(breakouts.groups[0].sessions[2].name,'Breakout session 3');
+        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
+        assert.equal(breakouts.groups[0].type,'BREAKOUT');
+        assert.equal(breakouts.shouldFetchPreassignments, true);
+      });
+
+      it('rejects when no pre-assignments created for this meeting', async () => {
+        const response = {
+          statusCode: 404,
+          body: {
+            errorCode: 201404004,
+            message: 'No pre-assignments created for this meeting'
+          },
+        };
+        webex.request.rejects(response);
+        LoggerProxy.logger.error = sinon.stub();
+        const result = await breakouts.queryPreAssignments();
+        await testUtils.flushPromises();
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:breakouts#queryPreAssignments failed',
+          response
+        );
+     });
+  });
+
     describe('#dynamicAssign', () => {
       it('should make a PUT request with correct body and return the result', async () => {
         breakouts.dynamicAssign = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
