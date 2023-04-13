@@ -19,7 +19,7 @@
       "envify"
     ]
   },
-  "version": "2.52.6",
+  "version": "2.52.7",
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@webex/babel-config-legacy": "workspace:^",
