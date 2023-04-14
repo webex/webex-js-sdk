@@ -138,7 +138,7 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {clusterId: 'urn:TEAM:us-east-2_a:identityLookup'});
+        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {clusterId: 'urn:TEAM:us-east-1_int13:identityLookup'});
       });
 
       it('should add the cluster service when missing', async () => {
