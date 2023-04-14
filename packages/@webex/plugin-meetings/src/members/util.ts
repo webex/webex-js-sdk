@@ -9,6 +9,7 @@ import {
   DIALER_REGEX,
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
+  ALIAS,
 } from '../constants';
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
@@ -174,6 +175,18 @@ MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locus
   locusUrl,
 });
 
+MembersUtil.generateEditDisplayNameMemberOptions = (
+  memberId,
+  requestingParticipantId,
+  alias,
+  locusUrl
+) => ({
+  memberId,
+  requestingParticipantId,
+  alias,
+  locusUrl,
+});
+
 MembersUtil.getMuteMemberRequestParams = (options) => {
   const property = options.isAudio === false ? 'video' : 'audio';
   const body = {
@@ -237,6 +250,20 @@ MembersUtil.getLowerAllHandsMemberRequestParams = (options) => {
 
   return {
     method: HTTP_VERBS.PATCH,
+    uri,
+    body,
+  };
+};
+
+MembersUtil.editDisplayNameMemberRequestParams = (options) => {
+  const body = {
+    aliasValue: options.alias,
+    requestingParticipantId: options.requestingParticipantId,
+  };
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
+
+  return {
+    method: HTTP_VERBS.POST,
     uri,
     body,
   };

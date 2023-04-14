@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
@@ -126,6 +127,19 @@ export default class MembersRequest extends StatelessWebexPlugin {
     }
 
     const requestParams = MembersUtil.getLowerAllHandsMemberRequestParams(options);
+
+    // @ts-ignore
+    return this.request(requestParams);
+  }
+
+  editDisplayNameMember(options) {
+    if (!options || !options.locusUrl || !options.requestingParticipantId) {
+      throw new ParameterError(
+        'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
+    }
+
+    const requestParams = MembersUtil.editDisplayNameMemberRequestParams(options);
 
     // @ts-ignore
     return this.request(requestParams);

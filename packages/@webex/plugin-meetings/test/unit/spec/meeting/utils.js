@@ -73,7 +73,7 @@ describe('plugin-meetings', () => {
       const mockTrack = {
         underlyingTrack: {
           getSettings: fakeDevice,
-        }
+        },
       };
 
       it('#log - should log [info, warn, error, log] to console', () => {
@@ -202,12 +202,14 @@ describe('plugin-meetings', () => {
 
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
         const meeting = {
-          meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
         await MeetingUtil.joinMeeting(meeting, {
-          breakoutsSupported: true
+          breakoutsSupported: true,
         });
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -215,7 +217,6 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.breakoutsSupported, true);
       });
-
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
         const meeting = {
@@ -346,6 +347,23 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canUserRenameSelfAndObserved', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.canUserRenameSelfAndObserved(['CAN_RENAME_SELF_AND_OBSERVED']),
+          true
+        );
+        assert.deepEqual(MeetingUtil.canUserRenameSelfAndObserved([]), false);
+      });
+    });
+
+    describe('canUserRenameOthers', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canUserRenameOthers(['CAN_RENAME_OTHERS']), true);
+        assert.deepEqual(MeetingUtil.canUserRenameOthers([]), false);
+      });
+    });
+
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
         assert.deepEqual(
@@ -410,12 +428,20 @@ describe('plugin-meetings', () => {
 
     describe('reactions', () => {
       describe('canEnableReactions', () => {
-        [[null, DISPLAY_HINTS.ENABLE_REACTIONS, true], [null, DISPLAY_HINTS.DISABLE_REACTIONS, false], [null, undefined, null]].forEach(() => ([originalValue, displayHint, expected]) => {
+        [
+          [null, DISPLAY_HINTS.ENABLE_REACTIONS, true],
+          [null, DISPLAY_HINTS.DISABLE_REACTIONS, false],
+          [null, undefined, null],
+        ].forEach(() => ([originalValue, displayHint, expected]) => {
           assert.deepEqual(MeetingUtil.canEnableReactions(originalValue, [displayHint]), expected);
         });
       });
       describe('canEnableReactions', () => {
-        [[null, DISPLAY_HINTS.REACTIONS_ACTIVE, true], [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false], [null, undefined, null]].forEach(([originalValue, displayHint, expected]) => {
+        [
+          [null, DISPLAY_HINTS.REACTIONS_ACTIVE, true],
+          [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false],
+          [null, undefined, null],
+        ].forEach(([originalValue, displayHint, expected]) => {
           assert.deepEqual(MeetingUtil.canSendReactions(originalValue, [displayHint]), expected);
         });
       });
@@ -430,7 +456,10 @@ describe('plugin-meetings', () => {
 
     describe('isSuppressBreakoutSupport', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport(['UCF_SUPPRESS_BREAKOUTS_SUPPORT']), true);
+        assert.deepEqual(
+          MeetingUtil.isSuppressBreakoutSupport(['UCF_SUPPRESS_BREAKOUTS_SUPPORT']),
+          true
+        );
         assert.deepEqual(MeetingUtil.isSuppressBreakoutSupport([]), false);
       });
     });
@@ -451,9 +480,12 @@ describe('plugin-meetings', () => {
 
     describe('isBreakoutPreassignmentsEnabled', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled(['DISABLE_BREAKOUT_PREASSIGNMENTS']), false);
+        assert.deepEqual(
+          MeetingUtil.isBreakoutPreassignmentsEnabled(['DISABLE_BREAKOUT_PREASSIGNMENTS']),
+          false
+        );
         assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled([]), true);
       });
     });
-  })
+  });
 });

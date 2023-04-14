@@ -2336,6 +2336,10 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canUserAskForHelp: MeetingUtil.canUserAskForHelp(payload.info.userDisplayHints),
+          canUserRenameSelfAndObserved: MeetingUtil.canUserRenameSelfAndObserved(
+            payload.info.userDisplayHints
+          ),
+          canUserRenameOthers: MeetingUtil.canUserRenameOthers(payload.info.userDisplayHints),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);

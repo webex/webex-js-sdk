@@ -416,7 +416,10 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.admitMembers, [uuid1]);
         });
         it('should call from a breakout session if caller is in a breakout session', async () => {
-          const locusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+          const locusUrls = {
+            authorizingLocusUrl: 'authorizingLocusUrl',
+            mainLocusUrl: 'mainLocusUrl',
+          };
           await meeting.admit([uuid1], locusUrls);
           assert.calledOnce(meeting.members.admitMembers);
           assert.calledWith(meeting.members.admitMembers, [uuid1], locusUrls);
@@ -2220,7 +2223,7 @@ describe('plugin-meetings', () => {
               meeting.isMultistream = true;
 
               const result = await meeting.updateMedia({
-                  mediaSettings,
+                mediaSettings,
               });
 
               assert.calledOnceWithExactly(
@@ -5075,6 +5078,8 @@ describe('plugin-meetings', () => {
         let handleDataChannelUrlChangeSpy;
         let canEnableReactionsSpy;
         let canSendReactionsSpy;
+        let canUserRenameSelfAndObservedSpy;
+        let canUserRenameOthersSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5100,6 +5105,8 @@ describe('plugin-meetings', () => {
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
+          canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
         });
 
         afterEach(() => {
@@ -5145,6 +5152,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
           assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,

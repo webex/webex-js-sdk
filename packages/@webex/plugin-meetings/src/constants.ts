@@ -7,6 +7,7 @@ export const AUDIO = 'audio';
 export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
@@ -803,6 +804,8 @@ export const DISPLAY_HINTS = {
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
