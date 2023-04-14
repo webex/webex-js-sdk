@@ -42,6 +42,10 @@ import {
   MEETING_REMOVED_REASON,
   _CONVERSATION_URL_,
   CONVERSATION_URL,
+  MEETINGNUMBER,
+  BREAKOUTS,
+  _JOINED_,
+  _MOVED_,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -242,6 +246,103 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * check whether you need to handle this main session's locus data or not
+   * @param {Object} meeting current meeting data
+   * @param {Object} newLocus new locus data
+   * @returns {boolean}
+   * @private
+   * @memberof Meetings
+   */
+  private isNeedHandleMainLocus(meeting: any, newLocus: any) {
+    const breakoutUrl = newLocus.controls?.breakout?.url;
+    const breakoutLocus = this.meetingCollection.getActiveBreakoutLocus(breakoutUrl);
+
+    const isSelfJoined = newLocus?.self?.state === _JOINED_;
+    const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus);
+    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(meeting, newLocus);
+    const isBreakoutLocusJoinThisDevice =
+      breakoutLocus?.joinedWith?.correlationId &&
+      breakoutLocus.joinedWith.correlationId === meeting?.correlationId;
+
+    if (isSelfJoined && isNewLocusJoinThisDevice) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self this device shown as JOINED in the main session'
+      );
+      if (breakoutLocus?.joinedWith && deviceFromNewLocus) {
+        const breakoutReplaceAt =
+          breakoutLocus.joinedWith.replaces?.length > 0
+            ? breakoutLocus.joinedWith.replaces[0].replaceAt
+            : '';
+        const newLocusReplaceAt =
+          deviceFromNewLocus.replaces?.length > 0 ? deviceFromNewLocus.replaces[0].replaceAt : '';
+        if (breakoutReplaceAt && newLocusReplaceAt && breakoutReplaceAt > newLocusReplaceAt) {
+          LoggerProxy.logger.log(
+            `Meetings:index#isNeedHandleMainLocus --> this is expired main joined status locus_dto replacedAt ${newLocusReplaceAt} bo replacedAt ${breakoutReplaceAt}`
+          );
+
+          return false;
+        }
+      }
+
+      return true;
+    }
+    if (isBreakoutLocusJoinThisDevice) {
+      LoggerProxy.logger.log(
+        `Meetings:index#isNeedHandleMainLocus --> there is active breakout session and joined on this device, and don't need to handle main session: ${breakoutUrl}`
+      );
+
+      return false;
+    }
+    if (isSelfMoved && newLocus?.self?.removed) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+      );
+
+      return false;
+    }
+    LoggerProxy.logger.log(
+      'Meetings:index#isNeedHandleMainLocus --> this is a normal main session locusDTO update case'
+    );
+
+    return true;
+  }
+
+  /**
+   * check whether you need to handle this locus data or not
+   * @param {Object} meeting old locus data
+   * @param {Object} newLocus new locus data
+   * @returns {boolean}
+   * @private
+   * @memberof Meetings
+   */
+  private isNeedHandleLocusDTO(meeting: any, newLocus: any) {
+    if (newLocus) {
+      const isNewLocusAsBreakout =
+        newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+      const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+      if (!meeting) {
+        if (isNewLocusAsBreakout) {
+          LoggerProxy.logger.log(
+            `Meetings:index#isNeedHandleLocusDTO --> the first breakout session locusDTO active status: ${newLocus.fullState?.active}`
+          );
+
+          return newLocus.self?.state === _JOINED_;
+        }
+
+        return this.isNeedHandleMainLocus(meeting, newLocus);
+      }
+      if (!isNewLocusAsBreakout) {
+        return this.isNeedHandleMainLocus(meeting, newLocus);
+      }
+
+      return !isSelfMoved;
+    }
+
+    return true;
+  }
+
+  /**
    * handle locus events and takes meeting actions with them as they come in
    * @param {Object} data a locus event
    * @param {String} data.locusUrl
@@ -254,7 +355,6 @@ export default class Meetings extends WebexPlugin {
    */
   private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
     let meeting = null;
-
     // getting meeting by correlationId. This will happen for the new event
     // Either the locus
     // TODO : Add check for the callBack Address
@@ -274,7 +374,8 @@ export default class Meetings extends WebexPlugin {
       ) ||
       (data.locus.info?.isUnifiedSpaceMeeting
         ? undefined
-        : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl));
+        : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl)) ||
+      this.meetingCollection.getByKey(MEETINGNUMBER, data.locus?.info?.webExMeetingId);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
@@ -287,6 +388,13 @@ export default class Meetings extends WebexPlugin {
       );
     }
 
+    if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
+      LoggerProxy.logger.log(
+        `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
+      );
+
+      return;
+    }
     if (!meeting) {
       // TODO: create meeting when we get a meeting object
       // const checkForEnded = (locus) => {

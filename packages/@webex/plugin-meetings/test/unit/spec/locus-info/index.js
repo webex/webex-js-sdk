@@ -504,11 +504,49 @@ describe('plugin-meetings', () => {
             selfIdentity: '123',
             selfId: '2',
             hostId: '3',
+            isReplace: undefined,
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
         // for this specific test, we are double-checking that each of the id's
         // are being correctly grabbed from locusInfo.parsedLocus within updateParticipants
+      });
+
+      it('should call with breakout control info', () => {
+        locusInfo.parsedLocus = {
+          controls: {
+            record: {
+              modifiedBy: '1',
+            },
+          },
+          self: {
+            selfIdentity: '123',
+            selfId: '2',
+          },
+          host: {
+            hostId: '3',
+          },
+        };
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateParticipants({}, true);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateParticipants',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
+          {
+            participants: {},
+            recordingId: '1',
+            selfIdentity: '123',
+            selfId: '2',
+            hostId: '3',
+            isReplace: true,
+          }
+        );
       });
 
       it('should update the deltaParticipants object', () => {
@@ -830,6 +868,27 @@ describe('plugin-meetings', () => {
               ],
             },
           }
+        );
+      });
+
+      it('should trigger upgradeToModeratorOrCohost for breakouts', () => {
+
+        locusInfo.self = self;
+        const upgradeToModeratorOrCohost = cloneDeep(self);
+        upgradeToModeratorOrCohost.roles = ['ATTENDEE','COHOST'];
+
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(upgradeToModeratorOrCohost, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
+          self
         );
       });
 
@@ -1443,6 +1502,31 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.locusInfo.onFullLocus);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
+      });
+
+      it('onDeltaLocus handle delta data', () => {
+        fakeLocus.participants = {};
+        const fakeBreakout = {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+        };
+
+        fakeLocus.controls = {
+          breakout: fakeBreakout
+        };
+        locusInfo.controls = {
+          breakout: {
+            sessionId: 'sessionId',
+            groupId: 'groupId',
+          }
+        }
+        locusInfo.updateParticipants = sinon.stub();
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
+
+        fakeBreakout.sessionId = 'sessionId2';
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
       });
     });
 

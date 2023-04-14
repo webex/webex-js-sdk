@@ -523,6 +523,7 @@ export default class Meeting extends StatelessWebexPlugin {
   state: any;
   localAudioTrackMuteStateHandler: (event: TrackMuteEvent) => void;
   localVideoTrackMuteStateHandler: (event: TrackMuteEvent) => void;
+  webexMeetingId: string;
 
   namespace = MEETINGS;
 
@@ -559,7 +560,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.id = uuid.v4();
     /**
-     * Correlation ID used for network tracking of meeting join
+     * Correlation ID used for network tracking of meeting
      * @instance
      * @type {String}
      * @readonly
@@ -616,7 +617,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.breakouts = new Breakouts({}, {parent: this.webex});
+    this.breakouts = new Breakouts({meetingId: this.id}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -2592,6 +2593,12 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
       );
+    });
+
+    // We need to reinitialize  when user upgrades to host or cohost
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
+      this.breakouts.queryPreAssignments(payload);
+      // ...
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
