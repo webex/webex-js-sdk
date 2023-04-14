@@ -406,9 +406,7 @@ const Breakouts = WebexPlugin.extend({
         body,
       })
       .catch((error) => {
-        return Promise.reject(
-          boServiceErrorHandler(error, 'Breakouts#create --> Edit lock token mismatch')
-        );
+        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#create'));
       });
 
     if (breakInfo.body?.groups) {
@@ -438,9 +436,7 @@ const Breakouts = WebexPlugin.extend({
         body,
       })
       .catch((error) => {
-        return Promise.reject(
-          boServiceErrorHandler(error, 'Breakouts#clearSessions --> Edit lock token mismatch')
-        );
+        return Promise.reject(boServiceErrorHandler(error, 'Breakouts#clearSessions'));
       });
 
     if (breakInfo.body?.groups) {
@@ -478,9 +474,7 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url,
       body,
     }).catch((error) => {
-      return Promise.reject(
-        boServiceErrorHandler(error, 'Breakouts#start --> Edit lock token mismatch')
-      );
+      return Promise.reject(boServiceErrorHandler(error, 'Breakouts#start'));
     });
   },
 
@@ -511,9 +505,7 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url,
       body,
     }).catch((error) => {
-      return Promise.reject(
-        boServiceErrorHandler(error, 'Breakouts#end --> Edit lock token mismatch')
-      );
+      return Promise.reject(boServiceErrorHandler(error, 'Breakouts#end'));
     });
   },
 
@@ -539,9 +531,7 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url,
       body,
     }).catch((error) => {
-      return Promise.reject(
-        boServiceErrorHandler(error, 'Breakouts#update --> Edit lock token mismatch')
-      );
+      return Promise.reject(boServiceErrorHandler(error, 'Breakouts#update'));
     });
   },
 

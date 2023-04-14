@@ -39,14 +39,14 @@ describe('plugin-meetings', () => {
         const tokenMismatchError = {
           body: {errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH},
         };
-        handledError = boServiceErrorHandler(tokenMismatchError, 'log message for mismatch');
+        handledError = boServiceErrorHandler(tokenMismatchError, 'position');
         assert.deepEqual(
           handledError,
           new BreakoutEditLockedError('Edit lock token mismatch', tokenMismatchError)
         );
         assert.calledOnceWithExactly(
           LoggerProxy.logger.info,
-          'log message for mismatch',
+          'position --> Edit lock token mismatch',
         );
       });
     });

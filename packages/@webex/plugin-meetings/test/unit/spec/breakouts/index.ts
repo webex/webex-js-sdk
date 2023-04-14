@@ -592,6 +592,7 @@ describe('plugin-meetings', () => {
             },
           })
         );
+        LoggerProxy.logger.info = sinon.stub();
 
         const params = {
           id: 'groupId',
@@ -603,6 +604,11 @@ describe('plugin-meetings', () => {
           BreakoutEditLockedError,
           'Not authorized to interact with edit lock'
         );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> Not authorized to interact with edit lock',
+        );
       });
 
       it('rejects when other unknow error', async () => {
@@ -610,6 +616,7 @@ describe('plugin-meetings', () => {
         webex.request.returns(
           Promise.reject(mockError)
         );
+        LoggerProxy.logger.info = sinon.stub();
 
         const params = {
           id: 'groupId',
@@ -620,6 +627,11 @@ describe('plugin-meetings', () => {
           breakouts.update(params),
           mockError,
           'something wrong'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> something wrong',
         );
       });
     });
