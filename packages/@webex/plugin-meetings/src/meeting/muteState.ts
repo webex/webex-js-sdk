@@ -201,7 +201,6 @@ class MuteState {
         `Meeting:muteState#handleLocalTrackMuteStateChange --> ${this.type}: Local track mute state change handler called while a client request is handled - this should never happen!, mute state: ${mute}`
       );
     }
-
     this.state.client.localMute = mute;
 
     this.applyClientStateToServer(meeting);
