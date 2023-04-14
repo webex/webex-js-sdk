@@ -175,6 +175,13 @@ MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locus
   locusUrl,
 });
 
+/**
+ * @param {String} memberId
+ * @param {String} requestingParticipantId
+ * @param {String} alias
+ * @param {String} locusUrl
+ * @returns {Object}
+ */
 MembersUtil.generateEditDisplayNameMemberOptions = (
   memberId,
   requestingParticipantId,
@@ -255,6 +262,10 @@ MembersUtil.getLowerAllHandsMemberRequestParams = (options) => {
   };
 };
 
+/**
+ * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
+ * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
+ */
 MembersUtil.editDisplayNameMemberRequestParams = (options) => {
   const body = {
     aliasValue: options.alias,

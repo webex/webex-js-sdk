@@ -1,4 +1,3 @@
-/* eslint-disable require-jsdoc */
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
@@ -132,7 +131,14 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.request(requestParams);
   }
 
-  editDisplayNameMember(options) {
+  /**
+   *
+   * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
+   * @returns {Promise}
+   * @throws {Error} if the options are not valid and complete, must have requestingParticipantId AND locusUrl
+   * @memberof MembersRequest
+   */
+  editDisplayNameMember(options: {locusUrl: string; requestingParticipantId: string}) {
     if (!options || !options.locusUrl || !options.requestingParticipantId) {
       throw new ParameterError(
         'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.'
