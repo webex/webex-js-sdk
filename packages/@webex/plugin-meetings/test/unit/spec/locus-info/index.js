@@ -871,6 +871,27 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger upgradeToModeratorOrCohost for breakouts', () => {
+
+        locusInfo.self = self;
+        const upgradeToModeratorOrCohost = cloneDeep(self);
+        upgradeToModeratorOrCohost.roles = ['ATTENDEE','COHOST'];
+
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(upgradeToModeratorOrCohost, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
+          self
+        );
+      });
+
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED if muted and disallowUnmute changed', () => {
         locusInfo.self = self;
         const selfWithMutedByOthersAndDissalowUnmute = cloneDeep(self);

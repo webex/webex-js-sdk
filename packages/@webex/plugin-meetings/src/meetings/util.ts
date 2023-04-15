@@ -112,11 +112,13 @@ MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
 MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   let result = '';
 
-  if (userPreferences && userPreferences.sites) {
+  if (userPreferences?.sites?.length) {
     const defaultSite = userPreferences.sites.find((site) => site.default);
 
     if (defaultSite) {
       result = defaultSite.siteUrl;
+    } else {
+      result = userPreferences.sites[0].siteUrl;
     }
   }
 
