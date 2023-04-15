@@ -63,14 +63,16 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       layout: SelfUtils.getLayout(self),
       canNotViewTheParticipantList: SelfUtils.canNotViewTheParticipantList(self),
       isSharingBlocked: SelfUtils.isSharingBlocked(self),
-      breakoutSessions: SelfUtils.getBreakouts(self),
+      breakoutSessions: SelfUtils.getBreakoutSessions(self),
+      breakout: SelfUtils.getBreakout(self),
     };
   }
 
   return null;
 };
 
-SelfUtils.getBreakouts = (self) => self?.controls?.breakout?.sessions;
+SelfUtils.getBreakoutSessions = (self) => self?.controls?.breakout?.sessions;
+SelfUtils.getBreakout = (self) => self?.controls?.breakout;
 
 SelfUtils.getLayout = (self) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
@@ -143,13 +145,13 @@ SelfUtils.isJoined = (self: any) => self?.state === _JOINED_;
  *
  * @param {Self} previous - Previous self state
  * @param {Self} current - Current self state [per event]
- * @returns {boolean} - If the MEeting Layout Controls Layout has changed.
+ * @returns {boolean} - If the Meeting Layout Controls Layout has changed.
  */
 SelfUtils.layoutChanged = (previous: any, current: any) =>
   current?.layout && previous?.layout !== current?.layout;
 
 SelfUtils.breakoutsChanged = (previous, current) =>
-  !isEqual(previous?.breakoutSessions, current?.breakoutSessions);
+  !isEqual(previous?.breakoutSessions, current?.breakoutSessions) && !!current?.breakout;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
