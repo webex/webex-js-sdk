@@ -59,6 +59,7 @@ export default class LocusInfo extends EventsScope {
   fullState: any;
   host: any;
   info: any;
+  roles: any;
   mediaShares: any;
   replace: any;
   url: any;
@@ -949,8 +950,11 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateMeetingInfo(info: object, self?: object) {
-    if (info && !isEqual(this.info, info)) {
-      const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
+    const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
+    if (
+      (info && !isEqual(this.info, info)) ||
+      (roles.length && !isEqual(this.roles, roles) && info)
+    ) {
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
 
@@ -989,6 +993,7 @@ export default class LocusInfo extends EventsScope {
       // Parses the info and adds necessary values
       this.updateMeeting(parsedInfo.current);
     }
+    this.roles = roles;
   }
 
   /**
