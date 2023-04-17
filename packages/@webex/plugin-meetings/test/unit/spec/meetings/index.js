@@ -1005,7 +1005,6 @@ describe('plugin-meetings', () => {
               fullState: {
                 active: false,
               },
-              roles: false
             };
 
             const meeting = await webex.meetings.createMeeting(
