@@ -140,6 +140,8 @@ export const eventType = {
   PSTN_AUDIO_ATTEMPT_START: 'client.pstnaudio.attempt.start',
   PSTN_AUDIO_ATTEMPT_FINISH: 'client.pstnaudio.attempt.finish',
   PSTN_AUDIO_ATTEMPT_SKIP: 'client.pstnaudio.attempt.skip',
+  MOVE_TO_BREAKOUT: 'client.breakout-session.move.request',
+  JOIN_BREAKOUT_RESPONSE: 'client.breakout-session.join.response',
 };
 
 export const error = {

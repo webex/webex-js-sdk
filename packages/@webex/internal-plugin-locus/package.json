@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-locus",
-  "version": "3.0.0-beta.63",
+  "version": "3.0.0-beta.71",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

@@ -14,6 +14,8 @@ import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meetings from '@webex/plugin-meetings';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
+import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import {EVENT_TRIGGERS} from "@webex/plugin-meetings/src/constants";
 
 const {assert} = chai;
 
@@ -205,6 +207,42 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#clearMembers', () => {
+      it('should send clear event if clear members', () => {
+        const members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeMembersCollection);
+        Trigger.trigger = sinon.stub();
+        members.clearMembers();
+        assert.deepEqual(members.membersCollection.members, {});
+        assert.calledWith(Trigger.trigger, members, {
+          file: 'members',
+          function: 'clearMembers',
+        }, EVENT_TRIGGERS.MEMBERS_CLEAR, {})
+      });
+    });
+    describe('#locusParticipantsUpdate', () => {
+      it('should send member update event with session info', () => {
+        const members = createMembers({url: url1});
+        Trigger.trigger = sinon.stub();
+        const fakePayload = {
+          participants: {
+            forEach: sinon.stub(),
+          },
+          isReplace: true,
+        };
+
+        members.locusParticipantsUpdate(fakePayload);
+
+        assert.calledWith(Trigger.trigger, members, {
+          file: 'members',
+          function: 'locusParticipantsUpdate',
+        }, EVENT_TRIGGERS.MEMBERS_UPDATE, {
+          delta: {added: [], updated: []},
+          full: {},
+          isReplace: true,
+        })
+      });
+    });
     describe('#sendDialPadKey', () => {
       it('should throw a rejection when calling sendDialPadKey with no tones', async () => {
         const members = createMembers({url: url1});

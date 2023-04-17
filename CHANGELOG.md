@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.71](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.70...v3.0.0-beta.71) (2023-04-14)
+
+## [3.0.0-beta.70](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.69...v3.0.0-beta.70) (2023-04-14)
+
+
+### Features
+
+* **plugin-meetings:** use the first site if none are default ([#2737](https://github.com/webex/webex-js-sdk/issues/2737)) ([8937a16](https://github.com/webex/webex-js-sdk/commit/8937a167b720119e4f527cce9c4c1310dbe0cd6d))
+
+## [3.0.0-beta.69](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.68...v3.0.0-beta.69) (2023-04-13)
+
+## [3.0.0-beta.68](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.67...v3.0.0-beta.68) (2023-04-12)
+
+
+### Features
+
+* Call Analyzer -Breakout Move Metrics ([#2699](https://github.com/webex/webex-js-sdk/issues/2699)) ([b66f5ed](https://github.com/webex/webex-js-sdk/commit/b66f5ede8015d1ad34de14c034dc0ab30b0f92de))
+
+## [3.0.0-beta.67](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.66...v3.0.0-beta.67) (2023-04-12)
+
+## [3.0.0-beta.66](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.65...v3.0.0-beta.66) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** duplicate-SCRs - remove duplicates temp fix ([#2722](https://github.com/webex/webex-js-sdk/issues/2722)) ([40e2862](https://github.com/webex/webex-js-sdk/commit/40e2862e61f2864c0b1342248eee3467ff037420))
+
+## [3.0.0-beta.65](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.64...v3.0.0-beta.65) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** dynamic assignment API for admitting user from lobby to breakout ([#2705](https://github.com/webex/webex-js-sdk/issues/2705)) ([6b2366c](https://github.com/webex/webex-js-sdk/commit/6b2366c78a49fd374bceee3c7161c3f554bdf050))
+
+## [3.0.0-beta.64](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.63...v3.0.0-beta.64) (2023-04-11)
+
 ## [3.0.0-beta.63](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.62...v3.0.0-beta.63) (2023-04-07)
 
 

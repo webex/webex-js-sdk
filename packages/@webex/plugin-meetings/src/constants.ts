@@ -11,6 +11,7 @@ export const ANSWER = 'answer';
 
 export const CALL = 'call';
 export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
 export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
@@ -93,6 +94,7 @@ export const _JOINED_ = 'JOINED';
 
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
+export const _MOVED_ = 'MOVED';
 
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
@@ -311,6 +313,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEMBERS_UPDATE: 'members:update',
+  MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
   MEMBERS_SELF_UPDATE: 'members:self:update',
@@ -600,6 +603,7 @@ export const LOCUSINFO = {
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
+    SELF_MODERATOR_OR_COHOST_UPGRADE: 'SELF_MODERATOR_OR_COHOST_UPGRADE',
   },
 };
 
@@ -811,6 +815,7 @@ export const DISPLAY_HINTS = {
 export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
+  ATTENDEE: 'ATTENDEE',
 };
 
 export const MEETING_STATE = {

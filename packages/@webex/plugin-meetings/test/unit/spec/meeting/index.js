@@ -4518,6 +4518,19 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setUpBreakoutsPreAssignmentsListener', () => {
+        it('listens to the self moderator or cohost upgrade event', () => {
+          meeting.breakouts.queryPreAssignments = sinon.stub();
+          const payload = 'payload';
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_MODERATOR_OR_COHOST_UPGRADE',
+            payload,
+          );
+          assert.calledOnceWithExactly(meeting.breakouts.queryPreAssignments, payload);
+        });
+      });
+
       describe('#setUpBreakoutsListener', () => {
         it('listens to the closing event from breakouts and triggers the closing event', () => {
           TriggerProxy.trigger.reset();
