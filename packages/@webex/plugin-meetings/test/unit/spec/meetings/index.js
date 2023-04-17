@@ -62,7 +62,7 @@ describe('plugin-meetings', () => {
   let test1;
   let test2;
 
-  describe('meetings index', () => {
+  describe.only('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
       uuid1 = uuid.v4();
@@ -975,6 +975,17 @@ describe('plugin-meetings', () => {
             checkCreateWithoutDelay(meeting, 'test destination', 'test type', expectedMeetingData);
           });
 
+          it('creates the meeting from a successful meeting info fetch promise testing', async () => {
+            const meeting = await webex.meetings.createMeeting('test destination', 'test type');
+
+            const expectedMeetingData = {
+              roles: ['host','cohost','attendee'],
+              guest: false,
+            };
+
+            checkCreateWithoutDelay(meeting, 'test destination', 'test type', expectedMeetingData);
+          });
+
           it('creates the meeting from a successful meeting info fetch meeting resolve testing', async () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
             const expectedMeetingData = {
@@ -998,6 +1009,7 @@ describe('plugin-meetings', () => {
                 webExMeetingId: 'locusMeetingId',
                 sipUri: 'locusSipUri',
                 owner: 'locusOwner',
+                bbq: 'ook'
               },
               meeting: {
                 startTime: fakeMeetingStartTimeString,
@@ -1005,6 +1017,7 @@ describe('plugin-meetings', () => {
               fullState: {
                 active: false,
               },
+              roles: false
             };
 
             const meeting = await webex.meetings.createMeeting(
@@ -1024,6 +1037,7 @@ describe('plugin-meetings', () => {
             // Parse meeting info with locus object
             assert.equal(meeting.conversationUrl, 'locusConvURL');
             assert.equal(meeting.locusUrl, 'locusUrl');
+            assert.isUndefined(meeting.bbq);
             assert.equal(meeting.sipUri, 'locusSipUri');
             assert.equal(meeting.meetingNumber, 'locusMeetingId');
             assert.isUndefined(meeting.meetingJoinUrl);
@@ -1545,5 +1559,54 @@ describe('plugin-meetings', () => {
         assert.equal(result, false);
       });
     });
+
+    describe('#getAnalyzerMetricsPrePayload', () => {
+      it('userType & userLogin testing for CA data', async () => {
+        const FAKE_LOCUS_MEETING = {
+          conversationUrl: 'locusConvURL',
+          url: 'locusUrl',
+          info: {
+            webExMeetingId: 'locusMeetingId',
+            sipUri: 'locusSipUri',
+            owner: 'locusOwner',
+          },
+          meeting: {
+            startTime: "",
+          },
+          fullState: {
+            active: false,
+          },
+        };
+
+        const meeting = await webex.meetings.createMeeting(
+          FAKE_LOCUS_MEETING,
+          'test type',
+          true
+        );
+        meeting.roles = ['MODERATOR','COHOST','ATTENDEE'];
+        meeting.guest = true;
+        const options = {
+          event: 'event',
+          trackingId: 'trackingId',
+          locus: {},
+          mediaConnections: null,
+          errors: {}
+        };
+        webex.internal.services.get = sinon.stub();
+        meeting.getAnalyzerMetricsPrePayload(options);
+        console.log(options.userType +"aaaaa");
+        assert.equal(options.userType, 'host');
+        assert.equal(options.loginType, 'unverified-guest');
+        meeting.roles = ['COHOST','ATTENDEE'];
+        meeting.guest = false;
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.userType, 'cohost');
+        assert.equal(options.loginType, 'login-ci');
+        meeting.roles = ['ATTENDEE'];
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.userType, 'attendee');
+      });
+    });
+
   });
 });
