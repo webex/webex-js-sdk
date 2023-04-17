@@ -1174,7 +1174,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.destination,
         this.destinationType,
         password,
-        captchaInfo
+        captchaInfo,
+        // @ts-ignore - config coming from registerPlugin
+        this.config.installedOrgID
       );
 
       this.parseMeetingInfo(info, this.destination);

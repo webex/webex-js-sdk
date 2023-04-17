@@ -224,7 +224,7 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo} = options;
+  const {type, destination, password, captchaInfo, installedOrgID} = options;
   const body: any = {
     supportHostKey: true,
     supportCountryList: true,
@@ -269,6 +269,10 @@ MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} |
   if (captchaInfo) {
     body.captchaID = captchaInfo.id;
     body.captchaVerifyCode = captchaInfo.code;
+  }
+
+  if (installedOrgID) {
+    body.installedOrgID = installedOrgID;
   }
 
   return body;

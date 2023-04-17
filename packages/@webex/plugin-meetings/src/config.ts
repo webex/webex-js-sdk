@@ -89,6 +89,7 @@ export default {
     receiveTranscription: false,
     enableExtmap: false,
     enableAutomaticLLM: false,
+    installedOrgID: undefined,
     experimental: {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: false,
