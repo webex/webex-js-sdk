@@ -18,7 +18,7 @@ import {
   DISPLAY_HINTS,
 } from '../../../../src/constants';
 
-import {self, selfWithInactivity} from './selfConstant';
+import { self, selfWithInactivity } from "./selfConstant";
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -504,11 +504,49 @@ describe('plugin-meetings', () => {
             selfIdentity: '123',
             selfId: '2',
             hostId: '3',
+            isReplace: undefined,
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
         // for this specific test, we are double-checking that each of the id's
         // are being correctly grabbed from locusInfo.parsedLocus within updateParticipants
+      });
+
+      it('should call with breakout control info', () => {
+        locusInfo.parsedLocus = {
+          controls: {
+            record: {
+              modifiedBy: '1',
+            },
+          },
+          self: {
+            selfIdentity: '123',
+            selfId: '2',
+          },
+          host: {
+            hostId: '3',
+          },
+        };
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateParticipants({}, true);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateParticipants',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
+          {
+            participants: {},
+            recordingId: '1',
+            selfIdentity: '123',
+            selfId: '2',
+            hostId: '3',
+            isReplace: true,
+          }
+        );
       });
 
       it('should update the deltaParticipants object', () => {
@@ -833,6 +871,27 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger upgradeToModeratorOrCohost for breakouts', () => {
+
+        locusInfo.self = self;
+        const upgradeToModeratorOrCohost = cloneDeep(self);
+        upgradeToModeratorOrCohost.roles = ['ATTENDEE','COHOST'];
+
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(upgradeToModeratorOrCohost, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
+          self
+        );
+      });
+
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED if muted and disallowUnmute changed', () => {
         locusInfo.self = self;
         const selfWithMutedByOthersAndDissalowUnmute = cloneDeep(self);
@@ -1131,7 +1190,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
-          {info: locusInfo.parsedLocus.info, self},
+         {info: locusInfo.parsedLocus.info, self},
         ];
 
         if (expected) {
@@ -1141,6 +1200,25 @@ describe('plugin-meetings', () => {
         }
         locusInfo.emitScoped.resetHistory();
       };
+
+      const checkMeetingInfoUpdatedCalledForRoles = (expected) => {
+        const expectedArgs = [
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMeetingInfo',
+          },
+          LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+        ];
+
+        if (expected) {
+          assert.calledWith(...expectedArgs);
+        } else {
+          assert.neverCalledWith(...expectedArgs);
+        }
+        locusInfo.emitScoped.resetHistory();
+      };
+
 
       it('emits MEETING_INFO_UPDATED if the info changes', () => {
         const initialInfo = cloneDeep(meetingInfo);
@@ -1167,6 +1245,16 @@ describe('plugin-meetings', () => {
 
         // since the info is the same it should not call trigger the event
         checkMeetingInfoUpdatedCalled(false);
+
+        // update it with the same info, but roles changed
+        const updateSelf = cloneDeep(self);
+        updateSelf?.controls?.role?.roles.push({
+          type: 'COHOST',
+          hasRole: true,
+        });
+        locusInfo.updateMeetingInfo(newInfo, updateSelf);
+        // since the info is the same but roles changed, it should call trigger the event
+        checkMeetingInfoUpdatedCalledForRoles(true);
       });
 
       it('gets roles from self if available', () => {
@@ -1443,6 +1531,31 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.locusInfo.onFullLocus);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
+      });
+
+      it('onDeltaLocus handle delta data', () => {
+        fakeLocus.participants = {};
+        const fakeBreakout = {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+        };
+
+        fakeLocus.controls = {
+          breakout: fakeBreakout
+        };
+        locusInfo.controls = {
+          breakout: {
+            sessionId: 'sessionId',
+            groupId: 'groupId',
+          }
+        }
+        locusInfo.updateParticipants = sinon.stub();
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
+
+        fakeBreakout.sessionId = 'sessionId2';
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledWith(locusInfo.updateParticipants, {}, false);
       });
     });
 

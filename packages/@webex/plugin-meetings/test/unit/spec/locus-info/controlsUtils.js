@@ -1,5 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import ControlsUtils from '@webex/plugin-meetings/src/locus-info/controlsUtils';
+import controlsUtils from "@webex/plugin-meetings/src/locus-info/controlsUtils";
 
 const defaultControls = {
   entryExitTone: {
@@ -156,5 +157,25 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('isNeedReplaceMembers', () => {
+      it('if no breakout control, return false', () => {
+        const oldControls = {};
+        const newControls = {};
+        assert.equal(controlsUtils.isNeedReplaceMembers(oldControls, newControls), false);
+      });
+
+      it('if current session moved, return true', () => {
+        const oldControls = {breakout: {sessionId: 'sessionId1', groupId: 'groupId1'}};
+        const newControls = {breakout: {sessionId: 'sessionId2', groupId: 'groupId2'}};
+        assert.equal(controlsUtils.isNeedReplaceMembers(oldControls, newControls), true);
+      });
+
+      it('if in same session, return false', () => {
+        const oldControls = {breakout: {sessionId: 'sessionId1', groupId: 'groupId'}};
+        const newControls = {breakout: {sessionId: 'sessionId1', groupId: 'groupId'}};
+        assert.equal(controlsUtils.isNeedReplaceMembers(oldControls, newControls), false);
+      });
+    })
   });
 });

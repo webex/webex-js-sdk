@@ -196,6 +196,7 @@ export default class MeetingInfoV2 {
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
    * @param {String} captchaInfo.id
+   * @param {String} installedOrgID
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -207,7 +208,8 @@ export default class MeetingInfoV2 {
     captchaInfo: {
       code: string;
       id: string;
-    } = null
+    } = null,
+    installedOrgID = null
   ) {
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -223,7 +225,12 @@ export default class MeetingInfoV2 {
       return this.createAdhocSpaceMeeting(destinationType.destination);
     }
 
-    const body = await MeetingInfoUtil.getRequestBody({...destinationType, password, captchaInfo});
+    const body = await MeetingInfoUtil.getRequestBody({
+      ...destinationType,
+      password,
+      captchaInfo,
+      installedOrgID,
+    });
 
     // If the body only contains the default properties, we don't have enough to
     // fetch the meeting info so don't bother trying.

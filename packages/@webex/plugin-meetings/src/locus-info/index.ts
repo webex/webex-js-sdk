@@ -59,6 +59,7 @@ export default class LocusInfo extends EventsScope {
   fullState: any;
   host: any;
   info: any;
+  roles: any;
   mediaShares: any;
   replace: any;
   url: any;
@@ -276,8 +277,9 @@ export default class LocusInfo extends EventsScope {
     this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
+    const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -336,8 +338,9 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   onDeltaLocus(locus: any) {
+    const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
   }
 
@@ -653,13 +656,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   *
+   * update meeting's members
    * @param {Object} participants new participants object
-   * @param {boolen} deltaParticpantFlag  delta event
+   * @param {Boolean} isReplace is replace the whole members
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object) {
+  updateParticipants(participants: object, isReplace?: boolean) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -672,6 +675,7 @@ export default class LocusInfo extends EventsScope {
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
         hostId: this.parsedLocus.host && this.parsedLocus.host.hostId,
+        isReplace,
       }
     );
   }
@@ -946,8 +950,11 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateMeetingInfo(info: object, self?: object) {
-    if (info && !isEqual(this.info, info)) {
-      const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
+    const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
+    if (
+      (info && !isEqual(this.info, info)) ||
+      (roles.length && !isEqual(this.roles, roles) && info)
+    ) {
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
 
@@ -986,6 +993,7 @@ export default class LocusInfo extends EventsScope {
       // Parses the info and adds necessary values
       this.updateMeeting(parsedInfo.current);
     }
+    this.roles = roles;
   }
 
   /**
@@ -1148,6 +1156,18 @@ export default class LocusInfo extends EventsScope {
           self
         );
       }
+      // When the user upgrades to moderator or cohost
+      if (parsedSelves.updates.isUpgradeToModeratorOrCohost) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
+          self
+        );
+      }
+      //
       if (parsedSelves.updates.isVideoMutedByOthersChanged) {
         this.emitScoped(
           {
