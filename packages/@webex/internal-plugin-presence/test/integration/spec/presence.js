@@ -16,10 +16,8 @@ describe('plugin-presence', function () {
   describe('Presence', () => {
     let mccoy, spock;
 
-    beforeEach('create users', () => {
-      console.log(process.env.WEBEX_CLIENT_ID);
-
-      return testUsers.create({count: 2}).then((users) => {
+    beforeEach('create users', () =>
+      testUsers.create({count: 2}).then((users) => {
         [spock, mccoy] = users;
         spock.webex = new WebexCore({
           credentials: {
@@ -31,8 +29,8 @@ describe('plugin-presence', function () {
             authorization: users[1].token,
           },
         });
-      });
-    })
+      })
+    );
 
     beforeEach('register with wdm', () =>
       Promise.all([spock.webex.internal.device.register(), mccoy.webex.internal.device.register()])
