@@ -47,13 +47,13 @@ const getBOResponse = (status: string) => {
   };
 };
 
-const getBOResponseWithEditLockInfo = (status: string) => {
+const getBOResponseWithEditLockInfo = (status: string, withOutToken?: boolean) => {
   return {
     url: 'url',
     locusUrl: 'locusUrl',
     mainGroupId: 'mainGroupId',
     mainSessionId: 'mainSessionId',
-    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a"},
+    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a", token: withOutToken ? '' : 'token1'},
     groups: [
       {
         sessions: [
@@ -530,6 +530,112 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#update', () => {
+      it('makes the request as expected', async () => {
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+        const result = await breakouts.update(params);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: true},
+            groups: [params],
+          },
+        });
+      });
+      it('throw error if missing id in params', async () => {
+        const params = {
+          sessions: [{name: 'Session 1'}],
+        };
+        await breakouts.update(params).catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing breakout group id');
+        });
+      });
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> Edit lock token mismatch',
+        );
+      });
+
+      it('rejects when edit not authorized', async () => {
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_NOT_AUTHORIZED,
+            },
+          })
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          BreakoutEditLockedError,
+          'Not authorized to interact with edit lock'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> Not authorized to interact with edit lock',
+        );
+      });
+
+      it('rejects when other unknow error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(
+          Promise.reject(mockError)
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          mockError,
+          'something wrong'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> something wrong',
+        );
+      });
+    });
+
     describe('#start', () => {
       it('should start breakout sessions', async () => {
         webex.request.returns(
@@ -667,11 +773,23 @@ describe('plugin-meetings', () => {
         breakouts.keepEditLockAlive = sinon.stub().resolves();
         const result = await breakouts.getBreakout();
         await breakouts.getBreakout(true);
-        
+
         assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
       });
+      it('not call keep alive when response with no edit lock token', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponseWithEditLockInfo('PENDING', true),
+          })
+        );
 
-      
+        breakouts.set('url', 'url');
+        breakouts.keepEditLockAlive = sinon.stub().resolves();
+        const result = await breakouts.getBreakout();
+        await breakouts.getBreakout(true);
+
+        assert.notCalled(breakouts.keepEditLockAlive);
+      });
     });
 
     describe('doToggleBreakout', () => {
@@ -869,7 +987,7 @@ describe('plugin-meetings', () => {
       });
 
       it('do not call unLock if edit lock info not exist ', async () => {
-        
+
         breakouts.unLockEditBreakout();
         assert.notCalled(webex.request);
       });
@@ -977,6 +1095,21 @@ describe('plugin-meetings', () => {
           uri: 'url/editlock/token',
         });
 
+        clock.restore();
+      });
+
+      it('clear interval first if previous one is in work', () => {
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+        });
+        const clock = sinon.useFakeTimers();
+        window.clearInterval = sinon.stub();
+        breakouts.keepEditLockAlive();
+        const firstIntervalID = breakouts.intervalID;
+        breakouts.keepEditLockAlive();
+
+        assert.calledWithExactly(window.clearInterval, firstIntervalID);
         clock.restore();
       });
     });

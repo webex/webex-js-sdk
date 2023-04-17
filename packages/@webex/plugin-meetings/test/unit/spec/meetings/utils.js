@@ -33,7 +33,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('should work fine if no default true site', () => {
+      it('should take the first site if none are default', () => {
         const userPreferences = {
           sites: [
             {
@@ -51,7 +51,10 @@ describe('plugin-meetings', () => {
           ],
         };
 
-        assert.equal(MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences), '');
+        assert.equal(
+          MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences),
+          'site1-example.webex.com'
+        );
       });
 
       it('should work fine if sites an empty array', () => {
