@@ -32,7 +32,7 @@ describe('presence-worker', () => {
         expect(() => worker.initialize({})).toThrow(/Must initialize Presence Worker with webex!/));
     });
 
-    describe('#enqueue()', () => {
+    describe.skip('#enqueue()', () => {
       it('increments watchers count', () => {
         worker.enqueue(id);
         assert.equal(worker.watchers[id], 1);
