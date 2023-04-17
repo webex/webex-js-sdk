@@ -3382,7 +3382,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/express@npm:*, @types/express@npm:^4.17.13, @types/express@npm:^4.17.8, @types/express@npm:~4.17.13":
+"@types/express@npm:*, @types/express@npm:^4.17.13, @types/express@npm:~4.17.13":
   version: 4.17.17
   resolution: "@types/express@npm:4.17.17"
   dependencies:
@@ -3418,7 +3418,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/fs-extra@npm:^9.0.1, @types/fs-extra@npm:^9.0.4":
+"@types/fs-extra@npm:^9.0.4":
   version: 9.0.13
   resolution: "@types/fs-extra@npm:9.0.13"
   dependencies:
@@ -3725,15 +3725,6 @@ __metadata:
   version: 10.0.1
   resolution: "@types/mocha@npm:10.0.1"
   checksum: 224ea9fce7b1734ccdb9aa99a622d902a538ce1847bca7fd22c5fb38adcf3ed536f50f48f587085db988a4bb3c2eb68f4b98e1cd6a38bc5547bd3bbbedc54495
-  languageName: node
-  linkType: hard
-
-"@types/morgan@npm:^1.9.1":
-  version: 1.9.4
-  resolution: "@types/morgan@npm:1.9.4"
-  dependencies:
-    "@types/node": "*"
-  checksum: d1e99c66a43501dcdf6e94e013dfff4e6c152cbb5f782d954bb722d230a9c1c0fe06fab6df3f3dfa3547735a7598f9471633cc6813d794e9562fd022e217c6ae
   languageName: node
   linkType: hard
 
@@ -4392,6 +4383,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@wdio/logger@npm:8.6.6":
+  version: 8.6.6
+  resolution: "@wdio/logger@npm:8.6.6"
+  dependencies:
+    chalk: ^5.1.2
+    loglevel: ^1.6.0
+    loglevel-plugin-prefix: ^0.8.4
+    strip-ansi: ^6.0.0
+  checksum: b17effd00f0b5f4450b83e4d65e0f29bc60bc19a53b9c44fc3569e14bd53bcf6c0dfc8da517ddf639da503c1e68491ec20f97fddbb78b34d8b20136f7a60a4fe
+  languageName: node
+  linkType: hard
+
 "@wdio/mocha-framework@npm:^7.19.5":
   version: 7.26.0
   resolution: "@wdio/mocha-framework@npm:7.26.0"
@@ -4522,19 +4525,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wdio/static-server-service@npm:^7.19.5":
-  version: 7.29.1
-  resolution: "@wdio/static-server-service@npm:7.29.1"
+"@wdio/static-server-service@npm:^8.8.4":
+  version: 8.8.4
+  resolution: "@wdio/static-server-service@npm:8.8.4"
   dependencies:
-    "@types/express": ^4.17.8
-    "@types/fs-extra": ^9.0.1
-    "@types/morgan": ^1.9.1
-    "@wdio/logger": 7.26.0
-    "@wdio/types": 7.26.0
+    "@wdio/logger": 8.6.6
+    "@wdio/types": 8.8.4
     express: ^4.14.0
-    fs-extra: ^10.0.0
     morgan: ^1.7.0
-  checksum: a9a51eeae60942b366b8459341fbb7e8dc6a9e03341d67c0dfb2d7b02794f89821011d4441e8f05ad876b341fb1b3615a69305664e7481d21758bcb888e08ed2
+  checksum: 50360625c848aae6fc324ec376aec145ca520b7baca36554aeae2b788e0fd823a2c7b1886cbfb3b841ac69c5095b4a48e898a3f91cf51cbf0bd2c33f9d28a89c
   languageName: node
   linkType: hard
 
@@ -4565,6 +4564,15 @@ __metadata:
     typescript:
       optional: true
   checksum: 686b5a6656e1303ae63d440bb53fbd6ff60544793c2532fd6aeee7cc066436b1e9508811826004fb976762eb94b17719466610a78738c1c9f925b9813109e76f
+  languageName: node
+  linkType: hard
+
+"@wdio/types@npm:8.8.4":
+  version: 8.8.4
+  resolution: "@wdio/types@npm:8.8.4"
+  dependencies:
+    "@types/node": ^18.0.0
+  checksum: b956776c5186eef21922663f642bef4af763e6de9fca508b193eb47a9e344d7aa1738a0240666c7cf905d6d208d593e6a5705f06e27c1e66df30b2e6844dccbd
   languageName: node
   linkType: hard
 
@@ -9159,7 +9167,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:^5.0.1":
+"chalk@npm:^5.0.1, chalk@npm:^5.1.2":
   version: 5.2.0
   resolution: "chalk@npm:5.2.0"
   checksum: 03d8060277de6cf2fd567dc25fcf770593eb5bb85f460ce443e49255a30ff1242edd0c90a06a03803b0466ff0687a939b41db1757bec987113e83de89a003caa
@@ -25826,7 +25834,7 @@ __metadata:
     "@wdio/mocha-framework": ^7.19.5
     "@wdio/sauce-service": ^7.19.5
     "@wdio/spec-reporter": ^7.19.5
-    "@wdio/static-server-service": ^7.19.5
+    "@wdio/static-server-service": ^8.8.4
     "@webex/cli-tools": "workspace:^"
     "@webex/package-tools": "workspace:^"
     appium-adb: ^8.17.0

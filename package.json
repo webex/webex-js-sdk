@@ -109,7 +109,7 @@
     "@wdio/mocha-framework": "^7.19.5",
     "@wdio/sauce-service": "^7.19.5",
     "@wdio/spec-reporter": "^7.19.5",
-    "@wdio/static-server-service": "^7.19.5",
+    "@wdio/static-server-service": "^8.8.4",
     "@webex/cli-tools": "workspace:^",
     "@webex/package-tools": "workspace:^",
     "appium-adb": "^8.17.0",
