@@ -85,6 +85,7 @@ import {
   VIDEO_RESOLUTIONS,
   VIDEO,
   HTTP_VERBS,
+  SELF_ROLES,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -517,6 +518,7 @@ export default class Meeting extends StatelessWebexPlugin {
   selfId: string;
   state: any;
   webexMeetingId: string;
+  roles: any[];
 
   namespace = MEETINGS;
 
@@ -1622,6 +1624,16 @@ export default class Meeting extends StatelessWebexPlugin {
           ...options.joinTimes,
           getTotalJmt,
         };
+      }
+
+      const curUserType = this.getCurUserType();
+      if (curUserType) {
+        options.userType = curUserType;
+      }
+
+      const curLoginType = this.getCurLoginType();
+      if (curLoginType) {
+        options.loginType = curLoginType;
       }
 
       if (options.type === MQA_STATS.CA_TYPE) {
@@ -6966,6 +6978,40 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endJoinReqResp;
 
     return start && end ? end - start : undefined;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'attendee','host','cohost', returns the user type of the current user
+   */
+  getCurUserType() {
+    const {roles} = this;
+    if (roles) {
+      if (roles.includes(SELF_ROLES.MODERATOR)) {
+        return 'host';
+      }
+      if (roles.includes(SELF_ROLES.COHOST)) {
+        return 'cohost';
+      }
+      if (roles.includes(SELF_ROLES.ATTENDEE)) {
+        return 'attendee';
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
+   */
+  getCurLoginType() {
+    const isGuest = this.guest;
+    if (isGuest !== null) {
+      return isGuest ? 'unverified-guest' : 'login-ci';
+    }
+
+    return null;
   }
 
   /**

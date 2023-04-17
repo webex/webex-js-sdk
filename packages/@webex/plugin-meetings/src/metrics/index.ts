@@ -189,6 +189,8 @@ class Metrics {
         name: 'endpoint',
         networkType: 'unknown',
         userAgent: this.userAgentToString(),
+        userType: options.userType,
+        loginType: options.loginType,
         clientInfo: {
           clientType: options.clientType,
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
