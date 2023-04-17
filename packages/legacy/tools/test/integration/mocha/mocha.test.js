@@ -15,12 +15,17 @@ describe('Mocha', () => {
         };
 
         mocks.MochaRunner = {
-          run: (method) => method(),
+          run: (method) => method(0),
+          runWithFailures: (method) => method(1),
         };
 
         spies.MochaRunner = {
           addFile: spyOn(MochaRunner.prototype, 'addFile').and.returnValue(undefined),
           run: spyOn(MochaRunner.prototype, 'run').and.callFake(mocks.MochaRunner.run),
+        };
+
+        spies.process = {
+          exit: spyOn(process, 'exit').and.returnValue(undefined),
         };
       });
 
@@ -33,6 +38,15 @@ describe('Mocha', () => {
         .then(() => {
           expect(spies.MochaRunner.run).toHaveBeenCalledTimes(1);
         }));
+
+      it('should exit the process with 1 if failures were detected', () => {
+        spies.MochaRunner.run.and.callFake(mocks.MochaRunner.runWithFailures);
+
+        return Mocha.test(config)
+          .then(() => {
+            expect(spies.process.exit).toHaveBeenCalledOnceWith(1);
+          });
+      });
     });
 
     describe('CONSTANTS', () => {
