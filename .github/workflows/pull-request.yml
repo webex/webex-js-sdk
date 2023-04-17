@@ -352,6 +352,9 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
+      - name: CHECK Environment Variables
+        run: cat ./.env
+
       - name: Test - Integration
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
 
