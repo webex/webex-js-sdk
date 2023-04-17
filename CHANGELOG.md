@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.52.9](https://github.com/webex/webex-js-sdk/compare/v2.52.8...v2.52.9) (2023-04-17)
+
+
+### Bug Fixes
+
+* **automation:** inject env files on ci ([#2740](https://github.com/webex/webex-js-sdk/issues/2740)) ([d17cc5a](https://github.com/webex/webex-js-sdk/commit/d17cc5af78b30f7822ceca71009731b803ed276e))
+
 ### [2.52.8](https://github.com/webex/webex-js-sdk/compare/v2.52.7...v2.52.8) (2023-04-14)
 
 
