@@ -63,6 +63,21 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Write Environment Variables
+        run: |
+          touch ./.env
+          echo "SKIP_FLAKY_TESTS=\"${{ secrets.SKIP_FLAKY_TESTS }}\"" >> ./.env
+          echo "WEBEX_APPID_ORGID=\"${{ secrets.WEBEX_APPID_ORGID }}\"" >> ./.env
+          echo "WEBEX_APPID_SECRET=\"${{ secrets.WEBEX_APPID_SECRET }}\"" >> ./.env
+          echo "WEBEX_CLIENT_ID=\"${{ secrets.WEBEX_CLIENT_ID }}\"" >> ./.env
+          echo "WEBEX_CLIENT_SECRET=\"${{ secrets.WEBEX_CLIENT_SECRET }}\"" >> ./.env
+
+      - name: Cache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
       - id: validate-dependencies
         name: Validate Dependencies
         uses: actions/cache@v3
@@ -119,6 +134,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -162,6 +183,12 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
@@ -213,6 +240,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -249,6 +282,12 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
@@ -287,6 +326,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -324,6 +369,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -359,6 +410,12 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
@@ -396,6 +453,12 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
