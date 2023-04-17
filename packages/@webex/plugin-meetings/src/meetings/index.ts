@@ -6,6 +6,8 @@ import '@webex/internal-plugin-conversation';
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
 
+import * as mediaHelpersModule from '@webex/media-helpers';
+
 import 'webrtc-adapter';
 
 import Metrics from '../metrics';
@@ -148,6 +150,7 @@ export default class Meetings extends WebexPlugin {
   request: any;
   geoHintInfo: any;
   meetingInfo: any;
+  mediaHelpers: any;
 
   namespace = MEETINGS;
 
@@ -159,6 +162,17 @@ export default class Meetings extends WebexPlugin {
    */
   constructor(...args) {
     super(...args);
+
+    /**
+     * The webrtc-core media helpers. This is a temporary solution required for the SDK sample app
+     * to be able to call media helper functions.
+     *
+     * @instance
+     * @type {Object}
+     * @private
+     * @memberof Meetings
+     */
+    this.mediaHelpers = mediaHelpersModule;
 
     /**
      * The Meetings request to interact with server

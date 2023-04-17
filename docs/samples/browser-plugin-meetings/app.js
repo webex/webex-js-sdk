@@ -922,7 +922,25 @@ function sendDtmfTones() {
   }
 }
 
-function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevices = {}) {
+const localVideoQuality = {
+  '360p': '360p',
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p'
+};
+const localMedia = {
+  microphoneTrack: undefined,
+  cameraTrack: undefined,
+  videoConstraints: {
+    [localVideoQuality["360p"]]: { width: 640, height: 360 },
+    [localVideoQuality["480p"]]: { width: 640, height: 480 },
+    [localVideoQuality["720p"]]: { width: 1280, height: 720 },
+    [localVideoQuality["1080p"]]: { width: 1920, height: 1080 },
+  }
+}
+
+
+async function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevices = {}) {
   const meeting = getCurrentMeeting();
 
   console.log('MeetingControls#getMediaStreams()');
@@ -931,6 +949,31 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
     console.log('MeetingControls#getMediaStreams() :: no valid meeting object!');
 
     return Promise.reject(new Error('No valid meeting object.'));
+  }
+
+  if (isMultistream) {
+    console.log('MeetingControls#getMediaStreams() :: using webrtc-core local tracks')
+
+    localMedia.microphoneTrack = await webex.meetings.mediaHelpers.createMicrophoneTrack({...audioVideoInputDevices.audio});
+
+    const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...audioVideoInputDevices.video};
+
+    console.log('MeetingControls#getMediaStreams() :: getting camera track with constraints: ', videoConstraints);
+    localMedia.cameraTrack = await webex.meetings.mediaHelpers.createCameraTrack(videoConstraints);
+
+    meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
+    meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
+
+    localMedia.cameraTrack.on('underlying-track-change', () => {
+      meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
+    });
+
+    localMedia.microphoneTrack.on('underlying-track-change', () => {
+      meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
+    });
+
+    console.log('MeetingControls#getMediaStreams() :: Successfully got following tracks:', localMedia.microphoneTrack, localMedia.cameraTrack);
+    return;
   }
 
   // Get local media streams
@@ -1003,23 +1046,13 @@ function getMediaDevices() {
 }
 
 async function publishTracks(meeting) {
-  const [localStream] = currentMediaStreams;
+  console.log(`MeetingStreams#publishTracks() :: publishing local webrtc-core tracks: audio: ${localMedia.microphoneTrack ? 'yes': 'no'} and video: ${localMedia.cameraTrack ? 'yes': 'no'}`);
+  await meeting.publishTracks({
+    microphone: localMedia.microphoneTrack,
+    camera: localMedia.cameraTrack,
+  });
 
-  // ignoring screen share here, as it can only be started once you're in the meeting via startScreenShare()
-
-  if (localStream) {
-    const localAudioTracks = localStream.getAudioTracks();
-    const localVideoTracks = localStream.getVideoTracks();
-
-    console.log(`MeetingStreams#publishTracks() :: publishing local audio (${localAudioTracks?.length > 0 ? 'yes': 'no'}) and video (${localVideoTracks?.length > 0 ? 'yes': 'no'})`);
-    await meeting.publishTracks({
-      microphone: localAudioTracks?.[0],
-      camera: localVideoTracks?.[0]
-    });
-  }
-  else {
-    console.error('cannot publish tracks - local stream missing');
-  }
+  return;
 }
 
 async function updateMedia() {
@@ -1084,13 +1117,16 @@ function setVideoInputDevice() {
 
   if (meeting) {
     stopMediaTrack('video');
+
+    if (isMultistream) {
+
+      // ignoring sendVideo value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
+      return getMediaStreams({sendVideo, receiveVideo}, {video})
+        .then(() => meeting.publishTracks({camera: localMedia.cameraTrack}));
+    }
+
     getMediaStreams({sendVideo, receiveVideo}, {video})
       .then(({localStream}) => {
-        if (isMultistream) {
-          // ignoring sendVideo value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
-          return meeting.publishTracks({camera: localStream.getVideoTracks()?.[0]});
-        }
-
         meeting.updateVideo({
           sendVideo,
           receiveVideo,
@@ -1114,13 +1150,15 @@ function setAudioInputDevice() {
 
   if (meeting) {
     stopMediaTrack('audio');
+
+    if (isMultistream) {
+      // ignoring sendAudio value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
+      return getMediaStreams({sendAudio, receiveAudio}, {audio})
+        .then(() => meeting.publishTracks({microphone: localMedia.microphoneTrack}));
+    }
+
     getMediaStreams({sendAudio, receiveAudio}, {audio})
       .then(({localStream}) => {
-        if (isMultistream) {
-          // ignoring sendAudio value, because it cannot be false for multistream (the UI elements from toggleSourcesMediaDirection are disabled)
-          return meeting.publishTracks({microphone: localStream.getAudioTracks()?.[0]});
-        }
-
         meeting.updateAudio({
           sendAudio,
           receiveAudio,
@@ -1165,6 +1203,15 @@ function toggleSendAudio() {
     return;
   }
 
+  if (isMultistream && localMedia.microphoneTrack) {
+    const newMuteValue = !localMedia.microphoneTrack.muted;
+
+    localMedia.microphoneTrack.setMuted(newMuteValue);
+
+    console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
+    return;
+  }
+
   if (meeting.isAudioMuted()) {
     meeting.unmuteAudio()
       .then(() => {
@@ -1196,6 +1243,15 @@ function toggleSendVideo() {
     return;
   }
 
+  if (isMultistream && localMedia.cameraTrack) {
+    const newMuteValue = !localMedia.cameraTrack.muted;
+
+    localMedia.cameraTrack.setMuted(newMuteValue);
+
+    console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
+    return;
+  }
+
   if (meeting.isVideoMuted()) {
     meeting.unmuteVideo()
       .then(() => {
@@ -1222,8 +1278,8 @@ function toggleBNR() {
   console.log('BNR not supported');
 }
 
-let publishedLocalShareAudioTrack = null; // todo: stop and unset these on "unpublished" event (SPARK-399694)
-let publishedLocalShareVideoTrack = null;
+let publishedLocalShareAudioTrack;
+let publishedLocalShareVideoTrack;
 
 async function startScreenShare() {
   const meeting = getCurrentMeeting();
@@ -1232,22 +1288,28 @@ async function startScreenShare() {
   console.log('MeetingControls#startScreenShare()');
   try {
     if (isMultistream) {
-      const localShareStream = await navigator.mediaDevices.getDisplayMedia({audio: false}); // todo: SPARK-399690
+      const localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
 
-      const localShareAudioTrack = localShareStream?.getAudioTracks()?.[0];
-      const localShareVideoTrack = localShareStream?.getVideoTracks()?.[0];
-
+      console.log('MeetingControls#startScreenShare() :: publishing share video track');
       await meeting.publishTracks({
         screenShare: {
-          audio: localShareAudioTrack,
           video: localShareVideoTrack,
         }
       });
 
-      publishedLocalShareAudioTrack = localShareAudioTrack;
       publishedLocalShareVideoTrack = localShareVideoTrack;
+      publishedLocalShareVideoTrack.on('published-state-update', ({isPublished}) => {
+        if (!isPublished) {
+          console.log('MeetingControls#startScreenShare() :: local share video track unpublished, stopping it');
 
-      meetingStreamsLocalShare.srcObject = localShareStream;
+          publishedLocalShareVideoTrack.stop();
+          publishedLocalShareVideoTrack = undefined;
+
+          meetingStreamsLocalShare.srcObject = null;
+        }
+      });
+
+      meetingStreamsLocalShare.srcObject = localShareVideoTrack.underlyingStream;
     }
     else {
       await meeting.shareScreen();
@@ -1278,12 +1340,6 @@ async function stopScreenShare() {
       if (tracksToUnpublish.length > 0) {
         await meeting.unpublishTracks(tracksToUnpublish);
 
-        publishedLocalShareAudioTrack?.stop();
-        publishedLocalShareVideoTrack?.stop();
-
-        publishedLocalShareAudioTrack = null;
-        publishedLocalShareVideoTrack = null;
-
         meetingStreamsLocalShare.srcObject = null;
       }
     }
@@ -1311,6 +1367,12 @@ function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = localResolutionInp.value;
 
+  if (isMultistream) {
+    const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...audioVideoInputDevices.video};
+
+    console.log('MeetingControls#setLocalMeetingQuality() :: applying new constraints to camera track: ', videoConstraints);
+    return localMedia.cameraTrack?.applyConstraints(videoConstraints);
+  }
   meeting.setLocalVideoQuality(level)
     .then((localStream) => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
@@ -2105,13 +2167,6 @@ function setupMultistreamEventListeners(meeting) {
 
   meeting.on('meeting:startedSharingRemote', () => {
     forceScreenShareViewLayout(meeting);
-
-    // todo: instead of here, do all this when we get "unpublished" notification from local share track (SPARK-399694)
-    meetingStreamsLocalShare.srcObject = null;
-    publishedLocalShareAudioTrack?.stop();
-    publishedLocalShareVideoTrack?.stop();
-    publishedLocalShareAudioTrack = null;
-    publishedLocalShareVideoTrack = null;
   });
 
   meeting.on('meeting:stoppedSharingRemote', () => {

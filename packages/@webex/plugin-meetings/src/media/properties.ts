@@ -1,10 +1,6 @@
-import {
-  ConnectionState,
-  Event,
-  LocalCameraTrack,
-  LocalMicrophoneTrack,
-  LocalDisplayTrack,
-} from '@webex/internal-media-core';
+import {ConnectionState, Event} from '@webex/internal-media-core';
+
+import {LocalCameraTrack, LocalMicrophoneTrack, LocalDisplayTrack} from '@webex/media-helpers';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';

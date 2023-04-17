@@ -1412,11 +1412,11 @@ __metadata:
   linkType: hard
 
 "@babel/runtime@npm:^7.18.9":
-  version: 7.20.13
-  resolution: "@babel/runtime@npm:7.20.13"
+  version: 7.21.0
+  resolution: "@babel/runtime@npm:7.21.0"
   dependencies:
     regenerator-runtime: "npm:^0.13.11"
-  checksum: 0e09b4915318248aeeccdf6dc6a8ccdeedbe4b7187fa4159eaa569c4a407c36f3b8689296296b25246671987efe2253dd6e3bab63a40deedcdbd49b8845204e6
+  checksum: adff473f615f797cffbd64d6839a5e3816e6e7942a6c9bfc23369e6d89a18c92eda974e2f538540a0ce543c28e3d637c59a0a8c391cee978e0b7dc31b606ef08
   languageName: node
   linkType: hard
 
@@ -3023,9 +3023,9 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^18.7.6":
-  version: 18.13.0
-  resolution: "@types/node@npm:18.13.0"
-  checksum: 591b7b9a97dbeaa155c3fe1a00e22fc13241781bda02f4e96935811723e7719fe18ed003301551cfa3273488cc7cf2f99146b752abc9b60aaab57bcbc67da830
+  version: 18.15.11
+  resolution: "@types/node@npm:18.15.11"
+  checksum: 2ad6c7aeb0841a821d5f0556ccbc9c0cec597cb31b5fe58b085740983f6b01a21a3c62c37ca642dd92b5de8935d6084896634af19f1f022e8d173049ad258a60
   languageName: node
   linkType: hard
 
@@ -4536,6 +4536,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/media-helpers@workspace:^, @webex/media-helpers@workspace:packages/@webex/media-helpers":
+  version: 0.0.0-use.local
+  resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
+  dependencies:
+    "@webex/internal-media-core": "npm:1.35.7"
+    "@webex/test-helper-chai": "workspace:^"
+    "@webex/test-helper-mock-webex": "workspace:^"
+    sinon: "npm:^9.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@webex/plugin-attachment-actions@workspace:^, @webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions"
@@ -4672,6 +4683,7 @@ __metadata:
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
     "@webex/internal-plugin-user": "workspace:^"
+    "@webex/media-helpers": "workspace:^"
     "@webex/plugin-meetings": "workspace:^"
     "@webex/plugin-people": "workspace:^"
     "@webex/plugin-rooms": "workspace:^"
@@ -23395,9 +23407,9 @@ __metadata:
   linkType: hard
 
 "xstate@npm:^4.30.6":
-  version: 4.35.4
-  resolution: "xstate@npm:4.35.4"
-  checksum: 6bf12ea9369c3f2df6a040c1541666e263f0a018715d6820fd7ad308198a53991899c9c3b1e6afe6dd092ee0f4c3a228f1180e92498bbbe377b9013d1a809d48
+  version: 4.37.1
+  resolution: "xstate@npm:4.37.1"
+  checksum: 56b8d7fe1f648684b7e708549d9ba647413ce20467b184dfbf80257e83262f2de8256d157515f7838bc38977c68451dab90dd7aac54d398e8ad125f095c03e4c
   languageName: node
   linkType: hard
 
