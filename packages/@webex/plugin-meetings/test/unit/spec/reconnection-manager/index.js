@@ -43,8 +43,8 @@ describe('plugin-meetings', () => {
           webrtcMediaConnection: fakeMediaConnection,
         },
         mediaRequestManagers: {
-          audio: {commit: sinon.stub()},
-          video: {commit: sinon.stub()},
+          audio: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
+          video: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
         },
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
