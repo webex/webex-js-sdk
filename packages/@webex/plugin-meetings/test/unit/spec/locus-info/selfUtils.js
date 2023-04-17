@@ -289,4 +289,41 @@ describe('plugin-meetings', () => {
       );
     });
   });
+
+  describe('isUpgradeToModeratorOrCohost', () => {
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','MODERATOR']}),
+        true
+      );
+    });
+
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','COHOST']}),
+        true
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','MODERATOR']}, {roles: ['ATTENDEE']}),
+        false
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','COHOST']}, {roles: ['ATTENDEE']}),
+        false
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','HOST','MODERATOR']}, {roles: ['ATTENDEE']}),
+        false
+      );
+    });
+  });
 });

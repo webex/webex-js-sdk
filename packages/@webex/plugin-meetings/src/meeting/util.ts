@@ -470,6 +470,9 @@ MeetingUtil.endMeetingForAll = (meeting) => {
 MeetingUtil.canEnableClosedCaption = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.CAPTION_START);
 
+MeetingUtil.isSaveTranscriptsEnabled = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.SAVE_TRANSCRIPTS_ENABLED);
+
 MeetingUtil.canStartTranscribing = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_START);
 

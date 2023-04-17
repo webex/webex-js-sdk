@@ -103,6 +103,27 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#assignRolesMember', () => {
+      it('sends a PATCH to the locus endpoint', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const roles = [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}];
+
+        const options = {
+          memberId,
+          locusUrl,
+          roles,
+        };
+
+        await membersRequest.assignRolesMember(options);
+        const requestParams = membersRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'PATCH');
+        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/controls`);
+        assert.deepEqual(requestParams.body.role.roles, roles);
+      });
+    });
+
     describe('#raiseHand', () => {
       it('sends a PATCH to the locus endpoint', async () => {
         const locusUrl = url1;

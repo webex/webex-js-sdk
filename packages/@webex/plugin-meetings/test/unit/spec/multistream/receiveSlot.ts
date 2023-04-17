@@ -9,6 +9,8 @@ import {assert} from '@webex/test-helper-chai';
 class FakeWcmeSlot extends EventEmitter {
   public stream;
 
+  public id = 'fake id';
+
   constructor(stream) {
     super();
     this.stream = stream;
@@ -27,6 +29,12 @@ describe('ReceiveSlot', () => {
     findMemberIdCallbackStub = sinon.stub();
     receiveSlot = new ReceiveSlot(MediaType.VideoMain, fakeWcmeSlot, findMemberIdCallbackStub);
   });
+
+  describe('logString', () => {
+    it('has a log string', () => {
+      assert.equal(receiveSlot.logString, `ReceiveSlot - ${receiveSlot.id}: "fake id"`);
+    });
+  })
 
   describe('forwards events from underlying wcme receive slot', () => {
     it('forwards SourceUpdate', () => {

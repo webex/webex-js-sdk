@@ -21,19 +21,24 @@ export const getBroadcastRoles = (options): string[] => {
 /**
  * Deals with all kinds of errors of breakout service
  * @param {object} error // one of the breakout service error
- * @param {string} message // message to log
+ * @param {string} position // position of the error occur
  * @returns {object}
  */
-export const boServiceErrorHandler = (error: any, message: string): any => {
+export const boServiceErrorHandler = (error: any, position: string): any => {
   const errorCode = error?.body?.errorCode;
-  const {EDIT_LOCK_TOKEN_MISMATCH} = BREAKOUTS.ERROR_CODE;
+  const {EDIT_LOCK_TOKEN_MISMATCH, EDIT_NOT_AUTHORIZED} = BREAKOUTS.ERROR_CODE;
+  let throwError;
   switch (errorCode) {
     case EDIT_LOCK_TOKEN_MISMATCH:
-      LoggerProxy.logger.info(message);
-
-      return new BreakoutEditLockedError('Edit lock token mismatch', error);
-
+      throwError = new BreakoutEditLockedError('Edit lock token mismatch', error);
+      break;
+    case EDIT_NOT_AUTHORIZED:
+      throwError = new BreakoutEditLockedError('Not authorized to interact with edit lock', error);
+      break;
     default:
-      return error;
+      throwError = error;
   }
+  LoggerProxy.logger.info(`${position} --> ${throwError?.message}`);
+
+  return throwError;
 };

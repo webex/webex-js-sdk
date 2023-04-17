@@ -4,11 +4,13 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 
+import uuid from 'uuid';
 import {HTTP_VERBS, MEETINGS} from '../constants';
 import LocusInfo from '../locus-info';
 import Members from '../members';
 import BreakoutRequest from './request';
-
+import Metrics from '../metrics';
+import {eventType} from '../metrics/config';
 /**
  * @class
  */
@@ -55,8 +57,19 @@ const Breakout = WebexPlugin.extend({
    * Joins the breakout session
    * @returns {Promise}
    */
-  join() {
-    return this.request({
+  async join() {
+    const breakoutMoveId = uuid.v4();
+    const {meetingId} = this.collection.parent;
+    Metrics.postEvent({
+      event: eventType.MOVE_TO_BREAKOUT,
+      meetingId,
+      data: {
+        breakoutMoveId,
+        breakoutSessionId: this.sessionId,
+        breakoutGroupId: this.groupId,
+      },
+    });
+    const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
       body: {
@@ -64,6 +77,17 @@ const Breakout = WebexPlugin.extend({
         sessionId: this.sessionId,
       },
     });
+    Metrics.postEvent({
+      event: eventType.JOIN_BREAKOUT_RESPONSE,
+      meetingId,
+      data: {
+        breakoutMoveId,
+        breakoutSessionId: this.sessionId,
+        breakoutGroupId: this.groupId,
+      },
+    });
+
+    return result;
   },
 
   /**
@@ -109,8 +133,7 @@ const Breakout = WebexPlugin.extend({
   parseRoster(locus) {
     this.members.locusParticipantsUpdate(locus);
   },
-
-  /**
+  /*
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options
