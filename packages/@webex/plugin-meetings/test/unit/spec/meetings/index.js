@@ -975,17 +975,6 @@ describe('plugin-meetings', () => {
             checkCreateWithoutDelay(meeting, 'test destination', 'test type', expectedMeetingData);
           });
 
-          it('creates the meeting from a successful meeting info fetch promise testing', async () => {
-            const meeting = await webex.meetings.createMeeting('test destination', 'test type');
-
-            const expectedMeetingData = {
-              roles: ['host','cohost','attendee'],
-              guest: false,
-            };
-
-            checkCreateWithoutDelay(meeting, 'test destination', 'test type', expectedMeetingData);
-          });
-
           it('creates the meeting from a successful meeting info fetch meeting resolve testing', async () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
             const expectedMeetingData = {
