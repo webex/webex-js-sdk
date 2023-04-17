@@ -998,7 +998,6 @@ describe('plugin-meetings', () => {
                 webExMeetingId: 'locusMeetingId',
                 sipUri: 'locusSipUri',
                 owner: 'locusOwner',
-                bbq: 'ook'
               },
               meeting: {
                 startTime: fakeMeetingStartTimeString,
@@ -1026,7 +1025,6 @@ describe('plugin-meetings', () => {
             // Parse meeting info with locus object
             assert.equal(meeting.conversationUrl, 'locusConvURL');
             assert.equal(meeting.locusUrl, 'locusUrl');
-            assert.isUndefined(meeting.bbq);
             assert.equal(meeting.sipUri, 'locusSipUri');
             assert.equal(meeting.meetingNumber, 'locusMeetingId');
             assert.isUndefined(meeting.meetingJoinUrl);
