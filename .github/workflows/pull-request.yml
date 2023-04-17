@@ -75,6 +75,7 @@ jobs:
           echo "WEBEX_APPID_SECRET=\"${{ secrets.WEBEX_APPID_SECRET }}\"" >> ./.env
           echo "WEBEX_CLIENT_ID=\"${{ secrets.WEBEX_CLIENT_ID }}\"" >> ./.env
           echo "WEBEX_CLIENT_SECRET=\"${{ secrets.WEBEX_CLIENT_SECRET }}\"" >> ./.env
+          cat ./.env
 
       - name: Cache Environment Variables
         uses: actions/cache@v3
