@@ -47,7 +47,6 @@ jobs:
 
 
   initialize:
-    environment: integration
     name: Initialize Project
     needs: validate
     runs-on: ubuntu-latest
