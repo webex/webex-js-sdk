@@ -62,7 +62,7 @@ describe('plugin-meetings', () => {
   let test1;
   let test2;
 
-  describe.only('meetings index', () => {
+  describe('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
       uuid1 = uuid.v4();
