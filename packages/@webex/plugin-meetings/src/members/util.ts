@@ -176,11 +176,11 @@ MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locus
 });
 
 /**
- * @param {String} memberId
- * @param {String} requestingParticipantId
- * @param {String} alias
- * @param {String} locusUrl
- * @returns {Object}
+ * @param {String} memberId id of the participant who is receiving request
+ * @param {String} requestingParticipantId id of the participant who is sending request (optional)
+ * @param {String} alias alias name
+ * @param {String} locusUrl url
+ * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
  */
 MembersUtil.generateEditDisplayNameMemberOptions = (
   memberId,
