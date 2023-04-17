@@ -1594,7 +1594,6 @@ describe('plugin-meetings', () => {
         };
         webex.internal.services.get = sinon.stub();
         meeting.getAnalyzerMetricsPrePayload(options);
-        console.log(options.userType +"aaaaa");
         assert.equal(options.userType, 'host');
         assert.equal(options.loginType, 'unverified-guest');
         meeting.roles = ['COHOST','ATTENDEE'];
