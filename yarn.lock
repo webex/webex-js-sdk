@@ -16250,15 +16250,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-junit@npm:^14.0.1":
-  version: 14.0.1
-  resolution: "jest-junit@npm:14.0.1"
+"jest-junit@npm:^16.0.0":
+  version: 16.0.0
+  resolution: "jest-junit@npm:16.0.0"
   dependencies:
     mkdirp: ^1.0.4
     strip-ansi: ^6.0.1
     uuid: ^8.3.2
     xml: ^1.0.1
-  checksum: 2a9ccfecbe4c0df1be24e64b3e12a260356db999b3d821578c325bd34367d2f54b27e9560a8d5abe6c19412400268bf55dd41473565903cb8f616d998f7eb9ac
+  checksum: 412aa4bfeec4254a9b34f417fda79107c7cbd295e56ffeb299ac9c977545910fbabe57c91c6cd1f12b700d4a1f60f79872b0075003f02da87d463e30fc2d9d78
   languageName: node
   linkType: hard
 
@@ -25878,7 +25878,7 @@ __metadata:
     jest: ^29.3.1
     jest-environment-jsdom: ^29.1.2
     jest-html-reporters: ^3.0.11
-    jest-junit: ^14.0.1
+    jest-junit: ^16.0.0
     jsdom: 19.0.0
     jsdom-global: 3.0.2
     karma: ^6.3.2
