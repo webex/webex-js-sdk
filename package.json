@@ -100,7 +100,7 @@
     "@types/shelljs": "^0",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
-    "@wdio/allure-reporter": "^7.19.5",
+    "@wdio/allure-reporter": "^8.8.2",
     "@wdio/browserstack-service": "^7.19.5",
     "@wdio/cli": "^7.19.6",
     "@wdio/firefox-profile-service": "^7.19.5",
