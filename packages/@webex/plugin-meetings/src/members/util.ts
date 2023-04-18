@@ -9,6 +9,7 @@ import {
   DIALER_REGEX,
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
+  ALIAS,
 } from '../constants';
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
@@ -174,6 +175,25 @@ MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locus
   locusUrl,
 });
 
+/**
+ * @param {String} memberId id of the participant who is receiving request
+ * @param {String} requestingParticipantId id of the participant who is sending request (optional)
+ * @param {String} alias alias name
+ * @param {String} locusUrl url
+ * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
+ */
+MembersUtil.generateEditDisplayNameMemberOptions = (
+  memberId,
+  requestingParticipantId,
+  alias,
+  locusUrl
+) => ({
+  memberId,
+  requestingParticipantId,
+  alias,
+  locusUrl,
+});
+
 MembersUtil.getMuteMemberRequestParams = (options) => {
   const property = options.isAudio === false ? 'video' : 'audio';
   const body = {
@@ -237,6 +257,24 @@ MembersUtil.getLowerAllHandsMemberRequestParams = (options) => {
 
   return {
     method: HTTP_VERBS.PATCH,
+    uri,
+    body,
+  };
+};
+
+/**
+ * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
+ * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
+ */
+MembersUtil.editDisplayNameMemberRequestParams = (options) => {
+  const body = {
+    aliasValue: options.alias,
+    requestingParticipantId: options.requestingParticipantId,
+  };
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
+
+  return {
+    method: HTTP_VERBS.POST,
     uri,
     body,
   };
