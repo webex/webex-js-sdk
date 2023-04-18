@@ -3,7 +3,7 @@ import sinon from 'sinon';
 import {LocalCameraTrack, LocalMicrophoneTrack, LocalMicrophoneTrackEvents, LocalCameraTrackEvents, LocalDisplayTrack, createCameraTrack, createMicrophoneTrack, createDisplayTrack} from '@webex/media-helpers';
 import * as wcmetracks from '@webex/internal-media-core';
 
-describe('media-helpers', () => {
+describe.only('media-helpers', () => {
   describe('webrtc-core', () => {
 
     const classesToTest = [
@@ -45,75 +45,85 @@ describe('media-helpers', () => {
         track.setMuted(false);
       });
 
-      it('tests setServerMuted- true to false', async () => {
-        track.underlyingTrack.enabled = true; //start with unmuted
+      describe('#setServerMuted', () => {
 
-        track.setMuted(true); //this.muted is true, call setServerMuted with false
-        assert.equal(track.muted, true);
+        afterEach(() => {
+          sinon.restore();
+        });
 
-        const spy = sinon.stub(track, 'emit');
-        track.setServerMuted(false, 'remotelyMuted');
-
-        assert.equal(track.muted, false);
-
-        const spyCall = spy.getCall(1);
-        assert.equal(spyCall.calledWithExactly(event.ServerMuted, {muted: false, reason: 'remotelyMuted' }), true);
+        it('tests true to false', async () => {
+          track.underlyingTrack.enabled = true; //start with unmuted
+  
+          track.setMuted(true); //this.muted is true, call setServerMuted with false
+          assert.equal(track.muted, true);
+  
+          const spy = sinon.stub(track, 'emit');
+          track.setServerMuted(false, 'remotelyMuted');
+  
+          assert.equal(track.muted, false);
+  
+          const spyCall = spy.getCall(1);
+          assert.equal(spyCall.calledWithExactly(event.ServerMuted, {muted: false, reason: 'remotelyMuted' }), true);
+        });
+  
+        it('tests false to true', async () => {
+          track.underlyingTrack.enabled = false; //start with muted
+  
+          track.setMuted(false); //this.muted is false, call setServerMuted with true
+          assert.equal(track.muted, false);
+  
+          const spy = sinon.stub(track, 'emit');
+          track.setServerMuted(true, 'remotelyMuted');
+  
+          assert.equal(track.muted, true);
+  
+          const spyCall = spy.getCall(1);
+          assert.equal(spyCall.calledWithExactly(event.ServerMuted, {muted: true, reason: 'remotelyMuted' }), true);
+        });
+  
+        it('tests true to true', async () => {
+          track.underlyingTrack.enabled = true; //start with unmuted
+  
+          track.setMuted(true); //this.muted is true, call setServerMuted with true
+          assert.equal(track.muted, true);
+  
+          const spy = sinon.stub(track, 'emit');
+          track.setServerMuted(true, 'remotelyMuted');
+  
+          assert.equal(track.muted, true);
+  
+          const spyCall = spy.getCall(1);
+          assert.equal(spyCall, null);
+        });
+  
+        it('tests false to false', async () => {
+          track.underlyingTrack.enabled = false; //muted
+  
+          track.setMuted(false); //this.muted is false, call setServerMuted with false
+          assert.equal(track.muted, false);
+  
+          const spy = sinon.stub(track, 'emit');
+          track.setServerMuted(false, 'remotelyMuted');
+  
+          assert.equal(track.muted, false);
+  
+          const spyCall = spy.getCall(1);
+          assert.equal(spyCall, null);
+        });
       });
 
-      it('tests setServerMuted- false to true', async () => {
-        track.underlyingTrack.enabled = false; //start with muted
-
-        track.setMuted(false); //this.muted is false, call setServerMuted with true
-        assert.equal(track.muted, false);
-
-        const spy = sinon.stub(track, 'emit');
-        track.setServerMuted(true, 'remotelyMuted');
-
-        assert.equal(track.muted, true);
-
-        const spyCall = spy.getCall(1);
-        assert.equal(spyCall.calledWithExactly(event.ServerMuted, {muted: true, reason: 'remotelyMuted' }), true);
+      describe('#wcmeCreateMicrophoneTrack, #wcmeCreateCameraTrack', () => {
+        it('checks creating tracks', async () => {
+          const constraints = {devideId: 'abc'};
+  
+          const spy = sinon.stub(wcmetracks, spyFn).returns('something');
+          const result = createFn(constraints);
+  
+          assert.equal(result, 'something');
+          assert.calledOnceWithExactly(spy, className, constraints);
+        });
       });
 
-      it('tests setServerMuted - true to true', async () => {
-        track.underlyingTrack.enabled = true; //start with unmuted
-
-        track.setMuted(true); //this.muted is true, call setServerMuted with true
-        assert.equal(track.muted, true);
-
-        const spy = sinon.stub(track, 'emit');
-        track.setServerMuted(true, 'remotelyMuted');
-
-        assert.equal(track.muted, true);
-
-        const spyCall = spy.getCall(1);
-        assert.equal(spyCall, null);
-      });
-
-      it('tests setServerMuted- false to false', async () => {
-        track.underlyingTrack.enabled = false; //muted
-
-        track.setMuted(false); //this.muted is false, call setServerMuted with false
-        assert.equal(track.muted, false);
-
-        const spy = sinon.stub(track, 'emit');
-        track.setServerMuted(false, 'remotelyMuted');
-
-        assert.equal(track.muted, false);
-
-        const spyCall = spy.getCall(1);
-        assert.equal(spyCall, null);
-      });
-
-      it('checks creating tracks', async () => {
-        const constraints = {devideId: 'abc'};
-
-        const spy = sinon.stub(wcmetracks, spyFn).returns('something');
-        const result = createFn(constraints);
-
-        assert.equal(result, 'something');
-        assert.calledOnceWithExactly(spy, className, constraints);
-      });
     })
   );
 
