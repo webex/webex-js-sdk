@@ -1018,4 +1018,39 @@ export default class Members extends StatelessWebexPlugin {
 
     return csis;
   }
+
+  /**
+   * Edit display name of participants in a meeting
+   * @param {string} memberId - id of the participant who is receiving request
+   * @param {string} requestingParticipantId - id of the participant who is sending request (optional)
+   * @param {string} [alias] - alias name
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public editDisplayName(memberId: string, requestingParticipantId: string, alias: string) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to edit display name of the member.')
+      );
+    }
+
+    const {locusUrl} = this;
+
+    const options = MembersUtil.generateEditDisplayNameMemberOptions(
+      memberId,
+      requestingParticipantId,
+      alias,
+      locusUrl
+    );
+
+    return this.membersRequest.editDisplayNameMember(options);
+  }
 }

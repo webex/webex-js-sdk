@@ -1174,7 +1174,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.destination,
         this.destinationType,
         password,
-        captchaInfo
+        captchaInfo,
+        // @ts-ignore - config coming from registerPlugin
+        this.config.installedOrgID
       );
 
       this.parseMeetingInfo(info, this.destination);
@@ -2336,6 +2338,10 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canUserAskForHelp: MeetingUtil.canUserAskForHelp(payload.info.userDisplayHints),
+          canUserRenameSelfAndObserved: MeetingUtil.canUserRenameSelfAndObserved(
+            payload.info.userDisplayHints
+          ),
+          canUserRenameOthers: MeetingUtil.canUserRenameOthers(payload.info.userDisplayHints),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
