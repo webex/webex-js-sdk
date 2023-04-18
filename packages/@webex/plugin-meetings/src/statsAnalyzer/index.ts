@@ -75,7 +75,7 @@ export class StatsAnalyzer extends EventsScope {
   statsInterval: NodeJS.Timeout;
   statsResults: any;
   statsStarted: any;
-  receiveSlotCallback: (csi: number) => ReceiveSlot;
+  receiveSlotCallback: (csi: number) => ReceiveSlot | undefined;
 
   /**
    * Creates a new instance of StatsAnalyzer
