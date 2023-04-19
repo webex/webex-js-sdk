@@ -151,4 +151,16 @@ export class ReceiveSlotManager {
       });
     });
   }
+
+  /**
+   * Find a receive slot by a ssrc.
+   *
+   * @param ssrc - The ssrc of the receive slot to find.
+   * @returns - The receive slot with this ssrc, undefined if not found.
+   */
+  findReceiveSlotBySsrc(ssrc: number): ReceiveSlot | undefined {
+    return Object.values(this.allocatedSlots)
+      .flat()
+      .find((r) => ssrc && r.wcmeReceiveSlot?.id?.ssrc === ssrc);
+  }
 }
