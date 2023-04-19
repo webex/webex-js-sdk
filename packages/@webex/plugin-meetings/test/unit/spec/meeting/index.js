@@ -2471,14 +2471,22 @@ describe('plugin-meetings', () => {
       });
 
       describe('#usePhoneAudio', () => {
+        const fakeAudioTrack = () => ({stop: () => {}});
+        let sandbox = null;
+
         beforeEach(() => {
-          meeting.meetingRequest.dialIn = sinon
-            .stub()
-            .returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.meetingRequest.dialOut = sinon
-            .stub()
-            .returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.locusInfo.onFullLocus = sinon.stub().returns(Promise.resolve());
+          sandbox = sinon.createSandbox();
+          sandbox.stub(meeting.meetingRequest, 'dialIn').returns(Promise.resolve({body: {locus: 'testData'}}));
+          sandbox.stub(meeting.meetingRequest, 'dialOut').returns(Promise.resolve({body: {locus: 'testData'}}));
+          sandbox.stub(meeting.locusInfo, 'onFullLocus').returns(Promise.resolve());
+          sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
+
+          meeting.mediaProperties.audioTrack = fakeAudioTrack;
+        });
+
+        afterEach(() => {
+          sandbox.restore();
+          sandbox = null;
         });
 
         it('with no parameters triggers dial-in, delegating request to meetingRequest correctly', async () => {
@@ -2493,6 +2501,7 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
+          assert.calledWith(Media.stopTracks, fakeAudioTrack)
 
           meeting.meetingRequest.dialIn.resetHistory();
           meeting.locusInfo.onFullLocus.resetHistory();
@@ -2508,6 +2517,7 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
+          assert.calledWith(Media.stopTracks, fakeAudioTrack)
         });
 
         it('given a phone number, triggers dial-out, delegating request to meetingRequest correctly', async () => {
@@ -2525,6 +2535,7 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
+          assert.calledWith(Media.stopTracks, fakeAudioTrack)
 
           meeting.meetingRequest.dialOut.resetHistory();
           meeting.locusInfo.onFullLocus.resetHistory();
@@ -2541,6 +2552,7 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
+          assert.calledWith(Media.stopTracks, fakeAudioTrack)
         });
 
         it('rejects if the request failed (dial in)', () => {
@@ -2553,6 +2565,7 @@ describe('plugin-meetings', () => {
             .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
             .catch((e) => {
               assert.equal(e, error);
+              assert.notCalled(Media.stopTracks)
 
               return Promise.resolve();
             });
@@ -2568,6 +2581,7 @@ describe('plugin-meetings', () => {
             .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
             .catch((e) => {
               assert.equal(e, error);
+              assert.notCalled(Media.stopTracks)
 
               return Promise.resolve();
             });
