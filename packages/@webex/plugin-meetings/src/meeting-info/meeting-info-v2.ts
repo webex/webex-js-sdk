@@ -11,6 +11,7 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
+const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
 
 /**
  * Error to indicate that wbxappapi requires a password
@@ -60,6 +61,30 @@ export class MeetingInfoV2AdhocMeetingError extends Error {
     this.sdkMessage = message;
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
+  }
+}
+
+/**
+ * Error preventing join because of a meeting policy
+ */
+export class MeetingInfoV2PolicyError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode: number, meetingInfo, message: string) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2AdhocMeetingError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
   }
 }
 
@@ -249,6 +274,19 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         if (err?.statusCode === 403) {
+          if (POLICY_ERROR_CODES.includes(err.body?.code)) {
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
+              reason: err.message,
+              stack: err.stack,
+            });
+
+            throw new MeetingInfoV2PolicyError(
+              err.body?.code,
+              err.body?.data?.meetingInfo,
+              err.body?.message
+            );
+          }
+
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,
             stack: err.stack,

@@ -52,6 +52,7 @@ const BEHAVIORAL_METRICS = {
   MOVE_FROM_SUCCESS: 'js_sdk_move_from_success',
   MOVE_FROM_FAILURE: 'js_sdk_move_from_failure',
   TURN_DISCOVERY_FAILURE: 'js_sdk_turn_discovery_failure',
+  MEETING_INFO_POLICY_ERROR: 'js_sdk_meeting_info_policy_error',
 };
 
 export {BEHAVIORAL_METRICS as default};

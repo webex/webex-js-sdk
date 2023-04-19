@@ -92,6 +92,7 @@ import MediaError from '../common/errors/media';
 import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
+  MeetingInfoV2PolicyError,
 } from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
@@ -113,6 +114,7 @@ import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
+import PermissionError from '../common/errors/permission';
 
 const {isBrowser} = BrowserDetection();
 
@@ -484,6 +486,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   meetingInfoFailureReason: string;
+  meetingInfoFailureCode: number;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -1203,7 +1206,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
       return Promise.resolve();
     } catch (err) {
-      if (err instanceof MeetingInfoV2PasswordError) {
+      if (err instanceof MeetingInfoV2PolicyError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.POLICY;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
