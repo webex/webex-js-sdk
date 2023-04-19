@@ -53,7 +53,12 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         const networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, networkQualityMonitor, defaultStats);
+        statsAnalyzer = new StatsAnalyzer(
+          initialConfig,
+          () => ({}),
+          networkQualityMonitor,
+          defaultStats
+        );
 
         sandBoxSpy = sandbox.spy(
           statsAnalyzer.networkQualityMonitor,
@@ -188,7 +193,7 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;
