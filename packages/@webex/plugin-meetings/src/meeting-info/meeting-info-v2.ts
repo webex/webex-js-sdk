@@ -68,9 +68,9 @@ export class MeetingInfoV2AdhocMeetingError extends Error {
  * Error preventing join because of a meeting policy
  */
 export class MeetingInfoV2PolicyError extends Error {
-  meetingInfo: any;
-  sdkMessage: any;
-  wbxAppApiCode: any;
+  meetingInfo: object;
+  sdkMessage: string;
+  wbxAppApiCode: number;
   /**
    *
    * @constructor
@@ -78,7 +78,7 @@ export class MeetingInfoV2PolicyError extends Error {
    * @param {Object} [meetingInfo]
    * @param {String} [message]
    */
-  constructor(wbxAppApiErrorCode: number, meetingInfo, message: string) {
+  constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
     this.name = 'MeetingInfoV2AdhocMeetingError';
     this.sdkMessage = message;
@@ -276,8 +276,7 @@ export default class MeetingInfoV2 {
         if (err?.statusCode === 403) {
           if (POLICY_ERROR_CODES.includes(err.body?.code)) {
             Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
-              reason: err.message,
-              stack: err.stack,
+              code: err.body?.code,
             });
 
             throw new MeetingInfoV2PolicyError(

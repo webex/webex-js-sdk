@@ -3109,6 +3109,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403004);
           assert.equal(
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
@@ -3175,6 +3176,7 @@ describe('plugin-meetings', () => {
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
           );
+            assert.equal(meeting.meetingInfoFailureCode, 423005);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.deepEqual(meeting.requiredCaptcha, {
             captchaId: FAKE_CAPTCHA_ID,

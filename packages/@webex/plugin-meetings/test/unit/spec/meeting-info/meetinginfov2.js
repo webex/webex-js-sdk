@@ -324,8 +324,9 @@ describe('plugin-meetings', () => {
               assert(Metrics.sendBehavioralMetric.calledOnce);
               assert.calledWith(
                 Metrics.sendBehavioralMetric,
-                BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR
-              );
+                BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+                );
             }
           });
         }

@@ -1088,6 +1088,15 @@ export default class Meeting extends StatelessWebexPlugin {
     this.meetingInfoFailureReason = undefined;
 
     /**
+     * The numeric code, if any, associated with the last failure to obtain the meeting info
+     * @instance
+     * @type {number}
+     * @private
+     * @memberof Meeting
+     */
+    this.meetingInfoFailureCode = undefined;
+
+    /**
      * Repeating timer used to send keepAlives when in lobby
      * @instance
      * @type {String}
@@ -1227,6 +1236,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingNumber = err.meetingInfo.meetingNumber;
         }
 
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
         this.passwordStatus = PASSWORD_STATUS.REQUIRED;
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
         if (this.requiredCaptcha) {
@@ -1244,6 +1255,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = this.requiredCaptcha
           ? MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA
           : MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
+
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.isPasswordRequired) {
           this.passwordStatus = PASSWORD_STATUS.REQUIRED;
