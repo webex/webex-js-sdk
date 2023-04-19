@@ -510,11 +510,10 @@ describe('plugin-meetings', () => {
   });
 });
 
-describe.only('#init, #handleLocalTrackChange', () => {
+describe('#init, #handleLocalTrackChange', () => {
   let meeting;
   let muteState;
-  let originalRemoteUpdateAudioVideo;
-  let applyUnmuteAllowedToTrackSpy, muteLocalTrackSpy, applyClientStateToServerSpy, setServerMutedSpy;
+  let setServerMutedSpy;
   let setMutedSpy, setUnmuteAllowedSpy;
   const fakeLocus = {info: 'this is a fake locus'};
 
