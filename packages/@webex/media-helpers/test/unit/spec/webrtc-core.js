@@ -17,6 +17,7 @@ describe('media-helpers', () => {
         getTracks: sinon.stub().returns([{
           label: 'fake track',
           id: 'fake track id',
+          enabled: true,
         }])
       };
       const track = new className(fakeStream);
@@ -42,7 +43,7 @@ describe('media-helpers', () => {
         track.setUnmuteAllowed(true);
 
         assert.equal(track.isUnmuteAllowed(), true);
-        track.setMuted(false);
+        await track.setMuted(false);
       });
 
       describe('#setServerMuted', () => {
@@ -51,21 +52,18 @@ describe('media-helpers', () => {
           sinon.restore();
         });
 
-        const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
-          track.underlyingTrack.enabled = startMute;
-
-          track.setMuted(startMute);
+        const checkSetServerMuted = async (startMute, setMute, expectedCalled) => {
+          await track.setMuted(startMute);
 
           assert.equal(track.muted, startMute);
 
           const handler = sinon.fake();
           track.on(event.ServerMuted, handler);
 
-          track.setServerMuted(setMute, 'remotelyMuted');
+          await track.setServerMuted(setMute, 'remotelyMuted');
 
           assert.equal(track.muted, setMute);
           if (expectedCalled) {
-            assert.called(handler);
             assert.calledOnceWithExactly(handler, {muted: setMute, reason: 'remotelyMuted'});
           } else {
             assert.notCalled(handler);
@@ -73,19 +71,19 @@ describe('media-helpers', () => {
         };
 
         it('tests true to false', async () => {
-          checkSetServerMuted(true, false, true);
+          await checkSetServerMuted(true, false, true);
         });
   
         it('tests false to true', async () => {
-          checkSetServerMuted(false, true, true);
+          await checkSetServerMuted(false, true, true);
         });
   
         it('tests true to true', async () => {
-          checkSetServerMuted(true, true, false);
+          await checkSetServerMuted(true, true, false);
         });
   
         it('tests false to false', async () => {
-          checkSetServerMuted(false, false, false);
+          await checkSetServerMuted(false, false, false);
         });
       });
 
