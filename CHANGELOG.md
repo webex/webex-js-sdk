@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.52.10](https://github.com/webex/webex-js-sdk/compare/v2.52.9...v2.52.10) (2023-04-20)
+
+
+### Bug Fixes
+
+* echo problem solve when usePhoneAudio is used ([#2759](https://github.com/webex/webex-js-sdk/issues/2759)) ([a780e95](https://github.com/webex/webex-js-sdk/commit/a780e959f1396e88ec0c47fa449b981962c1de0d))
+
 ### [2.52.9](https://github.com/webex/webex-js-sdk/compare/v2.52.8...v2.52.9) (2023-04-17)
 
 
