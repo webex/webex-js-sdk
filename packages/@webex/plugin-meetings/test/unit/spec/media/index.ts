@@ -119,6 +119,7 @@ describe('createMediaConnection', () => {
         username: 'turn username',
         password: 'turn password',
       },
+      bundlePolicy: 'max-bundle',
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
@@ -133,6 +134,7 @@ describe('createMediaConnection', () => {
         ],
         enableMainAudio: true,
         enableMainVideo: true,
+        bundlePolicy: 'max-bundle',
       },
       'some debug id'
     );

@@ -1484,6 +1484,48 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        it('should pass bundlePolicy to createMediaConnection', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+
+          meeting.meetingState = 'ACTIVE';
+          Media.createMediaConnection.resetHistory();
+
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnServerSkippedReason: undefined,
+          });
+          const media = meeting.addMedia({
+            mediaSettings: {},
+            bundlePolicy: 'bundlePolicy-value',
+          });
+
+          assert.exists(media);
+          await media;
+          assert.calledOnce(meeting.roap.doTurnDiscovery);
+          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+          assert.calledOnce(Media.createMediaConnection);
+          assert.calledWith(
+            Media.createMediaConnection,
+            false,
+            meeting.getMediaConnectionDebugId(),
+            sinon.match({
+              turnServerInfo: {
+                url: FAKE_TURN_URL,
+                username: FAKE_TURN_USER,
+                password: FAKE_TURN_PASSWORD,
+              },
+              bundlePolicy: 'bundlePolicy-value',
+            })
+          );
+          assert.calledOnce(fakeMediaConnection.initiateOffer);
+        });
       });
       describe('#acknowledge', () => {
         it('should have #acknowledge', () => {

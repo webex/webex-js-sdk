@@ -19,6 +19,10 @@ import BrowserDetection from '../common/browser-detection';
 
 const {isBrowser} = BrowserDetection();
 
+export type BundlePolicy = ConstructorParameters<
+  typeof MultistreamRoapMediaConnection
+>[0]['bundlePolicy'];
+
 /**
  * MediaDirection
  * @typedef {Object} MediaDirection
@@ -111,6 +115,7 @@ Media.getLocalMedia = (options: any, config: object) => {
  * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
  * @param {boolean} [options.enableExtmap] applicable only to non-multistream connections
  * @param {Object} [options.turnServerInfo]
+ * @param {BundlePolicy} [options.bundlePolicy]
  * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
  */
 Media.createMediaConnection = (
@@ -138,9 +143,17 @@ Media.createMediaConnection = (
       username: string;
       password: string;
     };
+    bundlePolicy?: BundlePolicy;
   }
 ) => {
-  const {mediaProperties, remoteQualityLevel, enableRtx, enableExtmap, turnServerInfo} = options;
+  const {
+    mediaProperties,
+    remoteQualityLevel,
+    enableRtx,
+    enableExtmap,
+    turnServerInfo,
+    bundlePolicy,
+  } = options;
 
   const iceServers = [];
 
@@ -160,6 +173,7 @@ Media.createMediaConnection = (
           mediaProperties.mediaDirection?.sendAudio || mediaProperties.mediaDirection?.receiveAudio,
         enableMainVideo:
           mediaProperties.mediaDirection?.sendVideo || mediaProperties.mediaDirection?.receiveVideo,
+        bundlePolicy,
       },
       debugId
     );
