@@ -21,10 +21,12 @@ import MeetingInfo, {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
+  MeetingInfoV2PolicyError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import { forEach } from 'lodash';
 
 describe('plugin-meetings', () => {
   const conversation = {
@@ -285,6 +287,51 @@ describe('plugin-meetings', () => {
           assert.equal(err.wbxAppApiCode, 400000);
         }
       });
+
+      forEach(
+        [
+          {errorCode: 403049},
+          {errorCode: 403104},
+          {errorCode: 403103},
+          {errorCode: 403048},
+          {errorCode: 403102},
+          {errorCode: 403101},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = 'meeting info';
+
+            webex.request = sinon
+              .stub()
+              .rejects({
+                statusCode: 403,
+                body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+              });
+            try {
+              await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+                id: '999',
+                code: 'aabbcc11',
+              });
+              assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2PolicyError);
+              assert.deepEqual(
+                err.message,
+                `${message}, code=${errorCode}`
+              );
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+                );
+            }
+          });
+        }
+      );
 
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};

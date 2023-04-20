@@ -92,6 +92,7 @@ import MediaError from '../common/errors/media';
 import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
+  MeetingInfoV2PolicyError,
 } from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
@@ -113,6 +114,7 @@ import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
+import PermissionError from '../common/errors/permission';
 
 const {isBrowser} = BrowserDetection();
 
@@ -484,6 +486,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   meetingInfoFailureReason: string;
+  meetingInfoFailureCode?: number;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -1085,6 +1088,15 @@ export default class Meeting extends StatelessWebexPlugin {
     this.meetingInfoFailureReason = undefined;
 
     /**
+     * The numeric code, if any, associated with the last failure to obtain the meeting info
+     * @instance
+     * @type {number}
+     * @private
+     * @memberof Meeting
+     */
+    this.meetingInfoFailureCode = undefined;
+
+    /**
      * Repeating timer used to send keepAlives when in lobby
      * @instance
      * @type {String}
@@ -1203,7 +1215,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
       return Promise.resolve();
     } catch (err) {
-      if (err instanceof MeetingInfoV2PasswordError) {
+      if (err instanceof MeetingInfoV2PolicyError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.POLICY;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
@@ -1214,6 +1235,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfo = err.meetingInfo;
           this.meetingNumber = err.meetingInfo.meetingNumber;
         }
+
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         this.passwordStatus = PASSWORD_STATUS.REQUIRED;
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
@@ -1232,6 +1255,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = this.requiredCaptcha
           ? MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA
           : MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
+
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.isPasswordRequired) {
           this.passwordStatus = PASSWORD_STATUS.REQUIRED;
