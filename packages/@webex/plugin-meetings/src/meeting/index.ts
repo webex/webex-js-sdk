@@ -486,7 +486,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   meetingInfoFailureReason: string;
-  meetingInfoFailureCode: number;
+  meetingInfoFailureCode?: number;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
