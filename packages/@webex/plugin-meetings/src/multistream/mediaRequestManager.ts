@@ -175,6 +175,15 @@ export class MediaRequestManager {
     );
   }
 
+  /**
+   * Clears the previous media requests.
+   *
+   * @returns {void}
+   */
+  public clearPreviousRequests(): void {
+    this.previousWCMEMediaRequests = [];
+  }
+
   private sendRequests() {
     const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
@@ -214,7 +223,7 @@ export class MediaRequestManager {
       );
     });
 
-    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/jmp-multistream)
+    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
     // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
     if (!this.checkIsNewRequestsEqualToPrev(wcmeMediaRequests)) {
       this.sendMediaRequestsCallback(wcmeMediaRequests);

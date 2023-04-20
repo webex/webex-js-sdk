@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.74](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.73...v3.0.0-beta.74) (2023-04-19)
+
+
+### Bug Fixes
+
+* **meetings:** don't fetch mtg info if we know we can't ([#2702](https://github.com/webex/webex-js-sdk/issues/2702)) ([d72aae2](https://github.com/webex/webex-js-sdk/commit/d72aae20d4caee1cd7a9eceaf64fc9a65aa47b0a))
+
+## [3.0.0-beta.73](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.72...v3.0.0-beta.73) (2023-04-18)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** clear previous requests after reconnection ([#2750](https://github.com/webex/webex-js-sdk/issues/2750)) ([13f32b3](https://github.com/webex/webex-js-sdk/commit/13f32b3a3d579097e8ac0da5744a5bd504c209f5))
+
 ## [3.0.0-beta.72](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.71...v3.0.0-beta.72) (2023-04-17)
 
 

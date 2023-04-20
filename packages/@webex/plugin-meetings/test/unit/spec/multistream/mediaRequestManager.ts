@@ -572,7 +572,6 @@ describe('MediaRequestManager', () => {
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
 
-
     mediaRequestManager.commit();
     checkMediaRequestsSent([
       {
@@ -601,7 +600,6 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
-
     // check that when calling commit()
     // all requests are not re-sent again (avoid duplicate requests)
     mediaRequestManager.commit();
@@ -621,7 +619,6 @@ describe('MediaRequestManager', () => {
 
     assert.notCalled(sendMediaRequestsCallback);
 
-
     mediaRequestManager.commit();
     checkMediaRequestsSent([
       {
@@ -635,11 +632,11 @@ describe('MediaRequestManager', () => {
     // now reset everything
     mediaRequestManager.reset();
 
-     // calling commit now should not cause any requests to be sent out
-     mediaRequestManager.commit();
-     checkMediaRequestsSent([]);
+    // calling commit now should not cause any requests to be sent out
+    mediaRequestManager.commit();
+    checkMediaRequestsSent([]);
 
-     //add new request
+    //add new request
     addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
 
     // commit
@@ -653,8 +650,38 @@ describe('MediaRequestManager', () => {
         receiveSlot: fakeWcmeSlots[1],
         maxFs: RECEIVER_SELECTED_MAX_FS,
       },
-    ])
-  })
+    ]);
+  });
+
+  it('can send same media request after previous requests have been cleared', () => {
+    // add a request and commit
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+    mediaRequestManager.commit();
+    checkMediaRequestsSent([
+      {
+        policy: 'receiver-selected',
+        csi: 1500,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+    ]);
+
+    // clear previous requests
+    mediaRequestManager.clearPreviousRequests();
+
+    // commit same request
+    mediaRequestManager.commit();
+
+    // check the request was sent
+    checkMediaRequestsSent([
+      {
+        policy: 'receiver-selected',
+        csi: 1500,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: RECEIVER_SELECTED_MAX_FS,
+      },
+    ]);
+  });
 
   it('re-sends media requests after degradation preferences are set', () => {
     // set max macroblocks limit
@@ -785,7 +812,6 @@ describe('MediaRequestManager', () => {
 
     sendMediaRequestsCallback.resetHistory();
 
-
     const maxFsHandlerCall = fakeReceiveSlots[0].on.getCall(1);
 
     const maxFsHandler = maxFsHandlerCall.args[1];
@@ -812,5 +838,4 @@ describe('MediaRequestManager', () => {
       },
     ]);
   });
-
 });
