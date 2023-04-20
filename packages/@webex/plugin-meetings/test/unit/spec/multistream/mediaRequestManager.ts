@@ -973,7 +973,7 @@ describe('MediaRequestManager', () => {
             // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
             maxPayloadBitsPerSecond: 64000,
           },
-          // set isCodecInfoDefined to false, since we don't pass in a codec info when audi:
+          // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
         ],
         false
       );
