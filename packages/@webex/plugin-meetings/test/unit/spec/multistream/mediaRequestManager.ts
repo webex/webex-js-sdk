@@ -11,20 +11,18 @@ type ExpectedActiveSpeaker = {
   maxPayloadBitsPerSecond?: number;
   priority: number;
   receiveSlots: Array<ReceiveSlot>;
-  maxFs: number;
-  maxMbps: number;
+  maxFs?: number;
+  maxMbps?: number;
 };
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';
   maxPayloadBitsPerSecond?: number;
   csi: number;
   receiveSlot: ReceiveSlot;
-  maxFs: number;
-  maxMbps: number;
+  maxFs?: number;
+  maxMbps?: number;
 };
 type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
-
-const maxPayloadBitsPerSecond = 10 * 1000 * 1000; // for now we always send this fixed constant
 
 const degradationPreferences = {
   maxMacroblocksLimit: Infinity, // no limit
@@ -34,8 +32,16 @@ describe('MediaRequestManager', () => {
   const CROSS_PRIORITY_DUPLICATION = true;
   const CROSS_POLICY_DUPLICATION = true;
   const PREFER_LIVE_VIDEO = true;
-  const ACTIVE_SPEAKER_MAX_FS = 3600;
-  const RECEIVER_SELECTED_MAX_FS = 8190;
+  const MAX_FPS = 3000;
+  const MAX_FS_360p = 920;
+  const MAX_FS_720p = 3600;
+  const MAX_FS_1080p = 8192;
+  const MAX_MBPS_360p = 27600;
+  const MAX_MBPS_720p = 108000;
+  const MAX_MBPS_1080p = 245760;
+  const MAX_PAYLOADBITSPS_360p = 640000;
+  const MAX_PAYLOADBITSPS_720p = 2500000;
+  const MAX_PAYLOADBITSPS_1080p = 4000000;
 
   const NUM_SLOTS = 10;
 
@@ -114,7 +120,10 @@ describe('MediaRequestManager', () => {
   // It should be used only for verifying requests created with
   // addActiveSpeakerRequest() or addReceiverSelectedRequest(), because of some
   // hardcoded values used in them
-  const checkMediaRequestsSent = (expectedRequests: ExpectedRequest[]) => {
+  const checkMediaRequestsSent = (
+    expectedRequests: ExpectedRequest[],
+    isCodecInfoDefined: boolean = true
+  ) => {
     assert.calledOnce(sendMediaRequestsCallback);
     assert.calledWith(
       sendMediaRequestsCallback,
@@ -129,17 +138,18 @@ describe('MediaRequestManager', () => {
               preferLiveVideo: PREFER_LIVE_VIDEO,
             }),
             receiveSlots: expectedRequest.receiveSlots,
-            maxPayloadBitsPerSecond:
-              expectedRequest.maxPayloadBitsPerSecond || maxPayloadBitsPerSecond,
-            codecInfos: [
-              sinon.match({
-                payloadType: 0x80,
-                h264: sinon.match({
-                  maxMbps: expectedRequest.maxMbps,
-                  maxFs: expectedRequest.maxFs,
-                }),
-              }),
-            ],
+            maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond,
+            codecInfos: isCodecInfoDefined
+              ? [
+                  sinon.match({
+                    payloadType: 0x80,
+                    h264: sinon.match({
+                      maxMbps: expectedRequest.maxMbps,
+                      maxFs: expectedRequest.maxFs,
+                    }),
+                  }),
+                ]
+              : [],
           });
         }
         if (expectedRequest.policy === 'receiver-selected') {
@@ -149,17 +159,18 @@ describe('MediaRequestManager', () => {
               csi: expectedRequest.csi,
             }),
             receiveSlots: [expectedRequest.receiveSlot],
-            maxPayloadBitsPerSecond:
-              expectedRequest.maxPayloadBitsPerSecond || maxPayloadBitsPerSecond,
-            codecInfos: [
-              sinon.match({
-                payloadType: 0x80,
-                h264: sinon.match({
-                  maxMbps: expectedRequest.maxMbps,
-                  maxFs: expectedRequest.maxFs,
-                }),
-              }),
-            ],
+            maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond,
+            codecInfos: isCodecInfoDefined
+              ? [
+                  sinon.match({
+                    payloadType: 0x80,
+                    h264: sinon.match({
+                      maxMbps: expectedRequest.maxMbps,
+                      maxFs: expectedRequest.maxFs,
+                    }),
+                  }),
+                ]
+              : [],
           });
         }
 
@@ -193,8 +204,8 @@ describe('MediaRequestManager', () => {
         receiveSlots: [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
         codecInfo: {
           codec: 'h264',
-          maxFs: 1620,
-          maxFps: 1500,
+          maxFs: MAX_FS_360p,
+          maxFps: MAX_FPS,
         },
       },
       false
@@ -208,9 +219,9 @@ describe('MediaRequestManager', () => {
         receiveSlots: [fakeReceiveSlots[3]],
         codecInfo: {
           codec: 'h264',
-          maxFs: 3600,
-          maxFps: 2500,
-          maxMbps: 90000,
+          maxFs: MAX_FS_720p,
+          maxFps: MAX_FPS,
+          maxMbps: MAX_MBPS_720p,
         },
       },
       false
@@ -226,9 +237,9 @@ describe('MediaRequestManager', () => {
         receiveSlots: [fakeReceiveSlots[4]],
         codecInfo: {
           codec: 'h264',
-          maxFs: 8192,
-          maxFps: 2500,
-          maxMbps: 204800,
+          maxFs: MAX_FS_1080p,
+          maxFps: MAX_FPS,
+          maxMbps: MAX_MBPS_1080p,
         },
       },
       true
@@ -246,14 +257,14 @@ describe('MediaRequestManager', () => {
           preferLiveVideo: false,
         }),
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
-        maxPayloadBitsPerSecond: 720000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
         codecInfos: [
           sinon.match({
             payloadType: 0x80,
             h264: sinon.match({
-              maxFs: 1620,
-              maxFps: 1500,
-              maxMbps: 24300,
+              maxFs: MAX_FS_360p,
+              maxFps: MAX_FPS,
+              maxMbps: MAX_MBPS_360p,
             }),
           }),
         ],
@@ -264,14 +275,14 @@ describe('MediaRequestManager', () => {
           csi: 123,
         }),
         receiveSlots: [fakeWcmeSlots[3]],
-        maxPayloadBitsPerSecond: 2500000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         codecInfos: [
           sinon.match({
             payloadType: 0x80,
             h264: sinon.match({
-              maxFs: 3600,
-              maxFps: 2500,
-              maxMbps: 90000,
+              maxFs: MAX_FS_720p,
+              maxFps: MAX_FPS,
+              maxMbps: MAX_MBPS_720p,
             }),
           }),
         ],
@@ -282,14 +293,14 @@ describe('MediaRequestManager', () => {
           csi: 123,
         }),
         receiveSlots: [fakeWcmeSlots[4]],
-        maxPayloadBitsPerSecond: 4000000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         codecInfos: [
           sinon.match({
             payloadType: 0x80,
             h264: sinon.match({
-              maxFs: 8192,
-              maxFps: 2500,
-              maxMbps: 204800,
+              maxFs: MAX_FS_1080p,
+              maxFps: MAX_FPS,
+              maxMbps: MAX_MBPS_1080p,
             }),
           }),
         ],
@@ -299,38 +310,38 @@ describe('MediaRequestManager', () => {
 
   it('keeps adding requests with every call to addRequest()', () => {
     // start with 1 request
-    addReceiverSelectedRequest(100, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, true);
+    addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_1080p, true);
 
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
     // now add another one
-    addReceiverSelectedRequest(101, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, true);
+    addReceiverSelectedRequest(101, fakeReceiveSlots[1], MAX_FS_1080p, true);
 
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 101,
         receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
@@ -338,7 +349,7 @@ describe('MediaRequestManager', () => {
     addActiveSpeakerRequest(
       1,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       true
     );
 
@@ -347,43 +358,35 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 101,
         receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'active-speaker',
         priority: 1,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
     ]);
   });
 
   it('cancels the requests correctly when cancelRequest() is called with commit=true', () => {
     const requestIds = [
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[0], fakeReceiveSlots[1]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addActiveSpeakerRequest(
-        255,
-        [fakeReceiveSlots[2], fakeReceiveSlots[3]],
-        ACTIVE_SPEAKER_MAX_FS
-      ),
-      addReceiverSelectedRequest(100, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS),
-      addReceiverSelectedRequest(200, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS),
+      addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]], MAX_FS_720p),
+      addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p),
+      addReceiverSelectedRequest(100, fakeReceiveSlots[4], MAX_FS_1080p),
+      addReceiverSelectedRequest(200, fakeReceiveSlots[5], MAX_FS_1080p),
     ];
 
     // cancel one of the active speaker requests
@@ -395,25 +398,25 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[4],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 200,
         receiveSlot: fakeWcmeSlots[5],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
@@ -426,17 +429,17 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[4],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
@@ -445,10 +448,10 @@ describe('MediaRequestManager', () => {
     addActiveSpeakerRequest(
       10,
       [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       false
     );
-    addReceiverSelectedRequest(123, fakeReceiveSlots[3], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(123, fakeReceiveSlots[3], MAX_FS_1080p, false);
 
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
@@ -462,17 +465,17 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 10,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'receiver-selected',
         csi: 123,
         receiveSlot: fakeWcmeSlots[3],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
@@ -483,12 +486,12 @@ describe('MediaRequestManager', () => {
       addActiveSpeakerRequest(
         250,
         [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
-        ACTIVE_SPEAKER_MAX_FS,
+        MAX_FS_720p,
         false
       ),
-      addReceiverSelectedRequest(98765, fakeReceiveSlots[3], RECEIVER_SELECTED_MAX_FS, false),
-      addReceiverSelectedRequest(99999, fakeReceiveSlots[4], RECEIVER_SELECTED_MAX_FS, false),
-      addReceiverSelectedRequest(88888, fakeReceiveSlots[5], RECEIVER_SELECTED_MAX_FS, true),
+      addReceiverSelectedRequest(98765, fakeReceiveSlots[3], MAX_FS_1080p, false),
+      addReceiverSelectedRequest(99999, fakeReceiveSlots[4], MAX_FS_1080p, false),
+      addReceiverSelectedRequest(88888, fakeReceiveSlots[5], MAX_FS_1080p, true),
     ];
 
     checkMediaRequestsSent([
@@ -496,33 +499,33 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 250,
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'receiver-selected',
         csi: 98765,
         receiveSlot: fakeWcmeSlots[3],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 99999,
         receiveSlot: fakeWcmeSlots[4],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 88888,
         receiveSlot: fakeWcmeSlots[5],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
@@ -541,27 +544,27 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 98765,
         receiveSlot: fakeWcmeSlots[3],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
 
   it('sends the wcme media requests when commit() is called', () => {
     // send some requests, all of them with commit=false
-    addReceiverSelectedRequest(123000, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
-    addReceiverSelectedRequest(456000, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(123000, fakeReceiveSlots[0], MAX_FS_1080p, false);
+    addReceiverSelectedRequest(456000, fakeReceiveSlots[1], MAX_FS_1080p, false);
     addActiveSpeakerRequest(
       255,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       false
     );
     addActiveSpeakerRequest(
       254,
       [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       false
     );
 
@@ -577,51 +580,51 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 123000,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 456000,
         receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'active-speaker',
         priority: 254,
         receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
     ]);
   });
 
   it('avoids sending duplicate requests and clears all the requests on reset()', () => {
     // send some requests and commit them one by one
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
+    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
     addActiveSpeakerRequest(
       255,
       [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       false
     );
     addActiveSpeakerRequest(
       254,
       [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
-      ACTIVE_SPEAKER_MAX_FS,
+      MAX_FS_720p,
       false
     );
 
@@ -634,33 +637,33 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 1500,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'receiver-selected',
         csi: 1501,
         receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
       {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'active-speaker',
         priority: 254,
         receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
-        maxPayloadBitsPerSecond: 2500000,
-        maxFs: ACTIVE_SPEAKER_MAX_FS,
-        maxMbps: 108000
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
       },
     ]);
 
@@ -679,7 +682,7 @@ describe('MediaRequestManager', () => {
   });
 
   it('makes sure to call requests correctly after reset was called and another request was added', () => {
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
 
     assert.notCalled(sendMediaRequestsCallback);
 
@@ -689,9 +692,9 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 1500,
         receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
@@ -703,7 +706,7 @@ describe('MediaRequestManager', () => {
     checkMediaRequestsSent([]);
 
     //add new request
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
 
     // commit
     mediaRequestManager.commit();
@@ -714,25 +717,25 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 1501,
         receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: 4000000,
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
 
   it('can send same media request after previous requests have been cleared', () => {
     // add a request and commit
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], RECEIVER_SELECTED_MAX_FS, false);
+    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
     mediaRequestManager.commit();
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
         csi: 1500,
-        maxPayloadBitsPerSecond: 4000000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         receiveSlot: fakeWcmeSlots[0],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
 
@@ -747,10 +750,10 @@ describe('MediaRequestManager', () => {
       {
         policy: 'receiver-selected',
         csi: 1500,
-        maxPayloadBitsPerSecond: 4000000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         receiveSlot: fakeWcmeSlots[0],
-        maxFs: RECEIVER_SELECTED_MAX_FS,
-        maxMbps: 245700
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
@@ -780,9 +783,9 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 4),
-        maxPayloadBitsPerSecond: 4000000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         maxFs: getMaxFs('large'),
-        maxMbps: 245760
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
@@ -809,17 +812,17 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 3),
-        maxPayloadBitsPerSecond: 2500000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         maxFs: getMaxFs('medium'),
-        maxMbps: 108000
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'receiver-selected',
         csi: 123,
         receiveSlot: fakeWcmeSlots[3],
-        maxPayloadBitsPerSecond: 2500000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         maxFs: getMaxFs('medium'),
-        maxMbps: 108000
+        maxMbps: MAX_MBPS_720p,
       },
     ]);
 
@@ -832,9 +835,9 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 3),
-        maxPayloadBitsPerSecond: 4000000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         maxFs: getMaxFs('large'),
-        maxMbps: 245760
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
   });
@@ -853,9 +856,9 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 10),
-        maxPayloadBitsPerSecond: 640000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
         maxFs: getMaxFs('small'),
-        maxMbps: 27600
+        maxMbps: MAX_MBPS_360p,
       },
     ]);
   });
@@ -875,17 +878,17 @@ describe('MediaRequestManager', () => {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 5),
-        maxPayloadBitsPerSecond: 2500000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         maxFs: getMaxFs('medium'),
-        maxMbps: 108000
+        maxMbps: MAX_MBPS_720p,
       },
       {
         policy: 'active-speaker',
         priority: 254,
         receiveSlots: fakeWcmeSlots.slice(5, 10),
-        maxPayloadBitsPerSecond: 640000,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
         maxFs: getMaxFs('small'),
-        maxMbps: 27600
+        maxMbps: MAX_MBPS_360p,
       },
     ]);
   });
@@ -922,7 +925,7 @@ describe('MediaRequestManager', () => {
         receiveSlots: fakeWcmeSlots.slice(0, 10),
         maxFs: preferredFrameSize,
         maxPayloadBitsPerSecond: 99000,
-        maxMbps: 3000
+        maxMbps: 3000,
       },
     ]);
   });
@@ -937,14 +940,12 @@ describe('MediaRequestManager', () => {
         'getRecommendedMaxBitrateForFrameSize'
       );
     });
-    
+
     afterEach(() => {
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
-    })
+    });
 
     it('returns the default maxPayloadBitsPerSecond if kind is "audio"', () => {
-      const maxFs = 3600;
-      const maxMbps = 90000;
       const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, {
         degradationPreferences,
         kind: 'audio',
@@ -956,36 +957,31 @@ describe('MediaRequestManager', () => {
             csi: 123,
           },
           receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: {
-            codec: 'h264',
-            maxFs,
-            maxFps: 2500,
-            maxMbps,
-          },
+          codecInfo: undefined,
         },
         false
       );
 
       mediaRequestManagerAudio.commit();
 
-      checkMediaRequestsSent([
-        {
-          policy: 'receiver-selected',
-          csi: 123,
-          receiveSlot: fakeWcmeSlots[0],
-          // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
-          maxPayloadBitsPerSecond: 64000,
-          maxFs,
-          maxMbps
-        },
-      ]);
+      checkMediaRequestsSent(
+        [
+          {
+            policy: 'receiver-selected',
+            csi: 123,
+            receiveSlot: fakeWcmeSlots[0],
+            // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
+            maxPayloadBitsPerSecond: 64000,
+          },
+          // set isCodecInfoDefined to false, since we don't pass in a codec info when audi:
+        ],
+        false
+      );
 
       assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
     });
 
     it('returns the recommended maxPayloadBitsPerSecond if kind is "video"', () => {
-      const maxFs = 8192;
-      const maxMbps = 245760;
       mediaRequestManager.addRequest(
         {
           policyInfo: {
@@ -995,9 +991,9 @@ describe('MediaRequestManager', () => {
           receiveSlots: [fakeReceiveSlots[0]],
           codecInfo: {
             codec: 'h264',
-            maxFs,
-            maxFps: 3000,
-            maxMbps,
+            maxFs: MAX_FS_1080p,
+            maxFps: MAX_FPS,
+            maxMbps: MAX_MBPS_1080p,
           },
         },
         false
@@ -1010,15 +1006,15 @@ describe('MediaRequestManager', () => {
           policy: 'receiver-selected',
           csi: 123,
           receiveSlot: fakeWcmeSlots[0],
-          maxPayloadBitsPerSecond: 4000000,
-          maxFs,
-          maxMbps
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+          maxFs: MAX_FS_1080p,
+          maxMbps: MAX_MBPS_1080p,
         },
       ]);
 
-      // calls the utility function as expected with maxFs passed in (no need to do 
+      // calls the utility function as expected with maxFs passed in (no need to do
       // further tests here, since the util function itself should be tested for different inputs)
-      assert.calledWith(getRecommendedMaxBitrateForFrameSizeSpy, maxFs);
+      assert.calledWith(getRecommendedMaxBitrateForFrameSizeSpy, MAX_FS_1080p);
     });
   });
 
@@ -1027,48 +1023,7 @@ describe('MediaRequestManager', () => {
       sendMediaRequestsCallback.resetHistory();
     });
 
-    it('returns the passed in maxMbps if kind is "audio"', () => {
-      const maxFs = 3600;
-      // use a arbitrary mbps value here to show that it is passed through:
-      const maxMbps = 123;
-
-      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, {
-        degradationPreferences,
-        kind: 'audio',
-      });
-      mediaRequestManagerAudio.addRequest(
-        {
-          policyInfo: {
-            policy: 'receiver-selected',
-            csi: 123,
-          },
-          receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: {
-            codec: 'h264',
-            maxFs,
-            maxFps: 2500,
-            maxMbps,
-          },
-        },
-        false
-      );
-
-      mediaRequestManagerAudio.commit();
-
-      checkMediaRequestsSent([
-        {
-          policy: 'receiver-selected',
-          csi: 123,
-          receiveSlot: fakeWcmeSlots[0],
-          // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
-          maxPayloadBitsPerSecond: 64000,
-          maxFs,
-          maxMbps,
-        },
-      ]);
-    });
-
-    it('returns the correct maxMbps value if kind is "video"', () => {
+    it('returns the correct maxMbps value', () => {
       mediaRequestManager.addRequest(
         {
           policyInfo: {
@@ -1078,8 +1033,8 @@ describe('MediaRequestManager', () => {
           receiveSlots: [fakeReceiveSlots[0]],
           codecInfo: {
             codec: 'h264',
-            maxFs: 8192,
-            maxFps: 3000,
+            maxFs: MAX_FS_1080p,
+            maxFps: MAX_FPS,
             // random value to pass in, to show that the output (below) is calculated
             // from the maxFs and maxFps values only:
             maxMbps: 123,
@@ -1095,9 +1050,9 @@ describe('MediaRequestManager', () => {
           policy: 'receiver-selected',
           csi: 123,
           receiveSlot: fakeWcmeSlots[0],
-          maxPayloadBitsPerSecond: 4000000,
-          maxFs: 8192,
-          maxMbps: 245760,
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+          maxFs: MAX_FS_1080p,
+          maxMbps: MAX_MBPS_1080p,
         },
       ]);
     });

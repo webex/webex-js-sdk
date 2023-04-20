@@ -204,23 +204,16 @@ export class MediaRequestManager {
   }
 
   /**
-   * Returns the max Macro Blocks per second (maxMbps) per Stream
+   * Returns the max Macro Blocks per second (maxMbps) per H264 Stream
    *
-   * If MediaRequestManager kind is "audio", a constant maxMbps will be returned.
-   * If MediaRequestManager kind is "video", the maxMbps will be calculated based
-   * on maxFs and maxFps (default h264 maxFps as fallback if maxFps is not defined)
+   * The maxMbps will be calculated based on maxFs and maxFps
+   * (default h264 maxFps as fallback if maxFps is not defined)
    *
    * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
    * @returns {number} maxMbps
    */
   // eslint-disable-next-line class-methods-use-this
-  private getMaxMbps(mediaRequest: MediaRequest): number {
-    if (this.kind === 'audio') {
-      // return the codecInfo maxMbps for audio, since audio doesn't have macro blocks
-      // and the default codecInfo should be returned
-      return mediaRequest.codecInfo.maxMbps;
-    }
-
+  private getH264MaxMbps(mediaRequest: MediaRequest): number {
     // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
     const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
 
@@ -265,7 +258,7 @@ export class MediaRequestManager {
               new H264Codec(
                 mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                this.getMaxMbps(mr),
+                this.getH264MaxMbps(mr),
                 mr.codecInfo.maxWidth,
                 mr.codecInfo.maxHeight
               )
