@@ -13,6 +13,7 @@ import {
   _CONVERSATION_URL_,
   _SIP_URI_,
   WBXAPPAPI_SERVICE,
+  _LOCUS_ID_,
 } from '@webex/plugin-meetings/src/constants';
 
 import Meetings from '@webex/plugin-meetings/src/meetings';
@@ -120,7 +121,7 @@ describe('plugin-meetings', () => {
         MeetingInfoUtil.getRequestBody.restore();
       });
 
-      it('should fetch meeting info for the personal meeting room  type', async () => {
+      it('should fetch meeting info for the personal meeting room type', async () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
@@ -201,6 +202,33 @@ describe('plugin-meetings', () => {
             password: 'abc',
             captchaID: '999',
             captchaVerifyCode: 'aabbcc11',
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+      });
+
+      it('should fetch meeting info with provided installedOrgID', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const installedOrgID = '123456';
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, installedOrgID);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            installedOrgID,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -327,6 +355,44 @@ describe('plugin-meetings', () => {
         it('should throw MeetingInfoV2CaptchaError for 423 response (wbxappapi code 423001)', async () => {
           await runTest(423001, false);
         });
+      });
+
+      it('should throw an error and not fetch with an "empty" body', async () => {
+        const body = {supportHostKey: 'foo', supportCountryList: 'bar'};
+        const requestResponse = {statusCode: 200, body};
+
+        sinon
+          .stub(MeetingInfoUtil, 'getDestinationType')
+          .returns(Promise.resolve({type: _LOCUS_ID_, destination: '123456'}));
+        sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
+        webex.request.resolves(requestResponse);
+
+        try {
+          await meetingInfo.fetchMeetingInfo({
+            type: _LOCUS_ID_,
+          });
+          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+        } catch (err) {
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE,
+            {
+              reason: 'Not enough information to fetch meeting info',
+              destinationType: _LOCUS_ID_,
+              webExMeetingId: undefined,
+              sipUri: undefined,
+            }
+          );
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE
+          );
+          assert.deepEqual(err.message, 'Not enough information to fetch meeting info');
+        }
+
+        MeetingInfoUtil.getDestinationType.restore();
+        MeetingInfoUtil.getRequestBody.restore();
       });
     });
 

@@ -47,13 +47,13 @@ const getBOResponse = (status: string) => {
   };
 };
 
-const getBOResponseWithEditLockInfo = (status: string) => {
+const getBOResponseWithEditLockInfo = (status: string, withOutToken?: boolean) => {
   return {
     url: 'url',
     locusUrl: 'locusUrl',
     mainGroupId: 'mainGroupId',
     mainSessionId: 'mainSessionId',
-    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a"},
+    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a", token: withOutToken ? '' : 'token1'},
     groups: [
       {
         sessions: [
@@ -530,6 +530,112 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#update', () => {
+      it('makes the request as expected', async () => {
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+        const result = await breakouts.update(params);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: true},
+            groups: [params],
+          },
+        });
+      });
+      it('throw error if missing id in params', async () => {
+        const params = {
+          sessions: [{name: 'Session 1'}],
+        };
+        await breakouts.update(params).catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing breakout group id');
+        });
+      });
+      it('rejects when edit lock token mismatch', async () => {
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_LOCK_TOKEN_MISMATCH,
+              message: 'Edit lock token mismatch',
+            },
+          })
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          BreakoutEditLockedError,
+          'Edit lock token mismatch'
+        );
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> Edit lock token mismatch',
+        );
+      });
+
+      it('rejects when edit not authorized', async () => {
+        webex.request.returns(
+          Promise.reject({
+            body: {
+              errorCode: BREAKOUTS.ERROR_CODE.EDIT_NOT_AUTHORIZED,
+            },
+          })
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          BreakoutEditLockedError,
+          'Not authorized to interact with edit lock'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> Not authorized to interact with edit lock',
+        );
+      });
+
+      it('rejects when other unknow error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(
+          Promise.reject(mockError)
+        );
+        LoggerProxy.logger.info = sinon.stub();
+
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+
+        await assert.isRejected(
+          breakouts.update(params),
+          mockError,
+          'something wrong'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.info,
+          'Breakouts#update --> something wrong',
+        );
+      });
+    });
+
     describe('#start', () => {
       it('should start breakout sessions', async () => {
         webex.request.returns(
@@ -667,11 +773,23 @@ describe('plugin-meetings', () => {
         breakouts.keepEditLockAlive = sinon.stub().resolves();
         const result = await breakouts.getBreakout();
         await breakouts.getBreakout(true);
-        
+
         assert.calledOnceWithExactly(breakouts.keepEditLockAlive);
       });
+      it('not call keep alive when response with no edit lock token', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponseWithEditLockInfo('PENDING', true),
+          })
+        );
 
-      
+        breakouts.set('url', 'url');
+        breakouts.keepEditLockAlive = sinon.stub().resolves();
+        const result = await breakouts.getBreakout();
+        await breakouts.getBreakout(true);
+
+        assert.notCalled(breakouts.keepEditLockAlive);
+      });
     });
 
     describe('doToggleBreakout', () => {
@@ -869,7 +987,7 @@ describe('plugin-meetings', () => {
       });
 
       it('do not call unLock if edit lock info not exist ', async () => {
-        
+
         breakouts.unLockEditBreakout();
         assert.notCalled(webex.request);
       });
@@ -979,6 +1097,21 @@ describe('plugin-meetings', () => {
 
         clock.restore();
       });
+
+      it('clear interval first if previous one is in work', () => {
+        breakouts.set('editLock', {
+          ttl: 30,
+          token: 'token',
+        });
+        const clock = sinon.useFakeTimers();
+        window.clearInterval = sinon.stub();
+        breakouts.keepEditLockAlive();
+        const firstIntervalID = breakouts.intervalID;
+        breakouts.keepEditLockAlive();
+
+        assert.calledWithExactly(window.clearInterval, firstIntervalID);
+        clock.restore();
+      });
     });
 
     describe('#assign', () => {
@@ -1006,6 +1139,85 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
       });
     });
+
+    describe('queryPreAssignments', () => {
+      it('makes the expected query', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: {
+              "groups": [
+                {
+                  "sessions": [
+                    {
+                      "name": "Breakout session 1",
+                      "assignedEmails": [
+                        "a@a.com",
+                        "b@b.com",
+                        "jial2@cisco.com"
+                      ],
+                      "anyoneCanJoin": false
+                    },
+                    {
+                      "name": "Breakout session 2",
+                      "anyoneCanJoin": false
+                    },
+                    {
+                      "name": "Breakout session 3",
+                      "assignedEmails": [
+                        "c@c.com"
+                      ],
+                      "anyoneCanJoin": false
+                    }
+                  ],
+                  "unassignedInvitees": {
+                    "emails": [
+                      "d@d.com"
+                    ]
+                  },
+                  "type": "BREAKOUT"
+                }
+              ]
+            }
+          })
+        );
+        breakouts.shouldFetchPreassignments = false;
+        const result = await breakouts.queryPreAssignments();
+        const arg = webex.request.getCall(0).args[0];
+        assert.equal(arg.uri, 'url/preassignments');
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
+        assert.equal(breakouts.groups[0].sessions[0].name,'Breakout session 1');
+        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[0].assignedEmails.toString(), ["a@a.com", "b@b.com", "jial2@cisco.com"].toString());
+        assert.equal(breakouts.groups[0].sessions[1].name,'Breakout session 2');
+        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[1].assignedEmails, undefined);
+        assert.equal(breakouts.groups[0].sessions[2].name,'Breakout session 3');
+        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
+        assert.equal(breakouts.groups[0].type,'BREAKOUT');
+        assert.equal(breakouts.shouldFetchPreassignments, true);
+      });
+
+      it('rejects when no pre-assignments created for this meeting', async () => {
+        const response = {
+          statusCode: 404,
+          body: {
+            errorCode: 201404004,
+            message: 'No pre-assignments created for this meeting'
+          },
+        };
+        webex.request.rejects(response);
+        LoggerProxy.logger.error = sinon.stub();
+        const result = await breakouts.queryPreAssignments();
+        await testUtils.flushPromises();
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:breakouts#queryPreAssignments failed',
+          response
+        );
+     });
+  });
 
     describe('#dynamicAssign', () => {
       it('should make a PUT request with correct body and return the result', async () => {

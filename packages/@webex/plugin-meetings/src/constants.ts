@@ -7,6 +7,7 @@ export const AUDIO = 'audio';
 export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
@@ -603,6 +604,7 @@ export const LOCUSINFO = {
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
+    SELF_MODERATOR_OR_COHOST_UPGRADE: 'SELF_MODERATOR_OR_COHOST_UPGRADE',
   },
 };
 
@@ -802,6 +804,8 @@ export const DISPLAY_HINTS = {
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -814,6 +818,7 @@ export const DISPLAY_HINTS = {
 export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
+  ATTENDEE: 'ATTENDEE',
 };
 
 export const MEETING_STATE = {
@@ -1137,4 +1142,9 @@ export const BNR_STATUS = {
 export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
   OTHER: 'OTHER',
+};
+
+export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
+  supportHostKey: true,
+  supportCountryList: true,
 };

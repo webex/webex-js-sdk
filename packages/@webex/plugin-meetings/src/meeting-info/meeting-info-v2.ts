@@ -1,4 +1,10 @@
-import {HTTP_VERBS, _CONVERSATION_URL_, WBXAPPAPI_SERVICE} from '../constants';
+import lodash from 'lodash';
+import {
+  HTTP_VERBS,
+  _CONVERSATION_URL_,
+  WBXAPPAPI_SERVICE,
+  DEFAULT_MEETING_INFO_REQUEST_BODY,
+} from '../constants';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
@@ -190,6 +196,7 @@ export default class MeetingInfoV2 {
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
    * @param {String} captchaInfo.id
+   * @param {String} installedOrgID
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -201,7 +208,8 @@ export default class MeetingInfoV2 {
     captchaInfo: {
       code: string;
       id: string;
-    } = null
+    } = null,
+    installedOrgID = null
   ) {
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -217,7 +225,28 @@ export default class MeetingInfoV2 {
       return this.createAdhocSpaceMeeting(destinationType.destination);
     }
 
-    const body = await MeetingInfoUtil.getRequestBody({...destinationType, password, captchaInfo});
+    const body = await MeetingInfoUtil.getRequestBody({
+      ...destinationType,
+      password,
+      captchaInfo,
+      installedOrgID,
+    });
+
+    // If the body only contains the default properties, we don't have enough to
+    // fetch the meeting info so don't bother trying.
+    if (
+      !lodash.difference(Object.keys(body), Object.keys(DEFAULT_MEETING_INFO_REQUEST_BODY)).length
+    ) {
+      const err = new Error('Not enough information to fetch meeting info');
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE, {
+        reason: err.message,
+        destinationType: destinationType?.type,
+        webExMeetingId: destinationType?.info?.webExMeetingId,
+        sipUri: destinationType?.info?.sipUri,
+      });
+
+      throw err;
+    }
 
     const options: any = {
       method: HTTP_VERBS.POST,

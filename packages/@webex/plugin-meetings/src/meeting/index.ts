@@ -1174,7 +1174,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.destination,
         this.destinationType,
         password,
-        captchaInfo
+        captchaInfo,
+        // @ts-ignore - config coming from registerPlugin
+        this.config.installedOrgID
       );
 
       this.parseMeetingInfo(info, this.destination);
@@ -2336,6 +2338,10 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canUserAskForHelp: MeetingUtil.canUserAskForHelp(payload.info.userDisplayHints),
+          canUserRenameSelfAndObserved: MeetingUtil.canUserRenameSelfAndObserved(
+            payload.info.userDisplayHints
+          ),
+          canUserRenameOthers: MeetingUtil.canUserRenameOthers(payload.info.userDisplayHints),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -2579,6 +2585,12 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
       );
+    });
+
+    // We need to reinitialize  when user upgrades to host or cohost
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
+      this.breakouts.queryPreAssignments(payload);
+      // ...
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {

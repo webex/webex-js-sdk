@@ -43,8 +43,8 @@ describe('plugin-meetings', () => {
           webrtcMediaConnection: fakeMediaConnection,
         },
         mediaRequestManagers: {
-          audio: {commit: sinon.stub()},
-          video: {commit: sinon.stub()},
+          audio: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
+          video: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
         },
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
@@ -84,22 +84,26 @@ describe('plugin-meetings', () => {
       ]);
     });
 
-    it('does not re-request media for non-multistream meetings', async () => {
+    it('does not clear previous requests and re-request media for non-multistream meetings', async () => {
       fakeMeeting.isMultistream = false;
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
+      assert.notCalled(fakeMeeting.mediaRequestManagers.audio.clearPreviousRequests);
+      assert.notCalled(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
       assert.notCalled(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.notCalled(fakeMeeting.mediaRequestManagers.video.commit);
     });
 
-    it('does re-request media for multistream meetings', async () => {
+    it('does clear previous requests and re-request media for multistream meetings', async () => {
       fakeMeeting.isMultistream = true;
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.clearPreviousRequests);
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });

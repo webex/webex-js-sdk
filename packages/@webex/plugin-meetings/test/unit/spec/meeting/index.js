@@ -416,7 +416,10 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.admitMembers, [uuid1]);
         });
         it('should call from a breakout session if caller is in a breakout session', async () => {
-          const locusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+          const locusUrls = {
+            authorizingLocusUrl: 'authorizingLocusUrl',
+            mainLocusUrl: 'mainLocusUrl',
+          };
           await meeting.admit([uuid1], locusUrls);
           assert.calledOnce(meeting.members.admitMembers);
           assert.calledWith(meeting.members.admitMembers, [uuid1], locusUrls);
@@ -2220,7 +2223,7 @@ describe('plugin-meetings', () => {
               meeting.isMultistream = true;
 
               const result = await meeting.updateMedia({
-                  mediaSettings,
+                mediaSettings,
               });
 
               assert.calledOnceWithExactly(
@@ -2942,6 +2945,7 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_IMAGE_URL = 'http://captchaimage';
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
+        const FAKE_INSTALLED_ORG_ID = '123456';
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -2969,6 +2973,7 @@ describe('plugin-meetings', () => {
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
+          meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
 
           await meeting.fetchMeetingInfo({
@@ -2981,7 +2986,8 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             FAKE_PASSWORD,
-            {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID}
+            {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
+            FAKE_INSTALLED_ORG_ID
           );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
@@ -4518,6 +4524,19 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setUpBreakoutsPreAssignmentsListener', () => {
+        it('listens to the self moderator or cohost upgrade event', () => {
+          meeting.breakouts.queryPreAssignments = sinon.stub();
+          const payload = 'payload';
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_MODERATOR_OR_COHOST_UPGRADE',
+            payload,
+          );
+          assert.calledOnceWithExactly(meeting.breakouts.queryPreAssignments, payload);
+        });
+      });
+
       describe('#setUpBreakoutsListener', () => {
         it('listens to the closing event from breakouts and triggers the closing event', () => {
           TriggerProxy.trigger.reset();
@@ -5062,6 +5081,8 @@ describe('plugin-meetings', () => {
         let handleDataChannelUrlChangeSpy;
         let canEnableReactionsSpy;
         let canSendReactionsSpy;
+        let canUserRenameSelfAndObservedSpy;
+        let canUserRenameOthersSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5087,6 +5108,8 @@ describe('plugin-meetings', () => {
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
+          canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
         });
 
         afterEach(() => {
@@ -5132,6 +5155,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
           assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,

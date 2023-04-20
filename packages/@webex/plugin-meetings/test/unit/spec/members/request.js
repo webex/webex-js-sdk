@@ -107,7 +107,11 @@ describe('plugin-meetings', () => {
       it('sends a PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
         const memberId = 'test1';
-        const roles = [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}];
+        const roles = [
+          {type: 'PRESENTER', hasRole: true},
+          {type: 'MODERATOR', hasRole: false},
+          {type: 'COHOST', hasRole: true},
+        ];
 
         const options = {
           memberId,
@@ -215,6 +219,28 @@ describe('plugin-meetings', () => {
             requestingParticipantId: memberId,
           },
         });
+      });
+    });
+
+    describe('#editDisplayName', () => {
+      it('sends a POST request to the locus endpoint', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const aliasValue = 'alias';
+
+        const options = {
+          memberId,
+          requestingParticipantId,
+          aliasValue,
+          locusUrl,
+        };
+
+        await membersRequest.editDisplayNameMember(options);
+        const requestParams = membersRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'POST');
+        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/alias`);
       });
     });
   });
