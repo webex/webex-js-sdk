@@ -236,7 +236,6 @@ describe('MediaRequestManager', () => {
 
     // all 3 requests should be sent out together
     assert.calledOnce(sendMediaRequestsCallback);
-    console.log(sendMediaRequestsCallback.calls);
     assert.calledWith(sendMediaRequestsCallback, [
       sinon.match({
         policy: 'active-speaker',
