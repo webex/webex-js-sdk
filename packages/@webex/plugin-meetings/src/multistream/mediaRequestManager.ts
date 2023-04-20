@@ -6,6 +6,8 @@ import {
   ReceiverSelectedInfo,
   CodecInfo as WcmeCodecInfo,
   H264Codec,
+  getRecommendedMaxBitrateForFrameSize,
+  RecommendedOpusBitrates,
 } from '@webex/internal-media-core';
 import {cloneDeep, debounce, isEmpty} from 'lodash';
 
@@ -64,9 +66,16 @@ type DegradationPreferences = {
 };
 
 type SendMediaRequestsCallback = (mediaRequests: WcmeMediaRequest[]) => void;
+type Kind = 'audio' | 'video';
 
+type Options = {
+  degradationPreferences: DegradationPreferences;
+  kind: Kind;
+};
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
+
+  private kind: Kind;
 
   private counter: number;
 
@@ -80,14 +89,12 @@ export class MediaRequestManager {
 
   private previousWCMEMediaRequests: Array<WcmeMediaRequest> = [];
 
-  constructor(
-    degradationPreferences: DegradationPreferences,
-    sendMediaRequestsCallback: SendMediaRequestsCallback
-  ) {
+  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
     this.clientRequests = {};
-    this.degradationPreferences = degradationPreferences;
+    this.degradationPreferences = options.degradationPreferences;
+    this.kind = options.kind;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -176,6 +183,52 @@ export class MediaRequestManager {
   }
 
   /**
+   * Returns the maxPayloadBitsPerSecond per Stream
+   *
+   * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
+   * If MediaRequestManager kind is "video", the bitrate will be calculated based
+   * on maxFs (default h264 maxFs as fallback if maxFs is not defined)
+   *
+   * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
+   * @returns {number} maxPayloadBitsPerSecond
+   */
+  private getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
+    if (this.kind === 'audio') {
+      // return mono_music bitrate default if the kind of mediarequest manager is audio:
+      return RecommendedOpusBitrates.FB_MONO_MUSIC;
+    }
+
+    return getRecommendedMaxBitrateForFrameSize(
+      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+    );
+  }
+
+  /**
+   * Returns the max Macro Blocks per second (maxMbps) per Stream
+   *
+   * If MediaRequestManager kind is "audio", a constant maxMbps will be returned.
+   * If MediaRequestManager kind is "video", the maxMbps will be calculated based
+   * on maxFs and maxFps (default h264 maxFps as fallback if maxFps is not defined)
+   *
+   * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
+   * @returns {number} maxMbps
+   */
+  // eslint-disable-next-line class-methods-use-this
+  private getMaxMbps(mediaRequest: MediaRequest): number {
+    if (this.kind === 'audio') {
+      // return the codecInfo maxMbps for audio, since audio doesn't have macro blocks
+      // and the default codecInfo should be returned
+      return mediaRequest.codecInfo.maxMbps;
+    }
+
+    // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
+    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+
+    // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
+    return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
+  }
+
+  /**
    * Clears the previous media requests.
    *
    * @returns {void}
@@ -188,7 +241,6 @@ export class MediaRequestManager {
     const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
     const clientRequests = this.getDegradedClientRequests();
-    const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
 
     // map all the client media requests to wcme media requests
     Object.values(clientRequests).forEach((mr) => {
@@ -206,14 +258,14 @@ export class MediaRequestManager {
               )
             : new ReceiverSelectedInfo(mr.policyInfo.csi),
           mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
-          maxPayloadBitsPerSecond,
+          this.getMaxPayloadBitsPerSecond(mr),
           mr.codecInfo && [
             new WcmeCodecInfo(
               0x80,
               new H264Codec(
                 mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
+                this.getMaxMbps(mr),
                 mr.codecInfo.maxWidth,
                 mr.codecInfo.maxHeight
               )

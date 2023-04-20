@@ -629,31 +629,47 @@ export default class Meeting extends StatelessWebexPlugin {
      * All multistream media requests sent out for this meeting have to go through them.
      */
     this.mediaRequestManagers = {
-      // @ts-ignore - config coming from registerPlugin
-      audio: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
-          );
+      audio: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
+            );
 
-          return;
-        }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.AudioMain, mediaRequests);
-      }),
-      // @ts-ignore - config coming from registerPlugin
-      video: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.AudioMain,
+            mediaRequests
           );
-
-          return;
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
         }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.VideoMain, mediaRequests);
-      }),
+      ),
+      video: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
+            );
+
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.VideoMain,
+            mediaRequests
+          );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
+        }
+      ),
       screenShareAudio: new MediaRequestManager(
-        // @ts-ignore - config coming from registerPlugin
-        this.config.degradationPreferences,
         (mediaRequests) => {
           if (!this.mediaProperties.webrtcMediaConnection) {
             LoggerProxy.logger.warn(
@@ -666,11 +682,14 @@ export default class Meeting extends StatelessWebexPlugin {
             MediaType.AudioSlides,
             mediaRequests
           );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
         }
       ),
       screenShareVideo: new MediaRequestManager(
-        // @ts-ignore - config coming from registerPlugin
-        this.config.degradationPreferences,
         (mediaRequests) => {
           if (!this.mediaProperties.webrtcMediaConnection) {
             LoggerProxy.logger.warn(
@@ -683,6 +702,11 @@ export default class Meeting extends StatelessWebexPlugin {
             MediaType.VideoSlides,
             mediaRequests
           );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
         }
       ),
     };
