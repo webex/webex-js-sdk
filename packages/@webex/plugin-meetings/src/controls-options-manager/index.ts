@@ -3,7 +3,8 @@ import PermissionError from '../common/errors/permission';
 import {CONTROLS, HTTP_VERBS} from '../constants';
 import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
-import Setting from './enums';
+import {Control, Setting} from './enums';
+import {ControlConfig} from './types';
 import Util from './util';
 import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
@@ -131,6 +132,40 @@ export default class ControlsOptionsManager {
   private extract(options?: {locusUrl: string; displayHints?: Array<string>}) {
     this.setDisplayHints(options?.displayHints);
     this.setLocusUrl(options?.locusUrl);
+  }
+
+  /**
+   * Set controls for this meeting.
+   *
+   * @param {Array<ControlConfig>} controls - Spread Array of ControlConfigs
+   * @returns {Promise<Array<any>>}- Promise resolving if the request was successful.
+   */
+  protected update(...controls: Array<ControlConfig>) {
+    const payload = controls.reduce((output, control) => {
+      if (!Object.keys(Control).includes(control.scope)) {
+        throw new Error(
+          `updating meeting control scope "${control.scope}" is not a supported scope`
+        );
+      }
+
+      if (!Util.canUpdate(control, this.displayHints)) {
+        throw new PermissionError(
+          `updating meeting control scope "${control.scope}" not allowed, due to moderator property.`
+        );
+      }
+
+      return {
+        ...output,
+        [control.scope]: control.properties,
+      };
+    }, {});
+
+    // @ts-ignore
+    return this.request.request({
+      uri: `${this.locusUrl}/${CONTROLS}`,
+      body: payload,
+      method: HTTP_VERBS.PATCH,
+    });
   }
 
   /**
