@@ -239,6 +239,33 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should fetch meeting info with provided locusId', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const locusId = 'eccd5c1b-d42d-35e3-a1b9-3021030a6d84';
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, locusId);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            locusId,
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+      });
+
       it('create adhoc meeting when conversationUrl passed with enableAdhocMeetings toggle', async () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
         await meetingInfo.fetchMeetingInfo('conversationUrl', _CONVERSATION_URL_);

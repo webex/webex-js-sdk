@@ -225,7 +225,7 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo, installedOrgID} = options;
+  const {type, destination, password, captchaInfo, installedOrgID, locusId} = options;
   const body: any = {...DEFAULT_MEETING_INFO_REQUEST_BODY};
 
   switch (type) {
@@ -271,6 +271,10 @@ MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} |
 
   if (installedOrgID) {
     body.installedOrgID = installedOrgID;
+  }
+
+  if (locusId) {
+    body.locusId = locusId;
   }
 
   return body;
