@@ -509,3 +509,207 @@ describe('plugin-meetings', () => {
     });
   });
 });
+
+describe('#init, #handleLocalTrackChange', () => {
+  let meeting;
+  let muteState;
+  let setServerMutedSpy;
+  let setMutedSpy, setUnmuteAllowedSpy;
+  const fakeLocus = {info: 'this is a fake locus'};
+
+  const createFakeLocalTrack = (id, muted) => {
+    return {
+      id,
+      setMuted: sinon.stub(),
+      setServerMuted: sinon.stub(),
+      setUnmuteAllowed: sinon.stub(),
+      muted,
+    };
+  };
+
+  const setup = (mediaType, remoteMuted = false, muted = false, defineTracks = true) => {
+
+    const remoteMuteField = mediaType === AUDIO ? 'remoteMuted' : 'remoteVideoMuted';
+
+    meeting = {
+      mediaProperties: {
+        audioTrack: defineTracks ? createFakeLocalTrack('fake audio track', muted) : undefined,
+        videoTrack: defineTracks ? createFakeLocalTrack('fake video track', muted) : undefined,
+      },
+      [remoteMuteField]: remoteMuted,
+      unmuteAllowed: true,
+      unmuteVideoAllowed: true,
+
+      locusInfo: {
+        onFullLocus: sinon.stub(),
+      },
+      members: {
+        selfId: 'fake self id',
+        muteMember: sinon.stub().resolves(),
+      },
+    };
+
+    const direction = mediaType === AUDIO ? {sendAudio: true} : {sendVideo: true};
+    sinon.spy(MeetingUtil, 'remoteUpdateAudioVideo');
+    muteState = createMuteState(mediaType, meeting, direction, false);
+  }
+
+   const setupSpies = (mediaType) => {
+    setUnmuteAllowedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setUnmuteAllowed : meeting.mediaProperties.videoTrack?.setUnmuteAllowed;
+    setServerMutedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setServerMuted : meeting.mediaProperties.videoTrack?.setServerMuted;
+    setMutedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setMuted : meeting.mediaProperties.videoTrack?.setMuted;
+
+    clearSpies();
+  };
+
+  const clearSpies = () => {
+    setUnmuteAllowedSpy?.resetHistory();
+    setServerMutedSpy?.resetHistory();
+    setMutedSpy?.resetHistory();
+  };
+  const tests = [
+    {mediaType: AUDIO, title: 'audio'},
+    {mediaType: VIDEO, title: 'video'}
+  ];
+
+  tests.forEach(({mediaType, title}) =>
+    describe(title, () => {
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      describe('#handleLocalTrackChange',() => {
+
+         it('calls init()', async () => {
+          setup(mediaType);
+          const spy = sinon.spy(muteState, 'init');
+          muteState.handleLocalTrackChange(meeting);
+          assert.calledOnceWithExactly(spy, meeting);
+        });
+      });
+
+      describe('#init', () => {
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('nothing goes bad when track is undefined', async () => {
+          setup(mediaType, false, false, false);
+          setupSpies(mediaType);
+          
+          muteState.init(meeting);
+          
+          assert.isFalse(muteState.state.client.localMute);
+        });
+  
+        it('tests when track muted is true and remoteMuted is false', async () => {
+          setup(mediaType, false, true);
+          setupSpies(mediaType);
+          
+          muteState.init(meeting);
+  
+          assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
+          assert.notCalled(setServerMutedSpy);
+          assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+          assert.isTrue(muteState.state.client.localMute);
+        });
+
+          
+        it('tests when track muted is false and remoteMuted is false', async () => {
+          setup(mediaType, false, false);
+          setupSpies(mediaType);
+          muteState.state.server.localMute = true;
+          
+          muteState.init(meeting);
+  
+          assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
+          assert.notCalled(setServerMutedSpy);
+          assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+          assert.isFalse(muteState.state.client.localMute);
+        });
+  
+        it('tests when remoteMuted is true', async () => {
+          // testing that muteLocalTrack is called
+          setup(mediaType, true);
+          setupSpies(mediaType);
+
+          muteState.init(meeting);
+          
+          assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
+          assert.calledOnceWithExactly(setServerMutedSpy, true, 'remotelyMuted');
+        });
+      });
+
+      describe('#handleLocalTrackMuteStateChange', () => {
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('checks when ignoreMuteStateChange is true nothing changes', () => {
+          setup(mediaType, false, false);
+          muteState.ignoreMuteStateChange= true;
+
+          muteState.handleLocalTrackMuteStateChange(meeting, true);
+          assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+
+          assert.isFalse(muteState.state.client.localMute);
+        });
+
+        it('tests localMute - true to false', () => {
+          setup(mediaType, false, true);
+
+          muteState.handleLocalTrackMuteStateChange(meeting, false);
+          assert.equal(muteState.state.client.localMute, false);
+          assert.called(MeetingUtil.remoteUpdateAudioVideo);
+        });
+
+        it('tests localMute - false to true', () => {
+          setup(mediaType, false, false);
+
+          muteState.handleLocalTrackMuteStateChange(meeting, true);
+          assert.equal(muteState.state.client.localMute, true);
+          assert.called(MeetingUtil.remoteUpdateAudioVideo);
+        });
+      });
+
+      describe('#applyClientStateLocally', () => {
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('checks when sdkOwnsLocalTrack is false', () => {
+          setup(mediaType);
+          setupSpies(mediaType);
+          muteState.sdkOwnsLocalTrack= false;
+
+          muteState.applyClientStateLocally(meeting, 'somereason');
+          assert.calledOnceWithExactly(setServerMutedSpy, muteState.state.client.localMute, 'somereason');
+          assert.notCalled(setMutedSpy);
+        });
+
+        it('checks when sdkOwnsLocalTrack is true', () => {
+          setup(mediaType);
+          setupSpies(mediaType);
+          muteState.sdkOwnsLocalTrack= true;
+
+          muteState.applyClientStateLocally(meeting, 'somereason');
+          assert.notCalled(setServerMutedSpy);
+          assert.calledOnceWithExactly(setMutedSpy, muteState.state.client.localMute);
+        });
+
+        it('checks nothing explodes when tracks are undefined', () => {
+          setup(mediaType, false, false, false);
+          setupSpies(mediaType);
+          muteState.sdkOwnsLocalTrack= true;
+
+          muteState.applyClientStateLocally(meeting, 'somereason');
+        });
+      });
+
+    })
+  );
+});
