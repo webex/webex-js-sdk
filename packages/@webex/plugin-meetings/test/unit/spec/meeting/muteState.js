@@ -554,12 +554,19 @@ describe('#init, #handleLocalTrackChange', () => {
     muteState = createMuteState(mediaType, meeting, direction, false);
   }
 
-   const setupSpies = (muteState, mediaType) => {
+   const setupSpies = (mediaType) => {
     setUnmuteAllowedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setUnmuteAllowed : meeting.mediaProperties.videoTrack?.setUnmuteAllowed;
     setServerMutedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setServerMuted : meeting.mediaProperties.videoTrack?.setServerMuted;
     setMutedSpy = mediaType === AUDIO ? meeting.mediaProperties.audioTrack?.setMuted : meeting.mediaProperties.videoTrack?.setMuted;
+
+    clearSpies();
   };
 
+  const clearSpies = () => {
+    setUnmuteAllowedSpy?.resetHistory();
+    setServerMutedSpy?.resetHistory();
+    setMutedSpy?.resetHistory();
+  };
   const tests = [
     {mediaType: AUDIO, title: 'audio'},
     {mediaType: VIDEO, title: 'video'}
@@ -590,16 +597,17 @@ describe('#init, #handleLocalTrackChange', () => {
 
         it('nothing goes bad when track is undefined', async () => {
           setup(mediaType, false, false, false);
-          setupSpies(muteState, mediaType);
-  
+          setupSpies(mediaType);
+          
           muteState.init(meeting);
+          
           assert.isFalse(muteState.state.client.localMute);
         });
   
         it('tests when track muted is true and remoteMuted is false', async () => {
           setup(mediaType, false, true);
-          setupSpies(muteState, mediaType);
-  
+          setupSpies(mediaType);
+          
           muteState.init(meeting);
   
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
@@ -611,9 +619,9 @@ describe('#init, #handleLocalTrackChange', () => {
           
         it('tests when track muted is false and remoteMuted is false', async () => {
           setup(mediaType, false, false);
-          setupSpies(muteState, mediaType);
+          setupSpies(mediaType);
           muteState.state.server.localMute = true;
-  
+          
           muteState.init(meeting);
   
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
@@ -625,16 +633,12 @@ describe('#init, #handleLocalTrackChange', () => {
         it('tests when remoteMuted is true', async () => {
           // testing that muteLocalTrack is called
           setup(mediaType, true);
-          setupSpies(muteState, mediaType);
-  
+          setupSpies(mediaType);
+
           muteState.init(meeting);
-  
-          const serverMutedSpyCall1 = setServerMutedSpy.getCall(0);
-          const serverMutedSpyCall2 = setServerMutedSpy.getCall(1);
-  
+          
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
-          assert.equal(serverMutedSpyCall1.calledWithExactly(true, 'remotelyMuted'), true);
-          assert.equal(serverMutedSpyCall2.calledWithExactly(true, 'remotelyMuted'), true);
+          assert.calledOnceWithExactly(setServerMutedSpy, true, 'remotelyMuted');
         });
       });
 
@@ -679,16 +683,17 @@ describe('#init, #handleLocalTrackChange', () => {
 
         it('checks when sdkOwnsLocalTrack is false', () => {
           setup(mediaType);
-          setupSpies(muteState, mediaType);
+          setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= false;
 
           muteState.applyClientStateLocally(meeting, 'somereason');
           assert.calledOnceWithExactly(setServerMutedSpy, muteState.state.client.localMute, 'somereason');
+          assert.notCalled(setMutedSpy);
         });
 
         it('checks when sdkOwnsLocalTrack is true', () => {
           setup(mediaType);
-          setupSpies(muteState, mediaType);
+          setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= true;
 
           muteState.applyClientStateLocally(meeting, 'somereason');
@@ -698,7 +703,7 @@ describe('#init, #handleLocalTrackChange', () => {
 
         it('checks nothing explodes when tracks are undefined', () => {
           setup(mediaType, false, false, false);
-          setupSpies(muteState, mediaType);
+          setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= true;
 
           muteState.applyClientStateLocally(meeting, 'somereason');
