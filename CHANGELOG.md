@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.52.11](https://github.com/webex/webex-js-sdk/compare/v2.52.10...v2.52.11) (2023-04-21)
+
+
+### Bug Fixes
+
+* syncmeeting made to wait for handleLocusEvent ([#2756](https://github.com/webex/webex-js-sdk/issues/2756)) ([91d9087](https://github.com/webex/webex-js-sdk/commit/91d9087288427bc20b149d153f6e8c564d6b9675))
+
 ### [2.52.10](https://github.com/webex/webex-js-sdk/compare/v2.52.9...v2.52.10) (2023-04-20)
 
 
