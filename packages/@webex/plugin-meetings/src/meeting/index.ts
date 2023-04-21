@@ -92,6 +92,7 @@ import MediaError from '../common/errors/media';
 import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
+  MeetingInfoV2PolicyError,
 } from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
@@ -113,6 +114,7 @@ import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
+import PermissionError from '../common/errors/permission';
 
 const {isBrowser} = BrowserDetection();
 
@@ -484,6 +486,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   meetingInfoFailureReason: string;
+  meetingInfoFailureCode?: number;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -629,31 +632,47 @@ export default class Meeting extends StatelessWebexPlugin {
      * All multistream media requests sent out for this meeting have to go through them.
      */
     this.mediaRequestManagers = {
-      // @ts-ignore - config coming from registerPlugin
-      audio: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
-          );
+      audio: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
+            );
 
-          return;
-        }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.AudioMain, mediaRequests);
-      }),
-      // @ts-ignore - config coming from registerPlugin
-      video: new MediaRequestManager(this.config.degradationPreferences, (mediaRequests) => {
-        if (!this.mediaProperties.webrtcMediaConnection) {
-          LoggerProxy.logger.warn(
-            'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.AudioMain,
+            mediaRequests
           );
-
-          return;
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
         }
-        this.mediaProperties.webrtcMediaConnection.requestMedia(MediaType.VideoMain, mediaRequests);
-      }),
+      ),
+      video: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
+            );
+
+            return;
+          }
+          this.mediaProperties.webrtcMediaConnection.requestMedia(
+            MediaType.VideoMain,
+            mediaRequests
+          );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
+        }
+      ),
       screenShareAudio: new MediaRequestManager(
-        // @ts-ignore - config coming from registerPlugin
-        this.config.degradationPreferences,
         (mediaRequests) => {
           if (!this.mediaProperties.webrtcMediaConnection) {
             LoggerProxy.logger.warn(
@@ -666,11 +685,14 @@ export default class Meeting extends StatelessWebexPlugin {
             MediaType.AudioSlides,
             mediaRequests
           );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
         }
       ),
       screenShareVideo: new MediaRequestManager(
-        // @ts-ignore - config coming from registerPlugin
-        this.config.degradationPreferences,
         (mediaRequests) => {
           if (!this.mediaProperties.webrtcMediaConnection) {
             LoggerProxy.logger.warn(
@@ -683,6 +705,11 @@ export default class Meeting extends StatelessWebexPlugin {
             MediaType.VideoSlides,
             mediaRequests
           );
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
         }
       ),
     };
@@ -1085,6 +1112,15 @@ export default class Meeting extends StatelessWebexPlugin {
     this.meetingInfoFailureReason = undefined;
 
     /**
+     * The numeric code, if any, associated with the last failure to obtain the meeting info
+     * @instance
+     * @type {number}
+     * @private
+     * @memberof Meeting
+     */
+    this.meetingInfoFailureCode = undefined;
+
+    /**
      * Repeating timer used to send keepAlives when in lobby
      * @instance
      * @type {String}
@@ -1204,7 +1240,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
       return Promise.resolve();
     } catch (err) {
-      if (err instanceof MeetingInfoV2PasswordError) {
+      if (err instanceof MeetingInfoV2PolicyError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.POLICY;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
@@ -1215,6 +1260,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfo = err.meetingInfo;
           this.meetingNumber = err.meetingInfo.meetingNumber;
         }
+
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         this.passwordStatus = PASSWORD_STATUS.REQUIRED;
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
@@ -1233,6 +1280,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = this.requiredCaptcha
           ? MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA
           : MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
+
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.isPasswordRequired) {
           this.passwordStatus = PASSWORD_STATUS.REQUIRED;
@@ -5319,8 +5368,12 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.config.stats.enableStatsAnalyzer) {
           // @ts-ignore - config coming from registerPlugin
           this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-          // @ts-ignore - config coming from registerPlugin
-          this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
+          this.statsAnalyzer = new StatsAnalyzer(
+            // @ts-ignore - config coming from registerPlugin
+            this.config.stats,
+            (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
+            this.networkQualityMonitor
+          );
           this.setupStatsAnalyzerEventHandlers();
           this.networkQualityMonitor.on(
             EVENT_TRIGGERS.NETWORK_QUALITY,

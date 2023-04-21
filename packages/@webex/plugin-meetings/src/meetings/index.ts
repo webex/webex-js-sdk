@@ -57,6 +57,7 @@ import CaptchaError from '../common/errors/captcha-error';
 
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
+import PermissionError from '../common/errors/permission';
 
 let mediaLogger;
 
@@ -1115,7 +1116,11 @@ export default class Meetings extends WebexPlugin {
         await meeting.fetchMeetingInfo({});
       }
     } catch (err) {
-      if (!(err instanceof CaptchaError) && !(err instanceof PasswordError)) {
+      if (
+        !(err instanceof CaptchaError) &&
+        !(err instanceof PasswordError) &&
+        !(err instanceof PermissionError)
+      ) {
         // if there is no meeting info we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`
