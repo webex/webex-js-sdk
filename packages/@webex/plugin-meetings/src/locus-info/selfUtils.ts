@@ -267,6 +267,7 @@ SelfUtils.getStatus = (status) => ({
 SelfUtils.wasMediaInactiveOrReleased = (oldSelf: any = {}, changedSelf: any) =>
   oldSelf.joinedWith &&
   oldSelf.joinedWith.state === _JOINED_ &&
+  changedSelf.joinedWith &&
   changedSelf.joinedWith.state === _LEFT_ &&
   (changedSelf.joinedWith.reason === MEETING_END_REASON.INACTIVE ||
     changedSelf.joinedWith.reason === MEETING_END_REASON.MEDIA_RELEASED);
