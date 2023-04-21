@@ -65,6 +65,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       isSharingBlocked: SelfUtils.isSharingBlocked(self),
       breakoutSessions: SelfUtils.getBreakoutSessions(self),
       breakout: SelfUtils.getBreakout(self),
+      personName: SelfUtils.getPersonName(self),
     };
   }
 
@@ -125,6 +126,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
   updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
   updates.breakoutsChanged = SelfUtils.breakoutsChanged(previous, current);
+  updates.personNameChanged = previous?.personName !== current?.personName;
 
   return {
     previous,
@@ -132,6 +134,13 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     updates,
   };
 };
+
+/**
+ * To get the updated participant display name in the meeting
+ * @param {Object} self
+ * @returns {string} participant's name
+ */
+SelfUtils.getPersonName = (self: any) => self?.person?.name;
 
 /**
  * Checks if user has joined the meeting

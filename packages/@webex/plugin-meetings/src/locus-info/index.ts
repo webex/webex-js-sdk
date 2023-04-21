@@ -1268,6 +1268,17 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
+      // When the display name of participant's are changed
+      if (parsedSelves.updates.personNameChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_PERSON_NAME_UPDATED,
+          {personName: parsedSelves.current.personName, moderator: parsedSelves.current.moderator}
+        );
+      }
 
       if (parsedSelves.updates.isUserObserving) {
         this.emitScoped(

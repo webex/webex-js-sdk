@@ -336,6 +336,7 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
   MEDIA_NEGOTIATED: 'media:negotiated',
+  MEETING_SELF_PERSON_NAME_UPDATED: 'meeting:selfPersonNameUpdated',
   // the following events apply only to multistream media connections
   ACTIVE_SPEAKER_CHANGED: 'media:activeSpeakerChanged',
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
@@ -605,6 +606,7 @@ export const LOCUSINFO = {
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
     SELF_MODERATOR_OR_COHOST_UPGRADE: 'SELF_MODERATOR_OR_COHOST_UPGRADE',
+    SELF_PERSON_NAME_UPDATED: 'SELF_PERSON_NAME_UPDATED',
   },
 };
 
