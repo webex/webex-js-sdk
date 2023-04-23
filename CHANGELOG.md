@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.78](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.77...v3.0.0-beta.78) (2023-04-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** check if joinedWith exists in changedSelf ([#2767](https://github.com/webex/webex-js-sdk/issues/2767)) ([f5d0b4d](https://github.com/webex/webex-js-sdk/commit/f5d0b4d739076a3af06396f7f286e7faef371f7d))
+
+## [3.0.0-beta.77](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.76...v3.0.0-beta.77) (2023-04-20)
+
+
+### Bug Fixes
+
+* sending correct maxPayloadBitsPerSecond & maxMbps mediaRequestManager ([#2763](https://github.com/webex/webex-js-sdk/issues/2763)) ([b742053](https://github.com/webex/webex-js-sdk/commit/b74205330d400d427d3a12281b0013300e68f510))
+
+## [3.0.0-beta.76](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.75...v3.0.0-beta.76) (2023-04-20)
+
+## [3.0.0-beta.75](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.74...v3.0.0-beta.75) (2023-04-20)
+
+
+### Features
+
+* **plugin-meetings:** policy error handling ([#2760](https://github.com/webex/webex-js-sdk/issues/2760)) ([04c9cc2](https://github.com/webex/webex-js-sdk/commit/04c9cc2084c737d533d0110d1eaf8bf57ce88e7c))
+
+## [3.0.0-beta.74](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.73...v3.0.0-beta.74) (2023-04-19)
+
+
+### Bug Fixes
+
+* **meetings:** don't fetch mtg info if we know we can't ([#2702](https://github.com/webex/webex-js-sdk/issues/2702)) ([d72aae2](https://github.com/webex/webex-js-sdk/commit/d72aae20d4caee1cd7a9eceaf64fc9a65aa47b0a))
+
 ## [3.0.0-beta.73](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.72...v3.0.0-beta.73) (2023-04-18)
 
 
