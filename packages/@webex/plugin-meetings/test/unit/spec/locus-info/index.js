@@ -1553,10 +1553,145 @@ describe('plugin-meetings', () => {
         locusInfo.onDeltaLocus(fakeLocus);
         assert.calledWith(locusInfo.updateParticipants, {}, false);
 
-        fakeBreakout.sessionId = 'sessionId2';
+        fakeLocus.controls.breakout.sessionId = 'sessionId2';
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, false);
+        assert.calledWith(locusInfo.updateParticipants, {}, true);
       });
+    });
+
+    describe('#updateLocusCache', () => {
+      it('cache it if income locus is main session locus', () => {
+        const locus = {url: 'url'};
+        locusInfo.mainSessionLocusCache = null;
+        locusInfo.updateLocusCache(locus);
+
+        assert.deepEqual(locusInfo.mainSessionLocusCache, locus);
+      });
+
+      it('not cache it if income locus is breakout session locus', () => {
+        const locus = {url: 'url', controls: {breakout: {sessionType: 'BREAKOUT'}}};
+        locusInfo.mainSessionLocusCache = null;
+        locusInfo.updateLocusCache(locus);
+
+        assert.isNull(locusInfo.mainSessionLocusCache);
+      });
+    });
+
+    describe('#getTheLocusToUpdate', () => {
+      it('return the cache locus if return to main session', () => {
+        locusInfo.mainSessionLocusCache = {url: 'url'};
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'BREAKOUT'
+          }
+        }
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+            },
+          },
+        };
+
+        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), {url: 'url'});
+      });
+
+      it('return the new locus if return to main session but no cache', () => {
+        locusInfo.mainSessionLocusCache = null;
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'BREAKOUT'
+          }
+        }
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+            },
+          },
+        };
+
+        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
+      });
+
+      it('return the new locus if not return to main session', () => {
+        locusInfo.mainSessionLocusCache = {url: 'url'};
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'MAIN'
+          }
+        }
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+        };
+
+        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
+      });
+    });
+
+    describe('#mergeParticipants', () => {
+      let participants;
+      let sourceParticipants;
+      beforeEach(() => {
+        participants = [{id: '111', status: 'JOINED'}, {id: '222'}];
+        sourceParticipants = [{id: '111', status: 'LEFT'}, {id: '333'}];
+      });
+
+      it('merge the participants, replace it by id if exist in old array', () => {
+        const result = locusInfo.mergeParticipants(participants, sourceParticipants);
+        assert.deepEqual(result, [{id: '111', status: 'LEFT'}, {id: '222'}, {id: '333'}]);
+      });
+
+      it('return new participants if previous participants is empty', () => {
+        const result = locusInfo.mergeParticipants([], sourceParticipants);
+        assert.deepEqual(result, sourceParticipants);
+      });
+
+      it('return previous participants if new participants is empty', () => {
+        const result = locusInfo.mergeParticipants(participants, []);
+        assert.deepEqual(result, participants);
+      });
+    });
+
+    describe('#updateMainSessionLocusCache', () => {
+      let cachedLocus;
+      let newLocus;
+      beforeEach(() => {
+        cachedLocus = {controls: {}, participants: []};
+        newLocus = {self: {}, participants: [{id: '111'}]};
+      });
+      it('merge new locus into cache', () => {
+        locusInfo.mainSessionLocusCache = cachedLocus;
+        locusInfo.updateMainSessionLocusCache(newLocus);
+
+        assert.deepEqual(locusInfo.mainSessionLocusCache, {controls: {}, participants: [{id: '111'}], self: {}})
+      });
+
+      it('cache new locus if no cache before', () => {
+        locusInfo.mainSessionLocusCache = null;
+        locusInfo.updateMainSessionLocusCache(newLocus);
+
+        assert.deepEqual(locusInfo.mainSessionLocusCache, newLocus);
+      });
+
+      it('do nothing if new locus is null', () => {
+        locusInfo.mainSessionLocusCache = cachedLocus;
+        locusInfo.updateMainSessionLocusCache(null);
+
+        assert.deepEqual(locusInfo.mainSessionLocusCache, cachedLocus);
+      });
+    });
+
+    describe('#clearMainSessionLocusCache', () => {
+      it('clear main session locus cache', () => {
+        locusInfo.mainSessionLocusCache = {controls: {}};
+        locusInfo.clearMainSessionLocusCache();
+        assert.isNull(locusInfo.mainSessionLocusCache);
+      })
     });
 
     describe('#handleOneonOneEvent', () => {

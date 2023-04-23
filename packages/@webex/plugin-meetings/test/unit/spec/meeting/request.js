@@ -377,4 +377,16 @@ describe('plugin-meetings', () => {
       });
     });
   });
+
+  describe('#getLocusStatusByUrl', () => {
+    it('check lcous status', async () => {
+      const locusUrl = 'locusUrl';
+
+      await meetingsRequest.getLocusStatusByUrl(locusUrl);
+      assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
+        method: 'GET',
+        uri: locusUrl,
+      })
+    });
+  });
 });

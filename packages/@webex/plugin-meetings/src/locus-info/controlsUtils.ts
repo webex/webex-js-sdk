@@ -1,4 +1,5 @@
 import {isEqual} from 'lodash';
+import {BREAKOUTS} from '../constants';
 
 const ControlsUtils: any = {};
 
@@ -136,6 +137,33 @@ ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
     oldControls.breakout.groupId !== controls.breakout.groupId ||
     oldControls.breakout.sessionId !== controls.breakout.sessionId
   );
+};
+
+/**
+ * determine the switch status between breakout session and main session.
+ * @param {LocusControls} oldControls
+ * @param {LocusControls} controls
+ * @returns {Object}
+ */
+ControlsUtils.getSessionSwitchStatus = (oldControls: any, controls: any) => {
+  const status = {isReturnToMain: false, isJoinToBreakout: false};
+  // no breakout case
+  if (!oldControls?.breakout || !controls?.breakout) {
+    return status;
+  }
+
+  status.isReturnToMain =
+    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+  status.isJoinToBreakout =
+    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+
+  return status;
+};
+
+ControlsUtils.isMainSessionDTO = (locus: any) => {
+  return locus?.controls?.breakout?.sessionType !== BREAKOUTS.SESSION_TYPES.BREAKOUT;
 };
 
 export default ControlsUtils;

@@ -61,6 +61,7 @@ describe('plugin-meetings', () => {
   let url1;
   let test1;
   let test2;
+  let locusInfo;
 
   describe('meetings index', () => {
     beforeEach(() => {
@@ -70,6 +71,10 @@ describe('plugin-meetings', () => {
       uri1 = `test-${uuid.v4()}@example.com`;
       test1 = `test-${uuid.v4()}`;
       test2 = `test2-${uuid.v4()}`;
+      locusInfo = {
+        parse: sinon.stub().returns(true),
+        updateMainSessionLocusCache: sinon.stub(),
+      };
       webex = new MockWebex({
         children: {
           device: Device,
@@ -150,6 +155,10 @@ describe('plugin-meetings', () => {
         },
       });
       webex.emit('ready');
+    });
+
+    afterEach(() => {
+      sinon.restore();
     });
 
     it('has a webex instance with a meetings property', () => {
@@ -444,21 +453,17 @@ describe('plugin-meetings', () => {
             );
           });
           describe('when meeting is returned', () => {
-            let parse;
 
             beforeEach(() => {
-              parse = sinon.stub().returns(true);
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
               });
             });
             it('tests the sync meeting calls for existing meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
               assert.calledOnce(webex.meetings.meetingCollection.getByKey);
-              assert.calledOnce(parse);
+              assert.calledOnce(locusInfo.parse);
               assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             });
           });
@@ -471,6 +476,7 @@ describe('plugin-meetings', () => {
               webex.meetings.create = sinon.stub().returns(
                 Promise.resolve({
                   locusInfo: {
+                    ...locusInfo,
                     initialSetup,
                   },
                 })
@@ -503,12 +509,9 @@ describe('plugin-meetings', () => {
 
             beforeEach(() => {
               destroySpy = sinon.spy(webex.meetings, 'destroy');
-              parse = sinon.stub().returns(true);
               initialSetup = sinon.stub().returns(true);
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
                 sendCallAnalyzerMetrics: sinon.stub(),
               });
               webex.meetings.meetingCollection.getAll = sinon.stub().returns({
@@ -678,34 +681,38 @@ describe('plugin-meetings', () => {
       });
       describe('#handleLocusEvent', () => {
         describe('there was a meeting', () => {
-          let parse;
 
           beforeEach(() => {
-            parse = sinon.stub().returns(true);
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-              locusInfo: {
-                parse,
-              },
+              locusInfo,
             });
           });
-          it('should parse the meeting info', () => {
+          it('should parse the meeting info and update main session locus cache', () => {
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(false);
             webex.meetings.handleLocusEvent({
               locusUrl: url1,
             });
             assert.calledOnce(webex.meetings.meetingCollection.getByKey);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
-            assert.calledOnce(parse);
+            assert.calledOnce(locusInfo.parse);
+            assert.calledOnce(locusInfo.updateMainSessionLocusCache);
             assert.calledWith(
-              parse,
+              locusInfo.parse,
               {
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
               },
               {
                 locusUrl: url1,
               }
             );
+          });
+
+          it('should not update main session locus cache', () => {
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(true);
+            webex.meetings.handleLocusEvent({
+              locusUrl: url1,
+            });
+            assert.notCalled(locusInfo.updateMainSessionLocusCache);
           });
         });
         describe('there was not a meeting', () => {
@@ -718,6 +725,7 @@ describe('plugin-meetings', () => {
             webex.meetings.create = sinon.stub().returns(
               Promise.resolve({
                 locusInfo: {
+                  ...locusInfo,
                   initialSetup,
                 },
               })

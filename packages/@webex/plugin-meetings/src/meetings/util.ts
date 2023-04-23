@@ -1,16 +1,17 @@
 /* globals window */
 
 import {
-  _LOCUS_ID_,
-  _INCOMING_,
   _CREATED_,
-  LOCUSEVENT,
+  _INCOMING_,
+  _JOINED_,
+  _LEFT_,
+  _LOCUS_ID_,
+  _MOVED_,
+  BREAKOUTS,
   CORRELATION_ID,
   EVENT_TRIGGERS,
+  LOCUSEVENT,
   ROAP,
-  _LEFT_,
-  _MOVED_,
-  _JOINED_,
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
@@ -228,13 +229,12 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
 /**
  * get device from locus data
  * @param {Object} newLocus new locus data
+ * @param {String} deviceUrl current device url
  * @returns {Object}
  */
-MeetingsUtil.getThisDevice = (newLocus: any) => {
+MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
   if (newLocus?.self?.devices?.length > 0) {
-    const [thisDevice] = newLocus.self.devices;
-
-    return thisDevice;
+    return newLocus.self.devices.find((device) => device.url === deviceUrl);
   }
 
   return null;
@@ -244,10 +244,11 @@ MeetingsUtil.getThisDevice = (newLocus: any) => {
  * get self device joined status from locus data
  * @param {Object} meeting current meeting data
  * @param {Object} newLocus new locus data
+ * @param {String} deviceUrl current device url
  * @returns {Object}
  */
-MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any) => {
-  const thisDevice = MeetingsUtil.getThisDevice(newLocus);
+MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: string) => {
+  const thisDevice = MeetingsUtil.getThisDevice(newLocus, deviceUrl);
   if (thisDevice) {
     if (!thisDevice.correlationId || meeting?.correlationId === thisDevice.correlationId) {
       return (
@@ -260,4 +261,14 @@ MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any) => {
   return false;
 };
 
+/**
+ * check the new locus is breakout session's one or not
+ * @param {Object} newLocus new locus data
+ * @returns {boolean}
+ * @private
+ * @memberof Meetings
+ */
+MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
+  return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+};
 export default MeetingsUtil;

@@ -4600,6 +4600,30 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
         });
+
+        it('listens to the timing that user joined into breakout', async () => {
+          const mainLocusUrl = 'mainLocusUrl123';
+
+          meeting.meetingRequest.getLocusStatusByUrl = sinon.stub().returns(Promise.resolve());
+
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusStatusByUrl, mainLocusUrl);
+          const error = {statusCode: 403};
+          meeting.meetingRequest.getLocusStatusByUrl.rejects(error);
+          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.calledOnce(meeting.locusInfo.clearMainSessionLocusCache);
+        });
       });
 
       describe('#setUpLocusUrlListener', () => {
