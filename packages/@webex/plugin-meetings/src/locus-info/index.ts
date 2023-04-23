@@ -1420,8 +1420,8 @@ export default class LocusInfo extends EventsScope {
    */
   getTheLocusToUpdate(newLocus: any) {
     const switchStatus = ControlsUtils.getSessionSwitchStatus(this.controls, newLocus.controls);
-    if (switchStatus.isReturnToMain) {
-      return this.mainSessionLocusCache || newLocus;
+    if (switchStatus.isReturnToMain && this.mainSessionLocusCache) {
+      return cloneDeep(this.mainSessionLocusCache);
     }
     if (switchStatus.isJoinToBreakout) {
       this.emitScoped(
