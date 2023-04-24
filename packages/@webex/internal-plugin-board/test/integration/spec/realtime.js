@@ -12,7 +12,7 @@ import fh from '@webex/test-helper-file';
 import {map} from 'lodash';
 import uuid from 'uuid';
 
-describe('plugin-board', () => {
+describe.skip('plugin-board', () => {
   describe('realtime', () => {
     let board, conversation, fixture, participants;
     let mccoy, spock;

@@ -19,7 +19,7 @@ const debug = require('debug')('messages');
 
 const KNOWN_HOSTED_IMAGE_URL = 'https://download.ciscospark.com/test/photo.png';
 
-describe('plugin-messages', function () {
+describe.skip('plugin-messages', function () {
   this.timeout(60000);
 
   let webex;

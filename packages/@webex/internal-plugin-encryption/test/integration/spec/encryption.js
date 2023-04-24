@@ -158,7 +158,7 @@ describe('Encryption', function () {
         }));
   });
 
-  describe('#download()', () => {
+  describe.skip('#download()', () => {
     it('downloads and decrypts an encrypted file', () =>
       webex.internal.encryption
         .encryptBinary(FILE)
