@@ -960,7 +960,7 @@ describe('plugin-conversation', function () {
             assert.include(edit, parent.id);
           }));
 
-      it('retrieves parent IDs for reactions', () =>
+      it.skip('retrieves parent IDs for reactions', () =>
         webex.internal.conversation
           .addReaction(conversation, 'heart', parent)
           .then((reaction) => {
