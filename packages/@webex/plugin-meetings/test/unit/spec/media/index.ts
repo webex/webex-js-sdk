@@ -170,6 +170,7 @@ describe('createMediaConnection', () => {
           iceServers: [],
           enableMainAudio,
           enableMainVideo,
+          bundlePolicy: undefined,
         },
         'some debug id'
       );
@@ -200,6 +201,7 @@ describe('createMediaConnection', () => {
         iceServers: [],
         enableMainAudio: true,
         enableMainVideo: true,
+        bundlePolicy: undefined,
       },
       'debug string'
     );
