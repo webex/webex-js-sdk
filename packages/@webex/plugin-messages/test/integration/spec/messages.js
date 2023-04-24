@@ -19,6 +19,7 @@ const debug = require('debug')('messages');
 
 const KNOWN_HOSTED_IMAGE_URL = 'https://download.ciscospark.com/test/photo.png';
 
+// SPARK-413317
 describe.skip('plugin-messages', function () {
   this.timeout(60000);
 

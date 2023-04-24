@@ -78,6 +78,7 @@ describe('http-core', function () {
           }));
       });
 
+      // SPARK-413317
       it.skip('makes CORS compatible calls', () =>
         request({
           uri: 'https://ds.ciscospark.com/v1/region/',

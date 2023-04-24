@@ -5,7 +5,6 @@ import {createMuteState} from '@webex/plugin-meetings/src/meeting/muteState';
 import Media from '@webex/plugin-meetings/src/media/index';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {AUDIO, VIDEO} from '@webex/plugin-meetings/src/constants';
-// remove after testing
 import testUtils from '../../../utils/testUtils';
 
 describe('plugin-meetings', () => {

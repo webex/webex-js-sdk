@@ -367,7 +367,7 @@ describe('plugin-rooms', function () {
           }
         }));
     });
-    // flaky
+    // SPARK-413317
     describe.skip('#update()', () => {
       let room;
 

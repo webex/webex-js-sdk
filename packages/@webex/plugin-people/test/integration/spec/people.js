@@ -97,6 +97,7 @@ describe('plugin-people', function () {
           assert.equal(person.emails[0], mccoy.email);
         }));
 
+      // SPARK-413317
       it.skip('returns a list of people matching name', () =>
         spock.webex.people.list({displayName: mccoy.name}).then((peopleResponse) => {
           assert.isAbove(peopleResponse.items.length, 0);

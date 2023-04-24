@@ -12,6 +12,7 @@ import fh from '@webex/test-helper-file';
 import {map} from 'lodash';
 import uuid from 'uuid';
 
+// SPARK-413317
 describe.skip('plugin-board', () => {
   describe('realtime', () => {
     let board, conversation, fixture, participants;
