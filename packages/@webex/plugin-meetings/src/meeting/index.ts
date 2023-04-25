@@ -5372,6 +5372,7 @@ export default class Meeting extends StatelessWebexPlugin {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
           connectionType,
+          isMultistream: this.isMultistream,
         });
       })
       .catch((error) => {
@@ -5401,6 +5402,7 @@ export default class Meeting extends StatelessWebexPlugin {
             code: error.code,
             turnDiscoverySkippedReason,
             turnServerUsed,
+            isMultistream: this.isMultistream,
           });
 
           // Upload logs on error while adding media

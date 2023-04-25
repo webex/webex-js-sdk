@@ -1138,6 +1138,7 @@ describe('plugin-meetings', () => {
             code: error.code,
             turnDiscoverySkippedReason: undefined,
             turnServerUsed: true,
+            isMultistream: false,
           });
         });
 
@@ -1156,6 +1157,7 @@ describe('plugin-meetings', () => {
               stack: err.stack,
               turnDiscoverySkippedReason: 'config',
               turnServerUsed: false,
+              isMultistream: false,
             });
           });
         });
@@ -1182,6 +1184,7 @@ describe('plugin-meetings', () => {
               reason: result.message,
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
+              isMultistream: false,
             })
           );
         });
@@ -1362,6 +1365,7 @@ describe('plugin-meetings', () => {
             correlation_id: meeting.correlationId,
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
+            isMultistream: false
           });
         });
 
