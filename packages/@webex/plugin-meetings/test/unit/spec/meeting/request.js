@@ -379,7 +379,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('#getLocusStatusByUrl', () => {
-    it('check lcous status', async () => {
+    it('check locus status', async () => {
       const locusUrl = 'locusUrl';
 
       await meetingsRequest.getLocusStatusByUrl(locusUrl);

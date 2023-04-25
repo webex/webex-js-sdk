@@ -1651,8 +1651,24 @@ describe('plugin-meetings', () => {
         assert.deepEqual(result, sourceParticipants);
       });
 
+      it('return new participants if previous participants is null/undefined', () => {
+        let result = locusInfo.mergeParticipants(null, sourceParticipants);
+        assert.deepEqual(result, sourceParticipants);
+
+        result = locusInfo.mergeParticipants(undefined, sourceParticipants);
+        assert.deepEqual(result, sourceParticipants);
+      });
+
       it('return previous participants if new participants is empty', () => {
         const result = locusInfo.mergeParticipants(participants, []);
+        assert.deepEqual(result, participants);
+      });
+
+      it('return previous participants if new participants is null/undefined', () => {
+        let result = locusInfo.mergeParticipants(participants, null);
+        assert.deepEqual(result, participants);
+
+        result = locusInfo.mergeParticipants(participants, undefined);
         assert.deepEqual(result, participants);
       });
     });

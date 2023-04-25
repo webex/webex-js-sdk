@@ -4655,6 +4655,17 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledOnce(meeting.locusInfo.clearMainSessionLocusCache);
+
+          const otherError = new Error('something wrong');
+          meeting.meetingRequest.getLocusStatusByUrl.rejects(otherError);
+          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.notCalled(meeting.locusInfo.clearMainSessionLocusCache);
         });
       });
 
