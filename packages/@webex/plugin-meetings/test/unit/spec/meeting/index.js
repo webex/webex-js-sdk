@@ -73,12 +73,14 @@ import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-er
 import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
+import PermissionError from '../../../../src/common/errors/permission';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
+  MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 
 const {getBrowserName} = BrowserDetection();
@@ -416,7 +418,10 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.admitMembers, [uuid1]);
         });
         it('should call from a breakout session if caller is in a breakout session', async () => {
-          const locusUrls = {authorizingLocusUrl: 'authorizingLocusUrl', mainLocusUrl: 'mainLocusUrl'};
+          const locusUrls = {
+            authorizingLocusUrl: 'authorizingLocusUrl',
+            mainLocusUrl: 'mainLocusUrl',
+          };
           await meeting.admit([uuid1], locusUrls);
           assert.calledOnce(meeting.members.admitMembers);
           assert.calledWith(meeting.members.admitMembers, [uuid1], locusUrls);
@@ -2220,7 +2225,7 @@ describe('plugin-meetings', () => {
               meeting.isMultistream = true;
 
               const result = await meeting.updateMedia({
-                  mediaSettings,
+                mediaSettings,
               });
 
               assert.calledOnceWithExactly(
@@ -2942,6 +2947,7 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_IMAGE_URL = 'http://captchaimage';
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
+        const FAKE_INSTALLED_ORG_ID = '123456';
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -2969,6 +2975,7 @@ describe('plugin-meetings', () => {
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
+          meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
 
           await meeting.fetchMeetingInfo({
@@ -2981,7 +2988,8 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             FAKE_PASSWORD,
-            {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID}
+            {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
+            FAKE_INSTALLED_ORG_ID
           );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
@@ -3101,6 +3109,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403004);
           assert.equal(
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
@@ -3108,6 +3117,34 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
         });
+
+        it('handles meetingInfoProvider policy error', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({}), PermissionError);
+
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 123456);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.POLICY
+          );
+        });
+
 
         it('handles meetingInfoProvider requiring captcha because of wrong password', async () => {
           meeting.destination = FAKE_DESTINATION;
@@ -3139,6 +3176,7 @@ describe('plugin-meetings', () => {
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
           );
+            assert.equal(meeting.meetingInfoFailureCode, 423005);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.deepEqual(meeting.requiredCaptcha, {
             captchaId: FAKE_CAPTCHA_ID,
@@ -5071,6 +5109,8 @@ describe('plugin-meetings', () => {
         let handleDataChannelUrlChangeSpy;
         let canEnableReactionsSpy;
         let canSendReactionsSpy;
+        let canUserRenameSelfAndObservedSpy;
+        let canUserRenameOthersSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5096,6 +5136,8 @@ describe('plugin-meetings', () => {
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
+          canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
         });
 
         afterEach(() => {
@@ -5141,6 +5183,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
           assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,

@@ -41,8 +41,10 @@ describe('plugin-meetings', () => {
         canManageBreakout: null,
         canAdmitLobbyToBreakout: null,
         canUserAskForHelp: null,
+        canUserRenameSelfAndObserved: null,
+        canUserRenameOthers: null,
         isBreakoutPreassignmentsEnabled: null,
-        ...expected
+        ...expected,
       };
 
       // Check get retuns all the correct values at once
@@ -88,7 +90,9 @@ describe('plugin-meetings', () => {
       'canManageBreakout',
       'canAdmitLobbyToBreakout',
       'canUserAskForHelp',
-      'isBreakoutPreassignmentsEnabled'
+      'canUserRenameSelfAndObserved',
+      'canUserRenameOthers',
+      'isBreakoutPreassignmentsEnabled',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

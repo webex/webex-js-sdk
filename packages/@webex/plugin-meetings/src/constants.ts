@@ -7,6 +7,7 @@ export const AUDIO = 'audio';
 export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
@@ -796,13 +797,18 @@ export const DISPLAY_HINTS = {
   DISABLE_REACTIONS: 'DISABLE_REACTIONS',
   REACTIONS_ACTIVE: 'REACTIONS_ACTIVE',
   REACTIONS_INACTIVE: 'REACTIONS_INACTIVE',
+  SHARE_CONTROL: 'SHARE_CONTROL',
   ENABLE_MUTE_ON_ENTRY: 'ENABLE_MUTE_ON_ENTRY',
+  ENABLE_SHOW_DISPLAY_NAME: 'ENABLE_SHOW_DISPLAY_NAME',
+  DISABLE_SHOW_DISPLAY_NAME: 'DISABLE_SHOW_DISPLAY_NAME',
   DISABLE_MUTE_ON_ENTRY: 'DISABLE_MUTE_ON_ENTRY',
   ENABLE_HARD_MUTE: 'ENABLE_HARD_MUTE',
   DISABLE_HARD_MUTE: 'DISABLE_HARD_MUTE',
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -810,6 +816,10 @@ export const DISPLAY_HINTS = {
   DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
   DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
   DISABLE_LOBBY_TO_BREAKOUT: 'DISABLE_LOBBY_TO_BREAKOUT',
+
+  // participants list
+  DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
+  ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
 };
 
 export const SELF_ROLES = {
@@ -1126,6 +1136,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  POLICY: 'POLICY', // meeting info request violates some meeting policy
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1139,4 +1150,9 @@ export const BNR_STATUS = {
 export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
   OTHER: 'OTHER',
+};
+
+export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
+  supportHostKey: true,
+  supportCountryList: true,
 };

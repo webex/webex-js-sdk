@@ -15,7 +15,7 @@ import Meetings from '@webex/plugin-meetings';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
-import {EVENT_TRIGGERS} from "@webex/plugin-meetings/src/constants";
+import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -214,10 +214,16 @@ describe('plugin-meetings', () => {
         Trigger.trigger = sinon.stub();
         members.clearMembers();
         assert.deepEqual(members.membersCollection.members, {});
-        assert.calledWith(Trigger.trigger, members, {
-          file: 'members',
-          function: 'clearMembers',
-        }, EVENT_TRIGGERS.MEMBERS_CLEAR, {})
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'clearMembers',
+          },
+          EVENT_TRIGGERS.MEMBERS_CLEAR,
+          {}
+        );
       });
     });
     describe('#locusParticipantsUpdate', () => {
@@ -233,14 +239,20 @@ describe('plugin-meetings', () => {
 
         members.locusParticipantsUpdate(fakePayload);
 
-        assert.calledWith(Trigger.trigger, members, {
-          file: 'members',
-          function: 'locusParticipantsUpdate',
-        }, EVENT_TRIGGERS.MEMBERS_UPDATE, {
-          delta: {added: [], updated: []},
-          full: {},
-          isReplace: true,
-        })
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'locusParticipantsUpdate',
+          },
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: []},
+            full: {},
+            isReplace: true,
+          }
+        );
       });
     });
     describe('#sendDialPadKey', () => {
@@ -375,9 +387,23 @@ describe('plugin-meetings', () => {
         const memberId = uuid.v4();
         const {members, spies} = setup(url1);
 
-        const resultPromise = members.assignRoles(memberId, [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}]);
+        const resultPromise = members.assignRoles(memberId, [
+          {type: 'PRESENTER', hasRole: true},
+          {type: 'MODERATOR', hasRole: false},
+          {type: 'COHOST', hasRole: true},
+        ]);
 
-        await checkValid(resultPromise, spies, memberId, [{type: 'PRESENTER', hasRole: true}, {type: 'MODERATOR', hasRole: false}, {type: 'COHOST', hasRole: true}], url1);
+        await checkValid(
+          resultPromise,
+          spies,
+          memberId,
+          [
+            {type: 'PRESENTER', hasRole: true},
+            {type: 'MODERATOR', hasRole: false},
+            {type: 'COHOST', hasRole: true},
+          ],
+          url1
+        );
       });
     });
 
@@ -547,6 +573,88 @@ describe('plugin-meetings', () => {
         const resultPromise = members.lowerAllHands(requestingMemberId);
 
         await checkValid(resultPromise, spies, requestingMemberId, url1);
+      });
+    });
+
+    describe('#editDisplayName', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          generateEditDisplayNameMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateEditDisplayNameMemberOptions'
+          ),
+          editDisplayNameMember: sandbox.spy(members.membersRequest, 'editDisplayNameMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.generateEditDisplayNameMemberOptions);
+        assert.notCalled(spies.editDisplayNameMember);
+      };
+
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRequestingParticipantId,
+        expectedAlias,
+        expectedLocusUrl
+      ) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(
+          spies.generateEditDisplayNameMemberOptions,
+          expectedMemberId,
+          expectedRequestingParticipantId,
+          expectedAlias,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.editDisplayNameMember, {
+          memberId: expectedMemberId,
+          requestingParticipantId: expectedRequestingParticipantId,
+          alias: expectedAlias,
+          locusUrl: expectedLocusUrl,
+        });
+        assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no memberId', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to edit display name of the member.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.editDisplayName(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with respective parameters', async () => {
+        const requestingParticipantId = uuid.v4();
+        const memberId = uuid.v4();
+        const alias = 'aliasName';
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName(memberId, requestingParticipantId, alias);
+
+        await checkValid(resultPromise, spies, memberId, requestingParticipantId, alias, url1);
       });
     });
 

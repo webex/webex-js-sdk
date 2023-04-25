@@ -46,6 +46,8 @@ interface IInMeetingActions {
   canAdmitLobbyToBreakout?: boolean;
   isBreakoutPreassignmentsEnabled?: boolean;
   canUserAskForHelp?: boolean;
+  canUserRenameSelfAndObserved?: boolean;
+  canUserRenameOthers?: boolean;
 }
 
 /**
@@ -128,6 +130,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUserAskForHelp = null;
 
+  canUserRenameSelfAndObserved = null;
+
+  canUserRenameOthers = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -170,6 +176,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canAdmitLobbyToBreakout: this.canAdmitLobbyToBreakout,
     isBreakoutPreassignmentsEnabled: this.isBreakoutPreassignmentsEnabled,
     canUserAskForHelp: this.canUserAskForHelp,
+    canUserRenameSelfAndObserved: this.canUserRenameSelfAndObserved,
+    canUserRenameOthers: this.canUserRenameOthers,
   });
 
   /**

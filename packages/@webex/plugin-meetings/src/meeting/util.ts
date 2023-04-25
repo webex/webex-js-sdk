@@ -518,5 +518,10 @@ MeetingUtil.canSendReactions = (originalValue, displayHints) => {
 
   return originalValue;
 };
+MeetingUtil.canUserRenameSelfAndObserved = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED);
+
+MeetingUtil.canUserRenameOthers = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS);
 
 export default MeetingUtil;
