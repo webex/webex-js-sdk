@@ -5238,7 +5238,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {MediaDirection} options.mediaSettings pass media options
    * @param {MediaStream} options.localStream
    * @param {MediaStream} options.localShare
-   * @param {BundlePolicy} options.bundlePolicy
+   * @param {BundlePolicy} options.bundlePolicy bundle policy for multistream meetings
    * @param {RemoteMediaManagerConfig} options.remoteMediaManagerConfig only applies if multistream is enabled
    * @returns {Promise}
    * @public
