@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.81](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.80...v3.0.0-beta.81) (2023-04-25)
+
+
+### Features
+
+* **meetings:** call control imo ([#2766](https://github.com/webex/webex-js-sdk/issues/2766)) ([d8569cf](https://github.com/webex/webex-js-sdk/commit/d8569cf6e87f087b05f19de73ea896390126a110))
+
 ## [3.0.0-beta.80](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.79...v3.0.0-beta.80) (2023-04-25)
 
 
