@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.79](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.78...v3.0.0-beta.79) (2023-04-24)
+
+
+### Bug Fixes
+
+* **meeting:** bypass Password Prompt for User Joined to a Meeting ([#2762](https://github.com/webex/webex-js-sdk/issues/2762)) ([8eb70ee](https://github.com/webex/webex-js-sdk/commit/8eb70eea797d52e1ebf44355ae13eb87a7da06d4))
+
 ## [3.0.0-beta.78](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.77...v3.0.0-beta.78) (2023-04-21)
 
 
