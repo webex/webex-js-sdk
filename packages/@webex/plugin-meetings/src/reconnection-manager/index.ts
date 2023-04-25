@@ -22,6 +22,7 @@ import {eventType, reconnection, errorObjects} from '../metrics/config';
 import Media from '../media';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
+import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -570,9 +571,11 @@ export default class ReconnectionManager {
 
     // resend media requests
     if (this.meeting.isMultistream) {
-      Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-        // @ts-ignore - Fix type
-        mediaRequestManager.commit()
+      Object.values(this.meeting.mediaRequestManagers).forEach(
+        (mediaRequestManager: MediaRequestManager) => {
+          mediaRequestManager.clearPreviousRequests();
+          mediaRequestManager.commit();
+        }
       );
     }
   }

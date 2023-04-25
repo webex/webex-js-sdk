@@ -7,6 +7,7 @@ export const AUDIO = 'audio';
 export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
@@ -803,6 +804,8 @@ export const DISPLAY_HINTS = {
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -1126,6 +1129,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  POLICY: 'POLICY', // meeting info request violates some meeting policy
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1139,4 +1143,9 @@ export const BNR_STATUS = {
 export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
   OTHER: 'OTHER',
+};
+
+export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
+  supportHostKey: true,
+  supportCountryList: true,
 };

@@ -65,6 +65,7 @@ describe('plugin-llm', () => {
           sinon.match({
             method: 'POST',
             url: `${datachannelUrl}`,
+            body: {deviceUrl: webex.internal.device.url},
           })
         );
 
