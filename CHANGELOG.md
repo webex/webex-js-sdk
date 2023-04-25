@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.82](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.81...v3.0.0-beta.82) (2023-04-25)
+
+
+### Features
+
+* expose bundlePolicy option via addMedia ([#2765](https://github.com/webex/webex-js-sdk/issues/2765)) ([77af49e](https://github.com/webex/webex-js-sdk/commit/77af49e8870075a2d93af78874d9fa964a0695b3))
+
 ## [3.0.0-beta.81](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.80...v3.0.0-beta.81) (2023-04-25)
 
 
