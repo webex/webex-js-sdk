@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.80](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.79...v3.0.0-beta.80) (2023-04-25)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** pass devcie url for llm POST call ([#2777](https://github.com/webex/webex-js-sdk/issues/2777)) ([2944ba1](https://github.com/webex/webex-js-sdk/commit/2944ba10d431e813646f8ef1109ef27363b13f84))
+
 ## [3.0.0-beta.79](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.78...v3.0.0-beta.79) (2023-04-24)
 
 
