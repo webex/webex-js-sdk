@@ -629,7 +629,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.breakouts = new Breakouts({meetingId: this.id}, {parent: this.webex});
+    this.breakouts = new Breakouts({}, {parent: this.webex});
+    /**
+     * @instance
+     * @type {Annotation}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore
+    this.annotation = new Annotation(this.locusInfo, {parent: this.webex});
     /**
      * @instance
      * @type {Annotation}
