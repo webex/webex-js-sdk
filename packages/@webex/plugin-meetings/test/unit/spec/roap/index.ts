@@ -54,6 +54,7 @@ describe('Roap', () => {
         },
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
+        webex: { meetings: { reachability: { isAnyClusterReachable: () => true}}},
       };
 
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
@@ -65,19 +66,19 @@ describe('Roap', () => {
     });
 
     [
-      {reconnect: true, enableTurnDiscovery: true, expectEmptyMediaId: false},
-      {reconnect: true, enableTurnDiscovery: false, expectEmptyMediaId: true},
-      {reconnect: false, enableTurnDiscovery: true, expectEmptyMediaId: false},
-      {reconnect: false, enableTurnDiscovery: false, expectEmptyMediaId: false},
-    ].forEach(({reconnect, enableTurnDiscovery, expectEmptyMediaId}) =>
+      {reconnect: true, turnDiscoverySkipped: false, expectEmptyMediaId: false},
+      {reconnect: true, turnDiscoverySkipped: true, expectEmptyMediaId: true},
+      {reconnect: false, turnDiscoverySkipped: false, expectEmptyMediaId: false},
+      {reconnect: false, turnDiscoverySkipped: true, expectEmptyMediaId: false},
+    ].forEach(({reconnect, turnDiscoverySkipped, expectEmptyMediaId}) =>
       it(`sends roap OFFER with ${expectEmptyMediaId ? 'empty ' : ''}mediaId when ${
         reconnect ? '' : 'not '
       }reconnecting and TURN discovery is ${
-        enableTurnDiscovery ? 'enabled' : 'disabled'
+        turnDiscoverySkipped ? 'skipped' : 'not skipped'
       }`, async () => {
-        meeting.config.experimental.enableTurnDiscovery = enableTurnDiscovery;
-
         const roap = new Roap({}, {parent: 'fake'});
+
+        sinon.stub(roap.turnDiscovery, 'isSkipped').resolves(turnDiscoverySkipped);
 
         await roap.sendRoapMediaRequest({
           meeting,
