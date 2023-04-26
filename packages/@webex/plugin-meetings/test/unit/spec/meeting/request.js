@@ -202,7 +202,26 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED']);
       });
 
-      it('does not add deviceCapabilities to request when breakouts are not supported', async () => {
+      it('adds deviceCapabilities to request when live annotation are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          liveAnnotationSupported: true
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['ANNOTATION_ON_SHARE_SUPPORTED']);
+      });
+
+      it('adds deviceCapabilities to request when breakouts and live annotation are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          liveAnnotationSupported: true,
+          breakoutsSupported: true,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED','ANNOTATION_ON_SHARE_SUPPORTED']);
+      });
+
+      it('does not add deviceCapabilities to request when breakouts and live annotation are not supported', async () => {
         await meetingsRequest.joinMeeting({});
 
         const requestParams = meetingsRequest.request.getCall(0).args[0];
