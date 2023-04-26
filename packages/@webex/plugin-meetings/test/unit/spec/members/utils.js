@@ -12,6 +12,55 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('members utils library', () => {
+    describe('#generateRoleAssignmentMemberOptions', () => {
+      it('returns the correct options', () => {
+        const memberId = 'test';
+        const roles = [
+          {type: 'PRESENTER', hasRole: true},
+          {type: 'MODERATOR', hasRole: true},
+          {type: 'COHOST', hasRole: true},
+        ];
+        const locusUrl = 'urlTest1';
+
+        assert.deepEqual(
+          MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, locusUrl),
+          {
+            memberId,
+            roles,
+            locusUrl,
+          }
+        );
+      });
+    });
+
+    describe('#getRoleAssignmentMemberRequestParams', () => {
+      it('returns the correct request params', () => {
+        const format = {
+          locusUrl: 'locusUrl',
+          memberId: 'test',
+          roles: [
+            {type: 'PRESENTER', hasRole: true},
+            {type: 'MODERATOR', hasRole: false},
+            {type: 'COHOST', hasRole: true},
+          ],
+        };
+
+        assert.deepEqual(MembersUtil.getRoleAssignmentMemberRequestParams(format), {
+          method: 'PATCH',
+          uri: `locusUrl/${PARTICIPANT}/test/${CONTROLS}`,
+          body: {
+            role: {
+              roles: [
+                {type: 'PRESENTER', hasRole: true},
+                {type: 'MODERATOR', hasRole: false},
+                {type: 'COHOST', hasRole: true},
+              ],
+            },
+          },
+        });
+      });
+    });
+
     describe('#generateRaiseHandMemberOptions', () => {
       it('returns the correct options', () => {
         const memberId = 'test';
@@ -34,6 +83,29 @@ describe('plugin-meetings', () => {
           MembersUtil.generateLowerAllHandsMemberOptions(requestingParticipantId, locusUrl),
           {
             requestingParticipantId,
+            locusUrl,
+          }
+        );
+      });
+    });
+    describe('#generateEditDisplayNameMemberOptions', () => {
+      it('returns the correct options', () => {
+        const locusUrl = 'urlTest1';
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const alias = 'alias';
+
+        assert.deepEqual(
+          MembersUtil.generateEditDisplayNameMemberOptions(
+            memberId,
+            requestingParticipantId,
+            alias,
+            locusUrl
+          ),
+          {
+            memberId,
+            requestingParticipantId,
+            alias,
             locusUrl,
           }
         );

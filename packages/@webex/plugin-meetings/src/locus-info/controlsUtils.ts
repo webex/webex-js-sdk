@@ -119,4 +119,23 @@ ControlsUtils.getId = (controls: any) => {
   return null;
 };
 
+/**
+ * check whether to replace the meeting's members or not.
+ * For case joined breakout session, need replace meeting's members
+ * @param {LocusControls} oldControls
+ * @param {LocusControls} controls
+ * @returns {Boolean}
+ */
+ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
+  // no breakout case
+  if (!oldControls?.breakout || !controls?.breakout) {
+    return false;
+  }
+
+  return (
+    oldControls.breakout.groupId !== controls.breakout.groupId ||
+    oldControls.breakout.sessionId !== controls.breakout.sessionId
+  );
+};
+
 export default ControlsUtils;

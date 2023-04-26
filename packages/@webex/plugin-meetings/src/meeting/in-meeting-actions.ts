@@ -20,6 +20,8 @@ interface IInMeetingActions {
   canSetMuted?: boolean;
   canUnsetMuted?: boolean;
   canAssignHost?: boolean;
+  canSetPresenter?: boolean;
+  canUnsetPresenter?: boolean;
   canStartRecording?: boolean;
   canPauseRecording?: boolean;
   canResumeRecording?: boolean;
@@ -32,6 +34,7 @@ interface IInMeetingActions {
   canStartTranscribing?: boolean;
   canStopTranscribing?: boolean;
   isClosedCaptionActive?: boolean;
+  isSaveTranscriptsEnabled?: boolean;
   isWebexAssistantActive?: boolean;
   canViewCaptionPanel?: boolean;
   isRealTimeTranslationEnabled?: boolean;
@@ -43,6 +46,8 @@ interface IInMeetingActions {
   canAdmitLobbyToBreakout?: boolean;
   isBreakoutPreassignmentsEnabled?: boolean;
   canUserAskForHelp?: boolean;
+  canUserRenameSelfAndObserved?: boolean;
+  canUserRenameOthers?: boolean;
 }
 
 /**
@@ -71,6 +76,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canSetMuteOnEntry = null;
 
+  canSetPresenter = null;
+
+  canUnsetPresenter = null;
+
   canUnsetMuteOnEntry = null;
 
   canSetDisallowUnmute = null;
@@ -97,6 +106,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   isClosedCaptionActive = null;
 
+  isSaveTranscriptsEnabled = null;
+
   isWebexAssistantActive = null;
 
   canViewCaptionPanel = null;
@@ -119,6 +130,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUserAskForHelp = null;
 
+  canUserRenameSelfAndObserved = null;
+
+  canUserRenameOthers = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -134,6 +149,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canSetDisallowUnmute: this.canSetDisallowUnmute,
     canSetMuted: this.canSetMuted,
     canUnsetMuted: this.canUnsetMuted,
+    canSetPresenter: this.canSetPresenter,
+    canUnsetPresenter: this.canUnsetPresenter,
     canUnsetDisallowUnmute: this.canUnsetDisallowUnmute,
     canStartRecording: this.canStartRecording,
     canPauseRecording: this.canPauseRecording,
@@ -147,6 +164,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canStartTranscribing: this.canStartTranscribing,
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
+    isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
     isWebexAssistantActive: this.isWebexAssistantActive,
     canViewCaptionPanel: this.canViewCaptionPanel,
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
@@ -158,6 +176,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canAdmitLobbyToBreakout: this.canAdmitLobbyToBreakout,
     isBreakoutPreassignmentsEnabled: this.isBreakoutPreassignmentsEnabled,
     canUserAskForHelp: this.canUserAskForHelp,
+    canUserRenameSelfAndObserved: this.canUserRenameSelfAndObserved,
+    canUserRenameOthers: this.canUserRenameOthers,
   });
 
   /**

@@ -16,6 +16,7 @@ import MembersRequest from './request';
 import MembersUtil from './util';
 import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import {ServerRoleShape} from './types';
 
 /**
  * Members Update Event
@@ -283,6 +284,25 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * clear member collection
+   * @returns {void}
+   * @private
+   * @memberof Members
+   */
+  clearMembers() {
+    this.membersCollection.reset();
+    Trigger.trigger(
+      this,
+      {
+        file: 'members',
+        function: 'clearMembers',
+      },
+      EVENT_TRIGGERS.MEMBERS_CLEAR,
+      {}
+    );
+  }
+
+  /**
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
@@ -291,8 +311,11 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object}) {
+  locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
     if (payload) {
+      if (payload.isReplace) {
+        this.clearMembers();
+      }
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
 
@@ -308,6 +331,7 @@ export default class Members extends StatelessWebexPlugin {
         {
           delta,
           full,
+          isReplace: !!payload.isReplace,
         }
       );
     }
@@ -804,6 +828,32 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * Assign role(s) to a member in the meeting
+   * @param {String} memberId
+   * @param {[ServerRoleShape]} roles - to assign an array of roles
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public assignRoles(memberId: string, roles: Array<ServerRoleShape>) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to assign the roles to a member.')
+      );
+    }
+    const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
+
+    return this.membersRequest.assignRolesMember(options);
+  }
+
+  /**
    * Raise or lower the hand of a member in a meeting
    * @param {String} memberId
    * @param {boolean} [raise] - to raise hand (=true) or lower (=false), default: true
@@ -967,5 +1017,40 @@ export default class Members extends StatelessWebexPlugin {
     });
 
     return csis;
+  }
+
+  /**
+   * Edit display name of participants in a meeting
+   * @param {string} memberId - id of the participant who is receiving request
+   * @param {string} requestingParticipantId - id of the participant who is sending request (optional)
+   * @param {string} [alias] - alias name
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public editDisplayName(memberId: string, requestingParticipantId: string, alias: string) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to edit display name of the member.')
+      );
+    }
+
+    const {locusUrl} = this;
+
+    const options = MembersUtil.generateEditDisplayNameMemberOptions(
+      memberId,
+      requestingParticipantId,
+      alias,
+      locusUrl
+    );
+
+    return this.membersRequest.editDisplayNameMember(options);
   }
 }

@@ -163,6 +163,30 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(result, request.request.firstCall.returnValue);
               });
 
+              it('can set mute all when the display hint is available mutedEnabled=true', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'ENABLE_MUTE_ON_ENTRY']);
+
+                const result = manager.setMuteAll(true, true, true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
+                method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('can set mute all when the display hint is available mutedEnabled=true', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
+
+                const result = manager.setMuteAll(true, true, true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
+                method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
               it('can set mute all when the display hint is available mutedEnabled=false', () => {
                 manager.setDisplayHints(['UNMUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
 

@@ -76,10 +76,10 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('getBreakouts', () => {
+    describe('getBreakoutSessions', () => {
       it('should return breakout sessions', () => {
         assert.deepEqual(
-          SelfUtils.getBreakouts({controls: {breakout: {sessions: 'SESSIONS'}}}),
+          SelfUtils.getBreakoutSessions({controls: {breakout: {sessions: 'SESSIONS'}}}),
           'SESSIONS'
         );
       });
@@ -98,6 +98,7 @@ describe('plugin-meetings', () => {
               },
             ],
           },
+          breakout: {},
         };
         const previous = {
           breakoutSessions: {
@@ -110,6 +111,7 @@ describe('plugin-meetings', () => {
               },
             ],
           },
+          breakout: {},
         };
 
         assert.isTrue(SelfUtils.breakoutsChanged(previous, current));
@@ -127,6 +129,7 @@ describe('plugin-meetings', () => {
               },
             ],
           },
+          breakout: {},
         };
         const previous = {
           breakoutSessions: {
@@ -139,6 +142,29 @@ describe('plugin-meetings', () => {
               },
             ],
           },
+          breakout: {},
+        };
+
+        assert.isFalse(SelfUtils.breakoutsChanged(previous, current));
+      });
+
+      it('should return false if no breakouts in current', () => {
+        const current = {
+          breakoutSessions: {
+          },
+        };
+        const previous = {
+          breakoutSessions: {
+            active: [
+              {
+                name: 'Breakout session 2',
+                groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+                sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+                sessionType: 'BREAKOUT',
+              },
+            ],
+          },
+          breakout: {},
         };
 
         assert.isFalse(SelfUtils.breakoutsChanged(previous, current));
@@ -285,6 +311,43 @@ describe('plugin-meetings', () => {
     it('returns false if not changed', () => {
       assert.equal(
         SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: false}, {remoteVideoMuted: false}),
+        false
+      );
+    });
+  });
+
+  describe('isUpgradeToModeratorOrCohost', () => {
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','MODERATOR']}),
+        true
+      );
+    });
+
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','COHOST']}),
+        true
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','MODERATOR']}, {roles: ['ATTENDEE']}),
+        false
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','COHOST']}, {roles: ['ATTENDEE']}),
+        false
+      );
+    });
+
+    it('returns false if changed', () => {
+      assert.equal(
+        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','HOST','MODERATOR']}, {roles: ['ATTENDEE']}),
         false
       );
     });

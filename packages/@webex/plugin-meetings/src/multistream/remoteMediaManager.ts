@@ -1,5 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {cloneDeep, remove} from 'lodash';
+import {cloneDeep, forEach, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
 import {MediaType} from '@webex/internal-media-core';
 
@@ -690,6 +690,25 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Logs the state of the receive slots
+   */
+  private logReceieveSlots() {
+    let logMessage = '';
+    forEach(this.receiveSlotAllocations.activeSpeaker, (group, groupName) => {
+      logMessage += `group: ${groupName}\n${group.slots.map((slot) => slot.logString).join(' ')}`;
+    });
+
+    logMessage += '\nreceiverSelected:\n';
+    forEach(this.receiveSlotAllocations.receiverSelected, (slot, key) => {
+      logMessage += ` ${key}: ${slot.logString}\n`;
+    });
+
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}\n${logMessage}`
+    );
+  }
+
+  /**
    * Makes sure we have the right number of receive slots created for the current layout
    * and allocates them to the right video panes / pane groups
    *
@@ -713,9 +732,7 @@ export class RemoteMediaManager extends EventsScope {
     // allocate receiver selected
     this.allocateSlotsToReceiverSelectedVideoPaneGroups();
 
-    LoggerProxy.logger.log(
-      `RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}`
-    );
+    this.logReceieveSlots();
 
     // If this is the initial layout, there may be some "unused" slots left because of the preallocation
     // done in this.preallocateVideoReceiveSlots(), so release them now

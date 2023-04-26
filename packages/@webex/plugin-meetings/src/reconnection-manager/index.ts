@@ -22,6 +22,7 @@ import {eventType, reconnection, errorObjects} from '../metrics/config';
 import Media from '../media';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
+import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -232,6 +233,34 @@ export default class ReconnectionManager {
   }
 
   /**
+   * Stop the local share track.
+   *
+   * @param {string} reason a {@link SHARE_STOPPED_REASON}
+   * @returns {undefined}
+   * @private
+   * @memberof ReconnectionManager
+   */
+  private stopLocalShareTrack(reason: string) {
+    this.meeting.setLocalShareTrack(null);
+    this.meeting.isSharing = false;
+    if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
+      this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
+    }
+    this.meeting.mediaProperties.mediaDirection.sendShare = false;
+    Trigger.trigger(
+      this.meeting,
+      {
+        file: 'reconnection-manager/index',
+        function: 'stopLocalShareTrack',
+      },
+      EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+      {
+        reason,
+      }
+    );
+  }
+
+  /**
    * @public
    * @memberof ReconnectionManager
    * @returns {Boolean} true if reconnection operation is in progress
@@ -385,6 +414,12 @@ export default class ReconnectionManager {
       'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.'
     );
 
+    const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
+
+    if (wasSharing) {
+      this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
+    }
+
     if (networkDisconnect) {
       try {
         await this.reconnectMercuryWebSocket();
@@ -400,8 +435,6 @@ export default class ReconnectionManager {
         throw error;
       }
     }
-
-    const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     try {
       LoggerProxy.logger.info(
@@ -420,10 +453,10 @@ export default class ReconnectionManager {
     // So that on rejoin it known what parametrs it was using
     if (!this.meeting || !this.webex.meetings.getMeetingByType(_ID_, this.meeting.id)) {
       LoggerProxy.logger.info(
-        'ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely '
+        'ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely.'
       );
 
-      throw new Error('Unable to rejoin a meeting already ended or inactive .');
+      throw new Error('Unable to rejoin a meeting already ended or inactive.');
     }
 
     LoggerProxy.logger.info(
@@ -475,24 +508,7 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
 
       if (wasSharing) {
-        // Stop the share streams if user tried to rejoin
-        this.meeting.setLocalShareTrack(null);
-        this.meeting.isSharing = false;
-        if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
-          this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
-        }
-        this.meeting.mediaProperties.mediaDirection.sendShare = false;
-        Trigger.trigger(
-          this.meeting,
-          {
-            file: 'reconnection-manager/index',
-            function: 'rejoinMeeting',
-          },
-          EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-          {
-            reason: SHARE_STOPPED_REASON.MEETING_REJOIN,
-          }
-        );
+        this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEETING_REJOIN);
       }
     } catch (joinError) {
       this.rejoinAttempts += 1;
@@ -555,9 +571,11 @@ export default class ReconnectionManager {
 
     // resend media requests
     if (this.meeting.isMultistream) {
-      Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-        // @ts-ignore - Fix type
-        mediaRequestManager.commit()
+      Object.values(this.meeting.mediaRequestManagers).forEach(
+        (mediaRequestManager: MediaRequestManager) => {
+          mediaRequestManager.clearPreviousRequests();
+          mediaRequestManager.commit();
+        }
       );
     }
   }

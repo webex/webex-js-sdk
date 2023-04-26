@@ -160,6 +160,13 @@ export class ReceiveSlot extends EventsScope {
   }
 
   /**
+   * @returns {string} a log message used to identify the receive slot
+   */
+  public get logString() {
+    return `ReceiveSlot - ${this.id}: ${JSON.stringify(this.mcReceiveSlot.id)}`;
+  }
+
+  /**
    * The MediaStream object associated with this slot.
    *
    * @returns {MediaStream} The MediaStreamTrack.

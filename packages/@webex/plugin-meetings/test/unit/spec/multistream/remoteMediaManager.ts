@@ -15,6 +15,9 @@ import {cloneDeep} from 'lodash';
 import {MediaRequest} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import {CSI, ReceiveSlotId} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import testUtils from '../../../utils/testUtils';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
+import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import { expect } from 'chai';
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
@@ -31,6 +34,10 @@ class FakeSlot extends EventEmitter {
     // a lot of listeners registered causing a warning about a potential listener leak.
     // Calling setMaxListeners() fixes the warning.
     this.setMaxListeners(50);
+  }
+
+  public get logString() {
+    return this.id;
   }
 }
 
@@ -120,7 +127,23 @@ describe('RemoteMediaManager', () => {
   let fakeScreenShareAudioSlot;
   let fakeScreenShareVideoSlot;
 
+  const logger = {
+    log: sinon.fake(),
+    error: () => {},
+    warn: () => {},
+    trace: () => {},
+    debug: () => {},
+  };
+
+  afterEach(() => {
+    LoggerConfig.set({enable: false});
+    LoggerProxy.set();
+  });
+
   beforeEach(() => {
+    LoggerConfig.set({enable: true});
+    LoggerProxy.set(logger);
+
     fakeAudioSlot = new FakeSlot(MediaType.AudioMain, 'fake audio slot');
     fakeVideoSlot = new FakeSlot(MediaType.VideoMain, 'fake video slot');
     fakeScreenShareAudioSlot = new FakeSlot(
@@ -191,6 +214,7 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers.video.commit.resetHistory();
     fakeMediaRequestManagers.screenShareVideo.commit.resetHistory();
     fakeMediaRequestManagers.screenShareAudio.commit.resetHistory();
+    logger.log.resetHistory();
   };
 
   describe('start', () => {
@@ -670,6 +694,50 @@ describe('RemoteMediaManager', () => {
       assert.callCount(fakeReceiveSlotManager.allocateSlot, 9);
       assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
     });
+
+    it('logs layout changes - receiver selected', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      await remoteMediaManager.setLayout('Stage');
+
+      assert.calledWith(
+        logger.log,
+        'RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=0, activeSpeaker=6, receiverSelected=4\ngroup: thumbnails\nfake video slot fake video slot fake video slot fake video slot fake video slot fake video slot\nreceiverSelected:\n stage-1: fake video slot\n stage-2: fake video slot\n stage-3: fake video slot\n stage-4: fake video slot\n'
+      );
+    });
+
+    it('logs layout changes - active speaker', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
+      config.video.initialLayoutId = 'OnePlusFive'
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      await remoteMediaManager.setLayout('AllEqual');
+
+      assert.calledWith(
+        logger.log,
+        'RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=0, activeSpeaker=9, receiverSelected=0\ngroup: main\nfake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot\nreceiverSelected:\n'
+      );
+    });
+
 
     it('releases slots when switching to layout that requires less active speaker slots', async () => {
       // start with "AllEqual" layout that needs just 9 video slots

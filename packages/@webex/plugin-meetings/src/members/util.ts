@@ -1,5 +1,4 @@
 import uuid from 'uuid';
-
 import {
   HTTP_VERBS,
   CONTROLS,
@@ -10,7 +9,10 @@ import {
   DIALER_REGEX,
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
+  ALIAS,
 } from '../constants';
+
+import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
 const MembersUtil: any = {};
 
@@ -152,8 +154,43 @@ MembersUtil.generateRaiseHandMemberOptions = (memberId, status, locusUrl) => ({
   locusUrl,
 });
 
+/**
+ * @param {String} memberId
+ * @param {[ServerRoleShape]} roles
+ * @param {String} locusUrl
+ * @returns {RoleAssignmentOptions}
+ */
+MembersUtil.generateRoleAssignmentMemberOptions = (
+  memberId: string,
+  roles: Array<ServerRoleShape>,
+  locusUrl: string
+): RoleAssignmentOptions => ({
+  memberId,
+  roles,
+  locusUrl,
+});
+
 MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locusUrl) => ({
   requestingParticipantId,
+  locusUrl,
+});
+
+/**
+ * @param {String} memberId id of the participant who is receiving request
+ * @param {String} requestingParticipantId id of the participant who is sending request (optional)
+ * @param {String} alias alias name
+ * @param {String} locusUrl url
+ * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
+ */
+MembersUtil.generateEditDisplayNameMemberOptions = (
+  memberId,
+  requestingParticipantId,
+  alias,
+  locusUrl
+) => ({
+  memberId,
+  requestingParticipantId,
+  alias,
   locusUrl,
 });
 
@@ -164,6 +201,27 @@ MembersUtil.getMuteMemberRequestParams = (options) => {
       muted: options.muted,
     },
   };
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+  return {
+    method: HTTP_VERBS.PATCH,
+    uri,
+    body,
+  };
+};
+
+/**
+ * @param {RoleAssignmentOptions} options
+ * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
+ */
+MembersUtil.getRoleAssignmentMemberRequestParams = (
+  options: RoleAssignmentOptions
+): RoleAssignmentRequest => {
+  const body = {role: {roles: []}};
+  options.roles.forEach((role) => {
+    body.role.roles.push({type: role.type, hasRole: role.hasRole});
+  });
+
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
   return {
@@ -199,6 +257,24 @@ MembersUtil.getLowerAllHandsMemberRequestParams = (options) => {
 
   return {
     method: HTTP_VERBS.PATCH,
+    uri,
+    body,
+  };
+};
+
+/**
+ * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
+ * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
+ */
+MembersUtil.editDisplayNameMemberRequestParams = (options) => {
+  const body = {
+    aliasValue: options.alias,
+    requestingParticipantId: options.requestingParticipantId,
+  };
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
+
+  return {
+    method: HTTP_VERBS.POST,
     uri,
     body,
   };

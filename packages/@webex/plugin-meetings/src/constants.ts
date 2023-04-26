@@ -7,10 +7,12 @@ export const AUDIO = 'audio';
 export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
 export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
 export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
@@ -93,6 +95,7 @@ export const _JOINED_ = 'JOINED';
 
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
+export const _MOVED_ = 'MOVED';
 
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
@@ -311,6 +314,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEMBERS_UPDATE: 'members:update',
+  MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
   MEMBERS_SELF_UPDATE: 'members:self:update',
@@ -379,6 +383,7 @@ export const CALL_REMOVED_REASON = {
 export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
   MEETING_REJOIN: 'MEETING_REJOIN',
+  MEDIA_RECONNECTION: 'MEDIA_RECONNECTION',
 };
 
 export const EVENTS = {
@@ -599,6 +604,7 @@ export const LOCUSINFO = {
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
+    SELF_MODERATOR_OR_COHOST_UPGRADE: 'SELF_MODERATOR_OR_COHOST_UPGRADE',
   },
 };
 
@@ -784,6 +790,7 @@ export const DISPLAY_HINTS = {
   DISPLAY_NON_ENGLISH_ASR: 'DISPLAY_NON_ENGLISH_ASR',
   TRANSCRIPTION_CONTROL_START: 'TRANSCRIPTION_CONTROL_START',
   TRANSCRIPTION_CONTROL_STOP: 'TRANSCRIPTION_CONTROL_STOP',
+  SAVE_TRANSCRIPTS_ENABLED: 'SAVE_TRANSCRIPTS_ENABLED',
   WEBEX_ASSISTANT_STATUS_ACTIVE: 'WEBEX_ASSISTANT_STATUS_ACTIVE',
   WAITING_FOR_OTHERS: 'WAITING_FOR_OTHERS',
   ENABLE_REACTIONS: 'ENABLE_REACTIONS',
@@ -796,6 +803,9 @@ export const DISPLAY_HINTS = {
   DISABLE_HARD_MUTE: 'DISABLE_HARD_MUTE',
   MUTE_ALL: 'MUTE_ALL',
   UNMUTE_ALL: 'UNMUTE_ALL',
+  PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -808,6 +818,7 @@ export const DISPLAY_HINTS = {
 export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
+  ATTENDEE: 'ATTENDEE',
 };
 
 export const MEETING_STATE = {
@@ -1118,6 +1129,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  POLICY: 'POLICY', // meeting info request violates some meeting policy
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1131,4 +1143,9 @@ export const BNR_STATUS = {
 export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
   OTHER: 'OTHER',
+};
+
+export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
+  supportHostKey: true,
+  supportCountryList: true,
 };

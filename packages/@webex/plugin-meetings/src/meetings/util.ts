@@ -8,6 +8,9 @@ import {
   CORRELATION_ID,
   EVENT_TRIGGERS,
   ROAP,
+  _LEFT_,
+  _MOVED_,
+  _JOINED_,
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
@@ -109,11 +112,13 @@ MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
 MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   let result = '';
 
-  if (userPreferences && userPreferences.sites) {
+  if (userPreferences?.sites?.length) {
     const defaultSite = userPreferences.sites.find((site) => site.default);
 
     if (defaultSite) {
       result = defaultSite.siteUrl;
+    } else {
+      result = userPreferences.sites[0].siteUrl;
     }
   }
 
@@ -218,6 +223,41 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
 
     MeetingsUtil.checkH264Support.call(this, {firstChecked: timestamp});
   }, delay);
+};
+
+/**
+ * get device from locus data
+ * @param {Object} newLocus new locus data
+ * @returns {Object}
+ */
+MeetingsUtil.getThisDevice = (newLocus: any) => {
+  if (newLocus?.self?.devices?.length > 0) {
+    const [thisDevice] = newLocus.self.devices;
+
+    return thisDevice;
+  }
+
+  return null;
+};
+
+/**
+ * get self device joined status from locus data
+ * @param {Object} meeting current meeting data
+ * @param {Object} newLocus new locus data
+ * @returns {Object}
+ */
+MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any) => {
+  const thisDevice = MeetingsUtil.getThisDevice(newLocus);
+  if (thisDevice) {
+    if (!thisDevice.correlationId || meeting?.correlationId === thisDevice.correlationId) {
+      return (
+        thisDevice.state === _JOINED_ ||
+        (thisDevice.state === _LEFT_ && thisDevice.reason === _MOVED_)
+      );
+    }
+  }
+
+  return false;
 };
 
 export default MeetingsUtil;

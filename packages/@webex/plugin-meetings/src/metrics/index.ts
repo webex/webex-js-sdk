@@ -241,6 +241,11 @@ class Metrics {
       if (options.isRoapCallEnabled) {
         payload.event.isRoapCallEnabled = options.isRoapCallEnabled;
       }
+      ['breakoutMoveId', 'breakoutSessionId', 'breakoutGroupId'].forEach((item) => {
+        if (options[item]) {
+          payload.event.identifiers[item] = options[item];
+        }
+      });
     }
 
     return payload;

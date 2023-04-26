@@ -6,12 +6,14 @@ import {
   ReceiverSelectedInfo,
   CodecInfo as WcmeCodecInfo,
   H264Codec,
+  getRecommendedMaxBitrateForFrameSize,
+  RecommendedOpusBitrates,
 } from '@webex/internal-media-core';
-import {cloneDeep, debounce} from 'lodash';
+import {cloneDeep, debounce, isEmpty} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotEvents, ReceiveSlotId} from './receiveSlot';
+import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {getMaxFs} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
@@ -64,9 +66,16 @@ type DegradationPreferences = {
 };
 
 type SendMediaRequestsCallback = (mediaRequests: WcmeMediaRequest[]) => void;
+type Kind = 'audio' | 'video';
 
+type Options = {
+  degradationPreferences: DegradationPreferences;
+  kind: Kind;
+};
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
+
+  private kind: Kind;
 
   private counter: number;
 
@@ -78,14 +87,14 @@ export class MediaRequestManager {
 
   private debouncedSourceUpdateListener: () => void;
 
-  constructor(
-    degradationPreferences: DegradationPreferences,
-    sendMediaRequestsCallback: SendMediaRequestsCallback
-  ) {
+  private previousWCMEMediaRequests: Array<WcmeMediaRequest> = [];
+
+  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
     this.clientRequests = {};
-    this.degradationPreferences = degradationPreferences;
+    this.degradationPreferences = options.degradationPreferences;
+    this.kind = options.kind;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -143,11 +152,88 @@ export class MediaRequestManager {
     return clientRequests;
   }
 
+  /**
+   * Returns true if two media requests are the same, false otherwise.
+   *
+   * @param {WcmeMediaRequest} mediaRequestA - Media request A for comparison.
+   * @param {WcmeMediaRequest} mediaRequestB - Media request B for comparison.
+   * @returns {boolean} - Whether they are equal.
+   */
+  // eslint-disable-next-line class-methods-use-this
+  public isEqual(mediaRequestA: WcmeMediaRequest, mediaRequestB: WcmeMediaRequest) {
+    return (
+      JSON.stringify(mediaRequestA._toJmpScrRequest()) ===
+      JSON.stringify(mediaRequestB._toJmpScrRequest())
+    );
+  }
+
+  /**
+   * Compares new media requests to previous ones and determines
+   * if they are the same.
+   *
+   * @param {WcmeMediaRequest[]} newRequests - Array with new requests.
+   * @returns {boolean} - True if they are equal, false otherwise.
+   */
+  private checkIsNewRequestsEqualToPrev(newRequests: WcmeMediaRequest[]) {
+    return (
+      !isEmpty(this.previousWCMEMediaRequests) &&
+      this.previousWCMEMediaRequests.length === newRequests.length &&
+      this.previousWCMEMediaRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
+    );
+  }
+
+  /**
+   * Returns the maxPayloadBitsPerSecond per Stream
+   *
+   * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
+   * If MediaRequestManager kind is "video", the bitrate will be calculated based
+   * on maxFs (default h264 maxFs as fallback if maxFs is not defined)
+   *
+   * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
+   * @returns {number} maxPayloadBitsPerSecond
+   */
+  private getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
+    if (this.kind === 'audio') {
+      // return mono_music bitrate default if the kind of mediarequest manager is audio:
+      return RecommendedOpusBitrates.FB_MONO_MUSIC;
+    }
+
+    return getRecommendedMaxBitrateForFrameSize(
+      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+    );
+  }
+
+  /**
+   * Returns the max Macro Blocks per second (maxMbps) per H264 Stream
+   *
+   * The maxMbps will be calculated based on maxFs and maxFps
+   * (default h264 maxFps as fallback if maxFps is not defined)
+   *
+   * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
+   * @returns {number} maxMbps
+   */
+  // eslint-disable-next-line class-methods-use-this
+  private getH264MaxMbps(mediaRequest: MediaRequest): number {
+    // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
+    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+
+    // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
+    return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
+  }
+
+  /**
+   * Clears the previous media requests.
+   *
+   * @returns {void}
+   */
+  public clearPreviousRequests(): void {
+    this.previousWCMEMediaRequests = [];
+  }
+
   private sendRequests() {
     const wcmeMediaRequests: WcmeMediaRequest[] = [];
 
     const clientRequests = this.getDegradedClientRequests();
-    const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
 
     // map all the client media requests to wcme media requests
     Object.values(clientRequests).forEach((mr) => {
@@ -165,14 +251,14 @@ export class MediaRequestManager {
               )
             : new ReceiverSelectedInfo(mr.policyInfo.csi),
           mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
-          maxPayloadBitsPerSecond,
+          this.getMaxPayloadBitsPerSecond(mr),
           mr.codecInfo && [
             new WcmeCodecInfo(
               0x80,
               new H264Codec(
                 mr.codecInfo.maxFs,
                 mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
+                this.getH264MaxMbps(mr),
                 mr.codecInfo.maxWidth,
                 mr.codecInfo.maxHeight
               )
@@ -182,7 +268,17 @@ export class MediaRequestManager {
       );
     });
 
-    this.sendMediaRequestsCallback(wcmeMediaRequests);
+    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
+    // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
+    if (!this.checkIsNewRequestsEqualToPrev(wcmeMediaRequests)) {
+      this.sendMediaRequestsCallback(wcmeMediaRequests);
+      this.previousWCMEMediaRequests = wcmeMediaRequests;
+      LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
+    } else {
+      LoggerProxy.logger.info(
+        `multistream:sendRequests --> detected duplicate WCME requests, skipping them... `
+      );
+    }
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {

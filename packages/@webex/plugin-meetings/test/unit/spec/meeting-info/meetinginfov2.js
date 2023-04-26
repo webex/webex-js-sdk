@@ -13,6 +13,7 @@ import {
   _CONVERSATION_URL_,
   _SIP_URI_,
   WBXAPPAPI_SERVICE,
+  _LOCUS_ID_,
 } from '@webex/plugin-meetings/src/constants';
 
 import Meetings from '@webex/plugin-meetings/src/meetings';
@@ -20,10 +21,12 @@ import MeetingInfo, {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
+  MeetingInfoV2PolicyError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import { forEach } from 'lodash';
 
 describe('plugin-meetings', () => {
   const conversation = {
@@ -120,7 +123,7 @@ describe('plugin-meetings', () => {
         MeetingInfoUtil.getRequestBody.restore();
       });
 
-      it('should fetch meeting info for the personal meeting room  type', async () => {
+      it('should fetch meeting info for the personal meeting room type', async () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
@@ -211,6 +214,60 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should fetch meeting info with provided installedOrgID', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const installedOrgID = '123456';
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, installedOrgID);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            installedOrgID,
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+      });
+
+      it('should fetch meeting info with provided locusId', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const locusId = 'eccd5c1b-d42d-35e3-a1b9-3021030a6d84';
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, locusId);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            locusId,
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+      });
+
       it('create adhoc meeting when conversationUrl passed with enableAdhocMeetings toggle', async () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
         await meetingInfo.fetchMeetingInfo('conversationUrl', _CONVERSATION_URL_);
@@ -257,6 +314,51 @@ describe('plugin-meetings', () => {
           assert.equal(err.wbxAppApiCode, 400000);
         }
       });
+
+      forEach(
+        [
+          {errorCode: 403049},
+          {errorCode: 403104},
+          {errorCode: 403103},
+          {errorCode: 403048},
+          {errorCode: 403102},
+          {errorCode: 403101},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = 'meeting info';
+
+            webex.request = sinon
+              .stub()
+              .rejects({
+                statusCode: 403,
+                body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+              });
+            try {
+              await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+                id: '999',
+                code: 'aabbcc11',
+              });
+              assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2PolicyError);
+              assert.deepEqual(
+                err.message,
+                `${message}, code=${errorCode}`
+              );
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+                );
+            }
+          });
+        }
+      );
 
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};
@@ -327,6 +429,44 @@ describe('plugin-meetings', () => {
         it('should throw MeetingInfoV2CaptchaError for 423 response (wbxappapi code 423001)', async () => {
           await runTest(423001, false);
         });
+      });
+
+      it('should throw an error and not fetch with an "empty" body', async () => {
+        const body = {supportHostKey: 'foo', supportCountryList: 'bar'};
+        const requestResponse = {statusCode: 200, body};
+
+        sinon
+          .stub(MeetingInfoUtil, 'getDestinationType')
+          .returns(Promise.resolve({type: _LOCUS_ID_, destination: '123456'}));
+        sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
+        webex.request.resolves(requestResponse);
+
+        try {
+          await meetingInfo.fetchMeetingInfo({
+            type: _LOCUS_ID_,
+          });
+          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+        } catch (err) {
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE,
+            {
+              reason: 'Not enough information to fetch meeting info',
+              destinationType: _LOCUS_ID_,
+              webExMeetingId: undefined,
+              sipUri: undefined,
+            }
+          );
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE
+          );
+          assert.deepEqual(err.message, 'Not enough information to fetch meeting info');
+        }
+
+        MeetingInfoUtil.getDestinationType.restore();
+        MeetingInfoUtil.getRequestBody.restore();
       });
     });
 

@@ -470,6 +470,9 @@ MeetingUtil.endMeetingForAll = (meeting) => {
 MeetingUtil.canEnableClosedCaption = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.CAPTION_START);
 
+MeetingUtil.isSaveTranscriptsEnabled = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.SAVE_TRANSCRIPTS_ENABLED);
+
 MeetingUtil.canStartTranscribing = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_START);
 
@@ -515,5 +518,10 @@ MeetingUtil.canSendReactions = (originalValue, displayHints) => {
 
   return originalValue;
 };
+MeetingUtil.canUserRenameSelfAndObserved = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED);
+
+MeetingUtil.canUserRenameOthers = (displayHints) =>
+  displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS);
 
 export default MeetingUtil;
