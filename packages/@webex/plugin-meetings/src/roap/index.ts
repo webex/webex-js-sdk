@@ -199,19 +199,23 @@ export default class Roap extends StatelessWebexPlugin {
     // When reconnecting, it's important that the first roap message being sent out has empty media id.
     // Normally this is the roap offer, but when TURN discovery is enabled,
     // then this is the TURN discovery request message
-    const sendEmptyMediaId = reconnect && !meeting.config.experimental.enableTurnDiscovery;
+    return this.turnDiscovery
+      .isSkipped(meeting)
+      .then((isTurnDiscoverySkipped) => {
+        const sendEmptyMediaId = reconnect && isTurnDiscoverySkipped;
 
-    return this.roapRequest
-      .sendRoap({
-        roapMessage,
-        correlationId: meeting.correlationId,
-        locusSelfUrl: meeting.selfUrl,
-        mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
-        audioMuted: meeting.audio?.isLocallyMuted(),
-        videoMuted: meeting.video?.isLocallyMuted(),
-        meetingId: meeting.id,
-        preferTranscoding: !meeting.isMultistream,
+        return this.roapRequest.sendRoap({
+          roapMessage,
+          correlationId: meeting.correlationId,
+          locusSelfUrl: meeting.selfUrl,
+          mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
+          meetingId: meeting.id,
+          preferTranscoding: !meeting.isMultistream,
+        });
       })
+
       .then(({locus, mediaConnections}) => {
         if (mediaConnections) {
           meeting.updateMediaConnections(mediaConnections);
