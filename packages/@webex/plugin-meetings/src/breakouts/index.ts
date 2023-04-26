@@ -5,12 +5,13 @@ import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
+import {BREAKOUTS, MEETINGS, HTTP_VERBS, _ID_} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
 import {boServiceErrorHandler} from './utils';
+import breakoutEvent from './events';
 
 /**
  * @class Breakouts
@@ -224,6 +225,10 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
+    const preSession = {
+      sessionId: this.currentBreakoutSession.sessionId,
+      groupId: this.currentBreakoutSession.groupId,
+    };
     this.set(params);
     this.set('groups', params.groups);
 
@@ -242,12 +247,21 @@ const Breakouts = WebexPlugin.extend({
     });
 
     // We need to call queryPreAssignments when enableBreakoutSession become true
+    if (preEnableBreakoutSession !== params.enableBreakoutSession) {
+      this.queryPreAssignments(params);
+    }
+
     if (
-      params.enableBreakoutSession &&
-      params.hasBreakoutPreAssignments &&
-      preEnableBreakoutSession !== params.enableBreakoutSession
+      preSession.sessionId !== this.currentBreakoutSession.sessionId ||
+      preSession.groupId !== this.currentBreakoutSession.groupId
     ) {
-      this.queryPreAssignments();
+      // should report joined session changed
+      const meeting = this.webex?.meetings?.getMeetingByType(_ID_, this.meetingId);
+      breakoutEvent.onBreakoutJoinResponse(
+        this.currentBreakoutSession,
+        meeting,
+        params.breakoutMoveId
+      );
     }
   },
 
@@ -692,9 +706,13 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * The pre-assignments need to be queried when "hasBreakoutPreAssignments" is true
+   * @param {Object} params
    * @returns {void}
    */
-  queryPreAssignments() {
+  queryPreAssignments(params) {
+    if (!params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
+      return;
+    }
     if (!this.shouldFetchPreassignments) {
       this.webex
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})

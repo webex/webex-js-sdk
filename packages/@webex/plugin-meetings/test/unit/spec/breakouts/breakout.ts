@@ -7,6 +7,7 @@ import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
 import {eventType} from '../../../../src/metrics/config';
 import uuid from 'uuid';
+import breakoutEvent from "../../../../src/breakouts/events";
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
@@ -41,11 +42,14 @@ describe('plugin-meetings', () => {
     describe('#join', () => {
       it('makes the request as expected', async () => {
         Metrics.postEvent = sinon.stub();
+        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         const result = await breakout.join();
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
           uri: 'url/move',
           body: {
+            breakoutMoveId: 'breakoutMoveId',
+            deviceUrl: undefined,
             groupId: 'groupId',
             sessionId: 'sessionId',
           },
@@ -54,28 +58,26 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
       it('send metrics as expected', async () => {
-        Metrics.postEvent = sinon.stub();
+        // Metrics.postEvent = sinon.stub();
+        breakout.webex.internal.device.url = 'device-url';
+        breakout.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+          id: 'meeting-id'
+        })
+        };
+
+        breakoutEvent.onBreakoutMoveRequest = sinon.stub();
+        breakoutEvent.onBreakoutMoveResponse = sinon.stub();
         uuid.v4 = sinon.stub().returns('breakoutMoveId');
         await breakout.join();
-        assert.calledTwice(Metrics.postEvent);
-        assert.calledWithMatch(Metrics.postEvent, {
-          event: eventType.MOVE_TO_BREAKOUT,
-          meetingId: 'activeMeetingId',
-          data: {
-            breakoutMoveId: 'breakoutMoveId',
-            breakoutSessionId: 'sessionId',
-            breakoutGroupId: 'groupId',
-          },
-        });
-        assert.calledWithMatch((Metrics.postEvent as any).secondCall, {
-          event: eventType.JOIN_BREAKOUT_RESPONSE,
-          meetingId: 'activeMeetingId',
-          data: {
-            breakoutMoveId: 'breakoutMoveId',
-            breakoutSessionId: 'sessionId',
-            breakoutGroupId: 'groupId',
-          },
-        });
+        // assert.calledOnce(breakoutEvent.onBreakoutMoveRequest);
+        // assert.calledOnce( breakoutEvent.onBreakoutMoveResponse);
+        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
+          breakout, {id: 'meeting-id'}, 'breakoutMoveId'
+        );
+        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveResponse,
+          breakout, {id: 'meeting-id'}, 'breakoutMoveId'
+        );
       });
     });
 

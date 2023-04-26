@@ -1181,7 +1181,7 @@ describe('plugin-meetings', () => {
           })
         );
         breakouts.shouldFetchPreassignments = false;
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
         assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
@@ -1209,7 +1209,7 @@ describe('plugin-meetings', () => {
         };
         webex.request.rejects(response);
         LoggerProxy.logger.error = sinon.stub();
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         await testUtils.flushPromises();
         assert.calledOnceWithExactly(
           LoggerProxy.logger.error,

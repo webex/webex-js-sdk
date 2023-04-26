@@ -186,7 +186,7 @@ export default class LocusInfo extends EventsScope {
     this.updateParticipants(locus.participants);
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
-    this.updateControls(locus.controls);
+    this.updateControls(locus.controls, locus.self);
     this.updateLocusUrl(locus.url);
     this.updateFullState(locus.fullState);
     this.updateMeetingInfo(locus.info);
@@ -359,7 +359,7 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    this.updateControls(locus.controls);
+    this.updateControls(locus.controls, locus.self);
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
@@ -684,10 +684,11 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * @param {Object} controls
+   * @param {Object} self
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateControls(controls: object) {
+  updateControls(controls: object, self: object) {
     if (controls && !isEqual(this.controls, controls)) {
       this.parsedLocus.controls = ControlsUtils.parse(controls);
       const {
@@ -764,7 +765,10 @@ export default class LocusInfo extends EventsScope {
 
       if (hasBreakoutChanged) {
         const {breakout} = current;
-
+        breakout.breakoutMoveId = SelfUtils.getReplacedBreakoutMoveId(
+          self,
+          this.webex.internal.device.url
+        );
         this.emitScoped(
           {
             file: 'locus-info',

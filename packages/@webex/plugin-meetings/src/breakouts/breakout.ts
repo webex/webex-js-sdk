@@ -5,12 +5,10 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import uuid from 'uuid';
-import {HTTP_VERBS, MEETINGS} from '../constants';
-import LocusInfo from '../locus-info';
+import {_ID_, HTTP_VERBS, MEETINGS} from '../constants';
 import Members from '../members';
 import BreakoutRequest from './request';
-import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
+import breakoutEvent from './events';
 /**
  * @class
  */
@@ -60,33 +58,21 @@ const Breakout = WebexPlugin.extend({
    */
   async join() {
     const breakoutMoveId = uuid.v4();
+    const deviceUrl = this.webex?.internal?.device?.url;
     const {meetingId} = this.collection.parent;
-    Metrics.postEvent({
-      event: eventType.MOVE_TO_BREAKOUT,
-      meetingId,
-      data: {
-        breakoutMoveId,
-        breakoutSessionId: this.sessionId,
-        breakoutGroupId: this.groupId,
-      },
-    });
+    const meeting = this.webex?.meetings?.getMeetingByType(_ID_, meetingId);
+    breakoutEvent.onBreakoutMoveRequest(this, meeting, breakoutMoveId);
     const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
       body: {
+        breakoutMoveId,
+        deviceUrl,
         groupId: this.groupId,
         sessionId: this.sessionId,
       },
     });
-    Metrics.postEvent({
-      event: eventType.JOIN_BREAKOUT_RESPONSE,
-      meetingId,
-      data: {
-        breakoutMoveId,
-        breakoutSessionId: this.sessionId,
-        breakoutGroupId: this.groupId,
-      },
-    });
+    breakoutEvent.onBreakoutMoveResponse(this, meeting, breakoutMoveId);
 
     return result;
   },
