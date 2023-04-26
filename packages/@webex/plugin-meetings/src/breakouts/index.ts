@@ -672,10 +672,11 @@ const Breakouts = WebexPlugin.extend({
       };
     });
 
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
+    const body = {
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock.token, refresh: true}}
+        : {}),
+      ...{
         groups: [
           {
             id: this.breakoutGroupId,
@@ -683,6 +684,12 @@ const Breakouts = WebexPlugin.extend({
           },
         ],
       },
+    };
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body,
     });
   },
 

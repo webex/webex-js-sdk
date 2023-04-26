@@ -1136,6 +1136,34 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(breakouts.assign, params);
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
       });
+
+      it('called with editlock', async () => {
+        breakouts.request = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = [{id: 'sessionId', emails: ['111@cisco.com'], memberIds: []}];
+        await breakouts.assign(params);
+        const args = breakouts.request.getCall(0).args[0];
+        expect(args).to.be.an('object', {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: true},
+            groups: {
+              id: 'sessionId',
+              sessions: [
+                {
+                  id: 'sessionId',
+                  assigned: [],
+                  assignedEmails: ['111@cisco.com'],
+                  anyoneCanJoin: false,
+                },
+              ],
+            },
+          },
+        });
+      });
     });
 
     describe('queryPreAssignments', () => {
