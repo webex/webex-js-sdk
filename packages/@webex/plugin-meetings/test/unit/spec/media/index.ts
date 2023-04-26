@@ -119,6 +119,7 @@ describe('createMediaConnection', () => {
         username: 'turn username',
         password: 'turn password',
       },
+      bundlePolicy: 'max-bundle',
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
@@ -133,6 +134,7 @@ describe('createMediaConnection', () => {
         ],
         enableMainAudio: true,
         enableMainVideo: true,
+        bundlePolicy: 'max-bundle',
       },
       'some debug id'
     );
@@ -168,6 +170,7 @@ describe('createMediaConnection', () => {
           iceServers: [],
           enableMainAudio,
           enableMainVideo,
+          bundlePolicy: undefined,
         },
         'some debug id'
       );
@@ -198,6 +201,7 @@ describe('createMediaConnection', () => {
         iceServers: [],
         enableMainAudio: true,
         enableMainVideo: true,
+        bundlePolicy: undefined,
       },
       'debug string'
     );

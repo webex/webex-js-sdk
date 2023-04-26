@@ -868,7 +868,7 @@ describe('plugin-meetings', () => {
     describe('create', () => {
       it('response not include groups info', async () => {
         const sessions = [{name: 'session1', anyoneCanJoin: true}];
-        const result = await breakouts.create(sessions);
+        const result = await breakouts.create({sessions});
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
@@ -890,7 +890,7 @@ describe('plugin-meetings', () => {
           })
         );
 
-        const result = await breakouts.create(sessions);
+        const result = await breakouts.create({sessions});
 
         assert.equal(breakouts.groups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
       });
@@ -908,7 +908,7 @@ describe('plugin-meetings', () => {
         );
 
         await assert.isRejected(
-          breakouts.create(sessions),
+          breakouts.create({sessions}),
           BreakoutEditLockedError,
           'Edit lock token mismatch'
         );

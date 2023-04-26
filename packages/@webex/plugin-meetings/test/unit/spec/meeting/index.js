@@ -1143,6 +1143,7 @@ describe('plugin-meetings', () => {
             code: error.code,
             turnDiscoverySkippedReason: undefined,
             turnServerUsed: true,
+            isMultistream: false,
           });
         });
 
@@ -1161,6 +1162,7 @@ describe('plugin-meetings', () => {
               stack: err.stack,
               turnDiscoverySkippedReason: 'config',
               turnServerUsed: false,
+              isMultistream: false,
             });
           });
         });
@@ -1187,6 +1189,7 @@ describe('plugin-meetings', () => {
               reason: result.message,
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
+              isMultistream: false,
             })
           );
         });
@@ -1367,6 +1370,7 @@ describe('plugin-meetings', () => {
             correlation_id: meeting.correlationId,
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
+            isMultistream: false
           });
         });
 
@@ -1483,6 +1487,48 @@ describe('plugin-meetings', () => {
               data: {intervalData: fakeData, networkType: 'wifi'},
             });
           });
+        });
+
+        it('should pass bundlePolicy to createMediaConnection', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+
+          meeting.meetingState = 'ACTIVE';
+          Media.createMediaConnection.resetHistory();
+
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnServerSkippedReason: undefined,
+          });
+          const media = meeting.addMedia({
+            mediaSettings: {},
+            bundlePolicy: 'bundlePolicy-value',
+          });
+
+          assert.exists(media);
+          await media;
+          assert.calledOnce(meeting.roap.doTurnDiscovery);
+          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+          assert.calledOnce(Media.createMediaConnection);
+          assert.calledWith(
+            Media.createMediaConnection,
+            false,
+            meeting.getMediaConnectionDebugId(),
+            sinon.match({
+              turnServerInfo: {
+                url: FAKE_TURN_URL,
+                username: FAKE_TURN_USER,
+                password: FAKE_TURN_PASSWORD,
+              },
+              bundlePolicy: 'bundlePolicy-value',
+            })
+          );
+          assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
       });
       describe('#acknowledge', () => {
@@ -4631,6 +4677,41 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
+        });
+
+        it('listens to the timing that user joined into breakout', async () => {
+          const mainLocusUrl = 'mainLocusUrl123';
+
+          meeting.meetingRequest.getLocusStatusByUrl = sinon.stub().returns(Promise.resolve());
+
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusStatusByUrl, mainLocusUrl);
+          const error = {statusCode: 403};
+          meeting.meetingRequest.getLocusStatusByUrl.rejects(error);
+          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.calledOnce(meeting.locusInfo.clearMainSessionLocusCache);
+
+          const otherError = new Error('something wrong');
+          meeting.meetingRequest.getLocusStatusByUrl.rejects(otherError);
+          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
+          await meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+            {mainLocusUrl}
+          );
+
+          assert.notCalled(meeting.locusInfo.clearMainSessionLocusCache);
         });
       });
 

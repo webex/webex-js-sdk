@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.84](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.83...v3.0.0-beta.84) (2023-04-26)
+
+## [3.0.0-beta.83](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.82...v3.0.0-beta.83) (2023-04-25)
+
+
+### Features
+
+* **metrics:** include is multistream ([#2779](https://github.com/webex/webex-js-sdk/issues/2779)) ([42b2b99](https://github.com/webex/webex-js-sdk/commit/42b2b9942c094e83fbad3c9e3c9d2b1e7049d8bf))
+
+## [3.0.0-beta.82](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.81...v3.0.0-beta.82) (2023-04-25)
+
+
+### Features
+
+* expose bundlePolicy option via addMedia ([#2765](https://github.com/webex/webex-js-sdk/issues/2765)) ([77af49e](https://github.com/webex/webex-js-sdk/commit/77af49e8870075a2d93af78874d9fa964a0695b3))
+
+## [3.0.0-beta.81](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.80...v3.0.0-beta.81) (2023-04-25)
+
+
+### Features
+
+* **meetings:** call control imo ([#2766](https://github.com/webex/webex-js-sdk/issues/2766)) ([d8569cf](https://github.com/webex/webex-js-sdk/commit/d8569cf6e87f087b05f19de73ea896390126a110))
+
+## [3.0.0-beta.80](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.79...v3.0.0-beta.80) (2023-04-25)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** pass devcie url for llm POST call ([#2777](https://github.com/webex/webex-js-sdk/issues/2777)) ([2944ba1](https://github.com/webex/webex-js-sdk/commit/2944ba10d431e813646f8ef1109ef27363b13f84))
+
 ## [3.0.0-beta.79](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.78...v3.0.0-beta.79) (2023-04-24)
 
 

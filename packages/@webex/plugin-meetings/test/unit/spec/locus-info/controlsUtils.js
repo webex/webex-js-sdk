@@ -176,6 +176,52 @@ describe('plugin-meetings', () => {
         const newControls = {breakout: {sessionId: 'sessionId1', groupId: 'groupId'}};
         assert.equal(controlsUtils.isNeedReplaceMembers(oldControls, newControls), false);
       });
-    })
+    });
+
+    describe('getSessionSwitchStatus', () => {
+      it('if no breakout control, return switch status both false', () => {
+        const oldControls = {};
+        const newControls = {};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+          isReturnToMain: false, isJoinToBreakout: false
+        });
+      });
+
+      it('if switch session from breakout to main, return isReturnToMain as true', () => {
+        const oldControls = {breakout: {sessionType: 'BREAKOUT'}};
+        const newControls = {breakout: {sessionType: 'MAIN'}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+          isReturnToMain: true, isJoinToBreakout: false
+        });
+      });
+
+      it('if switch session from main to breakout, return isJoinToBreakout as true', () => {
+        const oldControls = {breakout: {sessionType: 'MAIN'}};
+        const newControls = {breakout: {sessionType: 'BREAKOUT'}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+          isReturnToMain: false, isJoinToBreakout: true
+        });
+      });
+    });
+
+    describe('#isMainSessionDTO', () => {
+      it('return false is sessionType is BREAKOUT', () => {
+        const locus = {
+          controls: {breakout: {sessionType: 'BREAKOUT'}}
+        };
+
+        assert.equal(controlsUtils.isMainSessionDTO(locus), false);
+      });
+
+      it('return true is sessionType is not BREAKOUT', () => {
+        const locus = {
+          controls: {breakout: {sessionType: 'MAIN'}}
+        };
+
+        assert.equal(controlsUtils.isMainSessionDTO(locus), true);
+
+        assert.equal(controlsUtils.isMainSessionDTO({}), true);
+      });
+    });
   });
 });

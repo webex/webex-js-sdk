@@ -2669,14 +2669,21 @@ const createBreakoutOperations = ()=>{
         createBtn.disabled = true;
         deleteBtn.disabled = false;
         startBtn.disabled = false;
-        if(res.body.groups?.length){
+
+        const existedGroup = res.body.groups?.length && res.body.groups[0];
+        if(existedGroup && existedGroup.status !== 'CLOSED'){
           const group = res.body.groups[0];
           const {id, sessions} = group;
           groupId = id;
           sessionList = sessions
         }else{
           sessionList = [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}];
-          meeting.breakouts.create(sessionList).then((res)=>{
+          meeting.breakouts.create({
+            allowBackToMain: true,
+            allowToJoinLater: true,
+            delayCloseTime: 60,
+            sessions: sessionList
+          }).then((res)=>{
             groupId = res.body.groups[0].id;
           })
         }
@@ -2687,13 +2694,13 @@ const createBreakoutOperations = ()=>{
       endBtn.disabled = false;
       startBtn.disabled = true;
       deleteBtn.disabled = true;
-      if(groupId){
-          meeting.breakouts.start();
-      }else{
-        meeting.breakouts.getBreakout().then((res)=>{
-          meeting.breakouts.start();
-        })
-      }
+      meeting.breakouts.getBreakout().then((res)=>{
+        const groups = res?.body?.groups;
+        if (!groups.length) {
+          return;
+        }
+        meeting.breakouts.start(groups[0]);
+      });
     });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;

@@ -1991,6 +1991,16 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN, ({mainLocusUrl}) => {
+      this.meetingRequest.getLocusStatusByUrl(mainLocusUrl).catch((error) => {
+        // clear main session cache when attendee join into breakout and forbidden to get locus from main locus url,
+        // which means main session is not active for the attendee
+        if (error?.statusCode === 403) {
+          this.locusInfo.clearMainSessionLocusCache();
+        }
+      });
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED, ({entryExitTone}) => {
       Trigger.trigger(
         this,
@@ -5212,9 +5222,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a webrtc media connection
    *
    * @param {Object} turnServerInfo TURN server information
+   * @param {BundlePolicy} [bundlePolicy] Bundle policy settings
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
-  createMediaConnection(turnServerInfo) {
+  createMediaConnection(turnServerInfo, bundlePolicy) {
     const mc = Media.createMediaConnection(this.isMultistream, this.getMediaConnectionDebugId(), {
       mediaProperties: this.mediaProperties,
       remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
@@ -5223,6 +5234,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - config coming from registerPlugin
       enableExtmap: this.config.enableExtmap,
       turnServerInfo,
+      bundlePolicy,
     });
 
     this.mediaProperties.setMediaPeerConnection(mc);
@@ -5261,6 +5273,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {MediaDirection} options.mediaSettings pass media options
    * @param {MediaStream} options.localStream
    * @param {MediaStream} options.localShare
+   * @param {BundlePolicy} options.bundlePolicy bundle policy for multistream meetings
    * @param {RemoteMediaManagerConfig} options.remoteMediaManagerConfig only applies if multistream is enabled
    * @returns {Promise}
    * @public
@@ -5285,7 +5298,8 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(new UserInLobbyError());
     }
 
-    const {localStream, localShare, mediaSettings, remoteMediaManagerConfig} = options;
+    const {localStream, localShare, mediaSettings, remoteMediaManagerConfig, bundlePolicy} =
+      options;
 
     LoggerProxy.logger.info(`${LOG_HEADER} Adding Media.`);
 
@@ -5322,7 +5336,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.preMedia(localStream, localShare, mediaSettings);
 
-        const mc = this.createMediaConnection(turnServerInfo);
+        const mc = this.createMediaConnection(turnServerInfo, bundlePolicy);
 
         if (this.isMultistream) {
           this.remoteMediaManager = new RemoteMediaManager(
@@ -5439,6 +5453,7 @@ export default class Meeting extends StatelessWebexPlugin {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
           connectionType,
+          isMultistream: this.isMultistream,
         });
       })
       .catch((error) => {
@@ -5468,6 +5483,7 @@ export default class Meeting extends StatelessWebexPlugin {
             code: error.code,
             turnDiscoverySkippedReason,
             turnServerUsed,
+            isMultistream: this.isMultistream,
           });
 
           // Upload logs on error while adding media

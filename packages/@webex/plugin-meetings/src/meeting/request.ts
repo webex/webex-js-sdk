@@ -865,4 +865,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     });
   }
+
+  getLocusStatusByUrl(locusUrl: string) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.GET,
+      uri: locusUrl,
+    });
+  }
 }
