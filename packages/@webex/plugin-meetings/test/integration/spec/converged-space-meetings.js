@@ -6,6 +6,7 @@ import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detecti
 
 import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
+import integrationTestUtils from '../../utils/integrationTestUtils';
 import webexTestUsers from '../../utils/webex-test-users';
 
 config();
@@ -142,9 +143,9 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: chris.meeting, event: 'media:negotiated'},
         ]);
 
-        const addMediaAlice = testUtils.addMedia(alice, {multistream: true});
-        const addMediaBob = testUtils.addMedia(bob, {multistream: true});
-        const addMediaChris = testUtils.addMedia(chris, {multistream: true});
+        const addMediaAlice = integrationTestUtils.addMedia(alice, {multistream: true});
+        const addMediaBob = integrationTestUtils.addMedia(bob, {multistream: true});
+        const addMediaChris = integrationTestUtils.addMedia(chris, {multistream: true});
 
         await addMediaAlice;
         await addMediaBob;
