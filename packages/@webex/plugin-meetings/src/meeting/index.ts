@@ -109,6 +109,7 @@ import {
   RelayEvent,
 } from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
+import Annotation from '../annotation';
 
 import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
@@ -432,6 +433,7 @@ export default class Meeting extends StatelessWebexPlugin {
   attrs: any;
   audio: any;
   breakouts: any;
+  annotation: any;
   conversationUrl: string;
   correlationId: string;
   destination: string;
@@ -613,7 +615,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.breakouts = new Breakouts({meetingId: this.id}, {parent: this.webex});
+    this.breakouts = new Breakouts({}, {parent: this.webex});
+    /**
+     * @instance
+     * @type {Annotation}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore
+    this.annotation = new Annotation(this.locusInfo, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -2272,6 +2282,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_URL, (payload) => {
       this.members.locusUrlUpdate(payload);
       this.breakouts.locusUrlUpdate(payload);
+      this.annotation.locusUrlUpdate(payload);
       this.locusUrl = payload;
       this.locusId = this.locusUrl?.split('/').pop();
       this.recordingController.setLocusUrl(this.locusUrl);
@@ -2293,6 +2304,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.recordingController.setServiceUrl(payload?.services?.record?.url);
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
+      this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
     });
   }
 
