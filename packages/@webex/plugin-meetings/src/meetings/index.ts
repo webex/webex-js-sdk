@@ -246,8 +246,14 @@ export default class Meetings extends WebexPlugin {
 
     const isSelfJoined = newLocus?.self?.state === _JOINED_;
     const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
-    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus);
-    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(meeting, newLocus);
+    // @ts-ignore
+    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
+    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(
+      meeting,
+      newLocus,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
     const isBreakoutLocusJoinThisDevice =
       breakoutLocus?.joinedWith?.correlationId &&
       breakoutLocus.joinedWith.correlationId === meeting?.correlationId;
@@ -305,8 +311,7 @@ export default class Meetings extends WebexPlugin {
    */
   private isNeedHandleLocusDTO(meeting: any, newLocus: any) {
     if (newLocus) {
-      const isNewLocusAsBreakout =
-        newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+      const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
       const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
       if (!meeting) {
         if (isNewLocusAsBreakout) {
@@ -375,6 +380,9 @@ export default class Meetings extends WebexPlugin {
       );
     }
 
+    if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
+      meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+    }
     if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
       LoggerProxy.logger.log(
         `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
