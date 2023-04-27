@@ -306,8 +306,8 @@ const Rooms = WebexPlugin.extend({
         .then((convo) => buildRoomInfo(this.webex, convo))
     );
   },
-  
-    /**
+
+  /**
    * Returns a room's meeting details.
    * @instance
    * @memberof Rooms
@@ -334,12 +334,12 @@ const Rooms = WebexPlugin.extend({
     })
       .then((res) => res.body)
       .catch((res) => {
-          if (res.statusCode === 403 && res.body.message.endsWith('announcement only space.')) {
-            return Promise.resolve(undefined);
-          }
+        if (res.statusCode === 403 && res.body.message.endsWith('announcement only space.')) {
+          return Promise.resolve(undefined);
+        }
 
-          return Promise.reject(res);
-        });
+        return Promise.reject(res);
+      });
   },
 
   /**
