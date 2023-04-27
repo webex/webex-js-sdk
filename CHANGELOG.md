@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.86](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.85...v3.0.0-beta.86) (2023-04-26)
+
+
+### Bug Fixes
+
+* default bundle policy from WCME not applied ([#2785](https://github.com/webex/webex-js-sdk/issues/2785)) ([9a313e1](https://github.com/webex/webex-js-sdk/commit/9a313e115ed59d2baacb7e4b4c935c142136c5e0))
+
+## [3.0.0-beta.85](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.84...v3.0.0-beta.85) (2023-04-26)
+
+
+### Bug Fixes
+
+* reconnection fails when TURN discovery is skipped because of rea… ([#2782](https://github.com/webex/webex-js-sdk/issues/2782)) ([9e8e38a](https://github.com/webex/webex-js-sdk/commit/9e8e38a00552316148b3fb52df274f652939eb50))
+
 ## [3.0.0-beta.84](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.83...v3.0.0-beta.84) (2023-04-26)
 
 ## [3.0.0-beta.83](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.82...v3.0.0-beta.83) (2023-04-25)

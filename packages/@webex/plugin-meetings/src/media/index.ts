@@ -19,6 +19,8 @@ import BrowserDetection from '../common/browser-detection';
 
 const {isBrowser} = BrowserDetection();
 
+type MultistreamConnectionConfig = ConstructorParameters<typeof MultistreamRoapMediaConnection>[0];
+
 export type BundlePolicy = ConstructorParameters<
   typeof MultistreamRoapMediaConnection
 >[0]['bundlePolicy'];
@@ -166,17 +168,19 @@ Media.createMediaConnection = (
   }
 
   if (isMultistream) {
-    return new MultistreamRoapMediaConnection(
-      {
-        iceServers,
-        enableMainAudio:
-          mediaProperties.mediaDirection?.sendAudio || mediaProperties.mediaDirection?.receiveAudio,
-        enableMainVideo:
-          mediaProperties.mediaDirection?.sendVideo || mediaProperties.mediaDirection?.receiveVideo,
-        bundlePolicy,
-      },
-      debugId
-    );
+    const config: MultistreamConnectionConfig = {
+      iceServers,
+      enableMainAudio:
+        mediaProperties.mediaDirection?.sendAudio || mediaProperties.mediaDirection?.receiveAudio,
+      enableMainVideo:
+        mediaProperties.mediaDirection?.sendVideo || mediaProperties.mediaDirection?.receiveVideo,
+    };
+
+    if (bundlePolicy) {
+      config.bundlePolicy = bundlePolicy;
+    }
+
+    return new MultistreamRoapMediaConnection(config, debugId);
   }
 
   if (!mediaProperties) {
