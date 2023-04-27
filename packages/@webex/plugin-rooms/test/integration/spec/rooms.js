@@ -422,6 +422,44 @@ describe('plugin-rooms', function () {
             assert.instanceOf(reason, WebexHttpError.NotFound);
           }));
     });
+
+    describe('#getMeetingDetails()', () => {
+      let room0, room1, room;
+
+      beforeEach(() =>
+        Promise.all([
+          webex.rooms.create({title: 'Webex Test Room'})
+            .then((r) => webex.rooms.getMeetingDetails(r))
+            .then((roomMeetingDetails) => {
+              room0 = roomMeetingDetails
+            }),
+          webex.rooms.create({title: 'Webex Test Announcement Room', isAnnouncementOnly: true})
+            .then((r) => {
+              room = r
+              return webex.rooms.getMeetingDetails(r)
+            })
+            .then((roomMeetingDetails) => {
+              room1 = roomMeetingDetails;
+          }),
+        ])
+      );
+
+      it("retrieves a specific room's meeting details", () =>
+        webex.rooms.get(room0.id)
+          .then((r) => webex.rooms.getMeetingDetails(r))
+          .then((r) => {
+            assert.equal(r.id, room0.id);
+            assert.equal(r.meetingLink, room0.meetingLink);
+          }));
+
+      it("returns undefined for announcement only rooms", () =>
+        webex.rooms.getMeetingDetails(room)
+          .then((r) => {
+            assert.equal(r, undefined);
+            assert.equal(room1, undefined);
+            assert.equal(room.isAnnouncementOnly, true);
+          }));
+    });
   });
 });
 
