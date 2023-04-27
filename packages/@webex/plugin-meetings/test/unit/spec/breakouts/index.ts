@@ -6,6 +6,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
+import breakoutEvent from "../../../../src/breakouts/events";
 
 const getBOResponse = (status: string) => {
   return {
@@ -214,6 +215,63 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assigned, false);
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
+      });
+
+      it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId-old";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId-new',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.calledOnceWithExactly(breakoutEvent.onBreakoutJoinResponse,
+          breakouts.currentBreakoutSession, {id: 'meeting-id'}, 'breakoutMoveId'
+        );
+
+      });
+
+      it('updates the current breakout session, not call onBreakoutJoinResponse when session no changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId";
+        breakouts.currentBreakoutSession.groupId = "groupId";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.notCalled(breakoutEvent.onBreakoutJoinResponse);
+
       });
     });
 
