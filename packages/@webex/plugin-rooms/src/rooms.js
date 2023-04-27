@@ -334,7 +334,7 @@ const Rooms = WebexPlugin.extend({
     })
       .then((res) => res.body)
       .catch((res) => {
-        if (res.statusCode === 403 && res.body.message.endsWith('announcement only space.')) {
+        if (res.statusCode === 403 && res.body?.message?.endsWith('announcement only space.')) {
           return Promise.resolve(undefined);
         }
 
