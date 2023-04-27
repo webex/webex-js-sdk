@@ -28,6 +28,17 @@ const debug = require('debug')('rooms');
  */
 
 /**
+ * @typedef {Object} RoomMeetingDetailsObject
+ * @property {string} id - (server generated) Unique identifier for the room
+ * @property {string} meetingLink - The meeting URL for the room
+ * @property {string} [sipAddress] - The SIP address for the room
+ * @property {string} [meetingNumber] - The meeting number for the room
+ * @property {string} [meetingId] - The meeting ID for the room
+ * @property {string} [callInTollFreeNumber] - The toll-free PSTN number for the room
+ * @property {string} [callInTollNumber] - The toll (local) PSTN number for the room
+ */
+
+/**
  * Rooms are virtual meeting places for getting stuff done. This resource
  * represents the room itself. Check out the {@link Memberships} API to learn
  * how to add and remove people from rooms and the {@link Messages} API for
@@ -294,6 +305,41 @@ const Rooms = WebexPlugin.extend({
         })
         .then((convo) => buildRoomInfo(this.webex, convo))
     );
+  },
+  
+    /**
+   * Returns a room's meeting details.
+   * @instance
+   * @memberof Rooms
+   * @param {RoomObject|string} room
+   * @returns {Promise<RoomMeetingDetailsObject>}
+   * @example
+   * webex.rooms.create({title: 'Get Room Meeting Details Example'})
+   *   .then(function(room) {
+   *     return webex.rooms.getMeetingDetails(room.id)
+   *   })
+   *   .then(function(r) {
+   *     var assert = require('assert');
+   *     assert.equal(r.meetingLink.startsWith('https://'), true);
+   *     return 'success';
+   *   });
+   *   // => success
+   */
+  getMeetingDetails(room) {
+    const id = room.id || room;
+
+    return this.request({
+      service: 'hydra',
+      resource: `rooms/${id}/meetingInfo`,
+    })
+      .then((res) => res.body)
+      .catch((res) => {
+          if (res.statusCode === 403 && res.body.message.endsWith('announcement only space.')) {
+            return Promise.resolve(undefined);
+          }
+
+          return Promise.reject(res);
+        });
   },
 
   /**
