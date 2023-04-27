@@ -312,7 +312,7 @@ const Rooms = WebexPlugin.extend({
    * @instance
    * @memberof Rooms
    * @param {RoomObject|string} room
-   * @returns {Promise<RoomMeetingDetailsObject>}
+   * @returns {Promise<RoomMeetingDetailsObject>|Promise<undefined>}
    * @example
    * webex.rooms.create({title: 'Get Room Meeting Details Example'})
    *   .then(function(room) {
