@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.87](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.86...v3.0.0-beta.87) (2023-04-27)
+
+
+### Features
+
+* change of SDK multistream APIs to use webrtc-core local tracks ([#2778](https://github.com/webex/webex-js-sdk/issues/2778)) ([a7521a3](https://github.com/webex/webex-js-sdk/commit/a7521a3f1025af481af39f7e08481af8daa67ce2))
+
 ## [3.0.0-beta.86](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.85...v3.0.0-beta.86) (2023-04-26)
 
 
