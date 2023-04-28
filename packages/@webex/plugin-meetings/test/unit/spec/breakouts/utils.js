@@ -4,7 +4,6 @@ import {getBroadcastRoles, boServiceErrorHandler, isSessionTypeChangedFromSessio
 import BreakoutEditLockedError from '../../../../src/breakouts/edit-lock-error';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {BREAKOUTS} from '../../../../src/constants';
-import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 
 describe('plugin-meetings', () => {
   describe('Breakouts utils', () => {
