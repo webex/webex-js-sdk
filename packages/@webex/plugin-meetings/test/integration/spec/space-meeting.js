@@ -6,6 +6,7 @@ import MeetingInfoUtil from '@webex/plugin-meetings/dist/meeting-info/utilv2';
 
 import CMR from '../../utils/cmr';
 import testUtils from '../../utils/testUtils';
+import integrationTestUtils from '../../utils/integrationTestUtils';
 
 require('dotenv').config();
 
@@ -136,7 +137,7 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => testUtils.waitForStateChange(chris.meeting, 'JOINED')));
 
     it('Bob and Alice addsMedia', () =>
-      testUtils.addMedia(bob).then(() => testUtils.addMedia(alice)));
+      integrationTestUtils.addMedia(bob).then(() => integrationTestUtils.addMedia(alice)));
 
     it('Bob has flowing streams on reconnect', () => {
       const retrieveStats = () => {
@@ -187,7 +188,7 @@ skipInNode(describe)('plugin-meetings', () => {
           ])
         )
         .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
-        .then(() => testUtils.addMedia(guest))
+        .then(() => integrationTestUtils.addMedia(guest))
         .catch((e) => {
           console.error('Error chris joining the meeting ', e);
           throw e;
@@ -414,7 +415,7 @@ skipInNode(describe)('plugin-meetings', () => {
                 }),
             ])
               .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
-              .then(() => testUtils.addMedia(guest));
+              .then(() => integrationTestUtils.addMedia(guest));
           })
           .catch((e) => {
             console.error('Error guest joining the meeting ', e);

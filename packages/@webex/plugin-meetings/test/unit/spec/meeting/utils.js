@@ -4,7 +4,7 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
-import {DISPLAY_HINTS} from '@webex/plugin-meetings/dist/constants';
+import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {

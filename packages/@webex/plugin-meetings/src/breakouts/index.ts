@@ -49,6 +49,7 @@ const Breakouts = WebexPlugin.extend({
 
   derived: {
     isInMainSession: {
+      cache: false,
       deps: ['sessionType'],
       /**
        * Returns true if the user is in the main session
@@ -59,6 +60,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     isActiveBreakout: {
+      cache: false, // fix issue: sometimes the derived will not change even if the deps changed
       deps: ['sessionType', 'status'],
       /**
        * Returns true if the breakout status is active
@@ -72,6 +74,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     breakoutGroupId: {
+      cache: false,
       deps: ['groups'],
       /**
        * Returns the actived group id
@@ -407,13 +410,14 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Create new breakout sessions
-   * @param {object} sessions -- breakout session group
+   * @param {object} params -- breakout session group
    * @returns {Promise}
    */
-  async create(sessions) {
+  async create(params) {
+    const payload = {...params};
     const body = {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
-      ...{groups: [{sessions}]},
+      ...{groups: [payload]},
     };
     // @ts-ignore
     const breakInfo = await this.webex

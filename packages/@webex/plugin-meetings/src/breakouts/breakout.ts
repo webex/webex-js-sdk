@@ -36,6 +36,7 @@ const Breakout = WebexPlugin.extend({
 
   derived: {
     isMain: {
+      cache: false, // fix issue: sometimes the derived will not change even if the deps changed
       deps: ['sessionType'],
       /**
        * If the breakout has no name, assume it is the main session

@@ -119,6 +119,7 @@ describe('createMediaConnection', () => {
         username: 'turn username',
         password: 'turn password',
       },
+      bundlePolicy: 'max-bundle',
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
@@ -133,6 +134,7 @@ describe('createMediaConnection', () => {
         ],
         enableMainAudio: true,
         enableMainVideo: true,
+        bundlePolicy: 'max-bundle',
       },
       'some debug id'
     );
@@ -201,6 +203,36 @@ describe('createMediaConnection', () => {
       },
       'debug string'
     );
+
+    it('does not pass bundlePolicy to MultistreamRoapMediaConnection if bundlePolicy is undefined', () => {
+      const multistreamRoapMediaConnectionConstructorStub = sinon
+        .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
+        .returns(fakeRoapMediaConnection);
+  
+      Media.createMediaConnection(true, 'debug string', {
+        mediaProperties: {
+          mediaDirection: {
+            sendAudio: true,
+            sendVideo: true,
+            sendShare: false,
+            receiveAudio: true,
+            receiveVideo: true,
+            receiveShare: true,
+          },
+        },
+        bundlePolicy: undefined
+      });
+      assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+      assert.calledWith(
+        multistreamRoapMediaConnectionConstructorStub,
+        {
+          iceServers: [],
+          enableMainAudio: true,
+          enableMainVideo: true,
+        },
+        'debug string'
+      );
+    });
   });
 
   it('passes empty ICE servers array to RoapMediaConnection if turnServerInfo is undefined (multistream disabled)', () => {

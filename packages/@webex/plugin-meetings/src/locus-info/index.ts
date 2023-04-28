@@ -1,4 +1,4 @@
-import {isEqual} from 'lodash';
+import {isArray, isEqual, mergeWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -64,7 +64,7 @@ export default class LocusInfo extends EventsScope {
   replace: any;
   url: any;
   services: any;
-
+  mainSessionLocusCache: any;
   /**
    * Constructor
    * @param {boolean} updateMeeting true if the meeting should be updated
@@ -180,6 +180,7 @@ export default class LocusInfo extends EventsScope {
      */
     this.deltaParticipants = [];
 
+    this.updateLocusCache(locus);
     // above section only updates the locusInfo object
     // The below section makes sure it updates the locusInfo as well as updates the meeting object
     this.updateParticipants(locus.participants);
@@ -203,6 +204,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   initialSetup(locus: object) {
+    this.updateLocusCache(locus);
     this.onFullLocus(locus);
 
     // Change it to true after it receives it first locus object
@@ -218,7 +220,7 @@ export default class LocusInfo extends EventsScope {
   parse(meeting: any, data: any) {
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const {eventType} = data;
-
+    const locus = this.getTheLocusToUpdate(data.locus);
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
 
     switch (eventType) {
@@ -236,16 +238,16 @@ export default class LocusInfo extends EventsScope {
       case LOCUSEVENT.PARTICIPANT_DECLINED:
       case LOCUSEVENT.FLOOR_GRANTED:
       case LOCUSEVENT.FLOOR_RELEASED:
-        this.onFullLocus(data.locus, eventType);
+        this.onFullLocus(locus, eventType);
         break;
       case LOCUSEVENT.DIFFERENCE:
-        this.handleLocusDelta(data.locus, meeting);
+        this.handleLocusDelta(locus, meeting);
         break;
 
       default:
         // Why will there be a event with no eventType ????
         // we may not need this, we can get full locus
-        this.handleLocusDelta(data.locus, meeting);
+        this.handleLocusDelta(locus, meeting);
     }
   }
 
@@ -1394,5 +1396,107 @@ export default class LocusInfo extends EventsScope {
     if (identities && !isEqual(this.identities, identities)) {
       this.identities = identities;
     }
+  }
+
+  /**
+   * check the locus is main session's one or not, if is main session's, update main session cache
+   * @param {Object} locus
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  updateLocusCache(locus: any) {
+    const isMainSessionDTO = ControlsUtils.isMainSessionDTO(locus);
+    if (isMainSessionDTO) {
+      this.updateMainSessionLocusCache(locus);
+    }
+  }
+
+  /**
+   * if return from breakout to main session, need to use cached main session DTO since locus won't send the full locus (participants)
+   * if join breakout from main session, need to query main locus url (if response with 403 means no privilege, need to clear the cache)
+   * @param {Object} newLocus
+   * @returns {Object}
+   * @memberof LocusInfo
+   */
+  getTheLocusToUpdate(newLocus: any) {
+    const switchStatus = ControlsUtils.getSessionSwitchStatus(this.controls, newLocus.controls);
+    if (switchStatus.isReturnToMain && this.mainSessionLocusCache) {
+      return cloneDeep(this.mainSessionLocusCache);
+    }
+    if (switchStatus.isJoinToBreakout) {
+      this.emitScoped(
+        {
+          file: 'locus-info',
+          function: 'updateControls',
+        },
+        LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN,
+        {
+          mainLocusUrl: this.url,
+        }
+      );
+    }
+
+    return newLocus;
+  }
+
+  /**
+   * merge participants by participant id
+   * @param {Array} participants
+   * @param {Array} sourceParticipants
+   * @returns {Array} merged participants
+   * @memberof LocusInfo
+   */
+  // eslint-disable-next-line class-methods-use-this
+  mergeParticipants(participants, sourceParticipants) {
+    if (!sourceParticipants || !sourceParticipants.length) return participants;
+    if (!participants || !participants.length) {
+      return sourceParticipants;
+    }
+    sourceParticipants.forEach((participant) => {
+      const existIndex = participants.findIndex((p) => p.id === participant.id);
+      if (existIndex > -1) {
+        participants.splice(existIndex, 1, participant);
+      } else {
+        participants.push(participant);
+      }
+    });
+
+    return participants;
+  }
+
+  /**
+   * need cache main sessions' participants since locus will not send the full list when cohost/host leave breakout
+   * @param {Object} mainLocus
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  updateMainSessionLocusCache(mainLocus: any) {
+    if (!mainLocus) {
+      return;
+    }
+    const locusClone = cloneDeep(mainLocus);
+    if (this.mainSessionLocusCache) {
+      // eslint-disable-next-line consistent-return
+      mergeWith(this.mainSessionLocusCache, locusClone, (objValue, srcValue, key) => {
+        if (isArray(objValue)) {
+          if (key === 'participants') {
+            return this.mergeParticipants(objValue, srcValue);
+          }
+
+          return srcValue; // just replace the old ones
+        }
+      });
+    } else {
+      this.mainSessionLocusCache = locusClone;
+    }
+  }
+
+  /**
+   * clear main session cache
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  clearMainSessionLocusCache() {
+    this.mainSessionLocusCache = null;
   }
 }
