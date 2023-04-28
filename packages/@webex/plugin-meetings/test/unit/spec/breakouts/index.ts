@@ -119,7 +119,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe.only('#listenToCurrentSessionTypeChange', () => {
+    describe('#listenToCurrentSessionTypeChange', () => {
       it('triggers leave breakout event when sessionType changed from SESSION to MAIN', () => {
         const handler = sinon.stub();
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
