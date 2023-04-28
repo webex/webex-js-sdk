@@ -10,7 +10,7 @@ import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
-import {boServiceErrorHandler} from './utils';
+import {boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from './utils';
 
 /**
  * @class Breakouts
@@ -107,6 +107,7 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.breakouts, 'add', () => {
       this.debouncedQueryRosters();
     });
+    this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
     // @ts-ignore
@@ -183,6 +184,22 @@ const Breakouts = WebexPlugin.extend({
 
     session.parseRoster(locus);
   },
+  /**
+   *Sets up listener for currentBreakoutSession sessionType changed
+   * @returns {void}
+   */
+  listenToCurrentSessionTypeChange(): void {
+    this.listenTo(
+      this.currentBreakoutSession,
+      'change:sessionType',
+      (currentBreakoutSession, sessionType) => {
+        if (isSessionTypeChangedFromSessionToMain(currentBreakoutSession, sessionType)) {
+          this.trigger(BREAKOUTS.EVENTS.LEAVE_BREAKOUT);
+        }
+      }
+    );
+  },
+
   /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}

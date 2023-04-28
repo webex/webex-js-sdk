@@ -119,6 +119,41 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe.only('#listenToCurrentSessionTypeChange', () => {
+      it('triggers leave breakout event when sessionType changed from SESSION to MAIN', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
+        
+        assert.calledOnceWithExactly(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+
+      it('should not triggers leave breakout event when sessionType changed from undefined to MAIN', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: undefined})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
+
+        assert.notCalled(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+
+      it('should not triggers leave breakout event when sessionType changed from MAIN to SESSION', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT});
+
+        assert.notCalled(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+    });
+
     describe('#listenToBroadcastMessages', () => {
       it('triggers message event when a message received', () => {
         const call = webex.internal.llm.on.getCall(0);
