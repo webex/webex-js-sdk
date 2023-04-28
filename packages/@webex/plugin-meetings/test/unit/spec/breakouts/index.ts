@@ -216,7 +216,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe.only('#updateBreakoutSessions', () => {
+    describe('#updateBreakoutSessions', () => {
       const checkBreakout = (breakout, sessionId, state) => {
         assert.deepEqual(breakout.attributes, {
           active: false,
