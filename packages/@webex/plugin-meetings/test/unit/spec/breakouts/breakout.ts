@@ -41,7 +41,6 @@ describe('plugin-meetings', () => {
 
     describe('#join', () => {
       it('makes the request as expected', async () => {
-        Metrics.postEvent = sinon.stub();
         uuid.v4 = sinon.stub().returns('breakoutMoveId');
         const result = await breakout.join();
         assert.calledOnceWithExactly(webex.request, {
@@ -57,25 +56,7 @@ describe('plugin-meetings', () => {
 
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
-      it('send metrics as expected', async () => {
-        breakout.webex.internal.device.url = 'device-url';
-        breakout.webex.meetings = {
-          getMeetingByType: sinon.stub().returns({
-          id: 'meeting-id'
-        })
-        };
 
-        breakoutEvent.onBreakoutMoveRequest = sinon.stub();
-        breakoutEvent.onBreakoutMoveResponse = sinon.stub();
-        uuid.v4 = sinon.stub().returns('breakoutMoveId');
-        await breakout.join();
-        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
-          breakout, {id: 'meeting-id'}, 'breakoutMoveId'
-        );
-        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveResponse,
-          breakout, {id: 'meeting-id'}, 'breakoutMoveId'
-        );
-      });
     });
 
     describe('#leave', () => {

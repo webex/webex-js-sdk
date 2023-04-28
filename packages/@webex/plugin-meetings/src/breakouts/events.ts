@@ -4,68 +4,32 @@ import {eventType} from '../metrics/config';
 
 const breakoutEvent: any = {};
 
-breakoutEvent.onBreakoutMoveRequest = (
-  currentSession: any,
-  meeting: any,
-  breakoutMoveId: string
-) => {
-  if (!breakoutMoveId || !meeting) {
-    return;
-  }
-  if (!meeting.meetingInfo?.enableConvergedArchitecture) {
-    return;
-  }
-  Metrics.postEvent({
-    event: eventType.BREAKOUT_MOVE_REQUEST,
-    meetingId: meeting.id,
-    data: {
-      breakoutMoveId,
-      breakoutSessionId: currentSession.sessionId,
-      breakoutGroupId: currentSession.groupId,
-    },
-  });
+breakoutEvent.onBreakoutMoveRequest = (eventInfo) => {
+  breakoutEvent.postMoveCallAnalyzer(eventType.BREAKOUT_MOVE_REQUEST, eventInfo);
 };
 
-breakoutEvent.onBreakoutMoveResponse = (
-  currentSession: any,
-  meeting: any,
-  breakoutMoveId: string
-) => {
-  if (!breakoutMoveId || !meeting) {
-    return;
-  }
-  if (!meeting.meetingInfo?.enableConvergedArchitecture) {
-    return;
-  }
-  Metrics.postEvent({
-    event: eventType.BREAKOUT_MOVE_RESPONSE,
-    meetingId: meeting.id,
-    data: {
-      breakoutMoveId,
-      breakoutSessionId: currentSession.sessionId,
-      breakoutGroupId: currentSession.groupId,
-    },
-  });
+breakoutEvent.onBreakoutMoveResponse = (eventInfo) => {
+  breakoutEvent.postMoveCallAnalyzer(eventType.BREAKOUT_MOVE_RESPONSE, eventInfo);
 };
 
-breakoutEvent.onBreakoutJoinResponse = (
-  currentSession: any,
-  meeting: any,
-  breakoutMoveId: string
-) => {
-  if (!breakoutMoveId || !meeting) {
+breakoutEvent.onBreakoutJoinResponse = (eventInfo) => {
+  breakoutEvent.postMoveCallAnalyzer(eventType.BREAKOUT_JOIN_RESPONSE, eventInfo);
+};
+
+breakoutEvent.postMoveCallAnalyzer = (events: string, eventInfo: any) => {
+  if (!eventInfo?.breakoutMoveId || !eventInfo?.meeting) {
     return;
   }
-  if (!meeting.meetingInfo?.enableConvergedArchitecture) {
+  if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
     return;
   }
   Metrics.postEvent({
-    event: eventType.BREAKOUT_JOIN_RESPONSE,
-    meetingId: meeting.id,
+    event: events,
+    meetingId: eventInfo.meeting.id,
     data: {
-      breakoutMoveId,
-      breakoutSessionId: currentSession.sessionId,
-      breakoutGroupId: currentSession.groupId,
+      breakoutMoveId: eventInfo.breakoutMoveId,
+      breakoutSessionId: eventInfo?.currentSession?.sessionId,
+      breakoutGroupId: eventInfo?.currentSession?.groupId,
     },
   });
 };

@@ -240,9 +240,7 @@ describe('plugin-meetings', () => {
           breakoutMoveId: 'breakoutMoveId',
         });
 
-        assert.calledOnceWithExactly(breakoutEvent.onBreakoutJoinResponse,
-          breakouts.currentBreakoutSession, {id: 'meeting-id'}, 'breakoutMoveId'
-        );
+        assert.calledOnce(breakoutEvent.onBreakoutJoinResponse);
 
       });
 

@@ -257,11 +257,11 @@ const Breakouts = WebexPlugin.extend({
     ) {
       // should report joined session changed
       const meeting = this.webex?.meetings?.getMeetingByType(_ID_, this.meetingId);
-      breakoutEvent.onBreakoutJoinResponse(
-        this.currentBreakoutSession,
+      breakoutEvent.onBreakoutJoinResponse({
+        currentSession: this.currentBreakoutSession,
         meeting,
-        params.breakoutMoveId
-      );
+        breakoutMoveId: params.breakoutMoveId,
+      });
     }
   },
 
