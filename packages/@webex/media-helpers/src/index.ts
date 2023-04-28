@@ -1,4 +1,5 @@
 export {
+  getDevices,
   LocalTrack,
   LocalDisplayTrack,
   LocalTrackEvents,

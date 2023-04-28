@@ -8,6 +8,7 @@ import {ROAP} from '../constants';
 
 import RoapRequest from './request';
 import Meeting from '../meeting';
+import MeetingUtil from '../meeting/util';
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 

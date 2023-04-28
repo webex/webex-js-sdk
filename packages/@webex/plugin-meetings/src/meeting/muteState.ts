@@ -1,31 +1,18 @@
 import {ServerMuteReason} from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
-import PermissionError from '../common/errors/permission';
 import MeetingUtil from './util';
 import {AUDIO, VIDEO} from '../constants';
-/* Certain aspects of server interaction for video muting are not implemented as we currently don't support remote muting of video.
-   If we ever need to support it, search for REMOTE_MUTE_VIDEO_MISSING_IMPLEMENTATION string to find the places that need updating
-*/
 
 // eslint-disable-next-line import/prefer-default-export
-export const createMuteState = (type, meeting, mediaDirection, sdkOwnsLocalTrack: boolean) => {
-  // todo: remove mediaDirection argument (SPARK-399695)
+export const createMuteState = (type, meeting, enabled: boolean) => {
   // todo: remove the meeting argument  (SPARK-399695)
-  if (type === AUDIO && !mediaDirection.sendAudio) {
-    return null;
-  }
-  if (type === VIDEO && !mediaDirection.sendVideo) {
-    return null;
-  }
 
   LoggerProxy.logger.info(
     `Meeting:muteState#createMuteState --> ${type}: creating MuteState for meeting id ${meeting?.id}`
   );
 
-  const muteState = new MuteState(type, meeting, sdkOwnsLocalTrack);
-
-  muteState.init(meeting);
+  const muteState = new MuteState(type, meeting, enabled);
 
   return muteState;
 };
@@ -38,11 +25,16 @@ export const createMuteState = (type, meeting, mediaDirection, sdkOwnsLocalTrack
    This class is exported only for unit tests. It should never be instantiated directly with new MuteState(), instead createMuteState() should be called
 */
 export class MuteState {
-  pendingPromiseReject: any;
-  pendingPromiseResolve: any;
-  state: any;
+  state: {
+    client: {
+      enabled: boolean; // indicates if audio/video is enabled at all or not
+      localMute: boolean;
+    };
+    server: {localMute: boolean; remoteMute: boolean; unmuteAllowed: boolean};
+    syncToServerInProgress: boolean;
+  };
+
   type: any;
-  sdkOwnsLocalTrack: boolean; // todo: remove this when doing SPARK-399695
   ignoreMuteStateChange: boolean;
 
   /**
@@ -50,18 +42,18 @@ export class MuteState {
    *
    * @param {String} type - audio or video
    * @param {Object} meeting - the meeting object (used for reading current remote mute status)
-   * @param {boolean} sdkOwnsLocalTrack - if false, then client app owns the local track (for now that's the case only for multistream meetings)
+   * @param {boolean} enabled - whether the client audio/video is enabled at all
    */
-  constructor(type: string, meeting: any, sdkOwnsLocalTrack: boolean) {
+  constructor(type: string, meeting: any, enabled: boolean) {
     if (type !== AUDIO && type !== VIDEO) {
       throw new ParameterError('Mute state is designed for handling audio or video only');
     }
     this.type = type;
-    this.sdkOwnsLocalTrack = sdkOwnsLocalTrack;
     this.ignoreMuteStateChange = false;
     this.state = {
       client: {
-        localMute: false,
+        enabled,
+        localMute: true,
       },
       server: {
         localMute: true,
@@ -71,9 +63,6 @@ export class MuteState {
       },
       syncToServerInProgress: false,
     };
-    // these 2 hold the resolve, reject methods for the promise we returned to the client in last handleClientRequest() call
-    this.pendingPromiseResolve = null;
-    this.pendingPromiseReject = null;
   }
 
   /**
@@ -83,42 +72,30 @@ export class MuteState {
    * @returns {void}
    */
   public init(meeting: any) {
-    if (!this.sdkOwnsLocalTrack) {
-      this.applyUnmuteAllowedToTrack(meeting);
+    this.applyUnmuteAllowedToTrack(meeting);
 
-      // if we are remotely muted, we need to apply that to the local track now (mute on-entry)
-      if (this.state.server.remoteMute) {
-        this.muteLocalTrack(meeting, this.state.server.remoteMute, 'remotelyMuted');
-      }
-
-      const initialMute =
-        this.type === AUDIO
-          ? meeting.mediaProperties.audioTrack?.muted
-          : meeting.mediaProperties.videoTrack?.muted;
-
-      LoggerProxy.logger.info(
-        `Meeting:muteState#init --> ${this.type}: local track initial mute state: ${initialMute}`
-      );
-
-      if (initialMute !== undefined) {
-        this.state.client.localMute = initialMute;
-
-        this.applyClientStateToServer(meeting);
-      }
-    } else {
-      // in the mode where sdkOwnsLocalTrack is false (transcoded meetings),
-      // SDK API currently doesn't allow to start with audio/video muted,
-      // so we need to apply the initial local mute state (false) to server
-      this.state.syncToServerInProgress = true;
-      this.sendLocalMuteRequestToServer(meeting)
-        .then(() => {
-          this.state.syncToServerInProgress = false;
-        })
-        .catch(() => {
-          this.state.syncToServerInProgress = false;
-          // not much we can do here...
-        });
+    // if we are remotely muted, we need to apply that to the local track now (mute on-entry)
+    if (this.state.server.remoteMute) {
+      this.muteLocalTrack(meeting, this.state.server.remoteMute, 'remotelyMuted');
     }
+
+    const initialMute =
+      this.type === AUDIO
+        ? meeting.mediaProperties.audioTrack?.muted
+        : meeting.mediaProperties.videoTrack?.muted;
+
+    LoggerProxy.logger.info(
+      `Meeting:muteState#init --> ${this.type}: local track initial mute state: ${initialMute}`
+    );
+
+    if (initialMute !== undefined) {
+      this.state.client.localMute = initialMute;
+    } else {
+      // there is no track, so it's like we are locally muted
+      // (this is important especially for transcoded meetings, in which the SDP m-line direction always stays "sendrecv")
+      this.state.client.localMute = true;
+    }
+    this.applyClientStateToServer(meeting);
   }
 
   /**
@@ -132,6 +109,19 @@ export class MuteState {
    */
   public handleLocalTrackChange(meeting: any) {
     return this.init(meeting);
+  }
+
+  /**
+   * Enables/disables audio/video
+   *
+   * @param {Object} meeting - the meeting object
+   * @param {boolean} enable
+   * @returns {void}
+   */
+  public enable(meeting: any, enable: boolean) {
+    this.state.client.enabled = enable;
+
+    this.applyClientStateToServer(meeting);
   }
 
   /**
@@ -153,49 +143,6 @@ export class MuteState {
   }
 
   /**
-   * Handles mute/unmute request from the client/user. Returns a promise that's resolved once the server update is completed or
-   * at the point that this request becomese superseded by another client request.
-   *
-   * The client doesn't have to wait for the returned promise to resolve before calling handleClientRequest() again. If
-   * handleClientRequest() is called again before the previous one resolved, the MuteState class will make sure that eventually
-   * the server state will match the last requested state from the client.
-   *
-   * @public
-   * @memberof MuteState
-   * @param {Object} [meeting] the meeting object
-   * @param {Boolean} [mute] true for muting, false for unmuting request
-   * @returns {Promise}
-   */
-  public handleClientRequest(meeting: object, mute?: boolean) {
-    // todo: this whole method will be removed in SPARK-399695
-    LoggerProxy.logger.info(
-      `Meeting:muteState#handleClientRequest --> ${this.type}: user requesting new mute state: ${mute}`
-    );
-
-    if (!mute && !this.state.server.unmuteAllowed) {
-      return Promise.reject(
-        new PermissionError('User is not allowed to unmute self (hard mute feature is being used)')
-      );
-    }
-
-    // we don't check if we're already in the same state, because even if we were, we would still have to apply the mute state locally,
-    // because the client may have changed the audio/video tracks
-    this.state.client.localMute = mute;
-
-    this.applyClientStateLocally(meeting);
-
-    return new Promise((resolve, reject) => {
-      if (this.pendingPromiseResolve) {
-        // resolve the last promise we returned to the client as the client has issued a new request that has superseded the previous one
-        this.pendingPromiseResolve();
-      }
-      this.pendingPromiseResolve = resolve;
-      this.pendingPromiseReject = reject;
-      this.applyClientStateToServer(meeting);
-    });
-  }
-
-  /**
    * This method should be called when the local track mute state is changed
    * @public
    * @memberof MuteState
@@ -210,12 +157,6 @@ export class MuteState {
     LoggerProxy.logger.info(
       `Meeting:muteState#handleLocalTrackMuteStateChange --> ${this.type}: local track new mute state: ${mute}`
     );
-
-    if (this.pendingPromiseReject) {
-      LoggerProxy.logger.error(
-        `Meeting:muteState#handleLocalTrackMuteStateChange --> ${this.type}: Local track mute state change handler called while a client request is handled - this should never happen!, mute state: ${mute}`
-      );
-    }
 
     this.state.client.localMute = mute;
 
@@ -232,15 +173,16 @@ export class MuteState {
    * @returns {void}
    */
   public applyClientStateLocally(meeting?: any, reason?: ServerMuteReason) {
-    if (this.sdkOwnsLocalTrack) {
-      if (this.type === AUDIO) {
-        meeting.mediaProperties.audioTrack?.setMuted(this.state.client.localMute);
-      } else {
-        meeting.mediaProperties.videoTrack?.setMuted(this.state.client.localMute);
-      }
-    } else {
-      this.muteLocalTrack(meeting, this.state.client.localMute, reason);
-    }
+    this.muteLocalTrack(meeting, this.state.client.localMute, reason);
+  }
+
+  /** Returns true if client is locally muted - it takes into account not just the client local mute state,
+   *  but also whether audio/video is enabled at all
+   *
+   * @returns {boolean}
+   */
+  private getClientLocalMuteState() {
+    return this.state.client.enabled ? this.state.client.localMute : true;
   }
 
   /**
@@ -251,7 +193,7 @@ export class MuteState {
    * @memberof MuteState
    * @returns {void}
    */
-  private applyClientStateToServer(meeting?: object) {
+  private applyClientStateToServer(meeting?: any) {
     if (this.state.syncToServerInProgress) {
       LoggerProxy.logger.info(
         `Meeting:muteState#applyClientStateToServer --> ${this.type}: request to server in progress, we need to wait for it to complete`
@@ -260,11 +202,12 @@ export class MuteState {
       return;
     }
 
-    const localMuteRequiresSync = this.state.client.localMute !== this.state.server.localMute;
-    const remoteMuteRequiresSync = !this.state.client.localMute && this.state.server.remoteMute;
+    const localMuteState = this.getClientLocalMuteState();
+    const localMuteRequiresSync = localMuteState !== this.state.server.localMute;
+    const remoteMuteRequiresSync = !localMuteState && this.state.server.remoteMute;
 
     LoggerProxy.logger.info(
-      `Meeting:muteState#applyClientStateToServer --> ${this.type}: localMuteRequiresSync: ${localMuteRequiresSync} (${this.state.client.localMute} ?= ${this.state.server.localMute})`
+      `Meeting:muteState#applyClientStateToServer --> ${this.type}: localMuteRequiresSync: ${localMuteRequiresSync} (${localMuteState} ?= ${this.state.server.localMute})`
     );
     LoggerProxy.logger.info(
       `Meeting:muteState#applyClientStateToServer --> ${this.type}: remoteMuteRequiresSync: ${remoteMuteRequiresSync}`
@@ -274,12 +217,6 @@ export class MuteState {
       LoggerProxy.logger.info(
         `Meeting:muteState#applyClientStateToServer --> ${this.type}: client state already matching server state, nothing to do`
       );
-
-      if (this.pendingPromiseResolve) {
-        this.pendingPromiseResolve();
-      }
-      this.pendingPromiseResolve = null;
-      this.pendingPromiseReject = null;
 
       return;
     }
@@ -308,11 +245,9 @@ export class MuteState {
       .catch((e) => {
         this.state.syncToServerInProgress = false;
 
-        if (this.pendingPromiseReject) {
-          this.pendingPromiseReject(e);
-        }
-        this.pendingPromiseResolve = null;
-        this.pendingPromiseReject = null;
+        LoggerProxy.logger.warn(
+          `Meeting:muteState#applyClientStateToServer --> ${this.type}: error: ${e}`
+        );
 
         this.applyServerMuteToLocalTrack(meeting, 'clientRequestFailed');
       });
@@ -327,8 +262,8 @@ export class MuteState {
    * @returns {Promise}
    */
   private sendLocalMuteRequestToServer(meeting?: any) {
-    const audioMuted = this.type === AUDIO ? this.state.client.localMute : undefined;
-    const videoMuted = this.type === VIDEO ? this.state.client.localMute : undefined;
+    const audioMuted = this.type === AUDIO ? this.getClientLocalMuteState() : undefined;
+    const videoMuted = this.type === VIDEO ? this.getClientLocalMuteState() : undefined;
 
     LoggerProxy.logger.info(
       `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: sending local mute (audio=${audioMuted}, video=${videoMuted}) to server`
@@ -366,7 +301,7 @@ export class MuteState {
    * @returns {Promise}
    */
   private sendRemoteMuteRequestToServer(meeting?: any) {
-    const remoteMute = this.state.client.localMute;
+    const remoteMute = this.getClientLocalMuteState();
 
     LoggerProxy.logger.info(
       `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`
@@ -396,12 +331,10 @@ export class MuteState {
    * @returns {void}
    */
   private applyServerMuteToLocalTrack(meeting: any, serverMuteReason: ServerMuteReason) {
-    if (!this.sdkOwnsLocalTrack) {
-      const muted = this.state.server.localMute || this.state.server.remoteMute;
+    const muted = this.state.server.localMute || this.state.server.remoteMute;
 
-      // update the local track mute state, but not this.state.client.localMute
-      this.muteLocalTrack(meeting, muted, serverMuteReason);
-    }
+    // update the local track mute state, but not this.state.client.localMute
+    this.muteLocalTrack(meeting, muted, serverMuteReason);
   }
 
   /** Applies the current value for unmute allowed to the underlying track
@@ -410,12 +343,10 @@ export class MuteState {
    * @returns {void}
    */
   private applyUnmuteAllowedToTrack(meeting: any) {
-    if (!this.sdkOwnsLocalTrack) {
-      if (this.type === AUDIO) {
-        meeting.mediaProperties.audioTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
-      } else {
-        meeting.mediaProperties.videoTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
-      }
+    if (this.type === AUDIO) {
+      meeting.mediaProperties.audioTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
+    } else {
+      meeting.mediaProperties.videoTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
     }
   }
 
@@ -452,28 +383,27 @@ export class MuteState {
    * @returns {undefined}
    */
   public handleServerLocalUnmuteRequired(meeting?: object) {
-    LoggerProxy.logger.info(
-      `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received -> doing local unmute`
-    );
+    if (!this.state.client.enabled) {
+      LoggerProxy.logger.warn(
+        `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received while ${this.type} is disabled -> local unmute will not result in ${this.type} being sent`
+      );
+    } else {
+      LoggerProxy.logger.info(
+        `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received -> doing local unmute`
+      );
+    }
 
     // todo: I'm seeing "you can now unmute yourself " popup  when this happens - but same thing happens on web.w.c so we can ignore for now
     this.state.server.remoteMute = false;
     this.state.client.localMute = false;
-
-    if (this.pendingPromiseReject) {
-      this.pendingPromiseReject(
-        new Error('Server requested local unmute - this overrides any client request in progress')
-      );
-      this.pendingPromiseResolve = null;
-      this.pendingPromiseReject = null;
-    }
 
     this.applyClientStateLocally(meeting, 'localUnmuteRequired');
     this.applyClientStateToServer(meeting);
   }
 
   /**
-   * Returns true if the user is locally or remotely muted
+   * Returns true if the user is locally or remotely muted.
+   * It only checks the mute status, ignoring the fact whether audio/video is enabled.
    *
    * @public
    * @memberof MuteState
@@ -508,34 +438,13 @@ export class MuteState {
   }
 
   /**
-   * Returns true if the user is locally muted
+   * Returns true if the user is locally muted or audio/video is disabled
    *
    * @public
    * @memberof MuteState
    * @returns {Boolean}
    */
   public isLocallyMuted() {
-    return this.state.client.localMute || this.state.server.localMute;
-  }
-
-  /**
-   * Returns true if the user is muted as a result of the client request (and not remotely muted)
-   *
-   * @public
-   * @memberof MuteState
-   * @returns {Boolean}
-   */
-  public isSelf() {
-    return this.state.client.localMute && !this.state.server.remoteMute;
-  }
-
-  // defined for backwards compatibility with the old AudioStateMachine/VideoStateMachine classes
-  get muted() {
-    return this.isMuted();
-  }
-
-  // defined for backwards compatibility with the old AudioStateMachine/VideoStateMachine classes
-  get self() {
-    return this.isSelf();
+    return this.getClientLocalMuteState();
   }
 }

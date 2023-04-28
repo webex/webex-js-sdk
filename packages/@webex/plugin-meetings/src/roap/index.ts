@@ -7,6 +7,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import RoapRequest from './request';
 import TurnDiscovery from './turnDiscovery';
 import Meeting from '../meeting';
+import MeetingUtil from '../meeting/util';
 
 /**
  * Roap options
@@ -190,27 +191,26 @@ export default class Roap extends StatelessWebexPlugin {
     // When reconnecting, it's important that the first roap message being sent out has empty media id.
     // Normally this is the roap offer, but when TURN discovery is enabled,
     // then this is the TURN discovery request message
-    return this.turnDiscovery
-      .isSkipped(meeting)
-      .then((isTurnDiscoverySkipped) => {
-        const sendEmptyMediaId = reconnect && isTurnDiscoverySkipped;
+    return this.turnDiscovery.isSkipped(meeting).then((isTurnDiscoverySkipped) => {
+      const sendEmptyMediaId = reconnect && isTurnDiscoverySkipped;
 
-        return this.roapRequest.sendRoap({
+      return this.roapRequest
+        .sendRoap({
           roapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
           meetingId: meeting.id,
+          preferTranscoding: !meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
+        })
+        .then(({locus, mediaConnections}) => {
+          if (mediaConnections) {
+            meeting.updateMediaConnections(mediaConnections);
+          }
+
+          return locus;
         });
-      })
-
-      .then(({locus, mediaConnections}) => {
-        if (mediaConnections) {
-          meeting.updateMediaConnections(mediaConnections);
-        }
-
-        return locus;
-      });
+    });
   }
 
   /**

@@ -77,12 +77,12 @@ Media.getLocalMedia = (options: any, config: object) => {
   return Promise.resolve(undefined);
 };
 
-Media.getDirection = (receive: boolean, send: boolean) => {
+Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) => {
   if (!receive && !send) {
     return 'inactive';
   }
 
-  if (receive && send) {
+  if (forceSendRecv || (receive && send)) {
     return 'sendrecv';
   }
 
@@ -202,9 +202,13 @@ Media.createMediaConnection = (
         screenShareVideo: shareTrack?.underlyingTrack,
       },
       direction: {
-        audio: Media.getDirection(mediaDirection.receiveAudio, mediaDirection.sendAudio),
-        video: Media.getDirection(mediaDirection.receiveVideo, mediaDirection.sendVideo),
-        screenShareVideo: Media.getDirection(mediaDirection.receiveShare, mediaDirection.sendShare),
+        audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
+        video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
+        screenShareVideo: Media.getDirection(
+          false,
+          mediaDirection.receiveShare,
+          mediaDirection.sendShare
+        ),
       },
       remoteQualityLevel,
     },
@@ -349,52 +353,6 @@ Media.getMedia = (audio: any | boolean, video: any | boolean, config: any) => {
     LoggerProxy.logger.error(`${logPath} failed - ${err} (${err.constraint})`);
     throw err;
   });
-};
-
-/**
- * Checks if the machine has at least one audio or video device (Dont use this for screen share)
- * @param {object} [options]
- * {
- *    sendAudio: true/false,
- *    sendVideo: true/false
- * }
- * @returns {Object} {
- *    sendAudio: true/false,
- *    sendVideo: true/false
- *}
- */
-Media.getSupportedDevice = ({sendAudio, sendVideo}: {sendAudio: boolean; sendVideo: boolean}) =>
-  Promise.resolve().then(() => {
-    if (!navigator.mediaDevices || navigator.mediaDevices.enumerateDevices === undefined) {
-      return {
-        sendAudio: false,
-        sendVideo: false,
-      };
-    }
-
-    return navigator.mediaDevices.enumerateDevices().then((devices) => {
-      const supported = {
-        audio: devices.filter((device) => device.kind === AUDIO_INPUT).length > 0,
-        video: devices.filter((device) => device.kind === VIDEO_INPUT).length > 0,
-      };
-
-      return {
-        sendAudio: supported.audio && sendAudio,
-        sendVideo: supported.video && sendVideo,
-      };
-    });
-  });
-
-/**
- * proxy to browser navigator.mediaDevices.enumerateDevices()
- * @returns {Promise}
- */
-Media.getDevices = () => {
-  if (navigator && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-    return navigator.mediaDevices.enumerateDevices();
-  }
-
-  return Promise.reject(new MediaError('enumerateDevices not supported.'));
 };
 
 /**

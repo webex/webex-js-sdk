@@ -98,13 +98,13 @@ describe('Roap', () => {
         };
 
         assert.calledOnce(sendRoapStub);
-        assert.calledWith(sendRoapStub, {
+        assert.calledWith(sendRoapStub, sinon.match({
           roapMessage: expectedRoapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
           meetingId: meeting.id,
           locusMediaRequest: meeting.locusMediaRequest,
-        });
+        }));
       })
     );
   });
