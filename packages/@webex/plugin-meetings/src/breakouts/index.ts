@@ -294,12 +294,13 @@ const Breakouts = WebexPlugin.extend({
         });
       });
 
-      if (requestedBreakoutSessions) {
-        forEach(requestedBreakoutSessions, (breakout) => {
-          if (breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN) {
-            this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
-          }
-        });
+      if (
+        requestedBreakoutSessions &&
+        requestedBreakoutSessions.some(
+          (breakout) => breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN
+        )
+      ) {
+        this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
       }
     }
 
