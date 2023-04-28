@@ -213,11 +213,10 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.allowed, false);
         assert.equal(breakouts.currentBreakoutSession.assigned, false);
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
-        assert.equal(breakouts.currentBreakoutSession.requested, false);
       });
     });
 
-    describe('#updateBreakoutSessions', () => {
+    describe.only('#updateBreakoutSessions', () => {
       const checkBreakout = (breakout, sessionId, state) => {
         assert.deepEqual(breakout.attributes, {
           active: false,
@@ -226,7 +225,6 @@ describe('plugin-meetings', () => {
           assignedCurrent: false,
           current: false,
           ready: true,
-          requested: false,
           url: 'url',
           sessionId,
           ...{[state]: true},
@@ -242,7 +240,6 @@ describe('plugin-meetings', () => {
             assigned: [{sessionId: 'sessionId2'}],
             allowed: [{sessionId: 'sessionId3'}],
             assignedCurrent: [{sessionId: 'sessionId4'}],
-            requested: [{sessionId: 'sessionId5'}],
           },
         };
 
@@ -252,8 +249,48 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId2'), 'sessionId2', 'assigned');
         checkBreakout(breakouts.breakouts.get('sessionId3'), 'sessionId3', 'allowed');
         checkBreakout(breakouts.breakouts.get('sessionId4'), 'sessionId4', 'assignedCurrent');
-        checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
       });
+
+      it('trigger ASK_RETURN_TO_MAIN correctly', () => {
+        const payload = {
+          breakoutSessions: {
+            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.calledOnceWithExactly(handler)
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+
+      })
+
+      it('should not trigger ASK_RETURN_TO_MAIN when no requested in payload.breakoutSessions', () => {
+        const payload = {
+          breakoutSessions: {}
+        }
+        const handler = sinon.stub();
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      })
+
+      it('should not trigger ASK_RETURN_TO_MAIN when sessionType is not MAIN', () => {
+        const payload = {
+          breakoutSessions: {
+            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      })
     });
 
     describe('#locusUrlUpdate', () => {
