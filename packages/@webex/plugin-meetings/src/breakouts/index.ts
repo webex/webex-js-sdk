@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin} from '@webex/webex-core';
-import {debounce, forEach} from 'lodash';
+import {debounce, forEach, omit} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
@@ -180,7 +180,6 @@ const Breakouts = WebexPlugin.extend({
 
     session.parseRoster(locus);
   },
-
   /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}
@@ -235,7 +234,6 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
-      [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
 
     // We need to call queryPreAssignments when enableBreakoutSession become true
@@ -255,10 +253,13 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakoutSessions(payload) {
     const breakouts = {};
+    const breakoutSessionsFromPayload = payload.breakoutSessions;
+    const requestedBreakoutSessions =
+      breakoutSessionsFromPayload[BREAKOUTS.SESSION_STATES.REQUESTED];
 
-    if (payload.breakoutSessions) {
-      forEach(BREAKOUTS.SESSION_STATES, (state) => {
-        forEach(payload.breakoutSessions[state], (breakout) => {
+    if (breakoutSessionsFromPayload) {
+      forEach(omit(BREAKOUTS.SESSION_STATES, BREAKOUTS.SESSION_STATES.REQUESTED), (state) => {
+        forEach(breakoutSessionsFromPayload[state], (breakout) => {
           const {sessionId} = breakout;
 
           if (!breakouts[sessionId]) {
@@ -267,12 +268,19 @@ const Breakouts = WebexPlugin.extend({
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ASSIGNED] = false;
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ALLOWED] = false;
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT] = false;
-            breakouts[sessionId][BREAKOUTS.SESSION_STATES.REQUESTED] = false;
           }
 
           breakouts[sessionId][state] = true;
         });
       });
+
+      if (requestedBreakoutSessions) {
+        forEach(requestedBreakoutSessions, (breakout) => {
+          if (breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN) {
+            this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+          }
+        });
+      }
     }
 
     forEach(breakouts, (breakout: typeof Breakout) => {
