@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin} from '@webex/webex-core';
-import {debounce, forEach, omit} from 'lodash';
+import {debounce, forEach, omit, some} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
@@ -294,12 +294,7 @@ const Breakouts = WebexPlugin.extend({
         });
       });
 
-      if (
-        requestedBreakoutSessions &&
-        requestedBreakoutSessions.some(
-          (breakout) => breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN
-        )
-      ) {
+      if (some(requestedBreakoutSessions, ['sessionType', BREAKOUTS.SESSION_TYPES.MAIN])) {
         this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
       }
     }
