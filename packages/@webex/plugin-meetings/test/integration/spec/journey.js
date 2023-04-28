@@ -9,6 +9,7 @@ import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detecti
 
 import DEFAULT_RESOLUTIONS from '../../../src/config';
 import testUtils from '../../utils/testUtils';
+import integrationTestUtils from '../../utils/integrationTestUtils';
 
 require('dotenv').config();
 
@@ -301,7 +302,7 @@ skipInNode(describe)('plugin-meetings', () => {
           })
           .then(() =>
             Promise.all([
-              testUtils.addMedia(alice),
+              integrationTestUtils.addMedia(alice),
               testUtils.waitForEvents([
                 {scope: alice.meeting, event: 'meeting:media:local:start', user: alice},
               ]),
@@ -330,7 +331,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('bob adds media to the meeting', () =>
         Promise.all([
-          testUtils.addMedia(bob),
+          integrationTestUtils.addMedia(bob),
           testUtils
             .waitForEvents([
               {scope: bob.meeting, event: 'meeting:media:local:start', user: bob},
@@ -886,7 +887,7 @@ skipInNode(describe)('plugin-meetings', () => {
                 );
               })
               .then(() => testUtils.waitForStateChange(chris.meeting, 'JOINED'))
-              .then(() => testUtils.addMedia(chris))
+              .then(() => integrationTestUtils.addMedia(chris))
               .then(() => assert(enumerateSpy.called));
           })
           .then(() =>
