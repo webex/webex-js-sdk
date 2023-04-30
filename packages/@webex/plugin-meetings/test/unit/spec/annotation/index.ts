@@ -44,14 +44,61 @@ describe('live-annotation', () => {
     });
 
 
-    describe('#MessageProcess', () => {
+    describe('event message processing', () => {
       beforeEach(async () => {
         annotationService.decryptContent = sinon.stub().returns(Promise.resolve('decryptedContent'));
       });
 
-      it('eventCommandProcessor', () => {
+      it('eventCommandProcessor call failed', () => {
         const spy = sinon.spy();
+        annotationService.on(EVENT_TRIGGERS.ANNOTATION_COMMAND, spy);
+        annotationService.eventCommandProcessor({});
+        assert.notCalled(spy);
 
+
+        annotationService.eventCommandProcessor({
+          data: {
+          }
+        });
+        assert.notCalled(spy);
+
+        annotationService.eventCommandProcessor({
+          data: {
+            eventType: 'not:locus.approval_request',
+            approval: {
+              resourceType: 'AnnotationOnShare',
+              actionType: 'actionType'
+            }
+          }
+        });
+        assert.notCalled(spy);
+
+        annotationService.eventCommandProcessor({
+          data: {
+            eventType: 'locus.approval_request',
+            approval: {
+              resourceType: 'not:AnnotationOnShare',
+              actionType: 'actionType'
+            }
+          }
+        });
+        assert.notCalled(spy);
+
+        annotationService.eventCommandProcessor({
+          data: {
+            eventType: 'locus.approval_request',
+            approval: {
+              resourceType: 'AnnotationOnShare',
+            }
+          }
+        });
+        assert.notCalled(spy)
+      });
+
+
+
+      it('eventCommandProcessor call success', () => {
+        const spy = sinon.spy();
         annotationService.on(EVENT_TRIGGERS.ANNOTATION_COMMAND, spy);
 
         annotationService.eventCommandProcessor({
@@ -61,7 +108,6 @@ describe('live-annotation', () => {
               resourceType: 'AnnotationOnShare',
               actionType: 'actionType'
             }
-
           }
         });
 
@@ -73,6 +119,35 @@ describe('live-annotation', () => {
           },
         });
       });
+
+      it('eventDataProcessor call failed', () => {
+
+        const spy = sinon.spy(annotationService, "processStrokeMessage");
+
+        annotationService.eventDataProcessor();
+
+        assert.notCalled(spy);
+
+        annotationService.eventDataProcessor({data: {}});
+
+        assert.notCalled(spy);
+
+        annotationService.eventDataProcessor({data: {relayType: 'NOT:annotation.client'}});
+
+        assert.notCalled(spy);
+      });
+
+
+      it('eventDataProcessor call success', () => {
+
+        const spy = sinon.spy(annotationService, "processStrokeMessage");
+
+        annotationService.eventDataProcessor({data: {relayType: 'annotation.client', request: 'request'}});
+
+        assert.calledOnceWithExactly(spy, 'request');
+
+      });
+
 
       it('processStrokeMessage', async () => {
         const spy = sinon.spy();
@@ -86,55 +161,71 @@ describe('live-annotation', () => {
 
       });
 
-      it('eventDataProcessor', () => {
-        var spy = sinon.spy(annotationService, "processStrokeMessage");
+    });
 
-        annotationService.eventDataProcessor({data: {relayType: 'annotation.client', request: 'request'}});
+    describe('event message processing',() =>{
 
-        assert.calledOnceWithExactly(spy, 'request');
+      it('listens to mercury events once', () => {
 
+        const spy = sinon.spy(webex.internal.mercury, 'on');
+
+        annotationService.listenToEvents();
+
+        assert.calledOnceWithExactly(spy, 'event:locus', sinon.match.func);
       });
 
+      it('listens to llm events once', () => {
 
-      it('listens to events once', () => {
         const spy = sinon.spy(webex.internal.llm, 'on');
 
         annotationService.listenToEvents();
 
         assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func);
       });
+
     });
 
 
-    describe('#encryptContent ', () => {
+    describe('encrypt/decrypt Content ', () => {
       beforeEach(async () => {
         annotationService.webex.internal.encryption.encryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
         annotationService.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
       });
 
-
       it('encryptContent', async () => {
-
         await annotationService.encryptContent("encryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.encryptText, "encryptionKeyUrl", "content");
       });
 
-    });
-
-    it('#decryptContent ', () => {
-      it('decryptContent', () => {
-
-        annotationService.decryptContent("decryptionKeyUrl", "content");
+      it('decryptContent ', async() => {
+        await annotationService.decryptContent("decryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.decryptText, "decryptionKeyUrl", "content");
       });
 
     });
 
-    describe('#sendStrokeData', () => {
+
+
+    describe('publish Stroke Data with LLM is not connected', () => {
+
+      beforeEach(async () => {
+        annotationService.webex.internal.llm.socket = new MockWebSocket();
+        annotationService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+      });
+
+      it('publish Stroke Data with LLM is not connected', async () => {
+        annotationService.sendStrokeData("", {});
+        assert.notCalled(annotationService.webex.internal.llm.socket.send);
+      });
+
+    });
+
+    describe('sendStrokeData', () => {
 
       beforeEach(async () => {
         annotationService.webex.internal.llm.socket = new MockWebSocket();
       });
+
 
       it('works on  publish Stroke Data', async () => {
         const strokeData = {
@@ -192,31 +283,9 @@ describe('live-annotation', () => {
     });
 
 
-    describe('#Locus API collection', () => {
-      //let triggerSpy, functionSpy;
+    describe('Locus API collection', () => {
 
-      //beforeEach(() => {
-      //triggerSpy = sinon.spy();
-      //functionSpy = sinon.spy(annotationService, 'processStrokeMessage');
-      //annotationService.listenToEvents();
-      // });
-
-      //it('processes interim transcription', async () => {
-      // annotationService.on(EVENT_TRIGGERS.ANNOTATION_STROKE_DATA, triggerSpy);
-      // const strokeData = [
-      // ];
-      // // eslint-disable-next-line no-underscore-dangle
-      // await annotationService.webex.internal.llm._emit('event:relay.event', {
-      //   headers: {from: 'ws'},
-      //   data: {relayType:  ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT},
-      // });
-      //
-      // assert.calledOnceWithExactly(functionSpy, strokeData);
-
-      // });
-
-
-      describe('# send approve request', () => {
+      describe('send approve request', () => {
         it('makes  send request approved annotation as expected', async () => {
           const
             requestData = {
@@ -245,7 +314,7 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('# cancel Approve request', () => {
+      describe('cancel Approve request', () => {
         it('makes the cancel Approve request annotation as expected', async () => {
           const
             requestData = {
@@ -305,7 +374,7 @@ describe('live-annotation', () => {
       });
 
 
-      describe('# declined annotation', () => {
+      describe('declined annotation', () => {
         it('makes the declined annotation as expected', async () => {
           const approval = {
             url: 'approvalUrl'

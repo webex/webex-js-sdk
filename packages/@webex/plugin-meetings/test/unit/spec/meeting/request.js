@@ -404,4 +404,53 @@ describe('plugin-meetings', () => {
       })
     });
   });
+  describe('#changeMeetingFloor', () => {
+
+    it('change meeting floor', async () => {
+      const options = {
+        disposition: 'GRANTED',
+        personUrl: 'personUrl',
+        deviceUrl: 'deviceUrl',
+        resourceId: 'resourceId',
+        resourceUrl: 'resourceUrl',
+        uri: 'optionsUrl',
+        annotation:{
+          version: '1',
+          policy: 'Approval',
+        },
+      }
+
+      const expectBody = {
+        annotation: {
+          policy: 'Approval',
+          version: '1',
+        },
+        floor: {
+          beneficiary: {
+            devices: [
+              {
+                deviceType: undefined,
+                url: "deviceUrl"
+              }
+            ],
+            url: 'personUrl',
+          },
+          disposition: 'GRANTED',
+          requester: {
+            "url": "personUrl"
+          }
+        },
+        resourceUrl: 'resourceUrl',
+      };
+
+
+      await meetingsRequest.changeMeetingFloor(options);
+
+      assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
+        method: 'PUT',
+        uri: 'optionsUrl',
+        body: expectBody,
+      })
+    });
+  });
 });

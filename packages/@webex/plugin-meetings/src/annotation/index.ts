@@ -66,7 +66,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {undefined}
    */
   private eventCommandProcessor = (e) => {
-    this.seqNum = e.sequenceNumber + 1;
 
     if (
       e?.data?.eventType === 'locus.approval_request' &&
@@ -81,10 +80,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         },
         EVENT_TRIGGERS.ANNOTATION_COMMAND,
         {
-          type: e?.data?.approval?.actionType,
-          payload: e?.data?.approval,
+          type: e.data.approval.actionType,
+          payload: e.data.approval,
         }
       );
+      this.seqNum = (e?.sequenceNumber || 0) + 1;
     }
   };
 
@@ -93,10 +93,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {undefined}
    */
   private eventDataProcessor = (e) => {
-    this.seqNum = e.sequenceNumber + 1;
 
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
+        this.seqNum = (e?.sequenceNumber || 0) + 1;
         this.processStrokeMessage(e.data.request);
         break;
       default:
@@ -199,7 +199,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   }
 
   /**
-   * cancel approved annotation
+   * send annotation command
    * @param {ANNOTATION_ACTION_TYPE} actionType
    * @param {RequestData} requestData
    * @returns {Promise}
@@ -228,8 +228,8 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   /**
    * decrypt data
    * @param {string} encryptionKeyUrl
-   * @param {string} content original content
-   * @returns {string} encrypted content
+   * @param {string} content encrypted content
+   * @returns {string} decrypted content
    */
   private decryptContent = (encryptionKeyUrl: string, content: string): Promise<any> => {
     // @ts-ignore
