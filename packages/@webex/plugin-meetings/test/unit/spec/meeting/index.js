@@ -3753,15 +3753,19 @@ describe('plugin-meetings', () => {
           audioTrack = {
             id: 'audio track',
             getSettings: sinon.stub().returns({}),
+            on: sinon.stub(),
+            off: sinon.stub(),
           };
           videoTrack = {
             id: 'video track',
             getSettings: sinon.stub().returns({}),
+            on: sinon.stub(),
+            off: sinon.stub(),
           };
           videoShareTrack = {
             id: 'share track',
             on: sinon.stub(),
-            removeEventListener: sinon.stub(),
+            off: sinon.stub(),
             getSettings: sinon.stub().returns({}),
           };
           meeting.requestScreenShareFloor = sinon.stub().resolves({});
@@ -3771,6 +3775,7 @@ describe('plugin-meetings', () => {
             sendVideo: false,
             sendShare: false,
           };
+          meeting.isMultistream = true;
           meeting.mediaProperties.webrtcMediaConnection = {
             publishTrack: sinon.stub().resolves({}),
             unpublishTrack: sinon.stub().resolves({}),
@@ -3814,10 +3819,7 @@ describe('plugin-meetings', () => {
             await assert.isRejected(meeting.publishTracks({audio: {id: 'some audio track'}}));
           });
 
-          const checkAudioPublished = () => {
-            assert.calledWith(MediaUtil.createMediaStream, [audioTrack]);
-            assert.calledOnce(LocalMicrophoneTrackConstructorStub);
-
+          const checkAudioPublished = (track) => {
             assert.calledWith(
               createMuteStateStub,
               'audio',
@@ -3826,16 +3828,13 @@ describe('plugin-meetings', () => {
             );
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.publishTrack,
-              fakeLocalMicrophoneTrack
+              track
             );
-            assert.equal(meeting.mediaProperties.audioTrack, fakeLocalMicrophoneTrack);
+            assert.equal(meeting.mediaProperties.audioTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendAudio, true);
           };
 
-          const checkVideoPublished = () => {
-            assert.calledWith(MediaUtil.createMediaStream, [videoTrack]);
-            assert.calledOnce(LocalCameraTrackConstructorStub);
-
+          const checkVideoPublished = (track) => {
             assert.calledWith(
               createMuteStateStub,
               'video',
@@ -3844,23 +3843,20 @@ describe('plugin-meetings', () => {
             );
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.publishTrack,
-              fakeLocalCameraTrack
+              track
             );
-            assert.equal(meeting.mediaProperties.videoTrack, fakeLocalCameraTrack);
+            assert.equal(meeting.mediaProperties.videoTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendVideo, true);
           };
 
-          const checkScreenShareVideoPublished = () => {
+          const checkScreenShareVideoPublished = (track) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
-
-            assert.calledWith(MediaUtil.createMediaStream, [videoShareTrack]);
-            assert.calledOnce(LocalDisplayTrackConstructorStub);
 
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.publishTrack,
-              fakeLocalDisplayTrack
+              track
             );
-            assert.equal(meeting.mediaProperties.shareTrack, fakeLocalDisplayTrack);
+            assert.equal(meeting.mediaProperties.shareTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
 
@@ -3868,7 +3864,7 @@ describe('plugin-meetings', () => {
             await meeting.publishTracks({screenShare: {video: videoShareTrack}});
 
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkScreenShareVideoPublished();
+            checkScreenShareVideoPublished(videoShareTrack);
           });
 
           it('creates MuteState instance and publishes the track for main audio', async () => {
@@ -3876,7 +3872,7 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(createMuteStateStub);
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkAudioPublished();
+            checkAudioPublished(audioTrack);
           });
 
           it('creates MuteState instance and publishes the track for main video', async () => {
@@ -3884,7 +3880,7 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(createMuteStateStub);
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkVideoPublished();
+            checkVideoPublished(videoTrack);
           });
 
           it('publishes audio, video and screen share together', async () => {
@@ -3898,9 +3894,9 @@ describe('plugin-meetings', () => {
 
             assert.calledTwice(createMuteStateStub);
             assert.calledThrice(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkAudioPublished();
-            checkVideoPublished();
-            checkScreenShareVideoPublished();
+            checkAudioPublished(audioTrack);
+            checkVideoPublished(videoTrack);
+            checkScreenShareVideoPublished(videoShareTrack);
           });
         });
 
@@ -3916,7 +3912,7 @@ describe('plugin-meetings', () => {
           const checkAudioUnpublished = () => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              fakeLocalMicrophoneTrack
+              audioTrack
             );
 
             assert.equal(meeting.mediaProperties.audioTrack, null);
@@ -3926,7 +3922,7 @@ describe('plugin-meetings', () => {
           const checkVideoUnpublished = () => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              fakeLocalCameraTrack
+              videoTrack
             );
 
             assert.equal(meeting.mediaProperties.videoTrack, null);
@@ -3936,7 +3932,7 @@ describe('plugin-meetings', () => {
           const checkScreenShareVideoUnpublished = () => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              fakeLocalDisplayTrack
+              videoShareTrack
             );
 
             assert.calledOnce(meeting.requestScreenShareFloor);

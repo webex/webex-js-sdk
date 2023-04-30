@@ -8,6 +8,21 @@ registerPlugin('meetings', Meetings, {
   config,
 });
 
+export {
+  LocalTrack,
+  LocalDisplayTrack,
+  LocalTrackEvents,
+  type TrackMuteEvent,
+  type ServerMuteReason,
+  LocalMicrophoneTrackEvents,
+  LocalCameraTrackEvents,
+  LocalMicrophoneTrack,
+  LocalCameraTrack,
+  createMicrophoneTrack,
+  createCameraTrack,
+  createDisplayTrack,
+} from '@webex/media-helpers';
+
 export default Meetings;
 
 export * as CONSTANTS from './constants';
