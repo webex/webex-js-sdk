@@ -637,7 +637,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.annotation = new Annotation(this.locusInfo, {parent: this.webex});
+    this.annotation = new Annotation({parent: this.webex});
     /**
      * @instance
      * @type {Annotation}
