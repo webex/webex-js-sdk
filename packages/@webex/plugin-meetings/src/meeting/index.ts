@@ -630,7 +630,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.annotation = new Annotation(this.locusInfo, {parent: this.webex});
+    this.annotation = new Annotation({parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
