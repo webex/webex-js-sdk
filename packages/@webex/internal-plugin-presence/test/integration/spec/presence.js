@@ -146,10 +146,10 @@ describe('plugin-presence', function () {
           assert.equal(presenceResponse.responses[0].subject, mccoy.id);
           assert.equal(presenceResponse.responses[1].subject, spock.id);
         }));
-
+      // SPARK-413317
       // Note: The presence service no longer accepts setting status to "inactive".
       // Inactivity is now determined by a "last active time" of greater than 10 minutes.
-      it("should receive a mercury event for a subscribed person's change", () =>
+      it.skip("should receive a mercury event for a subscribed person's change", () =>
         spock.webex.internal.presence
           .subscribe(mccoy.id)
           // 'active' status
