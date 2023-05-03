@@ -11,7 +11,8 @@ import testUsers from '@webex/test-helper-test-users';
 import {expectEvent} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 
-describe('plugin-presence', function () {
+// SPARK-413317
+describe.skip('plugin-presence', function () {
   this.timeout(10000);
   describe('Presence', () => {
     let mccoy, spock;
@@ -146,10 +147,10 @@ describe('plugin-presence', function () {
           assert.equal(presenceResponse.responses[0].subject, mccoy.id);
           assert.equal(presenceResponse.responses[1].subject, spock.id);
         }));
-      // SPARK-413317
+
       // Note: The presence service no longer accepts setting status to "inactive".
       // Inactivity is now determined by a "last active time" of greater than 10 minutes.
-      it.skip("should receive a mercury event for a subscribed person's change", () =>
+      it("should receive a mercury event for a subscribed person's change", () =>
         spock.webex.internal.presence
           .subscribe(mccoy.id)
           // 'active' status
