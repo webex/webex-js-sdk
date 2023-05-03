@@ -3294,6 +3294,16 @@ function rejectMeeting() {
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
 window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  const meetingSdk = document.createElement('script');
+  meetingSdk.type = 'text/javascript';
+  if(params.get('meetings') !== null){
+    meetingSdk.src = '../meetings.min.js';
+  }
+  else{
+    meetingSdk.src = '../webex.min.js';
+  }
+  document.body.appendChild(meetingSdk);
   addPlayIfPausedEvents(htmlMediaElements);
   updateMultistreamUI();
 };

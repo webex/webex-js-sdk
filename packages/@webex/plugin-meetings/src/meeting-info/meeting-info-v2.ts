@@ -204,9 +204,9 @@ export default class MeetingInfoV2 {
       return invitees;
     };
 
-    return this.webex.internal.conversation
-      .get({url: conversationUrl}, {includeParticipants: true, disableTransform: true})
-      .then((conversation) => {
+    return this.webex
+      .request(conversationUrl)
+      .then(({body: conversation}) => {
         const body: {
           title: string;
           spaceUrl: string;

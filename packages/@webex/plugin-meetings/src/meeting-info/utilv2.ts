@@ -159,7 +159,13 @@ MeetingInfoUtil.getDestinationType = async (from) => {
     };
   }
   const options: any = {};
-  const hydraId = MeetingInfoUtil.getHydraId(destination);
+  let hydraId;
+
+  if (webex && webex.config && webex.config.meetings && webex.config.meetings.disableHydraId) {
+    hydraId = null;
+  } else {
+    hydraId = MeetingInfoUtil.getHydraId(destination);
+  }
 
   if (MeetingInfoUtil.isMeetingLink(destination)) {
     LoggerProxy.logger.warn(
@@ -177,30 +183,36 @@ MeetingInfoUtil.getDestinationType = async (from) => {
   } else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
     options.type = _CONVERSATION_URL_;
     options.destination = destination;
-  } else if (hydraId.people) {
+  } else if (hydraId && hydraId.people) {
     options.type = _SIP_URI_;
 
-    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
-      options.destination = res;
+    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then(
+      (res) => {
+        options.destination = res;
 
-      // Since hydra person ids require a unique case in which they are
-      // entirely converted to a SIP URI, we need to set a flag for detecting
-      // this type of destination.
-      options.wasHydraPerson = true;
+        // Since hydra person ids require a unique case in which they are
+        // entirely converted to a SIP URI, we need to set a flag for detecting
+        // this type of destination.
+        options.wasHydraPerson = true;
 
-      return Promise.resolve(options);
-    });
-  } else if (hydraId.room) {
+        return Promise.resolve(options);
+      }
+    );
+  } else if (hydraId && hydraId.room) {
     options.type = _CONVERSATION_URL_;
     try {
       await webex.internal.services.waitForCatalog('postauth');
 
-      const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
-        cluster: hydraId.cluster,
-        id: hydraId.destination,
-      });
+      const serviceUrl = webex.internal.services.getServiceUrlFromClusterId(
+        {
+          cluster: hydraId.cluster,
+        },
+        webex
+      );
 
-      options.destination = conversationUrl;
+      options.destination = hydraId.destination
+        ? `${serviceUrl}/conversations/${hydraId.destination}`
+        : serviceUrl;
     } catch (e) {
       LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
       throw e;

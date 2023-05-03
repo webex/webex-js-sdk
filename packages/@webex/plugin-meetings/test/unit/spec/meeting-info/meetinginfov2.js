@@ -652,12 +652,16 @@ describe('plugin-meetings', () => {
       it('Make a request to /spaceInstant when conversationUrl', async () => {
         const {invitee} = setup();
 
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation
+        });
+
         const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
         assert.calledWith(
-          webex.internal.conversation.get,
-          {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true}
+          webex.request,
+          conversationUrl,
         );
 
         assert.calledWith(webex.request, {
@@ -674,7 +678,7 @@ describe('plugin-meetings', () => {
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
         assert.deepEqual(result, {
-          body: {},
+          body: conversation,
           statusCode: 200
         });
       });
@@ -682,12 +686,16 @@ describe('plugin-meetings', () => {
       it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
         const {invitee} = setup();
 
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation
+        });
+
         await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
 
         assert.calledWith(
-          webex.internal.conversation.get,
-          {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true}
+          webex.request,
+          conversationUrl
         );
 
         assert.calledWith(webex.request, {

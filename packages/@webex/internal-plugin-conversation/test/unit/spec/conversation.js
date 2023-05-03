@@ -32,7 +32,7 @@ describe('plugin-conversation', () => {
 
       webex.internal.services = {};
       webex.internal.services.get = sinon.stub().returns(Promise.resolve(convoUrl));
-      webex.internal.services.getServiceFromClusterId = sinon.stub().returns({url: convoUrl});
+      webex.internal.services.getServiceUrlFromClusterId = sinon.stub().returns(convoUrl);
     });
 
     describe('addReaction()', () => {
@@ -180,17 +180,13 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER,
-        });
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {cluster: 'us'});
       });
 
       it('should add the cluster service when missing', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'urn:TEAM:us-west-2_r'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: 'urn:TEAM:us-west-2_r:identityLookup',
-        });
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {cluster: 'urn:TEAM:us-west-2_r'});
       });
     });
 

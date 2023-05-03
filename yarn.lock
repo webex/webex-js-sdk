@@ -4782,10 +4782,8 @@ __metadata:
   dependencies:
     "@webex/common": "workspace:^"
     "@webex/internal-media-core": "npm:1.39.1"
-    "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
     "@webex/internal-plugin-user": "workspace:^"
