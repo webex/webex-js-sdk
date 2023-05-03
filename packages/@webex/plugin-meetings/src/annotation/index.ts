@@ -66,7 +66,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {undefined}
    */
   private eventCommandProcessor = (e) => {
-
     if (
       e?.data?.eventType === 'locus.approval_request' &&
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
@@ -93,7 +92,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {undefined}
    */
   private eventDataProcessor = (e) => {
-
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
         this.seqNum = (e?.sequenceNumber || 0) + 1;
