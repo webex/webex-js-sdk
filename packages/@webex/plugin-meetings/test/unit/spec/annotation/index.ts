@@ -193,13 +193,15 @@ describe('live-annotation', () => {
       });
 
       it('encryptContent', async () => {
-        await annotationService.encryptContent("encryptionKeyUrl", "content");
+        const result = await annotationService.encryptContent("encryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.encryptText, "encryptionKeyUrl", "content");
+        assert.equal(result, 'RETURN_VALUE')
       });
 
       it('decryptContent ', async() => {
-        await annotationService.decryptContent("decryptionKeyUrl", "content");
+        const result =  await annotationService.decryptContent("decryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.decryptText, "decryptionKeyUrl", "content");
+        assert.equal(result, 'RETURN_VALUE')
       });
 
     });
