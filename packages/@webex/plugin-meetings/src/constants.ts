@@ -531,6 +531,9 @@ export const LOCUS = {
   SYNCDEBUG: 'sync_debug',
 };
 
+export const ANNOTATION = {
+  ANNOTATION_ON_SHARE_SUPPORTED: 'ANNOTATION_ON_SHARE_SUPPORTED',
+};
 export const BREAKOUTS = {
   STATUS: {
     CLOSING: 'CLOSING',

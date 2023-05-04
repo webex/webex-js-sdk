@@ -4720,6 +4720,7 @@ describe('plugin-meetings', () => {
           meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
+          meeting.annotation.locusUrlUpdate = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4728,6 +4729,7 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledOnceWithExactly(meeting.breakouts.locusUrlUpdate, newLocusUrl);
+          assert.calledOnceWithExactly(meeting.annotation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
@@ -4744,12 +4746,18 @@ describe('plugin-meetings', () => {
               record: {
                 url: 'url',
               },
+              approval: {
+                url: 'url',
+              },
             },
           };
 
           meeting.recordingController = {
             setServiceUrl: sinon.stub().returns(undefined),
             setSessionId: sinon.stub().returns(undefined),
+          };
+          meeting.annotation = {
+            approvalUrlUpdate: sinon.stub().returns(undefined),
           };
 
           meeting.locusInfo.emit(
@@ -4760,7 +4768,11 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(
             meeting.recordingController.setServiceUrl,
-            newLocusServices.services.record.url
+            newLocusServices.services.record.url,
+          );
+          assert.calledWith(
+            meeting.annotation.approvalUrlUpdate,
+            newLocusServices.services.approval.url,
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
           done();
