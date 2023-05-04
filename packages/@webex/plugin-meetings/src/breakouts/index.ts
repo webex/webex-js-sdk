@@ -301,7 +301,7 @@ const Breakouts = WebexPlugin.extend({
 
     this.breakouts.set(Object.values(breakouts));
 
-    if (this.getMainSession().requested) {
+    if (this.allowBackToMain && this.getMainSession().requested) {
       this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
     }
   },

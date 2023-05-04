@@ -298,13 +298,51 @@ describe('plugin-meetings', () => {
           }
         }
         const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId2',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
         breakouts.updateBreakoutSessions(payload);
         assert.calledOnceWithExactly(handler)
-
         breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-
       })
+
+      it('should not trigger ASK_RETURN_TO_MAIN when allowBackToMain is false', () => {
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}],
+            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId2',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: false,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      });
 
       it('should not trigger ASK_RETURN_TO_MAIN when no requested in payload.breakoutSessions', () => {
         const payload = {
@@ -313,6 +351,19 @@ describe('plugin-meetings', () => {
           }
         }
         const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
         breakouts.updateBreakoutSessions(payload);
         assert.notCalled(handler)
@@ -328,6 +379,19 @@ describe('plugin-meetings', () => {
           }
         }
         const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
         breakouts.updateBreakoutSessions(payload);
         assert.notCalled(handler)
