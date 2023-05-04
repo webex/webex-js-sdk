@@ -352,4 +352,13 @@ describe('plugin-meetings', () => {
       );
     });
   });
+
+  describe('getReplacedBreakoutMoveId', () => {
+    it('get breakoutMoveId works', () => {
+      const deviceId = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24';
+      const breakoutMoveId = 'e5caeb2c-ffcc-4e06-a08a-1122e7710398';
+
+      assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(self, deviceId), breakoutMoveId);
+    });
+  });
 });

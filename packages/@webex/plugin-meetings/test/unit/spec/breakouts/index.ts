@@ -95,6 +95,8 @@ describe('plugin-meetings', () => {
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+      webex.meetings = {};
+      webex.meetings.getMeetingByType = sinon.stub();
     });
 
     describe('#initialize', () => {

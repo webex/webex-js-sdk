@@ -256,7 +256,7 @@ const Breakouts = WebexPlugin.extend({
       preSession.groupId !== this.currentBreakoutSession.groupId
     ) {
       // should report joined session changed
-      const meeting = this.webex?.meetings?.getMeetingByType(_ID_, this.meetingId);
+      const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
       breakoutEvent.onBreakoutJoinResponse({
         currentSession: this.currentBreakoutSession,
         meeting,

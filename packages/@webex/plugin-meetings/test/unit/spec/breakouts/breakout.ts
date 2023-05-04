@@ -8,6 +8,7 @@ import sinon from 'sinon';
 import {eventType} from '../../../../src/metrics/config';
 import uuid from 'uuid';
 import breakoutEvent from "../../../../src/breakouts/events";
+import SelfUtils from "../../../../src/locus-info/selfUtils";
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
@@ -31,6 +32,9 @@ describe('plugin-meetings', () => {
         },
       };
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+      webex.meetings = {};
+      webex.meetings.getMeetingByType = sinon.stub();
+
     });
 
     describe('initialize', () => {
@@ -57,6 +61,28 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
 
+      it('send metrics as expected', async () => {
+        breakout.webex.internal.device.url = 'device-url';
+        breakout.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+          id: 'meeting-id'
+        })
+        };
+
+        let onBreakoutMoveRequestStub = sinon.stub(breakoutEvent, 'onBreakoutMoveRequest');
+        let onBreakoutMoveResponseStub = sinon.stub(breakoutEvent, 'onBreakoutMoveResponse');
+        uuid.v4 = sinon.stub().returns('breakoutMoveId');
+        await breakout.join();
+        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
+          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}
+        );
+        assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveResponse,
+          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}
+        );
+
+        onBreakoutMoveRequestStub.restore();
+        onBreakoutMoveResponseStub.restore();
+      });
     });
 
     describe('#leave', () => {
