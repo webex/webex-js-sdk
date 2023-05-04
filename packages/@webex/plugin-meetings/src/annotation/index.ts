@@ -1,7 +1,7 @@
 import uuid from 'uuid';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {WebexPlugin, config} from '@webex/webex-core';
+import TriggerProxy from '../common/events/trigger-proxy';
 
 import {
   EVENT_TRIGGERS,
@@ -47,7 +47,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   private processStrokeMessage(request) {
     this.decryptContent(request.encryptionKeyUrl, request.content).then((decryptedContent) => {
       request.content = decryptedContent;
-      Trigger.trigger(
+      TriggerProxy.trigger(
         this,
         {
           file: 'annotation',
@@ -71,7 +71,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
       e?.data?.approval?.actionType
     ) {
-      Trigger.trigger(
+      TriggerProxy.trigger(
         this,
         {
           file: 'annotation',
