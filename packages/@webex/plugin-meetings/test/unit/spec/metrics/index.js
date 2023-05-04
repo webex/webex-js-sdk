@@ -108,4 +108,35 @@ browserOnly(describe)('Meeting metrics', () => {
       });
     });
   });
+
+  describe('#generateErrorPayload', () => {
+    it('generates the correct payload for a valid error code', () => {
+      const errorCode = 4008;
+      const shownToUser = true;
+      const name = 'errorName';
+      const errBody = 'some error body';
+      const err = {
+        body: errBody,
+        statusCode: 404,
+      };
+      
+      const payload = metrics.generateErrorPayload(
+        errorCode,
+        shownToUser,
+        name,
+        err
+      );
+
+      assert.deepEqual(payload, {
+        shownToUser,
+        category: 'expected',
+        errorDescription: 'NewLocusError',
+        errorCode,
+        fatal: true,
+        name,
+        errorData: {error: errBody},
+        httpCode: 404,
+      });
+    });
+  });
 });
