@@ -4032,8 +4032,12 @@ export default class Meeting extends StatelessWebexPlugin {
           `Meeting:index#usePhoneAudio --> removing audio track from desktop`
         );
 
-        // removing audio from desktop to avoid echo as phone audio is being used
-        Media.stopTracks(this.mediaProperties.audioTrack);
+        // removing local audio from desktop to avoid echo as phone audio is being used
+        return Media.stopTracks(this.mediaProperties.audioTrack);
+      })
+      .then(() => {
+        // removing remote audio from desktop to avoid echo as phone audio is being used
+        return Media.stopTracks(this.mediaProperties.remoteAudioTrack);
       })
       .catch((error) => {
         LoggerProxy.logger.error(
