@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.90](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.88...v3.0.0-beta.90) (2023-05-04)
+
+
+### Features
+
+* **breakout:** add ask return to main event ([#2788](https://github.com/webex/webex-js-sdk/issues/2788)) ([3ada9ca](https://github.com/webex/webex-js-sdk/commit/3ada9ca01c60f1823fa21741b6a696dadc5ed64b))
+* **Live-Annotation:** support Live-Annotation ([#2784](https://github.com/webex/webex-js-sdk/issues/2784)) ([715ed1b](https://github.com/webex/webex-js-sdk/commit/715ed1b4b4868cedb9a5eca917f8e9444ad55ed8))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send json in the error payload ([#2791](https://github.com/webex/webex-js-sdk/issues/2791)) ([284c7a0](https://github.com/webex/webex-js-sdk/commit/284c7a0b62147ffe29118d017d5f3a8733d7e5fe))
+
 ## [3.0.0-beta.89](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.88...v3.0.0-beta.89) (2023-05-04)
 
 
