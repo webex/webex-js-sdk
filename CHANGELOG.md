@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.88](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.87...v3.0.0-beta.88) (2023-04-28)
+
+
+### Bug Fixes
+
+* **breakout:** add editlock to assign api - SPARK-425241 ([#2780](https://github.com/webex/webex-js-sdk/issues/2780)) ([75a3300](https://github.com/webex/webex-js-sdk/commit/75a33001ad0fe880cce85889ff3f86ac7e71fb6a))
+
 ## [3.0.0-beta.87](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.86...v3.0.0-beta.87) (2023-04-27)
 
 

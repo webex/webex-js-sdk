@@ -54,7 +54,12 @@ const getBOResponseWithEditLockInfo = (status: string, withOutToken?: boolean) =
     locusUrl: 'locusUrl',
     mainGroupId: 'mainGroupId',
     mainSessionId: 'mainSessionId',
-    editlock: {state: "LOCKED", ttl: 30, userId: "cc5d452f-04b6-4876-a4c3-28ca21982c6a", token: withOutToken ? '' : 'token1'},
+    editlock: {
+      state: 'LOCKED',
+      ttl: 30,
+      userId: 'cc5d452f-04b6-4876-a4c3-28ca21982c6a',
+      token: withOutToken ? '' : 'token1',
+    },
     groups: [
       {
         sessions: [
@@ -636,7 +641,7 @@ describe('plugin-meetings', () => {
         );
         assert.calledOnceWithExactly(
           LoggerProxy.logger.info,
-          'Breakouts#update --> Edit lock token mismatch',
+          'Breakouts#update --> Edit lock token mismatch'
         );
       });
 
@@ -663,15 +668,13 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(
           LoggerProxy.logger.info,
-          'Breakouts#update --> Not authorized to interact with edit lock',
+          'Breakouts#update --> Not authorized to interact with edit lock'
         );
       });
 
       it('rejects when other unknow error', async () => {
         const mockError = new Error('something wrong');
-        webex.request.returns(
-          Promise.reject(mockError)
-        );
+        webex.request.returns(Promise.reject(mockError));
         LoggerProxy.logger.info = sinon.stub();
 
         const params = {
@@ -679,15 +682,11 @@ describe('plugin-meetings', () => {
           sessions: [{name: 'Session 1'}],
         };
 
-        await assert.isRejected(
-          breakouts.update(params),
-          mockError,
-          'something wrong'
-        );
+        await assert.isRejected(breakouts.update(params), mockError, 'something wrong');
 
         assert.calledOnceWithExactly(
           LoggerProxy.logger.info,
-          'Breakouts#update --> something wrong',
+          'Breakouts#update --> something wrong'
         );
       });
     });
@@ -1043,7 +1042,6 @@ describe('plugin-meetings', () => {
       });
 
       it('do not call unLock if edit lock info not exist ', async () => {
-
         breakouts.unLockEditBreakout();
         assert.notCalled(webex.request);
       });
@@ -1194,6 +1192,34 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(breakouts.assign, params);
         assert.equal(result, 'ASSIGN_RETURN_VALUE');
       });
+
+      it('called with editlock', async () => {
+        breakouts.request = sinon.stub().returns(Promise.resolve('ASSIGN_RETURN_VALUE'));
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = [{id: 'sessionId', emails: ['111@cisco.com'], memberIds: []}];
+        await breakouts.assign(params);
+        const args = breakouts.request.getCall(0).args[0];
+        expect(args).to.be.an('object', {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: true},
+            groups: {
+              id: 'sessionId',
+              sessions: [
+                {
+                  id: 'sessionId',
+                  assigned: [],
+                  assignedEmails: ['111@cisco.com'],
+                  anyoneCanJoin: false,
+                },
+              ],
+            },
+          },
+        });
+      });
     });
 
     describe('queryPreAssignments', () => {
@@ -1201,57 +1227,52 @@ describe('plugin-meetings', () => {
         webex.request.returns(
           Promise.resolve({
             body: {
-              "groups": [
+              groups: [
                 {
-                  "sessions": [
+                  sessions: [
                     {
-                      "name": "Breakout session 1",
-                      "assignedEmails": [
-                        "a@a.com",
-                        "b@b.com",
-                        "jial2@cisco.com"
-                      ],
-                      "anyoneCanJoin": false
+                      name: 'Breakout session 1',
+                      assignedEmails: ['a@a.com', 'b@b.com', 'jial2@cisco.com'],
+                      anyoneCanJoin: false,
                     },
                     {
-                      "name": "Breakout session 2",
-                      "anyoneCanJoin": false
+                      name: 'Breakout session 2',
+                      anyoneCanJoin: false,
                     },
                     {
-                      "name": "Breakout session 3",
-                      "assignedEmails": [
-                        "c@c.com"
-                      ],
-                      "anyoneCanJoin": false
-                    }
+                      name: 'Breakout session 3',
+                      assignedEmails: ['c@c.com'],
+                      anyoneCanJoin: false,
+                    },
                   ],
-                  "unassignedInvitees": {
-                    "emails": [
-                      "d@d.com"
-                    ]
+                  unassignedInvitees: {
+                    emails: ['d@d.com'],
                   },
-                  "type": "BREAKOUT"
-                }
-              ]
-            }
+                  type: 'BREAKOUT',
+                },
+              ],
+            },
           })
         );
         breakouts.shouldFetchPreassignments = false;
         const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
-        assert.equal(breakouts.groups[0].sessions[0].name,'Breakout session 1');
-        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin,false);
-        assert.equal(breakouts.groups[0].sessions[0].assignedEmails.toString(), ["a@a.com", "b@b.com", "jial2@cisco.com"].toString());
-        assert.equal(breakouts.groups[0].sessions[1].name,'Breakout session 2');
-        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.groups[0].sessions[0].name, 'Breakout session 1');
+        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin, false);
+        assert.equal(
+          breakouts.groups[0].sessions[0].assignedEmails.toString(),
+          ['a@a.com', 'b@b.com', 'jial2@cisco.com'].toString()
+        );
+        assert.equal(breakouts.groups[0].sessions[1].name, 'Breakout session 2');
+        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin, false);
         assert.equal(breakouts.groups[0].sessions[1].assignedEmails, undefined);
-        assert.equal(breakouts.groups[0].sessions[2].name,'Breakout session 3');
-        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin,false);
+        assert.equal(breakouts.groups[0].sessions[2].name, 'Breakout session 3');
+        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin, false);
         assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0],'d@d.com');
-        assert.equal(breakouts.groups[0].type,'BREAKOUT');
+        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.groups[0].type, 'BREAKOUT');
         assert.equal(breakouts.shouldFetchPreassignments, true);
       });
 
@@ -1260,7 +1281,7 @@ describe('plugin-meetings', () => {
           statusCode: 404,
           body: {
             errorCode: 201404004,
-            message: 'No pre-assignments created for this meeting'
+            message: 'No pre-assignments created for this meeting',
           },
         };
         webex.request.rejects(response);
@@ -1272,8 +1293,8 @@ describe('plugin-meetings', () => {
           'Meeting:breakouts#queryPreAssignments failed',
           response
         );
-     });
-  });
+      });
+    });
 
     describe('#dynamicAssign', () => {
       it('should make a PUT request with correct body and return the result', async () => {
@@ -1303,6 +1324,5 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'REQUEST_RETURN_VALUE');
       });
     });
-
   });
 });
