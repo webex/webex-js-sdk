@@ -42,3 +42,16 @@ export const boServiceErrorHandler = (error: any, position: string): any => {
 
   return throwError;
 };
+
+/**
+ *
+ * @param {object} breakout
+ * @param {string} newSessionType
+ * @returns {boolean}
+ */
+export const isSessionTypeChangedFromSessionToMain = (breakout, newSessionType) => {
+  return (
+    breakout.previous('sessionType') === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+    newSessionType === BREAKOUTS.SESSION_TYPES.MAIN
+  );
+};

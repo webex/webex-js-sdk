@@ -202,7 +202,22 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED']);
       });
 
-      it('does not add deviceCapabilities to request when breakouts are not supported', async () => {
+      it('adds deviceCapabilities to request when live annotation are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          liveAnnotationSupported: true
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['ANNOTATION_ON_SHARE_SUPPORTED']);
+      });
+      it('adds deviceCapabilities to request when breakouts and live annotation are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          liveAnnotationSupported: true,
+          breakoutsSupported: true,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED','ANNOTATION_ON_SHARE_SUPPORTED']);
+      });
+      it('does not add deviceCapabilities to request when breakouts and live annotation are not supported', async () => {
         await meetingsRequest.joinMeeting({});
 
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -386,6 +401,55 @@ describe('plugin-meetings', () => {
       assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
         method: 'GET',
         uri: locusUrl,
+      })
+    });
+  });
+  describe('#changeMeetingFloor', () => {
+
+    it('change meeting floor', async () => {
+      const options = {
+        disposition: 'GRANTED',
+        personUrl: 'personUrl',
+        deviceUrl: 'deviceUrl',
+        resourceId: 'resourceId',
+        resourceUrl: 'resourceUrl',
+        uri: 'optionsUrl',
+        annotation:{
+          version: '1',
+          policy: 'Approval',
+        },
+      }
+
+      const expectBody = {
+        annotation: {
+          policy: 'Approval',
+          version: '1',
+        },
+        floor: {
+          beneficiary: {
+            devices: [
+              {
+                deviceType: undefined,
+                url: "deviceUrl"
+              }
+            ],
+            url: 'personUrl',
+          },
+          disposition: 'GRANTED',
+          requester: {
+            "url": "personUrl"
+          }
+        },
+        resourceUrl: 'resourceUrl',
+      };
+
+
+      await meetingsRequest.changeMeetingFloor(options);
+
+      assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
+        method: 'PUT',
+        uri: 'optionsUrl',
+        body: expectBody,
       })
     });
   });

@@ -127,6 +127,41 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#listenToCurrentSessionTypeChange', () => {
+      it('triggers leave breakout event when sessionType changed from SESSION to MAIN', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
+        
+        assert.calledOnceWithExactly(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+
+      it('should not triggers leave breakout event when sessionType changed from undefined to MAIN', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: undefined})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
+
+        assert.notCalled(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+
+      it('should not triggers leave breakout event when sessionType changed from MAIN to SESSION', () => {
+        const handler = sinon.stub();
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN})
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT});
+
+        assert.notCalled(handler);
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
+      });
+    });
+
     describe('#listenToBroadcastMessages', () => {
       it('triggers message event when a message received', () => {
         const call = webex.internal.llm.on.getCall(0);
@@ -298,7 +333,7 @@ describe('plugin-meetings', () => {
 
       it('works', () => {
         breakouts.set('url', 'url');
-
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         const payload = {
           breakoutSessions: {
             active: [{sessionId: 'sessionId1'}],
@@ -317,6 +352,115 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId4'), 'sessionId4', 'assignedCurrent');
         checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
       });
+
+      it('trigger ASK_RETURN_TO_MAIN correctly', () => {
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}],
+            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId2',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.calledOnceWithExactly(handler)
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      })
+
+      it('should not trigger ASK_RETURN_TO_MAIN when allowBackToMain is false', () => {
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}],
+            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId2',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: false,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      });
+
+      it('should not trigger ASK_RETURN_TO_MAIN when no requested in payload.breakoutSessions', () => {
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      })
+
+      it('should not trigger ASK_RETURN_TO_MAIN when sessionType is not MAIN', () => {
+        const payload = {
+          breakoutSessions: {
+            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
+            requested: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
+          }
+        }
+        const handler = sinon.stub();
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+        });
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.updateBreakoutSessions(payload);
+        assert.notCalled(handler)
+
+        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+      })
     });
 
     describe('#locusUrlUpdate', () => {
@@ -452,9 +596,9 @@ describe('plugin-meetings', () => {
             active: [{sessionId: 'sessionId1'}],
           },
         };
-        breakouts.updateBreakoutSessions(payload);
 
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        breakouts.updateBreakoutSessions(payload);
         let result = breakouts.getMainSession();
         assert.equal(result.sessionId, 'sessionId');
 
