@@ -254,6 +254,7 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
+      [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
 
     // We need to call queryPreAssignments when enableBreakoutSession become true
@@ -273,13 +274,9 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakoutSessions(payload) {
     const breakouts = {};
-    const breakoutSessionsFromPayload = payload.breakoutSessions;
-    const requestedBreakoutSessions =
-      breakoutSessionsFromPayload[BREAKOUTS.SESSION_STATES.REQUESTED];
-
-    if (breakoutSessionsFromPayload) {
-      forEach(omit(BREAKOUTS.SESSION_STATES, BREAKOUTS.SESSION_STATES.REQUESTED), (state) => {
-        forEach(breakoutSessionsFromPayload[state], (breakout) => {
+    if (payload.breakoutSessions) {
+      forEach(BREAKOUTS.SESSION_STATES, (state) => {
+        forEach(payload.breakoutSessions[state], (breakout) => {
           const {sessionId} = breakout;
 
           if (!breakouts[sessionId]) {
@@ -288,15 +285,12 @@ const Breakouts = WebexPlugin.extend({
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ASSIGNED] = false;
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ALLOWED] = false;
             breakouts[sessionId][BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT] = false;
+            breakouts[sessionId][BREAKOUTS.SESSION_STATES.REQUESTED] = false;
           }
 
           breakouts[sessionId][state] = true;
         });
       });
-
-      if (some(requestedBreakoutSessions, ['sessionType', BREAKOUTS.SESSION_TYPES.MAIN])) {
-        this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
-      }
     }
 
     forEach(breakouts, (breakout: typeof Breakout) => {
@@ -305,6 +299,10 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
+
+    if (this.getMainSession().requested) {
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+    }
   },
   /**
    * get main session

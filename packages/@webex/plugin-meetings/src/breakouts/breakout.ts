@@ -25,6 +25,7 @@ const Breakout = WebexPlugin.extend({
     allowed: ['boolean', false, false], // allowed to join this session
     assigned: ['boolean', false, false], // assigned to this session, but not necessarily joined yet
     assignedCurrent: ['boolean', false, false], // assigned AND current session
+    requested: ['boolean', false, false], // requested by the host to join this session
     current: ['boolean', false, false], // the current joined session
     name: 'string',
     sessionId: 'string',
