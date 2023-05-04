@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {getBroadcastRoles, boServiceErrorHandler} from '@webex/plugin-meetings/src/breakouts/utils';
+import {getBroadcastRoles, boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from '@webex/plugin-meetings/src/breakouts/utils';
 import BreakoutEditLockedError from '../../../../src/breakouts/edit-lock-error';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {BREAKOUTS} from '../../../../src/constants';
@@ -50,5 +50,23 @@ describe('plugin-meetings', () => {
         );
       });
     });
+
+    describe('#isSessionTypeChangedFromSessionToMain', () => {
+      it('returns false previous is not BREAKOUT', () => {
+        const breakout = {previous: sinon.stub().returns(BREAKOUTS.SESSION_TYPES.MAIN)};
+        assert.equal(isSessionTypeChangedFromSessionToMain(breakout, BREAKOUTS.SESSION_TYPES.MAIN), false);
+        assert.equal(isSessionTypeChangedFromSessionToMain(breakout, BREAKOUTS.SESSION_TYPES.BREAKOUT), false);
+      });
+
+      it('returns false newSessionType is not MAIN', () => {
+        const breakout = {previous: sinon.stub().returns(BREAKOUTS.SESSION_TYPES.BREAKOUT)};
+        assert.equal(isSessionTypeChangedFromSessionToMain(breakout, BREAKOUTS.SESSION_TYPES.BREAKOUT), false);
+      });
+
+      it('returns true previous is BREAKOUT and newSessionType is MAIN', () => {
+        const breakout = {previous: sinon.stub().returns(BREAKOUTS.SESSION_TYPES.BREAKOUT)};
+        assert.equal(isSessionTypeChangedFromSessionToMain(breakout, BREAKOUTS.SESSION_TYPES.MAIN), true);
+      });
+    })
   });
 });

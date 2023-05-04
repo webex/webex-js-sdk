@@ -69,46 +69,86 @@ describe('plugin-meetings', () => {
     describe('#getThisDevice', () => {
       it('return null if no devices in self', () => {
         const newLocus = {};
-        assert.equal(MeetingsUtil.getThisDevice(newLocus), null);
+        assert.equal(MeetingsUtil.getThisDevice(newLocus, '123'), null);
       });
-      it('return first device as this device', () => {
+      it('return null if no matched device in self', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'JOINED'}]
+            devices: [{state: 'JOINED', url: '456'}]
           }
         };
-        assert.deepEqual(MeetingsUtil.getThisDevice(newLocus), {state: 'JOINED'});
+        assert.equal(MeetingsUtil.getThisDevice(newLocus, '123'), null);
+      });
+      it('return the device match with current device', () => {
+        const newLocus = {
+          self: {
+            devices: [{state: 'JOINED', url: '123'}]
+          }
+        };
+        assert.deepEqual(MeetingsUtil.getThisDevice(newLocus, '123'), {state: 'JOINED', url: '123'});
       })
+    });
+
+    describe('#isBreakoutLocusDTO', () => {
+      it('returns false is no breakout in locus.controls', () => {
+        const newLocus = {
+          controls: {}
+        };
+
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
+      });
+
+      it('returns is breakout locus DTO if sessionType is BREAKOUT', () => {
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), true);
+      });
+
+      it('returns is not breakout locus DTO if sessionType is MAIN', () => {
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+            },
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
+      });
     });
 
     describe('#joinedOnThisDevice', () => {
       it('return false if no devices in self', () => {
         const newLocus = {};
-        assert.equal(MeetingsUtil.joinedOnThisDevice(null, newLocus), false);
+        assert.equal(MeetingsUtil.joinedOnThisDevice(null, newLocus, '123'), false);
       });
       it('return true if joined on this device', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'JOINED', correlationId: '111'}]
+            devices: [{state: 'JOINED', correlationId: '111', url: '123'}]
           }
         };
         const meeting = {
           correlationId: '111'
         };
 
-        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus), true);
+        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus, '123'), true);
       });
       it('return true if selfMoved on this device', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'LEFT', reason: 'MOVED', correlationId: '111'}]
+            devices: [{state: 'LEFT', reason: 'MOVED', correlationId: '111', url: '123'}]
           }
         };
         const meeting = {
           correlationId: '111'
         };
 
-        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus), true);
+        assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus, '123'), true);
       });
     });
   });
