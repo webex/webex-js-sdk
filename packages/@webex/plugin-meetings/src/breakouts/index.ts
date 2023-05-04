@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin} from '@webex/webex-core';
-import {debounce, forEach, omit, some} from 'lodash';
+import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
@@ -274,6 +274,7 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakoutSessions(payload) {
     const breakouts = {};
+
     if (payload.breakoutSessions) {
       forEach(BREAKOUTS.SESSION_STATES, (state) => {
         forEach(payload.breakoutSessions[state], (breakout) => {
