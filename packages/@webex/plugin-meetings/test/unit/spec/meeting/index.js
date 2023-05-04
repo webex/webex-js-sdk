@@ -2471,7 +2471,8 @@ describe('plugin-meetings', () => {
       });
 
       describe('#usePhoneAudio', () => {
-        const fakeAudioTrack = () => ({stop: () => {}});
+        const fakeAudioTrack1 = () => ({stop: () => {}});
+        const fakeAudioTrack2 = () => ({stop: () => {}});
         let sandbox = null;
 
         beforeEach(() => {
@@ -2481,7 +2482,8 @@ describe('plugin-meetings', () => {
           sandbox.stub(meeting.locusInfo, 'onFullLocus').returns(Promise.resolve());
           sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
 
-          meeting.mediaProperties.audioTrack = fakeAudioTrack;
+          meeting.mediaProperties.audioTrack = fakeAudioTrack1;
+          meeting.mediaProperties.remoteAudioTrack = fakeAudioTrack2;
         });
 
         afterEach(() => {
@@ -2501,7 +2503,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
-          assert.calledWith(Media.stopTracks, fakeAudioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.audioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.remoteAudioTrack)
+          assert.callCount(Media.stopTracks, 2)
 
           meeting.meetingRequest.dialIn.resetHistory();
           meeting.locusInfo.onFullLocus.resetHistory();
@@ -2517,7 +2521,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
-          assert.calledWith(Media.stopTracks, fakeAudioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.audioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.remoteAudioTrack)
+          assert.callCount(Media.stopTracks, 4)
         });
 
         it('given a phone number, triggers dial-out, delegating request to meetingRequest correctly', async () => {
@@ -2535,7 +2541,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
-          assert.calledWith(Media.stopTracks, fakeAudioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.audioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.remoteAudioTrack)
+          assert.callCount(Media.stopTracks, 2)
 
           meeting.meetingRequest.dialOut.resetHistory();
           meeting.locusInfo.onFullLocus.resetHistory();
@@ -2552,7 +2560,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
-          assert.calledWith(Media.stopTracks, fakeAudioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.audioTrack)
+          assert.calledWith(Media.stopTracks, meeting.mediaProperties.remoteAudioTrack)
+          assert.callCount(Media.stopTracks, 4)
         });
 
         it('rejects if the request failed (dial in)', () => {
@@ -2582,6 +2592,23 @@ describe('plugin-meetings', () => {
             .catch((e) => {
               assert.equal(e, error);
               assert.notCalled(Media.stopTracks)
+
+              return Promise.resolve();
+            });
+        });
+
+        it('rejects if audio input/output media stop rejects', async () => {
+          const error = 'something bad happened';
+
+          Media.stopTracks = sinon.stub().returns(Promise.reject(error));
+
+          return meeting
+            .usePhoneAudio('+441234567890')
+            .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
+            .catch((e) => {
+              assert.equal(e, error);
+              assert.calledOnceWithExactly(Media.stopTracks, meeting.mediaProperties.audioTrack);
+              assert.callCount(Media.stopTracks, 1)
 
               return Promise.resolve();
             });
