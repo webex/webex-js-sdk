@@ -4651,6 +4651,28 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
         });
+
+        it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
+          );
+        });
+
+        it('listens to the leave event from breakouts and triggers the breakout leave event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('LEAVE_BREAKOUT');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
+          );
+        });
       });
 
       describe('#setupLocusControlsListener', () => {
