@@ -464,7 +464,7 @@ class Metrics {
       };
 
       if (err && err.body) {
-        errorPayload.errorData = new Error(err.body);
+        errorPayload.errorData = {error: err.body};
       }
 
       if (err && err.statusCode) {
