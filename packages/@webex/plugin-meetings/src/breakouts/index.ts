@@ -241,10 +241,6 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
-    const preSession = {
-      sessionId: this.currentBreakoutSession.sessionId,
-      groupId: this.currentBreakoutSession.groupId,
-    };
     this.set(params);
     this.set('groups', params.groups);
 
@@ -268,8 +264,8 @@ const Breakouts = WebexPlugin.extend({
     }
 
     if (
-      preSession.sessionId !== this.currentBreakoutSession.sessionId ||
-      preSession.groupId !== this.currentBreakoutSession.groupId
+      this.currentBreakoutSession.previous('sessionId') !== this.currentBreakoutSession.sessionId ||
+      this.currentBreakoutSession.previous('groupId') !== this.currentBreakoutSession.groupId
     ) {
       // should report joined session changed
       const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
