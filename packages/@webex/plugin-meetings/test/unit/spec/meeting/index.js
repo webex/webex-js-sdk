@@ -19,8 +19,7 @@ import {
   EVENT_TRIGGERS,
   _SIP_URI_,
   _MEETING_ID_,
-  LOCUSINFO,
-  PC_BAIL_TIMEOUT,
+  LOCUSINFO, MEETING_REMOVED_REASON,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -1675,7 +1674,21 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
+            deviceUrl: meeting.deviceUrl
+          });
+        });
+        it('should leave the meeting on the resource with reason', async () => {
+          const leave = meeting.leave({resourceId: meeting.resourceId, reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST});
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(meeting.meetingRequest.leaveMeeting, {
+            locusUrl: meeting.locusUrl,
+            correlationId: meeting.correlationId,
+            selfId: meeting.selfId,
+            resourceId: meeting.resourceId,
             deviceUrl: meeting.deviceUrl,
+            reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST
           });
         });
       });
