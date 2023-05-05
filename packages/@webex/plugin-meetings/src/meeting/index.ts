@@ -76,6 +76,7 @@ import {
   VIDEO,
   BNR_STATUS,
   HTTP_VERBS,
+  SELF_ROLES,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -463,12 +464,12 @@ export default class Meeting extends StatelessWebexPlugin {
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
   updateMediaConnections: (mediaConnections: any[]) => void;
-  endCallInitiateJoinReq: any;
+  endCallInitJoinReq: any;
   endJoinReqResp: any;
   endLocalSDPGenRemoteSDPRecvDelay: any;
   joinedWith: any;
   locusId: any;
-  startCallInitiateJoinReq: any;
+  startCallInitJoinReq: any;
   startJoinReqResp: any;
   startLocalSDPGenRemoteSDPRecvDelay: any;
   wirelessShare: any;
@@ -481,7 +482,8 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-
+  roles: any[];
+  environment: string;
   namespace = MEETINGS;
 
   /**
@@ -1447,12 +1449,12 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const callInitiateJoinReq = this.getCallInitiateJoinReq();
+      const callInitJoinReq = this.getCallInitJoinReq();
 
-      if (callInitiateJoinReq) {
+      if (callInitJoinReq) {
         options.joinTimes = {
           ...options.joinTimes,
-          callInitiateJoinReq,
+          callInitJoinReq,
         };
       }
 
@@ -1465,13 +1467,29 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const getTotalJmt = this.getTotalJmt();
+      const totalJmt = this.getTotalJmt();
 
-      if (getTotalJmt) {
+      if (totalJmt) {
         options.joinTimes = {
           ...options.joinTimes,
-          getTotalJmt,
+          totalJmt,
         };
+      }
+
+      const curUserType = this.getCurUserType();
+
+      if (curUserType) {
+        options.userType = curUserType;
+      }
+
+      const curLoginType = this.getCurLoginType();
+
+      if (curLoginType) {
+        options.loginType = curLoginType;
+      }
+
+      if (this.environment) {
+        options.environment = this.environment;
       }
 
       if (options.type === MQA_STATS.CA_TYPE) {
@@ -2656,6 +2674,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
+      // Need to populate environment when sending CA event
+      this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
   }
 
@@ -5285,7 +5305,14 @@ export default class Meeting extends StatelessWebexPlugin {
       data: {trigger: trigger.USER_INTERACTION, canProceed: false},
     });
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
-
+    // add
+    if (leaveReason === MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST_TAB_CLOSED) {
+      Metrics.postEvent({
+        event: eventType.LEAVE,
+        meeting: this,
+        data: {reason: leaveReason},
+      });
+    }
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
@@ -6184,29 +6211,31 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {undefined}
    */
-  setStartCallInitiateJoinReq() {
-    this.startCallInitiateJoinReq = performance.now();
-    this.endCallInitiateJoinReq = undefined;
+  setStartCallInitJoinReq() {
+    this.startCallInitJoinReq = performance.now();
+    this.endCallInitJoinReq = undefined;
   }
 
   /**
    *
    * @returns {undefined}
    */
-  setEndCallInitiateJoinReq() {
-    this.endCallInitiateJoinReq = performance.now();
+  setEndCallInitJoinReq() {
+    this.endCallInitJoinReq = performance.now();
   }
 
   /**
    *
    * @returns {string} duration between call initiate and sending join request to locus
    */
-  getCallInitiateJoinReq() {
-    const start = this.startCallInitiateJoinReq;
-    const end = this.endCallInitiateJoinReq;
+  getCallInitJoinReq() {
+    const start = this.startCallInitJoinReq;
+    const end = this.endCallInitJoinReq;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      let calculatedDelay = Math.round(end - start);
+
+      calculatedDelay = calculatedDelay < 0 ? 0 : calculatedDelay;
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -6240,7 +6269,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endJoinReqResp;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -6253,10 +6282,44 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string} duration between call initiate and successful locus join (even if it is in lobby)
    */
   getTotalJmt() {
-    const start = this.startCallInitiateJoinReq;
+    const start = this.startCallInitJoinReq;
     const end = this.endJoinReqResp;
 
-    return start && end ? end - start : undefined;
+    return start && end ? Math.round(end - start) : undefined;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'attendee','host','cohost', returns the user type of the current user
+   */
+  getCurUserType() {
+    const {roles} = this;
+    if (roles) {
+      if (roles.includes(SELF_ROLES.MODERATOR)) {
+        return 'host';
+      }
+      if (roles.includes(SELF_ROLES.COHOST)) {
+        return 'cohost';
+      }
+      if (roles.includes(SELF_ROLES.ATTENDEE)) {
+        return 'attendee';
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
+   */
+  getCurLoginType() {
+    const isGuest = this.guest;
+    if (isGuest !== null) {
+      return isGuest ? 'unverified-guest' : 'login-ci';
+    }
+
+    return null;
   }
 
   /**
