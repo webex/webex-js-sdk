@@ -2,6 +2,7 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
@@ -2998,6 +2999,25 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public isVideoSelf() {
     return this.video && this.video.isSelf();
+  }
+
+  /**
+   * Convenience function to tell whether the user is unverified guest
+   * @returns {Boolean} if user is unverified guest or not
+   * @public
+   * @memberof Meeting
+   */
+  public isUnverifiedGuest() {
+    // @ts-ignore - fix type
+    const accessToken = this.webex.credentials.supertoken.access_token;
+    let isGuest = false;
+    try {
+      isGuest = JSON.parse(base64.decode(accessToken.split('.')[1])).user_type === 'guest';
+    } catch {
+      LoggerProxy.logger.info('Meeting:index#isUnverifiedGuest --> parse user_type failed.');
+    }
+
+    return isGuest;
   }
 
   /**
@@ -7161,7 +7181,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
    */
   getCurLoginType() {
-    const isGuest = this.guest;
+    const isGuest = this.isUnverifiedGuest();
     if (isGuest !== null) {
       return isGuest ? 'unverified-guest' : 'login-ci';
     }

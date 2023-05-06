@@ -7,7 +7,7 @@ import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert} from '@webex/test-helper-chai';
-import {Credentials} from '@webex/webex-core';
+import {Credentials, Token} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {
@@ -178,7 +178,7 @@ describe('plugin-meetings', () => {
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id',
+          client_id: 'mock-client-id'
         },
         meetings: {
           reconnection: {
@@ -481,6 +481,27 @@ describe('plugin-meetings', () => {
 
           assert.isNotOk(self);
         });
+      });
+      describe('#isUnverifiedGuest', () => {
+        it('should have #isUnverifiedGuest', () => {
+          assert.exists(meeting.isUnverifiedGuest);
+        });
+        it('should get the user status and return as a boolean', () => {
+          webex.credentials.supertoken = new Token({access_token: 'AT'});
+          const self = meeting.isUnverifiedGuest();
+          assert.isNotOk(self);
+        });
+        it('should get guest user ', () => {
+          webex.credentials.supertoken = new Token({access_token: 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX3R5cGUiOiJndWVzdCJ9',}, {parent: webex});
+          const self = meeting.isUnverifiedGuest();
+          assert.equal(self, true);
+        });
+        it('should get login user ', () => {
+          webex.credentials.supertoken = new Token({access_token: 'NmQzMjc3YjctNzZjMy00YzUwLWFkMWMtMGFhYzdiMDg1Mzc2NWNlZDlmMTUtZmNl_PF84_1eb65fdf-9643-417f-9974-ad72cae0e10f',}, {parent: webex});
+          const self = meeting.isUnverifiedGuest();
+          assert.equal(self, false);
+        });
+
       });
       describe('#muteAudio', () => {
         it('should have #muteAudio', () => {
