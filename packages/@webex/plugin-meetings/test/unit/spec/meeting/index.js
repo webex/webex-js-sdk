@@ -4676,12 +4676,14 @@ describe('plugin-meetings', () => {
 
         it('listens to the breakout ask for help event and triggers the ask for help event', () => {
           TriggerProxy.trigger.reset();
-          meeting.breakouts.trigger('ASK_FOR_HELP');
+          const helpEvent = {sessionId:'sessionId', participant: 'participant'}
+          meeting.breakouts.trigger('ASK_FOR_HELP', helpEvent);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {file: 'meeting/index', function: 'setUpBreakoutsListener'},
-            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+            helpEvent
           );
         });
       });
