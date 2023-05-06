@@ -10,7 +10,7 @@ import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
-import {boServiceErrorHandler} from './utils';
+import {boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from './utils';
 
 /**
  * @class Breakouts
@@ -49,6 +49,7 @@ const Breakouts = WebexPlugin.extend({
 
   derived: {
     isInMainSession: {
+      cache: false,
       deps: ['sessionType'],
       /**
        * Returns true if the user is in the main session
@@ -59,6 +60,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     isActiveBreakout: {
+      cache: false, // fix issue: sometimes the derived will not change even if the deps changed
       deps: ['sessionType', 'status'],
       /**
        * Returns true if the breakout status is active
@@ -72,6 +74,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     breakoutGroupId: {
+      cache: false,
       deps: ['groups'],
       /**
        * Returns the actived group id
@@ -104,6 +107,7 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.breakouts, 'add', () => {
       this.debouncedQueryRosters();
     });
+    this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
     // @ts-ignore
@@ -179,6 +183,21 @@ const Breakouts = WebexPlugin.extend({
     }
 
     session.parseRoster(locus);
+  },
+  /**
+   *Sets up listener for currentBreakoutSession sessionType changed
+   * @returns {void}
+   */
+  listenToCurrentSessionTypeChange(): void {
+    this.listenTo(
+      this.currentBreakoutSession,
+      'change:sessionType',
+      (currentBreakoutSession, sessionType) => {
+        if (isSessionTypeChangedFromSessionToMain(currentBreakoutSession, sessionType)) {
+          this.trigger(BREAKOUTS.EVENTS.LEAVE_BREAKOUT);
+        }
+      }
+    );
   },
 
   /**
@@ -281,6 +300,10 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
+
+    if (this.allowBackToMain && this.getMainSession().requested) {
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+    }
   },
   /**
    * get main session
@@ -399,13 +422,14 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Create new breakout sessions
-   * @param {object} sessions -- breakout session group
+   * @param {object} params -- breakout session group
    * @returns {Promise}
    */
-  async create(sessions) {
+  async create(params) {
+    const payload = {...params};
     const body = {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
-      ...{groups: [{sessions}]},
+      ...{groups: [payload]},
     };
     // @ts-ignore
     const breakInfo = await this.webex
@@ -672,10 +696,11 @@ const Breakouts = WebexPlugin.extend({
       };
     });
 
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri: this.url,
-      body: {
+    const body = {
+      ...(this.editLock && !!this.editLock.token
+        ? {editlock: {token: this.editLock.token, refresh: true}}
+        : {}),
+      ...{
         groups: [
           {
             id: this.breakoutGroupId,
@@ -683,6 +708,12 @@ const Breakouts = WebexPlugin.extend({
           },
         ],
       },
+    };
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: this.url,
+      body,
     });
   },
 

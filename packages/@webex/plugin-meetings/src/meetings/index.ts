@@ -6,6 +6,8 @@ import '@webex/internal-plugin-conversation';
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
 
+import * as mediaHelpersModule from '@webex/media-helpers';
+
 import 'webrtc-adapter';
 
 import Metrics from '../metrics';
@@ -57,6 +59,7 @@ import CaptchaError from '../common/errors/captcha-error';
 
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
+import PermissionError from '../common/errors/permission';
 
 let mediaLogger;
 
@@ -148,6 +151,7 @@ export default class Meetings extends WebexPlugin {
   request: any;
   geoHintInfo: any;
   meetingInfo: any;
+  mediaHelpers: any;
 
   namespace = MEETINGS;
 
@@ -159,6 +163,17 @@ export default class Meetings extends WebexPlugin {
    */
   constructor(...args) {
     super(...args);
+
+    /**
+     * The webrtc-core media helpers. This is a temporary solution required for the SDK sample app
+     * to be able to call media helper functions.
+     *
+     * @instance
+     * @type {Object}
+     * @private
+     * @memberof Meetings
+     */
+    this.mediaHelpers = mediaHelpersModule;
 
     /**
      * The Meetings request to interact with server
@@ -245,8 +260,14 @@ export default class Meetings extends WebexPlugin {
 
     const isSelfJoined = newLocus?.self?.state === _JOINED_;
     const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
-    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus);
-    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(meeting, newLocus);
+    // @ts-ignore
+    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
+    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(
+      meeting,
+      newLocus,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
     const isBreakoutLocusJoinThisDevice =
       breakoutLocus?.joinedWith?.correlationId &&
       breakoutLocus.joinedWith.correlationId === meeting?.correlationId;
@@ -304,8 +325,7 @@ export default class Meetings extends WebexPlugin {
    */
   private isNeedHandleLocusDTO(meeting: any, newLocus: any) {
     if (newLocus) {
-      const isNewLocusAsBreakout =
-        newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+      const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
       const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
       if (!meeting) {
         if (isNewLocusAsBreakout) {
@@ -374,6 +394,9 @@ export default class Meetings extends WebexPlugin {
       );
     }
 
+    if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
+      meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+    }
     if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
       LoggerProxy.logger.log(
         `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
@@ -1115,7 +1138,11 @@ export default class Meetings extends WebexPlugin {
         await meeting.fetchMeetingInfo({});
       }
     } catch (err) {
-      if (!(err instanceof CaptchaError) && !(err instanceof PasswordError)) {
+      if (
+        !(err instanceof CaptchaError) &&
+        !(err instanceof PasswordError) &&
+        !(err instanceof PermissionError)
+      ) {
         // if there is no meeting info we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`

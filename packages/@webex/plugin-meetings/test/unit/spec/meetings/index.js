@@ -30,6 +30,10 @@ import {
   LOCUSINFO,
   EVENT_TRIGGERS,
 } from '../../../../src/constants';
+import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
+import { forEach } from 'lodash';
+import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
+import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -61,6 +65,7 @@ describe('plugin-meetings', () => {
   let url1;
   let test1;
   let test2;
+  let locusInfo;
 
   describe('meetings index', () => {
     beforeEach(() => {
@@ -70,6 +75,10 @@ describe('plugin-meetings', () => {
       uri1 = `test-${uuid.v4()}@example.com`;
       test1 = `test-${uuid.v4()}`;
       test2 = `test2-${uuid.v4()}`;
+      locusInfo = {
+        parse: sinon.stub().returns(true),
+        updateMainSessionLocusCache: sinon.stub(),
+      };
       webex = new MockWebex({
         children: {
           device: Device,
@@ -150,6 +159,10 @@ describe('plugin-meetings', () => {
         },
       });
       webex.emit('ready');
+    });
+
+    afterEach(() => {
+      sinon.restore();
     });
 
     it('has a webex instance with a meetings property', () => {
@@ -444,21 +457,17 @@ describe('plugin-meetings', () => {
             );
           });
           describe('when meeting is returned', () => {
-            let parse;
 
             beforeEach(() => {
-              parse = sinon.stub().returns(true);
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
               });
             });
             it('tests the sync meeting calls for existing meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
               assert.calledOnce(webex.meetings.meetingCollection.getByKey);
-              assert.calledOnce(parse);
+              assert.calledOnce(locusInfo.parse);
               assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             });
           });
@@ -471,6 +480,7 @@ describe('plugin-meetings', () => {
               webex.meetings.create = sinon.stub().returns(
                 Promise.resolve({
                   locusInfo: {
+                    ...locusInfo,
                     initialSetup,
                   },
                 })
@@ -503,12 +513,9 @@ describe('plugin-meetings', () => {
 
             beforeEach(() => {
               destroySpy = sinon.spy(webex.meetings, 'destroy');
-              parse = sinon.stub().returns(true);
               initialSetup = sinon.stub().returns(true);
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
                 sendCallAnalyzerMetrics: sinon.stub(),
               });
               webex.meetings.meetingCollection.getAll = sinon.stub().returns({
@@ -678,34 +685,38 @@ describe('plugin-meetings', () => {
       });
       describe('#handleLocusEvent', () => {
         describe('there was a meeting', () => {
-          let parse;
 
           beforeEach(() => {
-            parse = sinon.stub().returns(true);
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-              locusInfo: {
-                parse,
-              },
+              locusInfo,
             });
           });
-          it('should parse the meeting info', () => {
+          it('should parse the meeting info and update main session locus cache', () => {
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(false);
             webex.meetings.handleLocusEvent({
               locusUrl: url1,
             });
             assert.calledOnce(webex.meetings.meetingCollection.getByKey);
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
-            assert.calledOnce(parse);
+            assert.calledOnce(locusInfo.parse);
+            assert.calledOnce(locusInfo.updateMainSessionLocusCache);
             assert.calledWith(
-              parse,
+              locusInfo.parse,
               {
-                locusInfo: {
-                  parse,
-                },
+                locusInfo,
               },
               {
                 locusUrl: url1,
               }
             );
+          });
+
+          it('should not update main session locus cache', () => {
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(true);
+            webex.meetings.handleLocusEvent({
+              locusUrl: url1,
+            });
+            assert.notCalled(locusInfo.updateMainSessionLocusCache);
           });
         });
         describe('there was not a meeting', () => {
@@ -718,6 +729,7 @@ describe('plugin-meetings', () => {
             webex.meetings.create = sinon.stub().returns(
               Promise.resolve({
                 locusInfo: {
+                  ...locusInfo,
                   initialSetup,
                 },
               })
@@ -1211,6 +1223,63 @@ describe('plugin-meetings', () => {
               }
             );
           });
+        });
+
+        describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {
+          forEach(
+            [
+              {
+                error: new CaptchaError(),
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug CaptchaError: Captcha is required. fetching /meetingInfo for creation.',
+              },
+              {
+                error: new PasswordError(),
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug PasswordError: Password is required, please use verifyPassword() fetching /meetingInfo for creation.',
+              },
+              {
+                error: new PermissionError(),
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug PermissionError: Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action. fetching /meetingInfo for creation.',
+              },
+              {
+                error: new Error(),
+                infoLogMessage: true,
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug Error fetching /meetingInfo for creation.',
+              },
+            ],
+            ({error, debugLogMessage, infoLogMessage}) => {
+              it('creates the meeting from a rejected meeting info fetch', async () => {
+                webex.meetings.meetingInfo.fetchMeetingInfo = sinon
+                  .stub()
+                  .returns(Promise.reject(error));
+
+                LoggerProxy.logger.debug = sinon.stub();
+                LoggerProxy.logger.info = sinon.stub();
+
+                const meeting = await webex.meetings.createMeeting('test destination', 'test type');
+
+                assert.instanceOf(
+                  meeting,
+                  Meeting,
+                  'createMeeting should eventually resolve to a Meeting Object'
+                );
+
+                assert.calledWith(LoggerProxy.logger.debug, debugLogMessage);
+
+                if (infoLogMessage) {
+                  assert.calledWith(
+                    LoggerProxy.logger.info,
+                    'Meetings:index#createMeeting --> Info Unable to fetch meeting info for test destination.'
+                  );
+                } else {
+                  assert.notCalled(LoggerProxy.logger.info);
+                }
+              });
+            }
+          );
         });
       });
     });

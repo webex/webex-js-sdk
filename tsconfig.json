@@ -17,6 +17,7 @@
     "preserveConstEnums": true,
     "removeComments": false,
     "sourceMap": true,
+    "stripInternal": true,
     "target": "ES6",
     "skipLibCheck": true,
     "lib": [
