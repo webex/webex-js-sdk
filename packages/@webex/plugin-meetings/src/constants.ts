@@ -313,6 +313,8 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
+  MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN: 'meeting:breakouts:askReturnToMain',
+  MEETING_BREAKOUTS_LEAVE: 'meeting:breakouts:leave',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',

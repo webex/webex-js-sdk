@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.91](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.90...v3.0.0-beta.91) (2023-05-05)
+
+
+### Features
+
+* **plugin-meetings:** trigger breakout ask return & leave event ([#2795](https://github.com/webex/webex-js-sdk/issues/2795)) ([4cbc7ae](https://github.com/webex/webex-js-sdk/commit/4cbc7ae8a67679e450e2b15cca7db856a2f61d73))
+
 ## [3.0.0-beta.90](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.88...v3.0.0-beta.90) (2023-05-04)
 
 
