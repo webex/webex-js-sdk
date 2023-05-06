@@ -315,6 +315,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
   MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN: 'meeting:breakouts:askReturnToMain',
   MEETING_BREAKOUTS_LEAVE: 'meeting:breakouts:leave',
+  MEETING_BREAKOUTS_ASK_FOR_HELP: 'meeting:breakouts:askForHelp',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
@@ -549,6 +550,7 @@ export const BREAKOUTS = {
     MEMBERS_UPDATE: 'MEMBERS_UPDATE',
     ASK_RETURN_TO_MAIN: 'ASK_RETURN_TO_MAIN',
     LEAVE_BREAKOUT: 'LEAVE_BREAKOUT',
+    ASK_FOR_HELP: 'ASK_FOR_HELP',
   },
   SESSION_TYPES: {
     MAIN: 'MAIN',

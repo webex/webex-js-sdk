@@ -1481,6 +1481,17 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
       );
     });
+
+    this.breakouts.on(BREAKOUTS.EVENTS.ASK_FOR_HELP, () => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpBreakoutsListener',
+        },
+        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP
+      );
+    });
   }
 
   /**
