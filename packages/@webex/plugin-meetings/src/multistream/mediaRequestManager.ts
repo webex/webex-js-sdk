@@ -1,6 +1,6 @@
 /* eslint-disable require-jsdoc */
 import {
-  MediaRequest as WcmeMediaRequest,
+  StreamRequest as WcmeMediaRequest,
   Policy,
   ActiveSpeakerInfo,
   ReceiverSelectedInfo,
@@ -162,8 +162,8 @@ export class MediaRequestManager {
   // eslint-disable-next-line class-methods-use-this
   public isEqual(mediaRequestA: WcmeMediaRequest, mediaRequestB: WcmeMediaRequest) {
     return (
-      JSON.stringify(mediaRequestA._toJmpScrRequest()) ===
-      JSON.stringify(mediaRequestB._toJmpScrRequest())
+      JSON.stringify(mediaRequestA._toJmpStreamRequest()) ===
+      JSON.stringify(mediaRequestB._toJmpStreamRequest())
     );
   }
 
