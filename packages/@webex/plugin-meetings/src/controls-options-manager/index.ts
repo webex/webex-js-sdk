@@ -140,7 +140,7 @@ export default class ControlsOptionsManager {
    * @param {Array<ControlConfig>} controls - Spread Array of ControlConfigs
    * @returns {Promise<Array<any>>}- Promise resolving if the request was successful.
    */
-  protected update(...controls: Array<ControlConfig>) {
+  public update(...controls: Array<ControlConfig>) {
     const payload = controls.reduce((output, control) => {
       if (!Object.keys(Control).includes(control.scope)) {
         throw new Error(
