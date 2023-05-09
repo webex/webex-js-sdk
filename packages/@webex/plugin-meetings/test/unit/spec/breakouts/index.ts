@@ -309,43 +309,37 @@ describe('plugin-meetings', () => {
     });
 
     describe('#handleAskReturnToMainRequest', () => {
+      const checkAskReturnTrigger = ({breakoutSessions, mainSessionRequested, shouldTrigger}) => {
+        breakouts.getMainSession = sinon.stub().returns({requested: mainSessionRequested});
+        const handler = sinon.stub();
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        breakouts.handleAskReturnToMainRequest(breakoutSessions);
+        if (shouldTrigger) {
+          assert.calledOnceWithExactly(handler);
+        } else {
+          assert.notCalled(handler)
+        }
+      }
       it('trigger ASK_RETURN_TO_MAIN correctly', () => {
         const breakoutSessions = {
             requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
         };
-        breakouts.getMainSession = sinon.stub().returns({requested: true});
-        const handler = sinon.stub();
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.handleAskReturnToMainRequest(breakoutSessions);
-        assert.calledOnceWithExactly(handler);
+        checkAskReturnTrigger({breakoutSessions, mainSessionRequested: true, shouldTrigger: true});
       })
 
       it('should not trigger ASK_RETURN_TO_MAIN when breakoutSessions not exist', () => {
-        breakouts.getMainSession = sinon.stub().returns({requested: true});
-        const handler = sinon.stub();
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.handleAskReturnToMainRequest();
-        assert.notCalled(handler)
+        checkAskReturnTrigger({breakoutSessions: undefined, mainSessionRequested: true, shouldTrigger: false});
       });
 
       it('should not trigger ASK_RETURN_TO_MAIN when no requested in breakoutSessions', () => {
-        const breakoutSessions = {};
-        breakouts.getMainSession = sinon.stub().returns({requested: true});
-        const handler = sinon.stub();
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.handleAskReturnToMainRequest(breakoutSessions);
-        assert.notCalled(handler);
+        checkAskReturnTrigger({breakoutSessions: {}, mainSessionRequested: true, shouldTrigger: false});
       })
 
       it('should not trigger ASK_RETURN_TO_MAIN when MAIN is not requested', () => {
         const breakoutSessions = {
           requested: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
         };
-        breakouts.getMainSession = sinon.stub().returns({requested: false});
-        const handler = sinon.stub();
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.handleAskReturnToMainRequest(breakoutSessions);
-        assert.notCalled(handler);
+        checkAskReturnTrigger({breakoutSessions, mainSessionRequested: false, shouldTrigger: false});
       })
     });
 
