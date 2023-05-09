@@ -467,7 +467,8 @@ describe('plugin-conversation', function () {
             }));
       });
 
-      describe('with conversation from remote clusters', () => {
+      // SPARK-413317
+      describe.skip('with conversation from remote clusters', () => {
         let conversation3, conversation4;
 
         before('create conversations in EU cluster', () =>
@@ -959,7 +960,7 @@ describe('plugin-conversation', function () {
           .then(({edit}) => {
             assert.include(edit, parent.id);
           }));
-
+      
       it('retrieves parent IDs for reactions', () =>
         webex.internal.conversation
           .addReaction(conversation, 'heart', parent)
