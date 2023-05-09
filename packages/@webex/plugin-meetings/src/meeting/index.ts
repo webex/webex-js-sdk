@@ -6125,20 +6125,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
     Metrics.postEvent({
       event: eventType.LEAVE,
       meeting: this,
-      data: {trigger: trigger.USER_INTERACTION, canProceed: false},
+      data: {trigger: trigger.USER_INTERACTION, canProceed: false, reason: leaveReason},
     });
-    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
-    // add
-    if (leaveReason === MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST_TAB_CLOSED) {
-      Metrics.postEvent({
-        event: eventType.LEAVE,
-        meeting: this,
-        data: {reason: leaveReason},
-      });
-    }
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
