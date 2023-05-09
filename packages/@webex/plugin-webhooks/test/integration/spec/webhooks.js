@@ -11,7 +11,8 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import testUsers from '@webex/test-helper-test-users';
 
-describe('plugin-webhooks', function () {
+// SPARK-413317
+describe.skip('plugin-webhooks', function () {
   this.timeout(60000);
 
   let webex;

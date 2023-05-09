@@ -255,6 +255,16 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
       });
+
+      it('update the startTime correctly when no attribute startTime exists on params', () => {
+        breakouts.updateBreakout({
+          startTime: "startTime"
+        })
+        assert.equal(breakouts.startTime, 'startTime');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.startTime, undefined);
+      })
     });
 
     describe('#updateBreakoutSessions', () => {
