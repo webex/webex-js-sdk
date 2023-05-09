@@ -122,6 +122,19 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakouts.debouncedQueryRosters);
       });
+
+      it('listen to requestedLastModifiedTime change correctly when requested breakout add', () => {
+        breakouts.triggerReturnToMainEvent = sinon.stub();
+        breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
+        assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
+      });
+
+      it('listen to requestedLastModifiedTime change correctly when requested breakout change', () => {
+        breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
+        breakouts.triggerReturnToMainEvent = sinon.stub();
+        breakouts.breakouts.get('session1').set({requestedLastModifiedTime: "2023-05-09T17:16:01.000Z"});
+        assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
+      });
     });
 
     describe('#listenToCurrentSessionTypeChange', () => {
@@ -293,7 +306,7 @@ describe('plugin-meetings', () => {
             assigned: [{sessionId: 'sessionId2'}],
             allowed: [{sessionId: 'sessionId3'}],
             assignedCurrent: [{sessionId: 'sessionId4'}],
-            requested: [{sessionId: 'sessionId5'}],
+            requested: [{sessionId: 'sessionId5',}],
           },
         };
 
@@ -304,43 +317,21 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId3'), 'sessionId3', 'allowed');
         checkBreakout(breakouts.breakouts.get('sessionId4'), 'sessionId4', 'assignedCurrent');
         checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
-        assert.calledOnceWithExactly(breakouts.handleAskReturnToMainRequest, payload.breakoutSessions);
-      });
-    });
-
-    describe('#handleAskReturnToMainRequest', () => {
-      const checkAskReturnTrigger = ({breakoutSessions, mainSessionRequested, shouldTrigger}) => {
-        breakouts.getMainSession = sinon.stub().returns({requested: mainSessionRequested});
-        const handler = sinon.stub();
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.handleAskReturnToMainRequest(breakoutSessions);
-        if (shouldTrigger) {
-          assert.calledOnceWithExactly(handler);
-        } else {
-          assert.notCalled(handler)
-        }
-      }
-      it('trigger ASK_RETURN_TO_MAIN correctly', () => {
-        const breakoutSessions = {
-            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
-        };
-        checkAskReturnTrigger({breakoutSessions, mainSessionRequested: true, shouldTrigger: true});
-      })
-
-      it('should not trigger ASK_RETURN_TO_MAIN when breakoutSessions not exist', () => {
-        checkAskReturnTrigger({breakoutSessions: undefined, mainSessionRequested: true, shouldTrigger: false});
       });
 
-      it('should not trigger ASK_RETURN_TO_MAIN when no requested in breakoutSessions', () => {
-        checkAskReturnTrigger({breakoutSessions: {}, mainSessionRequested: true, shouldTrigger: false});
-      })
-
-      it('should not trigger ASK_RETURN_TO_MAIN when MAIN is not requested', () => {
-        const breakoutSessions = {
-          requested: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
+      it('set requestedLastModifiedTime works', () => {
+        const payload = {
+          breakoutSessions: {
+            assigned: [{sessionId: 'sessionId1'}],
+            requested: [{sessionId: 'sessionId2', modifiedAt: "2023-05-09T17:16:01.000Z"}],
+          },
         };
-        checkAskReturnTrigger({breakoutSessions, mainSessionRequested: false, shouldTrigger: false});
-      })
+
+        breakouts.updateBreakoutSessions(payload);
+        assert.equal(breakouts.breakouts.get('sessionId1').requestedLastModifiedTime, undefined)
+        assert.equal(breakouts.breakouts.get('sessionId2').requestedLastModifiedTime, "2023-05-09T17:16:01.000Z")
+      });
+    
     });
 
     describe('#locusUrlUpdate', () => {
@@ -1348,6 +1339,41 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakouts.dynamicAssign, expectedBody);
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('#triggerReturnToMainEvent', () => {
+      const checkTrigger = ({breakout, shouldTrigger}) => {
+        breakouts.trigger = sinon.stub();
+        breakouts.triggerReturnToMainEvent(breakout);
+        if (shouldTrigger) {
+          assert.calledOnceWithExactly(breakouts.trigger, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+        } else {
+          assert.notCalled(breakouts.trigger);
+        }
+      }
+      it('should trigger ASK_RETURN_TO_MAIN event correctly', () => {
+        const breakout = {
+          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          requested: true
+        };
+        checkTrigger({breakout, shouldTrigger: true})
+      });
+
+      it('should not trigger ASK_RETURN_TO_MAIN event when sessionType is not MAIN', () => {
+        const breakout = {
+          sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+          requested: true
+        };
+        checkTrigger({breakout, shouldTrigger: false});
+      });
+
+      it('should not trigger ASK_RETURN_TO_MAIN event when session is not requested', () => {
+        const breakout = {
+          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          requested: false
+        };
+        checkTrigger({breakout, shouldTrigger: false})
       });
     });
   });
