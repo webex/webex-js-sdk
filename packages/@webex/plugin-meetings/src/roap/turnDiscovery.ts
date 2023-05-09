@@ -222,6 +222,48 @@ export default class TurnDiscovery {
   }
 
   /**
+   * Gets the reason why reachability is skipped.
+   *
+   * @param {Meeting} meeting
+   * @returns {Promise<string>} Promise with empty string if reachability is not skipped or a reason if it is skipped
+   */
+  private async getSkipReason(meeting: Meeting): Promise<string> {
+    // @ts-ignore - fix type
+    const isAnyClusterReachable = await meeting.webex.meetings.reachability.isAnyClusterReachable();
+
+    if (isAnyClusterReachable) {
+      LoggerProxy.logger.info(
+        'Roap:turnDiscovery#getSkipReason --> reachability has not failed, skipping TURN discovery'
+      );
+
+      return 'reachability';
+    }
+
+    // @ts-ignore - fix type
+    if (!meeting.config.experimental.enableTurnDiscovery) {
+      LoggerProxy.logger.info(
+        'Roap:turnDiscovery#getSkipReason --> TURN discovery disabled in config, skipping it'
+      );
+
+      return 'config';
+    }
+
+    return '';
+  }
+
+  /**
+   * Checks if TURN discovery is skipped.
+   *
+   * @param {Meeting} meeting
+   * @returns {Boolean} true if TURN discovery is being skipped, false if it is being done
+   */
+  async isSkipped(meeting) {
+    const skipReason = await this.getSkipReason(meeting);
+
+    return !!skipReason;
+  }
+
+  /**
    * Retrieves TURN server information from the backend by doing
    * a roap message exchange:
    * client                             server
@@ -239,27 +281,13 @@ export default class TurnDiscovery {
    * @returns {Promise}
    */
   async doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
-    // @ts-ignore - fix type
-    const isAnyClusterReachable = await meeting.webex.meetings.reachability.isAnyClusterReachable();
+    const turnDiscoverySkippedReason = await this.getSkipReason(meeting);
 
-    if (isAnyClusterReachable) {
-      LoggerProxy.logger.info(
-        'Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery'
-      );
-
+    if (turnDiscoverySkippedReason) {
       return {
         turnServerInfo: undefined,
-        turnDiscoverySkippedReason: 'reachability',
+        turnDiscoverySkippedReason,
       };
-    }
-
-    // @ts-ignore - fix type
-    if (!meeting.config.experimental.enableTurnDiscovery) {
-      LoggerProxy.logger.info(
-        'Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it'
-      );
-
-      return {turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'};
     }
 
     return this.sendRoapTurnDiscoveryRequest(meeting, isReconnecting)

@@ -26,6 +26,7 @@ import {
   REACHABILITY,
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
+  ANNOTATION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 
@@ -88,6 +89,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
+   * @param {boolean} options.liveAnnotationSupported
    * @returns {Promise}
    */
   async joinMeeting(options: {
@@ -107,6 +109,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
+    liveAnnotationSupported: boolean;
   }) {
     const {
       asResourceOccupant,
@@ -124,6 +127,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
+      liveAnnotationSupported,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -152,8 +156,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     };
 
+    let deviceCapabilities = [];
     if (breakoutsSupported) {
-      body.deviceCapabilities = [BREAKOUTS.BREAKOUTS_SUPPORTED];
+      deviceCapabilities = [...deviceCapabilities, BREAKOUTS.BREAKOUTS_SUPPORTED];
+    }
+    if (liveAnnotationSupported) {
+      deviceCapabilities = [...deviceCapabilities, ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED];
+    }
+    if (deviceCapabilities.length > 0) {
+      body.deviceCapabilities = deviceCapabilities;
     }
 
     // @ts-ignore
@@ -646,6 +657,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           deviceUrl: string;
           resourceId: string;
           uri: string;
+          annotation: any;
         }
       | any
   ) {
@@ -678,6 +690,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
     if (options?.resourceToken) {
       body.resourceToken = options?.resourceToken;
+    }
+    if (options?.annotation) {
+      body.annotation = options?.annotation;
     }
 
     // @ts-ignore

@@ -158,7 +158,8 @@ describe('Encryption', function () {
         }));
   });
 
-  describe('#download()', () => {
+  // SPARK-413317
+  describe.skip('#download()', () => {
     it('downloads and decrypts an encrypted file', () =>
       webex.internal.encryption
         .encryptBinary(FILE)

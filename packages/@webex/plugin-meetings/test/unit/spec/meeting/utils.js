@@ -39,6 +39,7 @@ describe('plugin-meetings', () => {
       meeting.stopKeepAlive = sinon.stub();
       meeting.updateLLMConnection = sinon.stub();
       meeting.breakouts = {cleanUp: sinon.stub()};
+      meeting.annotaion = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
