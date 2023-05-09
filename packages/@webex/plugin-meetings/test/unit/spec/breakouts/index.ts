@@ -337,7 +337,6 @@ describe('plugin-meetings', () => {
 
       it('should not trigger ASK_RETURN_TO_MAIN when MAIN is not requested', () => {
         const breakoutSessions = {
-          active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
           requested: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
         };
         breakouts.getMainSession = sinon.stub().returns({requested: false});
