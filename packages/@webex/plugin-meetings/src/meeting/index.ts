@@ -7039,9 +7039,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endLocalSDPGenRemoteSDPRecvDelay;
 
     if (start && end) {
-      let calculatedDelay = Math.round(end - start);
-
-      calculatedDelay = calculatedDelay < 0 ? 0 : calculatedDelay;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
