@@ -3002,25 +3002,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Convenience function to tell whether the user is unverified guest
-   * @returns {Boolean} if user is unverified guest or not
-   * @public
-   * @memberof Meeting
-   */
-  public isUnverifiedGuest() {
-    // @ts-ignore - fix type
-    const accessToken = this.webex.credentials.supertoken.access_token;
-    let isGuest = false;
-    try {
-      isGuest = JSON.parse(base64.decode(accessToken.split('.')[1])).user_type === 'guest';
-    } catch {
-      LoggerProxy.logger.info('Meeting:index#isUnverifiedGuest --> parse user_type failed.');
-    }
-
-    return isGuest;
-  }
-
-  /**
    * Sets the meeting info on the class instance
    * @param {Object} meetingInfo
    * @param {Object} meetingInfo.body
@@ -7173,7 +7154,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
    */
   getCurLoginType() {
-    const isGuest = this.isUnverifiedGuest();
+    // @ts-ignore
+    const isGuest = this.webex.credentials.isUnverifiedGuest();
     if (isGuest !== null) {
       return isGuest ? 'unverified-guest' : 'login-ci';
     }

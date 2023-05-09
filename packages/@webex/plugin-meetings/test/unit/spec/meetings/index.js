@@ -1648,11 +1648,13 @@ describe('plugin-meetings', () => {
           errors: {}
         };
         webex.internal.services.get = sinon.stub();
+        webex.credentials.isUnverifiedGuest = sinon.stub().returns(true);
         meeting.getAnalyzerMetricsPrePayload(options);
         assert.equal(options.userType, 'host');
         assert.equal(options.loginType, 'unverified-guest');
         meeting.roles = ['COHOST','ATTENDEE'];
         meeting.guest = false;
+        webex.credentials.isUnverifiedGuest = sinon.stub().returns(false);
         meeting.getAnalyzerMetricsPrePayload(options);
         assert.equal(options.userType, 'cohost');
         assert.equal(options.loginType, 'login-ci');
