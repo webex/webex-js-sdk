@@ -310,12 +310,15 @@ describe('plugin-meetings', () => {
 
     describe('#handleAskReturnToMainRequest', () => {
       const checkAskReturnTrigger = ({breakoutSessions, mainSessionRequested, shouldTrigger}) => {
-        breakouts.getMainSession = sinon.stub().returns({requested: mainSessionRequested});
+        breakouts.getMainSession = sinon.stub().returns({
+          requested: mainSessionRequested,
+          sessionId: 'sessionId'
+        });
         const handler = sinon.stub();
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
         breakouts.handleAskReturnToMainRequest(breakoutSessions);
         if (shouldTrigger) {
-          assert.calledOnceWithExactly(handler);
+          assert.calledOnceWithExactly(handler, {sessionId: 'sessionId'});
         } else {
           assert.notCalled(handler)
         }

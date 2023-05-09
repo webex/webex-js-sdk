@@ -315,7 +315,9 @@ const Breakouts = WebexPlugin.extend({
       BREAKOUTS.SESSION_STATES.REQUESTED in breakoutSessions &&
       this.getMainSession().requested
     ) {
-      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, {
+        sessionId: this.getMainSession().sessionId,
+      });
     }
   },
   /**
