@@ -301,7 +301,19 @@ const Breakouts = WebexPlugin.extend({
 
     this.breakouts.set(Object.values(breakouts));
 
-    if (this.allowBackToMain && this.getMainSession().requested) {
+    this.handleAskReturnToMainRequest(payload.breakoutSessions);
+  },
+  /**
+   * trigger ASK_RETURN_TO_MAIN event when main session requested
+   * @param {Object} breakoutSessions
+   * @returns {void}
+   */
+  handleAskReturnToMainRequest(breakoutSessions) {
+    if (
+      breakoutSessions &&
+      BREAKOUTS.SESSION_STATES.REQUESTED in breakoutSessions &&
+      this.getMainSession().requested
+    ) {
       this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
     }
   },
