@@ -21,6 +21,7 @@ import {
   _MEETING_ID_,
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
+  DISPLAY_HINTS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -5222,10 +5223,10 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let handleDataChannelUrlChangeSpy;
-        let canEnableReactionsSpy;
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let hasHintsSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5249,7 +5250,6 @@ describe('plugin-meetings', () => {
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
-          canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
@@ -5262,6 +5262,10 @@ describe('plugin-meetings', () => {
         });
 
         it('registers the correct MEETING_INFO_UPDATED event', () => {
+          // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
+          const restorableHasHints = ControlsOptionsUtil.hasHints;
+          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5296,10 +5300,62 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
-          assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5317,6 +5373,8 @@ describe('plugin-meetings', () => {
           callback(payload);
 
           assert.notCalled(TriggerProxy.trigger);
+
+          ControlsOptionsUtil.hasHints = restorableHasHints;
         });
       });
 
