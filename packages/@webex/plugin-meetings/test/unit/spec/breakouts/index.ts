@@ -297,7 +297,6 @@ describe('plugin-meetings', () => {
       };
 
       it('works', () => {
-        breakouts.handleAskReturnToMainRequest = sinon.stub();
         breakouts.set('url', 'url');
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         const payload = {
@@ -306,7 +305,7 @@ describe('plugin-meetings', () => {
             assigned: [{sessionId: 'sessionId2'}],
             allowed: [{sessionId: 'sessionId3'}],
             assignedCurrent: [{sessionId: 'sessionId4'}],
-            requested: [{sessionId: 'sessionId5',}],
+            requested: [{sessionId: 'sessionId5'}],
           },
         };
 
@@ -319,7 +318,7 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
       });
 
-      it('set requestedLastModifiedTime works', () => {
+      it('set requestedLastModifiedTime correctly', () => {
         const payload = {
           breakoutSessions: {
             assigned: [{sessionId: 'sessionId1'}],
