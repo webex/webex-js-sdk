@@ -1,6 +1,6 @@
 /* eslint-disable require-jsdoc */
 import {
-  StreamRequest as WcmeMediaRequest,
+  StreamRequest,
   Policy,
   ActiveSpeakerInfo,
   ReceiverSelectedInfo,
@@ -65,7 +65,7 @@ type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
 
-type SendMediaRequestsCallback = (mediaRequests: WcmeMediaRequest[]) => void;
+type SendMediaRequestsCallback = (streamRequests: StreamRequest[]) => void;
 type Kind = 'audio' | 'video';
 
 type Options = {
@@ -87,7 +87,7 @@ export class MediaRequestManager {
 
   private debouncedSourceUpdateListener: () => void;
 
-  private previousWCMEMediaRequests: Array<WcmeMediaRequest> = [];
+  private previousStreamRequests: Array<StreamRequest> = [];
 
   constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
@@ -153,32 +153,32 @@ export class MediaRequestManager {
   }
 
   /**
-   * Returns true if two media requests are the same, false otherwise.
+   * Returns true if two stream requests are the same, false otherwise.
    *
-   * @param {WcmeMediaRequest} mediaRequestA - Media request A for comparison.
-   * @param {WcmeMediaRequest} mediaRequestB - Media request B for comparison.
+   * @param {StreamRequest} streamRequestA - Stream request A for comparison.
+   * @param {StreamRequest} streamRequestB - Stream request B for comparison.
    * @returns {boolean} - Whether they are equal.
    */
   // eslint-disable-next-line class-methods-use-this
-  public isEqual(mediaRequestA: WcmeMediaRequest, mediaRequestB: WcmeMediaRequest) {
+  public isEqual(streamRequestA: StreamRequest, streamRequestB: StreamRequest) {
     return (
-      JSON.stringify(mediaRequestA._toJmpStreamRequest()) ===
-      JSON.stringify(mediaRequestB._toJmpStreamRequest())
+      JSON.stringify(streamRequestA._toJmpStreamRequest()) ===
+      JSON.stringify(streamRequestB._toJmpStreamRequest())
     );
   }
 
   /**
-   * Compares new media requests to previous ones and determines
+   * Compares new stream requests to previous ones and determines
    * if they are the same.
    *
-   * @param {WcmeMediaRequest[]} newRequests - Array with new requests.
+   * @param {StreamRequest[]} newRequests - Array with new requests.
    * @returns {boolean} - True if they are equal, false otherwise.
    */
-  private checkIsNewRequestsEqualToPrev(newRequests: WcmeMediaRequest[]) {
+  private checkIsNewRequestsEqualToPrev(newRequests: StreamRequest[]) {
     return (
-      !isEmpty(this.previousWCMEMediaRequests) &&
-      this.previousWCMEMediaRequests.length === newRequests.length &&
-      this.previousWCMEMediaRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
+      !isEmpty(this.previousStreamRequests) &&
+      this.previousStreamRequests.length === newRequests.length &&
+      this.previousStreamRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
     );
   }
 
@@ -222,23 +222,23 @@ export class MediaRequestManager {
   }
 
   /**
-   * Clears the previous media requests.
+   * Clears the previous stream requests.
    *
    * @returns {void}
    */
   public clearPreviousRequests(): void {
-    this.previousWCMEMediaRequests = [];
+    this.previousStreamRequests = [];
   }
 
   private sendRequests() {
-    const wcmeMediaRequests: WcmeMediaRequest[] = [];
+    const streamRequests: StreamRequest[] = [];
 
     const clientRequests = this.getDegradedClientRequests();
 
-    // map all the client media requests to wcme media requests
+    // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
-      wcmeMediaRequests.push(
-        new WcmeMediaRequest(
+      streamRequests.push(
+        new StreamRequest(
           mr.policyInfo.policy === 'active-speaker'
             ? Policy.ActiveSpeaker
             : Policy.ReceiverSelected,
@@ -270,9 +270,9 @@ export class MediaRequestManager {
 
     //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
     // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
-    if (!this.checkIsNewRequestsEqualToPrev(wcmeMediaRequests)) {
-      this.sendMediaRequestsCallback(wcmeMediaRequests);
-      this.previousWCMEMediaRequests = wcmeMediaRequests;
+    if (!this.checkIsNewRequestsEqualToPrev(streamRequests)) {
+      this.sendMediaRequestsCallback(streamRequests);
+      this.previousStreamRequests = streamRequests;
       LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
     } else {
       LoggerProxy.logger.info(
