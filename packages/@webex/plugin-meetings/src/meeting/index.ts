@@ -7153,7 +7153,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   getCurLoginType() {
     // @ts-ignore
-    const isGuest = this.webex.credentials.isUnverifiedGuest();
+    const isGuest = !this.webex.canAuthorize;
     if (isGuest !== null) {
       return isGuest ? 'unverified-guest' : 'login-ci';
     }

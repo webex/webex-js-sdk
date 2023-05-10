@@ -250,24 +250,6 @@ const Credentials = WebexPlugin.extend({
   },
 
   /**
-   * Convenience function to tell whether the user is unverified guest
-   * @returns {Boolean} if user is unverified guest or not
-   * @public
-   * @memberof Credentials
-   */
-  isUnverifiedGuest() {
-    // @ts-ignore - fix type
-    const accessToken = this.webex.credentials.supertoken.access_token;
-    let isGuest = false;
-    try {
-      isGuest = JSON.parse(base64.decode(accessToken.split('.')[1])).user_type === 'guest';
-    } catch {
-      this.logger.info('credentials: isUnverifiedGuest parse user_type failed');
-    }
-
-    return isGuest;
-  },
-  /**
    * Requests a client credentials grant and returns the token. Given the
    * limited use for such tokens as this time, this method does not cache its
    * token.

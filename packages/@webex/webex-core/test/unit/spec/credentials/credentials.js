@@ -6,7 +6,7 @@ import {set} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
-import WebexCore, {Credentials, Token, grantErrors} from '@webex/webex-core';
+import {Credentials, Token, grantErrors} from '@webex/webex-core';
 import {inBrowser} from '@webex/common';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
@@ -342,35 +342,6 @@ describe('webex-core', () => {
 
       it('should throw when no token is provided', () =>
         assert.throws(() => credentials.extractOrgIdFromUserToken()));
-    });
-
-    describe('#isUnverifiedGuest', () => {
-      let credentials;
-      let webex;
-      beforeEach('generate the webex instance', () => {
-        webex = new MockWebex();
-        credentials = new Credentials(undefined, {parent: webex});
-      });
-
-      it('should have #isUnverifiedGuest', () => {
-        assert.exists(credentials.isUnverifiedGuest);
-      });
-      it('should get the user status and return as a boolean', () => {
-        webex.credentials.supertoken = new Token({access_token: 'AT'});
-        const self = credentials.isUnverifiedGuest();
-        assert.isNotOk(self);
-      });
-      it('should get guest user ', () => {
-        webex.credentials.supertoken = new Token({access_token: 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX3R5cGUiOiJndWVzdCJ9',}, {parent: webex});
-        const self = credentials.isUnverifiedGuest();
-        assert.equal(self, true);
-      });
-      it('should get login user ', () => {
-        webex.credentials.supertoken = new Token({access_token: 'NmQzMjc3YjctNzZjMy00YzUwLWFkMWMtMGFhYzdiMDg1Mzc2NWNlZDlmMTUtZmNl_PF84_1eb65fdf-9643-417f-9974-ad72cae0e10f',}, {parent: webex});
-        const self = credentials.isUnverifiedGuest();
-        assert.equal(self, false);
-      });
-
     });
 
     describe('#initialize()', () => {
