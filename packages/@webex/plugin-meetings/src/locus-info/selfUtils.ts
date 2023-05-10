@@ -497,7 +497,7 @@ SelfUtils.getMediaStatus = (mediaSessions = []) => {
 };
 
 SelfUtils.getReplacedBreakoutMoveId = (self: any, deviceId: string) => {
-  if (self) {
+  if (self && Array.isArray(self.devices)) {
     const joinedDevice = self.devices.find((device) => deviceId === device.url);
     if (Array.isArray(joinedDevice?.replaces)) {
       return joinedDevice.replaces[0]?.breakoutMoveId;

@@ -7,6 +7,8 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
 import breakoutEvent from "../../../../src/breakouts/events";
+import SelfUtils from "../../../../src/locus-info/selfUtils";
+import { self } from "../locus-info/selfConstant";
 
 const getBOResponse = (status: string) => {
   return {
@@ -1450,6 +1452,21 @@ describe('plugin-meetings', () => {
           response
         );
       });
+
+      it('fail when no correct params',  () => {
+
+        assert.deepEqual(breakouts.queryPreAssignments(undefined), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({}), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: true, hasBreakoutPreAssignments: false }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: true }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: false }), undefined);
+
+      });
+
     });
 
     describe('#dynamicAssign', () => {

@@ -734,7 +734,7 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   queryPreAssignments(params) {
-    if (!params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
+    if (!params || !params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
       return;
     }
     if (!this.shouldFetchPreassignments) {
