@@ -19,6 +19,7 @@ import {
 } from '../../../../src/constants';
 
 import { self, selfWithInactivity } from "./selfConstant";
+import uuid from "uuid";
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -280,9 +281,11 @@ describe('plugin-meetings', () => {
 
       it('should update the breakout state', () => {
         locusInfo.emitScoped = sinon.stub();
-        newControls.breakout = 'new breakout';
+        let tmpStub = sinon.stub(SelfUtils, 'getReplacedBreakoutMoveId').returns('breakoutMoveId');
+        newControls.breakout = { 'breakout': {} };
+        let selfInfo = {};
 
-        locusInfo.updateControls(newControls);
+        locusInfo.updateControls(newControls, selfInfo);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -292,9 +295,10 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED,
           {
-            breakout: 'new breakout',
+            breakout: newControls.breakout,
           }
         );
+        tmpStub.restore();
       });
 
       it('should update the transcript state', () => {
