@@ -123,13 +123,13 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(breakouts.debouncedQueryRosters);
       });
 
-      it('listen to requestedLastModifiedTime change correctly when requested breakout add', () => {
+      it('call triggerReturnToMainEvent correctly when requested breakout add', () => {
         breakouts.triggerReturnToMainEvent = sinon.stub();
         breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
         assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
       });
 
-      it('listen to requestedLastModifiedTime change correctly when requested breakout change', () => {
+      it('call triggerReturnToMainEvent correctly when breakout requestedLastModifiedTime change', () => {
         breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
         breakouts.triggerReturnToMainEvent = sinon.stub();
         breakouts.breakouts.get('session1').set({requestedLastModifiedTime: "2023-05-09T17:16:01.000Z"});
