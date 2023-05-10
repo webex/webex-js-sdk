@@ -153,7 +153,7 @@ describe('plugin-meetings', () => {
                 Util.canUpdate = restorable;
               });
 
-              it('should call request with a body that includes formatted locus details', () => {
+              it('should call request multiple times with a bodies that include formatted locus details', () => {
                 const restorable = Util.canUpdate;
                 Util.canUpdate = sinon.stub().returns(true);
 
@@ -166,6 +166,13 @@ describe('plugin-meetings', () => {
                       uri: 'test/id/controls',
                       body: {
                         audio: audio.properties,
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+
+                    assert.calledWith(request.request, {
+                      uri: 'test/id/controls',
+                      body: {
                         reactions: reactions.properties,
                       },
                       method: HTTP_VERBS.PATCH,

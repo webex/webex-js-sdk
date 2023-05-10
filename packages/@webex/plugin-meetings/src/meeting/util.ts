@@ -497,17 +497,6 @@ MeetingUtil.canSelectSpokenLanguages = (displayHints) =>
 MeetingUtil.waitingForOthersToJoin = (displayHints) =>
   displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS);
 
-MeetingUtil.canEnableReactions = (originalValue, displayHints) => {
-  if (displayHints.includes(DISPLAY_HINTS.ENABLE_REACTIONS)) {
-    return true;
-  }
-  if (displayHints.includes(DISPLAY_HINTS.DISABLE_REACTIONS)) {
-    return false;
-  }
-
-  return originalValue;
-};
-
 MeetingUtil.canSendReactions = (originalValue, displayHints) => {
   if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
     return true;
