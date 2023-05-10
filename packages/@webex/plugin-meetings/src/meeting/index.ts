@@ -4019,34 +4019,11 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public usePhoneAudio(phoneNumber: string) {
-    const promise = phoneNumber ? this.dialOutPstn(phoneNumber) : this.dialInPstn();
+    if (!phoneNumber) {
+      return this.dialInPstn();
+    }
 
-    return promise
-      .then(() => {
-        LoggerProxy.logger.info(
-          `Meeting:index#usePhoneAudio --> ${
-            phoneNumber ? 'dialOutPstn' : 'dialInPstn'
-          } request completed`
-        );
-        LoggerProxy.logger.info(
-          `Meeting:index#usePhoneAudio --> removing audio track from desktop`
-        );
-
-        // removing local audio from desktop to avoid echo as phone audio is being used
-        return Media.stopTracks(this.mediaProperties.audioTrack);
-      })
-      .then(() => {
-        // removing remote audio from desktop to avoid echo as phone audio is being used
-        return Media.stopTracks(this.mediaProperties.remoteAudioTrack);
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error(
-          'Meeting:index#usePhoneAudio --> Failed to move audio to phone',
-          error
-        );
-
-        return Promise.reject(error);
-      });
+    return this.dialOutPstn(phoneNumber);
   }
 
   /**
