@@ -133,7 +133,7 @@ describe('plugin-meetings', () => {
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
-        
+
         assert.calledOnceWithExactly(handler);
 
         breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
@@ -258,6 +258,16 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
       });
+
+      it('update the startTime correctly when no attribute startTime exists on params', () => {
+        breakouts.updateBreakout({
+          startTime: "startTime"
+        })
+        assert.equal(breakouts.startTime, 'startTime');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.startTime, undefined);
+      })
 
       it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
         breakouts.webex.meetings = {
