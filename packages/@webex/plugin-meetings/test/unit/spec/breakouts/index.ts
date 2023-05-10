@@ -1353,7 +1353,7 @@ describe('plugin-meetings', () => {
       }
       it('should trigger ASK_RETURN_TO_MAIN event correctly', () => {
         const breakout = {
-          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          isMain: true,
           requested: true
         };
         checkTrigger({breakout, shouldTrigger: true})
@@ -1361,7 +1361,7 @@ describe('plugin-meetings', () => {
 
       it('should not trigger ASK_RETURN_TO_MAIN event when sessionType is not MAIN', () => {
         const breakout = {
-          sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+          isMain: false,
           requested: true
         };
         checkTrigger({breakout, shouldTrigger: false});
@@ -1369,7 +1369,7 @@ describe('plugin-meetings', () => {
 
       it('should not trigger ASK_RETURN_TO_MAIN event when session is not requested', () => {
         const breakout = {
-          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          isMain: true,
           requested: false
         };
         checkTrigger({breakout, shouldTrigger: false})

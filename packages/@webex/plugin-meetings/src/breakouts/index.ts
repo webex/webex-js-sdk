@@ -782,7 +782,7 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   triggerReturnToMainEvent(breakout) {
-    if (breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN && breakout.requested) {
+    if (breakout.isMain && breakout.requested) {
       this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
     }
   },
