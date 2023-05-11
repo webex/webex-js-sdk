@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.96](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.95...v3.0.0-beta.96) (2023-05-11)
+
+
+### Bug Fixes
+
+* **CA:** fix call analyzer event relative issues ([#2796](https://github.com/webex/webex-js-sdk/issues/2796)) ([add75bc](https://github.com/webex/webex-js-sdk/commit/add75bcfbe90ac1032368e2fa30abebcf6e4c9c0))
+
 ## [3.0.0-beta.95](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.94...v3.0.0-beta.95) (2023-05-11)
 
 
