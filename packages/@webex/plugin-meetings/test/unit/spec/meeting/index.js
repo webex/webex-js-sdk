@@ -7,7 +7,7 @@ import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert} from '@webex/test-helper-chai';
-import {Credentials} from '@webex/webex-core';
+import {Credentials, Token} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {
@@ -19,6 +19,7 @@ import {
   EVENT_TRIGGERS,
   _SIP_URI_,
   _MEETING_ID_,
+  MEETING_REMOVED_REASON,
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
   DISPLAY_HINTS,
@@ -180,7 +181,7 @@ describe('plugin-meetings', () => {
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id',
+          client_id: 'mock-client-id'
         },
         meetings: {
           reconnection: {
@@ -1676,7 +1677,21 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
+            deviceUrl: meeting.deviceUrl
+          });
+        });
+        it('should leave the meeting on the resource with reason', async () => {
+          const leave = meeting.leave({resourceId: meeting.resourceId, reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST});
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(meeting.meetingRequest.leaveMeeting, {
+            locusUrl: meeting.locusUrl,
+            correlationId: meeting.correlationId,
+            selfId: meeting.selfId,
+            resourceId: meeting.resourceId,
             deviceUrl: meeting.deviceUrl,
+            reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST
           });
         });
       });
