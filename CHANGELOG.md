@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.94](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.93...v3.0.0-beta.94) (2023-05-10)
+
+
+### Features
+
+* **breakout:** move Call Analyzer refactor ([#2781](https://github.com/webex/webex-js-sdk/issues/2781)) ([c21f531](https://github.com/webex/webex-js-sdk/commit/c21f531f74bb9490bf332e200b3c448f2d1f5c06))
+
+## [3.0.0-beta.93](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.92...v3.0.0-beta.93) (2023-05-09)
+
+
+### Bug Fixes
+
+* **breakouts:** update startTime issue ([#2798](https://github.com/webex/webex-js-sdk/issues/2798)) ([e12cf18](https://github.com/webex/webex-js-sdk/commit/e12cf18b478333fc051c04b751b63293a73cf2af))
+
 ## [3.0.0-beta.92](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.91...v3.0.0-beta.92) (2023-05-08)
 
 

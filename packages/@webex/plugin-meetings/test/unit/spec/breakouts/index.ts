@@ -6,6 +6,9 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
+import breakoutEvent from "../../../../src/breakouts/events";
+import SelfUtils from "../../../../src/locus-info/selfUtils";
+import { self } from "../locus-info/selfConstant";
 
 const getBOResponse = (status: string) => {
   return {
@@ -94,6 +97,8 @@ describe('plugin-meetings', () => {
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+      webex.meetings = {};
+      webex.meetings.getMeetingByType = sinon.stub();
     });
 
     describe('#initialize', () => {
@@ -130,7 +135,7 @@ describe('plugin-meetings', () => {
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
-        
+
         assert.calledOnceWithExactly(handler);
 
         breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
@@ -254,6 +259,71 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assigned, false);
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
+      });
+
+      it('update the startTime correctly when no attribute startTime exists on params', () => {
+        breakouts.updateBreakout({
+          startTime: "startTime"
+        })
+        assert.equal(breakouts.startTime, 'startTime');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.startTime, undefined);
+      })
+
+      it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId-old";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId-new',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.calledOnce(breakoutEvent.onBreakoutJoinResponse);
+
+      });
+
+      it('updates the current breakout session, not call onBreakoutJoinResponse when session no changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId";
+        breakouts.currentBreakoutSession.groupId = "groupId";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.notCalled(breakoutEvent.onBreakoutJoinResponse);
+
       });
     });
 
@@ -1343,7 +1413,7 @@ describe('plugin-meetings', () => {
           })
         );
         breakouts.shouldFetchPreassignments = false;
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
         assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
@@ -1374,7 +1444,7 @@ describe('plugin-meetings', () => {
         };
         webex.request.rejects(response);
         LoggerProxy.logger.error = sinon.stub();
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         await testUtils.flushPromises();
         assert.calledOnceWithExactly(
           LoggerProxy.logger.error,
@@ -1382,6 +1452,21 @@ describe('plugin-meetings', () => {
           response
         );
       });
+
+      it('fail when no correct params',  () => {
+
+        assert.deepEqual(breakouts.queryPreAssignments(undefined), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({}), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: true, hasBreakoutPreAssignments: false }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: true }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: false }), undefined);
+
+      });
+
     });
 
     describe('#dynamicAssign', () => {
