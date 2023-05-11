@@ -67,30 +67,22 @@ describe('webex-core', () => {
         credentials = new Credentials(undefined, {parent: webex});
       });
 
-      // it('should have #isUnverifiedGuest', () => {
-      //   assert.exists(credentials.isUnverifiedGuest);
-      // });
+      it('should have #isUnverifiedGuest', () => {
+        assert.exists(credentials.isUnverifiedGuest);
+      });
 
       it('should get the user status and return as a boolean', () => {
-        credentials = new Credentials({supertoken: 'AT'}, {parent: webex});
+        credentials.set('supertoken', 'AT');
         assert.isFalse(credentials.isUnverifiedGuest);
       });
 
       it('should get guest user ', () => {
-        credentials = new Credentials(
-          {supertoken: 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX3R5cGUiOiJndWVzdCJ9'},
-          {parent: webex}
-        );
+        credentials.set('supertoken', 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX3R5cGUiOiJndWVzdCJ9');
         assert.isTrue(credentials.isUnverifiedGuest);
       });
 
       it('should get login user ', () => {
-        credentials = new Credentials(
-          {
-            supertoken: 'dGhpc2lzbm90YXJlYWx1c2VydG9rZW4=',
-          },
-          {parent: webex}
-        );
+        credentials.set('supertoken', 'dGhpc2lzbm90YXJlYWx1c2VydG9rZW4=');
         assert.isFalse(credentials.isUnverifiedGuest);
       });
     });
