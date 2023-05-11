@@ -111,6 +111,7 @@ const Breakouts = WebexPlugin.extend({
     this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    this.listenToBreakoutHelp();
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -231,6 +232,19 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.webex.internal.mercury, 'event:breakout.roster', (event) => {
       this.handleRosterUpdate(event.data.locus);
       this.trigger(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
+    });
+  },
+
+  /**
+   * Sets up a listener for ask help notify from mecury
+   * @returns {void}
+   */
+  listenToBreakoutHelp() {
+    this.listenTo(this.webex.internal.mercury, 'event:breakout.help', (event) => {
+      const {
+        data: {participant, sessionId},
+      } = event;
+      this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
     });
   },
 

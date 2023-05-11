@@ -221,6 +221,33 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#listenToBreakoutHelp', () => {
+      it('triggers ask for help event when a help received', () => {
+        const call = webex.internal.mercury.on.getCall(1);
+        const callback = call.args[1];
+
+        assert.equal(call.args[0], 'event:breakout.help');
+
+        let data;
+
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_FOR_HELP, (eventData) => {
+          data = eventData;
+        });
+
+        callback({
+          data: {
+            participant: 'participant',
+            sessionId: 'sessionId'
+          },
+        });
+
+        assert.deepEqual(data, {
+          participant: 'participant',
+          sessionId: 'sessionId',
+        });
+      });
+    });
+
     describe('#updateBreakout', () => {
       it('updates the current breakout session', () => {
         breakouts.updateBreakout({
