@@ -1614,5 +1614,223 @@ describe('plugin-meetings', () => {
         assert.equal(result, false);
       });
     });
+
+    describe('#getCorrespondingMeetingByLocus', () => {
+      let locus;
+      let mockReturnMeeting = {meeting: 'meeting1'};
+      const mockGetByKey = (keyWillReturnMeeting) => {
+        webex.meetings.meetingCollection.getByKey = sinon.stub().callsFake((key) => {
+          if (key === keyWillReturnMeeting) {
+            return mockReturnMeeting;
+          }
+          return null;
+        });
+      };
+
+      beforeEach(() => {
+        locus = {
+          controls: {},
+          self: {
+            callbackInfo: {
+              callbackAddress: 'address1',
+            }
+          },
+          info: {
+            webExMeetingId: '123456',
+            isUnifiedSpaceMeeting: false,
+          },
+          conversationUrl: 'conversationUrl1'
+        };
+
+        sinon.stub(MeetingsUtil, 'checkForCorrelationId').returns('correlationId1');
+      });
+      afterEach(() => {
+        sinon.restore();
+      });
+      it('check the calls when no meeting found in meetingCollection', () => {
+        mockGetByKey();
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.isNull(result);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', 'correlationId1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'conversationUrl', 'conversationUrl1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', '123456');
+      });
+
+      it('not try getByKey "conversationUrl" when isUnifiedSpaceMeeting is true', () => {
+        mockGetByKey();
+        locus.info.isUnifiedSpaceMeeting = true;
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.isNull(result);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+      })
+
+      it('check the calls when meeting found by key: locusUrl', () => {
+        mockGetByKey('locusUrl');
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.deepEqual(result, mockReturnMeeting);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+      });
+
+      it('check the calls when meeting found by key: correlationId', () => {
+        mockGetByKey('correlationId');
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.deepEqual(result, mockReturnMeeting);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 2);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', 'correlationId1');
+      });
+
+      it('check the calls when meeting found by key: sipUri', () => {
+        mockGetByKey('sipUri');
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.deepEqual(result, mockReturnMeeting);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 3);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', 'correlationId1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+      });
+
+      it('check the calls when meeting found by key: conversationUrl', () => {
+        mockGetByKey('conversationUrl');
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.deepEqual(result, mockReturnMeeting);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', 'correlationId1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'conversationUrl', 'conversationUrl1');
+      });
+
+      it('check the calls when meeting found by key: meetingNumber', () => {
+        mockGetByKey('meetingNumber');
+        const result = webex.meetings.getCorrespondingMeetingByLocus({locus, locusUrl: url1});
+        assert.deepEqual(result, mockReturnMeeting);
+        assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', 'correlationId1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'conversationUrl', 'conversationUrl1');
+        assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', '123456');
+      });
+    });
+
+    describe('#sortLocusArrayToUpdate', () => {
+      let lociArray;
+      let mainLocus;
+      let breakoutLocus;
+      beforeEach(() => {
+        mainLocus = {
+          url: 'mainUrl1',
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+              url: 'breakoutUnifiedUrl1'
+            }
+          }
+        };
+        breakoutLocus = {
+          url: 'breakoutUrl1',
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+              url: 'breakoutUnifiedUrl1'
+            }
+          }
+        };
+        lociArray = [mainLocus, breakoutLocus];
+
+        sinon.stub(MeetingsUtil, 'isValidBreakoutLocus').callsFake((locus) => {
+          return locus.url === 'breakoutUrl1';
+        });
+      });
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('if both main and breakout locus is in array for non-exist meeting, return main locus to create first', () => {
+        webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+        const result = webex.meetings.sortLocusArrayToUpdate(lociArray);
+        assert.deepEqual(result, [mainLocus]);
+        assert.deepEqual(webex.meetings.breakoutLocusForHandleLater, [breakoutLocus]);
+      });
+
+      it('if both main and breakout locus is in array for an exist meeting, return all locus', () => {
+        webex.meetings.meetingCollection.getByKey = sinon.stub().returns({});
+        const result = webex.meetings.sortLocusArrayToUpdate(lociArray);
+        assert.deepEqual(result, [mainLocus, breakoutLocus]);
+        assert.deepEqual(webex.meetings.breakoutLocusForHandleLater, []);
+      });
+
+      it('if the breakout locus has no associated main locus, return all', () => {
+        webex.meetings.meetingCollection.getByKey = sinon.stub().returns({});
+        breakoutLocus.controls.breakout.url = 'testUrl';
+        const result = webex.meetings.sortLocusArrayToUpdate(lociArray);
+        assert.deepEqual(result, [mainLocus, breakoutLocus]);
+      });
+    });
+
+    describe('#checkHandleBreakoutLocus', () => {
+      let breakoutLocus;
+      beforeEach(() => {
+        breakoutLocus = {
+          url: 'breakoutUrl1',
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+              url: 'breakoutUnifiedUrl1',
+            }
+          }
+        };
+
+        webex.meetings.handleLocusEvent = sinon.stub();
+      });
+      afterEach(() => {
+        sinon.restore();
+      });
+      it('do nothing if new created locus is null/no cached breakouts for updating', () => {
+        webex.meetings.checkHandleBreakoutLocus(null);
+        webex.meetings.breakoutLocusForHandleLater = null;
+        webex.meetings.checkHandleBreakoutLocus({});
+        webex.meetings.breakoutLocusForHandleLater = [];
+        webex.meetings.checkHandleBreakoutLocus({});
+        assert.notCalled(webex.meetings.handleLocusEvent);
+      });
+
+      it('do nothing if new created locus is breakout locus', () => {
+        webex.meetings.breakoutLocusForHandleLater = [breakoutLocus];
+        webex.meetings.checkHandleBreakoutLocus(breakoutLocus);
+        assert.notCalled(webex.meetings.handleLocusEvent);
+      });
+
+      it('do nothing if no cached locus is associated with the new created locus', () => {
+        webex.meetings.breakoutLocusForHandleLater = [breakoutLocus];
+        webex.meetings.checkHandleBreakoutLocus({
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+              url: 'breakoutUnifiedUrl2',
+            }
+          }
+        });
+        assert.notCalled(webex.meetings.handleLocusEvent);
+      });
+
+      it('update the cached breakout locus which associate the new created locus', () => {
+        webex.meetings.breakoutLocusForHandleLater = [breakoutLocus];
+        webex.meetings.checkHandleBreakoutLocus({
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+              url: 'breakoutUnifiedUrl1',
+            }
+          }
+        });
+        assert.calledWith(webex.meetings.handleLocusEvent, {locus: breakoutLocus, locusUrl: breakoutLocus.url});
+      });
+    });
   });
 });

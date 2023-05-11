@@ -152,4 +152,62 @@ describe('plugin-meetings', () => {
       });
     });
   });
+
+  describe('#isValidBreakoutLocus', () => {
+    it('returns false if is not breakout locus', () => {
+      const newLocus = {
+        controls: {}
+      };
+
+      assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
+    });
+
+    it('returns false if fullState is inactive', () => {
+      const newLocus = {
+        controls: {
+          breakout: {
+            sessionType: 'BREAKOUT',
+          },
+        },
+        fullState: {
+          state: 'INACTIVE'
+        }
+      };
+      assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
+    });
+
+    it('returns false if self is not joined', () => {
+      const newLocus = {
+        controls: {
+          breakout: {
+            sessionType: 'BREAKOUT',
+          },
+        },
+        fullState: {
+          state: 'ACTIVE'
+        },
+        self: {
+          state: 'LEFT'
+        }
+      };
+      assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
+    });
+
+    it('returns true if self is JOINED and fullState is active', () => {
+      const newLocus = {
+        controls: {
+          breakout: {
+            sessionType: 'BREAKOUT',
+          },
+        },
+        fullState: {
+          state: 'ACTIVE'
+        },
+        self: {
+          state: 'JOINED'
+        }
+      };
+      assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), true);
+    });
+  });
 });
