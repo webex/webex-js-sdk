@@ -2995,6 +2995,7 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
         const FAKE_INSTALLED_ORG_ID = '123456';
+        const FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -3028,6 +3029,7 @@ describe('plugin-meetings', () => {
           await meeting.fetchMeetingInfo({
             password: FAKE_PASSWORD,
             captchaCode: FAKE_CAPTCHA_CODE,
+            extraParams: FAKE_EXTRA_PARAMS,
           });
 
           assert.calledWith(
@@ -3036,7 +3038,9 @@ describe('plugin-meetings', () => {
             FAKE_TYPE,
             FAKE_PASSWORD,
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
-            FAKE_INSTALLED_ORG_ID
+            FAKE_INSTALLED_ORG_ID,
+            meeting.locusId,
+            FAKE_EXTRA_PARAMS
           );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
@@ -3078,7 +3082,10 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            meeting.locusId,
+            {}
           );
 
           // parseMeeting info

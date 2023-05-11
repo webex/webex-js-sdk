@@ -223,6 +223,7 @@ export default class MeetingInfoV2 {
    * @param {String} captchaInfo.id
    * @param {String} installedOrgID
    * @param {String} locusId
+   * @param {Object} extraParams
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -236,7 +237,8 @@ export default class MeetingInfoV2 {
       id: string;
     } = null,
     installedOrgID = null,
-    locusId = null
+    locusId = null,
+    extraParams = {}
   ) {
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -258,6 +260,7 @@ export default class MeetingInfoV2 {
       captchaInfo,
       installedOrgID,
       locusId,
+      extraParams,
     });
 
     // If the body only contains the default properties, we don't have enough to

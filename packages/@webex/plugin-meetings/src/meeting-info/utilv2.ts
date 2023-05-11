@@ -1,3 +1,4 @@
+import {pickBy} from 'lodash';
 import url from 'url';
 
 import {
@@ -218,6 +219,15 @@ MeetingInfoUtil.getDestinationType = async (from) => {
 };
 
 /**
+ * Predicate function to be used when filtering request params.
+ * Currently this simply checks for truthy values but in future could restrict keys and values.
+ * @param {Any} value the request param value
+ * @param {String} key the request param key
+ * @returns {Boolean} if the key and value are valid as a request param
+ */
+MeetingInfoUtil.isValidRequestParam = (value: any, key: string): boolean => !!(key && value);
+
+/**
  * Helper function to build up a correct locus url depending on the value passed
  * @param {Object} options type and value to fetch meeting info
  * @param {String} options.type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
@@ -225,8 +235,11 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo, installedOrgID, locusId} = options;
-  const body: any = {...DEFAULT_MEETING_INFO_REQUEST_BODY};
+  const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} = options;
+  const body: any = {
+    ...DEFAULT_MEETING_INFO_REQUEST_BODY,
+    ...pickBy(extraParams, MeetingInfoUtil.isValidRequestParam),
+  };
 
   switch (type) {
     case _SIP_URI_:
