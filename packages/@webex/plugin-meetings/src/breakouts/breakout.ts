@@ -30,6 +30,7 @@ const Breakout = WebexPlugin.extend({
     sessionType: 'string',
     groupId: 'string',
     url: 'string', // where to send requests to
+    requestedLastModifiedTime: 'string',
   },
 
   derived: {
