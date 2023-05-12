@@ -105,12 +105,17 @@ const Breakouts = WebexPlugin.extend({
       leading: true,
       trailing: false,
     });
-    this.listenTo(this.breakouts, 'add', () => {
+    this.listenTo(this.breakouts, 'add', (breakout) => {
       this.debouncedQueryRosters();
+      this.triggerReturnToMainEvent(breakout);
+    });
+    this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
+      this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    this.listenToBreakoutHelp();
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -235,6 +240,19 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Sets up a listener for ask help notify from mecury
+   * @returns {void}
+   */
+  listenToBreakoutHelp() {
+    this.listenTo(this.webex.internal.mercury, 'event:breakout.help', (event) => {
+      const {
+        data: {participant, sessionId},
+      } = event;
+      this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
+    });
+  },
+
+  /**
    * Updates the information about the current breakout
    * @param {Object} params
    * @returns {void}
@@ -302,6 +320,10 @@ const Breakouts = WebexPlugin.extend({
           }
 
           breakouts[sessionId][state] = true;
+
+          if (state === BREAKOUTS.SESSION_STATES.REQUESTED) {
+            breakouts[sessionId].requestedLastModifiedTime = breakout.modifiedAt;
+          }
         });
       });
     }
@@ -312,10 +334,6 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
-
-    if (this.allowBackToMain && this.getMainSession().requested) {
-      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
-    }
   },
   /**
    * get main session
@@ -786,6 +804,16 @@ const Breakouts = WebexPlugin.extend({
       uri: `${this.url}/dynamicAssign`,
       body,
     });
+  },
+  /**
+   * trigger ASK_RETURN_TO_MAIN event when main session requested
+   * @param {Object} breakout
+   * @returns {void}
+   */
+  triggerReturnToMainEvent(breakout) {
+    if (breakout.isMain && breakout.requested) {
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+    }
   },
 });
 

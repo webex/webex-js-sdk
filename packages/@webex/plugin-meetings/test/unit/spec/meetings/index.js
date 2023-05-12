@@ -1832,5 +1832,59 @@ describe('plugin-meetings', () => {
         assert.calledWith(webex.meetings.handleLocusEvent, {locus: breakoutLocus, locusUrl: breakoutLocus.url});
       });
     });
+
+    describe('#getAnalyzerMetricsPrePayload', () => {
+      it('userType & userLogin & environment testing for CA data', async () => {
+        const FAKE_LOCUS_MEETING = {
+          conversationUrl: 'locusConvURL',
+          url: 'locusUrl',
+          info: {
+            webExMeetingId: 'locusMeetingId',
+            sipUri: 'locusSipUri',
+            owner: 'locusOwner',
+          },
+          meeting: {
+            startTime: "",
+          },
+          fullState: {
+            active: false,
+          },
+        };
+
+        const meeting = await webex.meetings.createMeeting(
+          FAKE_LOCUS_MEETING,
+          'test type',
+          true
+        );
+        meeting.roles = ['MODERATOR','COHOST','ATTENDEE'];
+        meeting.guest = true;
+        const options = {
+          event: 'event',
+          trackingId: 'trackingId',
+          locus: {},
+          mediaConnections: null,
+          errors: {}
+        };
+        webex.internal.services.get = sinon.stub();
+        webex.canAuthorize = true;
+        webex.credentials = {isUnverifiedGuest: true};
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.userType, 'host');
+        assert.equal(options.loginType, 'unverified-guest');
+        meeting.roles = ['COHOST','ATTENDEE'];
+        meeting.guest = false;
+        webex.canAuthorize = true;
+        webex.credentials = {isUnverifiedGuest: false};
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.userType, 'cohost');
+        assert.equal(options.loginType, 'login-ci');
+        meeting.roles = ['ATTENDEE'];
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.userType, 'attendee');
+        meeting.environment = "prod";
+        meeting.getAnalyzerMetricsPrePayload(options);
+        assert.equal(options.environment, 'prod');
+      });
+    });
   });
 });
