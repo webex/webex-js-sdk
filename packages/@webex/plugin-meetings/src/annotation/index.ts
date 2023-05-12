@@ -28,7 +28,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   approvalUrl: string;
   locusUrl: string;
-  annotationStatus: string;
   deviceUrl: string;
 
   /**
@@ -65,7 +64,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {Object} e
    * @returns {undefined}
    */
-  private eventCommandProcessor = (e) => {
+  private eventCommandProcessor(e) {
     if (
       e?.data?.eventType === 'locus.approval_request' &&
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
@@ -85,13 +84,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       );
       this.seqNum = (e?.sequenceNumber || 0) + 1;
     }
-  };
+  }
 
   /** bind all events from llm
    * @param {Object} e
    * @returns {undefined}
    */
-  private eventDataProcessor = (e) => {
+  private eventDataProcessor(e) {
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
         this.seqNum = (e?.sequenceNumber || 0) + 1;
@@ -100,7 +99,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       default:
         break;
     }
-  };
+  }
 
   /**
    * Listen to websocket messages
@@ -109,9 +108,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   private listenToEvents() {
     if (!this.hasSubscribedToEvents) {
       // @ts-ignore
-      this.webex.internal.mercury.on('event:locus', this.eventCommandProcessor);
+      this.webex.internal.mercury.on(
+        'event:locus.approval_request',
+        this.eventCommandProcessor,
+        this
+      );
       // @ts-ignore
-      this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor);
+      this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
       this.hasSubscribedToEvents = true;
     }
   }
@@ -181,10 +184,22 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   /**
    * cancel approved annotation
    * @param {object} requestData
+   * @param {object} approval
    * @returns {Promise}
    */
-  public cancelApproveAnnotation(requestData: RequestData) {
-    return this.sendAnnotationAction(ANNOTATION_ACTION_TYPE.CANCELED, requestData);
+  public cancelApproveAnnotation(requestData: RequestData, approval) {
+    const body: CommandRequestBody = {
+      actionType: ANNOTATION_ACTION_TYPE.CANCELED,
+      resourceType: 'AnnotationOnShare',
+      shareInstanceId: requestData.shareInstanceId,
+    };
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      url: `${approval.url}`,
+      body,
+    });
   }
 
   /**
@@ -263,6 +278,16 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       }
     );
   };
+
+  /**
+   * Change annotation options
+   * @param {any} options
+   * @param {any} meeting
+   * @returns {any}
+   */
+  public changeAnnotationOptions(options, meeting) {
+    return meeting?.meetingRequest.changeMeetingFloor(options);
+  }
 
   /**
    * private encrypted the strokes data

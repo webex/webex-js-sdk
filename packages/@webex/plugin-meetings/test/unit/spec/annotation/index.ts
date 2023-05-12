@@ -167,11 +167,11 @@ describe('live-annotation', () => {
 
       it('listens to mercury events once', () => {
 
-        const spy = sinon.spy(webex.internal.mercury, 'on');
+        const spy = sinon.spy(annotationService.webex.internal.mercury, 'on');
 
         annotationService.listenToEvents();
 
-        assert.calledOnceWithExactly(spy, 'event:locus', sinon.match.func);
+        assert.calledOnceWithExactly(spy, 'event:locus.approval_request', sinon.match.func,sinon.match.object);
       });
 
       it('listens to llm events once', () => {
@@ -180,7 +180,7 @@ describe('live-annotation', () => {
 
         annotationService.listenToEvents();
 
-        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func);
+        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func,sinon.match.object);
       });
 
     });
@@ -238,7 +238,7 @@ describe('live-annotation', () => {
                 "curvePoints": [592.593, 352.963, 3.400, 596.710, 352.963, 3.400, 600.000, 352.963, 3.398, 600.000, 352.963, 3.398],
                 "stride": 3
               }], "type": "curve", "name": "contentUpdate"
-            }], "action": "contentUpdate", "sender": {"name": "perfectt", "id": "4dd5eaf9-4cf8-4f0f-a1d6-014bf5d00741"}
+            }], "action": "contentUpdate", "sender": {"name": "perfect", "id": "4dd5eaf9-4cf8-4f0f-a1d6-014bf5d00741"}
           },
           fromUserId: "525ead98-6c93-4fcb-899d-517305c47503",
           fromDeviceUrl: "https://wdm.wbx2.com/wdm/api/v1/devices/0bbecbf8-59ac-410a-b906-b310d1a50867",
@@ -324,20 +324,17 @@ describe('live-annotation', () => {
               toDeviceUrl: 'https://wdm-a.wbx2.com/wdm/api/v1/devices/a3018aa9-70cb-4142-ae9a-f03db4fe1057',
               shareInstanceId: '9428c492-da14-476f-a36c-b377ee8c4009',
             };
+          const approval = {url:"url/cancel"};
 
 
-          const result = await annotationService.cancelApproveAnnotation(requestData);
+          const result = await annotationService.cancelApproveAnnotation(requestData,approval);
           assert.calledOnceWithExactly(webex.request, {
-            method: 'POST',
-            url: 'url/approval',
+            method: 'PUT',
+            url: 'url/cancel',
             body: {
               actionType: 'CANCELED',
               resourceType: 'AnnotationOnShare',
               shareInstanceId: '9428c492-da14-476f-a36c-b377ee8c4009',
-              receivers: [{
-                participantId: '4dd5eaf9-4cf8-4f0f-a1d6-014bf5d00741',
-                deviceUrl: 'https://wdm-a.wbx2.com/wdm/api/v1/devices/a3018aa9-70cb-4142-ae9a-f03db4fe1057'
-              }],
             }
           });
 
@@ -345,8 +342,27 @@ describe('live-annotation', () => {
         });
       });
 
+      describe('change annotation options', () => {
+        it('makes change annotation options as expected', () => {
+          const options =  {
+              version: '1',
+              policy: 'AnnotationNotAllowed',
+          };
+          const meeting = {
+            meetingRequest : {
+              changeMeetingFloor: () => {
+              }
+            }
+          }
+          sinon.spy(meeting.meetingRequest, 'changeMeetingFloor');
+          annotationService.changeAnnotationOptions(options,meeting);
+          assert.calledOnceWithExactly(meeting.meetingRequest.changeMeetingFloor, options);
+        });
+      });
 
-      describe('# close annotation', () => {
+
+
+      describe('close annotation', () => {
         it('makes the close annotation as expected', async () => {
           const
             requestData = {
@@ -395,7 +411,7 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('# accept annotation', () => {
+      describe('accept annotation', () => {
         it('makes the accepted annotation as expected', async () => {
           const approval = {
             url: 'approvalUrl'
@@ -413,7 +429,6 @@ describe('live-annotation', () => {
           assert.equal(result, 'REQUEST_RETURN_VALUE')
         });
       });
-
     });
   });
 
