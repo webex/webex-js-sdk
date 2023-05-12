@@ -2,6 +2,7 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
@@ -62,6 +63,7 @@ import {
   _JOIN_,
   AUDIO,
   CONTENT,
+  DISPLAY_HINTS,
   ENDED,
   EVENT_TRIGGERS,
   EVENT_TYPES,
@@ -90,6 +92,7 @@ import {
   VIDEO_RESOLUTIONS,
   VIDEO,
   HTTP_VERBS,
+  SELF_ROLES,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -508,12 +511,12 @@ export default class Meeting extends StatelessWebexPlugin {
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
   updateMediaConnections: (mediaConnections: any[]) => void;
-  endCallInitiateJoinReq: any;
+  endCallInitJoinReq: any;
   endJoinReqResp: any;
   endLocalSDPGenRemoteSDPRecvDelay: any;
   joinedWith: any;
   locusId: any;
-  startCallInitiateJoinReq: any;
+  startCallInitJoinReq: any;
   startJoinReqResp: any;
   startLocalSDPGenRemoteSDPRecvDelay: any;
   wirelessShare: any;
@@ -528,8 +531,8 @@ export default class Meeting extends StatelessWebexPlugin {
   state: any;
   localAudioTrackMuteStateHandler: (event: TrackMuteEvent) => void;
   localVideoTrackMuteStateHandler: (event: TrackMuteEvent) => void;
-  webexMeetingId: string;
-
+  roles: any[];
+  environment: string;
   namespace = MEETINGS;
 
   /**
@@ -1481,6 +1484,18 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
       );
     });
+
+    this.breakouts.on(BREAKOUTS.EVENTS.ASK_FOR_HELP, (helpEvent) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpBreakoutsListener',
+        },
+        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+        helpEvent
+      );
+    });
   }
 
   /**
@@ -1696,12 +1711,12 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const callInitiateJoinReq = this.getCallInitiateJoinReq();
+      const callInitJoinReq = this.getCallInitJoinReq();
 
-      if (callInitiateJoinReq) {
+      if (callInitJoinReq) {
         options.joinTimes = {
           ...options.joinTimes,
-          callInitiateJoinReq,
+          callInitJoinReq,
         };
       }
 
@@ -1714,13 +1729,29 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const getTotalJmt = this.getTotalJmt();
+      const totalJmt = this.getTotalJmt();
 
-      if (getTotalJmt) {
+      if (totalJmt) {
         options.joinTimes = {
           ...options.joinTimes,
-          getTotalJmt,
+          totalJmt,
         };
+      }
+
+      const curUserType = this.getCurUserType();
+
+      if (curUserType) {
+        options.userType = curUserType;
+      }
+
+      const curLoginType = this.getCurLoginType();
+
+      if (curLoginType) {
+        options.loginType = curLoginType;
+      }
+
+      if (this.environment) {
+        options.environment = this.environment;
       }
 
       if (options.type === MQA_STATS.CA_TYPE) {
@@ -2430,10 +2461,6 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(payload.info.userDisplayHints),
-          canEnableReactions: MeetingUtil.canEnableReactions(
-            this.inMeetingActions.canEnableReactions,
-            payload.info.userDisplayHints
-          ),
           canSendReactions: MeetingUtil.canSendReactions(
             this.inMeetingActions.canSendReactions,
             payload.info.userDisplayHints
@@ -2450,6 +2477,58 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canUserRenameOthers: MeetingUtil.canUserRenameOthers(payload.info.userDisplayHints),
+          canMuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canUnmuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canUpdateShareControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -3047,6 +3126,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
+      // Need to populate environment when sending CA event
+      this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
   }
 
@@ -6086,13 +6167,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
     Metrics.postEvent({
       event: eventType.LEAVE,
       meeting: this,
-      data: {trigger: trigger.USER_INTERACTION, canProceed: false},
+      data: {trigger: trigger.USER_INTERACTION, canProceed: false, reason: leaveReason},
     });
-    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
-
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
@@ -7020,7 +7100,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endLocalSDPGenRemoteSDPRecvDelay;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -7032,26 +7112,26 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {undefined}
    */
-  setStartCallInitiateJoinReq() {
-    this.startCallInitiateJoinReq = performance.now();
-    this.endCallInitiateJoinReq = undefined;
+  setStartCallInitJoinReq() {
+    this.startCallInitJoinReq = performance.now();
+    this.endCallInitJoinReq = undefined;
   }
 
   /**
    *
    * @returns {undefined}
    */
-  setEndCallInitiateJoinReq() {
-    this.endCallInitiateJoinReq = performance.now();
+  setEndCallInitJoinReq() {
+    this.endCallInitJoinReq = performance.now();
   }
 
   /**
    *
    * @returns {string} duration between call initiate and sending join request to locus
    */
-  getCallInitiateJoinReq() {
-    const start = this.startCallInitiateJoinReq;
-    const end = this.endCallInitiateJoinReq;
+  getCallInitJoinReq() {
+    const start = this.startCallInitJoinReq;
+    const end = this.endCallInitJoinReq;
 
     if (start && end) {
       const calculatedDelay = end - start;
@@ -7088,7 +7168,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endJoinReqResp;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -7101,10 +7181,45 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string} duration between call initiate and successful locus join (even if it is in lobby)
    */
   getTotalJmt() {
-    const start = this.startCallInitiateJoinReq;
+    const start = this.startCallInitJoinReq;
     const end = this.endJoinReqResp;
 
-    return start && end ? end - start : undefined;
+    return start && end ? Math.round(end - start) : undefined;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'attendee','host','cohost', returns the user type of the current user
+   */
+  getCurUserType() {
+    const {roles} = this;
+    if (roles) {
+      if (roles.includes(SELF_ROLES.MODERATOR)) {
+        return 'host';
+      }
+      if (roles.includes(SELF_ROLES.COHOST)) {
+        return 'cohost';
+      }
+      if (roles.includes(SELF_ROLES.ATTENDEE)) {
+        return 'attendee';
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
+   */
+  getCurLoginType() {
+    // @ts-ignore
+    if (this.webex.canAuthorize) {
+      // @ts-ignore
+      return this.webex.credentials.isUnverifiedGuest ? 'unverified-guest' : 'login-ci';
+    }
+
+    return null;
   }
 
   /**

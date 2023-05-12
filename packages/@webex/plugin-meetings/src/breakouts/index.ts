@@ -5,11 +5,12 @@ import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
+import {BREAKOUTS, MEETINGS, HTTP_VERBS, _ID_} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
+import breakoutEvent from './events';
 import {boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from './utils';
 
 /**
@@ -104,12 +105,17 @@ const Breakouts = WebexPlugin.extend({
       leading: true,
       trailing: false,
     });
-    this.listenTo(this.breakouts, 'add', () => {
+    this.listenTo(this.breakouts, 'add', (breakout) => {
       this.debouncedQueryRosters();
+      this.triggerReturnToMainEvent(breakout);
+    });
+    this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
+      this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    this.listenToBreakoutHelp();
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -234,6 +240,19 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Sets up a listener for ask help notify from mecury
+   * @returns {void}
+   */
+  listenToBreakoutHelp() {
+    this.listenTo(this.webex.internal.mercury, 'event:breakout.help', (event) => {
+      const {
+        data: {participant, sessionId},
+      } = event;
+      this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
+    });
+  },
+
+  /**
    * Updates the information about the current breakout
    * @param {Object} params
    * @returns {void}
@@ -242,6 +261,7 @@ const Breakouts = WebexPlugin.extend({
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
     this.set('groups', params.groups);
+    this.set('startTime', params.startTime);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -258,12 +278,21 @@ const Breakouts = WebexPlugin.extend({
     });
 
     // We need to call queryPreAssignments when enableBreakoutSession become true
+    if (preEnableBreakoutSession !== params.enableBreakoutSession) {
+      this.queryPreAssignments(params);
+    }
+
     if (
-      params.enableBreakoutSession &&
-      params.hasBreakoutPreAssignments &&
-      preEnableBreakoutSession !== params.enableBreakoutSession
+      this.currentBreakoutSession.previous('sessionId') !== this.currentBreakoutSession.sessionId ||
+      this.currentBreakoutSession.previous('groupId') !== this.currentBreakoutSession.groupId
     ) {
-      this.queryPreAssignments();
+      // should report joined session changed
+      const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+      breakoutEvent.onBreakoutJoinResponse({
+        currentSession: this.currentBreakoutSession,
+        meeting,
+        breakoutMoveId: params.breakoutMoveId,
+      });
     }
   },
 
@@ -290,6 +319,10 @@ const Breakouts = WebexPlugin.extend({
           }
 
           breakouts[sessionId][state] = true;
+
+          if (state === BREAKOUTS.SESSION_STATES.REQUESTED) {
+            breakouts[sessionId].requestedLastModifiedTime = breakout.modifiedAt;
+          }
         });
       });
     }
@@ -300,10 +333,6 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
-
-    if (this.allowBackToMain && this.getMainSession().requested) {
-      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
-    }
   },
   /**
    * get main session
@@ -719,9 +748,13 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * The pre-assignments need to be queried when "hasBreakoutPreAssignments" is true
+   * @param {Object} params
    * @returns {void}
    */
-  queryPreAssignments() {
+  queryPreAssignments(params) {
+    if (!params || !params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
+      return;
+    }
     if (!this.shouldFetchPreassignments) {
       this.webex
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
@@ -770,6 +803,16 @@ const Breakouts = WebexPlugin.extend({
       uri: `${this.url}/dynamicAssign`,
       body,
     });
+  },
+  /**
+   * trigger ASK_RETURN_TO_MAIN event when main session requested
+   * @param {Object} breakout
+   * @returns {void}
+   */
+  triggerReturnToMainEvent(breakout) {
+    if (breakout.isMain && breakout.requested) {
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+    }
   },
 });
 

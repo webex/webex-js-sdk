@@ -7,7 +7,7 @@ import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert} from '@webex/test-helper-chai';
-import {Credentials} from '@webex/webex-core';
+import {Credentials, Token} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {
@@ -19,8 +19,10 @@ import {
   EVENT_TRIGGERS,
   _SIP_URI_,
   _MEETING_ID_,
+  MEETING_REMOVED_REASON,
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
+  DISPLAY_HINTS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -179,7 +181,7 @@ describe('plugin-meetings', () => {
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id',
+          client_id: 'mock-client-id'
         },
         meetings: {
           reconnection: {
@@ -1675,7 +1677,21 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
+            deviceUrl: meeting.deviceUrl
+          });
+        });
+        it('should leave the meeting on the resource with reason', async () => {
+          const leave = meeting.leave({resourceId: meeting.resourceId, reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST});
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(meeting.meetingRequest.leaveMeeting, {
+            locusUrl: meeting.locusUrl,
+            correlationId: meeting.correlationId,
+            selfId: meeting.selfId,
+            resourceId: meeting.resourceId,
             deviceUrl: meeting.deviceUrl,
+            reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST
           });
         });
       });
@@ -4673,6 +4689,19 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
           );
         });
+
+        it('listens to the breakout ask for help event and triggers the ask for help event', () => {
+          TriggerProxy.trigger.reset();
+          const helpEvent = {sessionId:'sessionId', participant: 'participant'}
+          meeting.breakouts.trigger('ASK_FOR_HELP', helpEvent);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+            helpEvent
+          );
+        });
       });
 
       describe('#setupLocusControlsListener', () => {
@@ -5222,10 +5251,10 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let handleDataChannelUrlChangeSpy;
-        let canEnableReactionsSpy;
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let hasHintsSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5249,7 +5278,6 @@ describe('plugin-meetings', () => {
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
-          canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
@@ -5262,6 +5290,10 @@ describe('plugin-meetings', () => {
         });
 
         it('registers the correct MEETING_INFO_UPDATED event', () => {
+          // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
+          const restorableHasHints = ControlsOptionsUtil.hasHints;
+          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5296,10 +5328,62 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
-          assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5317,6 +5401,8 @@ describe('plugin-meetings', () => {
           callback(payload);
 
           assert.notCalled(TriggerProxy.trigger);
+
+          ControlsOptionsUtil.hasHints = restorableHasHints;
         });
       });
 
