@@ -30,5 +30,8 @@
         "../packages/@webex/internal-plugin-ediscovery/src/ediscovery.js",
         "../packages/@webex/internal-plugin-encryption/src/kms.js",
         "../packages/@webex/common/test/unit/spec/one-flight.js",
+        // Calling checks
+        "../packages/calling/**/*.test.*",
+        "../packages/calling/**/*.type.*",
     ]
 }
