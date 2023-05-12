@@ -281,9 +281,9 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Change annotation options
-   * @param {object} options
-   * @param {object} meeting
-   * @returns {Promise}
+   * @param {any} options
+   * @param {any} meeting
+   * @returns {any}
    */
   public changeAnnotationOptions(options, meeting) {
     return meeting?.meetingRequest.changeMeetingFloor(options);
