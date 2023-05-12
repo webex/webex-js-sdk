@@ -31,10 +31,10 @@ const anonymizeIPAddress = (localIp) => anonymize(localIp, 28, 96);
 const triggerTimers = ({event, meeting, data}) => {
   switch (event) {
     case eventType.CALL_INITIATED:
-      meeting.setStartCallInitiateJoinReq();
+      meeting.setStartCallInitJoinReq();
       break;
     case eventType.LOCUS_JOIN_REQUEST:
-      meeting.setEndCallInitiateJoinReq();
+      meeting.setEndCallInitJoinReq();
       meeting.setStartJoinReqResp();
       break;
     case eventType.LOCUS_JOIN_RESPONSE:
@@ -189,6 +189,9 @@ class Metrics {
         name: 'endpoint',
         networkType: 'unknown',
         userAgent: this.userAgentToString(),
+        userType: options.userType,
+        loginType: options.loginType,
+        channel: options.channel,
         clientInfo: {
           clientType: options.clientType,
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,

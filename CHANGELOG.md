@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.97](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.96...v3.0.0-beta.97) (2023-05-11)
+
+
+### Bug Fixes
+
+* upgrade internal-media-core to version 1.36.1 ([#2808](https://github.com/webex/webex-js-sdk/issues/2808)) ([e9b58d6](https://github.com/webex/webex-js-sdk/commit/e9b58d6fc266da08cfc811adfaab73ebdcd8973e))
+
+## [3.0.0-beta.96](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.95...v3.0.0-beta.96) (2023-05-11)
+
+
+### Bug Fixes
+
+* **CA:** fix call analyzer event relative issues ([#2796](https://github.com/webex/webex-js-sdk/issues/2796)) ([add75bc](https://github.com/webex/webex-js-sdk/commit/add75bcfbe90ac1032368e2fa30abebcf6e4c9c0))
+
+## [3.0.0-beta.95](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.94...v3.0.0-beta.95) (2023-05-11)
+
+
+### Features
+
+* **meetings:** move COM to public ([#2802](https://github.com/webex/webex-js-sdk/issues/2802)) ([0087a53](https://github.com/webex/webex-js-sdk/commit/0087a5313a993f8743f9d28e4bd0bd992f62cf55))
+* **plugin-meetings:** handle breakout.help event from mercury ([#2797](https://github.com/webex/webex-js-sdk/issues/2797)) ([606633b](https://github.com/webex/webex-js-sdk/commit/606633b8101e771935ad53e25a26322a3ddc4361))
+
+
+### Bug Fixes
+
+* **breakouts:** trigger ask return event issue ([#2804](https://github.com/webex/webex-js-sdk/issues/2804)) ([78ac2bb](https://github.com/webex/webex-js-sdk/commit/78ac2bb7c0fd7e7510a664f8a2b9abcf40442ded))
+
 ## [3.0.0-beta.94](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.93...v3.0.0-beta.94) (2023-05-10)
 
 

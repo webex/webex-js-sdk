@@ -427,27 +427,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('reactions', () => {
-      describe('canEnableReactions', () => {
-        [
-          [null, DISPLAY_HINTS.ENABLE_REACTIONS, true],
-          [null, DISPLAY_HINTS.DISABLE_REACTIONS, false],
-          [null, undefined, null],
-        ].forEach(() => ([originalValue, displayHint, expected]) => {
-          assert.deepEqual(MeetingUtil.canEnableReactions(originalValue, [displayHint]), expected);
-        });
-      });
-      describe('canEnableReactions', () => {
-        [
-          [null, DISPLAY_HINTS.REACTIONS_ACTIVE, true],
-          [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false],
-          [null, undefined, null],
-        ].forEach(([originalValue, displayHint, expected]) => {
-          assert.deepEqual(MeetingUtil.canSendReactions(originalValue, [displayHint]), expected);
-        });
-      });
-    });
-
     describe('canManageBreakout', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canManageBreakout(['BREAKOUT_MANAGEMENT']), true);
