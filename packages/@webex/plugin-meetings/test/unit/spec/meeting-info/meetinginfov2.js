@@ -270,8 +270,7 @@ describe('plugin-meetings', () => {
 
       it('should fetch meeting info with provided extraParams', async () => {
         const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
-        const expectedExtraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
-        const extraParams = {...expectedExtraParams, '': 'some-value', someKey: ''}; // Falsey keys and values should be removed
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
         webex.request.resolves(requestResponse);
 
@@ -285,7 +284,7 @@ describe('plugin-meetings', () => {
             supportHostKey: true,
             supportCountryList: true,
             meetingKey: '1234323',
-            ...expectedExtraParams,
+            ...extraParams,
           },
         });
         assert.deepEqual(result, requestResponse);

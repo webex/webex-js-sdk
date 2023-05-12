@@ -149,34 +149,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#isValidRequestParam', () => {
-      it('returns true when the key and value are truthy', () => {
-        assert.isTrue(MeetingInfoUtil.isValidRequestParam('value', 'key'));
-      });
-
-      it('returns false when the key is falsey', () => {
-        assert.isFalse(MeetingInfoUtil.isValidRequestParam('value', ''));
-      });
-
-      it('returns false when the value is falsey', () => {
-        assert.isFalse(MeetingInfoUtil.isValidRequestParam('', 'key'));
-      });
-
-      it('returns false when the kay and value are falsey', () => {
-        assert.isFalse(MeetingInfoUtil.isValidRequestParam('', ''));
-      });
-    });
-
     describe('#getRequestBody', () => {
-      let isValidRequestParamSpy;
-
-      beforeEach(() => {
-        isValidRequestParamSpy = sinon.spy(MeetingInfoUtil, 'isValidRequestParam');
-      });
-  
-      afterEach(() => {
-        isValidRequestParamSpy.restore();
-      });
 
       it('for _PERSONAL_ROOM_', () => {
         const res = MeetingInfoUtil.getRequestBody({
@@ -249,8 +222,7 @@ describe('plugin-meetings', () => {
       });
 
       it('allows for extra params to be provided', () => {
-        const expectedExtraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
-        const extraParams = {...expectedExtraParams, '': 'some-value', someKey: ''}; // Falsey keys and values should be removed
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
         const res = MeetingInfoUtil.getRequestBody({
           type: _CONVERSATION_URL_,
@@ -264,15 +236,9 @@ describe('plugin-meetings', () => {
             conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
             supportHostKey: true,
             supportCountryList: true,
-            ...expectedExtraParams,
+            ...extraParams,
           }
         );
-
-        // isValidRequestParam should be called once per extra param
-        assert.callCount(isValidRequestParamSpy, Object.keys(extraParams).length);
-        Object.entries(extraParams).forEach(([key, value]) => {
-          assert.calledWithExactly(isValidRequestParamSpy, value, key);
-        });
       });
     });
 
