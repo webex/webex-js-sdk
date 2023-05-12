@@ -269,6 +269,16 @@ describe('plugin-meetings', () => {
 
         breakouts.updateBreakout({})
         assert.equal(breakouts.startTime, undefined);
+      });
+
+      it('update the status correctly when no attribute status exists on params', () => {
+        breakouts.updateBreakout({
+          status: 'CLOSING'
+        })
+        assert.equal(breakouts.status, 'CLOSING');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.status, undefined);
       })
 
       it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
@@ -973,6 +983,19 @@ describe('plugin-meetings', () => {
         assert.deepEqual(result, {body: getBOResponse('PENDING')});
         assert.deepEqual(breakouts.groups, result.body.groups);
         assert.equal(breakouts.breakoutGroupId, 'groupId');
+      });
+
+      it('breakoutGroupId should be empty if it is CLOSED group', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('CLOSED'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        await breakouts.getBreakout();
+
+        assert.equal(breakouts.breakoutGroupId, '');
       });
 
       it('should call keep alive when response with edit lock info', async () => {

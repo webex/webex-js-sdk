@@ -1,4 +1,4 @@
-import {isArray, isEqual, mergeWith, cloneDeep} from 'lodash';
+import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -1480,15 +1480,13 @@ export default class LocusInfo extends EventsScope {
     }
     const locusClone = cloneDeep(mainLocus);
     if (this.mainSessionLocusCache) {
-      // eslint-disable-next-line consistent-return
-      mergeWith(this.mainSessionLocusCache, locusClone, (objValue, srcValue, key) => {
-        if (isArray(objValue)) {
-          if (key === 'participants') {
-            return this.mergeParticipants(objValue, srcValue);
-          }
-
-          return srcValue; // just replace the old ones
+      // shallow merge and do special merge for participants
+      assignWith(this.mainSessionLocusCache, locusClone, (objValue, srcValue, key) => {
+        if (key === 'participants') {
+          return this.mergeParticipants(objValue, srcValue);
         }
+
+        return srcValue || objValue;
       });
     } else {
       this.mainSessionLocusCache = locusClone;

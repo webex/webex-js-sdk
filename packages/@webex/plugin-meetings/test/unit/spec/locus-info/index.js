@@ -1681,14 +1681,19 @@ describe('plugin-meetings', () => {
       let cachedLocus;
       let newLocus;
       beforeEach(() => {
-        cachedLocus = {controls: {}, participants: []};
-        newLocus = {self: {}, participants: [{id: '111'}]};
+        cachedLocus = {controls: {}, participants: [], info: {webExMeetingId: 'testId1', topic: 'test'}};
+        newLocus = {self: {}, participants: [{id: '111'}], info: {testId: 'testId2', webExMeetingName: 'hello'}};
       });
-      it('merge new locus into cache', () => {
+      it('shallow merge new locus into cache', () => {
         locusInfo.mainSessionLocusCache = cachedLocus;
         locusInfo.updateMainSessionLocusCache(newLocus);
 
-        assert.deepEqual(locusInfo.mainSessionLocusCache, {controls: {}, participants: [{id: '111'}], self: {}})
+        assert.deepEqual(locusInfo.mainSessionLocusCache, {
+          controls: {},
+          participants: [{id: '111'}],
+          info: {testId: 'testId2', webExMeetingName: 'hello'},
+          self: {},
+        });
       });
 
       it('cache new locus if no cache before', () => {
