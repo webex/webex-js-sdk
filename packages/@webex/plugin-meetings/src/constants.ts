@@ -313,6 +313,9 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
   MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
   MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
+  MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN: 'meeting:breakouts:askReturnToMain',
+  MEETING_BREAKOUTS_LEAVE: 'meeting:breakouts:leave',
+  MEETING_BREAKOUTS_ASK_FOR_HELP: 'meeting:breakouts:askForHelp',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
@@ -366,6 +369,7 @@ export const MEETING_REMOVED_REASON = {
   FULLSTATE_REMOVED: 'FULLSTATE_REMOVED', // meeting got dropped ? not sure
   MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
+  CLIENT_LEAVE_REQUEST_TAB_CLOSED: 'CLIENT_LEAVE_REQUEST_TAB_CLOSED', // You triggered leave meeting, such as closing the browser tab directly
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
   NO_MEETINGS_TO_SYNC: 'NO_MEETINGS_TO_SYNC', // After the syncMeeting no meeting exists
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
@@ -545,6 +549,9 @@ export const BREAKOUTS = {
     BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
     MESSAGE: 'MESSAGE',
     MEMBERS_UPDATE: 'MEMBERS_UPDATE',
+    ASK_RETURN_TO_MAIN: 'ASK_RETURN_TO_MAIN',
+    LEAVE_BREAKOUT: 'LEAVE_BREAKOUT',
+    ASK_FOR_HELP: 'ASK_FOR_HELP',
   },
   SESSION_TYPES: {
     MAIN: 'MAIN',
