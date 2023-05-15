@@ -39,6 +39,7 @@ const Breakouts = WebexPlugin.extend({
     breakoutServiceUrl: 'string', // the current breakout resource url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    preAssignments: 'array', // appears when getPreAssignments info hasBreakoutPreAssignments = true
     shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
@@ -760,7 +761,7 @@ const Breakouts = WebexPlugin.extend({
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
         .then((result) => {
           if (result.body?.groups) {
-            this.set('groups', result.body.groups);
+            this.set('preAssignments', result.body.groups);
           }
         })
         .catch((error) => {

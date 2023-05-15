@@ -3497,6 +3497,18 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#postEvent', () => {
+        it('should have #postEvent', () => {
+          assert.exists(meeting.postEvent);
+        });
+
+        it('should trigger `MEDIA_NEGOTIATED`', async () => {
+          await meeting.postEvent(eventType.LEAVE);
+          assert.calledWithMatch("OK");
+          assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
+        });
+      });
+
       describe('#endMeeting for all', () => {
         let sandbox;
 

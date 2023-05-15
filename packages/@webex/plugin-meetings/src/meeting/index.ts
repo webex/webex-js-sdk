@@ -1400,6 +1400,20 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * post Event, provide the ability to send Call Analyzer for the request of third-party
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  // eslint-disable-next-line valid-jsdoc
+  public async postEvent(eventName) {
+    Metrics.postEvent({
+      event: eventName,
+      meeting: this,
+    });
+  }
+
+  /**
    * Proxy function for all the listener set ups
    * @returns {undefined}
    * @private
