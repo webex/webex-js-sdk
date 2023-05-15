@@ -1,5 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {MediaType, SourceState} from '@webex/internal-media-core';
+import {MediaType, StreamState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
@@ -233,7 +233,7 @@ export class RemoteMedia extends EventsScope {
   /**
    * Getter for source state
    */
-  public get sourceState(): SourceState {
+  public get sourceState(): StreamState {
     return this.receiveSlot?.sourceState;
   }
 

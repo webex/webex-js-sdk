@@ -3,7 +3,7 @@ import {
   MediaType,
   ReceiveSlot as WcmeReceiveSlot,
   ReceiveSlotEvents as WcmeReceiveSlotEvents,
-  SourceState,
+  StreamState,
 } from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -14,7 +14,7 @@ export const ReceiveSlotEvents = {
   MaxFsUpdate: 'maxFsUpdate',
 };
 
-export type {SourceState} from '@webex/internal-media-core';
+export type {StreamState} from '@webex/internal-media-core';
 export type CSI = number;
 export type MemberId = string;
 export type ReceiveSlotId = string;
@@ -40,7 +40,7 @@ export class ReceiveSlot extends EventsScope {
 
   #csi?: CSI;
 
-  #sourceState: SourceState;
+  #sourceState: StreamState;
 
   /**
    * constructor - don't use it directly, you should always use meeting.receiveSlotManager.allocateSlot()
@@ -119,7 +119,7 @@ export class ReceiveSlot extends EventsScope {
 
     this.mcReceiveSlot.on(
       WcmeReceiveSlotEvents.SourceUpdate,
-      (state: SourceState, csi?: number) => {
+      (state: StreamState, csi?: number) => {
         LoggerProxy.logger.log(
           `ReceiveSlot#setupEventListeners --> got source update on receive slot ${this.id}, mediaType=${this.mediaType}, csi=${csi}, state=${state}`
         );
