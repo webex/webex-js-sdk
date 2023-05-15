@@ -3502,10 +3502,20 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.postEvent);
         });
 
-        it('should trigger `MEDIA_NEGOTIATED`', async () => {
+        it('should trigger `postEvent`', async () => {
           await meeting.postEvent(eventType.LEAVE);
-          assert.calledWithMatch("OK");
           assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
+        });
+      });
+
+      describe('#setCaCorrelationId', () => {
+        it('should have #postEvent', () => {
+          assert.exists(meeting.setCaCorrelationId);
+        });
+
+        it('should set `correlationId`', async () => {
+          meeting.setCaCorrelationId(uuid1);
+          assert.equal(meeting.caCorrelationId, uuid1);
         });
       });
 
