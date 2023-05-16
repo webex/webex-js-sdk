@@ -292,14 +292,6 @@ const Calendar = WebexPlugin.extend({
         const promises = [];
 
         meetingObjects.forEach((meeting) => {
-          if (!meeting.encryptedNotes) {
-            promises.push(
-              this.getNotes(meeting.id).then((notesResponse) => {
-                meeting.encryptedNotes = notesResponse.body && notesResponse.body.encryptedNotes;
-              })
-            );
-          }
-
           if (!meeting.encryptedParticipants) {
             promises.push(
               this.getParticipants(meeting.id).then((notesResponse) => {
