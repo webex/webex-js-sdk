@@ -32,21 +32,20 @@ describe('plugin-conversation', () => {
 
       webex.internal.services = {};
       webex.internal.services.get = sinon.stub().returns(Promise.resolve(convoUrl));
-      webex.internal.services.getServiceFromClusterId = sinon.stub().returns({url: convoUrl});
+      webex.internal.services.getServiceUrlFromClusterId = sinon.stub().returns(convoUrl);
     });
 
     describe('addReaction()', () => {
       it('should add recipients to the payload if provided', () => {
         const {conversation} = webex.internal;
         const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]}
-        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
-        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'))
-        
-        return conversation.addReaction({}, 'example-display-name', {}, recipientId)
-          .then(() => {
-            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-          });
+        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
+
+        return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+        });
       });
     });
 
@@ -54,24 +53,60 @@ describe('plugin-conversation', () => {
       it('should add recipients to the payload if provided', () => {
         const {conversation} = webex.internal;
         const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]}
-        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
-        
-        return conversation.deleteReaction({}, 'example-reaction-id', recipientId)
-          .then(() => {
-            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-          });
+        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+
+        return conversation.deleteReaction({}, 'example-reaction-id', recipientId).then(() => {
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+        });
       });
     });
 
     describe('prepare()', () => {
       it('should ammend activity recipients to the returned object', () => {
         const {conversation} = webex.internal;
-        const activity = { recipients: 'example-recipients' };
+        const activity = {recipients: 'example-recipients'};
 
-        return conversation.prepare(activity)
-          .then((results) => {
-            assert.deepEqual(results.recipients, activity.recipients);
+        return conversation.prepare(activity).then((results) => {
+          assert.deepEqual(results.recipients, activity.recipients);
+        });
+      });
+    });
+
+    describe('addReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
+
+        return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+        });
+      });
+    });
+
+    describe('deleteReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+
+        return conversation.deleteReaction({}, 'example-reaction-id', recipientId).then(() => {
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+        });
+      });
+    });
+
+    describe('prepare()', () => {
+      it('should ammend activity recipients to the returned object', () => {
+        const {conversation} = webex.internal;
+        const activity = {recipients: 'example-recipients'};
+
+        return conversation.prepare(activity).then((results) => {
+          assert.deepEqual(results.recipients, activity.recipients);
         });
       });
     });
@@ -180,16 +215,16 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER,
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {
+          cluster: 'us',
         });
       });
 
       it('should add the cluster service when missing', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'urn:TEAM:us-west-2_r'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: 'urn:TEAM:us-west-2_r:identityLookup',
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {
+          cluster: 'urn:TEAM:us-west-2_r',
         });
       });
     });

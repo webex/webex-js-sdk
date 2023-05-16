@@ -19,13 +19,19 @@ dotenv.config({path: '.env.default'});
  * @returns {object}
  */
 module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
-  entry:
-    env && env.NODE_ENV === 'development'
-      ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
-      : './packages/webex',
+  entry: {
+    webex:
+      env && env.NODE_ENV === 'development'
+        ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
+        : './packages/webex',
+    meetings:
+      env && env.NODE_ENV === 'development'
+        ? `${path.resolve(__dirname)}/packages/webex/src/meetings.js`
+        : `${path.resolve(__dirname)}/packages/webex/dist/meetings.js`,
+  },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
-    filename: 'webex.min.js',
+    filename: '[name].min.js',
     library: 'Webex',
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
