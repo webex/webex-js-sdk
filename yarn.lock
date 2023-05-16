@@ -5020,7 +5020,7 @@ __metadata:
     lodash: ^4.17.21
     parse-headers: ^2.0.2
     prettier: ^2.7.1
-    qs: ^6.7.0
+    qs: ^6.7.3
     request: ^2.88.0
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
@@ -21311,7 +21311,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:6.11.0":
+"qs@npm:6.11.0, qs@npm:^6.5.1":
   version: 6.11.0
   resolution: "qs@npm:6.11.0"
   dependencies:
@@ -21327,7 +21327,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.5.1, qs@npm:^6.7.0":
+"qs@npm:^6.7.3":
   version: 6.11.1
   resolution: "qs@npm:6.11.1"
   dependencies:
