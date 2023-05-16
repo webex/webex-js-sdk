@@ -260,6 +260,8 @@ const Breakouts = WebexPlugin.extend({
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
+
+    // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
     this.set('status', params.status);

@@ -1302,7 +1302,7 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  sortLocusArrayToUpdate(loci: any) {
+  sortLocusArrayToUpdate(loci: any[]) {
     const mainLoci = loci.filter((locus) => !MeetingsUtil.isBreakoutLocusDTO(locus));
     const breakoutLoci = loci.filter((locus) => MeetingsUtil.isValidBreakoutLocus(locus));
     this.breakoutLocusForHandleLater = [];
