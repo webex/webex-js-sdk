@@ -5020,7 +5020,7 @@ __metadata:
     lodash: ^4.17.21
     parse-headers: ^2.0.2
     prettier: ^2.7.1
-    qs: ^6.7.0
+    qs: ^6.7.3
     request: ^2.88.0
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
@@ -21327,12 +21327,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.5.1, qs@npm:^6.7.0":
+"qs@npm:^6.5.1":
   version: 6.11.1
   resolution: "qs@npm:6.11.1"
   dependencies:
     side-channel: ^1.0.4
   checksum: 82ee78ef12a16f3372fae5b64f76f8aedecb000feea882bbff1af146c147f6eb66b08f9c3f34d7e076f28563586956318b9b2ca41141846cdd6d5ad6f241d52f
+  languageName: node
+  linkType: hard
+
+"qs@npm:^6.7.3":
+  version: 6.11.2
+  resolution: "qs@npm:6.11.2"
+  dependencies:
+    side-channel: ^1.0.4
+  checksum: e812f3c590b2262548647d62f1637b6989cc56656dc960b893fe2098d96e1bd633f36576f4cd7564dfbff9db42e17775884db96d846bebe4f37420d073ecdc0b
   languageName: node
   linkType: hard
 
