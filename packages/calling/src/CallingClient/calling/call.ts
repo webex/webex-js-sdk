@@ -143,6 +143,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private waitingForOK: boolean;
 
+  private mediaNegotiationCompleted: boolean;
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -213,6 +215,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.mobiusUrl = activeUrl;
     this.waitingForOK = false;
+    this.mediaNegotiationCompleted = false;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -1203,7 +1206,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     /* In case of Early Media , media negotiations would have already started
      * So we can directly go to call established state */
 
-    if (this.earlyMedia) {
+    if (this.earlyMedia || this.mediaNegotiationCompleted) {
+      this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
   }
@@ -1551,6 +1555,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       try {
+        if (this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS') {
+          log.info(
+            'Media negotiation completed before call connect. Setting media negotiation completed flag.',
+            {
+              file: CALL_FILE,
+              method: 'handleRoapEstablished',
+            }
+          );
+          this.mediaNegotiationCompleted = true;
+        }
         message.seq = this.seq;
         const res = await this.postMedia(message);
 
@@ -1559,7 +1573,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           method: 'handleRoapEstablished',
         });
         /* istanbul ignore else */
-        if (!this.earlyMedia) {
+        if (!this.earlyMedia && !this.mediaNegotiationCompleted) {
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
         }
       } catch (err) {

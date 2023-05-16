@@ -682,10 +682,6 @@ describe('State Machine handler tests', () => {
 
     dummyEvent.type = 'E_RECV_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_CONNECT');
-
-    dummyEvent.type = 'E_CALL_ESTABLISHED';
-    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 
@@ -1251,6 +1247,88 @@ describe('State Machine handler tests', () => {
     expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER');
     call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
     expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+  });
+
+  it('handle hold event successfully when media received after progress but before connect', async () => {
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+        sdp: 'sdp',
+      },
+    };
+
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+    const infoSpy = jest.spyOn(log, 'info');
+
+    webex.request.mockReturnValue(statusPayload);
+
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    dummyEvent.type = 'E_SEND_ROAP_OFFER';
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_CALL_PROGRESS';
+    dummyEvent.data = undefined as any;
+
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
+
+    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'ANSWER',
+      sdp: 'sdp',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+    expect(call['mediaNegotiationCompleted']).toBe(false);
+
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(call['mediaNegotiationCompleted']).toBe(true);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_CALL_CONNECT';
+    dummyEvent.data = undefined as any;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+
+    /* Call will move to connect state then immediately move to established state as
+       media negotiation is already completed before connect was received
+    */
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+    expect(call.isConnected()).toBe(true);
+
+    dummyEvent.type = 'E_CALL_HOLD';
+    dummyEvent.data = undefined as any;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
+
+    expect(infoSpy).toHaveBeenLastCalledWith(`handleCallHold: ${call.getCorrelationId()}  `, {
+      file: 'call',
+      method: 'handleCallHold',
+    });
   });
 });
 
