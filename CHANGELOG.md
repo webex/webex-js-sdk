@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.99](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.98...v3.0.0-beta.99) (2023-05-12)
+
+
+### Features
+
+* **plugin-meetings:** use WCME 2.0 ([#2810](https://github.com/webex/webex-js-sdk/issues/2810)) ([953df2f](https://github.com/webex/webex-js-sdk/commit/953df2f68e0ecd26c1c909589266bec5294bc89b))
+
+## [3.0.0-beta.98](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.97...v3.0.0-beta.98) (2023-05-12)
+
+
+### Features
+
+* allow for extra params to be provided when fetching meeting info ([#2807](https://github.com/webex/webex-js-sdk/issues/2807)) ([5653a68](https://github.com/webex/webex-js-sdk/commit/5653a68e0797b82660239b317b37567b416099e9))
+
 ## [3.0.0-beta.97](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.96...v3.0.0-beta.97) (2023-05-11)
 
 
