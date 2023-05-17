@@ -1402,7 +1402,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Posts metrics event for this meeting. Allows the app to send Call Analyzer events.
-   * @param {String} eventName - event name is used to identify the type sent by the call analyzer
+   * @param {String} eventName - Call Analyzer event, see eventType in src/metrics/config.ts for possible values
    * @public
    * @memberof Meeting
    * @returns {Promise}
