@@ -36,6 +36,14 @@ const DecryptHelper = {
         )
       : [];
 
+    // Decrypt encryptedScheduleFor properties if meeting object contains SOB
+    const decryptedScheduleFor = Promise.all(
+      Object.values(data.encryptedScheduleFor || {}).flatMap((item) => [
+        _decryptTextProp(ctx, 'encryptedEmail', data.encryptionKeyUrl, item),
+        _decryptTextProp(ctx, 'encryptedDisplayName', data.encryptionKeyUrl, item),
+      ])
+    );
+
     // Decrypt meetingJoinInfo properties if meeting object contains meetingJoinInfo
     const decryptedMeetingJoinInfo = data.meetingJoinInfo
       ? Promise.all([
@@ -66,7 +74,12 @@ const DecryptHelper = {
         _decryptTextProp(ctx, 'spaceMeetURL', data.encryptionKeyUrl, data),
         _decryptTextProp(ctx, 'spaceURI', data.encryptionKeyUrl, data),
         _decryptTextProp(ctx, 'spaceURL', data.encryptionKeyUrl, data),
-      ].concat(decryptedOrganizer, decryptedParticipants, decryptedMeetingJoinInfo)
+      ].concat(
+        decryptedOrganizer,
+        decryptedParticipants,
+        decryptedScheduleFor,
+        decryptedMeetingJoinInfo
+      )
     );
   },
   /**

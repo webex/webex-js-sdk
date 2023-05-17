@@ -413,13 +413,15 @@ const Calendar = WebexPlugin.extend({
   /**
    * Delete calendar event
    * @param {string} [id] calendar event id
+   * @param {object} [query] the query parameters for specific usage
    * @returns {Promise} Resolves with deleting calendar event response
    * */
-  deleteCalendarEvent(id) {
+  deleteCalendarEvent(id, query) {
     return this.request({
       method: 'DELETE',
       service: 'calendar',
       resource: `calendarEvents/${base64.encode(id)}/sync`,
+      qs: query || {},
     });
   },
 

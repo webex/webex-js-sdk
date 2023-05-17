@@ -423,17 +423,19 @@ describe('internal-plugin-calendar', () => {
       describe("#deleteCalendarEvent()", () => {
         it("should delete a calendar event", async () => {
           const id = "abcdabcd-abcd-abcd-abcd-00000000";
+          const query = {};
 
           webex.request = sinon.stub().resolves({
             body: {}
           });
 
-          await webex.internal.calendar.deleteCalendarEvent(id);
+          await webex.internal.calendar.deleteCalendarEvent(id, query);
 
           assert.calledWith(webex.request, {
             method: "DELETE",
             service: "calendar",
-            resource: `calendarEvents/${base64.encode(id)}/sync`
+            resource: `calendarEvents/${base64.encode(id)}/sync`,
+            qs: query
           });
         });
       });
