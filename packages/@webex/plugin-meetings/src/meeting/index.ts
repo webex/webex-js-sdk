@@ -4316,7 +4316,9 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Previous correlation id ${this.correlationId}`
       );
-      this.setCorrelationId(uuid.v4());
+      if (!options.correlationId) {
+        this.setCorrelationId(uuid.v4());
+      }
       LoggerProxy.logger.log(`Meeting:index#join --> New correlation id ${this.correlationId}`);
     }
 
