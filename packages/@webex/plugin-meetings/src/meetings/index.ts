@@ -1,7 +1,6 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
 
 import '@webex/internal-plugin-mercury';
-import '@webex/internal-plugin-conversation';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 
