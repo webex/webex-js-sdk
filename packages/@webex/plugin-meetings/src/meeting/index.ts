@@ -1407,7 +1407,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    * @returns {Promise}
    */
-  public postMetrics(eventName) {
+  public postMetrics(eventName: string) {
     Metrics.postEvent({
       event: eventName,
       meeting: this,
