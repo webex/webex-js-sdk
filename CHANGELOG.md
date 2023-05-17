@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.101](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.100...v3.0.0-beta.101) (2023-05-16)
+
+
+### Features
+
+* **board:** pmr support ([#2815](https://github.com/webex/webex-js-sdk/issues/2815)) ([7be9cf8](https://github.com/webex/webex-js-sdk/commit/7be9cf8017886a5493993f675eca2863a88f9b69))
+
+## [3.0.0-beta.100](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.99...v3.0.0-beta.100) (2023-05-16)
+
 ## [3.0.0-beta.99](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.98...v3.0.0-beta.99) (2023-05-12)
 
 

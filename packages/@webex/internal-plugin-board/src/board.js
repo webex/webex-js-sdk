@@ -126,17 +126,31 @@ const Board = WebexPlugin.extend({
       .then((res) => res.body);
   },
 
-  _prepareChannel(conversation, channel) {
-    return {
+  /**
+   * Prepare a create request body to the board services based on the provided
+   * conversation and channel.
+   *
+   * @param {Conversation} conversation - Conversation object.
+   * @param {Channel} channel - Channel Object
+   * @returns {Object} - Create channel request body.
+   */
+  _prepareChannel(conversation = {}, channel = {}) {
+    const results = {
       aclUrlLink: conversation.aclUrl,
       kmsMessage: {
         method: 'create',
         uri: '/resources',
-        userIds: [conversation.kmsResourceObjectUrl],
+        userIds: [],
         keyUris: [],
       },
       ...channel,
     };
+
+    if (conversation.kmsResourceObjectUrl) {
+      results.kmsMessage.userIds.push(conversation.kmsResourceObjectUrl);
+    }
+
+    return results;
   },
 
   /**
