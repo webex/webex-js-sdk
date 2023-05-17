@@ -4305,20 +4305,21 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (options.correlationId) {
       this.setCorrelationId(options.correlationId);
+      LoggerProxy.logger.log(
+        `Meeting:index#join --> Using a new correlation from app ${this.correlationId}`
+      );
     }
 
     if (!this.hasJoinedOnce) {
       this.hasJoinedOnce = true;
-    } else {
+    } else if (!options.correlationId) {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`
       );
       LoggerProxy.logger.log(
         `Meeting:index#join --> Previous correlation id ${this.correlationId}`
       );
-      if (!options.correlationId) {
-        this.setCorrelationId(uuid.v4());
-      }
+      this.setCorrelationId(uuid.v4());
       LoggerProxy.logger.log(`Meeting:index#join --> New correlation id ${this.correlationId}`);
     }
 
