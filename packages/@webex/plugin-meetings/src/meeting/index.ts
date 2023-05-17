@@ -444,7 +444,6 @@ export default class Meeting extends StatelessWebexPlugin {
   annotation: any;
   conversationUrl: string;
   correlationId: string;
-  caCorrelationId: string;
   destination: string;
   destinationType: string;
   deviceUrl: string;
@@ -1401,27 +1400,17 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * post Event, provide the ability to send Call Analyzer for the request of third-party
+   * Post metrics for events, provide the ability to send Call Analyzer for the request of third-party.
    * @public
    * @memberof Meeting
    * @returns {Promise}
    */
   // eslint-disable-next-line valid-jsdoc
-  public postEvent(eventName) {
+  public postMetrics(eventName) {
     Metrics.postEvent({
       event: eventName,
       meeting: this,
     });
-  }
-
-  /**
-   * setCaCorrelationId, In the cross launch case, the correlationId sent by the page needs to be passed to prepare for the ucf CA report in the analyzer system.
-   * @public
-   * @memberof Meeting
-   */
-  // eslint-disable-next-line valid-jsdoc
-  public setCaCorrelationId(correlationId) {
-    this.caCorrelationId = correlationId;
   }
 
   /**
@@ -1657,14 +1646,14 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.error(
           'Meeting:index#getAnalyzerMetricsPrePayload --> Error [Call Analyzer Event',
           event || '',
-          `]: invalid identifers or event type! ${this.caCorrelationId || this.correlationId}`
+          `]: invalid identifers or event type! ${this.correlationId}`
         );
 
         return null;
       }
 
       const identifiers: any = {
-        correlationId: this.caCorrelationId || this.correlationId,
+        correlationId: this.correlationId,
         userId: this.userId,
         deviceId: this.deviceUrl,
         orgId: this.orgId,

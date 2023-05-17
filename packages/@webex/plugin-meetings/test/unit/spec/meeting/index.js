@@ -3497,25 +3497,14 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#postEvent', () => {
-        it('should have #postEvent', () => {
-          assert.exists(meeting.postEvent);
+      describe('#postMetrics', () => {
+        it('should have #postMetrics', () => {
+          assert.exists(meeting.postMetrics);
         });
 
-        it('should trigger `postEvent`', async () => {
-          await meeting.postEvent(eventType.LEAVE);
+        it('should trigger `postMetrics`', async () => {
+          await meeting.postMetrics(eventType.LEAVE);
           assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
-        });
-      });
-
-      describe('#setCaCorrelationId', () => {
-        it('should have #postEvent', () => {
-          assert.exists(meeting.setCaCorrelationId);
-        });
-
-        it('should set `correlationId`', async () => {
-          meeting.setCaCorrelationId(uuid1);
-          assert.equal(meeting.caCorrelationId, uuid1);
         });
       });
 
