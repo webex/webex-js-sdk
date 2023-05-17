@@ -1683,6 +1683,10 @@ export default class Meeting extends StatelessWebexPlugin {
         identifiers.trackingId = trackingId;
       }
 
+      if (options.correlationId) {
+        this.setCorrelationId(options.correlationId);
+      }
+
       let payload = {};
 
       const joinRespRxStartAudio = this.getSetupDelayDuration('audio');
