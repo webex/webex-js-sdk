@@ -1683,10 +1683,6 @@ export default class Meeting extends StatelessWebexPlugin {
         identifiers.trackingId = trackingId;
       }
 
-      if (options.correlationId) {
-        this.setCorrelationId(options.correlationId);
-      }
-
       let payload = {};
 
       const joinRespRxStartAudio = this.getSetupDelayDuration('audio');
@@ -4317,6 +4313,10 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       this.setCorrelationId(uuid.v4());
       LoggerProxy.logger.log(`Meeting:index#join --> New correlation id ${this.correlationId}`);
+    }
+
+    if (options.correlationId) {
+      this.setCorrelationId(options.correlationId);
     }
 
     if (options.rejoin) {
