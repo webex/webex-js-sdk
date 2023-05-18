@@ -328,9 +328,6 @@ jobs:
           name: "Change origin url back to ssh"
           command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
       - run:
-          name: "Build the SDK"
-          command: yarn run build
-      - run:
           name: "Build Samples"
           command: yarn run samples:build
       - run:
