@@ -337,14 +337,16 @@ export default class MeetingInfoV2 {
         return response;
       })
       .catch((err) => {
-        Metrics.postEvent({
-          event: eventType.MEETING_INFO_RESPONSE,
-          meetingId,
-          data: {
-            errors: [Metrics.parseWebexApiError(err, true)],
-            meetingLookupUrl: err?.url,
-          },
-        });
+        if (meetingId) {
+          Metrics.postEvent({
+            event: eventType.MEETING_INFO_RESPONSE,
+            meetingId,
+            data: {
+              errors: [Metrics.parseWebexApiError(err, true)],
+              meetingLookupUrl: err?.url,
+            },
+          });
+        }
 
         if (err?.statusCode === 403) {
           if (POLICY_ERROR_CODES.includes(err.body?.code)) {
