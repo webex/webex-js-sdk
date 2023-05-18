@@ -3497,6 +3497,17 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#postMetrics', () => {
+        it('should have #postMetrics', () => {
+          assert.exists(meeting.postMetrics);
+        });
+
+        it('should trigger `postMetrics`', async () => {
+          await meeting.postMetrics(eventType.LEAVE);
+          assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
+        });
+      });
+
       describe('#endMeeting for all', () => {
         let sandbox;
 
