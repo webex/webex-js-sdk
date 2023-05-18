@@ -440,7 +440,7 @@ jobs:
             fi
       - run:
           name: 'Run standard-version'
-          command: yarn run release --prerelease beta
+          command: yarn run release --prerelease beta-2
       - run:
           name: 'Grab Upcoming Version Number'
           command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
