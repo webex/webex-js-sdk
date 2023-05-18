@@ -38,7 +38,7 @@
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
-    "sinon": "^9.2.4",
+    "sinon": "^15.0.4",
     "webex": "workspace:^"
   },
   "dependencies": {

@@ -35,7 +35,7 @@
     "ampersand-events": "^2.0.2",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
-    "sinon": "^9.2.4"
+    "sinon": "^15.0.4"
   },
   "scripts": {
     "build": "yarn build:src",
