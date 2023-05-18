@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.105](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.104...v3.0.0-beta.105) (2023-05-18)
+
+
+### Bug Fixes
+
+* version of internal-media-core used by media-helpers doesn't match plugin-meetings ([#2821](https://github.com/webex/webex-js-sdk/issues/2821)) ([50639f7](https://github.com/webex/webex-js-sdk/commit/50639f7843e9a42ce1a20b24b2fe111b32f6b9d0))
+
 ## [3.0.0-beta.104](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.103...v3.0.0-beta.104) (2023-05-18)
 
 
