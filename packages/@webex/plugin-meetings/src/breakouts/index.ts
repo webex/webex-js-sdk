@@ -39,6 +39,7 @@ const Breakouts = WebexPlugin.extend({
     breakoutServiceUrl: 'string', // the current breakout resource url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    preAssignments: 'array', // appears when getPreAssignments info hasBreakoutPreAssignments = true
     shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
@@ -83,7 +84,7 @@ const Breakouts = WebexPlugin.extend({
        */
       fn() {
         if (this.groups?.length) {
-          return this.groups[0].id;
+          return this.groups[0].status !== BREAKOUTS.STATUS.CLOSED ? this.groups[0].id : '';
         }
 
         return '';
@@ -260,8 +261,11 @@ const Breakouts = WebexPlugin.extend({
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
+
+    // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
+    this.set('status', params.status);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -760,7 +764,7 @@ const Breakouts = WebexPlugin.extend({
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
         .then((result) => {
           if (result.body?.groups) {
-            this.set('groups', result.body.groups);
+            this.set('preAssignments', result.body.groups);
           }
         })
         .catch((error) => {
