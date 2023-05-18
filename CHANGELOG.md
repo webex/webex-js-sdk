@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.102](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.101...v3.0.0-beta.102) (2023-05-18)
+
+
+### Features
+
+* **Live-Annotation:** add new interface for presenter ([#2809](https://github.com/webex/webex-js-sdk/issues/2809)) ([ad875ca](https://github.com/webex/webex-js-sdk/commit/ad875cac6b881e2768aa7cff60ee6030769a48ed))
+
 ## [3.0.0-beta.101](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.100...v3.0.0-beta.101) (2023-05-16)
 
 
