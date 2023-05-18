@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.104](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.103...v3.0.0-beta.104) (2023-05-18)
+
+
+### Bug Fixes
+
+* **pipeline:** beta tag automation ([#2819](https://github.com/webex/webex-js-sdk/issues/2819)) ([48eab6f](https://github.com/webex/webex-js-sdk/commit/48eab6f9702d400bdc39547ee664a207b7dc59f1))
+
 ## [3.0.0-beta.103](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.102...v3.0.0-beta.103) (2023-05-18)
 
 
