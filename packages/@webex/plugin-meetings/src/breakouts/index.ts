@@ -83,7 +83,7 @@ const Breakouts = WebexPlugin.extend({
        */
       fn() {
         if (this.groups?.length) {
-          return this.groups[0].id;
+          return this.groups[0].status !== BREAKOUTS.STATUS.CLOSED ? this.groups[0].id : '';
         }
 
         return '';
@@ -260,8 +260,11 @@ const Breakouts = WebexPlugin.extend({
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
+
+    // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
+    this.set('status', params.status);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
