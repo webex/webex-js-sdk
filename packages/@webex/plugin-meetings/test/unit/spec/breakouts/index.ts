@@ -417,7 +417,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.breakouts.get('sessionId1').requestedLastModifiedTime, undefined)
         assert.equal(breakouts.breakouts.get('sessionId2').requestedLastModifiedTime, "2023-05-09T17:16:01.000Z")
       });
-    
+
     });
 
     describe('#locusUrlUpdate', () => {
@@ -1361,21 +1361,21 @@ describe('plugin-meetings', () => {
         const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.groups[0].sessions[0].name, 'Breakout session 1');
-        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.preAssignments[0].sessions[0].name, 'Breakout session 1');
+        assert.equal(breakouts.preAssignments[0].sessions[0].anyoneCanJoin, false);
         assert.equal(
-          breakouts.groups[0].sessions[0].assignedEmails.toString(),
+          breakouts.preAssignments[0].sessions[0].assignedEmails.toString(),
           ['a@a.com', 'b@b.com', 'jial2@cisco.com'].toString()
         );
-        assert.equal(breakouts.groups[0].sessions[1].name, 'Breakout session 2');
-        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin, false);
-        assert.equal(breakouts.groups[0].sessions[1].assignedEmails, undefined);
-        assert.equal(breakouts.groups[0].sessions[2].name, 'Breakout session 3');
-        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin, false);
-        assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.groups[0].type, 'BREAKOUT');
+        assert.equal(breakouts.preAssignments[0].sessions[1].name, 'Breakout session 2');
+        assert.equal(breakouts.preAssignments[0].sessions[1].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].sessions[1].assignedEmails, undefined);
+        assert.equal(breakouts.preAssignments[0].sessions[2].name, 'Breakout session 3');
+        assert.equal(breakouts.preAssignments[0].sessions[2].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].sessions[2].assignedEmails[0], 'c@c.com');
+        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.preAssignments[0].type, 'BREAKOUT');
         assert.equal(breakouts.shouldFetchPreassignments, true);
       });
 
