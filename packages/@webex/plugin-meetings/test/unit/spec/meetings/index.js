@@ -913,7 +913,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             clock = sinon.useFakeTimers();
             setTimeoutSpy = sinon.spy(clock, 'setTimeout');
-            webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+            webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics = sinon.stub().returns(
               Promise.resolve({
                 body: {
                   permissionToken: 'PT',
@@ -940,11 +940,11 @@ describe('plugin-meetings', () => {
             type,
             expectedMeetingData = {}
           ) => {
-            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
+            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics);
             assert.calledOnce(MeetingsUtil.getMeetingAddedType);
             assert.notCalled(setTimeoutSpy);
             assert.calledThrice(TriggerProxy.trigger);
-            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfo, destination, type);
+            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics, destination, type);
             assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
 
             if (expectedMeetingData.permissionToken) {
@@ -1030,7 +1030,7 @@ describe('plugin-meetings', () => {
               Meeting,
               'createMeeting should eventually resolve to a Meeting Object'
             );
-            assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics);
             assert.calledOnce(setTimeoutSpy);
 
             // Parse meeting info with locus object
@@ -1062,7 +1062,7 @@ describe('plugin-meetings', () => {
             // When timer expires
             clock.tick(FAKE_TIME_TO_START);
             assert.calledWith(
-              webex.meetings.meetingInfo.fetchMeetingInfo,
+              webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics,
               FAKE_LOCUS_MEETING,
               'test type'
             );
@@ -1188,7 +1188,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             console.error = sinon.stub().returns(false);
             TriggerProxy.trigger.reset();
-            webex.meetings.meetingInfo.fetchMeetingInfo = sinon
+            webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics = sinon
               .stub()
               .returns(Promise.reject(new Error('test')));
           });
@@ -1200,11 +1200,11 @@ describe('plugin-meetings', () => {
               Meeting,
               'createMeeting should eventually resolve to a Meeting Object'
             );
-            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
+            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics);
             assert.calledOnce(MeetingsUtil.getMeetingAddedType);
             assert.calledTwice(TriggerProxy.trigger);
             assert.calledWith(
-              webex.meetings.meetingInfo.fetchMeetingInfo,
+              webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics,
               'test destination',
               'test type'
             );
@@ -1252,7 +1252,7 @@ describe('plugin-meetings', () => {
             ],
             ({error, debugLogMessage, infoLogMessage}) => {
               it('creates the meeting from a rejected meeting info fetch', async () => {
-                webex.meetings.meetingInfo.fetchMeetingInfo = sinon
+                webex.meetings.meetingInfo.fetchMeetingInfoWithMetrics = sinon
                   .stub()
                   .returns(Promise.reject(error));
 

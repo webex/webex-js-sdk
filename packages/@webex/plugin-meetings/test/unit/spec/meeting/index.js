@@ -994,6 +994,52 @@ describe('plugin-meetings', () => {
             await meeting.join();
             sinon.assert.called(meeting.setCorrelationId);
           });
+
+          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
+            meeting.meetingInfo = {info: 'info'};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledThrice(Metrics.postEvent)
+
+            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+            assert.equal(Metrics.postEvent.getCall(1).args[0].event, 'client.meetinginfo.request');
+            assert.equal(Metrics.postEvent.getCall(2).args[0].event, 'client.meetinginfo.response');
+          });
+
+          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
+            meeting.meetingInfo = {};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledOnce(Metrics.postEvent)
+
+            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+          });
         });
         describe('failure', () => {
           beforeEach(() => {
@@ -3001,6 +3047,8 @@ describe('plugin-meetings', () => {
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id', // this.owner;
         };
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+
         const FAKE_SDK_CAPTCHA_INFO = {
           captchaId: FAKE_CAPTCHA_ID,
           verificationImageURL: FAKE_CAPTCHA_IMAGE_URL,
@@ -3014,9 +3062,13 @@ describe('plugin-meetings', () => {
           refreshURL: `${FAKE_CAPTCHA_REFRESH_URL}-2`,
         };
 
+        beforeEach(() => {
+          meeting.locusId = 'locus-id';
+        });
+
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
@@ -3030,16 +3082,18 @@ describe('plugin-meetings', () => {
           });
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             FAKE_PASSWORD,
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
-            FAKE_INSTALLED_ORG_ID
+            FAKE_INSTALLED_ORG_ID,
+            'locus-id',
+            meeting.id,
           );
 
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3054,7 +3108,7 @@ describe('plugin-meetings', () => {
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
@@ -3073,17 +3127,20 @@ describe('plugin-meetings', () => {
 
           // meeting info provider
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
           // parseMeeting info
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
@@ -3099,7 +3156,7 @@ describe('plugin-meetings', () => {
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = null;
           meeting.destination = FAKE_DESTINATION;
@@ -3113,12 +3170,12 @@ describe('plugin-meetings', () => {
             'fetchMeetingInfo() called with captchaCode when captcha was not required'
           );
 
-          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics);
         });
 
         it('fails if password is provided when not required', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
           meeting.destination = FAKE_DESTINATION;
@@ -3132,14 +3189,14 @@ describe('plugin-meetings', () => {
             'fetchMeetingInfo() called with password when password was not required'
           );
 
-          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics);
         });
 
         it('handles meetingInfoProvider requiring password', async () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
@@ -3147,11 +3204,14 @@ describe('plugin-meetings', () => {
           await assert.isRejected(meeting.fetchMeetingInfo({}), PasswordError);
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3168,7 +3228,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
           };
@@ -3176,11 +3236,14 @@ describe('plugin-meetings', () => {
           await assert.isRejected(meeting.fetchMeetingInfo({}), PermissionError);
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3196,7 +3259,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -3210,11 +3273,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3236,7 +3302,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -3251,11 +3317,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            meeting.id
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3268,7 +3337,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({
+            fetchMeetingInfoWithMetrics: sinon.stub().resolves({
               statusCode: 200,
               body: FAKE_MEETING_INFO,
             }),
@@ -3280,14 +3349,17 @@ describe('plugin-meetings', () => {
           });
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: undefined});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.VERIFIED);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3303,7 +3375,7 @@ describe('plugin-meetings', () => {
           };
 
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
@@ -3325,11 +3397,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            meeting.id,
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3372,7 +3447,7 @@ describe('plugin-meetings', () => {
 
           // setup the meeting so that a captcha is required
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon
+            fetchMeetingInfoWithMetrics: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -6606,6 +6681,64 @@ describe('plugin-meetings', () => {
 
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
+        });
+      });
+
+      describe('getAnalyzerMetricsPrePayload', () => {
+        it('should have #getAnalyzerMetricsPrePayload', () => {
+          assert.exists(meeting.getAnalyzerMetricsPrePayload);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.getAnalyzerMetricsPrePayload = sinon
+            .stub()
+            .returns(Promise.resolve());
+          meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
+          meeting.correlationId = 'correlation-id';
+          sinon.stub()
+        });
+
+        it('it should include meetingLookupUrl if provided', () => {
+          const res = meeting.getAnalyzerMetricsPrePayload({
+            meetingLookupUrl: 'https://service-url.com',
+            event: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.event,  {
+            canProceed: true,
+            eventData: {
+              webClientDomain: '',
+            },
+            identifiers: {
+              correlationId: 'correlation-id',
+              deviceId: uuid3,
+              locusUrl: 'Locus URL',
+              meetingLookupUrl: 'https://service-url.com',
+              orgId: undefined,
+              userId: uuid1,
+            },
+            name: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.origin, {
+            clientInfo: {
+              browser: '',
+              browserVersion: '',
+              clientType: undefined,
+              clientVersion: 'webex-js-sdk/undefined',
+              localNetworkPrefix: null,
+              os: 'other',
+              osVersion: '5.4.0-144-generic',
+              subClientType: undefined,
+            },
+            name: 'endpoint',
+            networkType: 'unknown',
+            userAgent: 'webex-js-sdk/test-undefined client=undefined; (os=linux/5)',
+          });
+
+          assert.deepEqual(res.senderCountryCode, undefined);
+          assert.deepEqual(res.version, 1);
+
         });
       });
     });

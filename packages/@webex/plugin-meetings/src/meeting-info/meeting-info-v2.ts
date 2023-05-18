@@ -6,6 +6,7 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
+import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -238,6 +239,44 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null
   ) {
+    return this.fetchMeetingInfoWithMetrics(
+      destination,
+      type,
+      password,
+      captchaInfo,
+      installedOrgID,
+      locusId,
+      null
+    );
+  }
+
+  /**
+   * Fetches meeting info from the server
+   * @param {String} destination one of many different types of destinations to look up info for
+   * @param {String} [type] to match up with the destination value
+   * @param {String} password
+   * @param {Object} captchaInfo
+   * @param {String} captchaInfo.code
+   * @param {String} captchaInfo.id
+   * @param {String} installedOrgID
+   * @param {String} locusId
+   * @param {String} meetingId
+   * @returns {Promise} returns a meeting info object
+   * @private
+   * @memberof MeetingInfo
+   */
+  private async fetchMeetingInfoWithMetrics(
+    destination: string,
+    type: string = null,
+    password: string = null,
+    captchaInfo: {
+      code: string;
+      id: string;
+    } = null,
+    installedOrgID = null,
+    locusId = null,
+    meetingId = null
+  ) {
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
       type,
@@ -298,6 +337,15 @@ export default class MeetingInfoV2 {
         return response;
       })
       .catch((err) => {
+        Metrics.postEvent({
+          event: eventType.MEETING_INFO_RESPONSE,
+          meetingId,
+          data: {
+            errors: [Metrics.parseWebexApiError(err, true)],
+            meetingLookupUrl: err?.url,
+          },
+        });
+
         if (err?.statusCode === 403) {
           if (POLICY_ERROR_CODES.includes(err.body?.code)) {
             Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
