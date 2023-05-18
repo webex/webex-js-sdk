@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.53.0](https://github.com/webex/webex-js-sdk/compare/v2.52.13...v2.53.0) (2023-05-18)
+
+
+### Features
+
+* **internal-plugin-calendar:** support extra query parameters for delete api ([#2799](https://github.com/webex/webex-js-sdk/issues/2799)) ([f26c744](https://github.com/webex/webex-js-sdk/commit/f26c744554d091adae4daa125d597f33ba018bcc))
+* **meetings:** meeting specific sdk bundle for cdn ([#2731](https://github.com/webex/webex-js-sdk/issues/2731)) ([34f1f46](https://github.com/webex/webex-js-sdk/commit/34f1f4659c936d5f46f6af99dd105c0fa4e30139))
+
+
+### Bug Fixes
+
+* **http-core:** update qs version to fix vulnerability ([#2814](https://github.com/webex/webex-js-sdk/issues/2814)) ([d300061](https://github.com/webex/webex-js-sdk/commit/d30006197b53e004fdf8ecfc4fb2a4844b3586fe))
+
 ### [2.52.13](https://github.com/webex/webex-js-sdk/compare/v2.52.12...v2.52.13) (2023-05-12)
 
 
