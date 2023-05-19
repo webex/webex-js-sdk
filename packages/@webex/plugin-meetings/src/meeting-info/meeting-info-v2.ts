@@ -224,7 +224,7 @@ export default class MeetingInfoV2 {
    * @param {String} captchaInfo.id
    * @param {String} installedOrgID
    * @param {String} locusId
-   * @param {any} extraParams
+   * @param {Object} extraParams
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -239,8 +239,14 @@ export default class MeetingInfoV2 {
     } = null,
     installedOrgID = null,
     locusId = null,
-    extraParams = null
+    extraParams: {meetingId?: string; [key: string]: string} = {}
   ) {
+    let meetingId: string;
+    if (extraParams.meetingId) {
+      meetingId = extraParams.meetingId;
+      delete extraParams.meetingId;
+    }
+
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
       type,
@@ -302,10 +308,10 @@ export default class MeetingInfoV2 {
         return response;
       })
       .catch((err) => {
-        if (extraParams?.meetingId) {
+        if (meetingId) {
           Metrics.postEvent({
             event: eventType.MEETING_INFO_RESPONSE,
-            meetingId: extraParams?.meetingId,
+            meetingId,
             data: {
               errors: [Metrics.parseWebexApiError(err, true)],
               meetingLookupUrl: err?.url,
