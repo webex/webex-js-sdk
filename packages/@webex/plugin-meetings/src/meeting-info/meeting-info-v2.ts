@@ -224,6 +224,7 @@ export default class MeetingInfoV2 {
    * @param {String} captchaInfo.id
    * @param {String} installedOrgID
    * @param {String} locusId
+   * @param {any} extraParams
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -237,45 +238,8 @@ export default class MeetingInfoV2 {
       id: string;
     } = null,
     installedOrgID = null,
-    locusId = null
-  ) {
-    return this.fetchMeetingInfoWithMetrics(
-      destination,
-      type,
-      password,
-      captchaInfo,
-      installedOrgID,
-      locusId,
-      null
-    );
-  }
-
-  /**
-   * Fetches meeting info from the server
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
-   * @param {String} password
-   * @param {Object} captchaInfo
-   * @param {String} captchaInfo.code
-   * @param {String} captchaInfo.id
-   * @param {String} installedOrgID
-   * @param {String} locusId
-   * @param {String} meetingId
-   * @returns {Promise} returns a meeting info object
-   * @private
-   * @memberof MeetingInfo
-   */
-  private async fetchMeetingInfoWithMetrics(
-    destination: string,
-    type: string = null,
-    password: string = null,
-    captchaInfo: {
-      code: string;
-      id: string;
-    } = null,
-    installedOrgID = null,
     locusId = null,
-    meetingId = null
+    extraParams = null
   ) {
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -297,6 +261,7 @@ export default class MeetingInfoV2 {
       captchaInfo,
       installedOrgID,
       locusId,
+      extraParams,
     });
 
     // If the body only contains the default properties, we don't have enough to
@@ -337,10 +302,10 @@ export default class MeetingInfoV2 {
         return response;
       })
       .catch((err) => {
-        if (meetingId) {
+        if (extraParams?.meetingId) {
           Metrics.postEvent({
             event: eventType.MEETING_INFO_RESPONSE,
-            meetingId,
+            meetingId: extraParams?.meetingId,
             data: {
               errors: [Metrics.parseWebexApiError(err, true)],
               meetingLookupUrl: err?.url,

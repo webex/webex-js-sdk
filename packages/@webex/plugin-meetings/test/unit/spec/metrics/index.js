@@ -127,7 +127,7 @@ browserOnly(describe)('Meeting metrics', () => {
         fatal: true,
         name: 'other',
         serviceErrorCode: 58400,
-        errorData: { code: 58400 },
+        errorData:  { error: { code: 58400 } },
         httpCode: 400
       });
     });
@@ -149,7 +149,7 @@ browserOnly(describe)('Meeting metrics', () => {
         fatal: false,
         name: 'other',
         serviceErrorCode: 403041,
-        errorData: { code: 403041 },
+        errorData: { error: { code: 403041 } },
         httpCode: 400
       });
     });
@@ -163,6 +163,38 @@ browserOnly(describe)('Meeting metrics', () => {
       const res = metrics.parseWebexApiError(err, false);
 
       assert.deepEqual(res, null);
+    });
+  });
+
+  describe('#generateErrorPayload', () => {
+    it('generates the correct payload for a valid error code', () => {
+      const errorCode = 4008;
+      const shownToUser = true;
+      const name = 'errorName';
+      const errBody = 'some error body';
+      const err = {
+        body: errBody,
+        statusCode: 404,
+      };
+
+      const payload = metrics.generateErrorPayload(
+        errorCode,
+        shownToUser,
+        name,
+        err
+      );
+
+      assert.deepEqual(payload, {
+        shownToUser,
+        category: 'expected',
+        errorDescription: 'NewLocusError',
+        errorCode,
+        fatal: true,
+        name,
+        errorData: {error: errBody},
+        serviceErrorCode: undefined,
+        httpCode: 404,
+      });
     });
   });
 });

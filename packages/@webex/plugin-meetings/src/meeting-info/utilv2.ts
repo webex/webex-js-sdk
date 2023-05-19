@@ -225,8 +225,11 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo, installedOrgID, locusId} = options;
-  const body: any = {...DEFAULT_MEETING_INFO_REQUEST_BODY};
+  const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} = options;
+  const body: any = {
+    ...DEFAULT_MEETING_INFO_REQUEST_BODY,
+    ...extraParams,
+  };
 
   switch (type) {
     case _SIP_URI_:

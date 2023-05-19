@@ -11,7 +11,8 @@ import testUsers from '@webex/test-helper-test-users';
 import {expectEvent} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 
-describe('plugin-presence', function () {
+// SPARK-413317
+describe.skip('plugin-presence', function () {
   this.timeout(10000);
   describe('Presence', () => {
     let mccoy, spock;

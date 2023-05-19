@@ -66,6 +66,15 @@ export const self = {
         },
       ],
       mediaSessionsExternal: false,
+      replaces: [
+        {
+          breakoutMoveId: 'e5caeb2c-ffcc-4e06-a08a-1122e7710398',
+          lastActive: '2023-05-04T07:14:32.068Z',
+          locusUrl: 'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
+          replacedAt: '2023-05-04T07:16:04.905Z',
+          sessionId: 'be3147d4-c318-86d8-7611-8d24beaaca8d',
+        }
+      ],
       state: 'JOINED',
       intent: {type: ''},
       intents: [null],

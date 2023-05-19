@@ -152,7 +152,7 @@ export default class Meetings extends WebexPlugin {
   geoHintInfo: any;
   meetingInfo: any;
   mediaHelpers: any;
-
+  breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
 
   /**
@@ -349,22 +349,19 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * handle locus events and takes meeting actions with them as they come in
+   * get corresponding meeting object by locus data
    * @param {Object} data a locus event
    * @param {String} data.locusUrl
    * @param {Object} data.locus
-   * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
-   * @param {String} data.eventType
-   * @returns {undefined}
+   * @returns {Object}
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
-    let meeting = null;
+  getCorrespondingMeetingByLocus(data) {
     // getting meeting by correlationId. This will happen for the new event
     // Either the locus
     // TODO : Add check for the callBack Address
-    meeting =
+    return (
       this.meetingCollection.getByKey(LOCUS_URL, data.locusUrl) ||
       // @ts-ignore
       this.meetingCollection.getByKey(
@@ -381,7 +378,23 @@ export default class Meetings extends WebexPlugin {
       (data.locus.info?.isUnifiedSpaceMeeting
         ? undefined
         : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl)) ||
-      this.meetingCollection.getByKey(MEETINGNUMBER, data.locus?.info?.webExMeetingId);
+      this.meetingCollection.getByKey(MEETINGNUMBER, data.locus?.info?.webExMeetingId)
+    );
+  }
+
+  /**
+   * handle locus events and takes meeting actions with them as they come in
+   * @param {Object} data a locus event
+   * @param {String} data.locusUrl
+   * @param {Object} data.locus
+   * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
+   * @param {String} data.eventType
+   * @returns {undefined}
+   * @private
+   * @memberof Meetings
+   */
+  private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
+    let meeting = this.getCorrespondingMeetingByLocus(data);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
@@ -460,6 +473,7 @@ export default class Meetings extends WebexPlugin {
 
           // It's a new meeting so initialize the locus data
           meeting.locusInfo.initialSetup(data.locus);
+          this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
           LoggerProxy.logger.error(e);
@@ -972,11 +986,17 @@ export default class Meetings extends WebexPlugin {
    * @param {string} destination - sipURL, spaceId, phonenumber, or locus object}
    * @param {string} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
+   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
    */
-  public create(destination: string, type: string = null, useRandomDelayForInfo = false) {
+  public create(
+    destination: string,
+    type: string = null,
+    useRandomDelayForInfo = false,
+    infoExtraParams = {}
+  ) {
     // TODO: type should be from a dictionary
 
     // Validate meeting information based on the provided destination and
@@ -1021,48 +1041,51 @@ export default class Meetings extends WebexPlugin {
           // Validate if a meeting was found.
           if (!meeting) {
             // Create a meeting based on the normalized destination and type.
-            return this.createMeeting(targetDest, type, useRandomDelayForInfo).then(
-              (createdMeeting: any) => {
-                // If the meeting was successfully created.
-                if (createdMeeting && createdMeeting.on) {
-                  // Create a destruction event for the meeting.
-                  createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
-                    // @ts-ignore
-                    if (this.config.autoUploadLogs) {
-                      this.uploadLogs({
-                        callStart: createdMeeting.locusInfo?.fullState?.lastActive,
-                        correlationId: createdMeeting.correlationId,
-                        feedbackId: createdMeeting.correlationId,
-                        locusId: createdMeeting.locusId,
-                        meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
-                      }).then(() => this.destroy(createdMeeting, payload.reason));
-                    } else {
-                      this.destroy(createdMeeting, payload.reason);
-                    }
-                  });
+            return this.createMeeting(
+              targetDest,
+              type,
+              useRandomDelayForInfo,
+              infoExtraParams
+            ).then((createdMeeting: any) => {
+              // If the meeting was successfully created.
+              if (createdMeeting && createdMeeting.on) {
+                // Create a destruction event for the meeting.
+                createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
+                  // @ts-ignore
+                  if (this.config.autoUploadLogs) {
+                    this.uploadLogs({
+                      callStart: createdMeeting.locusInfo?.fullState?.lastActive,
+                      correlationId: createdMeeting.correlationId,
+                      feedbackId: createdMeeting.correlationId,
+                      locusId: createdMeeting.locusId,
+                      meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
+                    }).then(() => this.destroy(createdMeeting, payload.reason));
+                  } else {
+                    this.destroy(createdMeeting, payload.reason);
+                  }
+                });
 
-                  createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
-                    // @ts-ignore
-                    if (this.config.autoUploadLogs) {
-                      this.uploadLogs({
-                        callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
-                        correlationId: meetingInstance.correlationId,
-                        feedbackId: meetingInstance.correlationId,
-                        locusId: meetingInstance.locusId,
-                        meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
-                      });
-                    }
-                  });
-                } else {
-                  LoggerProxy.logger.error(
-                    `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`
-                  );
-                }
-
-                // Return the newly created meeting.
-                return Promise.resolve(createdMeeting);
+                createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
+                  // @ts-ignore
+                  if (this.config.autoUploadLogs) {
+                    this.uploadLogs({
+                      callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
+                      correlationId: meetingInstance.correlationId,
+                      feedbackId: meetingInstance.correlationId,
+                      locusId: meetingInstance.locusId,
+                      meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
+                    });
+                  }
+                });
+              } else {
+                LoggerProxy.logger.error(
+                  `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`
+                );
               }
-            );
+
+              // Return the newly created meeting.
+              return Promise.resolve(createdMeeting);
+            });
           }
 
           // Return the existing meeting.
@@ -1075,6 +1098,7 @@ export default class Meetings extends WebexPlugin {
    * @param {String} destination see create()
    * @param {String} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
+   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1082,7 +1106,8 @@ export default class Meetings extends WebexPlugin {
   private async createMeeting(
     destination: any,
     type: string = null,
-    useRandomDelayForInfo = false
+    useRandomDelayForInfo = false,
+    infoExtraParams = {}
   ) {
     const meeting = new Meeting(
       {
@@ -1130,12 +1155,12 @@ export default class Meetings extends WebexPlugin {
 
       if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo({}),
+          () => meeting.fetchMeetingInfo({extraParams: infoExtraParams}),
           waitingTime
         );
         meeting.parseMeetingInfo(undefined, destination);
       } else {
-        await meeting.fetchMeetingInfo({});
+        await meeting.fetchMeetingInfo({extraParams: infoExtraParams});
       }
     } catch (err) {
       if (
@@ -1249,7 +1274,8 @@ export default class Meetings extends WebexPlugin {
         const activeLocusUrl = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
-          locusArray.loci.forEach((locus) => {
+          const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
+          lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
               locus,
@@ -1278,6 +1304,72 @@ export default class Meetings extends WebexPlugin {
         );
         throw new Error(error);
       });
+  }
+
+  /**
+   * sort out locus array for initial creating
+   * @param {Array} loci original locus array
+   * @returns {undefined}
+   * @public
+   * @memberof Meetings
+   */
+  sortLocusArrayToUpdate(loci: any[]) {
+    const mainLoci = loci.filter((locus) => !MeetingsUtil.isBreakoutLocusDTO(locus));
+    const breakoutLoci = loci.filter((locus) => MeetingsUtil.isValidBreakoutLocus(locus));
+    this.breakoutLocusForHandleLater = [];
+    const lociToUpdate = [...mainLoci];
+    breakoutLoci.forEach((breakoutLocus) => {
+      const associateMainLocus = mainLoci.find(
+        (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+      );
+      const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
+        locus: breakoutLocus,
+        locusUrl: breakoutLocus.url,
+      });
+
+      if (associateMainLocus && !existCorrespondingMeeting) {
+        // if exists both main session and breakout session locus of the same non-exist meeting, handle main locus first,
+        // after meeting create with main locus, then handle the associate breakout locus.
+        // if only handle breakout locus, will miss some date
+        this.breakoutLocusForHandleLater.push(breakoutLocus);
+      } else {
+        lociToUpdate.push(breakoutLocus);
+      }
+    });
+
+    return lociToUpdate;
+  }
+
+  /**
+   * check breakout locus which waiting for main locus's meeting to be created, then handle the breakout locus
+   * @param {Object} newCreatedLocus the locus which just create meeting object of it
+   * @returns {undefined}
+   * @public
+   * @memberof Meetings
+   */
+  checkHandleBreakoutLocus(newCreatedLocus) {
+    if (
+      !newCreatedLocus ||
+      !this.breakoutLocusForHandleLater ||
+      !this.breakoutLocusForHandleLater.length
+    ) {
+      return;
+    }
+    if (MeetingsUtil.isBreakoutLocusDTO(newCreatedLocus)) {
+      return;
+    }
+    const existIndex = this.breakoutLocusForHandleLater.findIndex(
+      (breakoutLocus) =>
+        breakoutLocus.controls?.breakout?.url === newCreatedLocus.controls?.breakout?.url
+    );
+
+    if (existIndex < 0) {
+      return;
+    }
+
+    const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
+    this.handleLocusEvent({locus: associateBreakoutLocus, locusUrl: associateBreakoutLocus.url});
+    this.breakoutLocusForHandleLater.splice(existIndex, 1);
   }
 
   /**

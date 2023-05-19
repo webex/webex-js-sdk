@@ -10,6 +10,7 @@ import {
   BREAKOUTS,
   CORRELATION_ID,
   EVENT_TRIGGERS,
+  LOCUS,
   LOCUSEVENT,
   ROAP,
 } from '../constants';
@@ -266,9 +267,22 @@ MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: strin
  * @param {Object} newLocus new locus data
  * @returns {boolean}
  * @private
- * @memberof Meetings
  */
 MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
   return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+};
+
+/**
+ * check the locus is valid breakout locus or not
+ * @param {Object} locus
+ * @returns {boolean}
+ * @private
+ */
+MeetingsUtil.isValidBreakoutLocus = (locus: any) => {
+  const inActiveStatus = locus?.fullState?.state === LOCUS.STATE.INACTIVE;
+  const isLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(locus);
+  const selfJoined = locus.self?.state === _JOINED_;
+
+  return isLocusAsBreakout && !inActiveStatus && selfJoined;
 };
 export default MeetingsUtil;

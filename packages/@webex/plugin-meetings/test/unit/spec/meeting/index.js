@@ -7,7 +7,7 @@ import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert} from '@webex/test-helper-chai';
-import {Credentials} from '@webex/webex-core';
+import {Credentials, Token} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {
@@ -19,8 +19,10 @@ import {
   EVENT_TRIGGERS,
   _SIP_URI_,
   _MEETING_ID_,
+  MEETING_REMOVED_REASON,
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
+  DISPLAY_HINTS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -179,7 +181,7 @@ describe('plugin-meetings', () => {
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id',
+          client_id: 'mock-client-id'
         },
         meetings: {
           reconnection: {
@@ -1721,7 +1723,21 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
+            deviceUrl: meeting.deviceUrl
+          });
+        });
+        it('should leave the meeting on the resource with reason', async () => {
+          const leave = meeting.leave({resourceId: meeting.resourceId, reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST});
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(meeting.meetingRequest.leaveMeeting, {
+            locusUrl: meeting.locusUrl,
+            correlationId: meeting.correlationId,
+            selfId: meeting.selfId,
+            resourceId: meeting.resourceId,
             deviceUrl: meeting.deviceUrl,
+            reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST
           });
         });
       });
@@ -3040,6 +3056,7 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
         const FAKE_INSTALLED_ORG_ID = '123456';
+        let FAKE_EXTRA_PARAMS;
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -3064,11 +3081,13 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           meeting.locusId = 'locus-id';
+          meeting.id = 'meeting-id';
+          FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF', meetingId: meeting.id};
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
@@ -3079,17 +3098,18 @@ describe('plugin-meetings', () => {
           await meeting.fetchMeetingInfo({
             password: FAKE_PASSWORD,
             captchaCode: FAKE_CAPTCHA_CODE,
+            extraParams: FAKE_EXTRA_PARAMS,
           });
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             FAKE_PASSWORD,
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
             FAKE_INSTALLED_ORG_ID,
-            'locus-id',
-            meeting.id,
+            meeting.locusId,
+            FAKE_EXTRA_PARAMS
           );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
@@ -3108,7 +3128,7 @@ describe('plugin-meetings', () => {
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
@@ -3127,14 +3147,14 @@ describe('plugin-meetings', () => {
 
           // meeting info provider
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
             null,
             undefined,
-            'locus-id',
-            meeting.id,
+            meeting.locusId,
+            {meetingId: meeting.id}
           );
 
           // parseMeeting info
@@ -3156,7 +3176,7 @@ describe('plugin-meetings', () => {
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = null;
           meeting.destination = FAKE_DESTINATION;
@@ -3170,12 +3190,12 @@ describe('plugin-meetings', () => {
             'fetchMeetingInfo() called with captchaCode when captcha was not required'
           );
 
-          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics);
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
         });
 
         it('fails if password is provided when not required', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
           meeting.destination = FAKE_DESTINATION;
@@ -3189,14 +3209,14 @@ describe('plugin-meetings', () => {
             'fetchMeetingInfo() called with password when password was not required'
           );
 
-          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics);
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
         });
 
         it('handles meetingInfoProvider requiring password', async () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
@@ -3204,14 +3224,14 @@ describe('plugin-meetings', () => {
           await assert.isRejected(meeting.fetchMeetingInfo({}), PasswordError);
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
             null,
             undefined,
             'locus-id',
-            meeting.id,
+           {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3228,7 +3248,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
           };
@@ -3236,14 +3256,14 @@ describe('plugin-meetings', () => {
           await assert.isRejected(meeting.fetchMeetingInfo({}), PermissionError);
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
             null,
             undefined,
             'locus-id',
-            meeting.id,
+           {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3259,7 +3279,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -3273,14 +3293,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
             null,
             undefined,
             'locus-id',
-            meeting.id,
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3302,7 +3322,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -3317,14 +3337,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
             {code: 'bbb', id: FAKE_CAPTCHA_ID},
             undefined,
             'locus-id',
-            meeting.id
+            {meetingId: meeting.id}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3337,7 +3357,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon.stub().resolves({
+            fetchMeetingInfo: sinon.stub().resolves({
               statusCode: 200,
               body: FAKE_MEETING_INFO,
             }),
@@ -3349,14 +3369,14 @@ describe('plugin-meetings', () => {
           });
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
             null,
             undefined,
             'locus-id',
-            meeting.id,
+           {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: undefined});
@@ -3375,7 +3395,7 @@ describe('plugin-meetings', () => {
           };
 
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
@@ -3397,14 +3417,14 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledWith(
-            meeting.attrs.meetingInfoProvider.fetchMeetingInfoWithMetrics,
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
             {code: 'bbb', id: FAKE_CAPTCHA_ID},
             undefined,
             'locus-id',
-            meeting.id,
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3447,7 +3467,7 @@ describe('plugin-meetings', () => {
 
           // setup the meeting so that a captcha is required
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfoWithMetrics: sinon
+            fetchMeetingInfo: sinon
               .stub()
               .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
@@ -3546,6 +3566,17 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'mediaNegotiatedEvent'},
             'media:negotiated'
           );
+        });
+      });
+
+      describe('#postMetrics', () => {
+        it('should have #postMetrics', () => {
+          assert.exists(meeting.postMetrics);
+        });
+
+        it('should trigger `postMetrics`', async () => {
+          await meeting.postMetrics(eventType.LEAVE);
+          assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
         });
       });
 
@@ -4726,6 +4757,41 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
         });
+
+        it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
+          );
+        });
+
+        it('listens to the leave event from breakouts and triggers the breakout leave event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('LEAVE_BREAKOUT');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
+          );
+        });
+
+        it('listens to the breakout ask for help event and triggers the ask for help event', () => {
+          TriggerProxy.trigger.reset();
+          const helpEvent = {sessionId:'sessionId', participant: 'participant'}
+          meeting.breakouts.trigger('ASK_FOR_HELP', helpEvent);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+            helpEvent
+          );
+        });
       });
 
       describe('#setupLocusControlsListener', () => {
@@ -5275,10 +5341,10 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let handleDataChannelUrlChangeSpy;
-        let canEnableReactionsSpy;
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let hasHintsSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5302,7 +5368,6 @@ describe('plugin-meetings', () => {
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
-          canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
@@ -5315,6 +5380,10 @@ describe('plugin-meetings', () => {
         });
 
         it('registers the correct MEETING_INFO_UPDATED event', () => {
+          // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
+          const restorableHasHints = ControlsOptionsUtil.hasHints;
+          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5349,10 +5418,62 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
-          assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5370,6 +5491,8 @@ describe('plugin-meetings', () => {
           callback(payload);
 
           assert.notCalled(TriggerProxy.trigger);
+
+          ControlsOptionsUtil.hasHints = restorableHasHints;
         });
       });
 
@@ -6721,6 +6844,9 @@ describe('plugin-meetings', () => {
           });
 
           assert.deepEqual(res.origin, {
+            channel: undefined,
+            loginType: undefined,
+            userType: undefined,
             clientInfo: {
               browser: '',
               browserVersion: '',
