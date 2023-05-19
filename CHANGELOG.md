@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.105](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.104...v3.0.0-beta.105) (2023-05-18)
+
+
+### Bug Fixes
+
+* version of internal-media-core used by media-helpers doesn't match plugin-meetings ([#2821](https://github.com/webex/webex-js-sdk/issues/2821)) ([50639f7](https://github.com/webex/webex-js-sdk/commit/50639f7843e9a42ce1a20b24b2fe111b32f6b9d0))
+
+## [3.0.0-beta.104](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.103...v3.0.0-beta.104) (2023-05-18)
+
+
+### Bug Fixes
+
+* **pipeline:** beta tag automation ([#2819](https://github.com/webex/webex-js-sdk/issues/2819)) ([48eab6f](https://github.com/webex/webex-js-sdk/commit/48eab6f9702d400bdc39547ee664a207b7dc59f1))
+
+## [3.0.0-beta.103](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.102...v3.0.0-beta.103) (2023-05-18)
+
+
+### Features
+
+* **CA:** fixed CA & BO issues for the base functions ([#2812](https://github.com/webex/webex-js-sdk/issues/2812)) ([b169f8b](https://github.com/webex/webex-js-sdk/commit/b169f8b4ac9a7f4de402878fe124eab010d21c80))
+
+## [3.0.0-beta.102](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.101...v3.0.0-beta.102) (2023-05-18)
+
+
+### Features
+
+* **Live-Annotation:** add new interface for presenter ([#2809](https://github.com/webex/webex-js-sdk/issues/2809)) ([ad875ca](https://github.com/webex/webex-js-sdk/commit/ad875cac6b881e2768aa7cff60ee6030769a48ed))
+
 ## [3.0.0-beta.101](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.100...v3.0.0-beta.101) (2023-05-16)
 
 

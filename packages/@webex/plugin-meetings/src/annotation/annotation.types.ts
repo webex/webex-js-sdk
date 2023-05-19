@@ -24,12 +24,16 @@ type CommandRequestBody = {
 };
 
 interface IAnnotationChannel {
-  acceptRequest(approval);
-  declineRequest(approval);
-  approveAnnotation: (requestData: RequestData) => undefined | Promise<void>;
-  cancelApproveAnnotation: (requestData: RequestData) => undefined | Promise<void>;
+  // === below is for presenter
+  acceptRequest: (approval) => undefined | Promise<void>;
+  declineRequest: (approval) => undefined | Promise<void>;
   closeAnnotation: (requestData: RequestData) => undefined | Promise<void>;
+  changeAnnotationOptions: (options, meeting) => undefined | Promise<void>;
+  // === below is for attendee
+  approveAnnotation: (requestData: RequestData) => undefined | Promise<void>;
+  cancelApproveAnnotation: (requestData: RequestData, approval) => undefined | Promise<void>;
   sendStrokeData: (strokeData: StrokeData) => void;
+  // =====
   approvalUrlUpdate: (approvalUrl: string) => void;
   locusUrlUpdate: (locusUrl: string) => void;
 }

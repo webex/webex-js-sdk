@@ -190,6 +190,7 @@ export const MEDIA_UPDATE_TYPE = {
  * @property {String} [meetingQuality.remote]
  * @property {Boolean} [rejoin]
  * @property {Boolean} [enableMultistream]
+ * @property {String} [correlationId]
  */
 
 /**
@@ -1397,6 +1398,20 @@ export default class Meeting extends StatelessWebexPlugin {
           throw error;
         })
     );
+  }
+
+  /**
+   * Posts metrics event for this meeting. Allows the app to send Call Analyzer events.
+   * @param {String} eventName - Call Analyzer event, see eventType in src/metrics/config.ts for possible values
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  public postMetrics(eventName: string) {
+    Metrics.postEvent({
+      event: eventName,
+      meeting: this,
+    });
   }
 
   /**
@@ -4288,9 +4303,16 @@ export default class Meeting extends StatelessWebexPlugin {
       joinSuccess = resolve;
     });
 
+    if (options.correlationId) {
+      this.setCorrelationId(options.correlationId);
+      LoggerProxy.logger.log(
+        `Meeting:index#join --> Using a new correlation id from app ${this.correlationId}`
+      );
+    }
+
     if (!this.hasJoinedOnce) {
       this.hasJoinedOnce = true;
-    } else {
+    } else if (!options.correlationId) {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`
       );
