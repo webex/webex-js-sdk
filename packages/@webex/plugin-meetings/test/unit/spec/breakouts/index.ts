@@ -723,6 +723,24 @@ describe('plugin-meetings', () => {
           },
         });
       });
+      it('makes the request as expected when unlockEdit is true', async () => {
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+        const result = await breakouts.update(params, true);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: false},
+            groups: [params],
+          },
+        });
+      });
       it('throw error if missing id in params', async () => {
         const params = {
           sessions: [{name: 'Session 1'}],
