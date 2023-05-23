@@ -957,7 +957,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingsUtil.getMeetingAddedType);
             assert.notCalled(setTimeoutSpy);
             assert.calledThrice(TriggerProxy.trigger);
-            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfo, destination, type, null, null, undefined, undefined, {...extraParams, meetingId: meeting.id});
+            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfo, destination, type, null, null, undefined, undefined, extraParams, {meetingId: meeting.id});
             assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
 
             if (expectedMeetingData.permissionToken) {
@@ -988,7 +988,7 @@ describe('plugin-meetings', () => {
               'meeting:meetingInfoAvailable'
             );
           };
-
+          
           it('creates the meeting from a successful meeting info fetch promise testing', async () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
@@ -1003,40 +1003,22 @@ describe('plugin-meetings', () => {
           [undefined, FAKE_INFO_EXTRA_PARAMS].forEach((infoExtraParams) => {
             const infoExtraParamsProvided = infoExtraParams !== undefined;
 
-            it(`creates the meeting from a successful meeting info fetch meeting resolve testing${
-              infoExtraParamsProvided ? ' with infoExtraParams' : ''
-            }`, async () => {
-              const meeting = await webex.meetings.createMeeting(
-                'test destination',
-                'test type',
-                false,
-                infoExtraParams
-                );
-              const defaultExtraParams = {meetingId: meeting.id};
+            it(`creates the meeting from a successful meeting info fetch meeting resolve testing${infoExtraParamsProvided ? ' with infoExtraParams' : ''}`, async () => {
+              const meeting = await webex.meetings.createMeeting('test destination', 'test type', false, infoExtraParams);
               const expectedMeetingData = {
                 permissionToken: 'PT',
                 meetingJoinUrl: 'meetingJoinUrl',
               };
-
+  
               assert.instanceOf(
                 meeting,
                 Meeting,
                 'createMeeting should eventually resolve to a Meeting Object'
               );
-              checkCreateWithoutDelay(
-                meeting,
-                'test destination',
-                'test type',
-                infoExtraParamsProvided
-                  ? {...defaultExtraParams, ...infoExtraParams}
-                  : defaultExtraParams,
-                expectedMeetingData
-              );
+              checkCreateWithoutDelay(meeting, 'test destination', 'test type', infoExtraParamsProvided ? infoExtraParams : {}, expectedMeetingData);
             });
-
-            it(`creates the meeting from a successful meeting info fetch with random delay${
-              infoExtraParamsProvided ? ' with infoExtraParams' : ''
-            }`, async () => {
+  
+            it(`creates the meeting from a successful meeting info fetch with random delay${infoExtraParamsProvided ? ' with infoExtraParams' : ''}`, async () => {
               const FAKE_LOCUS_MEETING = {
                 conversationUrl: 'locusConvURL',
                 url: 'locusUrl',
@@ -1052,16 +1034,14 @@ describe('plugin-meetings', () => {
                   active: false,
                 },
               };
-
+  
               const meeting = await webex.meetings.createMeeting(
                 FAKE_LOCUS_MEETING,
                 'test type',
                 true,
                 infoExtraParams
               );
-
-              const defaultExtraParams = {meetingId: meeting.id};
-
+  
               assert.instanceOf(
                 meeting,
                 Meeting,
@@ -1069,7 +1049,7 @@ describe('plugin-meetings', () => {
               );
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
               assert.calledOnce(setTimeoutSpy);
-
+  
               // Parse meeting info with locus object
               assert.equal(meeting.conversationUrl, 'locusConvURL');
               assert.equal(meeting.locusUrl, 'locusUrl');
@@ -1078,7 +1058,7 @@ describe('plugin-meetings', () => {
               assert.isUndefined(meeting.meetingJoinUrl);
               assert.equal(meeting.owner, 'locusOwner');
               assert.isUndefined(meeting.permissionToken);
-
+  
               // Add meeting and send trigger
               assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
               assert.calledTwice(TriggerProxy.trigger);
@@ -1095,7 +1075,7 @@ describe('plugin-meetings', () => {
                   type: 'test meeting added type',
                 }
               );
-
+  
               // When timer expires
               clock.tick(FAKE_TIME_TO_START);
               assert.calledWith(
@@ -1106,9 +1086,9 @@ describe('plugin-meetings', () => {
                 null,
                 undefined,
                 undefined,
-                infoExtraParamsProvided ? {...infoExtraParams,...defaultExtraParams} : defaultExtraParams,
+                infoExtraParamsProvided ? infoExtraParams : {}
               );
-
+  
               // Parse meeting info is called again with new meeting info
               await testUtils.flushPromises();
               assert.equal(meeting.conversationUrl, 'locusConvURL');
@@ -1118,7 +1098,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
               assert.equal(meeting.owner, 'locusOwner');
               assert.equal(meeting.permissionToken, 'PT');
-
+  
               assert.calledWith(
                 TriggerProxy.trigger,
                 meeting,
@@ -1126,7 +1106,7 @@ describe('plugin-meetings', () => {
                 'meeting:meetingInfoAvailable'
               );
             });
-          });
+          })
 
           it('creates the meeting from a successful meeting info fetch that has no random delay because it is active', async () => {
             const FAKE_LOCUS_MEETING = {

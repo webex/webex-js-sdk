@@ -225,6 +225,7 @@ export default class MeetingInfoV2 {
    * @param {String} installedOrgID
    * @param {String} locusId
    * @param {Object} extraParams
+   * @param {Object} options
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -239,13 +240,10 @@ export default class MeetingInfoV2 {
     } = null,
     installedOrgID = null,
     locusId = null,
-    extraParams: {meetingId?: string; [key: string]: string} = {}
+    extraParams: object = {},
+    options: {meetingId?: string} = {}
   ) {
-    let meetingId: string;
-    if (extraParams.meetingId) {
-      meetingId = extraParams.meetingId;
-      delete extraParams.meetingId;
-    }
+    const {meetingId} = options;
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -286,7 +284,7 @@ export default class MeetingInfoV2 {
       throw err;
     }
 
-    const options: any = {
+    const requestOptions: any = {
       method: HTTP_VERBS.POST,
       body,
     };
@@ -294,14 +292,14 @@ export default class MeetingInfoV2 {
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (directURI) {
-      options.uri = directURI;
+      requestOptions.uri = directURI;
     } else {
-      options.service = WBXAPPAPI_SERVICE;
-      options.resource = 'meetingInfo';
+      requestOptions.service = WBXAPPAPI_SERVICE;
+      requestOptions.resource = 'meetingInfo';
     }
 
     return this.webex
-      .request(options)
+      .request(requestOptions)
       .then((response) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 

@@ -3070,7 +3070,8 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
         const FAKE_INSTALLED_ORG_ID = '123456';
-        let FAKE_EXTRA_PARAMS;
+        const FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
+        let FAKE_OPTIONS;
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -3096,7 +3097,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusId = 'locus-id';
           meeting.id = 'meeting-id';
-          FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF', meetingId: meeting.id};
+          FAKE_OPTIONS = {meetingId: meeting.id};
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
@@ -3123,7 +3124,8 @@ describe('plugin-meetings', () => {
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
             FAKE_INSTALLED_ORG_ID,
             meeting.locusId,
-            FAKE_EXTRA_PARAMS
+            FAKE_EXTRA_PARAMS,
+            FAKE_OPTIONS
           );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
@@ -3168,6 +3170,7 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             meeting.locusId,
+            {},
             {meetingId: meeting.id}
           );
 
@@ -3245,7 +3248,8 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             'locus-id',
-           {meetingId: meeting.id},
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3277,7 +3281,8 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             'locus-id',
-           {meetingId: meeting.id},
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3314,6 +3319,7 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             'locus-id',
+            {},
             {meetingId: meeting.id},
           );
 
@@ -3358,6 +3364,7 @@ describe('plugin-meetings', () => {
             {code: 'bbb', id: FAKE_CAPTCHA_ID},
             undefined,
             'locus-id',
+            {},
             {meetingId: meeting.id}
           );
 
@@ -3390,7 +3397,8 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             'locus-id',
-           {meetingId: meeting.id},
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: undefined});
@@ -3438,6 +3446,7 @@ describe('plugin-meetings', () => {
             {code: 'bbb', id: FAKE_CAPTCHA_ID},
             undefined,
             'locus-id',
+            {},
             {meetingId: meeting.id},
           );
 

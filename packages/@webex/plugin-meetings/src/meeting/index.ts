@@ -1232,11 +1232,6 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
-    extraParams = {
-      ...extraParams,
-      meetingId: this.id,
-    };
-
     try {
       const captchaInfo = captchaCode
         ? {code: captchaCode, id: this.requiredCaptcha.captchaId}
@@ -1250,7 +1245,8 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
-        extraParams
+        extraParams,
+        {meetingId: this.id}
       );
 
       this.parseMeetingInfo(info, this.destination);
