@@ -731,6 +731,7 @@ describe('plugin-meetings', () => {
           id: 'groupId',
           sessions: [{name: 'Session 1'}],
         };
+        breakouts._clearEditLockInfo = sinon.stub();
         const result = await breakouts.update(params, true);
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
@@ -740,6 +741,7 @@ describe('plugin-meetings', () => {
             groups: [params],
           },
         });
+        assert.calledOnceWithExactly(breakouts._clearEditLockInfo);
       });
       it('throw error if missing id in params', async () => {
         const params = {
