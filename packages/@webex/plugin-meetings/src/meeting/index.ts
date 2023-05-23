@@ -2547,6 +2547,22 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
             displayHints: payload.info.userDisplayHints,
           }),
+          canEnableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
