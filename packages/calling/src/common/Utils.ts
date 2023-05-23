@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
+import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
   CallErrorEmitterCallBack,
@@ -123,7 +124,6 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback, LineStatus} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
-import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {

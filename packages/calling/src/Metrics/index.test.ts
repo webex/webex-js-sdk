@@ -1,13 +1,13 @@
 /* eslint-disable dot-notation */
-import {getMockDeviceInfo, getTestUtilsWebex} from '../../common/testUtil';
-import getMetricManager from '.';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from './types';
-import {VERSION} from '../constants';
-import {createClientError} from '../../Errors/catalog/CallingDeviceError';
-import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../../Errors/types';
-import {MobiusStatus, ServiceIndicator} from '../../common/types';
-import log from '../../Logger';
-import {createCallError} from '../../Errors/catalog/CallError';
+import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
+import {getMetricManager} from './index';
+import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
+import {VERSION} from '../CallingClient/constants';
+import {createClientError} from '../Errors/catalog/CallingDeviceError';
+import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
+import {MobiusStatus, ServiceIndicator} from '../common/types';
+import log from '../Logger';
+import {createCallError} from '../Errors/catalog/CallError';
 
 const webex = getTestUtilsWebex();
 
@@ -59,8 +59,7 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         METRIC_EVENT.REGISTRATION,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.BEHAVIORAL,
-        undefined
+        METRIC_TYPE.BEHAVIORAL
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
     });
@@ -111,8 +110,7 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         'invalidMetricName' as unknown as METRIC_EVENT,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.OPERATIONAL,
-        undefined
+        METRIC_TYPE.OPERATIONAL
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
@@ -153,8 +151,7 @@ describe('CALLING: Metric tests', () => {
         mockCallAction,
         METRIC_TYPE.BEHAVIORAL,
         mockCallId,
-        mockCorrelationId,
-        undefined
+        mockCorrelationId
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.CALL, expectedData);
     });
@@ -214,8 +211,7 @@ describe('CALLING: Metric tests', () => {
         mockCallAction,
         METRIC_TYPE.OPERATIONAL,
         mockCallId,
-        mockCorrelationId,
-        undefined
+        mockCorrelationId
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
@@ -262,8 +258,7 @@ describe('CALLING: Metric tests', () => {
         mockCallId,
         mockCorrelationId,
         mockSdp,
-        mockSdp,
-        undefined
+        mockSdp
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
     });
@@ -329,8 +324,7 @@ describe('CALLING: Metric tests', () => {
         mockCallId,
         mockCorrelationId,
         mockSdp,
-        mockSdp,
-        undefined
+        mockSdp
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
@@ -339,6 +333,118 @@ describe('CALLING: Metric tests', () => {
         {
           file: 'metric',
           method: 'submitMediaMetric',
+        }
+      );
+    });
+  });
+
+  describe('Voicemail metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit voicemail success metric', () => {
+      const expectedData1 = {
+        tags: {
+          action: VOICEMAIL_ACTION.GET_VOICEMAILS,
+          device_id: mockDeviceInfo.device.deviceId,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          calling_sdk_version: VERSION,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL,
+        VOICEMAIL_ACTION.GET_VOICEMAILS,
+        METRIC_TYPE.BEHAVIORAL
+      );
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData1);
+
+      mockSubmitClientMetric.mockClear();
+
+      const expectedData2 = {
+        ...expectedData1,
+        tags: {...expectedData1.tags, message_id: 'messageId', action: VOICEMAIL_ACTION.DELETE},
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL,
+        VOICEMAIL_ACTION.DELETE,
+        METRIC_TYPE.BEHAVIORAL,
+        'messageId'
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData2);
+    });
+
+    it('submit voicemail failure metric', () => {
+      const errorMessage = 'User is not authenticated';
+      const expectedData1 = {
+        tags: {
+          action: VOICEMAIL_ACTION.GET_VOICEMAILS,
+          device_id: mockDeviceInfo.device.deviceId,
+          message_id: undefined,
+          error: errorMessage,
+          status_code: 401,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          calling_sdk_version: VERSION,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        VOICEMAIL_ACTION.GET_VOICEMAILS,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        errorMessage,
+        401
+      );
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        expectedData1
+      );
+
+      mockSubmitClientMetric.mockClear();
+
+      const expectedData2 = {
+        ...expectedData1,
+        tags: {...expectedData1.tags, message_id: 'messageId', action: VOICEMAIL_ACTION.DELETE},
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        VOICEMAIL_ACTION.DELETE,
+        METRIC_TYPE.BEHAVIORAL,
+        'messageId',
+        errorMessage,
+        401
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        expectedData2
+      );
+    });
+
+    it('submit unknown voicemail metric', () => {
+      const logSpy = jest.spyOn(log, 'warn');
+
+      metricManager.submitVoicemailMetric(
+        'invalidMetricName' as unknown as METRIC_EVENT,
+        VOICEMAIL_ACTION.GET_VOICEMAILS,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(logSpy).toBeCalledOnceWith(
+        'Invalid metric name received. Rejecting request to submit metric.',
+        {
+          file: 'metric',
+          method: 'submitVoicemailMetric',
         }
       );
     });

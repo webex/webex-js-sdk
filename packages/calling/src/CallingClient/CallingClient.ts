@@ -49,8 +49,8 @@ import {
 import {CallingClientError} from '../Errors';
 import Line from './line';
 import {ILine, LINE_EVENTS, LineStatus} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from './metrics/types';
-import getMetricManager from './metrics';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
+import {getMetricManager} from '../Metrics';
 
 /**
  *
@@ -229,7 +229,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   private async getMobiusServers() {
     /* Following operations are performed in a synchronous way ->
-    
+
         1. Get RegionInfo
         2. Get Mobius Server with that RegionInfo
         3. Check whether Mobius server was found without any error

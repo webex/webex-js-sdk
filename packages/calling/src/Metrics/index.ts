@@ -1,11 +1,10 @@
-/* eslint-disable valid-jsdoc */
-import {CallError, CallingClientError} from '../../Errors';
-import {METRIC_FILE, VERSION} from '../constants';
-import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common/types';
-import {WebexSDK} from '../../SDKConnector/types';
+import {CallError, CallingClientError} from '../Errors';
+import {METRIC_FILE, VERSION} from '../CallingClient/constants';
+import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
+import {WebexSDK} from '../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
-import log from '../../Logger';
-import {LineError} from '../../Errors/catalog/LineError';
+import {LineError} from '../Errors/catalog/LineError';
+import log from '../Logger';
 
 let metricManager: IMetricManager;
 
@@ -17,13 +16,13 @@ class MetricManager implements IMetricManager {
 
   private deviceInfo?: IDeviceInfo;
 
-  private serviceIndicator: ServiceIndicator;
+  private serviceIndicator?: ServiceIndicator;
 
   /**
    * @param webex - Webex object used to send metrics.
    * @param indicator - Service Indicator.
    */
-  public constructor(webex: WebexSDK, indicator: ServiceIndicator) {
+  public constructor(webex: WebexSDK, indicator?: ServiceIndicator) {
     log.info('Initializing metric manager...', {file: METRIC_FILE});
     this.webex = webex;
     this.serviceIndicator = indicator;
@@ -116,7 +115,7 @@ class MetricManager implements IMetricManager {
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId,
-    callError: CallError | undefined
+    callError?: CallError
   ) {
     let data;
 
@@ -192,9 +191,9 @@ class MetricManager implements IMetricManager {
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId,
-    localSdp: string | undefined,
-    remoteSdp: string | undefined,
-    callError: CallError | undefined
+    localSdp?: string,
+    remoteSdp?: string,
+    callError?: CallError
   ) {
     let data;
 
@@ -257,13 +256,78 @@ class MetricManager implements IMetricManager {
       this.webex.internal.metrics.submitClientMetrics(name, data);
     }
   }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param messageId - Message identifier of a Voicemail message.
+   * @param voicemailError - Error string used to populate error details in metric.
+   * @param statusCode - Status code used to populate error details in metric.
+   */
+  public submitVoicemailMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    messageId?: string,
+    voicemailError?: string,
+    statusCode?: number
+  ) {
+    let data;
+
+    switch (name) {
+      case METRIC_EVENT.VOICEMAIL: {
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            message_id: messageId,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            calling_sdk_version: VERSION,
+          },
+          type,
+        };
+        break;
+      }
+
+      case METRIC_EVENT.VOICEMAIL_ERROR: {
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            message_id: messageId,
+            error: voicemailError,
+            status_code: statusCode,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            calling_sdk_version: VERSION,
+          },
+          type,
+        };
+        break;
+      }
+
+      default:
+        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+          file: METRIC_FILE,
+          method: this.submitVoicemailMetric.name,
+        });
+        break;
+    }
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
 }
 
 /**
  * @param webex - Webex object to communicate with metrics microservice.
  * @param indicator - Service Indicator.
  */
-const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): IMetricManager => {
+export const getMetricManager = (webex: WebexSDK, indicator?: ServiceIndicator): IMetricManager => {
   if (!metricManager) {
     metricManager = new MetricManager(webex, indicator);
   }

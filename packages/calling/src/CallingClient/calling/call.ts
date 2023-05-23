@@ -76,8 +76,8 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_METRIC} from '../metrics/types';
-import getMetricManager from '../metrics';
+import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_METRIC} from '../../Metrics/types';
+import {getMetricManager} from '../../Metrics';
 import {SERVICES_ENDPOINT} from '../../common/constants';
 
 /**
