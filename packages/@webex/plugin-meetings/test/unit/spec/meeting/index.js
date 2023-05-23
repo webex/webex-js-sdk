@@ -998,7 +998,6 @@ describe('plugin-meetings', () => {
           });
 
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
-            const uuidStub = sinon.stub(uuid, 'v4').returns('randomid');
             meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
 
             const join = meeting.join();
@@ -1034,8 +1033,6 @@ describe('plugin-meetings', () => {
             assert.deepEqual(Metrics.postEvent.getCall(2).args[0].data, {
               meetingLookupUrl: 'url',
             });
-
-            uuidStub.restore();
           });
 
           it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
