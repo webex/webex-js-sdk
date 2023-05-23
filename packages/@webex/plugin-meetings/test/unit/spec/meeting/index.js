@@ -998,7 +998,8 @@ describe('plugin-meetings', () => {
           });
 
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
-            meeting.meetingInfo = {info: 'info'};
+            const uuidStub = sinon.stub(uuid, 'v4').returns('randomid');
+            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
 
             const join = meeting.join();
 
@@ -1016,9 +1017,25 @@ describe('plugin-meetings', () => {
 
             assert.calledThrice(Metrics.postEvent)
 
-            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
-            assert.equal(Metrics.postEvent.getCall(1).args[0].event, 'client.meetinginfo.request');
-            assert.equal(Metrics.postEvent.getCall(2).args[0].event, 'client.meetinginfo.response');
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].data, {
+              isRoapCallEnabled: true,
+              trigger: 'user-interaction',
+            });
+            assert.deepEqual(
+              Metrics.postEvent.getCall(1).args[0].event,
+              'client.meetinginfo.request'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(1).args[0].data, undefined);
+            assert.deepEqual(
+              Metrics.postEvent.getCall(2).args[0].event,
+              'client.meetinginfo.response'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(2).args[0].data, {
+              meetingLookupUrl: 'url',
+            });
+
+            uuidStub.restore();
           });
 
           it('should not send Meeting Info CA events if meetingInfo is empty', async () => {

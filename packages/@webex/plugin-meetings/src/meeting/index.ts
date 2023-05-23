@@ -1634,17 +1634,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Object}
    * @memberof Meeting
    */
-  getAnalyzerMetricsPrePayload(
-    options:
-      | {
-          event: string;
-          trackingId: string;
-          locus: object;
-          mediaConnections: Array<any>;
-          errors: object;
-        }
-      | any
-  ) {
+  getAnalyzerMetricsPrePayload(options: {
+    type?: string;
+    event: string;
+    trackingId: string;
+    locus: object;
+    mediaConnections?: Array<any>;
+    errors?: object;
+    meetingLookupUrl?: string;
+    clientType?: any;
+    subClientType?: any;
+    [key: string]: any;
+  }) {
     if (options) {
       const {event, trackingId, mediaConnections, meetingLookupUrl} = options;
 

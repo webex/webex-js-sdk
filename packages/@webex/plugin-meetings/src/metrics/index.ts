@@ -458,13 +458,17 @@ class Metrics {
    *
    * @param {object} err
    * @param {boolean} showToUser
-   * @returns {any}
+   * @returns {object | null}
    */
   parseWebexApiError(err: any, showToUser: boolean) {
     const serviceErrorCode = err?.body?.code;
     const clientCodeError = WebexAPIServiceErrorCodes[serviceErrorCode];
 
-    return this.generateErrorPayload(clientCodeError, showToUser, error.name.OTHER, err);
+    if (clientCodeError) {
+      return this.generateErrorPayload(clientCodeError, showToUser, error.name.OTHER, err);
+    }
+
+    return null;
   }
 
   /**
