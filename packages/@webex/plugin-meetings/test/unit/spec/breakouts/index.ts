@@ -476,6 +476,24 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#breakoutGroupId', () => {
+      it('return empty breakout group id for managing breakouts if no data', () => {
+        assert.equal(breakouts.breakoutGroupId, '');
+        breakouts.set('manageGroups', []);
+        assert.equal(breakouts.breakoutGroupId, '');
+        breakouts.set('manageGroups', [{name: 'test'}]);
+        assert.equal(breakouts.breakoutGroupId, undefined);
+      });
+      it('return the group id if has id in manageGroups', () => {
+        breakouts.set('manageGroups', [{id: 'groupId1'}]);
+        assert.equal(breakouts.breakoutGroupId, 'groupId1');
+      });
+      it('return empty group id if group status is CLOSED', () => {
+        breakouts.set('manageGroups', [{id: 'groupId1', status: 'CLOSED'}]);
+        assert.equal(breakouts.breakoutGroupId, '');
+      });
+    });
+
     describe('#queryRosters', () => {
       it('makes the expected query', async () => {
         webex.request.returns(
@@ -946,7 +964,7 @@ describe('plugin-meetings', () => {
         assert.equal(arg2.uri, 'url?editlock=true');
         assert.equal(arg1.method, 'GET');
         assert.deepEqual(result, {body: getBOResponse('PENDING')});
-        assert.deepEqual(breakouts.groups, result.body.groups);
+        assert.deepEqual(breakouts.manageGroups, result.body.groups);
         assert.equal(breakouts.breakoutGroupId, 'groupId');
       });
 
@@ -1045,7 +1063,7 @@ describe('plugin-meetings', () => {
           },
         });
 
-        assert.equal(breakouts.groups[0].status, 'CLOSE');
+        assert.equal(breakouts.manageGroups[0].status, 'CLOSE');
       });
 
       it('rejects when edit lock token mismatch', async () => {
@@ -1093,7 +1111,7 @@ describe('plugin-meetings', () => {
 
         const result = await breakouts.create({sessions});
 
-        assert.equal(breakouts.groups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
+        assert.equal(breakouts.manageGroups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
       });
 
       it('rejects when edit lock token mismatch', async () => {
