@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.107](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.106...v3.0.0-beta.107) (2023-05-23)
+
+
+### Features
+
+* **breakout:** add unlockEdit parameter when update breakouts ([#2824](https://github.com/webex/webex-js-sdk/issues/2824)) ([eff4d01](https://github.com/webex/webex-js-sdk/commit/eff4d01525481a0bb9cec34316507633f55055e6))
+
+## [3.0.0-beta.106](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.105...v3.0.0-beta.106) (2023-05-19)
+
+
+### Features
+
+* **Live-Annotation:** add supportLiveAnnotation for participant ([#2818](https://github.com/webex/webex-js-sdk/issues/2818)) ([04618be](https://github.com/webex/webex-js-sdk/commit/04618be147ce49e94b4c08c4b939388ed8eddbac))
+
 ## [3.0.0-beta.105](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.104...v3.0.0-beta.105) (2023-05-18)
 
 
