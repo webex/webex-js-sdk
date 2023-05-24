@@ -4,7 +4,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   let meetingsRequest;
 
   beforeEach(() => {

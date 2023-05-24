@@ -186,7 +186,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     if (deviceCapabilities.length) {
       body.deviceCapabilities = deviceCapabilities;
     }
-
     // @ts-ignore
     if (this.webex.meetings.clientRegion) {
       // @ts-ignore

@@ -6,7 +6,7 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
 import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {
     const sandbox = sinon.createSandbox();
     const meeting = {};
