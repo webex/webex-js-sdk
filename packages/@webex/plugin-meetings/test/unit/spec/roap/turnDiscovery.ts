@@ -51,7 +51,8 @@ describe('TurnDiscovery', () => {
       }),
       updateMediaConnections: sinon.stub(),
       webex: {meetings: {reachability: {isAnyClusterReachable: () => Promise.resolve(false)}}},
-      isMultistream: false
+      isMultistream: false,
+      locusMediaRequest: { fake: true },
     };
   });
 
@@ -74,13 +75,10 @@ describe('TurnDiscovery', () => {
         version: '2',
         seq: expectedSeq,
       },
-      correlationId: testMeeting.correlationId,
       locusSelfUrl: testMeeting.selfUrl,
       mediaId: expectedMediaId,
-      audioMuted: testMeeting.audio?.isLocallyMuted(),
-      videoMuted: testMeeting.video?.isLocallyMuted(),
       meetingId: testMeeting.id,
-      preferTranscoding: !testMeeting.isMultistream
+      locusMediaRequest: testMeeting.locusMediaRequest
     });
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {

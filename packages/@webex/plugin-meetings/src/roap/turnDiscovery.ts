@@ -176,15 +176,12 @@ export default class TurnDiscovery {
     return this.roapRequest
       .sendRoap({
         roapMessage,
-        correlationId: meeting.correlationId,
         // @ts-ignore - Fix missing type
         locusSelfUrl: meeting.selfUrl,
         // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
-        audioMuted: meeting.audio?.isLocallyMuted(),
-        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
-        preferTranscoding: !meeting.isMultistream,
+        locusMediaRequest: meeting.locusMediaRequest,
       })
       .then(({mediaConnections}) => {
         if (mediaConnections) {
@@ -213,11 +210,8 @@ export default class TurnDiscovery {
       locusSelfUrl: meeting.selfUrl,
       // @ts-ignore - fix type
       mediaId: meeting.mediaId,
-      correlationId: meeting.correlationId,
-      audioMuted: meeting.audio?.isLocallyMuted(),
-      videoMuted: meeting.video?.isLocallyMuted(),
       meetingId: meeting.id,
-      preferTranscoding: !meeting.isMultistream,
+      locusMediaRequest: meeting.locusMediaRequest,
     });
   }
 

@@ -34,8 +34,10 @@ export const createMuteState = (type, meeting, mediaDirection, sdkOwnsLocalTrack
    the last requested state by the client.
 
    More info about Locus muting API: https://sqbu-github.cisco.com/pages/WebExSquared/locus/guides/mute.html#
+
+   This class is exported only for unit tests. It should never be instantiated directly with new MuteState(), instead createMuteState() should be called
 */
-class MuteState {
+export class MuteState {
   pendingPromiseReject: any;
   pendingPromiseResolve: any;
   state: any;
@@ -62,7 +64,7 @@ class MuteState {
         localMute: false,
       },
       server: {
-        localMute: false,
+        localMute: true,
         // because remoteVideoMuted and unmuteVideoAllowed are updated seperately, they might be undefined
         remoteMute: type === AUDIO ? meeting.remoteMuted : meeting.remoteVideoMuted ?? false,
         unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : meeting.unmuteVideoAllowed ?? true,
@@ -95,7 +97,7 @@ class MuteState {
           : meeting.mediaProperties.videoTrack?.muted;
 
       LoggerProxy.logger.info(
-        `Meeting:muteState#start --> ${this.type}: local track initial mute state: ${initialMute}`
+        `Meeting:muteState#init --> ${this.type}: local track initial mute state: ${initialMute}`
       );
 
       if (initialMute !== undefined) {
@@ -103,6 +105,19 @@ class MuteState {
 
         this.applyClientStateToServer(meeting);
       }
+    } else {
+      // in the mode where sdkOwnsLocalTrack is false (transcoded meetings),
+      // SDK API currently doesn't allow to start with audio/video muted,
+      // so we need to apply the initial local mute state (false) to server
+      this.state.syncToServerInProgress = true;
+      this.sendLocalMuteRequestToServer(meeting)
+        .then(() => {
+          this.state.syncToServerInProgress = false;
+        })
+        .catch(() => {
+          this.state.syncToServerInProgress = false;
+          // not much we can do here...
+        });
     }
   }
 
@@ -312,16 +327,14 @@ class MuteState {
    * @returns {Promise}
    */
   private sendLocalMuteRequestToServer(meeting?: any) {
-    const audioMuted =
-      this.type === AUDIO ? this.state.client.localMute : meeting.audio?.state.client.localMute;
-    const videoMuted =
-      this.type === VIDEO ? this.state.client.localMute : meeting.video?.state.client.localMute;
+    const audioMuted = this.type === AUDIO ? this.state.client.localMute : undefined;
+    const videoMuted = this.type === VIDEO ? this.state.client.localMute : undefined;
 
     LoggerProxy.logger.info(
       `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: sending local mute (audio=${audioMuted}, video=${videoMuted}) to server`
     );
 
-    return MeetingUtil.remoteUpdateAudioVideo(audioMuted, videoMuted, meeting)
+    return MeetingUtil.remoteUpdateAudioVideo(meeting, audioMuted, videoMuted)
       .then((locus) => {
         LoggerProxy.logger.info(
           `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: local mute (audio=${audioMuted}, video=${videoMuted}) applied to server`

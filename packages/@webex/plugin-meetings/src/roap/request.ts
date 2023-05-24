@@ -6,6 +6,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA, HTTP_VERBS, REACHABILITY} from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
+import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 
 /**
  * @class RoapRequest
@@ -64,69 +65,41 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {String} options.locusSelfUrl
    * @param {String} options.mediaId
    * @param {String} options.correlationId
-   * @param {Boolean} options.audioMuted
-   * @param {Boolean} options.videoMuted
    * @param {String} options.meetingId
-   * @param {Boolean} options.preferTranscoding
    * @returns {Promise} returns the response/failure of the request
    */
   async sendRoap(options: {
     roapMessage: any;
     locusSelfUrl: string;
     mediaId: string;
-    correlationId: string;
-    audioMuted: boolean;
-    videoMuted: boolean;
     meetingId: string;
-    preferTranscoding?: boolean;
+    locusMediaRequest: LocusMediaRequest;
   }) {
-    const {roapMessage, locusSelfUrl, mediaId, correlationId, meetingId} = options;
+    const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest} = options;
 
     if (!mediaId) {
-      LoggerProxy.logger.info('Roap:request#sendRoap --> Race Condition /call mediaID not present');
+      LoggerProxy.logger.info('Roap:request#sendRoap --> sending empty mediaID');
     }
 
     const {localSdp: localSdpWithReachabilityData, joinCookie} = await this.attachReachabilityData({
       roapMessage,
-      // eslint-disable-next-line no-warning-comments
-      // TODO: check whats the need for video and audiomute
-      audioMuted: !!options.audioMuted,
-      videoMuted: !!options.videoMuted,
     });
 
-    const mediaUrl = `${locusSelfUrl}/${MEDIA}`;
-    // @ts-ignore
-    const deviceUrl = this.webex.internal.device.url;
-
     LoggerProxy.logger.info(
-      `Roap:request#sendRoap --> ${mediaUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
+      `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
     );
 
     Metrics.postEvent({event: eventType.MEDIA_REQUEST, meetingId});
 
-    // @ts-ignore
-    return this.request({
-      uri: mediaUrl,
-      method: HTTP_VERBS.PUT,
-      body: {
-        device: {
-          url: deviceUrl,
-          // @ts-ignore
-          deviceType: this.config.meetings.deviceType,
-        },
-        correlationId,
-        localMedias: [
-          {
-            localSdp: JSON.stringify(localSdpWithReachabilityData),
-            mediaId: options.mediaId,
-          },
-        ],
-        clientMediaPreferences: {
-          preferTranscoding: options.preferTranscoding ?? true,
-          joinCookie,
-        },
-      },
-    })
+    return locusMediaRequest
+      .send({
+        type: 'RoapMessage',
+        selfUrl: locusSelfUrl,
+        joinCookie,
+        mediaId,
+        roapMessage,
+        reachability: localSdpWithReachabilityData.reachability,
+      })
       .then((res) => {
         Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId});
 

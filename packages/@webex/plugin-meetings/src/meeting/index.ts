@@ -124,6 +124,7 @@ import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
+import {LocusMediaRequest} from './locusMediaRequest';
 
 const {isBrowser} = BrowserDetection();
 
@@ -467,6 +468,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resource: string;
   roap: Roap;
   roapSeq: number;
+  selfUrl?: string; // comes from Locus, initialized by updateMeetingObject()
   sipUri: string;
   type: string;
   userId: string;
@@ -488,6 +490,7 @@ export default class Meeting extends StatelessWebexPlugin {
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
+  locusMediaRequest?: LocusMediaRequest;
   mediaProperties: MediaProperties;
   mediaRequestManagers: {
     audio: MediaRequestManager;
@@ -5489,6 +5492,23 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     return MeetingUtil.validateOptions(options)
+      .then(() => {
+        this.locusMediaRequest = new LocusMediaRequest(
+          {
+            correlationId: this.correlationId,
+            device: {
+              url: this.deviceUrl,
+              // @ts-ignore
+              deviceType: this.config.deviceType,
+            },
+            preferTranscoding: !this.isMultistream,
+          },
+          {
+            // @ts-ignore
+            parent: this.webex,
+          }
+        );
+      })
       .then(() => this.roap.doTurnDiscovery(this, false))
       .then((turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);

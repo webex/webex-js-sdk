@@ -98,11 +98,8 @@ export default class Roap extends StatelessWebexPlugin {
           roapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: options.mediaId,
-          correlationId: options.correlationId,
-          audioMuted: meeting.audio?.isLocallyMuted(),
-          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
-          preferTranscoding: !meeting.isMultistream,
+          locusMediaRequest: meeting.locusMediaRequest,
         })
         .then(() => {
           LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sent with seq ${options.seq}`);
@@ -135,11 +132,8 @@ export default class Roap extends StatelessWebexPlugin {
       roapMessage,
       locusSelfUrl: meeting.selfUrl,
       mediaId: options.mediaId,
-      correlationId: options.correlationId,
-      audioMuted: meeting.isAudioMuted(),
-      videoMuted: meeting.isVideoMuted(),
       meetingId: meeting.id,
-      preferTranscoding: !meeting.isMultistream,
+      locusMediaRequest: meeting.locusMediaRequest,
     });
   }
 
@@ -167,11 +161,8 @@ export default class Roap extends StatelessWebexPlugin {
         roapMessage,
         locusSelfUrl: meeting.selfUrl,
         mediaId: options.mediaId,
-        correlationId: options.correlationId,
-        audioMuted: meeting.audio?.isLocallyMuted(),
-        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
-        preferTranscoding: !meeting.isMultistream,
+        locusMediaRequest: meeting.locusMediaRequest,
       })
       .then(() => {
         LoggerProxy.logger.log(
@@ -206,13 +197,10 @@ export default class Roap extends StatelessWebexPlugin {
 
         return this.roapRequest.sendRoap({
           roapMessage,
-          correlationId: meeting.correlationId,
           locusSelfUrl: meeting.selfUrl,
           mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
-          audioMuted: meeting.audio?.isLocallyMuted(),
-          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
-          preferTranscoding: !meeting.isMultistream,
+          locusMediaRequest: meeting.locusMediaRequest,
         });
       })
 
