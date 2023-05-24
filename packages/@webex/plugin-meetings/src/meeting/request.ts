@@ -26,6 +26,8 @@ import {
   REACHABILITY,
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
+  SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED,
+  DEFAULT_LOCALE,
   ANNOTATION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
@@ -89,6 +91,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
+   * @param {boolean} options.isJoining
+   * @param {String} options.locale,
+   * @param {Array} options.deviceCapabilities
    * @param {boolean} options.liveAnnotationSupported
    * @returns {Promise}
    */
@@ -109,6 +114,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
+    isJoining?: boolean;
+    locale?: string;
+    deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
   }) {
     const {
@@ -127,6 +135,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
+      isJoining,
+      locale,
+      deviceCapabilities = [],
       liveAnnotationSupported,
     } = options;
 
@@ -156,14 +167,23 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     };
 
-    let deviceCapabilities = [];
     if (breakoutsSupported) {
-      deviceCapabilities = [...deviceCapabilities, BREAKOUTS.BREAKOUTS_SUPPORTED];
+      deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
     }
     if (liveAnnotationSupported) {
-      deviceCapabilities = [...deviceCapabilities, ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED];
+      deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
     }
-    if (deviceCapabilities.length > 0) {
+
+    // Support server side audio disclaimer
+    if (isJoining) {
+      body.locale = locale || DEFAULT_LOCALE;
+      if (!deviceCapabilities.includes(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED)) {
+        deviceCapabilities.push(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED);
+      }
+    }
+
+    // add deviceCapabilities prop
+    if (deviceCapabilities.length) {
       body.deviceCapabilities = deviceCapabilities;
     }
 

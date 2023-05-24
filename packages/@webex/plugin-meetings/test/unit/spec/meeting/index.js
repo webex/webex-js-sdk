@@ -90,7 +90,7 @@ const {getBrowserName} = BrowserDetection();
 // Non-stubbed function
 const {getDisplayMedia} = Media;
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},
@@ -956,6 +956,11 @@ describe('plugin-meetings', () => {
             assert.equal(result, joinMeetingResult);
           });
 
+          it('should add isJoining prop to options param', async () => {
+            await meeting.join({});
+              assert.calledWith(MeetingUtil.joinMeeting, meeting, {isJoining: true});
+          });
+
           it('should call updateLLMConnection upon joining if config value is set', async () => {
             meeting.config.enableAutomaticLLM = true;
             meeting.webex.internal.llm.on = sinon.stub();
@@ -1028,7 +1033,7 @@ describe('plugin-meetings', () => {
               // with moderator and pin explicitly set
               MeetingUtil.joinMeeting = sinon.stub().returns(Promise.resolve());
               await meeting.join({pin: '1234', moderator: false});
-              assert.calledWith(MeetingUtil.joinMeeting, meeting, {moderator: false, pin: '1234'});
+              assert.calledWith(MeetingUtil.joinMeeting, meeting, {moderator: false, pin: '1234', isJoining: true});
             });
           });
 

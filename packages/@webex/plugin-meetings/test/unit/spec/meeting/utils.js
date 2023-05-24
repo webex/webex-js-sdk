@@ -6,7 +6,7 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
 import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   describe('Meeting utils function', () => {
     const sandbox = sinon.createSandbox();
     const meeting = {};
@@ -217,6 +217,28 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"], isJoining=true when they are passed in as those values', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          locale: 'en_UK',
+          deviceCapabilities: ['TEST'],
+          isJoining: true,
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.locale, 'en_UK');
+        assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
+        assert.equal(parameter.isJoining, true);
       });
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {

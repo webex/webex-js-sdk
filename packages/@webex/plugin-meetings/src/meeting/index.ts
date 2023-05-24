@@ -4394,6 +4394,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     this.isMultistream = !!options.enableMultistream;
+    options.isJoining = true; // to tell apart from other actions (moveTo, moveFrom)
 
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {

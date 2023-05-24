@@ -4,7 +4,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   let meetingsRequest;
 
   beforeEach(() => {
@@ -224,6 +224,44 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
 
+      });
+
+      it('adds deviceCapabilities and locale to request when it is a joining action', async () => {
+        await meetingsRequest.joinMeeting({
+          isJoining: true,
+          locale: 'en_UK',
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']);
+        assert.deepEqual(requestParams.body.locale, 'en_UK');
+      });
+
+      it('adds deviceCapabilities and default locale to request when it is a joining action but locale is not provided', async () => {
+        await meetingsRequest.joinMeeting({
+          isJoining: true,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']);
+        assert.deepEqual(requestParams.body.locale, 'en_US');
+      });
+
+      it('adds deviceCapabilities when deviceCapabilities is provided in options param', async () => {
+        await meetingsRequest.joinMeeting({
+          deviceCapabilities: ['TEST'],
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['TEST']);
+      });
+
+      it('does not add deviceCapabilities and locale to request when it is not a joining action', async () => {
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.deepEqual(requestParams.body.locale, undefined);
       });
 
       it('includes joinCookie correctly', async () => {
