@@ -373,7 +373,8 @@ describe('plugin-meetings', () => {
                 },
                 null,
                 null,
-               {meetingId: 'meeting-id'}
+                {},
+                {meetingId: 'meeting-id'}
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
