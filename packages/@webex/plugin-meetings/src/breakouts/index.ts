@@ -580,26 +580,35 @@ const Breakouts = WebexPlugin.extend({
    * Host or cohost update breakout sessions
    * @param {Object} params
    * @param {String} params.id
+   * @param {Boolean} unlockEdit
    * @returns {Promise}
    */
-  update(params: {id: string}) {
+  async update(params: {id: string}, unlockEdit?: boolean) {
     if (!params.id) {
       return Promise.reject(new Error('Missing breakout group id'));
     }
     const payload = {...params};
 
     const body = {
-      ...(this.editLock?.token ? {editlock: {token: this.editLock.token, refresh: true}} : {}),
+      ...(this.editLock?.token
+        ? {editlock: {token: this.editLock.token, refresh: !unlockEdit}}
+        : {}),
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#update'));
     });
+
+    if (unlockEdit) {
+      this._clearEditLockInfo();
+    }
+
+    return breakoutInfo;
   },
 
   /**
