@@ -85,7 +85,7 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 
-const {getBrowserName} = BrowserDetection();
+const {getBrowserName, getOSVersion} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -6841,7 +6841,6 @@ describe('plugin-meetings', () => {
             .returns(Promise.resolve());
           meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
           meeting.correlationId = 'correlation-id';
-          sinon.stub()
         });
 
         it('it should include meetingLookupUrl if provided', () => {
@@ -6877,7 +6876,7 @@ describe('plugin-meetings', () => {
               clientVersion: 'webex-js-sdk/undefined',
               localNetworkPrefix: null,
               os: 'other',
-              osVersion: '5.4.0-144-generic',
+              osVersion: getOSVersion() || 'unknown',
               subClientType: undefined,
             },
             name: 'endpoint',
