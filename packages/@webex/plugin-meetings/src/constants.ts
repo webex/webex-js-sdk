@@ -346,6 +346,14 @@ export const EVENT_TRIGGERS = {
   REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
   REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
   REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
+  // Controls
+  MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED: 'meeting:controls:mute-on-entry:updated',
+  MEETING_CONTROLS_SHARE_CONTROL_UPDATED: 'meeting:controls:share-control:updated',
+  MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED: 'meeting:controls:disallow-unmute:updated',
+  MEETING_CONTROLS_REACTIONS_UPDATED: 'meeting:controls:reactions:updated',
+  MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED:
+    'meeting:controls:view-the-participants-list:updated',
+  MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
 };
 
 export const EVENT_TYPES = {
