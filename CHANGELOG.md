@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.109](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.108...v3.0.0-beta.109) (2023-05-25)
+
+
+### Features
+
+* **meetings:** in meeting options phase two ([#2828](https://github.com/webex/webex-js-sdk/issues/2828)) ([1889a69](https://github.com/webex/webex-js-sdk/commit/1889a697965e44174eac9dd92667b0b86c63932a))
+
 ## [3.0.0-beta.108](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.107...v3.0.0-beta.108) (2023-05-25)
 
 
