@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
+import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {base64} from '@webex/common';
@@ -455,7 +455,7 @@ export default class Meeting extends StatelessWebexPlugin {
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
-  meetingInfo: object;
+  meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
   options: object;
@@ -1245,11 +1245,12 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
-        extraParams
+        extraParams,
+        {meetingId: this.id}
       );
 
       this.parseMeetingInfo(info, this.destination);
-      this.meetingInfo = info ? info.body : null;
+      this.meetingInfo = info ? {...info.body, meetingLookupUrl: info?.url} : null;
       this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
       this.requiredCaptcha = null;
       if (
@@ -1629,19 +1630,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Object}
    * @memberof Meeting
    */
-  getAnalyzerMetricsPrePayload(
-    options:
-      | {
-          event: string;
-          trackingId: string;
-          locus: object;
-          mediaConnections: Array<any>;
-          errors: object;
-        }
-      | any
-  ) {
+  getAnalyzerMetricsPrePayload(options: {
+    type?: string;
+    event: string;
+    trackingId: string;
+    locus: object;
+    mediaConnections?: Array<any>;
+    errors?: object;
+    meetingLookupUrl?: string;
+    clientType?: any;
+    subClientType?: any;
+    [key: string]: any;
+  }) {
     if (options) {
-      const {event, trackingId, mediaConnections} = options;
+      const {event, trackingId, mediaConnections, meetingLookupUrl} = options;
 
       if (!event) {
         LoggerProxy.logger.error(
@@ -1678,6 +1680,10 @@ export default class Meeting extends StatelessWebexPlugin {
         identifiers.mediaAgentAlias = this.mediaConnections?.[0].mediaAgentAlias;
         identifiers.mediaAgentGroupId = this.mediaConnections?.[0].mediaAgentGroupId;
         identifiers.mediaAgentCluster = this.mediaConnections?.[0].mediaAgentCluster;
+      }
+
+      if (meetingLookupUrl) {
+        identifiers.meetingLookupUrl = meetingLookupUrl;
       }
 
       if (options.trackingId) {
@@ -4332,6 +4338,21 @@ export default class Meeting extends StatelessWebexPlugin {
       meeting: this,
       data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
     });
+
+    if (!isEmpty(this.meetingInfo)) {
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_REQUEST,
+        meeting: this,
+      });
+
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_RESPONSE,
+        meeting: this,
+        data: {
+          meetingLookupUrl: this.meetingInfo?.meetingLookupUrl,
+        },
+      });
+    }
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
