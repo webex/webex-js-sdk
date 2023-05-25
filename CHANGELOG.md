@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.108](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.107...v3.0.0-beta.108) (2023-05-25)
+
+
+### Features
+
+* **meeting-info:** add CA events ([#2820](https://github.com/webex/webex-js-sdk/issues/2820)) ([818f927](https://github.com/webex/webex-js-sdk/commit/818f9270ff1806b969fa3b558279687b5e0fce09))
+
 ## [3.0.0-beta.107](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.106...v3.0.0-beta.107) (2023-05-23)
 
 
