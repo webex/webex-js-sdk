@@ -3,7 +3,7 @@
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {MEDIA, HTTP_VERBS, REACHABILITY} from '../constants';
+import {REACHABILITY} from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
@@ -73,7 +73,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
     locusSelfUrl: string;
     mediaId: string;
     meetingId: string;
-    locusMediaRequest: LocusMediaRequest;
+    locusMediaRequest?: LocusMediaRequest;
   }) {
     const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest} = options;
 
@@ -81,6 +81,13 @@ export default class RoapRequest extends StatelessWebexPlugin {
       LoggerProxy.logger.info('Roap:request#sendRoap --> sending empty mediaID');
     }
 
+    if (!locusMediaRequest) {
+      LoggerProxy.logger.warn(
+        'Roap:request#sendRoap --> locusMediaRequest unavailable, not sending roap'
+      );
+
+      return Promise.reject(new Error('sendRoap called when locusMediaRequest is undefined'));
+    }
     const {localSdp: localSdpWithReachabilityData, joinCookie} = await this.attachReachabilityData({
       roapMessage,
     });
