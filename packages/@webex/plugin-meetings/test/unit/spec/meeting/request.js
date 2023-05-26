@@ -229,6 +229,7 @@ describe('plugin-meetings', () => {
       it('adds deviceCapabilities and locale to request when it is a joining action', async () => {
         await meetingsRequest.joinMeeting({
           isJoining: true,
+          homerDisclaimerEnabled: true,
           locale: 'en_UK',
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -240,6 +241,7 @@ describe('plugin-meetings', () => {
       it('adds deviceCapabilities and default locale to request when it is a joining action but locale is not provided', async () => {
         await meetingsRequest.joinMeeting({
           isJoining: true,
+          homerDisclaimerEnabled: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 

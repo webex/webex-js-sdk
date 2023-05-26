@@ -91,6 +91,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
+   * @param {boolean} options.homerDisclaimerEnabled
    * @param {boolean} options.isJoining
    * @param {String} options.locale,
    * @param {Array} options.deviceCapabilities
