@@ -157,13 +157,37 @@ export default class MeetingInfoV2 {
   }
 
   /**
+   * Raises a MeetingInfoV2PolicyError for policy error codes
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handlePolicyError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (POLICY_ERROR_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2PolicyError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
    * Creates adhoc space meetings for a space by fetching the conversation infomation
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {String} installedOrgID org ID of user's machine
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  async createAdhocSpaceMeeting(conversationUrl: string) {
+  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
     if (!this.webex.meetings.preferredWebexSite) {
       throw Error('No preferred webex site found');
     }
@@ -185,7 +209,14 @@ export default class MeetingInfoV2 {
     return this.webex.internal.conversation
       .get({url: conversationUrl}, {includeParticipants: true, disableTransform: true})
       .then((conversation) => {
-        const body = {
+        const body: {
+          title: string;
+          spaceUrl: string;
+          keyUrl: string;
+          kroUrl: string;
+          invitees: any[];
+          installedOrgID?: string;
+        } = {
           title: conversation.displayName,
           spaceUrl: conversation.url,
           keyUrl: conversation.encryptionKeyUrl,
@@ -193,11 +224,13 @@ export default class MeetingInfoV2 {
           invitees: getInvitees(conversation.participants?.items),
         };
 
+        if (installedOrgID) {
+          body.installedOrgID = installedOrgID;
+        }
+
         const uri = this.webex.meetings.preferredWebexSite
           ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`
           : '';
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
 
         return this.webex.request({
           method: HTTP_VERBS.POST,
@@ -205,7 +238,12 @@ export default class MeetingInfoV2 {
           body,
         });
       })
+      .then(() => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+      })
       .catch((err) => {
+        this.handlePolicyError(err);
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
           reason: err.message,
           stack: err.stack,
@@ -256,7 +294,7 @@ export default class MeetingInfoV2 {
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {
-      return this.createAdhocSpaceMeeting(destinationType.destination);
+      return this.createAdhocSpaceMeeting(destinationType.destination, installedOrgID);
     }
 
     const body = await MeetingInfoUtil.getRequestBody({
@@ -318,17 +356,7 @@ export default class MeetingInfoV2 {
         }
 
         if (err?.statusCode === 403) {
-          if (POLICY_ERROR_CODES.includes(err.body?.code)) {
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
-              code: err.body?.code,
-            });
-
-            throw new MeetingInfoV2PolicyError(
-              err.body?.code,
-              err.body?.data?.meetingInfo,
-              err.body?.message
-            );
-          }
+          this.handlePolicyError(err);
 
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,
