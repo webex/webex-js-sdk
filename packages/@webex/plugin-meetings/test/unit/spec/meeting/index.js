@@ -85,7 +85,7 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 
-const {getBrowserName} = BrowserDetection();
+const {getBrowserName, getOSVersion} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -1000,6 +1000,66 @@ describe('plugin-meetings', () => {
             meeting.hasJoinedOnce = true;
             await meeting.join();
             sinon.assert.called(meeting.setCorrelationId);
+          });
+
+          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
+            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledThrice(Metrics.postEvent)
+
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].data, {
+              isRoapCallEnabled: true,
+              trigger: 'user-interaction',
+            });
+            assert.deepEqual(
+              Metrics.postEvent.getCall(1).args[0].event,
+              'client.meetinginfo.request'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(1).args[0].data, undefined);
+            assert.deepEqual(
+              Metrics.postEvent.getCall(2).args[0].event,
+              'client.meetinginfo.response'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(2).args[0].data, {
+              meetingLookupUrl: 'url',
+            });
+          });
+
+          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
+            meeting.meetingInfo = {};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledOnce(Metrics.postEvent)
+
+            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
           });
         });
         describe('failure', () => {
@@ -3016,6 +3076,7 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
         const FAKE_INSTALLED_ORG_ID = '123456';
         const FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
+        let FAKE_OPTIONS;
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -3023,6 +3084,8 @@ describe('plugin-meetings', () => {
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id', // this.owner;
         };
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+
         const FAKE_SDK_CAPTCHA_INFO = {
           captchaId: FAKE_CAPTCHA_ID,
           verificationImageURL: FAKE_CAPTCHA_IMAGE_URL,
@@ -3036,9 +3099,15 @@ describe('plugin-meetings', () => {
           refreshURL: `${FAKE_CAPTCHA_REFRESH_URL}-2`,
         };
 
+        beforeEach(() => {
+          meeting.locusId = 'locus-id';
+          meeting.id = 'meeting-id';
+          FAKE_OPTIONS = {meetingId: meeting.id};
+        });
+
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
@@ -3060,11 +3129,12 @@ describe('plugin-meetings', () => {
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
             FAKE_INSTALLED_ORG_ID,
             meeting.locusId,
-            FAKE_EXTRA_PARAMS
+            FAKE_EXTRA_PARAMS,
+            FAKE_OPTIONS
           );
 
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3079,7 +3149,7 @@ describe('plugin-meetings', () => {
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
@@ -3105,13 +3175,14 @@ describe('plugin-meetings', () => {
             null,
             undefined,
             meeting.locusId,
-            {}
+            {},
+            {meetingId: meeting.id}
           );
 
           // parseMeeting info
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
@@ -3127,7 +3198,7 @@ describe('plugin-meetings', () => {
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = null;
           meeting.destination = FAKE_DESTINATION;
@@ -3146,7 +3217,7 @@ describe('plugin-meetings', () => {
 
         it('fails if password is provided when not required', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
           meeting.destination = FAKE_DESTINATION;
@@ -3179,7 +3250,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3208,7 +3283,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3242,7 +3321,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3283,7 +3366,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3312,10 +3399,14 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: undefined});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.VERIFIED);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3357,7 +3448,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -4746,6 +4841,114 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+          );
+        });
+
+        it('listens to CONTROLS_MUTE_ON_ENTRY_CHANGED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_SHARE_CONTROL_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_REACTIONS_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_RAISE_HAND_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED,
+            {state},
           );
         });
 
@@ -6737,6 +6940,66 @@ describe('plugin-meetings', () => {
 
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
+        });
+      });
+
+      describe('getAnalyzerMetricsPrePayload', () => {
+        it('should have #getAnalyzerMetricsPrePayload', () => {
+          assert.exists(meeting.getAnalyzerMetricsPrePayload);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.getAnalyzerMetricsPrePayload = sinon
+            .stub()
+            .returns(Promise.resolve());
+          meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
+          meeting.correlationId = 'correlation-id';
+        });
+
+        it('it should include meetingLookupUrl if provided', () => {
+          const res = meeting.getAnalyzerMetricsPrePayload({
+            meetingLookupUrl: 'https://service-url.com',
+            event: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.event,  {
+            canProceed: true,
+            eventData: {
+              webClientDomain: '',
+            },
+            identifiers: {
+              correlationId: 'correlation-id',
+              deviceId: uuid3,
+              locusUrl: 'Locus URL',
+              meetingLookupUrl: 'https://service-url.com',
+              orgId: undefined,
+              userId: uuid1,
+            },
+            name: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.origin, {
+            channel: undefined,
+            loginType: undefined,
+            userType: undefined,
+            clientInfo: {
+              browser: '',
+              browserVersion: '',
+              clientType: undefined,
+              clientVersion: 'webex-js-sdk/undefined',
+              localNetworkPrefix: null,
+              os: 'other',
+              osVersion: getOSVersion() || 'unknown',
+              subClientType: undefined,
+            },
+            name: 'endpoint',
+            networkType: 'unknown',
+            userAgent: 'webex-js-sdk/test-undefined client=undefined; (os=linux/5)',
+          });
+
+          assert.deepEqual(res.senderCountryCode, undefined);
+          assert.deepEqual(res.version, 1);
+
         });
       });
     });

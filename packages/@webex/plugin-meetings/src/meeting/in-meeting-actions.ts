@@ -60,6 +60,10 @@ interface IInMeetingActions {
   canUpdateShareControl?: boolean;
   canEnableViewTheParticipantsList?: boolean;
   canDisableViewTheParticipantsList?: boolean;
+  canEnableRaiseHand?: boolean;
+  canDisableRaiseHand?: boolean;
+  canEnableVideo?: boolean;
+  canDisableVideo?: boolean;
 }
 
 /**
@@ -170,6 +174,14 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canDisableViewTheParticipantsList = null;
 
+  canEnableRaiseHand = null;
+
+  canDisableRaiseHand = null;
+
+  canEnableVideo = null;
+
+  canDisableVideo = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -226,6 +238,10 @@ export default class InMeetingActions implements IInMeetingActions {
     canUpdateShareControl: this.canUpdateShareControl,
     canEnableViewTheParticipantsList: this.canEnableViewTheParticipantsList,
     canDisableViewTheParticipantsList: this.canDisableViewTheParticipantsList,
+    canEnableRaiseHand: this.canEnableRaiseHand,
+    canDisableRaiseHand: this.canDisableRaiseHand,
+    canEnableVideo: this.canEnableVideo,
+    canDisableVideo: this.canDisableVideo,
   });
 
   /**
