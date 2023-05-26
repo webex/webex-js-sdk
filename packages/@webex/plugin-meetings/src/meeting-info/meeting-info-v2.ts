@@ -238,8 +238,10 @@ export default class MeetingInfoV2 {
           body,
         });
       })
-      .then(() => {
+      .then((requestResult) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+
+        return requestResult;
       })
       .catch((err) => {
         this.handlePolicyError(err);

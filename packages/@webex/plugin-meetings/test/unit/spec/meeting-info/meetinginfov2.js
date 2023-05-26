@@ -614,7 +614,7 @@ describe('plugin-meetings', () => {
       it('Make a request to /spaceInstant when conversationUrl', async () => {
         const {invitee} = setup();
 
-        await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
+        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
         assert.calledWith(
           webex.internal.conversation.get,
@@ -635,6 +635,10 @@ describe('plugin-meetings', () => {
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+        assert.deepEqual(result, {
+          body: {},
+          statusCode: 200
+        });
       });
 
       it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
