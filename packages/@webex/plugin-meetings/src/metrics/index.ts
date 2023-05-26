@@ -20,6 +20,7 @@ import {
   UNKNOWN,
   CLIENT_NAME,
   mediaType,
+  WebexAPIServiceErrorCodes,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -452,6 +453,33 @@ class Metrics {
     return this.generateErrorPayload(errorCode, showToUser, error.name.LOCUS_RESPONSE, err);
   }
 
+  /**
+   * Pareses webex api error.
+   *
+   * @param {object} err
+   * @param {boolean} showToUser
+   * @returns {object | null}
+   */
+  parseWebexApiError(err: any, showToUser: boolean) {
+    const serviceErrorCode = err?.body?.code;
+    const clientCodeError = WebexAPIServiceErrorCodes[serviceErrorCode];
+
+    if (clientCodeError) {
+      return this.generateErrorPayload(clientCodeError, showToUser, error.name.OTHER, err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Generates Error for the CA event
+   *
+   * @param {integer} errorCode
+   * @param {boolean} shownToUser
+   * @param {string} name
+   * @param {any} err
+   * @returns {any}
+   */
   generateErrorPayload(errorCode, shownToUser, name, err) {
     if (error.errors[errorCode]) {
       const errorPayload: any = {
@@ -461,6 +489,7 @@ class Metrics {
         errorCode,
         fatal: !includes(error.notFatalErrorList, errorCode),
         name: name || error.name.OTHER,
+        serviceErrorCode: err?.body?.code,
       };
 
       if (err && err.body) {

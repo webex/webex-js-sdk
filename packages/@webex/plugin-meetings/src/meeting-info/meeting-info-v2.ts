@@ -6,6 +6,7 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
+import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -224,6 +225,7 @@ export default class MeetingInfoV2 {
    * @param {String} installedOrgID
    * @param {String} locusId
    * @param {Object} extraParams
+   * @param {Object} options
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -238,8 +240,11 @@ export default class MeetingInfoV2 {
     } = null,
     installedOrgID = null,
     locusId = null,
-    extraParams = {}
+    extraParams: object = {},
+    options: {meetingId?: string} = {}
   ) {
+    const {meetingId} = options;
+
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
       type,
@@ -279,7 +284,7 @@ export default class MeetingInfoV2 {
       throw err;
     }
 
-    const options: any = {
+    const requestOptions: any = {
       method: HTTP_VERBS.POST,
       body,
     };
@@ -287,20 +292,31 @@ export default class MeetingInfoV2 {
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (directURI) {
-      options.uri = directURI;
+      requestOptions.uri = directURI;
     } else {
-      options.service = WBXAPPAPI_SERVICE;
-      options.resource = 'meetingInfo';
+      requestOptions.service = WBXAPPAPI_SERVICE;
+      requestOptions.resource = 'meetingInfo';
     }
 
     return this.webex
-      .request(options)
+      .request(requestOptions)
       .then((response) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
+        if (meetingId) {
+          Metrics.postEvent({
+            event: eventType.MEETING_INFO_RESPONSE,
+            meetingId,
+            data: {
+              errors: [Metrics.parseWebexApiError(err, true)],
+              meetingLookupUrl: err?.url,
+            },
+          });
+        }
+
         if (err?.statusCode === 403) {
           if (POLICY_ERROR_CODES.includes(err.body?.code)) {
             Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
