@@ -117,6 +117,13 @@ describe('LocusMediaRequest.send()', () => {
     return locusMediaRequest.send(request);
   }
 
+  /** Helper function that makes sure the LocusMediaRequest.confluenceState is 'created' */
+  const ensureConfluenceCreated = async () => {
+    await sendRoapMessage('OFFER');
+
+    webexRequestStub.resetHistory();
+  }
+
   it('sends a roap message', async () => {
     const result = await sendRoapMessage('OFFER');
 
@@ -130,6 +137,8 @@ describe('LocusMediaRequest.send()', () => {
   });
 
   it('sends a local mute request', async () => {
+    await ensureConfluenceCreated();
+
     const result = await sendLocalMute({audioMuted: false, videoMuted: false});
 
     assert.equal(result, fakeLocusResponse);
@@ -142,6 +151,8 @@ describe('LocusMediaRequest.send()', () => {
   });
 
   it('sends a local mute request with the last audio/video mute values when called multiple times in same processing cycle', async () => {
+    await ensureConfluenceCreated();
+
     let result1;
     let result2;
 
@@ -171,6 +182,8 @@ describe('LocusMediaRequest.send()', () => {
   });
 
   it('sends a local mute request with the last audio/video mute values', async () => {
+    await ensureConfluenceCreated();
+
     await Promise.all([
       sendLocalMute({audioMuted: undefined, videoMuted: false}),
       sendLocalMute({audioMuted: true, videoMuted: undefined}),
@@ -186,7 +199,7 @@ describe('LocusMediaRequest.send()', () => {
 
   });
 
-  it('sends roap and local mute request', async () => {
+  it('sends only roap when roap and local mute are requested', async () => {
     await Promise.all([
       sendLocalMute({audioMuted: false, videoMuted: undefined}),
       sendRoapMessage('OFFER'),
@@ -226,10 +239,18 @@ describe('LocusMediaRequest.send()', () => {
       clock.restore();
     });
 
+    /** LocusMediaRequest.send() uses Lodash.defer(), so it only starts sending any requests
+     * after the processing cycle from which it was called is finished.
+     * This helper function waits for this to happen - it's needed, because we're using
+     * fake timers in these tests
+    */
+    const ensureQueueProcessingIsStarted = () => {
+      clock.tick(1);
+    }
     it('queues requests if there is one already in progress', async () => {
       results.push(sendRoapMessage('OFFER'));
 
-      clock.tick(1);
+      ensureQueueProcessingIsStarted();
 
       // check that OFFER has been sent out
       assert.calledWith(webexRequestStub, {
@@ -247,11 +268,11 @@ describe('LocusMediaRequest.send()', () => {
       // OK should not be sent out yet, only queued
       assert.notCalled(webexRequestStub);
 
-      // not simulate the first locus request (offer) to resolve,
+      // now simulate the first locus request (offer) to resolve,
       // so that the next request from the queue (ok) can be sent out
       requestsToLocus[0].resolve();
       await testUtils.flushPromises();
-      clock.tick(1);
+      ensureQueueProcessingIsStarted();
 
       // verify OK was sent out
       assert.calledWith(webexRequestStub, {
@@ -272,7 +293,7 @@ describe('LocusMediaRequest.send()', () => {
       results.push(sendRoapMessage('OFFER'));
       results.push(sendLocalMute({audioMuted: false, videoMuted: false}));
 
-      clock.tick(1);
+      ensureQueueProcessingIsStarted();
 
       // check that OFFER and local mute have been combined into
       // a single OFFER request with the right mute values
@@ -297,7 +318,7 @@ describe('LocusMediaRequest.send()', () => {
       // so that the next request from the queue (ok) can be sent out
       requestsToLocus[0].resolve();
       await testUtils.flushPromises();
-      clock.tick(1);
+      ensureQueueProcessingIsStarted();
 
       // verify OK was sent out
       assert.calledOnceWithExactly(webexRequestStub, {
@@ -313,7 +334,81 @@ describe('LocusMediaRequest.send()', () => {
       requestsToLocus[1].resolve();
       await results[1];
     });
+
+    describe('confluence creation', () => {
+      it('resolves without sending the request if LocalMute is requested before Roap Offer is sent (confluence state is "not created")', async () => {
+        const result = await sendLocalMute({audioMuted: false, videoMuted: true});
+
+        assert.notCalled(webexRequestStub);
+        assert.deepEqual(result, {});
+      });
+
+      it('queues LocalMute if requested after first Roap Offer was sent but before it got http response (confluence state is "creation in progress")', async () => {
+        let result;
+
+        // send roap offer so that confluence state is "creation in progress"
+        sendRoapMessage('OFFER');
+
+        ensureQueueProcessingIsStarted();
+
+        sendLocalMute({audioMuted: false, videoMuted: true})
+          .then((response) => {
+            result = response;
+          });
+
+        // only roap offer should have been sent so far
+        assert.calledOnceWithExactly(webexRequestStub, {
+          method: 'PUT',
+          uri: 'fakeMeetingSelfUrl/media',
+          body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
+        });
+        assert.equal(result, undefined); // sendLocalMute shouldn't resolve yet, as the request should be queued
+
+        // now let the Offer be completed - so confluence state will be "complete"
+        webexRequestStub.resetHistory();
+        requestsToLocus[0].resolve({});
+        await testUtils.flushPromises();
+
+        // now the queued up local mute request should have been sent out
+        assert.calledOnceWithExactly(webexRequestStub, {
+          method: 'PUT',
+          uri: 'fakeMeetingSelfUrl/media',
+          body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
+        });
+
+        // check also the result once Locus replies to local mute
+        const fakeLocusResponse = { response: 'ok'};
+        requestsToLocus[1].resolve(fakeLocusResponse);
+        await testUtils.flushPromises();
+        assert.deepEqual(result, fakeLocusResponse);
+      });
+    });
+
+    it('sends LocalMute request if Offer was already sent and Locus replied (confluence state is "completed")', async () => {
+      let result;
+
+      // send roap offer and ensure it's completed
+      sendRoapMessage('OFFER');
+      ensureQueueProcessingIsStarted();
+      requestsToLocus[0].resolve({});
+      await testUtils.flushPromises();
+      webexRequestStub.resetHistory();
+
+      // now send local mute
+      sendLocalMute({audioMuted: false, videoMuted: true})
+        .then((response) => {
+          result = response;
+        });
+
+      ensureQueueProcessingIsStarted();
+
+      // it should be sent out
+      assert.calledOnceWithExactly(webexRequestStub, {
+        method: 'PUT',
+        uri: 'fakeMeetingSelfUrl/media',
+        body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
+      });
+    });
+
   });
-
-
 })

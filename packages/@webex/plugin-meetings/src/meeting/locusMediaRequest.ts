@@ -2,7 +2,7 @@
 import {defer} from 'lodash';
 import {Defer} from '@webex/common';
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {MEDIA, HTTP_VERBS} from '../constants';
+import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 export type MediaRequestType = 'RoapMessage' | 'LocalMute';
@@ -87,6 +87,15 @@ export type Config = {
 };
 
 /**
+ * Returns true if the request is triggering confluence creation in the server
+ */
+function isRequestAffectingConfluenceState(request: Request): boolean {
+  return (
+    request.type === 'RoapMessage' && request.roapMessage.messageType === ROAP.ROAP_TYPES.OFFER
+  );
+}
+
+/**
  * This class manages all /media API requests to Locus. Every call to that
  * Locus API has to go through this class.
  */
@@ -96,7 +105,7 @@ export class LocusMediaRequest extends StatelessWebexPlugin {
   private latestVideoMuted?: boolean;
   private isRequestInProgress: boolean;
   private queuedRequests: InternalRequestInfo[];
-
+  private confluenceState: 'not created' | 'creation in progress' | 'created';
   /**
    * Constructor
    */
@@ -105,6 +114,7 @@ export class LocusMediaRequest extends StatelessWebexPlugin {
     this.isRequestInProgress = false;
     this.queuedRequests = [];
     this.config = config;
+    this.confluenceState = 'not created';
   }
 
   /**
@@ -221,12 +231,32 @@ export class LocusMediaRequest extends StatelessWebexPlugin {
       `Meeting:LocusMediaRequest#sendHttpRequest --> ${request.type} audioMuted=${audioMuted} videoMuted=${videoMuted}`
     );
 
+    if (isRequestAffectingConfluenceState(request) && this.confluenceState === 'not created') {
+      this.confluenceState = 'creation in progress';
+    }
+
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
       body,
-    });
+    })
+      .then((result) => {
+        if (isRequestAffectingConfluenceState(request)) {
+          this.confluenceState = 'created';
+        }
+
+        return result;
+      })
+      .catch((e) => {
+        if (
+          isRequestAffectingConfluenceState(request) &&
+          this.confluenceState === 'creation in progress'
+        ) {
+          this.confluenceState = 'not created';
+        }
+        throw e;
+      });
   }
 
   /**
@@ -241,6 +271,18 @@ export class LocusMediaRequest extends StatelessWebexPlugin {
       }
       if (videoMuted !== undefined) {
         this.latestVideoMuted = videoMuted;
+      }
+
+      if (this.confluenceState === 'not created') {
+        // if there is no confluence, there is no point sending out local mute request
+        // as it will fail so we just store the latest audio/video muted values
+        // and resolve immediately, so that higher layer (MuteState class) doesn't get blocked
+        // and can call us again if user mutes/unmutes again before confluence is created
+        LoggerProxy.logger.info(
+          'Meeting:LocusMediaRequest#send --> called with LocalMute request before confluence creation'
+        );
+
+        return Promise.resolve({});
       }
     }
 

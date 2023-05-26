@@ -72,7 +72,7 @@ MeetingUtil.remoteUpdateAudioVideo = (meeting, audioMuted?: boolean, videoMuted?
     .then((response) => {
       Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
 
-      return response.body.locus;
+      return response?.body?.locus;
     });
 };
 

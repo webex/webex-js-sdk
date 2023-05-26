@@ -342,7 +342,9 @@ export class MuteState {
 
         this.state.server.localMute = this.type === AUDIO ? audioMuted : videoMuted;
 
-        meeting.locusInfo.onFullLocus(locus);
+        if (locus) {
+          meeting.locusInfo.onFullLocus(locus);
+        }
 
         return locus;
       })
