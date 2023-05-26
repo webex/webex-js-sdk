@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.112](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.111...v3.0.0-beta.112) (2023-05-26)
+
+
+### Bug Fixes
+
+* refactor code for sending /media requests to Locus ([#2832](https://github.com/webex/webex-js-sdk/issues/2832)) ([464d324](https://github.com/webex/webex-js-sdk/commit/464d324188b1c00bfcb4d1b92c210d14ff786be2))
+
 ## [3.0.0-beta.111](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.110...v3.0.0-beta.111) (2023-05-26)
 
 ## [3.0.0-beta.110](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.109...v3.0.0-beta.110) (2023-05-26)
