@@ -470,6 +470,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     resourceId,
     receiveTranscription: receiveTranscriptionOption,
     locale: 'en_UK',
+    homerDisclaimerEnabled: true,
   };
 
   const joinMeetingNow = () => {

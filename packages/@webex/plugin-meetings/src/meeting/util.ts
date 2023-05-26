@@ -110,6 +110,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       locale: options.locale,
       deviceCapabilities: options.deviceCapabilities,
       isJoining: options.isJoining,
+      homerDisclaimerEnabled: options.homerDisclaimerEnabled,
     })
     .then((res) => {
       Metrics.postEvent({

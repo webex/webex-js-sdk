@@ -114,6 +114,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
+    homerDisclaimerEnabled: boolean;
     isJoining?: boolean;
     locale?: string;
     deviceCapabilities?: Array<string>;
@@ -135,6 +136,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
+      homerDisclaimerEnabled,
       isJoining,
       locale,
       deviceCapabilities = [],
@@ -175,7 +177,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     }
 
     // Support server side audio disclaimer
-    if (isJoining) {
+    if (homerDisclaimerEnabled && isJoining) {
       body.locale = locale || DEFAULT_LOCALE;
       if (!deviceCapabilities.includes(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED)) {
         deviceCapabilities.push(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED);

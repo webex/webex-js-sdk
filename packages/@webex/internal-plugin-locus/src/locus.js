@@ -14,9 +14,6 @@ export const GREATER_THAN = 'GREATER_THAN';
 export const LESS_THAN = 'LESS_THAN';
 export const DESYNC = 'DESYNC';
 
-const SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED = 'SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED';
-const defaultLocale = 'en_US';
-
 /**
  * Transates the result of a sequence comparison into an intended behavior
  * @param {string} result
@@ -268,20 +265,12 @@ const Locus = WebexPlugin.extend({
       throw new Error('options.correlationId is required');
     }
 
-    // Support server side audio disclaimer
-    const deviceCapabilities = options.deviceCapabilities || [];
-    if (!deviceCapabilities.includes(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED)) {
-      deviceCapabilities.push(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED);
-    }
-
     return (
       this.request({
         method: 'POST',
         service: 'locus',
         resource: 'loci/call',
         body: {
-          locale: options.locale || defaultLocale,
-          deviceCapabilities,
           correlationId,
           deviceUrl: this.webex.internal.device.url,
           invitee: {
@@ -408,19 +397,11 @@ const Locus = WebexPlugin.extend({
       throw new Error('locus.correlationId or options.correlationId is required');
     }
 
-    // Support server side audio disclaimer
-    const deviceCapabilities = options.deviceCapabilities || [];
-    if (!deviceCapabilities.includes(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED)) {
-      deviceCapabilities.push(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED);
-    }
-
     return (
       this.request({
         method: 'POST',
         uri: `${locus.url}/participant`,
         body: {
-          locale: options.locale || defaultLocale,
-          deviceCapabilities,
           correlationId,
           deviceUrl: this.webex.internal.device.url,
           localMedias: [
