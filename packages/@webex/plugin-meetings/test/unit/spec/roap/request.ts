@@ -108,36 +108,39 @@ describe('plugin-meetings/roap', () => {
 
   describe('sendRoap', () => {
     it('includes joinCookie in the request correctly', async () => {
+      const locusMediaRequest = { send: sinon.stub().resolves({body: {locus: {}}})};
+
       await roapRequest.sendRoap({
         locusSelfUrl: locusUrl,
         mediaId: 'mediaId',
         roapMessage: {
           seq: 'seq',
         },
+        locusMediaRequest,
       });
 
-      const requestParams = roapRequest.request.getCall(0).args[0];
-      assert.equal(requestParams.method, 'PUT');
-      assert.equal(requestParams.uri, `${locusUrl}/media`);
-      assert.deepEqual(requestParams.body.localMedias, [
-        {
-          localSdp:
-            '{"roapMessage":{"seq":"seq"},"audioMuted":false,"videoMuted":false,"reachability":{"clusterId":{"udp":"test"}}}',
-          mediaId: 'mediaId',
-        },
-      ]);
-      assert.deepEqual(requestParams.body.clientMediaPreferences, {
+      const requestParams = locusMediaRequest.send.getCall(0).args[0];
+      assert.deepEqual(requestParams, {
+        type: 'RoapMessage',
+        selfUrl: locusUrl,
         joinCookie: {
           anycastEntryPoint: 'aws-eu-west-1',
         },
-        preferTranscoding: true,
+        mediaId: 'mediaId',
+        roapMessage: {
+          seq: 'seq',
+        },
+        reachability: {clusterId:{udp:"test"}},
       });
     });
   });
 
   it('calls attachReachabilityData when sendRoap', async () => {
+    const locusMediaRequest = { send: sinon.stub().resolves({body: {locus: {}}})};
+
     const newSdp = {
       new: 'sdp',
+      reachability: { someResult: 'whatever' }
     };
 
     roapRequest.attachReachabilityData = sinon.stub().returns(
@@ -148,70 +151,37 @@ describe('plugin-meetings/roap', () => {
         },
       })
     );
-    webex.request.returns(
-      Promise.resolve({
-        body: {
-          locus: {},
-        },
-      })
-    );
 
-    const result = await roapRequest.sendRoap({
+    await roapRequest.sendRoap({
       roapMessage: {
         seq: 1,
       },
       locusSelfUrl: 'locusSelfUrl',
       mediaId: 'mediaId',
-      correlationId: 'correlationId',
-      audioMuted: true,
-      videoMuted: true,
       meetingId: 'meetingId',
       preferTranscoding: true,
+      locusMediaRequest
     });
 
-    const requestParams = roapRequest.request.getCall(0).args[0];
+    const requestParams = locusMediaRequest.send.getCall(0).args[0];
 
     assert.deepEqual(requestParams, {
-      uri: 'locusSelfUrl/media',
-      method: 'PUT',
-      body: {
-        device: {
-          url: 'url',
-          deviceType: undefined,
-        },
-        correlationId: 'correlationId',
-        localMedias: [
-          {
-            localSdp: JSON.stringify(newSdp),
-            mediaId: 'mediaId',
-          },
-        ],
-        clientMediaPreferences: {
-          joinCookie: {
-            anycastEntryPoint: 'aws-eu-west-1',
-          },
-          preferTranscoding: true,
-        },
+      type: 'RoapMessage',
+      selfUrl: 'locusSelfUrl',
+      joinCookie: {
+        anycastEntryPoint: 'aws-eu-west-1',
       },
+      mediaId: 'mediaId',
+      roapMessage: {
+        seq: 1,
+      },
+      reachability: { someResult: 'whatever' },
     });
 
     assert.calledOnceWithExactly(roapRequest.attachReachabilityData, {
       roapMessage: {
         seq: 1,
       },
-      audioMuted: true,
-      videoMuted: true,
-    });
-
-    assert.deepEqual(result, {
-      locus: {
-        fullState: {
-          lastActive: 'lastActive',
-        },
-        id: '',
-        roapSeq: 1,
-        url: 'url/path',
-      }
     });
   });
 });

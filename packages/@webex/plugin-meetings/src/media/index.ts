@@ -51,29 +51,6 @@ export type BundlePolicy = ConstructorParameters<
 const Media: any = {};
 
 /**
- * format the media array for send
- * @param {String} mediaId
- * @param {Boolean} audioMuted
- * @param {Boolean} videoMuted
- * @returns {Array} medias
- */
-Media.generateLocalMedias = (mediaId: string, audioMuted: boolean, videoMuted: boolean) => {
-  if (mediaId) {
-    return [
-      {
-        localSdp: JSON.stringify({
-          audioMuted,
-          videoMuted,
-        }),
-        mediaId,
-      },
-    ];
-  }
-
-  return [];
-};
-
-/**
  * make a browser call to get the media
  * @param {SendOptions} options
  * @param {Object} config SDK Configuration for meetings plugin
