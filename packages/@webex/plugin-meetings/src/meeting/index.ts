@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
+import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {base64} from '@webex/common';
@@ -455,7 +455,7 @@ export default class Meeting extends StatelessWebexPlugin {
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
-  meetingInfo: object;
+  meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
   options: object;
@@ -1245,11 +1245,12 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
-        extraParams
+        extraParams,
+        {meetingId: this.id}
       );
 
       this.parseMeetingInfo(info, this.destination);
-      this.meetingInfo = info ? info.body : null;
+      this.meetingInfo = info ? {...info.body, meetingLookupUrl: info?.url} : null;
       this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
       this.requiredCaptcha = null;
       if (
@@ -1629,19 +1630,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Object}
    * @memberof Meeting
    */
-  getAnalyzerMetricsPrePayload(
-    options:
-      | {
-          event: string;
-          trackingId: string;
-          locus: object;
-          mediaConnections: Array<any>;
-          errors: object;
-        }
-      | any
-  ) {
+  getAnalyzerMetricsPrePayload(options: {
+    type?: string;
+    event: string;
+    trackingId: string;
+    locus: object;
+    mediaConnections?: Array<any>;
+    errors?: object;
+    meetingLookupUrl?: string;
+    clientType?: any;
+    subClientType?: any;
+    [key: string]: any;
+  }) {
     if (options) {
-      const {event, trackingId, mediaConnections} = options;
+      const {event, trackingId, mediaConnections, meetingLookupUrl} = options;
 
       if (!event) {
         LoggerProxy.logger.error(
@@ -1678,6 +1680,10 @@ export default class Meeting extends StatelessWebexPlugin {
         identifiers.mediaAgentAlias = this.mediaConnections?.[0].mediaAgentAlias;
         identifiers.mediaAgentGroupId = this.mediaConnections?.[0].mediaAgentGroupId;
         identifiers.mediaAgentCluster = this.mediaConnections?.[0].mediaAgentCluster;
+      }
+
+      if (meetingLookupUrl) {
+        identifiers.meetingLookupUrl = meetingLookupUrl;
       }
 
       if (options.trackingId) {
@@ -2106,6 +2112,60 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE,
         {entryExitTone}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED,
+        {state}
       );
     });
   }
@@ -2545,6 +2605,22 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
         });
@@ -4332,6 +4408,21 @@ export default class Meeting extends StatelessWebexPlugin {
       meeting: this,
       data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
     });
+
+    if (!isEmpty(this.meetingInfo)) {
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_REQUEST,
+        meeting: this,
+      });
+
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_RESPONSE,
+        meeting: this,
+        data: {
+          meetingLookupUrl: this.meetingInfo?.meetingLookupUrl,
+        },
+      });
+    }
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
