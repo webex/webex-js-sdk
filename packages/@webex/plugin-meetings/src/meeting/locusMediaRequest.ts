@@ -1,7 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import {defer} from 'lodash';
 import {Defer} from '@webex/common';
-import {StatelessWebexPlugin} from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -99,7 +99,7 @@ function isRequestAffectingConfluenceState(request: Request): boolean {
  * This class manages all /media API requests to Locus. Every call to that
  * Locus API has to go through this class.
  */
-export class LocusMediaRequest extends StatelessWebexPlugin {
+export class LocusMediaRequest extends WebexPlugin {
   private config: Config;
   private latestAudioMuted?: boolean;
   private latestVideoMuted?: boolean;
