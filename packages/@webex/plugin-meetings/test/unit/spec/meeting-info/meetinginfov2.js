@@ -611,7 +611,7 @@ describe('plugin-meetings', () => {
         return {invitee}
       }
 
-      it('Make a request to /instantSpace when conversationUrl', async () => {
+      it('Make a request to /spaceInstant when conversationUrl', async () => {
         const {invitee} = setup();
 
         await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
@@ -637,7 +637,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
       });
 
-      it('Make a request to /instantSpace when conversationUrl with installed org ID', async () => {
+      it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
         const {invitee} = setup();
 
         await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
