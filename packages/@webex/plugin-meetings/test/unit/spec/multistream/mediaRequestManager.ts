@@ -5,7 +5,6 @@ import {assert} from '@webex/test-helper-chai';
 import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as mediaCore from '@webex/internal-media-core';
-import { assertFunction } from '@babel/types';
 import { expect } from 'chai';
 
 type ExpectedActiveSpeaker = {
@@ -33,7 +32,6 @@ const degradationPreferences = {
 describe('MediaRequestManager', () => {
   const CROSS_PRIORITY_DUPLICATION = true;
   const CROSS_POLICY_DUPLICATION = true;
-  const PREFER_LIVE_VIDEO = true;
   const MAX_FPS = 3000;
   const MAX_FS_360p = 920;
   const MAX_FS_720p = 3600;
@@ -45,7 +43,7 @@ describe('MediaRequestManager', () => {
   const MAX_PAYLOADBITSPS_720p = 2500000;
   const MAX_PAYLOADBITSPS_1080p = 4000000;
 
-  const NUM_SLOTS = 10;
+  const NUM_SLOTS = 15;
 
   let mediaRequestManager: MediaRequestManager;
   let sendMediaRequestsCallback;
@@ -81,7 +79,7 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false) => 
+  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -89,7 +87,7 @@ describe('MediaRequestManager', () => {
           priority,
           crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
           crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
-          preferLiveVideo: PREFER_LIVE_VIDEO,
+          preferLiveVideo,
         },
         receiveSlots,
         codecInfo: {
@@ -123,8 +121,10 @@ describe('MediaRequestManager', () => {
   // addActiveSpeakerRequest() or addReceiverSelectedRequest(), because of some
   // hardcoded values used in them
   const checkMediaRequestsSent = (
-    expectedRequests: ExpectedRequest[],
-    isCodecInfoDefined: boolean = true
+    expectedRequests: ExpectedRequest[], {
+      isCodecInfoDefined = true,
+      preferLiveVideo = true,
+    } = {}
   ) => {
     assert.calledOnce(sendMediaRequestsCallback);
     assert.calledWith(
@@ -137,7 +137,7 @@ describe('MediaRequestManager', () => {
               priority: expectedRequest.priority,
               crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
               crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
-              preferLiveVideo: PREFER_LIVE_VIDEO,
+              preferLiveVideo,
             }),
             receiveSlots: expectedRequest.receiveSlots,
             maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond,
@@ -972,6 +972,9 @@ describe('MediaRequestManager', () => {
         degradationPreferences,
         kind: 'audio',
       });
+      mediaRequestManagerAudio.setNumCurrentSources(100, 100);
+      sendMediaRequestsCallback.resetHistory();
+
       mediaRequestManagerAudio.addRequest(
         {
           policyInfo: {
@@ -997,7 +1000,7 @@ describe('MediaRequestManager', () => {
           },
           // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
         ],
-        false
+        {isCodecInfoDefined: false}
       );
 
       assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
@@ -1079,6 +1082,250 @@ describe('MediaRequestManager', () => {
       ]);
     });
   });
+
+  describe('trimming of requested receive slots', () => {
+
+    const limitNumAvailableStreams = (preferLiveVideo, limit) => {
+      if (preferLiveVideo) {
+        mediaRequestManager.setNumCurrentSources(100, limit);
+      } else {
+        mediaRequestManager.setNumCurrentSources(limit, 1);
+      }
+    };
+
+    [true, false].forEach((preferLiveVideo) =>
+      describe(`preferLiveVideo=${preferLiveVideo}`, () => {
+        it(`trims the active speaker request with lowest priority first and maintains slot order`, () => {
+          // add some receiver-selected and active-speaker requests, in a mixed up order
+          addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_360p, false);
+          addActiveSpeakerRequest( // AS request 1 - it will get 1 slot trimmed
+            254,
+            [fakeReceiveSlots[1], fakeReceiveSlots[2], fakeReceiveSlots[3]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addActiveSpeakerRequest( // AS request 2 - lowest priority, it will have all slots trimmed
+            253,
+            [fakeReceiveSlots[7], fakeReceiveSlots[8], fakeReceiveSlots[9]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addActiveSpeakerRequest( // AS request 3 - highest priority, nothing will be trimmed
+            255,
+            [fakeReceiveSlots[4], fakeReceiveSlots[5], fakeReceiveSlots[6]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addReceiverSelectedRequest(101, fakeReceiveSlots[10], MAX_FS_360p, false);
+
+          /* Set number of available streams to 7 so that there will be enough sources only for
+            the 2 RS requests and 2 of the 3 AS requests. The lowest priority AS request will
+            have all the slots trimmed, the second lowest priority AS request will have 1 slot trimmed */
+          limitNumAvailableStreams(preferLiveVideo, 7);
+
+          // check what got trimmed
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 100,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'active-speaker',
+              priority: 254,
+              receiveSlots: [fakeWcmeSlots[1], fakeWcmeSlots[2]], // fakeWcmeSlots[3] got trimmed
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            // AS request with priority 253 is missing, because all of its slots got trimmed
+            {
+              policy: 'active-speaker',
+              priority: 255,
+              receiveSlots: [fakeWcmeSlots[4], fakeWcmeSlots[5], fakeWcmeSlots[6]],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'receiver-selected',
+              csi: 101,
+              receiveSlot: fakeWcmeSlots[10],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+          ], {preferLiveVideo});
+
+          // now increase the number of available streams so only the last AS request is trimmed by 1
+          limitNumAvailableStreams(preferLiveVideo, 10);
+
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 100,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'active-speaker',
+              priority: 254,
+              receiveSlots: [fakeWcmeSlots[1], fakeWcmeSlots[2], fakeWcmeSlots[3]], // all slots are used, nothing trimmed
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'active-speaker',
+              priority: 253,
+              receiveSlots: [fakeWcmeSlots[7], fakeWcmeSlots[8]], // only 1 slot is trimmed
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'active-speaker',
+              priority: 255,
+              receiveSlots: [fakeWcmeSlots[4], fakeWcmeSlots[5], fakeWcmeSlots[6]], // all slots are used, nothing trimmed
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'receiver-selected',
+              csi: 101,
+              receiveSlot: fakeWcmeSlots[10],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+          ], {preferLiveVideo});
+        })
+
+        it('does not trim the receiver selected requests', async () => {
+          // add some receiver-selected and active-speaker requests, in a mixed up order
+          addReceiverSelectedRequest(200, fakeReceiveSlots[0], MAX_FS_360p, false);
+          addActiveSpeakerRequest(
+            255,
+            [fakeReceiveSlots[1], fakeReceiveSlots[2], fakeReceiveSlots[3]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addReceiverSelectedRequest(201, fakeReceiveSlots[4], MAX_FS_720p, false);
+          addActiveSpeakerRequest(
+            254,
+            [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+            MAX_FS_720p,
+            false,
+            preferLiveVideo
+          );
+
+          /* Set number of available streams to 1, which is lower than the number of RS requests,
+            so all AS requests will be trimmed to 0 but RS requests should be unaltered */
+          limitNumAvailableStreams(preferLiveVideo, 1);
+
+          // check what got trimmed - only RS requests should remain
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 200,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'receiver-selected',
+              csi: 201,
+              receiveSlot: fakeWcmeSlots[4],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+              maxFs: MAX_FS_720p,
+              maxMbps: MAX_MBPS_720p,
+            },
+          ], {preferLiveVideo});
+        });
+
+        it('does trimming first and applies degradationPreferences after that', async () => {
+          // add some receiver-selected and active-speaker requests
+          addReceiverSelectedRequest(200, fakeReceiveSlots[0], MAX_FS_360p, false);
+          addActiveSpeakerRequest(
+            255,
+            [fakeReceiveSlots[1], fakeReceiveSlots[2], fakeReceiveSlots[3]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addReceiverSelectedRequest(201, fakeReceiveSlots[4], MAX_FS_720p, false);
+          addActiveSpeakerRequest(
+            254,
+            [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+            MAX_FS_720p,
+            false,
+            preferLiveVideo
+          );
+
+          // Set maxMacroblocksLimit to a value that's big enough just for the RS requests,
+          // but not big enough for all of the RS and AS requests. If maxMacroblocksLimit
+          // was applied first, the resolution of all requests (including RS ones) would be degraded
+          // This test verifies that it's not happening and the RS requests are not affected.
+          mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: MAX_FS_360p + MAX_FS_720p});
+          sendMediaRequestsCallback.resetHistory();
+
+          /* Limit the num of streams so that only RS requests can be sent out */
+          limitNumAvailableStreams(preferLiveVideo, 2);
+
+          // check what got trimmed - only RS requests should remain and with unchanged resolutions
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 200,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'receiver-selected',
+              csi: 201,
+              receiveSlot: fakeWcmeSlots[4],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+              maxFs: MAX_FS_720p,
+              maxMbps: MAX_MBPS_720p,
+            },
+          ], {preferLiveVideo});
+        });
+      })
+    );
+
+    it('throws if there are 2 active-speaker requests with different preferLiveVideo values', () => {
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[0]],
+        MAX_FS_360p,
+        false,
+        true
+      );
+      addReceiverSelectedRequest(201, fakeReceiveSlots[4], MAX_FS_720p, false);
+      addActiveSpeakerRequest(
+        254,
+        [fakeReceiveSlots[2]],
+        MAX_FS_360p,
+        false,
+        false
+      );
+
+      assert.throws(() => mediaRequestManager.commit(), 'a mix of active-speaker groups with different values for preferLiveVideo is not supported');
+    })
+  })
 });
 function assertEqual(arg0: any, arg1: string) {
   throw new Error('Function not implemented.');

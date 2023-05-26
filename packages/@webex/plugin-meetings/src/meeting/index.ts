@@ -4804,6 +4804,10 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaContent,
           }
         );
+
+        if (mediaContent === 'MAIN') {
+          this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
+        }
       }
     );
 

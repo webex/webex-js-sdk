@@ -4265,6 +4265,80 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        describe('audio and video source count change events', () => {
+          beforeEach(() => {
+            TriggerProxy.trigger.resetHistory();
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('registers for audio and video source count changed', () => {
+            assert.isFunction(eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED]);
+            assert.isFunction(eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED]);
+          })
+
+          it('forwards the VIDEO_SOURCES_COUNT_CHANGED event as "media:remoteVideoSourceCountChanged"', () => {
+            const numTotalSources = 10;
+            const numLiveSources = 6;
+            const mediaContent = 'SLIDES';
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteVideoSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('forwards the AUDIO_SOURCES_COUNT_CHANGED event as "media:remoteAudioSourceCountChanged"', () => {
+            const numTotalSources = 5;
+            const numLiveSources = 2;
+            const mediaContent = 'MAIN';
+
+            eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteAudioSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('calls setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for MAIN', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+            const mediaContent = 'MAIN';
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(setNumCurrentSourcesSpy, numTotalSources, numLiveSources);
+          });
+
+          it('does not call setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for SLIDES', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+            const mediaContent = 'SLIDES';
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.notCalled(setNumCurrentSourcesSpy);
+          });
+        })
       });
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
