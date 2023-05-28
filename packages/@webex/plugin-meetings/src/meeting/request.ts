@@ -594,52 +594,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Toggle remote audio and/or video
-   * @param {Object} options options for toggling
-   * @param {String} options.selfId Locus self id??
-   * @param {String} options.locusUrl Locus url
-   * @param {String} options.deviceUrl Url of a device
-   * @param {String} options.resourceId Populated if you are paired to a device
-   * @param {String} options.localMedias local sdps
-   * @param {Boolean} options.preferTranscoding false for multistream (Homer), true for transcoded media (Edonus)
-   * @returns {Promise}
-   */
-  remoteAudioVideoToggle(
-    options:
-      | {
-          selfId: string;
-          locusUrl: string;
-          deviceUrl: string;
-          resourceId: string;
-          localMedias: string;
-        }
-      | any
-  ) {
-    const uri = `${options.locusUrl}/${PARTICIPANT}/${options.selfId}/${MEDIA}`;
-    const body = {
-      device: {
-        // @ts-ignore
-        deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl,
-      },
-      usingResource: options.resourceId || null,
-      correlationId: options.correlationId,
-      respOnlySdp: true,
-      localMedias: options.localMedias,
-      clientMediaPreferences: {
-        preferTranscoding: options.preferTranscoding ?? true,
-      },
-    };
-
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri,
-      body,
-    });
-  }
-
-  /**
    * change the content floor grant
    * @param {Object} options options for floor grant
    * @param {String} options.disposition floor action (granted/released)

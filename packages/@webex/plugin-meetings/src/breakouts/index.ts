@@ -39,6 +39,7 @@ const Breakouts = WebexPlugin.extend({
     breakoutServiceUrl: 'string', // the current breakout resource url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    manageGroups: 'array', // appears when manage breakouts
     preAssignments: 'array', // appears when getPreAssignments info hasBreakoutPreAssignments = true
     shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
     editLock: 'object', // appears when getBreakout info editlock = true
@@ -77,14 +78,16 @@ const Breakouts = WebexPlugin.extend({
     },
     breakoutGroupId: {
       cache: false,
-      deps: ['groups'],
+      deps: ['manageGroups'],
       /**
        * Returns the actived group id
        * @returns {boolean}
        */
       fn() {
-        if (this.groups?.length) {
-          return this.groups[0].status !== BREAKOUTS.STATUS.CLOSED ? this.groups[0].id : '';
+        if (this.manageGroups?.length) {
+          return this.manageGroups[0].status !== BREAKOUTS.STATUS.CLOSED
+            ? this.manageGroups[0].id
+            : '';
         }
 
         return '';
@@ -476,7 +479,7 @@ const Breakouts = WebexPlugin.extend({
       });
 
     if (breakInfo.body?.groups) {
-      this.set('groups', breakInfo.body.groups);
+      this.set('manageGroups', breakInfo.body.groups);
     }
 
     // clear edit lock info after save breakout session info
@@ -506,7 +509,7 @@ const Breakouts = WebexPlugin.extend({
       });
 
     if (breakInfo.body?.groups) {
-      this.set('groups', breakInfo.body.groups);
+      this.set('manageGroups', breakInfo.body.groups);
     }
     this.shouldFetchPreassignments = false;
 
@@ -623,7 +626,7 @@ const Breakouts = WebexPlugin.extend({
     });
 
     if (breakout.body?.groups) {
-      this.set('groups', breakout.body.groups);
+      this.set('manageGroups', breakout.body.groups);
     }
     if (editlock && breakout.body?.editlock?.token) {
       this.set('editLock', breakout.body.editlock);
