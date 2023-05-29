@@ -26,8 +26,6 @@ import {
   REACHABILITY,
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
-  SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED,
-  DEFAULT_LOCALE,
   ANNOTATION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
@@ -91,8 +89,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
-   * @param {boolean} options.homerDisclaimerEnabled
-   * @param {boolean} options.isJoining
    * @param {String} options.locale,
    * @param {Array} options.deviceCapabilities
    * @param {boolean} options.liveAnnotationSupported
@@ -115,8 +111,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
-    homerDisclaimerEnabled: boolean;
-    isJoining?: boolean;
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
@@ -137,8 +131,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
-      homerDisclaimerEnabled,
-      isJoining,
       locale,
       deviceCapabilities = [],
       liveAnnotationSupported,
@@ -177,12 +169,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
     }
 
-    // Support server side audio disclaimer
-    if (homerDisclaimerEnabled && isJoining) {
-      body.locale = locale || DEFAULT_LOCALE;
-      if (!deviceCapabilities.includes(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED)) {
-        deviceCapabilities.push(SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED);
-      }
+    if (locale) {
+      body.locale = locale;
     }
 
     // add deviceCapabilities prop

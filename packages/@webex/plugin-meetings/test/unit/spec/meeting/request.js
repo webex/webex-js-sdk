@@ -226,11 +226,10 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('adds deviceCapabilities and locale to request when it is a joining action', async () => {
+      it('adds deviceCapabilities and locale to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
-          isJoining: true,
-          homerDisclaimerEnabled: true,
           locale: 'en_UK',
+          deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -238,27 +237,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.locale, 'en_UK');
       });
 
-      it('adds deviceCapabilities and default locale to request when it is a joining action but locale is not provided', async () => {
-        await meetingsRequest.joinMeeting({
-          isJoining: true,
-          homerDisclaimerEnabled: true,
-        });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
-
-        assert.deepEqual(requestParams.body.deviceCapabilities, ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']);
-        assert.deepEqual(requestParams.body.locale, 'en_US');
-      });
-
-      it('adds deviceCapabilities when deviceCapabilities is provided in options param', async () => {
-        await meetingsRequest.joinMeeting({
-          deviceCapabilities: ['TEST'],
-        });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
-
-        assert.deepEqual(requestParams.body.deviceCapabilities, ['TEST']);
-      });
-
-      it('does not add deviceCapabilities and locale to request when it is not a joining action', async () => {
+      it('does not add deviceCapabilities and locale to request when they are not provided', async () => {
         await meetingsRequest.joinMeeting({});
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 

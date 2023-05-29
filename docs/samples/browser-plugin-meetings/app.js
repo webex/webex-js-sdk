@@ -469,8 +469,8 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     moveToResource: false,
     resourceId,
     receiveTranscription: receiveTranscriptionOption,
-    locale: 'en_UK',
-    homerDisclaimerEnabled: true,
+    locale: 'en_UK', // audio disclaimer language
+    deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
 
   const joinMeetingNow = () => {

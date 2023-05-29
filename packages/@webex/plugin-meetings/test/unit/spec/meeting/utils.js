@@ -219,7 +219,7 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.breakoutsSupported, true);
       });
 
-      it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"], isJoining=true when they are passed in as those values', async () => {
+      it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
         const meeting = {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
@@ -230,7 +230,6 @@ describe('plugin-meetings', () => {
         await MeetingUtil.joinMeeting(meeting, {
           locale: 'en_UK',
           deviceCapabilities: ['TEST'],
-          isJoining: true,
         });
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -238,7 +237,6 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locale, 'en_UK');
         assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
-        assert.equal(parameter.isJoining, true);
       });
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {

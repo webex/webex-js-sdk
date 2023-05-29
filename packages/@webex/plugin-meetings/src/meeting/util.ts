@@ -109,8 +109,6 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       breakoutsSupported: options.breakoutsSupported,
       locale: options.locale,
       deviceCapabilities: options.deviceCapabilities,
-      isJoining: options.isJoining,
-      homerDisclaimerEnabled: options.homerDisclaimerEnabled,
     })
     .then((res) => {
       Metrics.postEvent({
