@@ -69,7 +69,6 @@ export const TYPE = 'type';
 export const VIDEO = 'video';
 export const VIDEO_INPUT = 'videoinput';
 export const VIDEO_STATUS = 'videoStatus';
-export const DEFAULT_LOCALE = 'en_US';
 
 // *********** UPPERCASE ONLY STRINGS ************
 // Please alphabetize
