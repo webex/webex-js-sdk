@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.113](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.112...v3.0.0-beta.113) (2023-05-29)
+
+
+### Features
+
+* **disclaimer:** SDK - Support audio disclaimer for recording ([#2829](https://github.com/webex/webex-js-sdk/issues/2829)) ([f4c19af](https://github.com/webex/webex-js-sdk/commit/f4c19af932919864b9c2c6fdf80220a067d18d47))
+
 ## [3.0.0-beta.112](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.111...v3.0.0-beta.112) (2023-05-26)
 
 
