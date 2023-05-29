@@ -1447,6 +1447,7 @@ describe('plugin-meetings', () => {
         fakeLocus = {
           meeting: true,
           participants: true,
+          url: 'newLocusUrl',
         };
       });
 
@@ -1589,12 +1590,18 @@ describe('plugin-meetings', () => {
           locusInfo: {
             onFullLocus: sandbox.stub(),
           },
+          locusUrl: 'oldLocusUrl',
         };
 
         locusInfo.locusParser.resume = sandbox.stub();
         locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
 
-        assert.calledOnce(meeting.meetingRequest.getFullLocus);
+        assert.calledOnceWithExactly(meeting.meetingRequest.getFullLocus,
+          {
+            desync: true,
+            locusUrl: 'newLocusUrl',
+          }
+          );
       });
 
       it('getFullLocus handles DESYNC action correctly', () => {

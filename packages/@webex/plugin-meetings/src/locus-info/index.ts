@@ -107,7 +107,7 @@ export default class LocusInfo extends EventsScope {
         meeting.meetingRequest
           .getFullLocus({
             desync: true,
-            locusUrl: meeting.locusUrl,
+            locusUrl: locus.url ? locus.url : meeting.locusUrl,
           })
           .then((res) => {
             meeting.locusInfo.onFullLocus(res.body);

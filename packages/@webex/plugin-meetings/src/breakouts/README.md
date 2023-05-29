@@ -130,8 +130,9 @@ breakouts.create(sessions)
 // Delete all breakout sessions
 breakouts.clearSessions()
 
-// Rename an existing breakout session
-breakout.rename(newSessionName)
+// update breakout session with params
+// if unlockEdit is true, will release lock editing after update finish
+breakout.update(params, unlockEdit)
 
 // Start breakout sessions with necessary params
 breakouts.start(params)
