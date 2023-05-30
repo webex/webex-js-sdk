@@ -262,7 +262,7 @@ export default class MeetingInfoV2 {
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
    * @param {String} captchaInfo.id
-   * @param {String} installedOrgID
+   * @param {String} installedOrgID org ID of user's machine
    * @param {String} locusId
    * @param {Object} extraParams
    * @param {Object} options
