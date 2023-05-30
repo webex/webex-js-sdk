@@ -468,7 +468,7 @@ class Metrics {
       return this.generateErrorPayload(clientCodeError, showToUser, error.name.OTHER, err);
     }
 
-    return null;
+    return this.generateErrorPayload(4100, showToUser, error.name.OTHER, err);
   }
 
   /**

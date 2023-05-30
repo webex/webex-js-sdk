@@ -481,6 +481,43 @@ describe('plugin-meetings', () => {
         }
       });
 
+      it('should not have errors if parsing error returns null', async () => {
+        Metrics.postEvent = sinon.stub();
+        const message = 'a message';
+        const meetingInfoData = 'meeting info';
+
+        webex.request = sinon.stub().rejects({
+          statusCode: 403,
+          body: {message, code: 1000000, data: {meetingInfo: meetingInfoData}},
+          url: 'http://api-url.com',
+        });
+        try {
+          await meetingInfo.fetchMeetingInfo(
+            '1234323',
+            _MEETING_ID_,
+            'abc',
+            {
+              id: '999',
+              code: 'aabbcc11',
+            },
+            null,
+            null,
+            {},
+            {meetingId: 'meeting-id'}
+          );
+          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+        } catch (err) {
+          assert.calledWith(Metrics.postEvent, {
+            event: 'client.meetinginfo.response',
+            meetingId: 'meeting-id',
+            data: {
+              errors: undefined,
+              meetingLookupUrl: 'http://api-url.com',
+            }
+          });
+        }
+      });
+
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};
 
