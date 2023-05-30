@@ -244,6 +244,7 @@ const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
+const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -472,6 +473,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     locale: 'en_UK', // audio disclaimer language
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
+
+  if (meetingsMediaInLobbySupportElm.checked) {
+    joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
+  }
 
   const joinMeetingNow = () => {
     meeting.join(joinOptions)
@@ -2230,7 +2235,9 @@ function addMedia() {
     multistreamLayoutElm.value = 'AllEqual';
 
     // addMedia using the default RemoteMediaManagerConfig
-    meeting.addMedia().then(() => {
+    meeting.addMedia({
+      allowMediaInLobby: meetingsMediaInLobbySupportElm.checked,
+    }).then(() => {
       // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
       // if someone started sharing before our page was loaded,
       // or we didn't act on that event if the user clicked "add media" while being in the lobby

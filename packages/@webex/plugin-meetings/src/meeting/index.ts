@@ -3981,6 +3981,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {JoinOptions} [options.joinOptions] - see #join()
    * @param {MediaDirection} options.mediaSettings - see #addMedia()
    * @param {AudioVideo} [options.audioVideoOptions] - see #getMediaStreams()
+   * @param {Boolean} [options.allowMediaInLobby] - whether to allow media in the lobby
    * @returns {Promise} -- {join: see join(), media: see addMedia(), local: see getMediaStreams()}
    * @public
    * @memberof Meeting
@@ -4005,10 +4006,11 @@ export default class Meeting extends StatelessWebexPlugin {
       joinOptions?: any;
       mediaSettings: any;
       audioVideoOptions?: any;
+      allowMediaInLobby?: boolean;
     } = {} as any
   ) {
     // TODO: add validations for parameters
-    const {mediaSettings, joinOptions, audioVideoOptions} = options;
+    const {mediaSettings, joinOptions, audioVideoOptions, allowMediaInLobby} = options;
 
     return this.join(joinOptions)
       .then((joinResponse) =>
@@ -4017,6 +4019,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaSettings,
             localShare,
             localStream,
+            allowMediaInLobby,
           }).then((mediaResponse) => ({
             join: joinResponse,
             media: mediaResponse,
@@ -5532,6 +5535,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {MediaStream} options.localStream
    * @param {MediaStream} options.localShare
    * @param {BundlePolicy} options.bundlePolicy bundle policy for multistream meetings
+   * @param {Boolean} options.allowMediaInLobby flag to allow adding media when in the lobby
    * @param {RemoteMediaManagerConfig} options.remoteMediaManagerConfig only applies if multistream is enabled
    * @returns {Promise}
    * @public
@@ -5550,14 +5554,21 @@ export default class Meeting extends StatelessWebexPlugin {
     if (MeetingUtil.isUserInLeftState(this.locusInfo)) {
       return Promise.reject(new UserNotJoinedError());
     }
+
+    const {
+      localStream,
+      localShare,
+      mediaSettings,
+      remoteMediaManagerConfig,
+      bundlePolicy,
+      allowMediaInLobby,
+    } = options;
+
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
-    if (this.isUserUnadmitted && !this.wirelessShare) {
+    if (this.isUserUnadmitted && !this.wirelessShare && !allowMediaInLobby) {
       return Promise.reject(new UserInLobbyError());
     }
-
-    const {localStream, localShare, mediaSettings, remoteMediaManagerConfig, bundlePolicy} =
-      options;
 
     LoggerProxy.logger.info(`${LOG_HEADER} Adding Media.`);
 
