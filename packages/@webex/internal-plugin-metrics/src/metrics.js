@@ -1,8 +1,5 @@
-/* eslint-disable default-param-last */
-
-/*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
- */
+/* eslint-disable class-methods-use-this */
+/* eslint-disable valid-jsdoc */
 
 import {WebexPlugin} from '@webex/webex-core';
 import {BrowserDetection} from '@webex/common';
@@ -54,6 +51,7 @@ const Metrics = WebexPlugin.extend({
    * @param {string} preLoginId
    * @returns {Object} HttpResponse object
    */
+  // eslint-disable-next-line default-param-last, require-jsdoc
   submitClientMetrics(eventName, props = {}, preLoginId) {
     if (!eventName) {
       throw Error('Missing behavioral metric name. Please provide one');
@@ -152,6 +150,11 @@ const Metrics = WebexPlugin.extend({
     );
   },
 
+  /**
+   *
+   * @param {any} payload
+   * @returns
+   */
   submitCallDiagnosticEvents(payload) {
     const event = {
       type: 'diagnostic-event',

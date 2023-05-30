@@ -1,6 +1,5 @@
-/*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
- */
+/* eslint-disable class-methods-use-this */
+/* eslint-disable valid-jsdoc */
 
 import Batcher from './batcher';
 
@@ -24,11 +23,18 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     return process.env.NODE_ENV === 'production' ? 'prod' : 'test';
   },
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   prepareItem(item) {
     // networkType should be a enum value: `wifi`, `ethernet`, `cellular`, or `unknown`.
     // Browsers cannot provide such information right now. However, it is a required field.
     const origin = {
-      buildType: this.getBuildType(item.event?.eventData?.webClientDomain),
+      // TODO: suspect this is wrong, it was event.eventData.... it should be item.eventPayload.eventData.webClientDomain
+      buildType: this.getBuildType(item.eventPayload?.eventData?.webClientDomain),
+      // network type is supported in chrome.
       networkType: 'unknown',
     };
 
@@ -37,6 +43,11 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     return Promise.resolve(item);
   },
 
+  /**
+   *
+   * @param queue
+   * @returns
+   */
   prepareRequest(queue) {
     // Add sent timestamp
     queue.forEach((item) => {
@@ -47,6 +58,11 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     return Promise.resolve(queue);
   },
 
+  /**
+   *
+   * @param payload
+   * @returns
+   */
   submitHttpRequest(payload) {
     return this.webex.request({
       method: 'POST',

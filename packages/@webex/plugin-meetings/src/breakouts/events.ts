@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/prefer-default-export
-import Metrics from '../metrics';
+import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
 import {eventType} from '../metrics/config';
 
 const breakoutEvent: any = {};
@@ -16,22 +17,25 @@ breakoutEvent.onBreakoutJoinResponse = (eventInfo) => {
   breakoutEvent.postMoveCallAnalyzer(eventType.BREAKOUT_JOIN_RESPONSE, eventInfo);
 };
 
-breakoutEvent.postMoveCallAnalyzer = (events: string, eventInfo: any) => {
+breakoutEvent.postMoveCallAnalyzer = (event: ClientEvent['name'], eventInfo: any) => {
   if (!eventInfo?.breakoutMoveId || !eventInfo?.meeting) {
     return;
   }
   if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
     return;
   }
-  Metrics.postEvent({
-    event: events,
-    meetingId: eventInfo.meeting.id,
-    data: {
-      breakoutMoveId: eventInfo.breakoutMoveId,
-      breakoutSessionId: eventInfo?.currentSession?.sessionId,
-      breakoutGroupId: eventInfo?.currentSession?.groupId,
+
+  CallAnalyzerMetrics.submitClientEvent(
+    event,
+    {
+      identifiers: {
+        breakoutMoveId: eventInfo.breakoutMoveId,
+        breakoutSessionId: eventInfo.breakoutSessionId,
+        breakoutGroupId: eventInfo.breakoutGroupId,
+      },
     },
-  });
+    {meetingId: eventInfo.meeting.id}
+  );
 };
 
 export default breakoutEvent;

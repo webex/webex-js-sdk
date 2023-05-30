@@ -9,6 +9,7 @@ import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
+import {userAgentToString} from '@webex/internal-plugin-metrics/src/ca-metrics.util';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEETING_ERRORS} from '../constants';
 import BrowserDetection from '../common/browser-detection';
@@ -189,7 +190,10 @@ class Metrics {
       origin: {
         name: 'endpoint',
         networkType: 'unknown',
-        userAgent: this.userAgentToString(),
+        userAgent: userAgentToString({
+          clientName: this.webex.meetings?.metrics?.clientName,
+          webexVersion: this.webex.version,
+        }),
         userType: options.userType,
         loginType: options.loginType,
         channel: options.channel,
@@ -290,11 +294,16 @@ class Metrics {
       eventId: uuid.v4(),
       version: 1,
       origin: {
+        // TODO: used for MQE
         audioSetupDelay,
+        // TODO: used for MQE
         videoSetupDelay,
         name: 'endpoint',
         networkType: options.networkType || UNKNOWN,
-        userAgent: this.userAgentToString(),
+        userAgent: userAgentToString({
+          clientName: this.webex.meetings?.metrics?.clientName,
+          webexVersion: this.webex.version,
+        }),
         clientInfo: {
           clientType: options.clientType, // TODO: Only clientType: 'TEAMS_CLIENT' is whitelisted
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
@@ -314,11 +323,13 @@ class Metrics {
         name: eventType,
         canProceed: true,
         identifiers,
+        // TODO: intervals is used for MQE
         intervals: [options.intervalData],
         joinTimes,
         eventData: {
           webClientDomain: window.location.hostname,
         },
+        // TODO: sourceMetadata is only for MQE
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           applicationSoftwareVersion: this.webex.version,
@@ -504,48 +515,6 @@ class Metrics {
     }
 
     return null;
-  }
-
-  /**
-   * Returns a formated string of the user agent.
-   *
-   * @returns {string} formatted user agent information
-   */
-  userAgentToString() {
-    let userAgentOption;
-    let browserInfo;
-    const clientInfo = util.format('client=%s', `${this.webex.meetings?.metrics?.clientName}`);
-
-    if (
-      ['chrome', 'firefox', 'msie', 'msedge', 'safari'].indexOf(getBrowserName().toLowerCase()) !==
-      -1
-    ) {
-      browserInfo = util.format(
-        'browser=%s',
-        `${getBrowserName().toLowerCase()}/${getBrowserVersion().split('.')[0]}`
-      );
-    }
-    const osInfo = util.format('os=%s', `${getOSName()}/${getOSVersion().split('.')[0]}`);
-
-    if (browserInfo) {
-      userAgentOption = `(${browserInfo}`;
-    }
-    if (osInfo) {
-      userAgentOption = userAgentOption
-        ? `${userAgentOption}; ${clientInfo}; ${osInfo}`
-        : `${clientInfo}; (${osInfo}`;
-    }
-    if (userAgentOption) {
-      userAgentOption += ')';
-
-      return util.format(
-        'webex-js-sdk/%s %s',
-        `${process.env.NODE_ENV}-${this.webex.version}`,
-        userAgentOption
-      );
-    }
-
-    return util.format('webex-js-sdk/%s', `${process.env.NODE_ENV}-${this.webex.version}`);
   }
 
   /**
