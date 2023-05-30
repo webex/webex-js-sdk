@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.114](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.113...v3.0.0-beta.114) (2023-05-30)
+
+
+### Features
+
+* **plugin-meetings:** jsdoc for installedOrgID ([#2839](https://github.com/webex/webex-js-sdk/issues/2839)) ([6a741a2](https://github.com/webex/webex-js-sdk/commit/6a741a2453cb495bdd09ba65e78494402ebced0c))
+
 ## [3.0.0-beta.113](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.112...v3.0.0-beta.113) (2023-05-29)
 
 
