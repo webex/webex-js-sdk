@@ -1,14 +1,12 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-import Members from '@webex/plugin-meetings/src/members';
 import MockWebex from '@webex/test-helper-mock-webex';
-import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
-import {eventType} from '../../../../src/metrics/config';
 import uuid from 'uuid';
 import breakoutEvent from "../../../../src/breakouts/events";
-import SelfUtils from "../../../../src/locus-info/selfUtils";
+import BreakoutRequest from '../../../../src/breakouts/request';
+
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
@@ -39,7 +37,7 @@ describe('plugin-meetings', () => {
 
     describe('initialize', () => {
       it('creates the object correctly', () => {
-        assert.instanceOf(breakout.members, Members);
+        assert.instanceOf(breakout.breakoutRequest, BreakoutRequest);
       });
     });
 

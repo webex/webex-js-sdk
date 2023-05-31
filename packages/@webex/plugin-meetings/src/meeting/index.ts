@@ -748,6 +748,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locusUrl: attrs.locus && attrs.locus.url,
         receiveSlotManager: this.receiveSlotManager,
         mediaRequestManagers: this.mediaRequestManagers,
+        meeting: this,
       },
       // @ts-ignore - Fix type
       {parent: this.webex}

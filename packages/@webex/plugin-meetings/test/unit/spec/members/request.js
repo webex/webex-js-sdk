@@ -18,6 +18,8 @@ describe('plugin-meetings', () => {
   let membersRequest;
   let url1;
   let sandbox;
+  const sequence = {some: 'sequenceData'};
+  const requestResponse = {some: 'data'};
 
   beforeEach(() => {
     const webex = new MockWebex({
@@ -30,13 +32,23 @@ describe('plugin-meetings', () => {
 
     url1 = `https://example.com/${uuid.v4()}`;
 
+    const request = sinon.mock().returns(Promise.resolve(requestResponse));
+
     membersRequest = new MembersRequest(
-      {},
+      {
+        meeting: {
+          request,
+          locusInfo: {
+            sequence,
+          },
+        },
+      },
       {
         parent: webex,
       }
     );
-    membersRequest.request = sinon.mock().returns(Promise.resolve({}));
+
+    membersRequest.request = request;
   });
 
   afterEach(() => {
@@ -183,10 +195,9 @@ describe('plugin-meetings', () => {
           locusUrl,
         };
 
-        assert.strictEqual(
-          membersRequest.lowerAllHandsMember(options),
-          membersRequest.request.getCall(0).returnValue
-        );
+        const result = await membersRequest.lowerAllHandsMember(options);
+
+        assert.strictEqual(result, requestResponse);
       });
 
       it('sends a PATCH to the locus endpoint', async () => {
@@ -217,6 +228,7 @@ describe('plugin-meetings', () => {
               raised: false,
             },
             requestingParticipantId: memberId,
+            sequence,
           },
         });
       });

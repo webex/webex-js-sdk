@@ -106,7 +106,12 @@ describe('plugin-meetings', () => {
 
       url1 = `https://example.com/${uuid.v4()}`;
 
-      createMembers = (options) => new Members({locusUrl: options.url}, {parent: webex});
+      createMembers = (options) => new Members({locusUrl: options.url, meeting: {
+        request: sinon.mock().returns(Promise.resolve()),
+        locusInfo: {
+          sequence: {}
+        }
+      }}, {parent: webex});
     });
 
     afterEach(() => {

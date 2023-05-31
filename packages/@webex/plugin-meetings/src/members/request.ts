@@ -5,12 +5,26 @@ import {MEETINGS} from '../constants';
 import ParameterError from '../common/errors/parameter';
 
 import MembersUtil from './util';
+import MeetingUtil from '../meeting/util';
 
 /**
  * @class MembersRequest
  */
 export default class MembersRequest extends StatelessWebexPlugin {
   namespace = MEETINGS;
+  locusDeltaRequest: (options: object) => Promise<any>;
+
+  /**
+   * Constructor
+   * @param {Object} attrs
+   * @param {Object} options
+   */
+  constructor(attrs: {meeting: any}, options: object) {
+    const {meeting, ...otherAttrs} = attrs;
+    super(otherAttrs, options);
+
+    this.locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+  }
 
   /**
    *
@@ -36,8 +50,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
     }
     const requestParams = MembersUtil.getAddMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
   /**
@@ -55,10 +68,16 @@ export default class MembersRequest extends StatelessWebexPlugin {
     }
     const requestParams = MembersUtil.getAdmitMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
+  /**
+   * Sends a request to remove a member
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of member
+   * @returns {Promise}
+   */
   removeMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
@@ -68,10 +87,16 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.getRemoveMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
+  /**
+   * Sends a request to mute a member
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of member
+   * @returns {Promise}
+   */
   muteMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
@@ -82,7 +107,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
     const requestParams = MembersUtil.getMuteMemberRequestParams(options);
 
     // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
   /**
@@ -101,10 +126,16 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.getRoleAssignmentMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
+  /**
+   * Sends a request to raise or lower a member's hand
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of member
+   * @returns {Promise}
+   */
   raiseOrLowerHandMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
@@ -114,10 +145,16 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.getRaiseHandMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
+  /**
+   * Sends a request to lower all hands
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.requestingParticipantId ID of requesting participant
+   * @returns {Promise}
+   */
   lowerAllHandsMember(options) {
     if (!options || !options.locusUrl || !options.requestingParticipantId) {
       throw new ParameterError(
@@ -127,8 +164,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.getLowerAllHandsMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
   /**
@@ -147,10 +183,17 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.editDisplayNameMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
+  /**
+   * Sends a request to raise or lower a member's hand
+   * @param {Object} options
+   * @param {String} options.locusUrl
+   * @param {String} options.memberId ID of member
+   * @param {String} options.moderator ID of moderator
+   * @returns {Promise}
+   */
   transferHostToMember(options) {
     if (!options || !options.locusUrl || !options.memberId || !options.moderator) {
       throw new ParameterError(
@@ -160,8 +203,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.getTransferHostToMemberRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
   /**
@@ -190,8 +232,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.generateSendDTMFRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 
   /**
@@ -209,7 +250,6 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
     const requestParams = MembersUtil.generateCancelInviteRequestParams(options);
 
-    // @ts-ignore
-    return this.request(requestParams);
+    return this.locusDeltaRequest(requestParams);
   }
 }

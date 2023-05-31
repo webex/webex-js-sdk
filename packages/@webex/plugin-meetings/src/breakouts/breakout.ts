@@ -47,8 +47,11 @@ const Breakout = WebexPlugin.extend({
     },
   },
 
+  /**
+   * initializer for the Breakout class
+   * @returns {void}
+   */
   initialize() {
-    this.members = new Members({}, {parent: this.webex});
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -113,15 +116,34 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
-   * Parses the participants from the locus object
-   * @param locus Locus object
+   * inits the members object
    * @returns {void}
    */
+  initMembers() {
+    const {meetingId} = this.collection.parent;
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
+    this.members = new Members(
+      {
+        meeting,
+      },
+      {parent: this.webex}
+    );
+  },
 
+  /**
+   * Parses the participants from the locus object
+   * @param {Object} locus Locus object
+   * @returns {void}
+   */
   parseRoster(locus) {
+    if (!this.members) {
+      this.initMembers();
+    }
+
     this.members.locusParticipantsUpdate(locus);
   },
-  /*
+
+  /**
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options
