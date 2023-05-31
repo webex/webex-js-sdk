@@ -14,6 +14,7 @@ export type RoapRequest = {
   mediaId: string;
   roapMessage: any;
   reachability: any;
+  sequence?: any;
   joinCookie: any; // any, because this is opaque to the client, we pass whatever object we got from one backend component (Orpheus) to the other (Locus)
 };
 
@@ -21,6 +22,7 @@ export type LocalMuteRequest = {
   type: 'LocalMute';
   selfUrl: string;
   mediaId: string;
+  sequence?: any;
   muteOptions: {
     audioMuted?: boolean;
     videoMuted?: boolean;
@@ -218,6 +220,10 @@ export class LocusMediaRequest extends WebexPlugin {
         localMedias.reachability = request.reachability;
         body.clientMediaPreferences.joinCookie = request.joinCookie;
         break;
+    }
+
+    if (request.sequence) {
+      body.sequence = request.sequence;
     }
 
     body.localMedias = [

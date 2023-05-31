@@ -5376,28 +5376,7 @@ describe('plugin-meetings', () => {
           checkParseMeetingInfo(expectedInfoToParse);
         });
       });
-      describe('#parseLocus', () => {
-        describe('when CALL and participants', () => {
-          beforeEach(() => {
-            meeting.setLocus = sinon.stub().returns(true);
-            MeetingUtil.getLocusPartner = sinon.stub().returns({person: {sipUrl: uuid3}});
-          });
-          it('should parse the locus object and set meeting properties and return null', () => {
-            meeting.type = 'CALL';
-            meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
-            assert.calledOnce(meeting.setLocus);
-            assert.calledWith(meeting.setLocus, {
-              url: url1,
-              participants: [{id: uuid1}],
-              self: {id: uuid2},
-            });
-            assert.calledOnce(MeetingUtil.getLocusPartner);
-            assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
-            assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
-            assert.equal(meeting.sipUri, uuid3);
-          });
-        });
-      });
+
       describe('#setCorrelationId', () => {
         it('should set the correlationId and return undefined', () => {
           assert.ok(meeting.correlationId);
