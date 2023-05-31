@@ -11,6 +11,8 @@ export {
   createMicrophoneTrack,
   createCameraTrack,
   createDisplayTrack,
+  NoiseReductionEffect,
+  VirtualBackgroundEffect,
 } from './webrtc-core';
 
 export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';

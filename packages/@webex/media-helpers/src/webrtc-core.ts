@@ -12,6 +12,8 @@ import {
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
 
+import {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';
+
 export {
   LocalTrack,
   LocalDisplayTrack,
@@ -117,3 +119,5 @@ export const createCameraTrack = (constraints?: VideoDeviceConstraints) =>
   wcmeCreateCameraTrack(LocalCameraTrack, constraints);
 
 export const createDisplayTrack = () => wcmeCreateDisplayTrack(LocalDisplayTrack);
+
+export {NoiseReductionEffect, VirtualBackgroundEffect};
