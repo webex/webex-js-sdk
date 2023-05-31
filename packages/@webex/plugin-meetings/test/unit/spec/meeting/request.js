@@ -226,6 +226,25 @@ describe('plugin-meetings', () => {
 
       });
 
+      it('adds deviceCapabilities and locale to request when they are provided', async () => {
+        await meetingsRequest.joinMeeting({
+          locale: 'en_UK',
+          deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']);
+        assert.deepEqual(requestParams.body.locale, 'en_UK');
+      });
+
+      it('does not add deviceCapabilities and locale to request when they are not provided', async () => {
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.deepEqual(requestParams.body.locale, undefined);
+      });
+
       it('includes joinCookie correctly', async () => {
         const locusUrl = 'locusURL';
         const deviceUrl = 'deviceUrl';

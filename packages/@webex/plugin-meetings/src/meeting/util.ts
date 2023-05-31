@@ -109,6 +109,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant,
       breakoutsSupported: options.breakoutsSupported,
+      locale: options.locale,
+      deviceCapabilities: options.deviceCapabilities,
     })
     .then((res) => {
       Metrics.postEvent({
