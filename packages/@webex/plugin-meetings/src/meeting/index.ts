@@ -3259,7 +3259,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setLocus(
+  setLocus(
     locus:
       | {
           mediaConnections: Array<any>;

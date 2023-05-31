@@ -138,6 +138,9 @@ describe('plugin-meetings', () => {
         const meeting = {
           mediaId: '12345',
           selfUrl: 'self url',
+          locusInfo: {
+            sequence: {},
+          },
           locusMediaRequest: {
             send: sinon.stub().resolves({body: {}, headers: {}}),
           },

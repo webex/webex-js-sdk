@@ -36,7 +36,7 @@ describe('plugin-meetings', () => {
       unmuteVideoAllowed: true,
 
       locusInfo: {
-        onFullLocus: sinon.stub(),
+        onDeltaLocus: sinon.stub(),
       },
       members: {
         selfId: 'fake self id',

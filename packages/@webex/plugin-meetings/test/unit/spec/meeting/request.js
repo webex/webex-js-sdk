@@ -28,14 +28,23 @@ describe('plugin-meetings', () => {
 
     webex.boundedStorage.get = sinon.mock().returns(Promise.resolve(JSON.stringify({anycastEntryPoint: "aws-eu-west-1"})))
 
+    const request = sinon.mock().returns(Promise.resolve({}));
+
     meetingsRequest = new MeetingRequest(
-      {},
+      {
+        meeting: {
+          request,
+          locusInfo: {
+            sequence: {}
+          }
+        }
+      },
       {
         parent: webex,
       }
     );
 
-    meetingsRequest.request = sinon.mock().returns(Promise.resolve({}));
+    meetingsRequest.request = request;
   });
 
   describe('meeting request library', () => {

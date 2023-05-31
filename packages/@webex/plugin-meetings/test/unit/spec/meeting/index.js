@@ -2963,7 +2963,6 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.dialOut = sinon
             .stub()
             .returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.locusInfo.onFullLocus = sinon.stub().returns(Promise.resolve());
         });
 
         it('with no parameters triggers dial-in, delegating request to meetingRequest correctly', async () => {
@@ -2976,11 +2975,9 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
 
           meeting.meetingRequest.dialIn.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial in urls should match
           await meeting.usePhoneAudio();
@@ -2991,7 +2988,6 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
         });
 
@@ -3008,11 +3004,9 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
 
           meeting.meetingRequest.dialOut.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial out urls should match
           await meeting.usePhoneAudio(phoneNumber);
@@ -3024,7 +3018,6 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
         });
 
@@ -5727,8 +5720,9 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusInfo.initialSetup = sinon.stub().returns(true);
         });
+
         it('should read the locus object, set on the meeting and return null', () => {
-          meeting.parseLocus({
+          meeting.setLocus({
             mediaConnections: [test1],
             locusUrl: url1,
             locusId: uuid1,
@@ -5753,6 +5747,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.hostId, uuid4);
         });
       });
+
       describe('preferred video device', () => {
         describe('#getVideoDeviceId', () => {
           it('returns the preferred video device', () => {
