@@ -56,6 +56,10 @@ describe('plugin-meetings', () => {
         canUpdateShareControl: null,
         canEnableViewTheParticipantsList: null,
         canDisableViewTheParticipantsList: null,
+        canEnableRaiseHand: null,
+        canDisableRaiseHand: null,
+        canEnableVideo: null,
+        canDisableVideo: null,
         ...expected,
       };
 
@@ -117,6 +121,10 @@ describe('plugin-meetings', () => {
       'canUpdateShareControl',
       'canEnableViewTheParticipantsList',
       'canDisableViewTheParticipantsList',
+      'canEnableRaiseHand',
+      'canDisableRaiseHand',
+      'canEnableVideo',
+      'canDisableVideo',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

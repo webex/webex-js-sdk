@@ -120,6 +120,7 @@ import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
+import {LocusMediaRequest} from './locusMediaRequest';
 
 const {isBrowser} = BrowserDetection();
 
@@ -463,6 +464,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resource: string;
   roap: Roap;
   roapSeq: number;
+  selfUrl?: string; // comes from Locus, initialized by updateMeetingObject()
   sipUri: string;
   type: string;
   userId: string;
@@ -484,6 +486,7 @@ export default class Meeting extends StatelessWebexPlugin {
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
+  locusMediaRequest?: LocusMediaRequest;
   mediaProperties: MediaProperties;
   mediaRequestManagers: {
     audio: MediaRequestManager;
@@ -2108,6 +2111,60 @@ export default class Meeting extends StatelessWebexPlugin {
         {entryExitTone}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -2551,6 +2608,22 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
         });
@@ -3658,6 +3731,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public closePeerConnections() {
+    this.locusMediaRequest = undefined;
+
     if (this.mediaProperties.webrtcMediaConnection) {
       if (this.remoteMediaManager) {
         this.remoteMediaManager.stop();
@@ -5513,6 +5588,23 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     return MeetingUtil.validateOptions(options)
+      .then(() => {
+        this.locusMediaRequest = new LocusMediaRequest(
+          {
+            correlationId: this.correlationId,
+            device: {
+              url: this.deviceUrl,
+              // @ts-ignore
+              deviceType: this.config.deviceType,
+            },
+            preferTranscoding: !this.isMultistream,
+          },
+          {
+            // @ts-ignore
+            parent: this.webex,
+          }
+        );
+      })
       .then(() => this.roap.doTurnDiscovery(this, false))
       .then((turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);

@@ -106,7 +106,7 @@ export default class LocusInfo extends EventsScope {
         meeting.meetingRequest
           .getFullLocus({
             desync: true,
-            locusUrl: meeting.locusUrl,
+            locusUrl: locus.url ? locus.url : meeting.locusUrl,
           })
           .then((res) => {
             meeting.locusInfo.onFullLocus(res.body);
@@ -707,9 +707,64 @@ export default class LocusInfo extends EventsScope {
           hasEntryExitToneChanged,
           hasBreakoutChanged,
           hasVideoEnabledChanged,
+          hasMuteOnEntryChanged,
+          hasShareControlChanged,
+          hasDisallowUnmuteChanged,
+          hasReactionsChanged,
+          hasReactionDisplayNamesChanged,
+          hasViewTheParticipantListChanged,
+          hasRaiseHandChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
+
+      if (hasMuteOnEntryChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
+          {state: current.muteOnEntry}
+        );
+      }
+
+      if (hasShareControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
+          {state: current.shareControl}
+        );
+      }
+
+      if (hasDisallowUnmuteChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
+          {state: current.disallowUnmute}
+        );
+      }
+
+      if (hasReactionsChanged || hasReactionDisplayNamesChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
+          {state: current.reactions}
+        );
+      }
+
+      if (hasViewTheParticipantListChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
+          {state: current.viewTheParticipantList}
+        );
+      }
+
+      if (hasRaiseHandChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
+          {state: current.raiseHand}
+        );
+      }
 
       if (hasRecordingChanged || hasRecordingPausedChanged) {
         let state = null;

@@ -1,7 +1,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {createMuteState} from '@webex/plugin-meetings/src/meeting/muteState';
+import {createMuteState, MuteState} from '@webex/plugin-meetings/src/meeting/muteState';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {AUDIO, VIDEO} from '@webex/plugin-meetings/src/constants';
 
@@ -24,7 +24,7 @@ describe('plugin-meetings', () => {
      };
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     meeting = {
       mediaProperties: {
         audioTrack: createFakeLocalTrack('fake audio track'),
@@ -44,12 +44,14 @@ describe('plugin-meetings', () => {
       },
     };
 
-    audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
-    video = createMuteState(VIDEO, meeting, {sendVideo: true}, true);
-
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
 
     MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocus);
+
+    audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
+    video = createMuteState(VIDEO, meeting, {sendVideo: true}, true);
+
+    await testUtils.flushPromises();
   });
 
   afterEach(() => {
@@ -70,8 +72,11 @@ describe('plugin-meetings', () => {
     it('takes into account current remote mute status when instantiated', async () => {
       // simulate being already remote muted
       meeting.remoteMuted = true;
-      // create a new MuteState intance
-      audio = createMuteState(AUDIO, meeting, {sendAudio: true});
+
+      // create a new MuteState instance
+      audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
+
+      await testUtils.flushPromises();
 
       assert.isTrue(audio.isMuted());
       assert.isFalse(audio.isSelf());
@@ -79,8 +84,10 @@ describe('plugin-meetings', () => {
       // now check the opposite case
       meeting.remoteMuted = false;
 
-      // create a new MuteState intance
-      audio = createMuteState(AUDIO, meeting, {sendAudio: true});
+      // create a new MuteState instance
+      audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
+
+      await testUtils.flushPromises();
 
       assert.isFalse(audio.isMuted());
       assert.isFalse(audio.isSelf());
@@ -92,7 +99,9 @@ describe('plugin-meetings', () => {
       meeting.unmuteVideoAllowed = false;
 
       // create a new video MuteState instance
-      video = createMuteState(VIDEO, meeting, {sendVideo: true});
+      video = createMuteState(VIDEO, meeting, {sendVideo: true}, true);
+
+      await testUtils.flushPromises();
 
       assert.isFalse(video.isMuted());
       assert.isFalse(video.state.server.remoteMute);
@@ -127,7 +136,7 @@ describe('plugin-meetings', () => {
 
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
-      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, false, undefined, meeting);
+      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, false, undefined);
 
       assert.isFalse(audio.isMuted());
       assert.isFalse(audio.isSelf());
@@ -171,7 +180,7 @@ describe('plugin-meetings', () => {
 
       // local unmute should be sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
-      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, false, undefined, meeting);
+      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, false, undefined);
 
       // and local track should be unmuted
       assert.calledWith(meeting.mediaProperties.audioTrack.setMuted, false);
@@ -198,7 +207,7 @@ describe('plugin-meetings', () => {
 
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
-      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, false, meeting);
+      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, false);
 
       assert.isFalse(video.isMuted());
       assert.isFalse(video.isSelf());
@@ -208,8 +217,10 @@ describe('plugin-meetings', () => {
       it('does not consider remote mute status for audio', async () => {
         // simulate being already remote muted
         meeting.remoteMuted = true;
-        // create a new MuteState intance
-        audio = createMuteState(AUDIO, meeting, {sendAudio: true});
+        // create a new MuteState instance
+        audio = createMuteState(AUDIO, meeting, {sendAudio: true}, true);
+
+        await testUtils.flushPromises();
 
         assert.isFalse(audio.isLocallyMuted());
       });
@@ -217,8 +228,10 @@ describe('plugin-meetings', () => {
       it('does not consider remote mute status for video', async () => {
         // simulate being already remote muted
         meeting.remoteVideoMuted = true;
-        // create a new MuteState intance
-        video = createMuteState(VIDEO, meeting, {sendVideo: true});
+        // create a new MuteState instance
+        video = createMuteState(VIDEO, meeting, {sendVideo: true}, true);
+
+        await testUtils.flushPromises();
 
         assert.isFalse(video.isLocallyMuted());
       });
@@ -422,7 +435,7 @@ describe('plugin-meetings', () => {
         await testUtils.flushPromises();
 
         assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, true, undefined, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
 
         // now allow the first request to complete
         serverResponseResolve();
@@ -431,9 +444,7 @@ describe('plugin-meetings', () => {
 
         // that should trigger the second server request to be sent
         assert.calledTwice(MeetingUtil.remoteUpdateAudioVideo);
-        assert.strictEqual(false, MeetingUtil.remoteUpdateAudioVideo.getCall(1).args[0]);
-        assert.strictEqual(undefined, MeetingUtil.remoteUpdateAudioVideo.getCall(1).args[1]);
-        assert.strictEqual(meeting, MeetingUtil.remoteUpdateAudioVideo.getCall(1).args[2]);
+        assert.deepEqual([meeting, false, undefined], MeetingUtil.remoteUpdateAudioVideo.getCall(1).args);
 
         serverResponseResolve();
         await testUtils.flushPromises();
@@ -464,7 +475,7 @@ describe('plugin-meetings', () => {
 
         // check local mute is done, but not remote one
         assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, true);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, true, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, true);
         assert.notCalled(meeting.members.muteMember);
 
         meeting.mediaProperties.videoTrack.setMuted.resetHistory();
@@ -478,33 +489,33 @@ describe('plugin-meetings', () => {
         assert.isFalse(video.isSelf());
 
         assert.calledWith(meeting.mediaProperties.videoTrack.setMuted, false);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, undefined, false, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, false);
         assert.notCalled(meeting.members.muteMember);
       });
 
-      it('sends correct audio value when sending local mute for video', async () => {
+      it('sends undefined value for the other media type when sending local mute', async () => {
         // make sure the meeting object has mute state machines for both audio and video
         meeting.audio = audio;
         meeting.video = video;
 
-        // mute audio -> request sent to server should have video unmuted
+        // mute audio -> the call to remoteUpdateAudioVideo should have video undefined
         await audio.handleClientRequest(meeting, true);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, true, false, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
 
-        // now mute video -> request sent to server should have mute for both audio and video
+        // now mute video -> the call to remoteUpdateAudioVideo should have mute for video and undefined for audio
         await video.handleClientRequest(meeting, true);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, true, true, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, true);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
 
-        // now unmute the audio -> request sent to server should still have video muted
+        // now unmute the audio -> the call to remoteUpdateAudioVideo should have video undefined
         await audio.handleClientRequest(meeting, false);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, false, true, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, false, undefined);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
 
-        // unmute video -> request sent to server should have both audio and video unmuted
+        // unmute video -> the call to remoteUpdateAudioVideo should have both audio undefined
         await video.handleClientRequest(meeting, false);
-        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, false, false, meeting);
+        assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, false);
       });
     });
   });
@@ -527,8 +538,7 @@ describe('#init, #handleLocalTrackChange', () => {
     };
   };
 
-  const setup = (mediaType, remoteMuted = false, muted = false, defineTracks = true) => {
-
+  const setupMeeting = (mediaType, remoteMuted = false, muted = false, defineTracks = true) => {
     const remoteMuteField = mediaType === AUDIO ? 'remoteMuted' : 'remoteVideoMuted';
 
     meeting = {
@@ -548,10 +558,19 @@ describe('#init, #handleLocalTrackChange', () => {
         muteMember: sinon.stub().resolves(),
       },
     };
+  };
+
+  const setup = async (mediaType, remoteMuted = false, muted = false, defineTracks = true) => {
+
+    setupMeeting(mediaType, remoteMuted, muted, defineTracks);
 
     const direction = mediaType === AUDIO ? {sendAudio: true} : {sendVideo: true};
-    sinon.spy(MeetingUtil, 'remoteUpdateAudioVideo');
+
     muteState = createMuteState(mediaType, meeting, direction, false);
+
+    await testUtils.flushPromises();
+
+    MeetingUtil.remoteUpdateAudioVideo.resetHistory();
   }
 
    const setupSpies = (mediaType) => {
@@ -574,15 +593,22 @@ describe('#init, #handleLocalTrackChange', () => {
 
   tests.forEach(({mediaType, title}) =>
     describe(title, () => {
+      let originalRemoteUpdateAudioVideo;
+
+      beforeEach(() => {
+        originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
+        MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves({info: 'fake locus'});
+      });
 
       afterEach(() => {
+        MeetingUtil.remoteUpdateAudioVideo = originalRemoteUpdateAudioVideo;
         sinon.restore();
       });
 
       describe('#handleLocalTrackChange',() => {
 
          it('calls init()', async () => {
-          setup(mediaType);
+          await setup(mediaType);
           const spy = sinon.spy(muteState, 'init');
           muteState.handleLocalTrackChange(meeting);
           assert.calledOnceWithExactly(spy, meeting);
@@ -591,52 +617,56 @@ describe('#init, #handleLocalTrackChange', () => {
 
       describe('#init', () => {
 
-        afterEach(() => {
-          sinon.restore();
-        });
+        // does the setup by calling new MuteState() so that MuteState.init() doesn't get called
+        const setupWithoutInit = async (mediaType, remoteMuted = false, muted = false, defineTracks = true) => {
+
+          setupMeeting(mediaType, remoteMuted, muted, defineTracks);
+
+          muteState = new MuteState(mediaType, meeting, false);
+        }
 
         it('nothing goes bad when track is undefined', async () => {
-          setup(mediaType, false, false, false);
+          await setupWithoutInit(mediaType, false, false, false);
           setupSpies(mediaType);
-          
+
           muteState.init(meeting);
-          
+
           assert.isFalse(muteState.state.client.localMute);
         });
-  
+
         it('tests when track muted is true and remoteMuted is false', async () => {
-          setup(mediaType, false, true);
+          await setupWithoutInit(mediaType, false, true);
           setupSpies(mediaType);
-          
+
           muteState.init(meeting);
-  
+
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
           assert.notCalled(setServerMutedSpy);
-          assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+          assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
           assert.isTrue(muteState.state.client.localMute);
         });
 
-          
+
         it('tests when track muted is false and remoteMuted is false', async () => {
-          setup(mediaType, false, false);
+          await setupWithoutInit(mediaType, false, false);
           setupSpies(mediaType);
           muteState.state.server.localMute = true;
-          
+
           muteState.init(meeting);
-  
+
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
           assert.notCalled(setServerMutedSpy);
           assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
           assert.isFalse(muteState.state.client.localMute);
         });
-  
+
         it('tests when remoteMuted is true', async () => {
           // testing that muteLocalTrack is called
-          setup(mediaType, true);
+          await setupWithoutInit(mediaType, true);
           setupSpies(mediaType);
 
           muteState.init(meeting);
-          
+
           assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
           assert.calledOnceWithExactly(setServerMutedSpy, true, 'remotelyMuted');
         });
@@ -644,13 +674,9 @@ describe('#init, #handleLocalTrackChange', () => {
 
       describe('#handleLocalTrackMuteStateChange', () => {
 
-        afterEach(() => {
-          sinon.restore();
-        });
-
-        it('checks when ignoreMuteStateChange is true nothing changes', () => {
-          setup(mediaType, false, false);
-          muteState.ignoreMuteStateChange= true;
+        it('checks when ignoreMuteStateChange is true nothing changes', async () => {
+          await setup(mediaType, false, false);
+          muteState.ignoreMuteStateChange = true;
 
           muteState.handleLocalTrackMuteStateChange(meeting, true);
           assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
@@ -658,16 +684,16 @@ describe('#init, #handleLocalTrackChange', () => {
           assert.isFalse(muteState.state.client.localMute);
         });
 
-        it('tests localMute - true to false', () => {
-          setup(mediaType, false, true);
+        it('tests localMute - true to false', async () => {
+          await setup(mediaType, false, true);
 
           muteState.handleLocalTrackMuteStateChange(meeting, false);
           assert.equal(muteState.state.client.localMute, false);
           assert.called(MeetingUtil.remoteUpdateAudioVideo);
         });
 
-        it('tests localMute - false to true', () => {
-          setup(mediaType, false, false);
+        it('tests localMute - false to true', async () => {
+          await setup(mediaType, false, false);
 
           muteState.handleLocalTrackMuteStateChange(meeting, true);
           assert.equal(muteState.state.client.localMute, true);
@@ -681,8 +707,8 @@ describe('#init, #handleLocalTrackChange', () => {
           sinon.restore();
         });
 
-        it('checks when sdkOwnsLocalTrack is false', () => {
-          setup(mediaType);
+        it('checks when sdkOwnsLocalTrack is false', async () => {
+          await setup(mediaType);
           setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= false;
 
@@ -691,8 +717,8 @@ describe('#init, #handleLocalTrackChange', () => {
           assert.notCalled(setMutedSpy);
         });
 
-        it('checks when sdkOwnsLocalTrack is true', () => {
-          setup(mediaType);
+        it('checks when sdkOwnsLocalTrack is true', async () => {
+          await setup(mediaType);
           setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= true;
 
@@ -701,8 +727,8 @@ describe('#init, #handleLocalTrackChange', () => {
           assert.calledOnceWithExactly(setMutedSpy, muteState.state.client.localMute);
         });
 
-        it('checks nothing explodes when tracks are undefined', () => {
-          setup(mediaType, false, false, false);
+        it('checks nothing explodes when tracks are undefined', async () => {
+          await setup(mediaType, false, false, false);
           setupSpies(mediaType);
           muteState.sdkOwnsLocalTrack= true;
 

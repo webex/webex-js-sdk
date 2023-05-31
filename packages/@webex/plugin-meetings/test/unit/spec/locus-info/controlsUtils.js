@@ -41,6 +41,62 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.entryExitTone, null);
       });
 
+      it('should parse the muteOnEntry control', () => {
+        const newControls = {muteOnEntry: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.muteOnEntry.enabled, newControls.muteOnEntry.enabled);
+      });
+
+      it('should parse the shareControl control', () => {
+        const newControls = {shareControl: {control: 'example-value'}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.shareControl.control, newControls.shareControl.control);
+      });
+
+      it('should parse the disallowUnmute control', () => {
+        const newControls = {disallowUnmute: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.disallowUnmute.enabled, newControls.disallowUnmute.enabled);
+      });
+
+      it('should parse the reactions control', () => {
+        const newControls = {reactions: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.reactions.enabled, newControls.reactions.enabled);
+      });
+
+      it('should parse the reactionDisplayNames control', () => {
+        const newControls = {reactions: {showDisplayNameWithReactions: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.reactions.showDisplayNameWithReactions, newControls.reactions.showDisplayNameWithReactions);
+      });
+
+      it('should parse the viewTheParticipantList control', () => {
+        const newControls = {viewTheParticipantList: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.viewTheParticipantList.enabled, newControls.viewTheParticipantList.enabled);
+      });
+
+      it('should parse the raiseHand control', () => {
+        const newControls = {raiseHand: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.raiseHand.enabled, newControls.raiseHand.enabled);
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});
@@ -65,6 +121,62 @@ describe('plugin-meetings', () => {
     });
 
     describe('getControls', () => {
+      it('returns hasMuteOnEntryChanged = true when changed', () => {
+        const newControls = {muteOnEntry: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasMuteOnEntryChanged, true);
+      });
+
+      it('returns hasShareControlChanged = true when changed', () => {
+        const newControls = {shareControl: {control: 'example-value'}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasShareControlChanged, true);
+      });
+
+      it('returns hasDisallowUnmuteChanged = true when changed', () => {
+        const newControls = {disallowUnmute: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasDisallowUnmuteChanged, true);
+      });
+
+      it('returns hasReactionsChanged = true when changed', () => {
+        const newControls = {reactions: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasReactionsChanged, true);
+      });
+
+      it('returns hasReactionDisplayNamesChanged = true when changed', () => {
+        const newControls = {reactions: {showDisplayNameWithReactions: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasReactionDisplayNamesChanged, true);
+      });
+
+      it('returns hasViewTheParticipantListChanged = true when changed', () => {
+        const newControls = {viewTheParticipantList: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasViewTheParticipantListChanged, true);
+      });
+
+      it('returns hasRaiseHandChanged = true when changed', () => {
+        const newControls = {raiseHand: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasRaiseHandChanged, true);
+      });
+
       it('returns hasEntryExitToneChanged = true when mode changed', () => {
         const newControls = {
           entryExitTone: {

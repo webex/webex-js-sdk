@@ -54,6 +54,7 @@ describe('Roap', () => {
         },
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
+        locusMediaRequest: {fake: true},
         webex: { meetings: { reachability: { isAnyClusterReachable: () => true}}},
       };
 
@@ -99,48 +100,12 @@ describe('Roap', () => {
         assert.calledOnce(sendRoapStub);
         assert.calledWith(sendRoapStub, {
           roapMessage: expectedRoapMessage,
-          correlationId: meeting.correlationId,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-          audioMuted: meeting.audio?.isLocallyMuted(),
-          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
-          preferTranscoding: true,
+          locusMediaRequest: meeting.locusMediaRequest,
         });
       })
     );
-    it('sends roap request with preferTranscoding=false for multistream meetings', async () => {
-      const roap = new Roap({}, {parent: 'fake'});
-
-      meeting.isMultistream = true;
-
-      await roap.sendRoapMediaRequest({
-        meeting,
-        sdp: 'sdp',
-        reconnect: false,
-        seq: 10,
-        tieBreaker: 1,
-      });
-
-      const expectedRoapMessage = {
-        messageType: 'OFFER',
-        sdps: ['sdp'],
-        version: '2',
-        seq: 10,
-        tieBreaker: 1,
-      };
-
-      assert.calledOnce(sendRoapStub);
-      assert.calledWith(sendRoapStub, {
-        roapMessage: expectedRoapMessage,
-        correlationId: meeting.correlationId,
-        locusSelfUrl: meeting.selfUrl,
-        mediaId: meeting.mediaId,
-        audioMuted: meeting.audio.isLocallyMuted(),
-        videoMuted: meeting.video.isLocallyMuted(),
-        meetingId: meeting.id,
-        preferTranscoding: false,
-      });
-    });
   });
 });

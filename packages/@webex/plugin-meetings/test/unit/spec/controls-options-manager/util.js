@@ -128,6 +128,40 @@ describe('plugin-meetings', () => {
               });
             });
 
+            describe('canUpdateRaiseHand()', () => {
+              beforeEach(() => {
+                ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+              });
+
+              it('should call hasHints() with proper hints when `enabled` is true', () => {
+                ControlsOptionsUtil.canUpdateRaiseHand({properties: {enabled: true}}, [])
+
+                assert.calledWith(ControlsOptionsUtil.hasHints, {
+                  requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+                  displayHints: [],
+                });
+              });
+
+              it('should call hasHints() with proper hints when `enabled` is false', () => {
+                ControlsOptionsUtil.canUpdateRaiseHand({properties: {enabled: false}}, [])
+
+                assert.calledWith(ControlsOptionsUtil.hasHints, {
+                  requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+                  displayHints: [],
+                });
+              });
+
+              it('should return the resolution of hasHints()', () => {
+                const expected = 'example-return-value'
+                ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+
+                const results = ControlsOptionsUtil.canUpdateRaiseHand({properties: {}}, []);
+
+                assert.calledOnce(ControlsOptionsUtil.hasHints);
+                assert.equal(results, expected);
+              });
+            });
+
             describe('canUpdateReactions()', () => {
               beforeEach(() => {
                 ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
@@ -222,6 +256,40 @@ describe('plugin-meetings', () => {
               });
             });
 
+            describe('canUpdateVideo()', () => {
+              beforeEach(() => {
+                ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+              });
+
+              it('should call hasHints() with proper hints when `enabled` is true', () => {
+                ControlsOptionsUtil.canUpdateVideo({properties: {enabled: true}}, [])
+
+                assert.calledWith(ControlsOptionsUtil.hasHints, {
+                  requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+                  displayHints: [],
+                });
+              });
+
+              it('should call hasHints() with proper hints when `enabled` is false', () => {
+                ControlsOptionsUtil.canUpdateVideo({properties: {enabled: false}}, [])
+
+                assert.calledWith(ControlsOptionsUtil.hasHints, {
+                  requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
+                  displayHints: [],
+                });
+              });
+
+              it('should return the resolution of hasHints()', () => {
+                const expected = 'example-return-value'
+                ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+
+                const results = ControlsOptionsUtil.canUpdateVideo({properties: {}}, []);
+
+                assert.calledOnce(ControlsOptionsUtil.hasHints);
+                assert.equal(results, expected);
+              });
+            });
+
             describe('canUpdateViewTheParticipantsList()', () => {
               beforeEach(() => {
                 ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
@@ -258,18 +326,13 @@ describe('plugin-meetings', () => {
 
             describe('canUpdate()', () => {
               const displayHints = [];
-              let spies;
 
               beforeEach(() => {
-                // spies = {
-                //   canUpdateAudio: sinon.spy(ControlsOptionsUtil, 'canUpdateAudio'),
-                //   canUpdateReactions: sinon.spy(ControlsOptionsUtil, 'canUpdateReactions'),
-                //   canUpdateShareControl: sinon.spy(ControlsOptionsUtil, 'canUpdateShareControl'),
-                //   canUpdateViewTheParticipantsList: sinon.spy(ControlsOptionsUtil, 'canUpdateViewTheParticipantsList'),
-                // }
                 ControlsOptionsUtil.canUpdateAudio = sinon.stub().returns(true);
+                ControlsOptionsUtil.canUpdateRaiseHand = sinon.stub().returns(true);
                 ControlsOptionsUtil.canUpdateReactions = sinon.stub().returns(true);
                 ControlsOptionsUtil.canUpdateShareControl = sinon.stub().returns(true);
+                ControlsOptionsUtil.canUpdateVideo = sinon.stub().returns(true);
                 ControlsOptionsUtil.canUpdateViewTheParticipantsList = sinon.stub().returns(true);
               });
 
@@ -279,11 +342,27 @@ describe('plugin-meetings', () => {
                 const results = ControlsOptionsUtil.canUpdate(control, displayHints);
 
                 assert.calledWith(ControlsOptionsUtil.canUpdateAudio, control, displayHints);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
                 assert.isTrue(results);
               });
+
+              it('should only call canUpdateRaiseHand() if the scope is raiseHand', () => {
+                const control = { scope: 'raiseHand' };
+
+                const results = ControlsOptionsUtil.canUpdate(control, displayHints);
+
+                assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.calledWith(ControlsOptionsUtil.canUpdateRaiseHand, control, displayHints);
+                assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+                assert.isTrue(results);
+              })
 
               it('should only call canUpdateReactions() if the scope is reactions', () => {
                 const control = { scope: 'reactions' };
@@ -291,8 +370,10 @@ describe('plugin-meetings', () => {
                 const results = ControlsOptionsUtil.canUpdate(control, displayHints);
 
                 assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
                 assert.calledWith(ControlsOptionsUtil.canUpdateReactions, control, displayHints);
                 assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
                 assert.isTrue(results);
               });
@@ -303,8 +384,24 @@ describe('plugin-meetings', () => {
                 const results = ControlsOptionsUtil.canUpdate(control, displayHints);
 
                 assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
                 assert.calledWith(ControlsOptionsUtil.canUpdateShareControl, displayHints);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+                assert.isTrue(results);
+              });
+
+              it('should only call canUpdateVideo() if the scope is video', () => {
+                const control = { scope: 'video' };
+
+                const results = ControlsOptionsUtil.canUpdate(control, displayHints);
+
+                assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.calledWith(ControlsOptionsUtil.canUpdateVideo, control, displayHints);
                 assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
                 assert.isTrue(results);
               });
@@ -315,8 +412,10 @@ describe('plugin-meetings', () => {
                 const results = ControlsOptionsUtil.canUpdate(control, displayHints);
 
                 assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
                 assert.calledWith(ControlsOptionsUtil.canUpdateViewTheParticipantsList, control, displayHints);
                 assert.isTrue(results);
               });
@@ -327,8 +426,10 @@ describe('plugin-meetings', () => {
                 const results = ControlsOptionsUtil.canUpdate(control, displayHints);
 
                 assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+                assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
                 assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
                 assert.isFalse(results);
               });

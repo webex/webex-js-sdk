@@ -134,50 +134,24 @@ describe('plugin-meetings', () => {
     });
 
     describe('remoteUpdateAudioVideo', () => {
-      it('#Should call meetingRequest.remoteAudioVideoToggle with correct parameters (multistream)', async () => {
+      it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
         const meeting = {
-          correlationId: 'correlation id',
-          isMultistream: true,
           mediaId: '12345',
-          meetingJoinUrl: 'meetingJoinUrl',
-          locusUrl: 'locusUrl',
-          deviceUrl: 'some device url',
-          selfId: 'self id',
-          meetingRequest: {
-            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          selfUrl: 'self url',
+          locusMediaRequest: {
+            send: sinon.stub().resolves({body: {}, headers: {}}),
           },
         };
 
-        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
+        await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
 
-        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
-        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
+        assert.calledOnce(meeting.locusMediaRequest.send);
+        const parameter = meeting.locusMediaRequest.send.getCall(0).args[0];
 
-        assert.equal(parameter.locusUrl, 'locusUrl');
-        assert.equal(parameter.selfId, 'self id');
-        assert.equal(parameter.correlationId, 'correlation id');
-        assert.equal(parameter.deviceUrl, 'some device url');
-        assert.deepEqual(parameter.localMedias, [
-          {localSdp: '{"audioMuted":true,"videoMuted":false}', mediaId: '12345'},
-        ]);
-        assert.equal(parameter.preferTranscoding, false);
-      });
-
-      it('#Should call meetingRequest.remoteAudioVideoToggle with preferTranscoding:true for non multistream connections', async () => {
-        const meeting = {
-          isMultistream: false,
-          mediaId: '12345',
-          meetingRequest: {
-            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-        };
-
-        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
-
-        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
-        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
-
-        assert.equal(parameter.preferTranscoding, true);
+        assert.equal(parameter.type, 'LocalMute');
+        assert.equal(parameter.selfUrl, 'self url');
+        assert.equal(parameter.mediaId, '12345');
+        assert.deepEqual(parameter.muteOptions, {audioMuted: true, videoMuted :false});
       });
     });
 
@@ -217,6 +191,26 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          locale: 'en_UK',
+          deviceCapabilities: ['TEST'],
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.locale, 'en_UK');
+        assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
       });
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
