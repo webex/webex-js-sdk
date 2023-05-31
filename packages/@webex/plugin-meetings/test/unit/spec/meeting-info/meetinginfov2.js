@@ -483,7 +483,7 @@ describe('plugin-meetings', () => {
 
       it('should not have errors if parsing error returns null', async () => {
         Metrics.postEvent = sinon.stub();
-        Metrics.parseWebexApiError = sinon.stub().returns(null);
+        sinon.stub(Metrics, 'parseWebexApiError').returns(null);
         const message = 'a message';
         const meetingInfoData = 'meeting info';
 
