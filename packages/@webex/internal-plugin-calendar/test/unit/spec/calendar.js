@@ -367,6 +367,7 @@ describe('internal-plugin-calendar', () => {
             subject: "My Meeting 1",
             webexOptions: "{}"
           };
+          const query = {};
 
           webex.request = sinon.stub().resolves({
             body: {
@@ -383,7 +384,8 @@ describe('internal-plugin-calendar', () => {
             method: "POST",
             service: "calendar",
             body: data,
-            resource: "calendarEvents/sync"
+            resource: "calendarEvents/sync",
+            qs: query
           });
         });
       });
