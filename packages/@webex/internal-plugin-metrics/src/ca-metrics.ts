@@ -1,16 +1,17 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
-
-import MeetingCollection from 'packages/@webex/plugin-meetings/src/meetings/collection';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common/src/browser-detection';
 import uuid from 'uuid';
-import {isEmpty, merge} from 'lodash';
+import {merge} from 'lodash';
 import {anonymizeIPAddress, clearEmpty, userAgentToString} from './ca-metrics.util';
 import {CLIENT_NAME} from './config';
+import {Event as RawEvent} from './Event';
 import {FeatureEvent} from './FeatureEvent';
 import {ClientEvent} from './ClientEvent';
-import {Event as RawEvent} from './Event';
+import {CallAnalyzerLatencies} from './ca-metrics-latencies';
+
+type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent};
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -22,16 +23,10 @@ type RecursivePartial<T> = {
     : T[P];
 };
 
-export enum LatencyTimestampKey {
-  clickToInterstitialStart = 'clickToInterstitialStart',
-  clickToInterstitialEnd = 'clickToInterstitialEnd',
-  interstitialToJoinOK = 'interstitialToJoinOK',
-  localSDPGenRemoteSDPRecvStart = 'localSDPGenRemoteSDPRecvStart',
-  localSDPGenRemoteSDPRecvEnd = 'localSDPGenRemoteSDPRecvEnd',
-}
-
-// we only care about client event and feature event for now
-type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent};
+type GetOriginOptions = {
+  clientType: NonNullable<Event['origin']['clientInfo']>['clientType'];
+  subClientType: NonNullable<Event['origin']['clientInfo']>['subClientType'];
+};
 
 type GetIdentifiersOptions = {
   meeting?: any;
@@ -41,66 +36,6 @@ type GetIdentifiersOptions = {
 };
 
 /**
- * @description Helper class to store latencies timestamp and to calculate various latencies for CA.
- * @exports
- * @class CallAnalyzerLatencies
- */
-export class CallAnalyzerLatencies {
-  latencyTimestamps: Map<LatencyTimestampKey, number>;
-
-  /**
-   * Store Latency value
-   * @param key - key
-   * @param  value -value
-   * @throws
-   * @returns
-   */
-  public saveLatency(key: LatencyTimestampKey, value: number) {
-    this.latencyTimestamps.set(key, value);
-  }
-
-  /**
-   * Click To Interstitial Latency
-   * @returns - latency
-   */
-  public getClickToInterstitial() {
-    const start = this.latencyTimestamps.get(LatencyTimestampKey.clickToInterstitialStart);
-    const end = this.latencyTimestamps.get(LatencyTimestampKey.clickToInterstitialEnd);
-    if (start && end) {
-      return end - start;
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Local SDP Gen Remote SDP Recv
-   * @returns - latency
-   */
-  public getlocalSDPGenRemoteSDPRecv() {
-    const start = this.latencyTimestamps.get(LatencyTimestampKey.localSDPGenRemoteSDPRecvStart);
-    const end = this.latencyTimestamps.get(LatencyTimestampKey.localSDPGenRemoteSDPRecvEnd);
-    if (start && end) {
-      return end - start;
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Get Total JMT
-   * TODO: change this...
-   * @returns  - latency
-   */
-  public getTotalJMT() {
-    const clickToInterstitial = this.getClickToInterstitial();
-    const localSDPGenRemoteSDPRecv = this.getlocalSDPGenRemoteSDPRecv();
-
-    return clickToInterstitial + localSDPGenRemoteSDPRecv;
-  }
-}
-
-/**
  * @description Util class to handle Call Analyzer Metrics
  * @export
  * @class CallAnalyzerMetrics
@@ -108,7 +43,7 @@ export class CallAnalyzerLatencies {
 export class CallAnalyzerMetrics {
   // eslint-disable-next-line no-use-before-define
   static instance: CallAnalyzerMetrics;
-  meetingCollection: MeetingCollection;
+  meetingCollection: any;
   webex: any;
   latencies: CallAnalyzerLatencies;
 
@@ -131,24 +66,20 @@ export class CallAnalyzerMetrics {
   /**
    * Initializes the CallAnalyzerMetrics singleton with a meeting Collection.
    *
-   * @parammeetingCollection meetings object
-   * @param  webex  webex SDK object
+   * @param meetingCollection meetings object
+   * @param webex  webex SDK object
    *
    * @returns
    */
-  public initialSetup(meetingCollection: MeetingCollection, webex: object) {
+  public initialSetup(meetingCollection: any, webex: object) {
     this.meetingCollection = meetingCollection;
     this.webex = webex;
   }
 
   /**
    * Gather origin details.
-   * @param options
    */
-  getOrigin(options: {
-    clientType: Event['origin']['clientInfo']['clientType'];
-    subClientType: Event['origin']['clientInfo']['subClientType'];
-  }) {
+  getOrigin(options: GetOriginOptions) {
     const origin: Event['origin'] = {
       name: 'endpoint',
       networkType: 'unknown',
@@ -159,7 +90,8 @@ export class CallAnalyzerMetrics {
       clientInfo: {
         clientType: options.clientType,
         clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
-        localNetworkPrefix: anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress),
+        localNetworkPrefix:
+          anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
         osVersion: getOSVersion() || 'unknown',
         subClientType: options.subClientType,
         os: getOSNameInternal(),
@@ -173,11 +105,12 @@ export class CallAnalyzerMetrics {
 
   /**
    * Gather identifier details.
+   * @throws Error if initialization fails.
    * @param options
    */
   getIdentifiers(options: GetIdentifiersOptions) {
     const {meeting, mediaConnections} = options;
-    let identifiers: Event['event']['identifiers'];
+    const identifiers: Event['event']['identifiers'] = {correlationId: 'unknown'};
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
@@ -200,6 +133,10 @@ export class CallAnalyzerMetrics {
       identifiers.mediaAgentGroupId = mediaConnections?.[0].mediaAgentGroupId;
       // doesn't exist on the Type....
       // identifiers.mediaAgentCluster = mediaConnections?.[0].mediaAgentCluster;
+    }
+
+    if (identifiers.correlationId === 'undefined') {
+      throw new Error('Identifiers initialization failed.');
     }
 
     return identifiers;
@@ -234,18 +171,17 @@ export class CallAnalyzerMetrics {
 
   /**
    * Submit CA event
-   * @param event - event key
-   * @param options - payload
    * @returns
    */
-  public submitFeatureEvent(
-    name: FeatureEvent['name'],
-    payload: Partial<FeatureEvent>,
+  public submitFeatureEvent(params: {
+    name: FeatureEvent['name'];
+    payload?: RecursivePartial<FeatureEvent>;
     // custom properties that we derive actual CA properties on
-    options?: {
+    options: {
       meetingId?: string;
-    }
-  ) {
+    };
+  }) {
+    const {options, name, payload} = params;
     const {meetingId} = options;
 
     // events that will most likely happen inside the meeting
@@ -262,7 +198,6 @@ export class CallAnalyzerMetrics {
         canProceed: true,
         name,
         identifiers,
-        ...payload,
       };
 
       // merge any new properties, or override existing ones
@@ -278,13 +213,13 @@ export class CallAnalyzerMetrics {
   }
 
   /**
-   * NOT IMPLEMENTED
+   * TODO: NOT IMPLEMENTED
    * @param rawError
    * @returns
    */
   generateErrorPayload(rawError?: any) {
-    // NOT IMPLEMENTED
-    let error: ClientEvent['errors'][0];
+    // grab the type of the elements in the errors array
+    let error: NonNullable<ClientEvent['errors']>[0];
 
     if (rawError) {
       error = {
@@ -293,9 +228,11 @@ export class CallAnalyzerMetrics {
         fatal: false,
         name: 'other',
       };
+
+      return error;
     }
 
-    return error;
+    return undefined;
   }
 
   /**
@@ -305,18 +242,23 @@ export class CallAnalyzerMetrics {
    * @param options - payload
    * @returns
    */
-  public submitClientEvent(
-    name: ClientEvent['name'],
+  public submitClientEvent({
+    name,
     // additional payload to be merged with default payload
-    payload: RecursivePartial<ClientEvent>,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    // additional payload to be merged with default payload
+    payload?: RecursivePartial<ClientEvent>;
     options: {
       meetingId?: string;
       mediaConnections?: any[];
       joinTimes?: ClientEvent['joinTimes'];
       error?: any;
       showToUser?: boolean;
-    }
-  ) {
+    };
+  }) {
     const {meetingId, mediaConnections, joinTimes, error} = options;
 
     // events that will most likely happen in join phase
@@ -330,9 +272,13 @@ export class CallAnalyzerMetrics {
       });
 
       // check if we need to generate errros
-      let errors: ClientEvent['errors'] = [];
+      const errors: ClientEvent['errors'] = [];
+
       if (error) {
-        errors = [this.generateErrorPayload(error)].filter((e) => isEmpty(e));
+        const generatedError = this.generateErrorPayload(error);
+        if (generatedError) {
+          errors.push(generatedError);
+        }
       }
 
       // create feature event object

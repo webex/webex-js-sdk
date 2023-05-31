@@ -1,10 +1,10 @@
-import {isEmpty} from 'lodash';
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 
+import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import Metrics from '../metrics';
-import {eventType, trigger} from '../metrics/config';
-import Media from '../media';
+import {eventType} from '../metrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   INTENT_TO_JOIN,
@@ -88,7 +88,11 @@ MeetingUtil.joinMeeting = (meeting, options) => {
     return Promise.reject(new ParameterError('You need a meeting object.'));
   }
 
-  Metrics.postEvent({event: eventType.LOCUS_JOIN_REQUEST, meeting});
+  CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinRequest);
+  CallAnalyzerMetrics.submitClientEvent({
+    name: 'client.locus.join.request',
+    options: {meetingId: meeting.id},
+  });
 
   // eslint-disable-next-line no-warning-comments
   // TODO: check if the meeting is in JOINING state
@@ -113,14 +117,18 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       deviceCapabilities: options.deviceCapabilities,
     })
     .then((res) => {
-      Metrics.postEvent({
-        event: eventType.LOCUS_JOIN_RESPONSE,
-        meeting,
-        data: {
-          trigger: trigger.LOCI_UPDATE,
-          locus: res.body.locus,
+      CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinResponse);
+      CallAnalyzerMetrics.submitClientEvent({
+        name: 'client.locus.join.response',
+        payload: {
+          trigger: 'loci-update',
+          identifiers: {
+            trackingId: res.headers.trackingid,
+          },
+        },
+        options: {
+          meetingId: meeting.id,
           mediaConnections: res.body.mediaConnections,
-          trackingId: res.headers.trackingid,
         },
       });
 

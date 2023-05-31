@@ -1,4 +1,6 @@
 import lodash from 'lodash';
+import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
 import {
   HTTP_VERBS,
   _CONVERSATION_URL_,
@@ -6,7 +8,6 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -342,17 +343,24 @@ export default class MeetingInfoV2 {
       .request(requestOptions)
       .then((response) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
+        // we assume we send the last response to CA (so we also take the last timestamp for normal response)
+        CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.meetingInfoReqEnd);
 
         return response;
       })
       .catch((err) => {
         if (meetingId) {
-          Metrics.postEvent({
-            event: eventType.MEETING_INFO_RESPONSE,
-            meetingId,
-            data: {
-              errors: [Metrics.parseWebexApiError(err, true)],
-              meetingLookupUrl: err?.url,
+          CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.meetingInfoReqEnd);
+          CallAnalyzerMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: err?.url,
+              },
+            },
+            options: {
+              meetingId,
+              error: err,
             },
           });
         }
