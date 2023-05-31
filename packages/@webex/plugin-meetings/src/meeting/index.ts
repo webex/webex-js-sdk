@@ -7566,6 +7566,32 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Method to enable or disable the 'Music mode' effect on audio track
+   *
+   * @param {boolean} shouldEnableMusicMode
+   * @returns {Promise}
+   */
+  async enableMusicMode(shouldEnableMusicMode: boolean) {
+    this.checkMediaConnection();
+
+    if (!this.isMultistream) {
+      throw new Error('enableMusicMode() only supported with multistream');
+    }
+
+    if (shouldEnableMusicMode) {
+      await this.mediaProperties.webrtcMediaConnection.setCodecParameters(MediaType.AudioMain, {
+        maxaveragebitrate: '64000',
+        maxplaybackrate: '48000',
+      });
+    } else {
+      await this.mediaProperties.webrtcMediaConnection.deleteCodecParameters(MediaType.AudioMain, [
+        'maxaveragebitrate',
+        'maxplaybackrate',
+      ]);
+    }
+  }
+
+  /**
    * Publishes specified local tracks in the meeting
    *
    * @param {Object} tracks
