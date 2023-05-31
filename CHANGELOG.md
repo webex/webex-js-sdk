@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.54.0](https://github.com/webex/webex-js-sdk/compare/v2.53.1...v2.54.0) (2023-05-31)
+
+
+### Features
+
+* **internal-plugin-calendar:** support query parameter for most cls apis and code refactor ([#2835](https://github.com/webex/webex-js-sdk/issues/2835)) ([7b32c04](https://github.com/webex/webex-js-sdk/commit/7b32c04d751816eb838e3d85ae59f294c256d82b))
+
 ### [2.53.1](https://github.com/webex/webex-js-sdk/compare/v2.53.0...v2.53.1) (2023-05-19)
 
 
