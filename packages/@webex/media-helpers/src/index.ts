@@ -11,4 +11,6 @@ export {
   createMicrophoneTrack,
   createCameraTrack,
   createDisplayTrack,
+  NoiseReductionEffect,
+  VirtualBackgroundEffect,
 } from './webrtc-core';
