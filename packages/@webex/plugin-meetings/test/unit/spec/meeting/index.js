@@ -40,8 +40,10 @@ import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Members from '@webex/plugin-meetings/src/members';
+import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
+import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/request';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
@@ -169,6 +171,8 @@ describe('plugin-meetings', () => {
   let test3;
   let test4;
   let testDestination;
+  let membersSpy;
+  let meetingRequestSpy;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -203,6 +207,8 @@ describe('plugin-meetings', () => {
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.llm.on = sinon.stub();
+    membersSpy = sinon.spy(MembersImport, 'default');
+    meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
@@ -256,6 +262,16 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.deviceUrl, uuid3);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
+          assert.calledOnceWithExactly(
+            membersSpy,
+            {
+              locusUrl: meeting.locusUrl,
+              receiveSlotManager: meeting.receiveSlotManager,
+              mediaRequestManagers: meeting.mediaRequestManagers,
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.roap, Roap);
           assert.instanceOf(meeting.reconnectionManager, ReconnectionManager);
           assert.isNull(meeting.audio);
@@ -270,6 +286,13 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.hostId);
           assert.isNull(meeting.policy);
           assert.instanceOf(meeting.meetingRequest, MeetingRequest);
+          assert.calledOnceWithExactly(
+            meetingRequestSpy,
+            {
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.locusInfo, LocusInfo);
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
           assert.instanceOf(meeting.mediaProperties, MediaProperties);

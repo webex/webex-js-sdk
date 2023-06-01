@@ -6,12 +6,14 @@ import sinon from 'sinon';
 import uuid from 'uuid';
 import breakoutEvent from "../../../../src/breakouts/events";
 import BreakoutRequest from '../../../../src/breakouts/request';
+import Members from '../../../../src/members';
 
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
     let breakout;
     let breakouts;
+    let meeting;
 
     beforeEach(() => {
       // @ts-ignore
@@ -38,6 +40,22 @@ describe('plugin-meetings', () => {
     describe('initialize', () => {
       it('creates the object correctly', () => {
         assert.instanceOf(breakout.breakoutRequest, BreakoutRequest);
+      });
+    });
+
+    describe('#initMembers', () => {
+      it('creates the Members instance for the breakout', () => {
+        assert.equal(breakout.members, undefined);
+
+        breakout.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id',
+          }),
+        };
+
+        breakout.initMembers();
+
+        assert.instanceOf(breakout.members, Members);
       });
     });
 
