@@ -347,11 +347,12 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         if (meetingId) {
+          const parsedError = Metrics.parseWebexApiError(err, true);
           Metrics.postEvent({
             event: eventType.MEETING_INFO_RESPONSE,
             meetingId,
             data: {
-              errors: [Metrics.parseWebexApiError(err, true)],
+              errors: parsedError ? [parsedError] : undefined,
               meetingLookupUrl: err?.url,
             },
           });
