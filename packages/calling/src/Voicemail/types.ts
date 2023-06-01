@@ -66,7 +66,7 @@ export type VoicemailResponseEvent = {
     voicemailTranscript?: string | null;
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface IVoicemail {

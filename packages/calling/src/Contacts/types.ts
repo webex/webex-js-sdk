@@ -66,7 +66,7 @@ export type ContactResponse = {
     group?: ContactGroup;
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface IContacts {

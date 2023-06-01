@@ -86,7 +86,7 @@ export type CallSettingResponse = {
     callSetting?: ToggleSetting | CallForwardSetting | VoicemailSetting;
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface ICallSettings {

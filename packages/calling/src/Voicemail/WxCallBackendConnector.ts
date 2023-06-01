@@ -43,6 +43,7 @@ import {
   NO_VOICEMAIL_STATUS_CODE,
   RADIX_RAND,
   PREFIX,
+  TRANSCRIPT_STATUS,
 } from './constants';
 /**
  *
@@ -378,14 +379,15 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       const parser = new DOMParser();
       const xmlDOM = parser.parseFromString(response[RAW_REQUEST].response, XML_TYPE);
+      const status = xmlDOM.getElementsByTagName(TRANSCRIPT_STATUS)[0];
       const transcript = xmlDOM.getElementsByTagName(TRANSCRIPT_CONTENT)[0];
 
       const responseDetails: VoicemailResponseEvent = {
         statusCode: response.statusCode as number,
         data: {
-          voicemailTranscript: transcript.textContent,
+          voicemailTranscript: transcript?.textContent,
         },
-        message: SUCCESS_MESSAGE,
+        message: status.textContent,
       };
 
       return responseDetails;

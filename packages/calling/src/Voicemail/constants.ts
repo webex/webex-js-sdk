@@ -22,6 +22,7 @@ export const OFFSET_LIMIT = 100;
 export const PREFIX = 2;
 export const RADIX_RAND = 36;
 export const SORT_ORDER = '&sortOrder';
+export const TRANSCRIPT_STATUS = 'status';
 export const TRANSCRIPT_CONTENT = 'content';
 export const UCM_VOICEMAIL_FILE = 'UcmBackendConnector';
 export const VMGATEWAY = 'vmgateway';
