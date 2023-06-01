@@ -34,8 +34,13 @@ describe('plugin-meetings', () => {
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
       webex.meetings = {};
       webex.meetings.getMeetingByType = sinon.stub();
-
+      sinon.stub(uuid, 'v4').returns('breakoutMoveId');
     });
+
+    afterEach(() => {
+      // @ts-ignore
+      uuid.v4.restore();
+    })
 
     describe('initialize', () => {
       it('creates the object correctly', () => {
@@ -61,7 +66,6 @@ describe('plugin-meetings', () => {
 
     describe('#join', () => {
       it('makes the request as expected', async () => {
-        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         const result = await breakout.join();
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
@@ -87,7 +91,6 @@ describe('plugin-meetings', () => {
 
         let onBreakoutMoveRequestStub = sinon.stub(breakoutEvent, 'onBreakoutMoveRequest');
         let onBreakoutMoveResponseStub = sinon.stub(breakoutEvent, 'onBreakoutMoveResponse');
-        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         await breakout.join();
         assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
           {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}

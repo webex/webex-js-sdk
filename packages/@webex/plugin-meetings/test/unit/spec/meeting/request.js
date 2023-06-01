@@ -58,13 +58,22 @@ describe('plugin-meetings', () => {
   }
 
   describe('meeting request library', () => {
+
+    beforeEach(() => {
+      sinon.stub(uuid, 'v4').returns('12345');
+    });
+
+    afterEach(() => {
+      uuid.v4.restore();
+    });
+
     describe('#sendDTMF', () => {
       it('sends a POST to the sendDtmf locus endpoint', async () => {
         const locusUrl = 'locusURL';
         const deviceUrl = 'deviceUrl';
         const tones = '1234';
 
-        sinon.stub(uuid, 'v4').returns('12345');
+
 
         await meetingsRequest.sendDTMF({
           locusUrl,
