@@ -8,6 +8,7 @@ import Meetings from '@webex/plugin-meetings';
 import MembersRequest from '@webex/plugin-meetings/src/members/request';
 import membersUtil from '@webex/plugin-meetings/src/members/util';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
+import { merge } from 'lodash';
 
 const {assert} = chai;
 
@@ -20,6 +21,8 @@ describe('plugin-meetings', () => {
   let sandbox;
   const sequence = {some: 'sequenceData'};
   const requestResponse = {some: 'data'};
+  let locusDeltaRequestSpy;
+  const correlationId = '12345';
 
   beforeEach(() => {
     const webex = new MockWebex({
@@ -29,6 +32,8 @@ describe('plugin-meetings', () => {
     });
 
     sandbox = sinon.createSandbox();
+
+    sinon.stub(uuid, 'v4').returns(correlationId);
 
     url1 = `https://example.com/${uuid.v4()}`;
 
@@ -47,13 +52,23 @@ describe('plugin-meetings', () => {
         parent: webex,
       }
     );
+    locusDeltaRequestSpy = sinon.spy(membersRequest, 'locusDeltaRequest');
 
     membersRequest.request = request;
   });
 
   afterEach(() => {
     sandbox.restore();
+    uuid.v4.restore();
   });
+
+  const checkRequest = (expectedParams) => {
+    assert.calledOnceWithExactly(locusDeltaRequestSpy, expectedParams);
+    assert.calledOnceWithExactly(
+      membersRequest.request,
+      merge(expectedParams, {body: {sequence}})
+    );
+  };
 
   describe('members request library', () => {
     describe('#sendDialPadKey', () => {
@@ -69,12 +84,22 @@ describe('plugin-meetings', () => {
           memberId,
           locusUrl,
         });
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/sendDtmf`);
-        assert.equal(requestParams.body.dtmf.tones, tones);
-        assert.equal(requestParams.body.device.url, url);
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/sendDtmf`,
+          body: {
+            memberId,
+            dtmf: {
+              direction: 'transmit',
+              correlationId,
+              tones,
+            },
+            device: {
+              url,
+            }
+          }
+        });
       });
     });
 
@@ -88,11 +113,15 @@ describe('plugin-meetings', () => {
         };
 
         await membersRequest.addMembers(options);
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, url1);
-        assert.equal(requestParams.body.invitees[0].address, '+18578675309');
+        checkRequest({
+          method: 'PUT',
+          uri: url1,
+          body: {
+            alertIfActive: undefined,
+            invitees: [{address: '+18578675309'}]
+          }
+        })
       });
     });
 
@@ -106,12 +135,15 @@ describe('plugin-meetings', () => {
         };
 
         await membersRequest.cancelPhoneInvite(options);
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, url1);
-        assert.equal(requestParams.body.invitees[0].address, '+18578675309');
-        assert.equal(requestParams.body.actionType, 'REMOVE');
+        checkRequest({
+          method: 'PUT',
+          uri: url1,
+          body: {
+            invitees: [{address: '+18578675309'}],
+            actionType: 'REMOVE',
+          },
+        });
       });
     });
 
@@ -132,11 +164,16 @@ describe('plugin-meetings', () => {
         };
 
         await membersRequest.assignRolesMember(options);
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PATCH');
-        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/controls`);
-        assert.deepEqual(requestParams.body.role.roles, roles);
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/participant/${memberId}/controls`,
+          body: {
+            role: {
+              roles
+            }
+          }
+        });
       });
     });
 
@@ -152,11 +189,16 @@ describe('plugin-meetings', () => {
         };
 
         await membersRequest.raiseOrLowerHandMember(options);
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PATCH');
-        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/controls`);
-        assert.equal(requestParams.body.hand.raised, true);
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/participant/${memberId}/controls`,
+          body: {
+            hand: {
+              raised: true
+            }
+          }
+        });
       });
     });
 
@@ -218,9 +260,7 @@ describe('plugin-meetings', () => {
           locusUrl: url1,
         });
 
-        const requestParams = membersRequest.request.getCall(0).args[0];
-
-        assert.deepEqual(requestParams, {
+        checkRequest({
           method: 'PATCH',
           uri: `${locusUrl}/controls`,
           body: {
@@ -228,7 +268,6 @@ describe('plugin-meetings', () => {
               raised: false,
             },
             requestingParticipantId: memberId,
-            sequence,
           },
         });
       });
@@ -244,15 +283,20 @@ describe('plugin-meetings', () => {
         const options = {
           memberId,
           requestingParticipantId,
-          aliasValue,
+          alias: aliasValue,
           locusUrl,
         };
 
         await membersRequest.editDisplayNameMember(options);
-        const requestParams = membersRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/participant/${memberId}/alias`);
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/alias`,
+          body: {
+            aliasValue,
+            requestingParticipantId,
+          }
+        });
       });
     });
   });
