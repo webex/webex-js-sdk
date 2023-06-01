@@ -38,11 +38,11 @@ type GetIdentifiersOptions = {
 /**
  * @description Util class to handle Call Analyzer Metrics
  * @export
- * @class CallAnalyzerMetrics
+ * @class CallDiagnosticMetrics
  */
-export class CallAnalyzerMetrics {
+export class CallDiagnosticMetrics {
   // eslint-disable-next-line no-use-before-define
-  static instance: CallAnalyzerMetrics;
+  static instance: CallDiagnosticMetrics;
   meetingCollection: any;
   webex: any;
   latencies: CallAnalyzerLatencies;
@@ -53,18 +53,18 @@ export class CallAnalyzerMetrics {
    * @public
    */
   constructor() {
-    if (!CallAnalyzerMetrics.instance) {
-      CallAnalyzerMetrics.instance = this;
+    if (!CallDiagnosticMetrics.instance) {
+      CallDiagnosticMetrics.instance = this;
       this.meetingCollection = null;
       this.latencies = new CallAnalyzerLatencies();
     }
 
     // eslint-disable-next-line no-constructor-return
-    return CallAnalyzerMetrics.instance;
+    return CallDiagnosticMetrics.instance;
   }
 
   /**
-   * Initializes the CallAnalyzerMetrics singleton with a meeting Collection.
+   * Initializes the CallDiagnosticMetrics singleton with a meeting Collection.
    *
    * @param meetingCollection meetings object
    * @param webex  webex SDK object
@@ -307,6 +307,6 @@ export class CallAnalyzerMetrics {
 }
 
 // Singleton
-const instance = new CallAnalyzerMetrics();
+const instance = new CallDiagnosticMetrics();
 
 export default instance;

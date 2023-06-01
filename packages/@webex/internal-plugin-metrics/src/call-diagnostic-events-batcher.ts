@@ -2,7 +2,7 @@
 /* eslint-disable valid-jsdoc */
 
 import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
-import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
 import {merge} from 'lodash';
 import Batcher from './batcher';
 
@@ -38,13 +38,13 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
     switch (eventName) {
       case 'client.locus.join.response':
-        joinTimes.joinReqResp = CallAnalyzerMetrics.latencies.getJoinReqResp();
-        joinTimes.joinReqSentReceived = CallAnalyzerMetrics.latencies.getJoinRespSentReceived();
-        joinTimes.callInitJoinReq = CallAnalyzerMetrics.latencies.getCallInitJoinReq();
+        joinTimes.joinReqResp = CallDiagnosticMetrics.latencies.getJoinReqResp();
+        joinTimes.joinReqSentReceived = CallDiagnosticMetrics.latencies.getJoinRespSentReceived();
+        joinTimes.callInitJoinReq = CallDiagnosticMetrics.latencies.getCallInitJoinReq();
         break;
       case 'client.call.initiated':
-        joinTimes.meetingInfoReqResp = CallAnalyzerMetrics.latencies.getMeetingInfoReqResp();
-        joinTimes.showInterstitialTime = CallAnalyzerMetrics.latencies.getShowInterstitialTime();
+        joinTimes.meetingInfoReqResp = CallDiagnosticMetrics.latencies.getMeetingInfoReqResp();
+        joinTimes.showInterstitialTime = CallDiagnosticMetrics.latencies.getShowInterstitialTime();
 
       // eslint-disable-next-line no-fallthrough
       default:

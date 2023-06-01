@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/prefer-default-export
-import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
 import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
 import {eventType} from '../metrics/config';
 
@@ -25,17 +25,17 @@ breakoutEvent.postMoveCallAnalyzer = (event: ClientEvent['name'], eventInfo: any
     return;
   }
 
-  CallAnalyzerMetrics.submitClientEvent(
-    event,
-    {
+  CallDiagnosticMetrics.submitClientEvent({
+    name: event,
+    payload: {
       identifiers: {
         breakoutMoveId: eventInfo.breakoutMoveId,
         breakoutSessionId: eventInfo.breakoutSessionId,
         breakoutGroupId: eventInfo.breakoutGroupId,
       },
     },
-    {meetingId: eventInfo.meeting.id}
-  );
+    options: {meetingId: eventInfo.meeting.id},
+  });
 };
 
 export default breakoutEvent;

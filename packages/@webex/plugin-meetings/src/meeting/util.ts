@@ -1,6 +1,6 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 
-import CallAnalyzerMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
 import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import Metrics from '../metrics';
@@ -88,8 +88,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
     return Promise.reject(new ParameterError('You need a meeting object.'));
   }
 
-  CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinRequest);
-  CallAnalyzerMetrics.submitClientEvent({
+  CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinRequest);
+  CallDiagnosticMetrics.submitClientEvent({
     name: 'client.locus.join.request',
     options: {meetingId: meeting.id},
   });
@@ -117,8 +117,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       deviceCapabilities: options.deviceCapabilities,
     })
     .then((res) => {
-      CallAnalyzerMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinResponse);
-      CallAnalyzerMetrics.submitClientEvent({
+      CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinResponse);
+      CallDiagnosticMetrics.submitClientEvent({
         name: 'client.locus.join.response',
         payload: {
           trigger: 'loci-update',
