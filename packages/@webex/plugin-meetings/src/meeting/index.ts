@@ -639,14 +639,6 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.annotation = new Annotation({parent: this.webex});
     /**
-     * @instance
-     * @type {Annotation}
-     * @public
-     * @memberof Meeting
-     */
-    // @ts-ignore
-    this.annotation = new Annotation({parent: this.webex});
-    /**
      * helper class for managing receive slots (for multistream media connections)
      */
     this.receiveSlotManager = new ReceiveSlotManager(
