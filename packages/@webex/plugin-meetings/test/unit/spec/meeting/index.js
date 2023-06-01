@@ -1883,7 +1883,7 @@ describe('plugin-meetings', () => {
 
             listeners[LocalTrackEvents.Ended]();
 
-            //assert.calledWith(meeting.stopShare, {skipSignalingCheck: true});
+            assert.calledWith(meeting.stopShare, {skipSignalingCheck: true});
           });
 
           it('stopShare accepts and passes along optional parameters', () => {
