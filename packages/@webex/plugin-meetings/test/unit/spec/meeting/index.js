@@ -5863,7 +5863,7 @@ describe('plugin-meetings', () => {
               'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
-          const generateContent = (beneficiaryId = null, disposition = null) => ({
+          const generateContent = (beneficiaryId = null, disposition = null,annotation = undefined) => ({
             beneficiaryId,
             disposition,
           });
@@ -5880,7 +5880,8 @@ describe('plugin-meetings', () => {
             beneficiaryId,
             resourceUrl,
             isAccepting,
-            otherBeneficiaryId
+            otherBeneficiaryId,
+            annotation,
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -5906,7 +5907,7 @@ describe('plugin-meetings', () => {
             if (isGranting) {
               if (isContent) {
                 activeSharingId.content = beneficiaryId;
-                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED);
+                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED,annotation);
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
                   eventTrigger.member = null;
@@ -6530,6 +6531,28 @@ describe('plugin-meetings', () => {
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
+            });
+          });
+
+          describe('annotation policy', () => {
+
+            it('Scenario #1: blank annotation', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2, data3, data4]);
+            });
+
+            it('Scenario #2: annotation', () => {
+              const annotationInfo = {version: '1', policy: 'Approval'};
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, annotationInfo);
+              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2, data3, data4]);
             });
           });
 
