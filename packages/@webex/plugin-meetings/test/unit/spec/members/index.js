@@ -122,6 +122,7 @@ describe('plugin-meetings', () => {
     });
 
     afterEach(() => {
+      membersRequestSpy.restore();
       sandbox.restore();
     });
 
