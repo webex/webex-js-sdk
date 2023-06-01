@@ -90,7 +90,7 @@ const {getBrowserName, getOSVersion} = BrowserDetection();
 // Non-stubbed function
 const {getDisplayMedia} = Media;
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},
@@ -6534,7 +6534,7 @@ describe.only('plugin-meetings', () => {
             });
           });
 
-          describe.only('annotation policy', () => {
+          describe('annotation policy', () => {
 
             it('Scenario #1: blank annotation', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
