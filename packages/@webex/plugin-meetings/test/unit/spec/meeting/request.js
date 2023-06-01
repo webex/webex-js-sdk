@@ -3,9 +3,13 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
+import uuid from 'uuid';
+import { merge } from 'lodash';
+
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
+  let locusDeltaRequestSpy;
 
   beforeEach(() => {
     const webex = new MockWebex({
@@ -45,7 +49,13 @@ describe('plugin-meetings', () => {
     );
 
     meetingsRequest.request = request;
+    locusDeltaRequestSpy = sinon.spy(meetingsRequest, 'locusDeltaRequest');
   });
+
+  const checkRequest = (expectedParams) => {
+    assert.calledOnceWithExactly(locusDeltaRequestSpy, expectedParams);
+    assert.calledOnceWithExactly(meetingsRequest.request, merge(expectedParams, {body: {sequence: {}}}));
+  }
 
   describe('meeting request library', () => {
     describe('#sendDTMF', () => {
@@ -54,17 +64,25 @@ describe('plugin-meetings', () => {
         const deviceUrl = 'deviceUrl';
         const tones = '1234';
 
+        sinon.stub(uuid, 'v4').returns('12345');
+
         await meetingsRequest.sendDTMF({
           locusUrl,
           deviceUrl,
           tones,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/sendDtmf`);
-        assert.equal(requestParams.body.dtmf.tones, tones);
-        assert.equal(requestParams.body.deviceUrl, deviceUrl);
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/sendDtmf`,
+          body: {
+            deviceUrl: 'deviceUrl',
+            dtmf: {
+              correlationId: '12345',
+              tones: '1234',
+            },
+          },
+        });
       });
     });
 
@@ -81,14 +99,19 @@ describe('plugin-meetings', () => {
           main: {width: 640, height: 480},
           content: {width: 1280, height: 720},
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, `${locusUrl}/controls`);
-        assert.equal(requestParams.body.layout.type, layoutType);
-        assert.equal(requestParams.body.layout.deviceUrl, deviceUrl);
-        assert.deepEqual(requestParams.body.layout.layoutParams, {
-          renderInfo: {main: {width: 640, height: 480}, content: {width: 1280, height: 720}},
+        checkRequest({
+          method: 'PUT',
+          uri: `${locusUrl}/controls`,
+          body: {
+            layout: {
+              deviceUrl,
+              type: layoutType,
+              layoutParams: {
+                renderInfo: {main: {width: 640, height: 480}, content: {width: 1280, height: 720}},
+              },
+            },
+          },
         });
       });
 
@@ -292,14 +315,20 @@ describe('plugin-meetings', () => {
           correlationId,
           dialInUrl,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/participant`);
-        assert.equal(requestParams.body.device.url, dialInUrl);
-        assert.equal(requestParams.body.device.deviceType, 'PROVISIONAL');
-        assert.equal(requestParams.body.device.provisionalType, 'DIAL_IN');
-        assert.equal(requestParams.body.device.clientUrl, 'clientUrl');
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant`,
+          body: {
+            device: {
+              url: dialInUrl,
+              deviceType: 'PROVISIONAL',
+              provisionalType: 'DIAL_IN',
+              clientUrl,
+            },
+            correlationId
+          }
+        });
       });
 
       it('sends dial out pstn request', async () => {
@@ -316,15 +345,22 @@ describe('plugin-meetings', () => {
           dialOutUrl,
           phoneNumber,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/participant`);
-        assert.equal(requestParams.body.device.url, dialOutUrl);
-        assert.equal(requestParams.body.device.deviceType, 'PROVISIONAL');
-        assert.equal(requestParams.body.device.provisionalType, 'DIAL_OUT');
-        assert.equal(requestParams.body.device.clientUrl, 'clientUrl');
-        assert.equal(requestParams.body.device.dialoutAddress, phoneNumber);
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant`,
+          body: {
+            device: {
+              url: dialOutUrl,
+              deviceType: 'PROVISIONAL',
+              provisionalType: 'DIAL_OUT',
+              clientUrl,
+              dialoutAddress: phoneNumber,
+            },
+            correlationId,
+          },
+        });
+
       });
 
       it('sends disconnect phone audio request', async () => {
@@ -339,14 +375,95 @@ describe('plugin-meetings', () => {
           correlationId,
           phoneUrl,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, `${locusUrl}/participant/${selfId}/leave`);
-        assert.equal(requestParams.body.device.url, phoneUrl);
-        assert.equal(requestParams.body.device.deviceType, 'PROVISIONAL');
+        checkRequest({
+          method: 'PUT',
+          uri: `${locusUrl}/participant/${selfId}/leave`,
+          body: {
+            device: {
+              url: phoneUrl,
+              deviceType: 'PROVISIONAL'
+            },
+            correlationId
+          }
+        });
       });
     });
+
+    describe('#leaveMeeting', () => {
+      it('sends the request to leave the meeting', async () => {
+        const locusUrl = 'locusUrl';
+        const selfId = 'selfId';
+        const correlationId = 'random-uuid';
+        const resourceId = 'resourceId';
+        const deviceUrl = 'deviceUrl';
+
+        meetingsRequest.config.meetings.deviceType = 'deviceType';
+
+        await meetingsRequest.leaveMeeting({
+          locusUrl,
+          selfId,
+          deviceUrl,
+          resourceId,
+          correlationId,
+        });
+
+        checkRequest({
+          method: 'PUT',
+          uri: 'locusUrl/participant/selfId/leave',
+          body: {
+            device: {deviceType: 'deviceType', url: 'deviceUrl'},
+            usingResource: 'resourceId',
+            correlationId: 'random-uuid',
+          },
+        });
+      });
+    });
+
+    describe('#acknowledgeMeeting', () => {
+      it('sends the request to acknowledge the meeting', async () => {
+        const locusUrl = 'locusUrl';
+        const correlationId = 'random-uuid';
+        const deviceUrl = 'deviceUrl';
+
+        meetingsRequest.config.meetings.deviceType = 'deviceType';
+
+        await meetingsRequest.acknowledgeMeeting({
+          locusUrl,
+          deviceUrl,
+          correlationId,
+        });
+
+        checkRequest({
+          method: 'PUT',
+          uri: 'locusUrl/participant/alert',
+          body: {
+            device: {deviceType: 'deviceType', url: 'deviceUrl'},
+            correlationId: 'random-uuid',
+          },
+        });
+      });
+    });
+
+    describe('#lockMeeting', () => {
+      it('sends request to lock the meeting', async () => {
+        const locusUrl = 'locusURL';
+
+        await meetingsRequest.lockMeeting({
+          locusUrl,
+          lock: true,
+        });
+
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/controls`,
+          body: {
+            lock: {locked: true}
+          }
+        });
+      });
+    });
+
 
     describe('#endMeetingForAll', () => {
       it('sends request to endMeetingForAll', async () => {
@@ -355,10 +472,11 @@ describe('plugin-meetings', () => {
         await meetingsRequest.endMeetingForAll({
           locusUrl,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/end`);
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/end`,
+        });
       });
     });
 
@@ -411,14 +529,50 @@ describe('plugin-meetings', () => {
           locusUrl,
           requestingParticipantId,
         });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.equal(requestParams.method, 'PUT');
-        assert.equal(requestParams.uri, `${locusUrl}/controls`);
-        assert.equal(requestParams.body.reactions.enabled, true);
-        assert.equal(requestParams.body.requestingParticipantId, requestingParticipantId);
+        checkRequest({
+          method: 'PUT',
+          uri: `${locusUrl}/controls`,
+          body: {
+            reactions: {
+              enabled: true,
+            },
+            requestingParticipantId,
+          },
+        });
       });
     });
+  });
+
+  describe('#declineMeeting', () => {
+
+    it('sends a request to decline the meeting', async () => {
+      const reason = 'reason';
+      const deviceUrl = 'deviceUrl';
+      const locusUrl = 'locusUrl';
+      meetingsRequest.config.meetings.deviceType = 'deviceType';
+  
+      await meetingsRequest.declineMeeting({
+        locusUrl,
+        deviceUrl,
+        reason
+      });
+  
+      const expectedBody = {
+        device: {
+          deviceType: 'deviceType',
+          url: deviceUrl,
+        },
+        reason,
+      };
+  
+      checkRequest({
+        method: 'PUT',
+        uri: `${locusUrl}/participant/decline`,
+        body: expectedBody,
+      });
+    });
+
   });
 
   describe('#getLocusStatusByUrl', () => {
@@ -432,6 +586,7 @@ describe('plugin-meetings', () => {
       })
     });
   });
+
   describe('#changeMeetingFloor', () => {
 
     it('change meeting floor', async () => {

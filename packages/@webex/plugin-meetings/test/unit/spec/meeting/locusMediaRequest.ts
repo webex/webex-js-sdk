@@ -67,7 +67,7 @@ describe('LocusMediaRequest.send()', () => {
     muteOptions: {},
   };
 
-  const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}, sequence: undefined) => {
+  const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}, sequence = undefined) => {
     const body: any = {
       device: {
         url: 'deviceUrl',

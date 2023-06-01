@@ -1,5 +1,6 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 
+import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import Metrics from '../metrics';
 import {eventType, trigger} from '../metrics/config';
@@ -532,8 +533,10 @@ const MeetingUtil = {
   generateLocusDeltaRequest: (originalMeeting) => {
     const meetingRef = new WeakRef(originalMeeting);
 
-    const locusDeltaRequest = (options) => {
+    const locusDeltaRequest = (originalOptions) => {
       const meeting = meetingRef.deref();
+
+      const options = cloneDeep(originalOptions);
 
       if (!options.body) {
         options.body = {};
