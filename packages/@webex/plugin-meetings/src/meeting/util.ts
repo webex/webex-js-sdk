@@ -495,11 +495,7 @@ const MeetingUtil = {
    * @returns {void}
    */
   addSequence: (meeting, requestBody) => {
-    if (!meeting) {
-      return;
-    }
-
-    const {sequence} = meeting.locusInfo;
+    const sequence = meeting?.locusInfo?.sequence;
 
     if (!sequence) {
       return;

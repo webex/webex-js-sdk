@@ -532,7 +532,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       correlationId,
     };
 
-    // @ts-ignore
     return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,

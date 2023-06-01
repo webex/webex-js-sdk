@@ -133,6 +133,133 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('addSequence', () => {
+      it('should add the sequence object to a request body', () => {
+        const body = {};
+
+        MeetingUtil.addSequence({
+          locusInfo: {
+            sequence: 'sequence'
+          }
+        }, body);
+
+        assert.deepEqual(body, {
+          sequence: 'sequence'
+        });
+      });
+
+      it('should work with an undefined meeting', () => {
+        const body = {};
+
+        MeetingUtil.addSequence(
+          undefined,
+          body
+        );
+
+        assert.deepEqual(body, {});
+      });
+ 
+      it('should work with an undefined locusInfo', () => {
+        const body = {};
+
+        MeetingUtil.addSequence({}, body);
+
+        assert.deepEqual(body, {});
+      });
+
+      it('should work with an undefined sequence', () => {
+        const body = {};
+
+        MeetingUtil.addSequence({locusInfo: {}}, body);
+
+        assert.deepEqual(body, {});
+      });
+    });
+
+    describe('updateLocusWithDelta', () => {
+      it('should call onDeltaLocus with the new delta locus', () => {
+        const meeting = {
+          locusInfo: {
+            onDeltaLocus: sinon.stub(),
+          }
+        }
+
+        const originalResponse = {
+          body: {
+            locus: 'locus'
+          }
+        };
+
+        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, 'locus');
+      });
+
+      it('should handle locus being missing from the response', () => {
+        const meeting = {
+          locusInfo: {
+            onDeltaLocus: sinon.stub(),
+          },
+        };
+
+        const originalResponse = {
+          body: {},
+        };
+
+        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.notCalled(meeting.locusInfo.onDeltaLocus);
+      });
+
+      it('should work with an undefined meeting', () => {
+        const originalResponse = {
+          body: {
+            locus: 'locus',
+          },
+        };
+
+        const response = MeetingUtil.updateLocusWithDelta(undefined, originalResponse);
+        assert.deepEqual(response, originalResponse);
+      });
+    });
+
+    describe('generateLocusDeltaRequest', () => {
+      it('generates the correct wrapper function', async () => {
+        const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
+        const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
+
+        const meeting = {
+          request: sinon.stub().returns(Promise.resolve('result')),
+        }
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const options = {
+          some: 'option',
+          body: {}
+        };
+
+        let result = await locusDeltaRequest(options);
+
+        assert.equal(result, 'result');
+        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
+
+        updateLocusWithDeltaSpy.resetHistory();
+        addSequenceSpy.resetHistory();
+
+        // body missing from options
+        result = await locusDeltaRequest({});
+        assert.equal(result, 'result');
+        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
+
+      });
+
+    });
+
     describe('remoteUpdateAudioVideo', () => {
       it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
         const meeting = {
@@ -148,13 +275,16 @@ describe('plugin-meetings', () => {
 
         await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
 
-        assert.calledOnce(meeting.locusMediaRequest.send);
-        const parameter = meeting.locusMediaRequest.send.getCall(0).args[0];
-
-        assert.equal(parameter.type, 'LocalMute');
-        assert.equal(parameter.selfUrl, 'self url');
-        assert.equal(parameter.mediaId, '12345');
-        assert.deepEqual(parameter.muteOptions, {audioMuted: true, videoMuted :false});
+        assert.calledOnceWithExactly(meeting.locusMediaRequest.send, {
+          mediaId: '12345',
+          muteOptions: {
+            audioMuted: true,
+            videoMuted: false,
+          },
+          selfUrl: 'self url',
+          sequence: {},
+          type: 'LocalMute',
+        });
       });
     });
 
