@@ -429,11 +429,12 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.warn(
           'Locus-info:index#isMeetingActive --> Call Ended, locus state is inactive.'
         );
-        CallAnalyzerMetrics.submitClientEvent(
-          'client.call.remote-ended',
-          {},
-          {meetingId: this.meetingId}
-        );
+        CallAnalyzerMetrics.submitClientEvent({
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: this.meetingId,
+          },
+        });
 
         this.emitScoped(
           {
@@ -453,11 +454,12 @@ export default class LocusInfo extends EventsScope {
           this.parsedLocus.self.state === MEETING_STATE.STATES.NOTIFIED ||
           this.parsedLocus.self.state === MEETING_STATE.STATES.JOINED)
       ) {
-        CallAnalyzerMetrics.submitClientEvent(
-          'client.call.remote-ended',
-          {},
-          {meetingId: this.meetingId}
-        );
+        CallAnalyzerMetrics.submitClientEvent({
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: this.meetingId,
+          },
+        });
 
         this.emitScoped(
           {
@@ -479,11 +481,12 @@ export default class LocusInfo extends EventsScope {
           partner.state === MEETING_STATE.STATES.NOTIFIED ||
           partner.state === MEETING_STATE.STATES.IDLE) // Happens when user just joins and adds no Media
       ) {
-        CallAnalyzerMetrics.submitClientEvent(
-          'client.call.remote-ended',
-          {},
-          {meetingId: this.meetingId}
-        );
+        CallAnalyzerMetrics.submitClientEvent({
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: this.meetingId,
+          },
+        });
 
         this.emitScoped(
           {
@@ -507,11 +510,12 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.warn(
           'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
         );
-        CallAnalyzerMetrics.submitClientEvent(
-          'client.call.remote-ended',
-          {},
-          {meetingId: this.meetingId}
-        );
+        CallAnalyzerMetrics.submitClientEvent({
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: this.meetingId,
+          },
+        });
         this.emitScoped(
           {
             file: 'locus-info',
@@ -525,11 +529,12 @@ export default class LocusInfo extends EventsScope {
         );
       } else if (this.fullState && this.fullState.removed) {
         // user has been dropped from a meeting
-        CallAnalyzerMetrics.submitClientEvent(
-          'client.call.remote-ended',
-          {},
-          {meetingId: this.meetingId}
-        );
+        CallAnalyzerMetrics.submitClientEvent({
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: this.meetingId,
+          },
+        });
         this.emitScoped(
           {
             file: 'locus-info',
