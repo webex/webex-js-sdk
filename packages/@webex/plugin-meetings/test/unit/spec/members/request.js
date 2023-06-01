@@ -125,6 +125,82 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#admitMember', () => {
+      it('sends a request to admit members', async () => {
+        const options = {
+          locusUrl: url1,
+          memberIds: ['1', '2'],
+        };
+  
+        await membersRequest.admitMember(options)
+
+        checkRequest({
+          method: 'PUT',
+          uri: 'https://example.com/12345/controls',
+          body: {
+            admit: {
+              participantIds: options.memberIds
+            }
+          }
+        });
+      });
+    });
+
+    describe('#removeMember', () => {
+      it('sends a request to remove a member', async () => {
+        const options = {
+          locusUrl: url1,
+          memberId: 'member1',
+        };
+
+        await membersRequest.removeMember(options);
+
+        checkRequest({
+          method: 'PUT',
+          uri: 'https://example.com/12345/participant/member1/leave',
+          body: {
+            reason: undefined
+          },
+        });
+      });
+    });
+
+    describe('#muteMember', () => {
+      it('sends a request to mute a member', async () => {
+        const options = {
+          locusUrl: url1,
+          memberId: 'member1',
+          muted: true,
+        };
+
+        await membersRequest.muteMember(options);
+
+        checkRequest({
+          method: 'PATCH',
+          uri: 'https://example.com/12345/participant/member1/controls',
+          body: {audio: {muted: true}},
+        });
+      });
+    });
+
+    describe('#transferHostToMember', () => {
+      it('sends a request to transfer host to a member', async () => {
+        const options = {
+          locusUrl: url1,
+          memberId: 'member1',
+          moderator: true,
+        };
+
+        await membersRequest.transferHostToMember(options);
+
+        checkRequest({
+          method: 'PATCH',
+          uri: 'https://example.com/12345/participant/member1/controls',
+          body: {role: {moderator: true}},
+        });
+      });
+    });
+
     describe('#cancelPhoneInvite', () => {
       it('sends a PUT to the locus endpoint', async () => {
         const options = {
