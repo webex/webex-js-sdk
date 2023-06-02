@@ -33,7 +33,7 @@
     "publish:release": "semantic-release",
     "build:docs": "typedoc --out docs/",
     "docs": "typedoc --emit none",
-    "build:browser": "esbuild ./src/index.ts --bundle --minify --sourcemap --target=chrome100,firefox100 --outdir=./dist/browser/"
+    "build:browser": "rollup --config"
   },
   "dependencies": {
     "@types/platform": "1.3.4",

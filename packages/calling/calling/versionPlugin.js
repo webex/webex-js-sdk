@@ -39,7 +39,7 @@ const versionPlugin = (options = []) => {
      *
      */
     [hook]: async () => {
-      fileNames = ['dist/esm/CallingClient/constants.js', 'src/CallingClient/constants.ts'];
+      fileNames = ['dist/module/CallingClient/constants.js', 'src/CallingClient/constants.ts'];
       for (const filename of fileNames) {
         file = filename;
         fs.readFile(filename, 'utf-8', replaceVersion);
