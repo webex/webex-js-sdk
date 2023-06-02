@@ -15,8 +15,7 @@ const config = require('./config');
 const Webex = WebexCore.extend({
   webex: true,
 });
-
-export default class Calling {
+class Calling {
   // pass in logger as well if needed
   constructor({webex, options}) {
     if (webex) {
@@ -47,3 +46,5 @@ export default class Calling {
     return createCallSettingsClient(this.webex, this.logger);
   }
 }
+
+export {Calling};

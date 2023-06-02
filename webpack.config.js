@@ -26,10 +26,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
         : './packages/webex',
     meetings: `${path.resolve(__dirname)}/packages/webex/src/meetings.js`,
-    calling:
-      env && env.NODE_ENV === 'development'
-        ? `${path.resolve(__dirname)}/packages/webex/src/calling.js`
-        : `${path.resolve(__dirname)}/packages/webex/dist/calling.js`,
+    calling: `${path.resolve(__dirname)}/packages/webex/src/calling.js`,
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
