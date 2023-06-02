@@ -15,9 +15,17 @@ export const broadworksUserMessageId = '274a236c-9212-4679-8b40-2786ea460538';
 export const braodworksUserMessageInfo =
   '/v2.0/user/bgerman@wcslab.broadcloud.org/VoiceMessagingMessages';
 
+export const ucmBackendInfoUrl =
+  'https://gw.telemetry.int-ucmgmt.cisco.com/vmgateway/api/v1/users/8a67806f-fc4d-446b-a131-31e71ea5b0e9/voicemails';
+
+export const voicemailContent = '/?offset=0&limit=20&sortOrder=DESC';
+
+export const orgId = '1704d30d-a131-4bc7-9449-948487643793';
+
 export const name = 'Adrian';
 export const userid = 'admin';
 export const address = 'tel1372';
+export const userId = '8a67806f-fc4d-446b-a131-31e71ea5b0e9';
 
 const MOCK_VOICEMAIL_FIRST_MESSAGE = {
   duration: {$: '780'},
@@ -55,6 +63,198 @@ const MOCK_VOICEMAIL_THIRD_MESSAGE = {
   time: {$: '1658394908932'},
   messageId: {
     $: `${braodworksUserMessageInfo}/cc237e9e-211a-4a0a-bb58-2a931eca061d`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_FIRST_MESSAGE = {
+  Duration: 780,
+  MsgId: '0:476725ea-ab68-4c5d-9222-918c5bba7b6',
+  ArrivalTime: 1546000110000,
+  Read: 'false',
+  callingPartyInfo: {
+    name: `${name}`,
+    userId: `${userId}`,
+  },
+  CallerId: {
+    CallerNumber: '+14927000061',
+    CallerName: `${name}`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_SECOND_MESSAGE = {
+  Duration: 7800,
+  MsgId: '0:67dbe36e-4a29-4d97-81ec-2dd256555cad',
+  ArrivalTime: 1658394808932,
+  Read: 'true',
+  callingPartyInfo: {
+    name: `${name}`,
+    userId: `${userId}`,
+  },
+  CallerId: {
+    CallerNumber: '+14927000061',
+    CallerName: `${name}`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_THIRD_MESSAGE = {
+  Duration: 800,
+  MsgId: '0:e070b949-de5b-4c6b-b0d1-f696333159c2',
+  ArrivalTime: 1658394908932,
+  Read: 'false',
+  callingPartyInfo: {
+    name: `${name}`,
+    userId: `${userId}`,
+  },
+  CallerId: {
+    CallerNumber: '+14927000061',
+    CallerName: `${name}`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_FOURTH_MESSAGE = {
+  Duration: 27460,
+  MsgId: '0:f214e5d6-cb44-4feb-a584-676bef8fe23a',
+  ArrivalTime: 1658395027115,
+  Read: 'true',
+  callingPartyInfo: {
+    name: `${name}`,
+    userId: `${userId}`,
+  },
+  CallerId: {
+    CallerNumber: '+14927000061',
+    CallerName: `${name}`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_FIFTH_MESSAGE = {
+  Duration: 8000,
+  MsgId: '0:4a49fa22-4fbe-4d84-91ab-55867f8ded82',
+  ArrivalTime: 1664900110000,
+  Read: 'false',
+  callingPartyInfo: {
+    name: `${name}`,
+    userId: `${userId}`,
+  },
+  CallerId: {
+    CallerNumber: '+14927000061',
+    CallerName: `${name}`,
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_EXPECTED_FIFTH_MESSAGE = {
+  duration: {
+    $: 8000,
+  },
+  time: {
+    $: 1664900110000,
+  },
+  messageId: {
+    $: '0:4a49fa22-4fbe-4d84-91ab-55867f8ded82',
+  },
+  callingPartyInfo: {
+    name: {
+      $: name,
+    },
+    userId: {
+      $: userId,
+    },
+    address: {
+      $: '+14927000061',
+    },
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_EXPECTED_FOURTH_MESSAGE = {
+  duration: {
+    $: 27460,
+  },
+  time: {
+    $: 1658395027115,
+  },
+  messageId: {
+    $: '0:f214e5d6-cb44-4feb-a584-676bef8fe23a',
+  },
+  read: {},
+  callingPartyInfo: {
+    name: {
+      $: name,
+    },
+    userId: {
+      $: userId,
+    },
+    address: {
+      $: '+14927000061',
+    },
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_EXPECTED_THIRD_MESSAGE = {
+  duration: {
+    $: 800,
+  },
+  time: {
+    $: 1658394908932,
+  },
+  messageId: {
+    $: '0:e070b949-de5b-4c6b-b0d1-f696333159c2',
+  },
+  callingPartyInfo: {
+    name: {
+      $: name,
+    },
+    userId: {
+      $: userId,
+    },
+    address: {
+      $: '+14927000061',
+    },
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_EXPECTED_SECOND_MESSAGE = {
+  duration: {
+    $: 7800,
+  },
+  time: {
+    $: 1658394808932,
+  },
+  messageId: {
+    $: '0:67dbe36e-4a29-4d97-81ec-2dd256555cad',
+  },
+  read: {},
+  callingPartyInfo: {
+    name: {
+      $: name,
+    },
+    userId: {
+      $: userId,
+    },
+    address: {
+      $: '+14927000061',
+    },
+  },
+};
+
+const MOCK_UCM_VOICEMAIL_EXPECTED_FIRST_MESSAGE = {
+  duration: {
+    $: 780,
+  },
+  time: {
+    $: 1546000110000,
+  },
+  messageId: {
+    $: '0:476725ea-ab68-4c5d-9222-918c5bba7b6',
+  },
+  callingPartyInfo: {
+    name: {
+      $: name,
+    },
+    userId: {
+      $: userId,
+    },
+    address: {
+      $: '+14927000061',
+    },
   },
 };
 
@@ -206,6 +406,41 @@ export const getDescVoicemailListJsonWXC = {
           MOCK_VOICEMAIL_FIRST_MESSAGE,
         ],
       },
+    },
+  },
+};
+
+export const mockUCMVoicemailBody = {
+  body: {
+    statusCode: 200,
+    items: [MOCK_UCM_VOICEMAIL_FIRST_MESSAGE],
+  },
+};
+
+export const getVoiceMailListJsonUCM = {
+  statusCode: 200,
+  body: {
+    Message: [
+      MOCK_UCM_VOICEMAIL_FIRST_MESSAGE,
+      MOCK_UCM_VOICEMAIL_SECOND_MESSAGE,
+      MOCK_UCM_VOICEMAIL_THIRD_MESSAGE,
+      MOCK_UCM_VOICEMAIL_FOURTH_MESSAGE,
+      MOCK_UCM_VOICEMAIL_FIFTH_MESSAGE,
+    ],
+  },
+};
+
+export const getDescVoiceMailListJsonUCM = {
+  statusCode: 200,
+  body: {
+    Message: {
+      voicemailList: [
+        MOCK_UCM_VOICEMAIL_EXPECTED_FIRST_MESSAGE,
+        MOCK_UCM_VOICEMAIL_EXPECTED_SECOND_MESSAGE,
+        MOCK_UCM_VOICEMAIL_EXPECTED_THIRD_MESSAGE,
+        MOCK_UCM_VOICEMAIL_EXPECTED_FOURTH_MESSAGE,
+        MOCK_UCM_VOICEMAIL_EXPECTED_FIFTH_MESSAGE,
+      ],
     },
   },
 };
