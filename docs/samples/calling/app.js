@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex , CreateClient, CreateCallHistoryClient, CreateVoicemailClient */
+/* global Webex , CreateClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -70,6 +70,16 @@ const vmContactAvatar = document.querySelector('#img_vm_contact');
 const dndButton = document.querySelector('#DND-button');
 const callWaitingButton = document.querySelector('#CallWaiting-button');
 const transcriptContent = document.querySelector('#transcript-data');
+const contactsElem = document.querySelector('#contacts-form');
+const contactGroupsElem = document.querySelector('#contactgroups-form');
+const contactsTable = document.getElementById('contactsTableId');
+const contactsHeader = document.getElementById('contactsHeaderId');
+const contactGroupsTable = document.getElementById('contactGroupsTableId');
+const contactGroupsHeader = document.getElementById('contactGroupsHeaderId');
+const cloudContactsElem = document.querySelector('#cloud-contact-form');
+const contactObj = document.querySelector('#contact-object');
+const contactGroupObj = document.querySelector('#contactgroup-object');
+
 
 let base64;
 let audio64;
@@ -174,11 +184,20 @@ function initWebex(e) {
         },
         enableRtx: true,
       },
+      encryption: {
+        kmsInitialTimeout: 8000,
+        kmsMaxTimeout: 40000,
+        batcherMaxCalls: 30,
+        caroots: null,
+      },
+      dss: {
+
+      },
       // Any other sdk config we need
     },
     credentials: {
       access_token: tokenElm.value,
-    },
+    }
   };
 
   if (!enableProd) {
@@ -284,7 +303,7 @@ function createDevice() {
     sdkConfig.discovery.region = '';
   }
 
-  callingClient = window.callingClient = CreateClient(webex, sdkConfig);
+  callingClient = window.callingClient = Calling.CreateClient(webex, sdkConfig);
   callingClient.register();
   userSession();
   callingClient.on('callingClient:registered', (deviceInfo) => {
@@ -556,7 +575,7 @@ async function getMediaStreams() {
 function createMeeting(e) {
   e.preventDefault();
 
-  callingClient = window.callingClient = CreateClient(webex);
+  callingClient = window.callingClient = Calling.CreateClient(webex);
 }
 
 // Listen for submit on create meeting
@@ -640,6 +659,51 @@ function answer() {
   }
 }
 
+function renderContacts(contacts, groupIdDisplayNameMap) {
+  contactsTable.innerHTML = contacts.reduce((acc, contact,i) => {
+    const parentGroups = [];
+    contact.groups.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
+
+    const phoneNumbers = contact.phoneNumbers.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
+    return acc +
+     `
+      <tr>
+        <td>${i + 1}</td>
+        <td><img src=${contact.avatarURL} width="80"> </td>
+        <td>${contact.displayName}</td>
+        <td>${contact.contactType}</td>
+        <td>${phoneNumbers}</td>
+        <td>${contact.contactId}</td>
+        <td>${parentGroups}</td>
+        <td><button onclick="deleteContact('${contact.contactId}')" class="btn--red">Delete</button></td>
+      </tr>
+    `;
+  },'');
+}
+
+function renderContactGroups(groups) {
+  contactGroupsTable.innerHTML = groups.reduce((acc, group, i) => {
+    return acc + `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${group.displayName}</td>
+        <td>${group.groupType}</td>
+        <td>${group.groupId}</td>
+        <td>${group.members}</td>
+        <td><button onclick="deleteContactGroup('${group.groupId}')" class="btn--red">Delete</button></td>
+      </tr>
+    `
+  },'');
+}
+
+function createContactsTable(contactsResponse) {
+  const {contacts, groups} = contactsResponse.data;
+  const groupIdDisplayNameMap = {};
+  groups.forEach(group => groupIdDisplayNameMap[group.groupId] = group.displayName);
+  renderContacts(contacts, groupIdDisplayNameMap);
+  renderContactGroups(groups);
+}
+
 function definedTable(callHistoryResponse) {
   const callHistoryTable = document.getElementById('callHistoryTableId');
   const callHistoryHeader = document.getElementById('callHistoryHeaderId');
@@ -680,7 +744,7 @@ async function createCallHistory() {
 
   try {
     if (window.callHistory === undefined) {
-      callHistory = window.callHistory = CreateCallHistoryClient(webex, logger);
+      callHistory = window.callHistory = Calling.createCallHistoryClient(webex, logger);
     }
 
     callHistory.on('callHistory:user_recent_sessions', (sessionData) => {
@@ -722,7 +786,7 @@ async function createVoiceMail() {
 
     try {
       if (window.voicemail === undefined) {
-        voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
+        voicemail = window.voicemail = Calling.createVoicemailClient(webex, logger);
         const initResponse = await voicemail.init();
 
         console.log(`Init response `, initResponse);
@@ -835,7 +899,7 @@ async function createVoiceMail() {
 
     try {
       if (window.voicemail === undefined) {
-        voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
+        voicemail = window.voicemail = Calling.createVoicemailClient(webex, logger);
         const initResponse = await voicemail.init();
 
         console.log(`Init response `, initResponse);
@@ -911,7 +975,7 @@ async function createVoiceMailContentPlay(msgId, rowId) {
 async function VMPlay(msgId, rowId) {
   try {
     if (window.voicemail === undefined) {
-      voicemail = window.voicemail = CreateVoicemailClient(webex, this.logger);
+      voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
       const initResponse = await voicemail.init();
 
       console.log(`Init response `, initResponse);
@@ -943,7 +1007,7 @@ async function VMPlay(msgId, rowId) {
 
 async function voicemailMarkAsRead(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = CreateVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
     voicemail.init();
   }
 
@@ -970,7 +1034,7 @@ function markAsRead(rowId) {
 
 async function voicemailMarkAsUnRead(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = CreateVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
     voicemail.init();
   }
 
@@ -997,7 +1061,7 @@ function markAsUnRead(rowId) {
 
 async function deleteVoicemail(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = CreateVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
     voicemail.init();
   }
   const deleteVmResponse = await voicemail.deleteVoicemail(msgId);
@@ -1053,7 +1117,7 @@ function fetchVoicemailList() {
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = CreateVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
     voicemail.init();
   }
 
@@ -1077,17 +1141,79 @@ async function fetchTranscript() {
   transcriptContent.innerText = JSON.stringify(transcript.data.voicemailTranscript, undefined, 2);
 }
 
-async function createContacts() {
+async function getContacts() {
   const logger = {level: 'info'};
 
   if (window.contacts === undefined) {
-    contacts = window.contacts = CreateContactsClient(webex, logger);
+    contacts = window.contacts = Calling.createContactsClient(webex, logger);
   }
 
-  const contactsList = await contacts.getContacts();
-
+  const contactsList = await contacts.getContacts(); 
   console.log('Contacts: ', contactsList);
+  createContactsTable(contactsList);
+
 }
+
+async function deleteContact(contactId) {
+  await contacts.deleteContact(contactId);
+  console.log('contact deleted')
+  console.log(contacts.groups,contacts.contacts);
+};
+
+async function createCloudContact() {
+  console.log('Create Cloud Contact');
+  
+  const formData = new FormData(cloudContactsElem);
+
+  const contact = {
+    phoneNumbers: [{
+      type: 'work',
+      value: formData.get('phone')
+    }],
+    contactType: 'CLOUD',
+    contactId: formData.get('contactId')
+  };
+
+  const res = await contacts.createContact(contact);
+  contactObj.innerHTML = 'Status: ' + res.message;
+  console.log('Result: ',res);
+  console.log(contacts.groups,contacts.contacts);
+  cloudContactsElem.reset();
+}
+
+async function createCustomContact() {
+  console.log('Create Contact');
+  const formData = new FormData(contactsElem);
+  const contact = {
+    avatarURL: formData.get('avatarURL'),
+    displayName: formData.get('displayName'),
+    phoneNumbers: [{
+      type: 'work',
+      value: formData.get('phone')
+    }],
+    contactType: 'CUSTOM',
+  };
+  const res = await contacts.createContact(contact);
+  contactObj.innerHTML = 'Status: '+ res.message;
+  console.log('Result: ',res);
+  console.log(contacts.groups,contacts.contacts);
+  contactsElem.reset();
+};
+
+async function createContactGroup(){
+  const groupType = contactGroupsElem.elements.groupType.value;
+  const res = await contacts.createContactGroup(contactGroupsElem.elements.displayName.value, undefined, groupType);
+  contactGroupObj.innerHTML = 'Status: '+ res.message;
+  console.log('Result: ',res);
+  console.log(contacts.groups,contacts.contacts);
+  contactGroupsElem.reset();
+};
+
+async function deleteContactGroup(groupId) {
+  await contacts.deleteContactGroup(groupId);
+  console.log('contact deleted')
+  console.log(contacts.groups,contacts.contacts);
+};
 
 function toggleButton(eleButton, disableText, enableText) {
   let retVal;
@@ -1112,7 +1238,7 @@ async function fetchDNDSetting() {
   const logger = {level: 'info'};
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.getDoNotDisturbSetting();
@@ -1141,7 +1267,7 @@ async function fetchCallWaitingSetting() {
   const logger = {level: 'info'};
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.getCallWaitingSetting();
@@ -1162,7 +1288,7 @@ async function fetchCallForwardSetting() {
   let visibility;
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.getCallForwardSetting();
@@ -1231,7 +1357,7 @@ async function updateCallForwardSetting(form) {
   };
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.setCallForwardSetting(requestBody);
@@ -1246,7 +1372,7 @@ async function fetchVoicemailSetting() {
   let visibility;
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.getVoicemailSetting();
@@ -1325,7 +1451,7 @@ async function updateVoicemailSetting(form) {
   };
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
   }
 
   const response = await callSettings.setVoicemailSetting(requestBody);
@@ -1349,6 +1475,3 @@ async function changeElementVisibility(checkboxEle, destEle) {
 // setting the srcObject to null regardless if autoplay is set.
 
 window.onload = () => addPlayIfPausedEvents(htmlMediaElements);
-
-/* form listeners */
-// createCallingForm.addEventListener('submit', createClient);

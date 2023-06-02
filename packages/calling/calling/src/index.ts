@@ -6,7 +6,7 @@ import {createCallHistoryClient} from './CallHistory/CallHistory';
 import {createVoicemailClient} from './Voicemail/Voicemail';
 
 
-export {
+export default {
   createClient,
   createCallHistoryClient,
   createVoicemailClient,

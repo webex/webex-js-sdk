@@ -21,12 +21,22 @@ project after some code changes, state them here:
 
 ```shell
 yarn workspaces foreach --parallel --verbose run build:src
+
+ yarn workspace @webex/calling run build
 ```
 
 ### Testing
 
 ```shell
-yarn test
+ yarn workspace @webex/calling run test
+```
+
+
+### Testing on samples // This will change in future for now 
+
+```
+ yarn workspace @webex/calling run build:browser
+ yarn run samples:serve
 ```
 
 
