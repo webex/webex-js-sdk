@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex , CreateClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
+/* global Webex , createClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -303,7 +303,7 @@ function createDevice() {
     sdkConfig.discovery.region = '';
   }
 
-  callingClient = window.callingClient = Calling.CreateClient(webex, sdkConfig);
+  callingClient = window.callingClient = Calling.createClient(webex, sdkConfig);
   callingClient.register();
   userSession();
   callingClient.on('callingClient:registered', (deviceInfo) => {
@@ -575,7 +575,7 @@ async function getMediaStreams() {
 function createMeeting(e) {
   e.preventDefault();
 
-  callingClient = window.callingClient = Calling.CreateClient(webex);
+  callingClient = window.callingClient = Calling.createClient(webex);
 }
 
 // Listen for submit on create meeting
