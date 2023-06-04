@@ -2188,6 +2188,18 @@ export default class Meeting extends StatelessWebexPlugin {
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
 
+      if (!isEqual(contentShare?.annotation, previousContentShare?.annotation)) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meetings/index',
+            function: 'remoteShare',
+          },
+          EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
+          contentShare.annotation
+        );
+      }
+
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
         contentShare.disposition === previousContentShare?.disposition &&
