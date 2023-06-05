@@ -92,7 +92,10 @@ export default class CallDiagnosticMetrics {
       defaultSubClientType = meeting.config.metrics?.defaultSubClientType;
     }
 
-    if (defaultClientType && defaultSubClientType) {
+    if (
+      (defaultClientType && defaultSubClientType) ||
+      (options.clientType && options.subClientType)
+    ) {
       const origin: Event['origin'] = {
         name: 'endpoint',
         networkType: 'unknown',
