@@ -4,6 +4,7 @@ import {createContactsClient} from './Contacts/ContactsClient';
 import {createClient} from './CallingClient/CallingClient';
 import {createCallHistoryClient} from './CallHistory/CallHistory';
 import {createVoicemailClient} from './Voicemail/Voicemail';
+import {initializeWebex} from './init';
 
 
 export default {
@@ -12,4 +13,5 @@ export default {
   createVoicemailClient,
   createContactsClient,
   createCallSettingsClient,
+  initializeWebex,
 };

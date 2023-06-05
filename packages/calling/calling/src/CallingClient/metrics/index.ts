@@ -1,4 +1,4 @@
-import {CallError, CallingClientError} from 'Errors';
+import {CallError, CallingClientError} from '../../Errors';
 import {METRIC_FILE, VERSION} from '../constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';

@@ -186,7 +186,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @param webex - A webex instance.
    * @param config - Config to start the CallingClient with.
    */
-  constructor(webex: WebexSDK, config?: CallingClientConfig) {
+  constructor(webex: WebexSDK,  config?: CallingClientConfig) {
     super();
     this.sdkConnector = SDKConnector;
 
@@ -195,7 +195,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     this.webex = this.sdkConnector.getWebex();
-
     this.sdkConfig = config;
     const serviceData = this.sdkConfig?.serviceData?.indicator
       ? this.sdkConfig.serviceData

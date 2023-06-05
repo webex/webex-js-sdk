@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex , createClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
+/* global Webex , createClient, initializeWebex */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -1148,7 +1148,7 @@ async function getContacts() {
     contacts = window.contacts = Calling.createContactsClient(webex, logger);
   }
 
-  const contactsList = await contacts.getContacts(); 
+  const contactsList = await contacts.getContacts();
   console.log('Contacts: ', contactsList);
   createContactsTable(contactsList);
 
@@ -1162,7 +1162,7 @@ async function deleteContact(contactId) {
 
 async function createCloudContact() {
   console.log('Create Cloud Contact');
-  
+
   const formData = new FormData(cloudContactsElem);
 
   const contact = {

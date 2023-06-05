@@ -1,5 +1,5 @@
 import * as Media from '@webex/internal-media-core';
-import {WebexSDK} from 'SDKConnector/types';
+import {WebexSDK} from '../SDKConnector/types';
 import {ICallSettings} from '../CallSettings/types';
 import {createCallSettingsClient} from '../CallSettings/CallSettings';
 import {createContactsClient} from '../Contacts/ContactsClient';
@@ -20,6 +20,7 @@ declare global {
     CreateVoicemailClient?: (webex: WebexSDK, logger: LoggerConfig) => IVoicemail;
     CreateContactsClient?: (webex: WebexSDK, logger: LoggerConfig) => IContacts;
     CreateCallSettingsClient?: (webex: WebexSDK, logger: LoggerConfig) => ICallSettings;
+    CreateWebexInstance?: (token: string) => WebexSDK;
   }
 }
 
@@ -68,6 +69,7 @@ window.CreateContactsClient = (webex: WebexSDK, logger: LoggerConfig): IContacts
  */
 window.CreateCallSettingsClient = (webex: WebexSDK, logger: LoggerConfig): ICallSettings =>
   createCallSettingsClient(webex, logger);
+
 
 export {
   createClient,

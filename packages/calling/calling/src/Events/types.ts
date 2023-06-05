@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // TODO: remove once we define the payloads
-import type {ICall} from 'CallingClient/calling/types';
-import {CallDetails, CallId, DisplayInformation, IDeviceInfo} from '../common/types';
+import type {ICall} from '../CallingClient/calling/types';
+import {CallId, DisplayInformation, IDeviceInfo} from '../common/types';
 import {CallError, CallingClientError} from '../Errors';
 
 /** External Eventing Start */
