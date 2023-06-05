@@ -65,6 +65,7 @@ export default class LocusInfo extends EventsScope {
   url: any;
   services: any;
   mainSessionLocusCache: any;
+  notesUrl: any;
   /**
    * Constructor
    * @param {boolean} updateMeeting true if the meeting should be updated
