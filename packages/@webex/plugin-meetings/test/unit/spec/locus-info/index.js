@@ -180,6 +180,19 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger the CONTROLS_VIDEO_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+          {state: newControls.video},
+        );
+      });
+
       it('should not trigger the CONTROLS_RECORDING_UPDATED event', () => {
         locusInfo.controls = {};
         locusInfo.emitScoped = sinon.stub();

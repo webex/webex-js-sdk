@@ -2171,6 +2171,15 @@ export default class Meeting extends StatelessWebexPlugin {
         {state}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**

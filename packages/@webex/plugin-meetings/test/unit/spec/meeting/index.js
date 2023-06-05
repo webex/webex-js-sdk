@@ -4947,6 +4947,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to MEETING_CONTROLS_VIDEO_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+            {state},
+          );
+        });
+
         it('listens to the timing that user joined into breakout', async () => {
           const mainLocusUrl = 'mainLocusUrl123';
 
