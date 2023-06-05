@@ -36,7 +36,7 @@ describe('plugin-meetings', () => {
       unmuteVideoAllowed: true,
 
       locusInfo: {
-        onFullLocus: sinon.stub(),
+        onDeltaLocus: sinon.stub(),
       },
       members: {
         selfId: 'fake self id',
@@ -351,11 +351,14 @@ describe('plugin-meetings', () => {
         await testUtils.waitUntil(200);
         assert.isFalse(clientPromiseResolved);
 
+        meeting.locusInfo.onDeltaLocus.resetHistory();
+
         // now allow the server response to arrive, this should trigger the client promise to get resolved
-        serverResponseResolve();
+        serverResponseResolve(fakeLocus);
         await testUtils.flushPromises();
 
         assert.isTrue(clientPromiseResolved);
+        assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, fakeLocus);
       });
 
       it('rejects client request promise if server request for local mute fails', async () => {
