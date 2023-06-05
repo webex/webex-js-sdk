@@ -1,6 +1,6 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
-import NewMetrics from '@webex/internal-plugin-metrics/src/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {

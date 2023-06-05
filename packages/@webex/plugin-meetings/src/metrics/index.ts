@@ -7,8 +7,7 @@ import uuid from 'uuid';
 import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
-import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {userAgentToString} from '@webex/internal-plugin-metrics/src/call-diagnostic-metrics.util';
+import {getOSNameInternal, userAgentToString} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEETING_ERRORS} from '../constants';
 import BrowserDetection from '../common/browser-detection';

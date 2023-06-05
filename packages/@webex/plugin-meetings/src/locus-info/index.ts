@@ -1,6 +1,6 @@
 import {isEqual, assignWith, cloneDeep} from 'lodash';
 
-import NewMetrics from '@webex/internal-plugin-metrics/src/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 import {

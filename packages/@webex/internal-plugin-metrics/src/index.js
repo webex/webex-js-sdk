@@ -7,6 +7,8 @@ import '@webex/internal-plugin-device';
 import {registerInternalPlugin} from '@webex/webex-core';
 
 import Metrics from './metrics';
+import NewMetrics from './new-metrics';
+import {userAgentToString} from './call-diagnostic-metrics.util';
 import config from './config';
 
 registerInternalPlugin('metrics', Metrics, {
@@ -14,4 +16,4 @@ registerInternalPlugin('metrics', Metrics, {
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {config};
+export {config, NewMetrics, userAgentToString};

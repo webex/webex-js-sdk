@@ -1,7 +1,7 @@
 import anonymize from 'ip-anonymize';
 import util from 'util';
 
-import BrowserDetection from '@webex/common/src/browser-detection';
+import {BrowserDetection} from '@webex/common';
 import {isEmpty} from 'lodash';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();

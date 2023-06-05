@@ -4,9 +4,7 @@
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 
-import CallDiagnosticMetrics, {
-  SubmitClientEventOptions,
-} from '@webex/internal-plugin-metrics/src/call-diagnostic-metrics';
+import CallDiagnosticMetrics, {SubmitClientEventOptions} from './call-diagnostic-metrics';
 import BehavioralMetrics from './behavioral-metrics';
 import {
   RecursivePartial,

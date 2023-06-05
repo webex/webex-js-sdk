@@ -1,6 +1,6 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 
-import NewMetrics from '@webex/internal-plugin-metrics/src/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {

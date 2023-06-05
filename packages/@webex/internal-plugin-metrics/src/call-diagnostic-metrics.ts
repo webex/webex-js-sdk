@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {BrowserDetection} from '@webex/common/src/browser-detection';
+import {BrowserDetection} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {anonymizeIPAddress, clearEmpty, userAgentToString} from './call-diagnostic-metrics.util';

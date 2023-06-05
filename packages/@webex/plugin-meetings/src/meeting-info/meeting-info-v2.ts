@@ -1,5 +1,5 @@
 import lodash from 'lodash';
-import NewMetrics from '@webex/internal-plugin-metrics/src/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {
   HTTP_VERBS,
   _CONVERSATION_URL_,

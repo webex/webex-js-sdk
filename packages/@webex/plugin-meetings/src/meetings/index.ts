@@ -10,7 +10,7 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
-import NewMetrics from '@webex/internal-plugin-metrics/src/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import Metrics from '../metrics';
 
 import LoggerConfig from '../common/logs/logger-config';
