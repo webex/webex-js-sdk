@@ -1,29 +1,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
-export enum LatencyTimestampKey {
-  meetingInfoReqStart = 'meetingInfoReqStart',
-  meetingInfoReqEnd = 'meetingInfoReqEnd',
-  launchInterstitial = 'launchInterstitial',
-  clickJoinOnInterstitial = 'clickJoinOnInterstitial',
-  locusJoinRequest = 'locusJoinRequest',
-  clickJoinMeetingButton = 'clickJoinMeetingButton',
-  locusJoinResponse = 'locusJoinResponse',
-  localSDPReceived = 'localSDPReceived',
-  localSDPGenerated = 'localSDPGenerated',
-  ICEEnd = 'ICEEnd',
-  ICEStart = 'ICEStart',
-  audioICEStart = 'audioICEStart',
-  audioICEEnd = 'audioICEEnd',
-  videoICEEnd = 'videoICEEnd',
-  videoICEStart = 'videoICEStart',
-  shareICEStart = 'shareICEStart',
-  shareICEEnd = 'shareICEEnd',
-  hostAdmittedUser = 'hostAdmittedUser',
-  pageJMT = 'pageJMT',
-  interstitialShowed = 'interstitialShowed',
-  mediaFlowStarted = 'mediaFlowStarted',
-}
+import {MetricEventNames} from './types';
 
 // we only care about client event and feature event for now
 
@@ -32,8 +10,8 @@ export enum LatencyTimestampKey {
  * @exports
  * @class CallAnalyzerLatencies
  */
-export class CallAnalyzerLatencies {
-  latencyTimestamps: Map<LatencyTimestampKey, number>;
+export default class CallAnalyzerLatencies {
+  latencyTimestamps: Map<MetricEventNames, number>;
 
   /**
    * @constructor
@@ -56,7 +34,7 @@ export class CallAnalyzerLatencies {
    * @throws
    * @returns
    */
-  public saveLatency(key: LatencyTimestampKey, value: number = new Date().getTime()) {
+  public saveLatency(key: MetricEventNames, value: number = new Date().getTime()) {
     this.latencyTimestamps.set(key, value);
   }
 
@@ -66,7 +44,7 @@ export class CallAnalyzerLatencies {
    * @param b end
    * @returns latency
    */
-  private getDiffBetweenLatencies(a: LatencyTimestampKey, b: LatencyTimestampKey) {
+  private getDiffBetweenLatencies(a: MetricEventNames, b: MetricEventNames) {
     const start = this.latencyTimestamps.get(a);
     const end = this.latencyTimestamps.get(b);
     if (start && end) {
@@ -82,8 +60,8 @@ export class CallAnalyzerLatencies {
    */
   public getMeetingInfoReqResp() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.meetingInfoReqStart,
-      LatencyTimestampKey.meetingInfoReqEnd
+      'client.meetinginfo.request',
+      'client.meetinginfo.response'
     );
   }
 
@@ -93,8 +71,8 @@ export class CallAnalyzerLatencies {
    */
   public getShowInterstitialTime() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.launchInterstitial,
-      LatencyTimestampKey.clickJoinOnInterstitial
+      'client.interstitial-window.launched', // need to add it
+      'client.meeting.click.joinbutton' // need to add it
     );
   }
 
@@ -104,8 +82,8 @@ export class CallAnalyzerLatencies {
    */
   public getCallInitJoinReq() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.clickJoinMeetingButton,
-      LatencyTimestampKey.locusJoinRequest
+      'client.meeting.click.joinbutton', // need to add it
+      'client.locus.join.request'
     );
   }
 
@@ -114,10 +92,7 @@ export class CallAnalyzerLatencies {
    * @returns - latency
    */
   public getJoinReqResp() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.locusJoinRequest,
-      LatencyTimestampKey.locusJoinResponse
-    );
+    return this.getDiffBetweenLatencies('client.locus.join.request', 'client.locus.join.response');
   }
 
   /**
@@ -135,8 +110,8 @@ export class CallAnalyzerLatencies {
    */
   public getLocalSDPGenRemoteSDPRecv() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.localSDPGenerated,
-      LatencyTimestampKey.localSDPReceived
+      'client.media-engine.local-sdp-generated',
+      'client.media-engine.remote-sdp-received'
     );
   }
 
@@ -145,59 +120,59 @@ export class CallAnalyzerLatencies {
    * @returns - latency
    */
   public getICESetupTime() {
-    return this.getDiffBetweenLatencies(LatencyTimestampKey.ICEStart, LatencyTimestampKey.ICEEnd);
+    return this.getDiffBetweenLatencies('client.ice.start', 'client.ice.end');
   }
 
-  /**
-   * Audio ICE time
-   * @returns - latency
-   */
-  public getAudioICESetupTime() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.audioICEStart,
-      LatencyTimestampKey.audioICEEnd
-    );
-  }
+  // /**
+  //  * Audio ICE time
+  //  * @returns - latency
+  //  */
+  // public getAudioICESetupTime() {
+  //   return this.getDiffBetweenLatencies(
+  //     LatencyTimestampKey.audioICEStart,
+  //     LatencyTimestampKey.audioICEEnd
+  //   );
+  // }
 
-  /**
-   * Video ICE Time
-   * @returns - latency
-   */
-  public getVideoICESetupTime() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.videoICEStart,
-      LatencyTimestampKey.videoICEEnd
-    );
-  }
+  // /**
+  //  * Video ICE Time
+  //  * @returns - latency
+  //  */
+  // public getVideoICESetupTime() {
+  //   return this.getDiffBetweenLatencies(
+  //     LatencyTimestampKey.videoICEStart,
+  //     LatencyTimestampKey.videoICEEnd
+  //   );
+  // }
 
-  /**
-   * Share ICE Time
-   * @returns - latency
-   */
-  public getShareICESetupTime() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.shareICEStart,
-      LatencyTimestampKey.shareICEEnd
-    );
-  }
+  // /**
+  //  * Share ICE Time
+  //  * @returns - latency
+  //  */
+  // public getShareICESetupTime() {
+  //   return this.getDiffBetweenLatencies(
+  //     LatencyTimestampKey.shareICEStart,
+  //     LatencyTimestampKey.shareICEEnd
+  //   );
+  // }
 
-  /**
-   * Stay Lobby Time
-   * @returns - latency
-   */
-  public getStayLobbyTime() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.locusJoinResponse,
-      LatencyTimestampKey.hostAdmittedUser
-    );
-  }
+  // /**
+  //  * Stay Lobby Time
+  //  * @returns - latency
+  //  */
+  // public getStayLobbyTime() {
+  //   return this.getDiffBetweenLatencies(
+  //     'client.locus.join.response',
+  //     LatencyTimestampKey.hostAdmittedUser
+  //   );
+  // }
 
   /**
    * Page JMT
    * @returns - latency
    */
   public getPageJMT() {
-    return this.latencyTimestamps.get(LatencyTimestampKey.pageJMT) || undefined;
+    return this.latencyTimestamps.get('client.pageJMT.received') || undefined;
   }
 
   /**
@@ -206,8 +181,8 @@ export class CallAnalyzerLatencies {
    */
   public getClickToInterstitial() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.clickJoinMeetingButton,
-      LatencyTimestampKey.interstitialShowed
+      'client.meeting.click.joinbutton', // need to add it
+      'client.meeting.interstitial-window.showed' // need to add it
     );
   }
 
@@ -217,21 +192,21 @@ export class CallAnalyzerLatencies {
    */
   public getInterstitialToJoinOK() {
     return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.clickJoinMeetingButton,
-      LatencyTimestampKey.locusJoinResponse
+      'client.meeting.click.joinbutton', // need to add it
+      'client.locus.join.response'
     );
   }
 
-  /**
-   * Interstitial To Media Ok
-   * @returns - latency
-   */
-  public getInterstitialToMediaOK() {
-    return this.getDiffBetweenLatencies(
-      LatencyTimestampKey.clickJoinMeetingButton,
-      LatencyTimestampKey.mediaFlowStarted
-    );
-  }
+  // /**
+  //  * Interstitial To Media Ok
+  //  * @returns - latency
+  //  */
+  // public getInterstitialToMediaOK() {
+  //   return this.getDiffBetweenLatencies(
+  //     'client.meeting.click.joinbutton', // need to add it
+  //     LatencyTimestampKey.mediaFlowStarted
+  //   );
+  // }
 
   /**
    * Total JMT

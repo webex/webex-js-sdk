@@ -2,10 +2,9 @@
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {REACHABILITY} from '../constants';
-import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 
 /**
@@ -96,7 +95,12 @@ export default class RoapRequest extends StatelessWebexPlugin {
       `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
     );
 
-    Metrics.postEvent({event: eventType.MEDIA_REQUEST, meetingId});
+    NewMetrics.submitClientEvent({
+      name: 'client.locus.media.request',
+      options: {
+        meetingId,
+      },
+    });
 
     return locusMediaRequest
       .send({
@@ -108,7 +112,12 @@ export default class RoapRequest extends StatelessWebexPlugin {
         reachability: localSdpWithReachabilityData.reachability,
       })
       .then((res) => {
-        Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId});
+        NewMetrics.submitClientEvent({
+          name: 'client.locus.media.response',
+          options: {
+            meetingId,
+          },
+        });
 
         // always it will be the first mediaConnection Object
         const mediaConnections =
@@ -133,11 +142,14 @@ export default class RoapRequest extends StatelessWebexPlugin {
         };
       })
       .catch((err) => {
-        Metrics.postEvent({
-          event: eventType.MEDIA_RESPONSE,
-          meetingId,
-          data: {error: Metrics.parseLocusError(err, true)},
+        NewMetrics.submitClientEvent({
+          name: 'client.locus.media.response',
+          options: {
+            meetingId,
+            error: err,
+          },
         });
+        // TODO: make sure to parse error correctly
         LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);
         LoggerProxy.logger.error(
           `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(

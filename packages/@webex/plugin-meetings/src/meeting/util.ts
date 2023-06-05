@@ -1,10 +1,7 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
-import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
-import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   INTENT_TO_JOIN,
@@ -57,7 +54,10 @@ MeetingUtil.remoteUpdateAudioVideo = (meeting, audioMuted?: boolean, videoMuted?
     );
   }
 
-  Metrics.postEvent({event: eventType.MEDIA_REQUEST, meeting});
+  NewMetrics.submitClientEvent({
+    name: 'client.locus.media.request',
+    options: {meetingId: meeting.id},
+  });
 
   return meeting.locusMediaRequest
     .send({
@@ -70,7 +70,10 @@ MeetingUtil.remoteUpdateAudioVideo = (meeting, audioMuted?: boolean, videoMuted?
       },
     })
     .then((response) => {
-      Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
+      NewMetrics.submitClientEvent({
+        name: 'client.locus.media.response',
+        options: {meetingId: meeting.id},
+      });
 
       return response?.body?.locus;
     });
@@ -88,8 +91,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
     return Promise.reject(new ParameterError('You need a meeting object.'));
   }
 
-  CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinRequest);
-  CallDiagnosticMetrics.submitClientEvent({
+  NewMetrics.submitClientEvent({
     name: 'client.locus.join.request',
     options: {meetingId: meeting.id},
   });
@@ -117,8 +119,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       deviceCapabilities: options.deviceCapabilities,
     })
     .then((res) => {
-      CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.locusJoinResponse);
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.locus.join.response',
         payload: {
           trigger: 'loci-update',
@@ -268,9 +269,11 @@ MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
   }
 
   if (options.pin) {
-    Metrics.postEvent({
-      event: eventType.PIN_COLLECTED,
-      meeting,
+    NewMetrics.submitClientEvent({
+      name: 'client.pin.collected',
+      options: {
+        meetingId: meeting.id,
+      },
     });
   }
 
@@ -284,9 +287,11 @@ MeetingUtil.joinMeetingOptions = (meeting, options: any = {}) => {
     .catch((err) => {
       // joining a claimed PMR that is not my own, scenario B
       if (MeetingUtil.isPinOrGuest(err)) {
-        Metrics.postEvent({
-          event: eventType.PIN_PROMPT,
-          meeting,
+        NewMetrics.submitClientEvent({
+          name: 'client.pin.prompt',
+          options: {
+            meetingId: meeting.id,
+          },
         });
 
         // request host pin or non host for unclaimed PMR, start of Scenario C

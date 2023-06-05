@@ -4,6 +4,7 @@
 
 /* eslint-disable no-warning-comments */
 
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import {
@@ -18,8 +19,6 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
-import {eventType, reconnection, errorObjects} from '../metrics/config';
-import Media from '../media';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
@@ -331,9 +330,12 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info(
         'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
       );
-      Metrics.postEvent({
-        event: eventType.MEDIA_RECONNECTING,
-        meeting: this.meeting,
+
+      NewMetrics.submitClientEvent({
+        name: 'client.media.reconnecting',
+        options: {
+          meetingId: this.meeting.id,
+        },
       });
     }
 
@@ -343,10 +345,14 @@ export default class ReconnectionManager {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#reconnect --> Sending reconnect success metric.'
         );
-        Metrics.postEvent({
-          event: eventType.MEDIA_RECOVERED,
-          meeting: this.meeting,
-          data: {recoveredBy: reconnection.RECOVERED_BY_NEW},
+        NewMetrics.submitClientEvent({
+          name: 'client.media.recovered',
+          payload: {
+            recoveredBy: 'new',
+          },
+          options: {
+            meetingId: this.meeting.id,
+          },
         });
       })
       .catch((reconnectError) => {
@@ -370,23 +376,23 @@ export default class ReconnectionManager {
           'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
         );
 
-        const reconnectMetric = {
-          event: eventType.CALL_ABORTED,
-          meeting: this.meeting,
-          data: {
+        NewMetrics.submitClientEvent({
+          name: 'client.call.aborted',
+          payload: {
             errors: [
               {
-                category: errorObjects.category.expected,
+                category: 'expected',
                 errorCode: 2008,
                 fatal: true,
-                name: errorObjects.name.mediaEngine,
+                name: 'media-engine',
                 shownToUser: false,
               },
             ],
           },
-        };
-
-        Metrics.postEvent(reconnectMetric);
+          options: {
+            meetingId: this.meeting.id,
+          },
+        });
         if (reconnectError instanceof NeedsRejoinError) {
           // send call aborded event with catogery as expected as we are trying to rejoin
 

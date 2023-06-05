@@ -2,9 +2,9 @@
 /* eslint-disable valid-jsdoc */
 
 import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
 import {merge} from 'lodash';
 import Batcher from './batcher';
+import Metrics from './metrics';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -32,19 +32,25 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
    * @returns
    */
   prepareItem(item) {
+    // metrics-a payload type
+    const finalEvent = {
+      eventPayload: item,
+      type: ['diagnostic-event'],
+    };
+
     // check event names and append latencies?
-    const eventName = item.eventPayload?.name as ClientEvent['name'];
+    const eventName = finalEvent.eventPayload?.name as ClientEvent['name'];
     const joinTimes: ClientEvent['joinTimes'] = {};
 
     switch (eventName) {
       case 'client.locus.join.response':
-        joinTimes.joinReqResp = CallDiagnosticMetrics.latencies.getJoinReqResp();
-        joinTimes.joinReqSentReceived = CallDiagnosticMetrics.latencies.getJoinRespSentReceived();
-        joinTimes.callInitJoinReq = CallDiagnosticMetrics.latencies.getCallInitJoinReq();
+        joinTimes.joinReqResp = Metrics.callAnalyzerLatencies.getJoinReqResp();
+        joinTimes.joinReqSentReceived = Metrics.callAnalyzerLatencies.getJoinRespSentReceived();
+        joinTimes.callInitJoinReq = Metrics.callAnalyzerLatencies.getCallInitJoinReq();
         break;
       case 'client.call.initiated':
-        joinTimes.meetingInfoReqResp = CallDiagnosticMetrics.latencies.getMeetingInfoReqResp();
-        joinTimes.showInterstitialTime = CallDiagnosticMetrics.latencies.getShowInterstitialTime();
+        joinTimes.meetingInfoReqResp = Metrics.callAnalyzerLatencies.getMeetingInfoReqResp();
+        joinTimes.showInterstitialTime = Metrics.callAnalyzerLatencies.getShowInterstitialTime();
 
       // eslint-disable-next-line no-fallthrough
       default:
@@ -55,15 +61,15 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // Browsers cannot provide such information right now. However, it is a required field.
     const origin = {
       // TODO: suspect this is wrong, it was event.eventData.... it should be item.eventPayload.eventData.webClientDomain
-      buildType: this.getBuildType(item.eventPayload?.eventData?.webClientDomain),
+      buildType: this.getBuildType(finalEvent.eventPayload?.eventData?.webClientDomain),
       // network type is supported in chrome.
       networkType: 'unknown',
     };
 
-    item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
-    item.eventPayload = merge(item.eventPayload, {joinTimes});
+    finalEvent.eventPayload.origin = Object.assign(origin, finalEvent.eventPayload.origin);
+    finalEvent.eventPayload = merge(finalEvent.eventPayload, {joinTimes});
 
-    return Promise.resolve(item);
+    return Promise.resolve(finalEvent);
   },
 
   /**

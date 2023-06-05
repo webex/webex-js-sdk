@@ -10,9 +10,9 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import Metrics from '../metrics';
-import {trigger, eventType} from '../metrics/config';
+
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -484,11 +484,16 @@ export default class Meetings extends WebexPlugin {
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
           if (this.getMeetingByType(_ID_, meeting.id)) {
-            Metrics.postEvent({
-              event: eventType.REMOTE_STARTED,
-              meeting,
-              data: {trigger: trigger.MERCURY_EVENT},
+            NewMetrics.submitClientEvent({
+              name: 'client.call.remote-started',
+              payload: {
+                trigger: 'mercury-event',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
             });
+
             Trigger.trigger(
               this,
               {
@@ -640,9 +645,10 @@ export default class Meetings extends WebexPlugin {
 
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
-      Metrics.initialSetup(this.meetingCollection, this.webex);
+      NewMetrics.initialSetupCallDiagnosticMetrics(this.meetingCollection, this.webex);
       // @ts-ignore
-      CallDiagnosticMetrics.initialSetup(this.meetingCollection, this.webex);
+      // TODO: old metrics, will be removed
+      Metrics.initialSetup(this.meetingCollection, this.webex);
     });
   }
 

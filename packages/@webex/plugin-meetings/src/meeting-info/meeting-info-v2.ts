@@ -1,6 +1,5 @@
 import lodash from 'lodash';
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
-import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import {
   HTTP_VERBS,
   _CONVERSATION_URL_,
@@ -344,14 +343,12 @@ export default class MeetingInfoV2 {
       .then((response) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
         // we assume we send the last response to CA (so we also take the last timestamp for normal response)
-        CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.meetingInfoReqEnd);
 
         return response;
       })
       .catch((err) => {
         if (meetingId) {
-          CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.meetingInfoReqEnd);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.meetinginfo.response',
             payload: {
               identifiers: {

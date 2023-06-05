@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/prefer-default-export
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
 import {eventType} from '../metrics/config';
 
@@ -25,7 +25,7 @@ breakoutEvent.postMoveCallAnalyzer = (event: ClientEvent['name'], eventInfo: any
     return;
   }
 
-  CallDiagnosticMetrics.submitClientEvent({
+  NewMetrics.submitClientEvent({
     name: event,
     payload: {
       identifiers: {

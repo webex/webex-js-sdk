@@ -4,24 +4,17 @@ import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common/src/browser-detection';
 import uuid from 'uuid';
 import {merge} from 'lodash';
-import {anonymizeIPAddress, clearEmpty, userAgentToString} from './ca-metrics.util';
+import {anonymizeIPAddress, clearEmpty, userAgentToString} from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from './config';
 import {Event as RawEvent} from './Event';
 import {FeatureEvent} from './FeatureEvent';
 import {ClientEvent} from './ClientEvent';
-import {CallAnalyzerLatencies} from './ca-metrics-latencies';
+import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
+import {RecursivePartial} from './types';
 
 type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent};
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
-
-type RecursivePartial<T> = {
-  [P in keyof T]?: T[P] extends (infer U)[]
-    ? RecursivePartial<U>[]
-    : T[P] extends object
-    ? RecursivePartial<T[P]>
-    : T[P];
-};
 
 type GetOriginOptions = {
   clientType: NonNullable<Event['origin']['clientInfo']>['clientType'];
@@ -35,17 +28,26 @@ type GetIdentifiersOptions = {
   mediaConnections?: any[];
 };
 
+export type SubmitClientEventOptions = {
+  meetingId?: string;
+  mediaConnections?: any[];
+  joinTimes?: ClientEvent['joinTimes'];
+  error?: any;
+  showToUser?: boolean;
+};
+
 /**
  * @description Util class to handle Call Analyzer Metrics
  * @export
  * @class CallDiagnosticMetrics
  */
-export class CallDiagnosticMetrics {
+export default class CallDiagnosticMetrics {
   // eslint-disable-next-line no-use-before-define
   static instance: CallDiagnosticMetrics;
   meetingCollection: any;
   webex: any;
-  latencies: CallAnalyzerLatencies;
+  // @ts-ignore
+  private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
 
   /**
    * Constructor
@@ -56,8 +58,9 @@ export class CallDiagnosticMetrics {
     if (!CallDiagnosticMetrics.instance) {
       CallDiagnosticMetrics.instance = this;
       this.meetingCollection = null;
-      this.latencies = new CallAnalyzerLatencies();
     }
+
+    this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher();
 
     // eslint-disable-next-line no-constructor-return
     return CallDiagnosticMetrics.instance;
@@ -79,28 +82,41 @@ export class CallDiagnosticMetrics {
   /**
    * Gather origin details.
    */
-  getOrigin(options: GetOriginOptions) {
-    const origin: Event['origin'] = {
-      name: 'endpoint',
-      networkType: 'unknown',
-      userAgent: userAgentToString({
-        clientName: this.webex.meetings?.metrics?.clientName,
-        webexVersion: this.webex.version,
-      }),
-      clientInfo: {
-        clientType: options.clientType,
-        clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
-        localNetworkPrefix:
-          anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
-        osVersion: getOSVersion() || 'unknown',
-        subClientType: options.subClientType,
-        os: getOSNameInternal(),
-        browser: getBrowserName(),
-        browserVersion: getBrowserVersion(),
-      },
-    };
+  getOrigin(options: GetOriginOptions, meetingId?: string) {
+    let defaultClientType: Event['origin']['clientInfo']['clientType'];
+    let defaultSubClientType: Event['origin']['clientInfo']['subClientType'];
 
-    return origin;
+    if (meetingId) {
+      const meeting = this.meetingCollection.get(meetingId);
+      defaultClientType = meeting.config.metrics?.clientType;
+      defaultSubClientType = meeting.config.metrics?.defaultSubClientType;
+    }
+
+    if (defaultClientType && defaultSubClientType) {
+      const origin: Event['origin'] = {
+        name: 'endpoint',
+        networkType: 'unknown',
+        userAgent: userAgentToString({
+          clientName: this.webex.meetings?.metrics?.clientName,
+          webexVersion: this.webex.version,
+        }),
+        clientInfo: {
+          clientType: defaultClientType || options.clientType,
+          clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
+          localNetworkPrefix:
+            anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
+          osVersion: getOSVersion() || 'unknown',
+          subClientType: defaultSubClientType || options.subClientType,
+          os: getOSNameInternal(),
+          browser: getBrowserName(),
+          browserVersion: getBrowserVersion(),
+        },
+      };
+
+      return origin;
+    }
+
+    throw new Error("ClientType and SubClientType can't be undefined");
   }
 
   /**
@@ -131,8 +147,6 @@ export class CallDiagnosticMetrics {
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0].mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0].mediaAgentGroupId;
-      // doesn't exist on the Type....
-      // identifiers.mediaAgentCluster = mediaConnections?.[0].mediaAgentCluster;
     }
 
     if (identifiers.correlationId === 'undefined') {
@@ -150,7 +164,8 @@ export class CallDiagnosticMetrics {
    * @returns
    */
   prepareDiagnosticEvent(eventData: Event['event'], options: any) {
-    const origin = this.getOrigin(options);
+    const {meetingId} = options;
+    const origin = this.getOrigin(options, meetingId);
 
     const event: Event = {
       eventId: uuid.v4(),
@@ -205,7 +220,7 @@ export class CallDiagnosticMetrics {
 
       // append feature event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(featureEventObject, options);
-      this.webex.internal.metrics.submitCallDiagnosticEvents(diagnosticEvent);
+      this.callDiagnosticEventsBatcher.submitCallDiagnosticEvents(diagnosticEvent);
     } else {
       // most likely will be events that are happening outside the meeting.
       throw new Error('Not implemented');
@@ -251,13 +266,7 @@ export class CallDiagnosticMetrics {
     name: ClientEvent['name'];
     // additional payload to be merged with default payload
     payload?: RecursivePartial<ClientEvent>;
-    options: {
-      meetingId?: string;
-      mediaConnections?: any[];
-      joinTimes?: ClientEvent['joinTimes'];
-      error?: any;
-      showToUser?: boolean;
-    };
+    options: SubmitClientEventOptions;
   }) {
     const {meetingId, mediaConnections, joinTimes, error} = options;
 
@@ -298,15 +307,10 @@ export class CallDiagnosticMetrics {
 
       // append feature event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
-      this.webex.internal.metrics.submitCallDiagnosticEvents(diagnosticEvent);
+      this.callDiagnosticEventsBatcher.submitCallDiagnosticEvents(diagnosticEvent);
     } else {
       // any pre join events or events that are outside the meeting.
       throw new Error('Not implemented');
     }
   }
 }
-
-// Singleton
-const instance = new CallDiagnosticMetrics();
-
-export default instance;

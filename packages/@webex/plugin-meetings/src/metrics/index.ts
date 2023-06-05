@@ -1,7 +1,6 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import util from 'util';
 
 import {includes} from 'lodash';
 import uuid from 'uuid';
@@ -9,7 +8,7 @@ import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {userAgentToString} from '@webex/internal-plugin-metrics/src/ca-metrics.util';
+import {userAgentToString} from '@webex/internal-plugin-metrics/src/call-diagnostic-metrics.util';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEETING_ERRORS} from '../constants';
 import BrowserDetection from '../common/browser-detection';
@@ -24,7 +23,7 @@ import {
   WebexAPIServiceErrorCodes,
 } from './config';
 
-const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 // Apply a CIDR /28 format to the IPV4 and /96 to the IPV6 addresses
 // For reference : https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing

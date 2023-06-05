@@ -1,6 +1,6 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
-import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/ca-metrics';
+import NewMetrics from '@webex/internal-plugin-metrics/src/index';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {
@@ -22,7 +22,6 @@ import {
 } from '@webex/media-helpers';
 
 import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
-import {LatencyTimestampKey} from '@webex/internal-plugin-metrics/src/ca-metrics-latencies';
 import {
   MeetingNotActiveError,
   UserInLobbyError,
@@ -1404,13 +1403,13 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    //TODO: not used anywhere, so might need to remove it
    * Posts metrics event for this meeting. Allows the app to send Call Analyzer events.
-   * @param {String} eventName - Call Analyzer event, see eventType in src/metrics/config.ts for possible values
+   * @param {String} eventName - Call Analyzer event
    * @public
    * @memberof Meeting
    * @returns {Promise}
    */
   public postMetrics(eventName: ClientEvent['name']) {
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: eventName,
       options: {meetingId: this.id},
     });
@@ -1789,33 +1788,6 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return null;
-  }
-
-  /**
-   * Send the metrics to call-analyzer dashboard
-   * @param {Object} options
-   * @param {String} options.event
-   * @param {String} options.trackingId
-   * @param {Object} options.locus
-   * @param {Object} options.errors
-   * @returns {Promise}
-   * @private
-   * @memberof Meeting
-   */
-  private sendCallAnalyzerMetrics(options: {
-    event: string;
-    trackingId: string;
-    locus: object;
-    errors: object;
-  }) {
-    const payload = this.getAnalyzerMetricsPrePayload({
-      // @ts-ignore - config coming from registerPlugin
-      ...pick(this.config.metrics, ['clientType', 'subClientType']),
-      ...options,
-    });
-
-    // @ts-ignore - fix type
-    return this.webex.internal.metrics.submitCallDiagnosticEvents(payload);
   }
 
   /**
@@ -2365,8 +2337,11 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               EVENT_TRIGGERS.MEETING_STARTED_SHARING_LOCAL
             );
-            CallDiagnosticMetrics.submitClientEvent({
+            NewMetrics.submitClientEvent({
               name: 'client.share.floor-granted.local',
+              payload: {
+                mediaType: 'share',
+              },
               options: {meetingId: this.id},
             });
             break;
@@ -2384,8 +2359,15 @@ export default class Meeting extends StatelessWebexPlugin {
                 memberId: whiteboardShare.beneficiaryId,
               }
             );
-            // TODO: this doesn't exist on the dictionary
-            // Metrics.postEvent({event: eventType.WHITEBOARD_SHARE_FLOOR_GRANTED, meeting: this});
+            NewMetrics.submitClientEvent({
+              name: 'client.share.floor-granted.local',
+              payload: {
+                mediaType: 'whiteboard',
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
             break;
 
           case SHARE_STATUS.NO_SHARE:
@@ -2427,8 +2409,15 @@ export default class Meeting extends StatelessWebexPlugin {
             memberId: whiteboardShare.beneficiaryId,
           }
         );
-        // TODO: this doesn't exist in the dictionary
-        // Metrics.postEvent({event: eventType.WHITEBOARD_SHARE_FLOOR_GRANTED, meeting: this});
+        NewMetrics.submitClientEvent({
+          name: 'client.share.floor-granted.local',
+          payload: {
+            mediaType: 'whiteboard',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
         this.members.locusMediaSharesUpdate(payload);
       }
     });
@@ -2802,7 +2791,7 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         );
 
-        CallDiagnosticMetrics.submitClientEvent({
+        NewMetrics.submitClientEvent({
           name: 'client.lobby.entered',
           options: {meetingId: this.id},
         });
@@ -2824,7 +2813,7 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         );
 
-        CallDiagnosticMetrics.submitClientEvent({
+        NewMetrics.submitClientEvent({
           name: 'client.lobby.exited',
           options: {meetingId: this.id},
         });
@@ -3717,7 +3706,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // Only send restore event when it was disconnected before and for connected later
       if (!this.hasWebsocketConnected) {
-        CallDiagnosticMetrics.submitClientEvent({
+        NewMetrics.submitClientEvent({
           name: 'client.mercury.connection.restored',
           options: {meetingId: this.id},
         });
@@ -3731,7 +3720,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.mercury.on(OFFLINE, () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.mercury.connection.lost',
         options: {meetingId: this.id},
       });
@@ -3823,7 +3812,7 @@ export default class Meeting extends StatelessWebexPlugin {
         .handleClientRequest(this, true)
         .then(() => {
           MeetingUtil.handleAudioLogging(this.mediaProperties.audioTrack);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.muted',
             payload: {trigger: 'user-interaction', mediaType: 'audio'},
             options: {meetingId: this.id},
@@ -3872,7 +3861,7 @@ export default class Meeting extends StatelessWebexPlugin {
         .handleClientRequest(this, false)
         .then(() => {
           MeetingUtil.handleAudioLogging(this.mediaProperties.audioTrack);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.unmuted',
             payload: {trigger: 'user-interaction', mediaType: 'audio'},
             options: {meetingId: this.id},
@@ -3920,7 +3909,7 @@ export default class Meeting extends StatelessWebexPlugin {
         .handleClientRequest(this, true)
         .then(() => {
           MeetingUtil.handleVideoLogging(this.mediaProperties.videoTrack);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.muted',
             payload: {trigger: 'user-interaction', mediaType: 'video'},
             options: {meetingId: this.id},
@@ -3968,7 +3957,7 @@ export default class Meeting extends StatelessWebexPlugin {
         .handleClientRequest(this, false)
         .then(() => {
           MeetingUtil.handleVideoLogging(this.mediaProperties.videoTrack);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.unmuted',
             payload: {trigger: 'user-interaction', mediaType: 'video'},
             options: {meetingId: this.id},
@@ -4423,20 +4412,19 @@ export default class Meeting extends StatelessWebexPlugin {
       this.meetingFiniteStateMachine.reset();
     }
 
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.call.initiated',
       payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
       options: {meetingId: this.id},
     });
 
     if (!isEmpty(this.meetingInfo)) {
-      CallDiagnosticMetrics.latencies.saveLatency(LatencyTimestampKey.meetingInfoReqStart);
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.meetinginfo.request',
         options: {meetingId: this.id},
       });
 
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.meetinginfo.response',
         payload: {
           identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
@@ -4555,7 +4543,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#join --> Failed', error);
 
-        CallDiagnosticMetrics.submitClientEvent({
+        NewMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
@@ -4735,7 +4723,7 @@ export default class Meeting extends StatelessWebexPlugin {
       throw new ParameterError('Cannot move call without a resourceId.');
     }
 
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.media.capabilities',
       payload: {
         mediaCapabilities: {
@@ -4758,7 +4746,7 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {meetingId: this.id},
     });
 
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.call.move-media',
       options: {meetingId: this.id},
     });
@@ -4844,7 +4832,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     const oldCorrelationId = this.correlationId;
 
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.call.move-media',
       options: {meetingId: this.id},
     });
@@ -5060,7 +5048,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // TODO: check if this is the correct event to send here?
 
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media-engine.local-sdp-generated',
         payload: {
           canProceed: false,
@@ -5073,7 +5061,7 @@ export default class Meeting extends StatelessWebexPlugin {
     ) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
 
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media-engine.remote-sdp-received',
         payload: {
           canProceed: false,
@@ -5085,7 +5073,7 @@ export default class Meeting extends StatelessWebexPlugin {
       sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.id);
 
       // TODO: check if this is the correct event to send here?
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media-engine.local-sdp-generated',
         payload: {
           canProceed: false,
@@ -5113,7 +5101,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       switch (event.roapMessage.messageType) {
         case 'OK':
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.media-engine.remote-sdp-received',
             options: {meetingId: this.id},
           });
@@ -5131,7 +5119,7 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'OFFER':
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.media-engine.local-sdp-generated',
             options: {meetingId: this.id},
           });
@@ -5151,7 +5139,7 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'ANSWER':
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.media-engine.remote-sdp-received',
             options: {meetingId: this.id},
           });
@@ -5272,7 +5260,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.reconnectionManager.resetReconnectionTimer();
 
         this.reconnect({networkDisconnect: true});
-        CallDiagnosticMetrics.submitClientEvent({
+        NewMetrics.submitClientEvent({
           name: 'client.ice.end',
           payload: {canProceed: false},
           options: {
@@ -5300,7 +5288,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       switch (event.state) {
         case ConnectionState.Connecting:
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.ice.start',
             options: {
               meetingId: this.id,
@@ -5308,7 +5296,7 @@ export default class Meeting extends StatelessWebexPlugin {
           });
           break;
         case ConnectionState.Connected:
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.ice.end',
             options: {
               meetingId: this.id,
@@ -5430,7 +5418,7 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_LOCAL_STARTED,
         data
       );
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media.tx.start',
         payload: {mediaType: data.type},
         options: {
@@ -5439,7 +5427,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_MEDIA_STOPPED, (data) => {
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media.tx.stop',
         payload: {mediaType: data.type},
         options: {
@@ -5457,7 +5445,7 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
         data
       );
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media.rx.start',
         payload: {mediaType: data.type},
         options: {
@@ -5466,7 +5454,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.REMOTE_MEDIA_STOPPED, (data) => {
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.media.rx.stop',
         payload: {mediaType: data.type},
         options: {
@@ -5565,7 +5553,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info(`${LOG_HEADER} Adding Media.`);
 
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.media.capabilities',
       payload: {
         mediaCapabilities: {
@@ -6265,7 +6253,7 @@ export default class Meeting extends StatelessWebexPlugin {
         .then((response) => Promise.resolve(response))
         .then((response) => {
           this.meetingFiniteStateMachine.ring(type);
-          CallDiagnosticMetrics.submitClientEvent({
+          NewMetrics.submitClientEvent({
             name: 'client.alert.displayed',
             options: {meetingId: this.id},
           });
@@ -6313,7 +6301,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.call.leave',
       payload: {
         trigger: 'user-interaction',
@@ -6401,8 +6389,15 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (whiteboard) {
-      // TODO: this doesn't exist in the dictionary
-      // Metrics.postEvent({event: eventType.WHITEBOARD_SHARE_INITIATED, meeting: this});
+      NewMetrics.submitClientEvent({
+        name: 'client.share.initiated',
+        payload: {
+          mediaType: 'whiteboard',
+        },
+        options: {
+          meetingId: this.id,
+        },
+      });
 
       const body: any = {
         disposition: FLOOR_ACTION.GRANTED,
@@ -6452,8 +6447,15 @@ export default class Meeting extends StatelessWebexPlugin {
     const whiteboard = this.locusInfo.mediaShares.find((element) => element.name === 'whiteboard');
 
     if (whiteboard) {
-      // TODO: this doesn't exist in the dictionary
-      // Metrics.postEvent({event: eventType.WHITEBOARD_SHARE_STOPPED, meeting: this});
+      NewMetrics.submitClientEvent({
+        name: 'client.share.stopped',
+        payload: {
+          mediaType: 'whiteboard',
+        },
+        options: {
+          meetingId: this.id,
+        },
+      });
 
       return this.meetingRequest
         .changeMeetingFloor({
@@ -6495,7 +6497,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
     if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.share.initiated',
         options: {meetingId: this.id},
       });
@@ -6556,7 +6558,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
     if (content && this.mediaProperties.mediaDirection.sendShare) {
-      CallDiagnosticMetrics.submitClientEvent({
+      NewMetrics.submitClientEvent({
         name: 'client.share.stopped',
         options: {meetingId: this.id},
       });
@@ -7386,7 +7388,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public endMeetingForAll() {
-    CallDiagnosticMetrics.submitClientEvent({
+    NewMetrics.submitClientEvent({
       name: 'client.call.leave',
       payload: {trigger: 'user-interaction', canProceed: false},
       options: {meetingId: this.id},
