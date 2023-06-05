@@ -1,19 +1,19 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import Breakout from '@webex/plugin-meetings/src/breakouts/breakout';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
-import Members from '@webex/plugin-meetings/src/members';
 import MockWebex from '@webex/test-helper-mock-webex';
-import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
-import {eventType} from '../../../../src/metrics/config';
 import uuid from 'uuid';
 import breakoutEvent from "../../../../src/breakouts/events";
-import SelfUtils from "../../../../src/locus-info/selfUtils";
+import BreakoutRequest from '../../../../src/breakouts/request';
+import Members from '../../../../src/members';
+
 describe('plugin-meetings', () => {
   describe('breakout', () => {
     let webex;
     let breakout;
     let breakouts;
+    let meeting;
 
     beforeEach(() => {
       // @ts-ignore
@@ -34,18 +34,38 @@ describe('plugin-meetings', () => {
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
       webex.meetings = {};
       webex.meetings.getMeetingByType = sinon.stub();
-
+      sinon.stub(uuid, 'v4').returns('breakoutMoveId');
     });
+
+    afterEach(() => {
+      // @ts-ignore
+      uuid.v4.restore();
+    })
 
     describe('initialize', () => {
       it('creates the object correctly', () => {
+        assert.instanceOf(breakout.breakoutRequest, BreakoutRequest);
+      });
+    });
+
+    describe('#initMembers', () => {
+      it('creates the Members instance for the breakout', () => {
+        assert.equal(breakout.members, undefined);
+
+        breakout.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id',
+          }),
+        };
+
+        breakout.initMembers();
+
         assert.instanceOf(breakout.members, Members);
       });
     });
 
     describe('#join', () => {
       it('makes the request as expected', async () => {
-        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         const result = await breakout.join();
         assert.calledOnceWithExactly(webex.request, {
           method: 'POST',
@@ -71,7 +91,6 @@ describe('plugin-meetings', () => {
 
         let onBreakoutMoveRequestStub = sinon.stub(breakoutEvent, 'onBreakoutMoveRequest');
         let onBreakoutMoveResponseStub = sinon.stub(breakoutEvent, 'onBreakoutMoveResponse');
-        uuid.v4 = sinon.stub().returns('breakoutMoveId');
         await breakout.join();
         assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
           {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}
