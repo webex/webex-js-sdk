@@ -283,6 +283,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_SHARING_LOCAL: 'meeting:stoppedSharingLocal',
   MEETING_STARTED_SHARING_REMOTE: 'meeting:startedSharingRemote',
   MEETING_STOPPED_SHARING_REMOTE: 'meeting:stoppedSharingRemote',
+  MEETING_UPDATE_ANNOTATION_INFO: 'meeting:updateAnnotationInfo',
   MEETING_STARTED_SHARING_WHITEBOARD: 'meeting:startedSharingWhiteboard',
   MEETING_STOPPED_SHARING_WHITEBOARD: 'meeting:stoppedSharingWhiteboard',
   MEETING_MEDIA_LOCAL_STARTED: 'meeting:media:local:start',

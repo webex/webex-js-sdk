@@ -13,6 +13,7 @@ MediaSharesUtils.parse = (mediaShares: object) => {
       content: {
         beneficiaryId: MediaSharesUtils.getContentBeneficiaryId(mediaShares),
         disposition: MediaSharesUtils.getContentDisposition(mediaShares),
+        annotation: MediaSharesUtils.getContentAnnotation(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
@@ -138,6 +139,21 @@ MediaSharesUtils.getContentBeneficiaryId = (mediaShares: object) => {
   }
 
   return contentFloor.beneficiary.id;
+};
+
+/**
+ * get live annotation is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentAnnotation = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.annotation) {
+    return undefined;
+  }
+
+  return extractContent.annotation;
 };
 
 /**

@@ -304,6 +304,29 @@ describe('plugin-meetings', () => {
         meetingInfo.createAdhocSpaceMeeting.restore();
       });
 
+      it('create adhoc meeting when conversationUrl and installedOrgID passed with enableAdhocMeetings toggle', async () => {
+        sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
+
+        const installedOrgID = '12345'
+
+        await meetingInfo.fetchMeetingInfo(
+          'conversationUrl',
+          _CONVERSATION_URL_,
+          null,
+          null,
+          installedOrgID
+        );
+
+        assert.calledOnceWithExactly(
+          meetingInfo.createAdhocSpaceMeeting,
+          'conversationUrl',
+          installedOrgID
+        );
+        assert.notCalled(webex.request);
+        meetingInfo.createAdhocSpaceMeeting.restore();
+      });
+
+
       it('should not call createAdhocSpaceMeeting if enableAdhocMeetings toggle is off', async () => {
         webex.config.meetings.experimental.enableAdhocMeetings = false;
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
@@ -329,7 +352,7 @@ describe('plugin-meetings', () => {
       it('should throw an error MeetingInfoV2AdhocMeetingError if not able to start adhoc meeting for a conversation', async () => {
         webex.config.meetings.experimental.enableAdhocMeetings = true;
 
-        webex.request = sinon.stub().rejects({statusCode: 403, body: {code: 400000}});
+        webex.request = sinon.stub().rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
         try {
           await meetingInfo.createAdhocSpaceMeeting('conversationUrl');
         } catch (err) {
@@ -339,6 +362,12 @@ describe('plugin-meetings', () => {
             'Failed starting the adhoc meeting, Please contact support team , code=400000'
           );
           assert.equal(err.wbxAppApiCode, 400000);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
         }
       });
 
@@ -449,6 +478,44 @@ describe('plugin-meetings', () => {
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
           assert.notCalled(Metrics.postEvent);
+        }
+      });
+
+      it('should not have errors if parsing error returns null', async () => {
+        Metrics.postEvent = sinon.stub();
+        sinon.stub(Metrics, 'parseWebexApiError').returns(null);
+        const message = 'a message';
+        const meetingInfoData = 'meeting info';
+
+        webex.request = sinon.stub().rejects({
+          statusCode: 403,
+          body: {message, code: 1000000, data: {meetingInfo: meetingInfoData}},
+          url: 'http://api-url.com',
+        });
+        try {
+          await meetingInfo.fetchMeetingInfo(
+            '1234323',
+            _MEETING_ID_,
+            'abc',
+            {
+              id: '999',
+              code: 'aabbcc11',
+            },
+            null,
+            null,
+            {},
+            {meetingId: 'meeting-id'}
+          );
+          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+        } catch (err) {
+          assert.calledWith(Metrics.postEvent, {
+            event: 'client.meetinginfo.response',
+            meetingId: 'meeting-id',
+            data: {
+              errors: undefined,
+              meetingLookupUrl: 'http://api-url.com',
+            }
+          });
         }
       });
 
@@ -563,8 +630,10 @@ describe('plugin-meetings', () => {
     });
 
     describe('createAdhocSpaceMeeting', () => {
-      it('Make a request to /instantSpace when conversationUrl', async () => {
-        const conversationUrl = 'https://conversationUrl/xxx';
+      const conversationUrl = 'https://conversationUrl/xxx';
+      const installedOrgID = '12345';
+
+      const setup = () => {
         const invitee = [];
 
         invitee.push({
@@ -577,7 +646,13 @@ describe('plugin-meetings', () => {
           ciUserUuid: conversation.participants.items[1].entryUUID,
         });
 
-        await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
+        return {invitee}
+      }
+
+      it('Make a request to /spaceInstant when conversationUrl', async () => {
+        const {invitee} = setup();
+
+        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
         assert.calledWith(
           webex.internal.conversation.get,
@@ -598,7 +673,78 @@ describe('plugin-meetings', () => {
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+        assert.deepEqual(result, {
+          body: {},
+          statusCode: 200
+        });
       });
+
+      it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
+        const {invitee} = setup();
+
+        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+
+        assert.calledWith(
+          webex.internal.conversation.get,
+          {url: conversationUrl},
+          {includeParticipants: true, disableTransform: true}
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: 'https://go.webex.com/wbxappapi/v2/meetings/spaceInstant',
+          body: {
+            title: conversation.displayName,
+            spaceUrl: conversation.url,
+            keyUrl: conversation.encryptionKeyUrl,
+            kroUrl: conversation.kmsResourceObjectUrl,
+            invitees: invitee,
+            installedOrgID,
+          },
+        });
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+      });
+
+
+      forEach(
+        [
+          {errorCode: 403049},
+          {errorCode: 403104},
+          {errorCode: 403103},
+          {errorCode: 403048},
+          {errorCode: 403102},
+          {errorCode: 403101},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = 'meeting info';
+
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+            });
+            try {
+              await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+              assert.fail('createAdhocSpaceMeeting should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2PolicyError);
+              assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+              );
+
+            }
+          });
+        }
+      );
     });
   });
 });

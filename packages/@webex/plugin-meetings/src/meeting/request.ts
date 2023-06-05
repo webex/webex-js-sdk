@@ -89,6 +89,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
+   * @param {String} options.locale,
+   * @param {Array} options.deviceCapabilities
    * @param {boolean} options.liveAnnotationSupported
    * @returns {Promise}
    */
@@ -109,6 +111,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
+    locale?: string;
+    deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
   }) {
     const {
@@ -127,6 +131,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
+      locale,
+      deviceCapabilities = [],
       liveAnnotationSupported,
     } = options;
 
@@ -156,17 +162,21 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     };
 
-    let deviceCapabilities = [];
     if (breakoutsSupported) {
-      deviceCapabilities = [...deviceCapabilities, BREAKOUTS.BREAKOUTS_SUPPORTED];
+      deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
     }
     if (liveAnnotationSupported) {
-      deviceCapabilities = [...deviceCapabilities, ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED];
-    }
-    if (deviceCapabilities.length > 0) {
-      body.deviceCapabilities = deviceCapabilities;
+      deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
     }
 
+    if (locale) {
+      body.locale = locale;
+    }
+
+    // add deviceCapabilities prop
+    if (deviceCapabilities.length) {
+      body.deviceCapabilities = deviceCapabilities;
+    }
     // @ts-ignore
     if (this.webex.meetings.clientRegion) {
       // @ts-ignore
@@ -583,52 +593,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         url: options.deviceUrl,
       },
       ...(options.reason && {reason: options.reason}),
-    };
-
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri,
-      body,
-    });
-  }
-
-  /**
-   * Toggle remote audio and/or video
-   * @param {Object} options options for toggling
-   * @param {String} options.selfId Locus self id??
-   * @param {String} options.locusUrl Locus url
-   * @param {String} options.deviceUrl Url of a device
-   * @param {String} options.resourceId Populated if you are paired to a device
-   * @param {String} options.localMedias local sdps
-   * @param {Boolean} options.preferTranscoding false for multistream (Homer), true for transcoded media (Edonus)
-   * @returns {Promise}
-   */
-  remoteAudioVideoToggle(
-    options:
-      | {
-          selfId: string;
-          locusUrl: string;
-          deviceUrl: string;
-          resourceId: string;
-          localMedias: string;
-        }
-      | any
-  ) {
-    const uri = `${options.locusUrl}/${PARTICIPANT}/${options.selfId}/${MEDIA}`;
-    const body = {
-      device: {
-        // @ts-ignore
-        deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl,
-      },
-      usingResource: options.resourceId || null,
-      correlationId: options.correlationId,
-      respOnlySdp: true,
-      localMedias: options.localMedias,
-      clientMediaPreferences: {
-        preferTranscoding: options.preferTranscoding ?? true,
-      },
     };
 
     // @ts-ignore

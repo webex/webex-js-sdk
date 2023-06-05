@@ -44,33 +44,35 @@ MeetingUtil.parseLocusJoin = (response) => {
   return parsed;
 };
 
-MeetingUtil.remoteUpdateAudioVideo = (audioMuted, videoMuted, meeting) => {
+MeetingUtil.remoteUpdateAudioVideo = (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
   if (!meeting) {
     return Promise.reject(new ParameterError('You need a meeting object.'));
   }
-  const localMedias = Media.generateLocalMedias(meeting.mediaId, audioMuted, videoMuted);
 
-  if (isEmpty(localMedias)) {
+  if (!meeting.locusMediaRequest) {
     return Promise.reject(
-      new ParameterError('You need a media id on the meeting to change remote audio.')
+      new ParameterError(
+        'You need a meeting with a media connection, call Meeting.addMedia() first.'
+      )
     );
   }
 
   Metrics.postEvent({event: eventType.MEDIA_REQUEST, meeting});
 
-  return meeting.meetingRequest
-    .remoteAudioVideoToggle({
-      locusUrl: meeting.locusUrl,
-      selfId: meeting.selfId,
-      localMedias,
-      deviceUrl: meeting.deviceUrl,
-      correlationId: meeting.correlationId,
-      preferTranscoding: !meeting.isMultistream,
+  return meeting.locusMediaRequest
+    .send({
+      type: 'LocalMute',
+      selfUrl: meeting.selfUrl,
+      mediaId: meeting.mediaId,
+      muteOptions: {
+        audioMuted,
+        videoMuted,
+      },
     })
     .then((response) => {
       Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
 
-      return response.body.locus;
+      return response?.body?.locus;
     });
 };
 
@@ -107,6 +109,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant,
       breakoutsSupported: options.breakoutsSupported,
+      locale: options.locale,
+      deviceCapabilities: options.deviceCapabilities,
     })
     .then((res) => {
       Metrics.postEvent({

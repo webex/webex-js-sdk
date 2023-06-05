@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.116](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.115...v3.0.0-beta.116) (2023-06-01)
+
+
+### Features
+
+* **Live-Annotation:** add policy for Live-Annotation ([#2844](https://github.com/webex/webex-js-sdk/issues/2844)) ([7038d94](https://github.com/webex/webex-js-sdk/commit/7038d94134a2a0ef70fe5d527f9d00a44608a117))
+
+## [3.0.0-beta.115](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.114...v3.0.0-beta.115) (2023-05-31)
+
+
+### Features
+
+* **ca:** fix error for meeting info ([#2840](https://github.com/webex/webex-js-sdk/issues/2840)) ([614a1d8](https://github.com/webex/webex-js-sdk/commit/614a1d860f05faf250d9a553724a4cad3fd0718e))
+
+## [3.0.0-beta.114](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.113...v3.0.0-beta.114) (2023-05-30)
+
+
+### Features
+
+* **plugin-meetings:** jsdoc for installedOrgID ([#2839](https://github.com/webex/webex-js-sdk/issues/2839)) ([6a741a2](https://github.com/webex/webex-js-sdk/commit/6a741a2453cb495bdd09ba65e78494402ebced0c))
+
+## [3.0.0-beta.113](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.112...v3.0.0-beta.113) (2023-05-29)
+
+
+### Features
+
+* **disclaimer:** SDK - Support audio disclaimer for recording ([#2829](https://github.com/webex/webex-js-sdk/issues/2829)) ([f4c19af](https://github.com/webex/webex-js-sdk/commit/f4c19af932919864b9c2c6fdf80220a067d18d47))
+
+## [3.0.0-beta.112](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.111...v3.0.0-beta.112) (2023-05-26)
+
+
+### Bug Fixes
+
+* refactor code for sending /media requests to Locus ([#2832](https://github.com/webex/webex-js-sdk/issues/2832)) ([464d324](https://github.com/webex/webex-js-sdk/commit/464d324188b1c00bfcb4d1b92c210d14ff786be2))
+
+## [3.0.0-beta.111](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.110...v3.0.0-beta.111) (2023-05-26)
+
 ## [3.0.0-beta.110](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.109...v3.0.0-beta.110) (2023-05-26)
 
 ## [3.0.0-beta.109](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.108...v3.0.0-beta.109) (2023-05-25)

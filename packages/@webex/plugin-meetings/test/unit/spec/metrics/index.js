@@ -154,7 +154,7 @@ browserOnly(describe)('Meeting metrics', () => {
       });
     });
 
-    it('returns  null for unknown error', () => {
+    it('returns default 4100 mapping for unknown error', () => {
       const err = {
         body: {
           code: 123456,
@@ -162,7 +162,16 @@ browserOnly(describe)('Meeting metrics', () => {
       };
       const res = metrics.parseWebexApiError(err, false);
 
-      assert.deepEqual(res, null);
+      assert.deepEqual(res, {
+        shownToUser: false,
+        category: 'signaling',
+        errorDescription: 'MeetingInfoLookupError',
+        errorCode: 4100,
+        fatal: true,
+        name: 'other',
+        serviceErrorCode: 123456,
+        errorData:  { error: { code: 123456 } },
+      });
     });
   });
 
