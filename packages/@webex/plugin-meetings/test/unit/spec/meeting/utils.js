@@ -226,6 +226,11 @@ describe('plugin-meetings', () => {
     });
 
     describe('generateLocusDeltaRequest', () => {
+
+      afterEach(() => {
+        WeakRef.prototype.deref.restore();
+      });
+
       it('generates the correct wrapper function', async () => {
         const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
@@ -255,6 +260,12 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'result');
         assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
+
+        // meeting disappears so the WeakRef returns undefined
+        sinon.stub(WeakRef.prototype, 'deref').returns(undefined);
+
+        result = await locusDeltaRequest(options);
+        assert.equal(result, undefined);
 
       });
 

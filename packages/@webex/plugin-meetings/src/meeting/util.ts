@@ -532,6 +532,10 @@ const MeetingUtil = {
     const locusDeltaRequest = (originalOptions) => {
       const meeting = meetingRef.deref();
 
+      if (!meeting) {
+        return Promise.resolve();
+      }
+
       const options = cloneDeep(originalOptions);
 
       if (!options.body) {
@@ -540,7 +544,6 @@ const MeetingUtil = {
 
       MeetingUtil.addSequence(meeting, options.body);
 
-      // @ts-ignore
       return meeting
         .request(options)
         .then((response) => MeetingUtil.updateLocusWithDelta(meeting, response));
