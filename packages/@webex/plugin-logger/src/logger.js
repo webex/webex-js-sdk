@@ -377,7 +377,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         stringified.unshift('|  '.repeat(this.groupLevel));
         buffer.push(stringified);
         if (buffer.length > historyLength) {
-          buffer.shift();
+          buffer.splice(0, buffer.length - historyLength);
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;

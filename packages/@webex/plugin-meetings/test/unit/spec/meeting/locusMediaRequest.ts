@@ -67,8 +67,8 @@ describe('LocusMediaRequest.send()', () => {
     muteOptions: {},
   };
 
-  const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}) => {
-    return {
+  const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}, sequence = undefined) => {
+    const body: any = {
       device: {
         url: 'deviceUrl',
         deviceType: 'deviceType',
@@ -85,7 +85,13 @@ describe('LocusMediaRequest.send()', () => {
       clientMediaPreferences: {
         preferTranscoding: true,
       },
+    };
+
+    if (sequence) {
+      body.sequence = sequence;
     }
+
+    return body;
   };
 
   beforeEach(() => {
@@ -108,7 +114,7 @@ describe('LocusMediaRequest.send()', () => {
     webexRequestStub = sinon.stub(locusMediaRequest, 'request').resolves(fakeLocusResponse);
   })
 
-  const sendLocalMute = (muteOptions) => locusMediaRequest.send({...exampleLocalMuteRequestBody, muteOptions});
+  const sendLocalMute = (muteOptions, overrides={}) => locusMediaRequest.send({...exampleLocalMuteRequestBody, ...overrides, muteOptions});
 
   const sendRoapMessage = (messageType) => {
     const request = cloneDeep(exampleRoapRequestBody);
@@ -147,6 +153,22 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: false}),
+    });
+  });
+
+  it('sends a local mute request with sequence', async () => {
+    await ensureConfluenceCreated();
+
+    const sequence = {some: 'sequence data'};
+
+    const result = await sendLocalMute({audioMuted: false, videoMuted: false}, {sequence});
+
+    assert.equal(result, fakeLocusResponse);
+
+    assert.calledOnceWithExactly(webexRequestStub, {
+      method: 'PUT',
+      uri: 'fakeMeetingSelfUrl/media',
+      body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: false}, sequence),
     });
   });
 
