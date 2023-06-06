@@ -5879,6 +5879,8 @@ describe('plugin-meetings', () => {
             isAccepting,
             otherBeneficiaryId,
             annotation,
+            url,
+            shareInstanceId
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -5958,7 +5960,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId},
                     });
                   }
                 }
