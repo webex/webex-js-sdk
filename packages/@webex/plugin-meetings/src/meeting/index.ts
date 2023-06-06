@@ -2339,6 +2339,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                 {
                   memberId: contentShare.beneficiaryId,
+                  url: contentShare.url,
+                  shareInstanceId: contentShare.shareInstanceId,
                 }
               );
             };
@@ -2413,6 +2415,8 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
           {
             memberId: contentShare.beneficiaryId,
+            url: contentShare.url,
+            shareInstanceId: contentShare.shareInstanceId,
           }
         );
         this.members.locusMediaSharesUpdate(payload);
