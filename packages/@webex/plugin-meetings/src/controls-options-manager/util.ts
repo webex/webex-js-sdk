@@ -202,6 +202,13 @@ class Utils {
     return Utils.hasHints({requiredHints, displayHints});
   }
 
+  /**
+   * Validate if a video-scoped control is allowed to be sent to the service.
+   *
+   * @param {ControlConfig<VideoProperties>} control - Video control config to validate.
+   * @param {Array<string>} displayHints - All available hints.
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
   public static canUpdateVideo(
     control: ControlConfig<VideoProperties>,
     displayHints: Array<string>
