@@ -2334,6 +2334,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 {
                   memberId: contentShare.beneficiaryId,
                   url: contentShare.url,
+                  shareInstanceId: contentShare.shareInstanceId,
                 }
               );
             };
