@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.118](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.117...v3.0.0-beta.118) (2023-06-06)
+
+
+### Features
+
+* **Live-Annotation:** add url and shareInstanceId ([#2851](https://github.com/webex/webex-js-sdk/issues/2851)) ([a9721fc](https://github.com/webex/webex-js-sdk/commit/a9721fc088f9ed24f575fae1b5c2d9538de57a60))
+
 ## [3.0.0-beta.117](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.116...v3.0.0-beta.117) (2023-06-06)
 
 ## [3.0.0-beta.116](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.115...v3.0.0-beta.116) (2023-06-01)
