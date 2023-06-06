@@ -7180,7 +7180,7 @@ __metadata:
     typedoc: 0.22.13
     typescript: 4.6.3
     uuid: 8.3.2
-    webex: 1.154.1
+    webex: "workspace:^"
     xstate: 4.30.6
   languageName: unknown
   linkType: soft
@@ -7230,16 +7230,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/common-timers@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/common-timers@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    envify: ^4.1.0
-  checksum: fbb665f725a549ead06347381c2d2a20ed0e317905b2293f5ffc0a0924e375c43a247ab220035939869dba39503946ba250e8a0af70bdc764280861b652fb494
-  languageName: node
-  linkType: hard
-
 "@webex/common-timers@workspace:^, @webex/common-timers@workspace:packages/@webex/common-timers":
   version: 0.0.0-use.local
   resolution: "@webex/common-timers@workspace:packages/@webex/common-timers"
@@ -7257,22 +7247,6 @@ __metadata:
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
-
-"@webex/common@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/common@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    backoff: ^2.5.0
-    core-decorators: ^0.20.0
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    safe-buffer: ^5.2.0
-    urlsafe-base64: ^1.0.0
-  checksum: e516c2d36ba256393a76622bccd1e27149d7d6acedfd4f506485f55e105a79375251f3fb772402f148bb60f3f5b860f828b9579d7db65a6db605390864372bf7
-  languageName: node
-  linkType: hard
 
 "@webex/common@workspace:^, @webex/common@workspace:packages/@webex/common":
   version: 0.0.0-use.local
@@ -7363,17 +7337,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/helper-html@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/helper-html@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: e1896a33932ebe06ed713e98b37654f09ea517cf84057310286a57f3769ace9b73e5882e5cbb81e175e3b47fbbe9f989689e5515c4413e00c7ac19a22f8cb1af
-  languageName: node
-  linkType: hard
-
 "@webex/helper-html@workspace:^, @webex/helper-html@workspace:packages/@webex/helper-html":
   version: 0.0.0-use.local
   resolution: "@webex/helper-html@workspace:packages/@webex/helper-html"
@@ -7392,22 +7355,6 @@ __metadata:
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
-
-"@webex/helper-image@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/helper-image@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/http-core": 1.154.1
-    envify: ^4.1.0
-    exifr: ^5.0.3
-    gm: ^1.23.1
-    lodash: ^4.17.21
-    mime: ^2.4.4
-    safe-buffer: ^5.2.0
-  checksum: b2d7b2f28c204a7fb89e607af0367a576a75d2a0bf33be3a34aefc15428c39dab825da78f2123c7ad9c70eefa7014ab83d58a0041ccb413ff041ae7ed883d021
-  languageName: node
-  linkType: hard
 
 "@webex/helper-image@workspace:^, @webex/helper-image@workspace:packages/@webex/helper-image":
   version: 0.0.0-use.local
@@ -7434,26 +7381,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/http-core@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/http-core@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    envify: ^4.1.0
-    file-type: ^16.0.1
-    global: ^4.4.0
-    is-function: ^1.0.1
-    lodash: ^4.17.21
-    parse-headers: ^2.0.2
-    qs: ^6.7.0
-    request: ^2.88.0
-    safe-buffer: ^5.2.0
-    xtend: ^4.0.2
-  checksum: 43a8a02e1294d4c9c33b65fbdcb3ec139e1f4f9b6d52c159ec4dc7c33579c44483ec33a1d7196d2067a3d3af8c0e21884801a82776715addb94e775b1d9040ca
-  languageName: node
-  linkType: hard
 
 "@webex/http-core@workspace:^, @webex/http-core@workspace:packages/@webex/http-core":
   version: 0.0.0-use.local
@@ -7581,22 +7508,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-calendar@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-calendar@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-encryption": 1.154.1
-    "@webex/webex-core": 1.154.1
-    btoa: ^1.2.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 8661663da9924aa083c313ccada65441460ca75a79c26eea5f42f180e00a4c1ce84cea5a86e714dd1a0e924e7092facb14f6816926e916c762c9fad64d4af9d4
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-calendar@workspace:^, @webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar"
@@ -7622,26 +7533,6 @@ __metadata:
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-conversation@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-conversation@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/helper-html": 1.154.1
-    "@webex/helper-image": 1.154.1
-    "@webex/internal-plugin-encryption": 1.154.1
-    "@webex/internal-plugin-user": 1.154.1
-    "@webex/webex-core": 1.154.1
-    crypto-js: ^4.1.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    node-scr: ^0.3.0
-    uuid: ^3.3.2
-  checksum: 79ebb8a7ebb5f71e2aa1e01428c72e96db2af0c20b38435ee7121c8dada6806217e58890e0df64d656137646226c806bcd31e25fd984f07368e91756f4b2e8c2
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-conversation@workspace:^, @webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation":
   version: 0.0.0-use.local
@@ -7674,23 +7565,6 @@ __metadata:
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-device@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-device@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/http-core": 1.154.1
-    "@webex/webex-core": 1.154.1
-    ampersand-collection: ^2.0.2
-    ampersand-state: ^5.0.3
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 1119fe970afc2151ecf2459ac06a03623da2588f68bb53490d8a5ec8d7d2de6042ee438a42b9f7bad035995fa37d04c5dd576185a09548635ba03ef2bcac108b
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-device@workspace:^, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
   version: 0.0.0-use.local
@@ -7769,32 +7643,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-encryption@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-encryption@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/http-core": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    asn1js: ^2.0.26
-    debug: ^3.2.6
-    envify: ^4.1.0
-    isomorphic-webcrypto: ^2.3.8
-    lodash: ^4.17.21
-    node-jose: ^2.0.0
-    node-kms: ^0.4.0
-    node-scr: ^0.3.0
-    pkijs: ^2.1.84
-    safe-buffer: ^5.2.0
-    valid-url: ^1.0.9
-  checksum: eeedcdbc5ab5dffad5c97e33411b51dd6775724d520340831f1a2453935732d8fe5490930184a59c13fca6334581a012fe1493b5c20f2b141a56c1784e54abd1
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-encryption@workspace:^, @webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption"
@@ -7832,20 +7680,6 @@ __metadata:
     valid-url: ^1.0.9
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-feature@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-feature@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 95c6ea79a8ca16c9e3a2c076eef96f915db48f37dea5bc4ea6727fadcb69455d73bd636053418ccb34e70f042aacce6682f3cb391e6edb8e44db085288a503bc
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-feature@workspace:^, @webex/internal-plugin-feature@workspace:packages/@webex/internal-plugin-feature":
   version: 0.0.0-use.local
@@ -7938,22 +7772,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-lyra@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-lyra@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-encryption": 1.154.1
-    "@webex/internal-plugin-feature": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: b5c97a5a7a1b80441d8ca6ea17f85d12946464a888c18bb4bb0c738d9ea106f079e37b6e0d2e46a83b5d18dae459230da78a762cd583b100393fa0c9370ebd21
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-lyra@workspace:^, @webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra"
@@ -7983,26 +7801,6 @@ __metadata:
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-mercury@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-mercury@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-feature": 1.154.1
-    "@webex/internal-plugin-metrics": 1.154.1
-    "@webex/webex-core": 1.154.1
-    backoff: ^2.5.0
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    uuid: ^3.3.2
-    ws: ^8.2.2
-  checksum: 6b162b6b6919598f243e784532c1ef56c3aee71f9ea59a03df2c0554d4acf9e4d4db5e30b121470ff173366569d5022ed13a376256a63cfaee826fcc0fda6fc3
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-mercury@workspace:^, @webex/internal-plugin-mercury@workspace:packages/@webex/internal-plugin-mercury":
   version: 0.0.0-use.local
@@ -8036,20 +7834,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-metrics@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-metrics@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 7528ef3ad2d41c759acc915806a58bcb12604b885a41689841a0913184127b76120a55b407b7dc6532bb208ae693a281c35c576a335f04d67764ba0bc4916107
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-metrics@workspace:^, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics"
@@ -8072,19 +7856,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-presence@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-presence@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 42cced8f1b6f33aca6fa2a62ffce360fa3582c29a5da47ffc0cab0e28854577c3663f605b0c762464dc9e7fa9def9ff2db790e3a3aac56d8dde7df9b355fdab5
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-presence@workspace:^, @webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence":
   version: 0.0.0-use.local
@@ -8141,21 +7912,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-search@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-search@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-encryption": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 1244dfe18db507d667e9fd3b0169812bed538e97419be7c9343463da7bcf134ce182ee55357d174b5e7097e7cbde0199d160f6883814eebfde756f5cb0cc6656
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-search@workspace:^, @webex/internal-plugin-search@workspace:packages/@webex/internal-plugin-search":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-search@workspace:packages/@webex/internal-plugin-search"
@@ -8181,20 +7937,6 @@ __metadata:
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-support@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-support@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    uuid: ^3.3.2
-  checksum: 09da5ab5f21feb2b3fb5bed525e1316371b3088b4908f6631217fefc70ae3e78ea98fbf21734355b8b8db16159e551f491821c5c85bb5fc285e58fff5975aff9
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-support@workspace:^, @webex/internal-plugin-support@workspace:packages/@webex/internal-plugin-support":
   version: 0.0.0-use.local
@@ -8245,20 +7987,6 @@ __metadata:
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
-
-"@webex/internal-plugin-user@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/internal-plugin-user@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: fc41b71d563599a2e13af5ec51fed7c2eab229edb1327da9de7d7d005ad486b843fe4c6bfb9a822feb89eabaac2dca007ccf5a773b809c237c9c6500d1458074
-  languageName: node
-  linkType: hard
 
 "@webex/internal-plugin-user@workspace:^, @webex/internal-plugin-user@workspace:packages/@webex/internal-plugin-user":
   version: 0.0.0-use.local
@@ -8497,22 +8225,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-attachment-actions@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-attachment-actions@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    debug: ^3.2.6
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 3b3ffda78a719139788f8b35908f523c1f131982e022881b6fd53eff5b9de8ee4617994181b7da313e09018f77692501c619e7f81872c6b049580a0085f8f32a
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-attachment-actions@workspace:^, @webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions"
@@ -8567,21 +8279,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization-browser@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-authorization-browser@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    uuid: ^3.3.2
-  checksum: c431d847ee5b7572d62746610cc89d08b16f78ffced6ab081d9f9cfbb7321ce54880176d611c99f9a0f4690541816db0267f3a4f7c3983778307395f14fc20f0
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-authorization-browser@workspace:^, @webex/plugin-authorization-browser@workspace:packages/@webex/plugin-authorization-browser":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization-browser@workspace:packages/@webex/plugin-authorization-browser"
@@ -8612,19 +8309,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization-node@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-authorization-node@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 3f2bb69212be6c6aa06d521daac222ef29b7f8920da86c32b5045228a55ec609428d1924e8591d98a3027f5fe6cd1e89dbd93b885f96c0701545a43c74084e25
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-authorization-node@workspace:^, @webex/plugin-authorization-node@workspace:packages/@webex/plugin-authorization-node":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization-node@workspace:packages/@webex/plugin-authorization-node"
@@ -8650,18 +8334,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-authorization@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/plugin-authorization-browser": 1.154.1
-    "@webex/plugin-authorization-node": 1.154.1
-    envify: ^4.1.0
-  checksum: ca151e78fa190c875d9261c4096a4a51ed35a8947387c90360d0d26802fdfb6f1a0c410d7d2c3174868d3a031856c4af64cf4808d9c40930220f1c2dc513dec4
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-authorization@workspace:^, @webex/plugin-authorization@workspace:packages/@webex/plugin-authorization":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization@workspace:packages/@webex/plugin-authorization"
@@ -8681,22 +8353,6 @@ __metadata:
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-device-manager@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-device-manager@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-lyra": 1.154.1
-    "@webex/internal-plugin-search": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-    uuid: ^3.3.2
-  checksum: ad4ce3ace5831bdee03c0dd9d4d1c53117d901027deb2ac33cac4db8c4645f0508c1a76cc08bd135d3775f2b968859b4111305d50b9581b88a4ac6abb2b7b660
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-device-manager@workspace:^, @webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager":
   version: 0.0.0-use.local
@@ -8725,19 +8381,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-logger@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-logger@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 0e3e1bd487c954b70fcf31d453dfb29782a736ecb0c06d99f9473ef574a13065ccb35147bcb02ddccb01f3836a01255f8906e2e15a302d79db3ba5fa73432830
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-logger@workspace:^, @webex/plugin-logger@workspace:packages/@webex/plugin-logger":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-logger@workspace:packages/@webex/plugin-logger"
@@ -8759,30 +8402,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-meetings@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-meetings@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    bowser: ^2.11.0
-    btoa: ^1.2.1
-    envify: ^4.1.0
-    global: ^4.4.0
-    ip-anonymize: ^0.1.0
-    javascript-state-machine: ^3.1.0
-    lodash: ^4.17.21
-    readable-stream: ^3.6.0
-    sdp-transform: ^2.12.0
-    uuid: ^3.3.2
-    webrtc-adapter: ^7.7.0
-  checksum: 90b7b2b440a3288d5181f9f7d91ca1d010ebafe6f237525823018c67b5e3dc28ffebf35fb46b7647ffa870c7c2e1b3c9b7e0e2fae8d01ca85ba290b25cc6cd15
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-meetings@workspace:^, @webex/plugin-meetings@workspace:packages/@webex/plugin-meetings":
   version: 0.0.0-use.local
@@ -8832,22 +8451,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-memberships@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-memberships@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    debug: ^3.2.6
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: d262cf649cf5f62da1da8568ae61de912f086204e4d55c0ffcf71479f3d5930dbca75563db1cb14adee8788ea8ca93442deeb1650a8087bca057f09cf3ed9f4f
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-memberships@workspace:^, @webex/plugin-memberships@workspace:packages/@webex/plugin-memberships":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-memberships@workspace:packages/@webex/plugin-memberships"
@@ -8876,21 +8479,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-messages@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-messages@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: ca6504f90bd348ab2b8be918b795ffa94b8c02608cb603092e419a7aa03fa36642adc8571f228141acff5c3bc1938af039af705e4428c79828f89dcc4db20a3d
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-messages@workspace:^, @webex/plugin-messages@workspace:packages/@webex/plugin-messages":
   version: 0.0.0-use.local
@@ -8922,18 +8510,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-people@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-people@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 61165c17b77d7c052021e321395af8bca95dc3ff6389203f04f6dd9d87ca68b942c307655f504f0bce7e8bd609a8a0a1ad7ae53e73d2d95322a39d3c7ce2ee74
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-people@workspace:^, @webex/plugin-people@workspace:packages/@webex/plugin-people":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-people@workspace:packages/@webex/plugin-people"
@@ -8955,22 +8531,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-rooms@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-rooms@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/internal-plugin-conversation": 1.154.1
-    "@webex/internal-plugin-mercury": 1.154.1
-    "@webex/webex-core": 1.154.1
-    debug: ^3.2.6
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: 32484316bff3fc209ebe354ce0f37651c5b5ebe4ec14fe99be77e27be7044114beb41df9bf61d45367af8e912f67e9f7419a9243b2086c9492afcf729fcd8ee8
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-rooms@workspace:^, @webex/plugin-rooms@workspace:packages/@webex/plugin-rooms":
   version: 0.0.0-use.local
@@ -9001,17 +8561,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-team-memberships@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-team-memberships@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 87d4d9f569c7e397fb3ee4dbcfd6d5611987ee580e35db155b07c54ddfe70a153141b4fdfd926ddd5cf6056369f92da7b1787ed17e7868309a5ddd28b955ba2a
-  languageName: node
-  linkType: hard
-
 "@webex/plugin-team-memberships@workspace:^, @webex/plugin-team-memberships@workspace:packages/@webex/plugin-team-memberships":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-team-memberships@workspace:packages/@webex/plugin-team-memberships"
@@ -9035,17 +8584,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-teams@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-teams@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: a6ef2d36d56ade30fdbe693a3aa18ff2f1c2d8b3f701f8b5a196c5aee853dc71f667f3c3b08d1563d8f7442413feafc785538c84ef7aa358f54096291c15e029
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-teams@workspace:^, @webex/plugin-teams@workspace:packages/@webex/plugin-teams":
   version: 0.0.0-use.local
@@ -9071,17 +8609,6 @@ __metadata:
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
-
-"@webex/plugin-webhooks@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/plugin-webhooks@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 6169a3d769920bbd0e77af99aa818aaba5cc652163efb65366614ad18d21a3cd33a7def4bc2954599d4fd8532a62feab2fcc57d64eaa45f4f03c9ffcb4d745ea
-  languageName: node
-  linkType: hard
 
 "@webex/plugin-webhooks@workspace:^, @webex/plugin-webhooks@workspace:packages/@webex/plugin-webhooks":
   version: 0.0.0-use.local
@@ -9178,17 +8705,6 @@ __metadata:
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
-
-"@webex/storage-adapter-local-storage@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/storage-adapter-local-storage@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-  checksum: 8428db4c0aca4d03e6af49ee981d7da350a7b91e79725f74b06f4a0c359c34350b1b230e72dede6cb4c5cec0dd16f664cf38bfa94d56af70157fdd53355deae1
-  languageName: node
-  linkType: hard
 
 "@webex/storage-adapter-local-storage@workspace:^, @webex/storage-adapter-local-storage@workspace:packages/@webex/storage-adapter-local-storage":
   version: 0.0.0-use.local
@@ -9577,28 +9093,6 @@ __metadata:
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
   checksum: 7b4459125b037fcf6b93176866f1315e5080b560b12c84b29d68d70e21beeb35594dbb751af19b6a6b3230354d59c2f6c417e7cb115ccf1d721c37072ce1d44d
-  languageName: node
-  linkType: hard
-
-"@webex/webex-core@npm:1.154.1":
-  version: 1.154.1
-  resolution: "@webex/webex-core@npm:1.154.1"
-  dependencies:
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/common": 1.154.1
-    "@webex/common-timers": 1.154.1
-    "@webex/http-core": 1.154.1
-    "@webex/webex-core": 1.154.1
-    ampersand-collection: ^2.0.2
-    ampersand-events: ^2.0.2
-    ampersand-state: ^5.0.3
-    core-decorators: ^0.20.0
-    crypto-js: ^4.1.1
-    envify: ^4.1.0
-    jsonwebtoken: ^8.5.1
-    lodash: ^4.17.21
-    uuid: ^3.3.2
-  checksum: 3e0f51d4f2b88ab505c94b624aa01779ab97370b991c25e051e5228c12d2e3c21f852e62b9e687ac521e29377a1769056b92f4a8e6f20d2ca07ce98740b0d456
   languageName: node
   linkType: hard
 
@@ -14125,7 +13619,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:^3.1.0, debug@npm:^3.2.6, debug@npm:^3.2.7":
+"debug@npm:^3.1.0, debug@npm:^3.2.7":
   version: 3.2.7
   resolution: "debug@npm:3.2.7"
   dependencies:
@@ -21842,24 +21336,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsonwebtoken@npm:^8.5.1":
-  version: 8.5.1
-  resolution: "jsonwebtoken@npm:8.5.1"
-  dependencies:
-    jws: ^3.2.2
-    lodash.includes: ^4.3.0
-    lodash.isboolean: ^3.0.3
-    lodash.isinteger: ^4.0.4
-    lodash.isnumber: ^3.0.3
-    lodash.isplainobject: ^4.0.6
-    lodash.isstring: ^4.0.1
-    lodash.once: ^4.0.0
-    ms: ^2.1.1
-    semver: ^5.6.0
-  checksum: 93c9e3f23c59b758ac88ba15f4e4753b3749dfce7a6f7c40fb86663128a1e282db085eec852d4e0cbca4cefdcd3a8275ee255dbd08fcad0df26ad9f6e4cc853a
-  languageName: node
-  linkType: hard
-
 "jsonwebtoken@npm:^9.0.0":
   version: 9.0.0
   resolution: "jsonwebtoken@npm:9.0.0"
@@ -23025,13 +22501,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.includes@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "lodash.includes@npm:4.3.0"
-  checksum: 71092c130515a67ab3bd928f57f6018434797c94def7f46aafa417771e455ce3a4834889f4267b17887d7f75297dfabd96231bf704fd2b8c5096dc4a913568b6
-  languageName: node
-  linkType: hard
-
 "lodash.isarguments@npm:^3.0.0":
   version: 3.1.0
   resolution: "lodash.isarguments@npm:3.1.0"
@@ -23043,13 +22512,6 @@ __metadata:
   version: 3.0.4
   resolution: "lodash.isarray@npm:3.0.4"
   checksum: 3b298fb76ff16981353f7d0695d8680be9451b74d2e76714ddbd903a90fbaa8e1d84979d0ae99325f5a9033776771154b19e05027ab23de83202251c8abe81b5
-  languageName: node
-  linkType: hard
-
-"lodash.isboolean@npm:^3.0.3":
-  version: 3.0.3
-  resolution: "lodash.isboolean@npm:3.0.3"
-  checksum: b70068b4a8b8837912b54052557b21fc4774174e3512ed3c5b94621e5aff5eb6c68089d0a386b7e801d679cd105d2e35417978a5e99071750aa2ed90bffd0250
   languageName: node
   linkType: hard
 
@@ -23067,24 +22529,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.isinteger@npm:^4.0.4":
-  version: 4.0.4
-  resolution: "lodash.isinteger@npm:4.0.4"
-  checksum: 6034821b3fc61a2ffc34e7d5644bb50c5fd8f1c0121c554c21ac271911ee0c0502274852845005f8651d51e199ee2e0cfebfe40aaa49c7fe617f603a8a0b1691
-  languageName: node
-  linkType: hard
-
 "lodash.ismatch@npm:^4.4.0":
   version: 4.4.0
   resolution: "lodash.ismatch@npm:4.4.0"
   checksum: a393917578842705c7fc1a30fb80613d1ac42d20b67eb26a2a6004d6d61ee90b419f9eb320508ddcd608e328d91eeaa2651411727eaa9a12534ed6ccb02fc705
-  languageName: node
-  linkType: hard
-
-"lodash.isnumber@npm:^3.0.3":
-  version: 3.0.3
-  resolution: "lodash.isnumber@npm:3.0.3"
-  checksum: 913784275b565346255e6ae6a6e30b760a0da70abc29f3e1f409081585875105138cda4a429ff02577e1bc0a7ae2a90e0a3079a37f3a04c3d6c5aaa532f4cab2
   languageName: node
   linkType: hard
 
@@ -23152,13 +22600,6 @@ __metadata:
   version: 4.6.2
   resolution: "lodash.mergewith@npm:4.6.2"
   checksum: a6db2a9339752411f21b956908c404ec1e088e783a65c8b29e30ae5b3b6384f82517662d6f425cc97c2070b546cc2c7daaa8d33f78db7b6e9be06cd834abdeb8
-  languageName: node
-  linkType: hard
-
-"lodash.once@npm:^4.0.0":
-  version: 4.1.1
-  resolution: "lodash.once@npm:4.1.1"
-  checksum: d768fa9f9b4e1dc6453be99b753906f58990e0c45e7b2ca5a3b40a33111e5d17f6edf2f768786e2716af90a8e78f8f91431ab8435f761fef00f9b0c256f6d245
   languageName: node
   linkType: hard
 
@@ -32826,36 +32267,6 @@ __metadata:
       optional: true
   languageName: unknown
   linkType: soft
-
-"webex@npm:1.154.1":
-  version: 1.154.1
-  resolution: "webex@npm:1.154.1"
-  dependencies:
-    "@babel/polyfill": ^7.12.1
-    "@babel/runtime-corejs2": ^7.14.8
-    "@webex/internal-plugin-calendar": 1.154.1
-    "@webex/internal-plugin-device": 1.154.1
-    "@webex/internal-plugin-presence": 1.154.1
-    "@webex/internal-plugin-support": 1.154.1
-    "@webex/plugin-attachment-actions": 1.154.1
-    "@webex/plugin-authorization": 1.154.1
-    "@webex/plugin-device-manager": 1.154.1
-    "@webex/plugin-logger": 1.154.1
-    "@webex/plugin-meetings": 1.154.1
-    "@webex/plugin-memberships": 1.154.1
-    "@webex/plugin-messages": 1.154.1
-    "@webex/plugin-people": 1.154.1
-    "@webex/plugin-rooms": 1.154.1
-    "@webex/plugin-team-memberships": 1.154.1
-    "@webex/plugin-teams": 1.154.1
-    "@webex/plugin-webhooks": 1.154.1
-    "@webex/storage-adapter-local-storage": 1.154.1
-    "@webex/webex-core": 1.154.1
-    envify: ^4.1.0
-    lodash: ^4.17.21
-  checksum: d99a8a6c5fa2e4216bc6dd1b8b74ca1841be43d4f9e2383f3a54df69c11d0be5a360e17d981fb159c8f2b8ddaecabc308ae6aa7fa74a4e415c2250b8d33b3b0c
-  languageName: node
-  linkType: hard
 
 "webex@workspace:^, webex@workspace:packages/webex":
   version: 0.0.0-use.local
