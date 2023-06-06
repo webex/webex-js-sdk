@@ -12,7 +12,7 @@ describe('getShareInstanceId', () => {
 });
 
 describe('getContentUrl', () => {
-  it('getContentUrl return url value', () => {
+  it('getContentUrl return correct url value', () => {
     const stub = Sinon.stub(MediaSharesUtils, 'extractContent').returns({url:'url'});
     const url = MediaSharesUtils.getContentUrl();
     assert.equal(url,'url');
