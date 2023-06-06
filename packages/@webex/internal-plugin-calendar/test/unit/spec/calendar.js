@@ -312,7 +312,7 @@ describe('internal-plugin-calendar', () => {
         });
       });
 
-      describe('#getNotesByUri()', () => {
+      describe('#getNotesByUrl()', () => {
         const uri = 'notesUrl';
 
         it('should fetch the meeting notes', async () => {
@@ -324,7 +324,7 @@ describe('internal-plugin-calendar', () => {
             })
           );
 
-          const res = await webex.internal.calendar.getNotesByUri(uri);
+          const res = await webex.internal.calendar.getNotesByUrl(uri);
 
           assert.equal(res.body.encryptedParticipants.length, 1);
           assert.calledWith(webex.request, {

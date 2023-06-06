@@ -261,7 +261,7 @@ const Calendar = WebexPlugin.extend({
    * @param {String} notesUrl
    * @returns {Promise} Resolves with an object of meeting notes
    */
-  getNotesByUri(notesUrl) {
+  getNotesByUrl(notesUrl) {
     return this.request({
       method: 'GET',
       uri: notesUrl,
