@@ -315,7 +315,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
             type: ANNOTATION_REQUEST_TYPE.ANNOTATION_MESSAGE,
             locusUrl: this.locusUrl,
             content: encryptedContent,
-            version: 'mVersion',
+            version: strokeData.version,
             fromUserId: strokeData.fromUserId,
             fromDeviceUrl: strokeData.fromDeviceUrl,
             shareInstanceId: strokeData.shareInstanceId,
