@@ -3,7 +3,7 @@ import {assert} from "chai";
 import Sinon from "sinon";
 
 describe('getShareInstanceId', () => {
-  it('getShareInstanceId return shareInstanceId value', () => {
+  it('getShareInstanceId return correct shareInstanceId value', () => {
     const stub = Sinon.stub(MediaSharesUtils, 'extractContent').returns({ floor:{shareInstanceId:'shareInstanceId'}});
     const shareInstanceId = MediaSharesUtils.getShareInstanceId();
     assert.equal(shareInstanceId,'shareInstanceId');
