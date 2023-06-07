@@ -177,6 +177,14 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasRaiseHandChanged, true);
       });
 
+      it('returns hasVideoChanged = true when changed', () => {
+        const newControls = {video: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasVideoChanged, true);
+      });
+
       it('returns hasEntryExitToneChanged = true when mode changed', () => {
         const newControls = {
           entryExitTone: {

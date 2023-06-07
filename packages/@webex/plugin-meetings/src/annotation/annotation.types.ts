@@ -8,6 +8,7 @@ type StrokeData = {
   content: string;
   shareInstanceId: string;
   encryptionKeyUrl: string;
+  version: string;
 };
 
 type RequestData = {

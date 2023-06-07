@@ -14,6 +14,8 @@ MediaSharesUtils.parse = (mediaShares: object) => {
         beneficiaryId: MediaSharesUtils.getContentBeneficiaryId(mediaShares),
         disposition: MediaSharesUtils.getContentDisposition(mediaShares),
         annotation: MediaSharesUtils.getContentAnnotation(mediaShares),
+        url: MediaSharesUtils.getContentUrl(mediaShares),
+        shareInstanceId: MediaSharesUtils.getShareInstanceId(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
@@ -154,6 +156,36 @@ MediaSharesUtils.getContentAnnotation = (mediaShares: object) => {
   }
 
   return extractContent.annotation;
+};
+
+/**
+ * get url is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentUrl = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.url) {
+    return undefined;
+  }
+
+  return extractContent.url;
+};
+
+/**
+ * get shareInstanceId is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getShareInstanceId = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.floor || !extractContent.floor.shareInstanceId) {
+    return undefined;
+  }
+
+  return extractContent.floor.shareInstanceId;
 };
 
 /**

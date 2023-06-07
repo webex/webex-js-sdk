@@ -124,6 +124,9 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       hasRaiseHandChanged:
         current?.raiseHand?.enabled && current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
 
+      hasVideoChanged:
+        current?.video?.enabled && current?.video?.enabled !== previous?.video?.enabled,
+
       hasRecordingPausedChanged:
         current?.record &&
         !isEqual(previous?.record?.paused, current.record.paused) &&

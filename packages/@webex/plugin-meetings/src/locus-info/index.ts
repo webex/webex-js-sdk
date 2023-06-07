@@ -707,6 +707,7 @@ export default class LocusInfo extends EventsScope {
           hasReactionDisplayNamesChanged,
           hasViewTheParticipantListChanged,
           hasRaiseHandChanged,
+          hasVideoChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -756,6 +757,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
           {state: current.raiseHand}
+        );
+      }
+
+      if (hasVideoChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+          {state: current.video}
         );
       }
 

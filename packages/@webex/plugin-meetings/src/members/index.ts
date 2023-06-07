@@ -97,8 +97,14 @@ export default class Members extends StatelessWebexPlugin {
      * @private
      * @memberof Members
      */
+
     // @ts-ignore
-    this.membersRequest = new MembersRequest({}, options);
+    this.membersRequest = new MembersRequest(
+      {
+        meeting: attrs.meeting,
+      },
+      options
+    );
     /**
      * The Members Collection cache
      * @instance

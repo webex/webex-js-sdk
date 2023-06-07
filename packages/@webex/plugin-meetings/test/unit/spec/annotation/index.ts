@@ -246,6 +246,7 @@ describe('live-annotation', () => {
           locusUrl: "https://locus.wbx2.com/locus/api/v1/loci/163c1787-c1f5-47cc-95eb-ab2d660999e6",
           shareInstanceId: "7fa6fe07-dcb1-41ad-973d-7bcf65fab55d",
           encryptionKeyUrl: "encryptionKeyUrl",
+          version: '1',
         };
 
         annotationService.publishEncrypted(strokeData.content, strokeData);
@@ -264,7 +265,7 @@ describe('live-annotation', () => {
                 type: ANNOTATION_REQUEST_TYPE.ANNOTATION_MESSAGE,
                 locusUrl: locusUrl,
                 content: strokeData.content,
-                version: "mVersion",
+                version: '1',
                 fromUserId: strokeData.fromUserId,
                 fromDeviceUrl: strokeData.fromDeviceUrl,
                 shareInstanceId: strokeData.shareInstanceId,

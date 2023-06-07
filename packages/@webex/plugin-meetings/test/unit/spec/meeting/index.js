@@ -40,8 +40,10 @@ import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Members from '@webex/plugin-meetings/src/members';
+import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
+import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/request';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
@@ -169,6 +171,8 @@ describe('plugin-meetings', () => {
   let test3;
   let test4;
   let testDestination;
+  let membersSpy;
+  let meetingRequestSpy;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -203,6 +207,8 @@ describe('plugin-meetings', () => {
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.llm.on = sinon.stub();
+    membersSpy = sinon.spy(MembersImport, 'default');
+    meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
@@ -256,6 +262,16 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.deviceUrl, uuid3);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
+          assert.calledOnceWithExactly(
+            membersSpy,
+            {
+              locusUrl: meeting.locusUrl,
+              receiveSlotManager: meeting.receiveSlotManager,
+              mediaRequestManagers: meeting.mediaRequestManagers,
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.roap, Roap);
           assert.instanceOf(meeting.reconnectionManager, ReconnectionManager);
           assert.isNull(meeting.audio);
@@ -270,6 +286,13 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.hostId);
           assert.isNull(meeting.policy);
           assert.instanceOf(meeting.meetingRequest, MeetingRequest);
+          assert.calledOnceWithExactly(
+            meetingRequestSpy,
+            {
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.locusInfo, LocusInfo);
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
           assert.instanceOf(meeting.mediaProperties, MediaProperties);
@@ -2963,7 +2986,6 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.dialOut = sinon
             .stub()
             .returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.locusInfo.onFullLocus = sinon.stub().returns(Promise.resolve());
         });
 
         it('with no parameters triggers dial-in, delegating request to meetingRequest correctly', async () => {
@@ -2976,11 +2998,9 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
 
           meeting.meetingRequest.dialIn.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial in urls should match
           await meeting.usePhoneAudio();
@@ -2991,7 +3011,6 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
         });
 
@@ -3008,11 +3027,9 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
 
           meeting.meetingRequest.dialOut.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial out urls should match
           await meeting.usePhoneAudio(phoneNumber);
@@ -3024,7 +3041,6 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
         });
 
@@ -4947,6 +4963,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to MEETING_CONTROLS_VIDEO_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+            {state},
+          );
+        });
+
         it('listens to the timing that user joined into breakout', async () => {
           const mainLocusUrl = 'mainLocusUrl123';
 
@@ -5376,28 +5410,7 @@ describe('plugin-meetings', () => {
           checkParseMeetingInfo(expectedInfoToParse);
         });
       });
-      describe('#parseLocus', () => {
-        describe('when CALL and participants', () => {
-          beforeEach(() => {
-            meeting.setLocus = sinon.stub().returns(true);
-            MeetingUtil.getLocusPartner = sinon.stub().returns({person: {sipUrl: uuid3}});
-          });
-          it('should parse the locus object and set meeting properties and return null', () => {
-            meeting.type = 'CALL';
-            meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
-            assert.calledOnce(meeting.setLocus);
-            assert.calledWith(meeting.setLocus, {
-              url: url1,
-              participants: [{id: uuid1}],
-              self: {id: uuid2},
-            });
-            assert.calledOnce(MeetingUtil.getLocusPartner);
-            assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
-            assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
-            assert.equal(meeting.sipUri, uuid3);
-          });
-        });
-      });
+
       describe('#setCorrelationId', () => {
         it('should set the correlationId and return undefined', () => {
           assert.ok(meeting.correlationId);
@@ -5748,8 +5761,9 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusInfo.initialSetup = sinon.stub().returns(true);
         });
+
         it('should read the locus object, set on the meeting and return null', () => {
-          meeting.parseLocus({
+          meeting.setLocus({
             mediaConnections: [test1],
             locusUrl: url1,
             locusId: uuid1,
@@ -5774,6 +5788,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.hostId, uuid4);
         });
       });
+
       describe('preferred video device', () => {
         describe('#getVideoDeviceId', () => {
           it('returns the preferred video device', () => {
@@ -5882,6 +5897,8 @@ describe('plugin-meetings', () => {
             isAccepting,
             otherBeneficiaryId,
             annotation,
+            url,
+            shareInstanceId
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -5961,7 +5978,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId},
                     });
                   }
                 }

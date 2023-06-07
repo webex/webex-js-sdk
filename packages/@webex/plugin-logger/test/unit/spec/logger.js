@@ -48,6 +48,7 @@ describe('plugin-logger', () => {
         logger: Logger,
       },
     });
+    webex.logger.config.historyLength = 10000;
   });
 
   const fallbacks = {
@@ -800,6 +801,44 @@ describe('plugin-logger', () => {
       logSpies.forEach((logSpy) => {
         assert.notCalled(logSpy);
       });
+    });
+  });
+  describe('limit', () => {
+    function logMessages() {
+      return webex.logger.buffer.map((item) => item[3]);
+    }
+
+    it('can be increased in runtime', () => {
+      webex.logger.config.historyLength = 5;
+      for (let i = 0; i < 10; i += 1) {
+        webex.logger.log(i);
+      }
+
+      assert.deepEqual(logMessages(), [5, 6, 7, 8, 9]);
+      assert.lengthOf(webex.logger.buffer, 5);
+
+      webex.logger.config.historyLength = 10;
+      webex.logger.log(10);
+      assert.deepEqual(logMessages(), [5, 6, 7, 8, 9, 10]);
+      assert.lengthOf(webex.logger.buffer, 6);
+    });
+
+    it('can be decreased in runtime', () => {
+      for (let i = 0; i < 10; i += 1) {
+        webex.logger.log(i);
+      }
+
+      assert.deepEqual(logMessages(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      assert.lengthOf(webex.logger.buffer, 10);
+
+      webex.logger.config.historyLength = 5;
+
+      // Log buffer truncated when the next log added
+      assert.lengthOf(webex.logger.buffer, 10);
+
+      webex.logger.log(10);
+      assert.deepEqual(logMessages(), [6, 7, 8, 9, 10]);
+      assert.lengthOf(webex.logger.buffer, 5);
     });
   });
 });
