@@ -8,7 +8,7 @@ import {registerInternalPlugin} from '@webex/webex-core';
 
 import Metrics from './metrics';
 import NewMetrics from './new-metrics';
-import {userAgentToString} from './call-diagnostic-metrics.util';
+import {userAgentToString} from './call-diagnostic/call-diagnostic-metrics.util';
 import config from './config';
 
 registerInternalPlugin('metrics', Metrics, {

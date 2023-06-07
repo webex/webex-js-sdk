@@ -1,6 +1,6 @@
-import {ClientEvent as RawClientEvent} from './ClientEvent';
-import {FeatureEvent as RawFeatureEvent} from './FeatureEvent';
-import {SubmitClientEventOptions} from './call-diagnostic-metrics';
+import {ClientEvent as RawClientEvent} from './call-diagnostic/types/ClientEvent';
+import {FeatureEvent as RawFeatureEvent} from './call-diagnostic/types/FeatureEvent';
+import {SubmitClientEventOptions} from './call-diagnostic/call-diagnostic-metrics';
 
 export type InternalEvent = {
   name: 'client.pageJMT.received';

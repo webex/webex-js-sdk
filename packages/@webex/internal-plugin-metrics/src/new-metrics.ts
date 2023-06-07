@@ -4,8 +4,10 @@
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 
-import CallDiagnosticMetrics, {SubmitClientEventOptions} from './call-diagnostic-metrics';
-import BehavioralMetrics from './behavioral-metrics';
+import CallDiagnosticMetrics, {
+  SubmitClientEventOptions,
+} from './call-diagnostic/call-diagnostic-metrics';
+import BehavioralMetrics from './behavioral/behavioral-metrics';
 import {
   RecursivePartial,
   ClientEvent,
@@ -13,16 +15,19 @@ import {
   BehavioralEvent,
   OperationalEvent,
 } from './types';
-import CallAnalyzerLatencies from './call-diagnostic-metrics-latencies';
+import CallAnalyzerLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 
 /**
- *
+ * Metrics plugin to centralize all types of metrics.
  */
 class Metrics extends WebexPlugin {
   // eslint-disable-next-line no-use-before-define
   static instance: Metrics;
+
+  // latencies required for CA
   callAnalyzerLatencies: CallAnalyzerLatencies;
 
+  // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
   behavioralMetrics: BehavioralMetrics;
 
@@ -48,25 +53,24 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
+   * Initialize Call diagnostic class
    * @param meetingCollection
    * @param webex
    */
   initialSetupCallDiagnosticMetrics(meetingCollection: any, webex: object) {
-    this.callDiagnosticMetrics.meetingCollection = meetingCollection;
-    this.callDiagnosticMetrics.webex = webex;
+    this.callDiagnosticMetrics.initialSetup(meetingCollection, webex);
   }
 
   /**
-   *
+   * Initialize behavioral class
    */
   initialSetupBehavioralMetrics() {
     // TODO: not implemented
   }
 
   /**
-   *
-   * @param param0
+   * Used for internal purposes only
+   * @param args
    */
   submitInternalEvent({
     name,
@@ -81,9 +85,8 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
-   * @param name
-   * @param payload
+   * Behavioral event
+   * @param args
    */
   submitBehavioralEvent({
     name,
@@ -99,9 +102,8 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
-   * @param name
-   * @param payload
+   * Operational event
+   * @param args
    */
   submitOperationalEvent({
     name,
@@ -117,11 +119,10 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
-   * @param name
-   * @param payload
+   * Media Quality Event
+   * @param args
    */
-  submitMQEEvent({
+  submitMQE({
     name,
     payload,
     options,
@@ -135,9 +136,8 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
-   * @param name
-   * @param payload
+   * Feature Usage Event
+   * @param args
    */
   submitFeatureEvent({
     name,
@@ -153,9 +153,8 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   *
-   * @param payload
-   * @returns
+   * Client Event (used for CA)
+   * @param args
    */
   submitClientEvent({
     name,

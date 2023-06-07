@@ -5,12 +5,12 @@ import {BrowserDetection} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {anonymizeIPAddress, clearEmpty, userAgentToString} from './call-diagnostic-metrics.util';
-import {CLIENT_NAME} from './config';
-import {Event as RawEvent} from './Event';
-import {FeatureEvent} from './FeatureEvent';
-import {ClientEvent} from './ClientEvent';
+import {CLIENT_NAME} from '../config';
+import {Event as RawEvent} from './types/Event';
+import {FeatureEvent} from './types/FeatureEvent';
+import {ClientEvent} from './types/ClientEvent';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
-import {RecursivePartial} from './types';
+import {RecursivePartial} from '../types';
 
 type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent};
 
@@ -31,7 +31,6 @@ type GetIdentifiersOptions = {
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
-  joinTimes?: ClientEvent['joinTimes'];
   error?: any;
   showToUser?: boolean;
 };
@@ -43,7 +42,6 @@ export type SubmitClientEventOptions = {
  */
 export default class CallDiagnosticMetrics {
   // eslint-disable-next-line no-use-before-define
-  static instance: CallDiagnosticMetrics;
   meetingCollection: any;
   webex: any;
   // @ts-ignore
@@ -55,15 +53,8 @@ export default class CallDiagnosticMetrics {
    * @public
    */
   constructor() {
-    if (!CallDiagnosticMetrics.instance) {
-      CallDiagnosticMetrics.instance = this;
-      this.meetingCollection = null;
-    }
-
-    this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher();
-
+    this.meetingCollection = null;
     // eslint-disable-next-line no-constructor-return
-    return CallDiagnosticMetrics.instance;
   }
 
   /**
@@ -77,6 +68,7 @@ export default class CallDiagnosticMetrics {
   public initialSetup(meetingCollection: any, webex: object) {
     this.meetingCollection = meetingCollection;
     this.webex = webex;
+    this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
   }
 
   /**
@@ -89,7 +81,7 @@ export default class CallDiagnosticMetrics {
     if (meetingId) {
       const meeting = this.meetingCollection.get(meetingId);
       defaultClientType = meeting.config.metrics?.clientType;
-      defaultSubClientType = meeting.config.metrics?.defaultSubClientType;
+      defaultSubClientType = meeting.config.metrics?.subClientType;
     }
 
     if (
@@ -184,7 +176,9 @@ export default class CallDiagnosticMetrics {
     };
 
     // sanitize (remove empty properties, CA requires it)
-    return clearEmpty(event);
+    clearEmpty(event);
+
+    return event;
   }
 
   /**
@@ -223,7 +217,7 @@ export default class CallDiagnosticMetrics {
 
       // append feature event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(featureEventObject, options);
-      this.callDiagnosticEventsBatcher.submitCallDiagnosticEvents(diagnosticEvent);
+      this.submitToCallDiagnostics(diagnosticEvent);
     } else {
       // most likely will be events that are happening outside the meeting.
       throw new Error('Not implemented');
@@ -271,7 +265,7 @@ export default class CallDiagnosticMetrics {
     payload?: RecursivePartial<ClientEvent>;
     options: SubmitClientEventOptions;
   }) {
-    const {meetingId, mediaConnections, joinTimes, error} = options;
+    const {meetingId, mediaConnections, error} = options;
 
     // events that will most likely happen in join phase
     if (meetingId) {
@@ -298,7 +292,6 @@ export default class CallDiagnosticMetrics {
         name,
         canProceed: true,
         identifiers,
-        joinTimes,
         errors,
         eventData: {
           webClientDomain: window.location.hostname,
@@ -310,10 +303,24 @@ export default class CallDiagnosticMetrics {
 
       // append feature event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
-      this.callDiagnosticEventsBatcher.submitCallDiagnosticEvents(diagnosticEvent);
+      this.submitToCallDiagnostics(diagnosticEvent);
     } else {
       // any pre join events or events that are outside the meeting.
       throw new Error('Not implemented');
     }
+  }
+
+  /**
+   * Prepare the event and send the request to metrics-a.
+   * @param event
+   */
+  submitToCallDiagnostics(event: Event) {
+    // build metrics-a event type
+    const finalEvent = {
+      eventPayload: event,
+      type: ['diagnostic-event'],
+    };
+
+    this.callDiagnosticEventsBatcher.request(finalEvent);
   }
 }

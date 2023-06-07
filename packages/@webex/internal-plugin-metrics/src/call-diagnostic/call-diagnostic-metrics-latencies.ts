@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
-import {MetricEventNames} from './types';
+import {MetricEventNames} from '../types';
 
 // we only care about client event and feature event for now
 

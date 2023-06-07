@@ -16,6 +16,7 @@
     "baseUrl": ".",
     "preserveConstEnums": true,
     "removeComments": false,
+    "resolveJsonModule": true,
     "sourceMap": true,
     "stripInternal": true,
     "target": "ES6",

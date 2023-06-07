@@ -7,7 +7,7 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
-import CallDiagnosticEventsBatcher from './call-diagnostic-events-batcher';
+import CallDiagnosticEventsBatcher from './call-diagnostic/call-diagnostic-metrics-batcher';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
