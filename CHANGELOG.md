@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.123](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.122...v3.0.0-beta.123) (2023-06-07)
+
+
+### Features
+
+* **plugin-meetings:** add method to enable music mode ([#2856](https://github.com/webex/webex-js-sdk/issues/2856)) ([7bd7d7e](https://github.com/webex/webex-js-sdk/commit/7bd7d7eedf6b2532106d2f580d870ea33cd897c0))
+
 ## [3.0.0-beta.122](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.121...v3.0.0-beta.122) (2023-06-07)
 
 
