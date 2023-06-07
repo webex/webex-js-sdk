@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.124](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.123...v3.0.0-beta.124) (2023-06-07)
+
+
+### Features
+
+* **calendar:** spark-413846 replace id with uri when call calendar api getPartipants and getNotes ([#2852](https://github.com/webex/webex-js-sdk/issues/2852)) ([acf99d9](https://github.com/webex/webex-js-sdk/commit/acf99d952dcb30feeda440d936eb3028c5aa4789))
+
 ## [3.0.0-beta.123](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.122...v3.0.0-beta.123) (2023-06-07)
 
 
