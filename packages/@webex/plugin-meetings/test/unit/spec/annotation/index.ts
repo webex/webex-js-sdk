@@ -156,7 +156,7 @@ describe('live-annotation', () => {
         await annotationService.processStrokeMessage({encryptionKeyUrl: 'encryptionKeyUrl', content: 'content'});
 
         assert.calledOnceWithExactly(spy, {
-          data: {encryptionKeyUrl: 'encryptionKeyUrl', content: 'decryptedContent'},
+          payload: {encryptionKeyUrl: 'encryptionKeyUrl', content: 'decryptedContent'},
         });
 
       });

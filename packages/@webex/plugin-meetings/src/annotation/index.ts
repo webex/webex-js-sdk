@@ -44,20 +44,22 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private processStrokeMessage(request) {
-    this.decryptContent(request.encryptionKeyUrl, request.content).then((decryptedContent) => {
-      request.content = decryptedContent;
-      TriggerProxy.trigger(
-        this,
-        {
-          file: 'annotation',
-          function: 'processStrokeMessage',
-        },
-        EVENT_TRIGGERS.ANNOTATION_STROKE_DATA,
-        {
-          data: request,
-        }
-      );
-    });
+    this.decryptContent(request.value.encryptionKeyUrl, request.value.content).then(
+      (decryptedContent) => {
+        request.value.content = decryptedContent;
+        TriggerProxy.trigger(
+          this,
+          {
+            file: 'annotation',
+            function: 'processStrokeMessage',
+          },
+          EVENT_TRIGGERS.ANNOTATION_STROKE_DATA,
+          {
+            payload: request.value,
+          }
+        );
+      }
+    );
   }
 
   /** bind all events from mercury
