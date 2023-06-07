@@ -1381,7 +1381,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('#fetchUserPreferredWebexSite', () => {
+      describe('#fetchUserPreferredWebexSite', () => {
         it('should call request.getMeetingPreferences to get the preferred webex site ', async () => {
           assert.isDefined(webex.meetings.preferredWebexSite);
           await webex.meetings.fetchUserPreferredWebexSite();
