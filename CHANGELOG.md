@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.121](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.120...v3.0.0-beta.121) (2023-06-07)
+
+
+### Features
+
+* **breakouts:** emits BREAKOUTS_CLOSING depends on breakoutStatus ([#2855](https://github.com/webex/webex-js-sdk/issues/2855)) ([44cda19](https://github.com/webex/webex-js-sdk/commit/44cda19878759605c0e2ecca399690985480c6b5))
+
 ## [3.0.0-beta.120](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.119...v3.0.0-beta.120) (2023-06-06)
 
 

@@ -93,6 +93,17 @@ const Breakouts = WebexPlugin.extend({
         return '';
       },
     },
+    breakoutStatus: {
+      cache: false,
+      deps: ['isInMainSession', 'status', 'groups'],
+      /**
+       * Returns the breakout status
+       * @returns {boolean}
+       */
+      fn() {
+        return this.isInMainSession ? this.groups?.[0]?.status : this.status;
+      },
+    },
   },
 
   /**
@@ -100,8 +111,8 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   initialize() {
-    this.listenTo(this, 'change:status', () => {
-      if (this.status === BREAKOUTS.STATUS.CLOSING) {
+    this.listenTo(this, 'change:breakoutStatus', () => {
+      if (this.breakoutStatus === BREAKOUTS.STATUS.CLOSING) {
         this.trigger(BREAKOUTS.EVENTS.BREAKOUTS_CLOSING);
       }
     });
