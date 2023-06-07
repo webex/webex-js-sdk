@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.120](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.119...v3.0.0-beta.120) (2023-06-06)
+
+
+### Bug Fixes
+
+* **meetings:** video controls changed events ([#2848](https://github.com/webex/webex-js-sdk/issues/2848)) ([c0b4139](https://github.com/webex/webex-js-sdk/commit/c0b41392d2c76eded95cc8000bd0ac8493020a75))
+
+## [3.0.0-beta.119](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.118...v3.0.0-beta.119) (2023-06-06)
+
+
+### Bug Fixes
+
+* upgrade internal-media-core to version 1.38.1 ([#2854](https://github.com/webex/webex-js-sdk/issues/2854)) ([cc46a18](https://github.com/webex/webex-js-sdk/commit/cc46a183e50e485ba7387f677cedc5ce6fffb269))
+
 ## [3.0.0-beta.118](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.117...v3.0.0-beta.118) (2023-06-06)
 
 
