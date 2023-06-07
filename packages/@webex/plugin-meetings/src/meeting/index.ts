@@ -1,7 +1,8 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
+import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
@@ -62,6 +63,7 @@ import {
   _JOIN_,
   AUDIO,
   CONTENT,
+  DISPLAY_HINTS,
   ENDED,
   EVENT_TRIGGERS,
   EVENT_TYPES,
@@ -90,6 +92,7 @@ import {
   VIDEO_RESOLUTIONS,
   VIDEO,
   HTTP_VERBS,
+  SELF_ROLES,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -121,6 +124,7 @@ import {REACTION_RELAY_TYPES} from '../reactions/constants';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
+import {LocusMediaRequest} from './locusMediaRequest';
 
 const {isBrowser} = BrowserDetection();
 
@@ -187,6 +191,7 @@ export const MEDIA_UPDATE_TYPE = {
  * @property {String} [meetingQuality.remote]
  * @property {Boolean} [rejoin]
  * @property {Boolean} [enableMultistream]
+ * @property {String} [correlationId]
  */
 
 /**
@@ -451,7 +456,7 @@ export default class Meeting extends StatelessWebexPlugin {
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
-  meetingInfo: object;
+  meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
   options: object;
@@ -463,6 +468,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resource: string;
   roap: Roap;
   roapSeq: number;
+  selfUrl?: string; // comes from Locus, initialized by updateMeetingObject()
   sipUri: string;
   type: string;
   userId: string;
@@ -484,6 +490,7 @@ export default class Meeting extends StatelessWebexPlugin {
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
+  locusMediaRequest?: LocusMediaRequest;
   mediaProperties: MediaProperties;
   mediaRequestManagers: {
     audio: MediaRequestManager;
@@ -508,12 +515,12 @@ export default class Meeting extends StatelessWebexPlugin {
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
   updateMediaConnections: (mediaConnections: any[]) => void;
-  endCallInitiateJoinReq: any;
+  endCallInitJoinReq: any;
   endJoinReqResp: any;
   endLocalSDPGenRemoteSDPRecvDelay: any;
   joinedWith: any;
   locusId: any;
-  startCallInitiateJoinReq: any;
+  startCallInitJoinReq: any;
   startJoinReqResp: any;
   startLocalSDPGenRemoteSDPRecvDelay: any;
   wirelessShare: any;
@@ -528,8 +535,8 @@ export default class Meeting extends StatelessWebexPlugin {
   state: any;
   localAudioTrackMuteStateHandler: (event: TrackMuteEvent) => void;
   localVideoTrackMuteStateHandler: (event: TrackMuteEvent) => void;
-  webexMeetingId: string;
-
+  roles: any[];
+  environment: string;
   namespace = MEETINGS;
 
   /**
@@ -741,6 +748,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locusUrl: attrs.locus && attrs.locus.url,
         receiveSlotManager: this.receiveSlotManager,
         mediaRequestManagers: this.mediaRequestManagers,
+        meeting: this,
       },
       // @ts-ignore - Fix type
       {parent: this.webex}
@@ -883,7 +891,12 @@ export default class Meeting extends StatelessWebexPlugin {
      * @private
      * @memberof Meeting
      */
-    this.meetingRequest = new MeetingRequest({}, options);
+    this.meetingRequest = new MeetingRequest(
+      {
+        meeting: this,
+      },
+      options
+    );
     /**
      * @instance
      * @type {Array}
@@ -1202,9 +1215,11 @@ export default class Meeting extends StatelessWebexPlugin {
   public async fetchMeetingInfo({
     password = null,
     captchaCode = null,
+    extraParams = {},
   }: {
     password?: string;
     captchaCode?: string;
+    extraParams?: Record<string, any>;
   }) {
     // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
     if (this.fetchMeetingInfoTimeoutId) {
@@ -1238,11 +1253,13 @@ export default class Meeting extends StatelessWebexPlugin {
         captchaInfo,
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
-        this.locusId
+        this.locusId,
+        extraParams,
+        {meetingId: this.id}
       );
 
       this.parseMeetingInfo(info, this.destination);
-      this.meetingInfo = info ? info.body : null;
+      this.meetingInfo = info ? {...info.body, meetingLookupUrl: info?.url} : null;
       this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
       this.requiredCaptcha = null;
       if (
@@ -1394,6 +1411,20 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Posts metrics event for this meeting. Allows the app to send Call Analyzer events.
+   * @param {String} eventName - Call Analyzer event, see eventType in src/metrics/config.ts for possible values
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  public postMetrics(eventName: string) {
+    Metrics.postEvent({
+      event: eventName,
+      meeting: this,
+    });
+  }
+
+  /**
    * Proxy function for all the listener set ups
    * @returns {undefined}
    * @private
@@ -1479,6 +1510,18 @@ export default class Meeting extends StatelessWebexPlugin {
           function: 'setUpBreakoutsListener',
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
+      );
+    });
+
+    this.breakouts.on(BREAKOUTS.EVENTS.ASK_FOR_HELP, (helpEvent) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpBreakoutsListener',
+        },
+        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+        helpEvent
       );
     });
   }
@@ -1596,19 +1639,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Object}
    * @memberof Meeting
    */
-  getAnalyzerMetricsPrePayload(
-    options:
-      | {
-          event: string;
-          trackingId: string;
-          locus: object;
-          mediaConnections: Array<any>;
-          errors: object;
-        }
-      | any
-  ) {
+  getAnalyzerMetricsPrePayload(options: {
+    type?: string;
+    event: string;
+    trackingId: string;
+    locus: object;
+    mediaConnections?: Array<any>;
+    errors?: object;
+    meetingLookupUrl?: string;
+    clientType?: any;
+    subClientType?: any;
+    [key: string]: any;
+  }) {
     if (options) {
-      const {event, trackingId, mediaConnections} = options;
+      const {event, trackingId, mediaConnections, meetingLookupUrl} = options;
 
       if (!event) {
         LoggerProxy.logger.error(
@@ -1645,6 +1689,10 @@ export default class Meeting extends StatelessWebexPlugin {
         identifiers.mediaAgentAlias = this.mediaConnections?.[0].mediaAgentAlias;
         identifiers.mediaAgentGroupId = this.mediaConnections?.[0].mediaAgentGroupId;
         identifiers.mediaAgentCluster = this.mediaConnections?.[0].mediaAgentCluster;
+      }
+
+      if (meetingLookupUrl) {
+        identifiers.meetingLookupUrl = meetingLookupUrl;
       }
 
       if (options.trackingId) {
@@ -1696,12 +1744,12 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const callInitiateJoinReq = this.getCallInitiateJoinReq();
+      const callInitJoinReq = this.getCallInitJoinReq();
 
-      if (callInitiateJoinReq) {
+      if (callInitJoinReq) {
         options.joinTimes = {
           ...options.joinTimes,
-          callInitiateJoinReq,
+          callInitJoinReq,
         };
       }
 
@@ -1714,13 +1762,29 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       }
 
-      const getTotalJmt = this.getTotalJmt();
+      const totalJmt = this.getTotalJmt();
 
-      if (getTotalJmt) {
+      if (totalJmt) {
         options.joinTimes = {
           ...options.joinTimes,
-          getTotalJmt,
+          totalJmt,
         };
+      }
+
+      const curUserType = this.getCurUserType();
+
+      if (curUserType) {
+        options.userType = curUserType;
+      }
+
+      const curLoginType = this.getCurLoginType();
+
+      if (curLoginType) {
+        options.loginType = curLoginType;
+      }
+
+      if (this.environment) {
+        options.environment = this.environment;
       }
 
       if (options.type === MQA_STATS.CA_TYPE) {
@@ -2059,6 +2123,69 @@ export default class Meeting extends StatelessWebexPlugin {
         {entryExitTone}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -2075,6 +2202,18 @@ export default class Meeting extends StatelessWebexPlugin {
       const {content: contentShare, whiteboard: whiteboardShare} = payload.current;
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
+
+      if (!isEqual(contentShare?.annotation, previousContentShare?.annotation)) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meetings/index',
+            function: 'remoteShare',
+          },
+          EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
+          contentShare.annotation
+        );
+      }
 
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
@@ -2209,6 +2348,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                 {
                   memberId: contentShare.beneficiaryId,
+                  url: contentShare.url,
+                  shareInstanceId: contentShare.shareInstanceId,
                 }
               );
             };
@@ -2283,6 +2424,8 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
           {
             memberId: contentShare.beneficiaryId,
+            url: contentShare.url,
+            shareInstanceId: contentShare.shareInstanceId,
           }
         );
         this.members.locusMediaSharesUpdate(payload);
@@ -2430,10 +2573,6 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(payload.info.userDisplayHints),
-          canEnableReactions: MeetingUtil.canEnableReactions(
-            this.inMeetingActions.canEnableReactions,
-            payload.info.userDisplayHints
-          ),
           canSendReactions: MeetingUtil.canSendReactions(
             this.inMeetingActions.canSendReactions,
             payload.info.userDisplayHints
@@ -2450,6 +2589,74 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canUserRenameOthers: MeetingUtil.canUserRenameOthers(payload.info.userDisplayHints),
+          canMuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canUnmuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canUpdateShareControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canDisableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -3047,35 +3254,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
-    }
-  }
-
-  /**
-   * Sets the first locus info on the class instance
-   * @param {Object} locus
-   * @param {String} locus.url
-   * @param {Array} locus.participants
-   * @param {Object} locus.self
-   * @returns {undefined}
-   * @private
-   * @memberof Meeting
-   */
-  private parseLocus(locus: {url: string; participants: Array<any>; self: object}) {
-    if (locus) {
-      this.locusUrl = locus.url;
-      // TODO: move this to parse participants module
-      this.setLocus(locus);
-
-      // check if we can extract this info from partner
-      // Parsing of locus object must be finished at this state
-      if (locus.participants && locus.self) {
-        this.partner = MeetingUtil.getLocusPartner(locus.participants, locus.self);
-      }
-
-      // For webex meeting the sipUrl gets updated in info parser
-      if (!this.sipUri && this.partner && this.type === _CALL_) {
-        this.setSipUri(this.partner.person.sipUrl || this.partner.person.id);
-      }
+      // Need to populate environment when sending CA event
+      this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
   }
 
@@ -3105,7 +3285,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setLocus(
+  setLocus(
     locus:
       | {
           mediaConnections: Array<any>;
@@ -3557,6 +3737,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public closePeerConnections() {
+    this.locusMediaRequest = undefined;
+
     if (this.mediaProperties.webrtcMediaConnection) {
       if (this.remoteMediaManager) {
         this.remoteMediaManager.stop();
@@ -4204,9 +4386,16 @@ export default class Meeting extends StatelessWebexPlugin {
       joinSuccess = resolve;
     });
 
+    if (options.correlationId) {
+      this.setCorrelationId(options.correlationId);
+      LoggerProxy.logger.log(
+        `Meeting:index#join --> Using a new correlation id from app ${this.correlationId}`
+      );
+    }
+
     if (!this.hasJoinedOnce) {
       this.hasJoinedOnce = true;
-    } else {
+    } else if (!options.correlationId) {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`
       );
@@ -4226,6 +4415,21 @@ export default class Meeting extends StatelessWebexPlugin {
       meeting: this,
       data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
     });
+
+    if (!isEmpty(this.meetingInfo)) {
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_REQUEST,
+        meeting: this,
+      });
+
+      Metrics.postEvent({
+        event: eventType.MEETING_INFO_RESPONSE,
+        meeting: this,
+        data: {
+          meetingLookupUrl: this.meetingInfo?.meetingLookupUrl,
+        },
+      });
+    }
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
@@ -4451,9 +4655,6 @@ export default class Meeting extends StatelessWebexPlugin {
           locusUrl,
           clientUrl: this.deviceUrl,
         })
-        .then((res) => {
-          this.locusInfo.onFullLocus(res.body.locus);
-        })
         .catch((error) => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
             correlation_id: this.correlationId,
@@ -4492,9 +4693,6 @@ export default class Meeting extends StatelessWebexPlugin {
           phoneNumber,
           locusUrl,
           clientUrl: this.deviceUrl,
-        })
-        .then((res) => {
-          this.locusInfo.onFullLocus(res.body.locus);
         })
         .catch((error) => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
@@ -5383,6 +5581,23 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     return MeetingUtil.validateOptions(options)
+      .then(() => {
+        this.locusMediaRequest = new LocusMediaRequest(
+          {
+            correlationId: this.correlationId,
+            device: {
+              url: this.deviceUrl,
+              // @ts-ignore
+              deviceType: this.config.deviceType,
+            },
+            preferTranscoding: !this.isMultistream,
+          },
+          {
+            // @ts-ignore
+            parent: this.webex,
+          }
+        );
+      })
       .then(() => this.roap.doTurnDiscovery(this, false))
       .then((turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
@@ -6086,13 +6301,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
     Metrics.postEvent({
       event: eventType.LEAVE,
       meeting: this,
-      data: {trigger: trigger.USER_INTERACTION, canProceed: false},
+      data: {trigger: trigger.USER_INTERACTION, canProceed: false, reason: leaveReason},
     });
-    const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
-
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
@@ -6613,11 +6827,6 @@ export default class Meeting extends StatelessWebexPlugin {
         main: layoutInfo.main,
         content: layoutInfo.content,
       })
-      .then((response) => {
-        if (response && response.body && response.body.locus) {
-          this.locusInfo.onFullLocus(response.body.locus);
-        }
-      })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:index#changeVideoLayout --> Error ', error);
 
@@ -7020,7 +7229,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endLocalSDPGenRemoteSDPRecvDelay;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -7032,26 +7241,26 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {undefined}
    */
-  setStartCallInitiateJoinReq() {
-    this.startCallInitiateJoinReq = performance.now();
-    this.endCallInitiateJoinReq = undefined;
+  setStartCallInitJoinReq() {
+    this.startCallInitJoinReq = performance.now();
+    this.endCallInitJoinReq = undefined;
   }
 
   /**
    *
    * @returns {undefined}
    */
-  setEndCallInitiateJoinReq() {
-    this.endCallInitiateJoinReq = performance.now();
+  setEndCallInitJoinReq() {
+    this.endCallInitJoinReq = performance.now();
   }
 
   /**
    *
    * @returns {string} duration between call initiate and sending join request to locus
    */
-  getCallInitiateJoinReq() {
-    const start = this.startCallInitiateJoinReq;
-    const end = this.endCallInitiateJoinReq;
+  getCallInitJoinReq() {
+    const start = this.startCallInitJoinReq;
+    const end = this.endCallInitJoinReq;
 
     if (start && end) {
       const calculatedDelay = end - start;
@@ -7088,7 +7297,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const end = this.endJoinReqResp;
 
     if (start && end) {
-      const calculatedDelay = end - start;
+      const calculatedDelay = Math.round(end - start);
 
       return calculatedDelay > METRICS_JOIN_TIMES_MAX_DURATION ? undefined : calculatedDelay;
     }
@@ -7101,10 +7310,45 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string} duration between call initiate and successful locus join (even if it is in lobby)
    */
   getTotalJmt() {
-    const start = this.startCallInitiateJoinReq;
+    const start = this.startCallInitJoinReq;
     const end = this.endJoinReqResp;
 
-    return start && end ? end - start : undefined;
+    return start && end ? Math.round(end - start) : undefined;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'attendee','host','cohost', returns the user type of the current user
+   */
+  getCurUserType() {
+    const {roles} = this;
+    if (roles) {
+      if (roles.includes(SELF_ROLES.MODERATOR)) {
+        return 'host';
+      }
+      if (roles.includes(SELF_ROLES.COHOST)) {
+        return 'cohost';
+      }
+      if (roles.includes(SELF_ROLES.ATTENDEE)) {
+        return 'attendee';
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   *
+   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
+   */
+  getCurLoginType() {
+    // @ts-ignore
+    if (this.webex.canAuthorize) {
+      // @ts-ignore
+      return this.webex.credentials.isUnverifiedGuest ? 'unverified-guest' : 'login-ci';
+    }
+
+    return null;
   }
 
   /**

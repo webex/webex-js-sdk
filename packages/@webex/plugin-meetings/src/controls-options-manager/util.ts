@@ -3,8 +3,10 @@ import {Control} from './enums';
 import {
   ControlConfig,
   AudioProperties,
+  RaiseHandProperties,
   ReactionsProperties,
   ViewTheParticipantListProperties,
+  VideoProperties,
 } from './types';
 
 /**
@@ -122,6 +124,22 @@ class Utils {
     return Utils.hasHints({requiredHints, displayHints});
   }
 
+  public static canUpdateRaiseHand(
+    control: ControlConfig<RaiseHandProperties>,
+    displayHints: Array<string>
+  ) {
+    const requiredHints = [];
+
+    if (control.properties.enabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_RAISE_HAND);
+    }
+    if (control.properties.enabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_RAISE_HAND);
+    }
+
+    return Utils.hasHints({requiredHints, displayHints});
+  }
+
   /**
    * Validate if an reactions-scoped control is allowed to be sent to the service.
    *
@@ -185,6 +203,29 @@ class Utils {
   }
 
   /**
+   * Validate if a video-scoped control is allowed to be sent to the service.
+   *
+   * @param {ControlConfig<VideoProperties>} control - Video control config to validate.
+   * @param {Array<string>} displayHints - All available hints.
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
+  public static canUpdateVideo(
+    control: ControlConfig<VideoProperties>,
+    displayHints: Array<string>
+  ) {
+    const requiredHints = [];
+
+    if (control.properties.enabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_VIDEO);
+    }
+    if (control.properties.enabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_VIDEO);
+    }
+
+    return Utils.hasHints({requiredHints, displayHints});
+  }
+
+  /**
    * Validate that a control can be sent to the service based on the provided
    * display hints.
    *
@@ -200,6 +241,13 @@ class Utils {
         determinant = Utils.canUpdateAudio(control as ControlConfig<AudioProperties>, displayHints);
         break;
 
+      case Control.raiseHand:
+        determinant = Utils.canUpdateRaiseHand(
+          control as ControlConfig<RaiseHandProperties>,
+          displayHints
+        );
+        break;
+
       case Control.reactions:
         determinant = Utils.canUpdateReactions(
           control as ControlConfig<ReactionsProperties>,
@@ -209,6 +257,10 @@ class Utils {
 
       case Control.shareControl:
         determinant = Utils.canUpdateShareControl(displayHints);
+        break;
+
+      case Control.video:
+        determinant = Utils.canUpdateVideo(control as ControlConfig<VideoProperties>, displayHints);
         break;
 
       case Control.viewTheParticipantList:

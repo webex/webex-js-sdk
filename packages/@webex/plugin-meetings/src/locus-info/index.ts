@@ -1,4 +1,4 @@
-import {isArray, isEqual, mergeWith, cloneDeep} from 'lodash';
+import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -107,7 +107,7 @@ export default class LocusInfo extends EventsScope {
         meeting.meetingRequest
           .getFullLocus({
             desync: true,
-            locusUrl: meeting.locusUrl,
+            locusUrl: locus.url ? locus.url : meeting.locusUrl,
           })
           .then((res) => {
             meeting.locusInfo.onFullLocus(res.body);
@@ -186,7 +186,7 @@ export default class LocusInfo extends EventsScope {
     this.updateParticipants(locus.participants);
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
-    this.updateControls(locus.controls);
+    this.updateControls(locus.controls, locus.self);
     this.updateLocusUrl(locus.url);
     this.updateFullState(locus.fullState);
     this.updateMeetingInfo(locus.info);
@@ -359,7 +359,7 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    this.updateControls(locus.controls);
+    this.updateControls(locus.controls, locus.self);
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
@@ -684,10 +684,11 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * @param {Object} controls
+   * @param {Object} self
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateControls(controls: object) {
+  updateControls(controls: object, self: object) {
     if (controls && !isEqual(this.controls, controls)) {
       this.parsedLocus.controls = ControlsUtils.parse(controls);
       const {
@@ -699,9 +700,73 @@ export default class LocusInfo extends EventsScope {
           hasEntryExitToneChanged,
           hasBreakoutChanged,
           hasVideoEnabledChanged,
+          hasMuteOnEntryChanged,
+          hasShareControlChanged,
+          hasDisallowUnmuteChanged,
+          hasReactionsChanged,
+          hasReactionDisplayNamesChanged,
+          hasViewTheParticipantListChanged,
+          hasRaiseHandChanged,
+          hasVideoChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
+
+      if (hasMuteOnEntryChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
+          {state: current.muteOnEntry}
+        );
+      }
+
+      if (hasShareControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
+          {state: current.shareControl}
+        );
+      }
+
+      if (hasDisallowUnmuteChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
+          {state: current.disallowUnmute}
+        );
+      }
+
+      if (hasReactionsChanged || hasReactionDisplayNamesChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
+          {state: current.reactions}
+        );
+      }
+
+      if (hasViewTheParticipantListChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
+          {state: current.viewTheParticipantList}
+        );
+      }
+
+      if (hasRaiseHandChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
+          {state: current.raiseHand}
+        );
+      }
+
+      if (hasVideoChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+          {state: current.video}
+        );
+      }
 
       if (hasRecordingChanged || hasRecordingPausedChanged) {
         let state = null;
@@ -764,7 +829,10 @@ export default class LocusInfo extends EventsScope {
 
       if (hasBreakoutChanged) {
         const {breakout} = current;
-
+        breakout.breakoutMoveId = SelfUtils.getReplacedBreakoutMoveId(
+          self,
+          this.webex.internal.device.url
+        );
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1476,15 +1544,13 @@ export default class LocusInfo extends EventsScope {
     }
     const locusClone = cloneDeep(mainLocus);
     if (this.mainSessionLocusCache) {
-      // eslint-disable-next-line consistent-return
-      mergeWith(this.mainSessionLocusCache, locusClone, (objValue, srcValue, key) => {
-        if (isArray(objValue)) {
-          if (key === 'participants') {
-            return this.mergeParticipants(objValue, srcValue);
-          }
-
-          return srcValue; // just replace the old ones
+      // shallow merge and do special merge for participants
+      assignWith(this.mainSessionLocusCache, locusClone, (objValue, srcValue, key) => {
+        if (key === 'participants') {
+          return this.mergeParticipants(objValue, srcValue);
         }
+
+        return srcValue || objValue;
       });
     } else {
       this.mainSessionLocusCache = locusClone;

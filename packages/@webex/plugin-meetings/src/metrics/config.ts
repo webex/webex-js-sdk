@@ -51,6 +51,7 @@ const errorDescription = {
   SIP_CALLEE_NOT_FOUND: 'SIPCalleeNotFound',
   START_RECORDING_FAILED: 'StartRecordingFailed',
   RECORDING_IN_PROGRESS_FAILED: 'RecordingInProgressFailed',
+  MEETING_INFO_LOOKUP_ERROR: 'MeetingInfoLookupError',
 };
 
 const errorCategory = {
@@ -78,6 +79,8 @@ export const eventType = {
   REMOTE_SDP_RECEIVED: 'client.media-engine.remote-sdp-received',
   LOCUS_JOIN_REQUEST: 'client.locus.join.request',
   LOCUS_JOIN_RESPONSE: 'client.locus.join.response',
+  MEETING_INFO_REQUEST: 'client.meetinginfo.request',
+  MEETING_INFO_RESPONSE: 'client.meetinginfo.response',
   ALERT_DISPLAYED: 'client.alert.displayed',
   // when ICE negotiation starts
   ICE_START: 'client.ice.start',
@@ -140,8 +143,9 @@ export const eventType = {
   PSTN_AUDIO_ATTEMPT_START: 'client.pstnaudio.attempt.start',
   PSTN_AUDIO_ATTEMPT_FINISH: 'client.pstnaudio.attempt.finish',
   PSTN_AUDIO_ATTEMPT_SKIP: 'client.pstnaudio.attempt.skip',
-  MOVE_TO_BREAKOUT: 'client.breakout-session.move.request',
-  JOIN_BREAKOUT_RESPONSE: 'client.breakout-session.join.response',
+  BREAKOUT_MOVE_REQUEST: 'client.breakout-session.move.request',
+  BREAKOUT_MOVE_RESPONSE: 'client.breakout-session.move.response',
+  BREAKOUT_JOIN_RESPONSE: 'client.breakout-session.join.response',
 };
 
 export const error = {
@@ -413,7 +417,50 @@ export const error = {
       errorFailureType.EXPECTED_FAILURE,
       errorCategory.EXPECTED,
     ],
+    // Webex App API Error Codes
+    4100: [
+      errorDescription.MEETING_INFO_LOOKUP_ERROR,
+      errorFailureType.CALL_INITIATION_FAILURE,
+      errorCategory.SIGNALING,
+    ],
   },
+};
+
+// map from SERVER ERROR CODE (normally from error.body.code) -> to Client Error Code
+export const WebexAPIServiceErrorCodes = {
+  // Site not support the URL's domain
+  58400: 4100,
+  99002: 4100,
+  // Cannot find the data
+  99009: 4100,
+  // CMR Meeting Not Supported (meeting exists, but not CMR meeting)
+  403040: 4100,
+  // Requires Moderator Pin or Guest Pin
+  403041: 4005,
+  // Meeting is not allow to access since password or hostKey error
+  403038: 4005,
+  // Meeting is not allow to access since require password or hostKey
+  403036: 4005,
+  // Invalid panelist Pin
+  403043: 4100,
+  // Device not registered in org
+  403048: 4100,
+  // Not allowed to join external meetings
+  403049: 4100,
+  403100: 4100,
+  // Enforce sign in: need login before access when policy enforce sign in
+  403101: 4100,
+  // Enforce sign in: sign in with your email address that is approved by your organization
+  403102: 4100,
+  // Join internal Meeting: need login before access when policy enforce sign in
+  403103: 4100,
+  // Join internal Meeting: The host's organization policy doesn't allow your account to join this meeting. Try switching to another account
+  403104: 4100,
+  404001: 4100,
+  // Site data not found
+  404006: 4100,
+  // Too many requests access
+  429005: 4100,
 };
 
 export const trigger = {

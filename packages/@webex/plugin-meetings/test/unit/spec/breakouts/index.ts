@@ -6,6 +6,9 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
+import breakoutEvent from "../../../../src/breakouts/events";
+import SelfUtils from "../../../../src/locus-info/selfUtils";
+import { self } from "../locus-info/selfConstant";
 
 const getBOResponse = (status: string) => {
   return {
@@ -94,6 +97,8 @@ describe('plugin-meetings', () => {
       breakouts.locusUrl = 'locusUrl';
       breakouts.breakoutServiceUrl = 'breakoutServiceUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+      webex.meetings = {};
+      webex.meetings.getMeetingByType = sinon.stub();
     });
 
     describe('#initialize', () => {
@@ -122,6 +127,19 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakouts.debouncedQueryRosters);
       });
+
+      it('call triggerReturnToMainEvent correctly when requested breakout add', () => {
+        breakouts.triggerReturnToMainEvent = sinon.stub();
+        breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
+        assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
+      });
+
+      it('call triggerReturnToMainEvent correctly when breakout requestedLastModifiedTime change', () => {
+        breakouts.breakouts.add({sessionId: 'session1', sessionType: 'MAIN'});
+        breakouts.triggerReturnToMainEvent = sinon.stub();
+        breakouts.breakouts.get('session1').set({requestedLastModifiedTime: "2023-05-09T17:16:01.000Z"});
+        assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
+      });
     });
 
     describe('#listenToCurrentSessionTypeChange', () => {
@@ -130,7 +148,7 @@ describe('plugin-meetings', () => {
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT})
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
         breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
-        
+
         assert.calledOnceWithExactly(handler);
 
         breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.LEAVE_BREAKOUT, handler);
@@ -216,6 +234,33 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#listenToBreakoutHelp', () => {
+      it('triggers ask for help event when a help received', () => {
+        const call = webex.internal.mercury.on.getCall(1);
+        const callback = call.args[1];
+
+        assert.equal(call.args[0], 'event:breakout.help');
+
+        let data;
+
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_FOR_HELP, (eventData) => {
+          data = eventData;
+        });
+
+        callback({
+          data: {
+            participant: 'participant',
+            sessionId: 'sessionId'
+          },
+        });
+
+        assert.deepEqual(data, {
+          participant: 'participant',
+          sessionId: 'sessionId',
+        });
+      });
+    });
+
     describe('#updateBreakout', () => {
       it('updates the current breakout session', () => {
         breakouts.updateBreakout({
@@ -254,6 +299,81 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.assigned, false);
         assert.equal(breakouts.currentBreakoutSession.assignedCurrent, false);
         assert.equal(breakouts.currentBreakoutSession.requested, false);
+      });
+
+      it('update the startTime correctly when no attribute startTime exists on params', () => {
+        breakouts.updateBreakout({
+          startTime: "startTime"
+        })
+        assert.equal(breakouts.startTime, 'startTime');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.startTime, undefined);
+      });
+
+      it('update the status correctly when no attribute status exists on params', () => {
+        breakouts.updateBreakout({
+          status: 'CLOSING'
+        })
+        assert.equal(breakouts.status, 'CLOSING');
+
+        breakouts.updateBreakout({})
+        assert.equal(breakouts.status, undefined);
+      })
+
+      it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId-old";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId-new',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.calledOnce(breakoutEvent.onBreakoutJoinResponse);
+
+      });
+
+      it('updates the current breakout session, not call onBreakoutJoinResponse when session no changed', () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({
+            id: 'meeting-id'
+          })
+        };
+        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        breakouts.currentBreakoutSession.sessionId = "sessionId";
+        breakouts.currentBreakoutSession.groupId = "groupId";
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'sessionType',
+          url: 'url',
+          name: 'name',
+          allowBackToMain: true,
+          delayCloseTime: 10,
+          enableBreakoutSession: true,
+          startTime: 'startTime',
+          status: 'active',
+          locusUrl: 'locusUrl',
+          breakoutMoveId: 'breakoutMoveId',
+        });
+
+        assert.notCalled(breakoutEvent.onBreakoutJoinResponse);
+
       });
     });
 
@@ -295,114 +415,19 @@ describe('plugin-meetings', () => {
         checkBreakout(breakouts.breakouts.get('sessionId5'), 'sessionId5', 'requested');
       });
 
-      it('trigger ASK_RETURN_TO_MAIN correctly', () => {
+      it('set requestedLastModifiedTime correctly', () => {
         const payload = {
           breakoutSessions: {
-            active: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}],
-            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
-          }
-        }
-        const handler = sinon.stub();
-        breakouts.updateBreakout({
-          sessionId: 'sessionId2',
-          groupId: 'groupId',
-          sessionType: 'BREAKOUT',
-          url: 'url',
-          name: 'name',
-          allowBackToMain: true,
-          delayCloseTime: 10,
-          enableBreakoutSession: true,
-          startTime: 'startTime',
-          status: 'active',
-          locusUrl: 'locusUrl',
-        });
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.updateBreakoutSessions(payload);
-        assert.calledOnceWithExactly(handler)
-        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-      })
+            assigned: [{sessionId: 'sessionId1'}],
+            requested: [{sessionId: 'sessionId2', modifiedAt: "2023-05-09T17:16:01.000Z"}],
+          },
+        };
 
-      it('should not trigger ASK_RETURN_TO_MAIN when allowBackToMain is false', () => {
-        const payload = {
-          breakoutSessions: {
-            active: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}],
-            requested: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}]
-          }
-        }
-        const handler = sinon.stub();
-        breakouts.updateBreakout({
-          sessionId: 'sessionId2',
-          groupId: 'groupId',
-          sessionType: 'BREAKOUT',
-          url: 'url',
-          name: 'name',
-          allowBackToMain: false,
-          delayCloseTime: 10,
-          enableBreakoutSession: true,
-          startTime: 'startTime',
-          status: 'active',
-          locusUrl: 'locusUrl',
-        });
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
         breakouts.updateBreakoutSessions(payload);
-        assert.notCalled(handler)
-        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
+        assert.equal(breakouts.breakouts.get('sessionId1').requestedLastModifiedTime, undefined)
+        assert.equal(breakouts.breakouts.get('sessionId2').requestedLastModifiedTime, "2023-05-09T17:16:01.000Z")
       });
 
-      it('should not trigger ASK_RETURN_TO_MAIN when no requested in payload.breakoutSessions', () => {
-        const payload = {
-          breakoutSessions: {
-            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
-          }
-        }
-        const handler = sinon.stub();
-        breakouts.updateBreakout({
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          sessionType: 'sessionType',
-          url: 'url',
-          name: 'name',
-          allowBackToMain: true,
-          delayCloseTime: 10,
-          enableBreakoutSession: true,
-          startTime: 'startTime',
-          status: 'active',
-          locusUrl: 'locusUrl',
-        });
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.updateBreakoutSessions(payload);
-        assert.notCalled(handler)
-
-        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-      })
-
-      it('should not trigger ASK_RETURN_TO_MAIN when sessionType is not MAIN', () => {
-        const payload = {
-          breakoutSessions: {
-            active: [{sessionId: 'sessionId1', sessionType: BREAKOUTS.SESSION_TYPES.MAIN}],
-            requested: [{sessionId: 'sessionId2', sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}]
-          }
-        }
-        const handler = sinon.stub();
-        breakouts.updateBreakout({
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          sessionType: 'sessionType',
-          url: 'url',
-          name: 'name',
-          allowBackToMain: true,
-          delayCloseTime: 10,
-          enableBreakoutSession: true,
-          startTime: 'startTime',
-          status: 'active',
-          locusUrl: 'locusUrl',
-        });
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-        breakouts.updateBreakoutSessions(payload);
-        assert.notCalled(handler)
-
-        breakouts.stopListening(breakouts, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, handler);
-      })
     });
 
     describe('#locusUrlUpdate', () => {
@@ -448,6 +473,39 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.isActiveBreakout, false);
         breakouts.set('status', BREAKOUTS.STATUS.OPEN);
         assert.equal(breakouts.isActiveBreakout, true);
+      });
+    });
+
+    describe('#breakoutGroupId', () => {
+      it('return empty breakout group id for managing breakouts if no data', () => {
+        assert.equal(breakouts.breakoutGroupId, '');
+        breakouts.set('manageGroups', []);
+        assert.equal(breakouts.breakoutGroupId, '');
+        breakouts.set('manageGroups', [{name: 'test'}]);
+        assert.equal(breakouts.breakoutGroupId, undefined);
+      });
+      it('return the group id if has id in manageGroups', () => {
+        breakouts.set('manageGroups', [{id: 'groupId1'}]);
+        assert.equal(breakouts.breakoutGroupId, 'groupId1');
+      });
+      it('return empty group id if group status is CLOSED', () => {
+        breakouts.set('manageGroups', [{id: 'groupId1', status: 'CLOSED'}]);
+        assert.equal(breakouts.breakoutGroupId, '');
+      });
+    });
+
+    describe('#_setManageGroups', () => {
+      it('do nothing if breakout info is empty', () => {
+        breakouts._setManageGroups();
+        assert.equal(breakouts.manageGroups, undefined);
+        breakouts._setManageGroups({body: null});
+        assert.equal(breakouts.manageGroups, undefined);
+        breakouts._setManageGroups({body: {groups: null}});
+        assert.equal(breakouts.manageGroups, undefined);
+      });
+      it('set the groups into manageGroups if has groups in side breakout info', () => {
+        breakouts._setManageGroups({body: {groups: [{id: 'groupId1'}]}});
+        assert.deepEqual(breakouts.manageGroups, [{id: 'groupId1'}]);
       });
     });
 
@@ -681,6 +739,12 @@ describe('plugin-meetings', () => {
 
     describe('#update', () => {
       it('makes the request as expected', async () => {
+        const mockedReturnBody = getBOResponse('OPEN');
+        webex.request.returns(
+          Promise.resolve({
+            body: mockedReturnBody,
+          })
+        );
         breakouts.editLock = {
           token: 'token1',
         };
@@ -688,6 +752,7 @@ describe('plugin-meetings', () => {
           id: 'groupId',
           sessions: [{name: 'Session 1'}],
         };
+        breakouts._setManageGroups = sinon.stub();
         const result = await breakouts.update(params);
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
@@ -697,6 +762,29 @@ describe('plugin-meetings', () => {
             groups: [params],
           },
         });
+        assert.calledOnceWithExactly(breakouts._setManageGroups, {
+          body: mockedReturnBody,
+        });
+      });
+      it('makes the request as expected when unlockEdit is true', async () => {
+        breakouts.editLock = {
+          token: 'token1',
+        };
+        const params = {
+          id: 'groupId',
+          sessions: [{name: 'Session 1'}],
+        };
+        breakouts._clearEditLockInfo = sinon.stub();
+        const result = await breakouts.update(params, true);
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'url',
+          body: {
+            editlock: {token: 'token1', refresh: false},
+            groups: [params],
+          },
+        });
+        assert.calledOnceWithExactly(breakouts._clearEditLockInfo);
       });
       it('throw error if missing id in params', async () => {
         const params = {
@@ -781,9 +869,10 @@ describe('plugin-meetings', () => {
 
     describe('#start', () => {
       it('should start breakout sessions', async () => {
+        const mockedReturnBody = getBOResponse('OPEN');
         webex.request.returns(
           Promise.resolve({
-            body: getBOResponse('OPEN'),
+            body: mockedReturnBody,
           })
         );
 
@@ -791,6 +880,7 @@ describe('plugin-meetings', () => {
         await breakouts.getBreakout();
 
         const result = await breakouts.start();
+        breakouts._setManageGroups = sinon.stub();
         await breakouts.start({id: 'id', someOtherParam: 'someOtherParam'});
 
         const arg = webex.request.getCall(1).args[0];
@@ -814,7 +904,8 @@ describe('plugin-meetings', () => {
           someOtherParam: 'someOtherParam',
           duration: BREAKOUTS.DEFAULT_DURATION,
         });
-        assert.deepEqual(result, {body: getBOResponse('OPEN')});
+        assert.deepEqual(result, {body: mockedReturnBody});
+        assert.calledWithExactly(breakouts._setManageGroups, {body: mockedReturnBody})
       });
 
       it('rejects when edit lock token mismatch', async () => {
@@ -848,6 +939,8 @@ describe('plugin-meetings', () => {
         await breakouts.getBreakout();
 
         const result = await breakouts.end();
+
+        breakouts._setManageGroups = sinon.stub();
         await breakouts.end({id: 'id', someOtherParam: 'someOtherParam'});
         const arg = webex.request.getCall(1).args[0];
         const argObj1 = arg.body.groups[0];
@@ -863,6 +956,7 @@ describe('plugin-meetings', () => {
           someOtherParam: 'someOtherParam',
         });
         assert.deepEqual(result, {body: getBOResponse('CLOSING')});
+        assert.calledOnceWithExactly(breakouts._setManageGroups, {body: getBOResponse('CLOSING')});
       });
 
       it('rejects when edit lock token mismatch', async () => {
@@ -893,6 +987,8 @@ describe('plugin-meetings', () => {
 
         breakouts.set('url', 'url');
         const result = await breakouts.getBreakout();
+
+        breakouts._setManageGroups = sinon.stub();
         await breakouts.getBreakout(true);
         const arg1 = webex.request.getCall(0).args[0];
         const arg2 = webex.request.getCall(1).args[0];
@@ -901,8 +997,22 @@ describe('plugin-meetings', () => {
         assert.equal(arg2.uri, 'url?editlock=true');
         assert.equal(arg1.method, 'GET');
         assert.deepEqual(result, {body: getBOResponse('PENDING')});
-        assert.deepEqual(breakouts.groups, result.body.groups);
+        assert.deepEqual(breakouts.manageGroups, result.body.groups);
         assert.equal(breakouts.breakoutGroupId, 'groupId');
+        assert.calledOnceWithExactly(breakouts._setManageGroups, {body: getBOResponse('PENDING')});
+      });
+
+      it('breakoutGroupId should be empty if it is CLOSED group', async () => {
+        webex.request.returns(
+          Promise.resolve({
+            body: getBOResponse('CLOSED'),
+          })
+        );
+
+        breakouts.set('url', 'url');
+        await breakouts.getBreakout();
+
+        assert.equal(breakouts.breakoutGroupId, '');
       });
 
       it('should call keep alive when response with edit lock info', async () => {
@@ -974,6 +1084,7 @@ describe('plugin-meetings', () => {
           })
         );
 
+        breakouts._setManageGroups = sinon.stub();
         const result = await breakouts.clearSessions();
         assert.calledOnceWithExactly(webex.request, {
           method: 'PUT',
@@ -987,7 +1098,17 @@ describe('plugin-meetings', () => {
           },
         });
 
-        assert.equal(breakouts.groups[0].status, 'CLOSE');
+        assert.calledOnceWithExactly(breakouts._setManageGroups, {
+          body: {
+            groups: [
+              {
+                id: '455556a4-37cd-4baa-89bc-8730581a1cc0',
+                status: 'CLOSE',
+                type: 'BREAKOUT',
+              },
+            ],
+          },
+        });
       });
 
       it('rejects when edit lock token mismatch', async () => {
@@ -1035,7 +1156,7 @@ describe('plugin-meetings', () => {
 
         const result = await breakouts.create({sessions});
 
-        assert.equal(breakouts.groups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
+        assert.equal(breakouts.manageGroups[0].id, '455556a4-37cd-4baa-89bc-8730581a1cc0');
       });
 
       it('rejects when edit lock token mismatch', async () => {
@@ -1343,24 +1464,24 @@ describe('plugin-meetings', () => {
           })
         );
         breakouts.shouldFetchPreassignments = false;
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         const arg = webex.request.getCall(0).args[0];
         assert.equal(arg.uri, 'url/preassignments');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.groups[0].sessions[0].name, 'Breakout session 1');
-        assert.equal(breakouts.groups[0].sessions[0].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.preAssignments[0].sessions[0].name, 'Breakout session 1');
+        assert.equal(breakouts.preAssignments[0].sessions[0].anyoneCanJoin, false);
         assert.equal(
-          breakouts.groups[0].sessions[0].assignedEmails.toString(),
+          breakouts.preAssignments[0].sessions[0].assignedEmails.toString(),
           ['a@a.com', 'b@b.com', 'jial2@cisco.com'].toString()
         );
-        assert.equal(breakouts.groups[0].sessions[1].name, 'Breakout session 2');
-        assert.equal(breakouts.groups[0].sessions[1].anyoneCanJoin, false);
-        assert.equal(breakouts.groups[0].sessions[1].assignedEmails, undefined);
-        assert.equal(breakouts.groups[0].sessions[2].name, 'Breakout session 3');
-        assert.equal(breakouts.groups[0].sessions[2].anyoneCanJoin, false);
-        assert.equal(breakouts.groups[0].sessions[2].assignedEmails[0], 'c@c.com');
-        assert.equal(breakouts.groups[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.groups[0].type, 'BREAKOUT');
+        assert.equal(breakouts.preAssignments[0].sessions[1].name, 'Breakout session 2');
+        assert.equal(breakouts.preAssignments[0].sessions[1].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].sessions[1].assignedEmails, undefined);
+        assert.equal(breakouts.preAssignments[0].sessions[2].name, 'Breakout session 3');
+        assert.equal(breakouts.preAssignments[0].sessions[2].anyoneCanJoin, false);
+        assert.equal(breakouts.preAssignments[0].sessions[2].assignedEmails[0], 'c@c.com');
+        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
+        assert.equal(breakouts.preAssignments[0].type, 'BREAKOUT');
         assert.equal(breakouts.shouldFetchPreassignments, true);
       });
 
@@ -1374,7 +1495,7 @@ describe('plugin-meetings', () => {
         };
         webex.request.rejects(response);
         LoggerProxy.logger.error = sinon.stub();
-        const result = await breakouts.queryPreAssignments();
+        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
         await testUtils.flushPromises();
         assert.calledOnceWithExactly(
           LoggerProxy.logger.error,
@@ -1382,6 +1503,21 @@ describe('plugin-meetings', () => {
           response
         );
       });
+
+      it('fail when no correct params',  () => {
+
+        assert.deepEqual(breakouts.queryPreAssignments(undefined), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({}), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: true, hasBreakoutPreAssignments: false }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: true }), undefined);
+
+        assert.deepEqual(breakouts.queryPreAssignments({ enableBreakoutSession: false, hasBreakoutPreAssignments: false }), undefined);
+
+      });
+
     });
 
     describe('#dynamicAssign', () => {
@@ -1410,6 +1546,41 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakouts.dynamicAssign, expectedBody);
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('#triggerReturnToMainEvent', () => {
+      const checkTrigger = ({breakout, shouldTrigger}) => {
+        breakouts.trigger = sinon.stub();
+        breakouts.triggerReturnToMainEvent(breakout);
+        if (shouldTrigger) {
+          assert.calledOnceWithExactly(breakouts.trigger, BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+        } else {
+          assert.notCalled(breakouts.trigger);
+        }
+      }
+      it('should trigger ASK_RETURN_TO_MAIN event correctly', () => {
+        const breakout = {
+          isMain: true,
+          requested: true
+        };
+        checkTrigger({breakout, shouldTrigger: true})
+      });
+
+      it('should not trigger ASK_RETURN_TO_MAIN event when sessionType is not MAIN', () => {
+        const breakout = {
+          isMain: false,
+          requested: true
+        };
+        checkTrigger({breakout, shouldTrigger: false});
+      });
+
+      it('should not trigger ASK_RETURN_TO_MAIN event when session is not requested', () => {
+        const breakout = {
+          isMain: true,
+          requested: false
+        };
+        checkTrigger({breakout, shouldTrigger: false})
       });
     });
   });

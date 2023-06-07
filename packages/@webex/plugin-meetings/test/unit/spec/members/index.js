@@ -14,6 +14,7 @@ import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meetings from '@webex/plugin-meetings';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
+import * as MembersRequestImport from '@webex/plugin-meetings/src/members/request';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
@@ -81,6 +82,8 @@ describe('plugin-meetings', () => {
   describe('members', () => {
     const sandbox = sinon.createSandbox();
     let createMembers;
+    let meeting;
+    let membersRequestSpy;
 
     beforeEach(() => {
       webex = new MockWebex({
@@ -106,11 +109,29 @@ describe('plugin-meetings', () => {
 
       url1 = `https://example.com/${uuid.v4()}`;
 
-      createMembers = (options) => new Members({locusUrl: options.url}, {parent: webex});
+      membersRequestSpy = sinon.spy(MembersRequestImport, 'default');
+
+      meeting = {
+        request: sinon.mock().returns(Promise.resolve()),
+        locusInfo: {
+          sequence: {}
+        }
+      }
+
+      createMembers = (options) => new Members({locusUrl: options.url, meeting}, {parent: webex});
     });
 
     afterEach(() => {
+      membersRequestSpy.restore();
       sandbox.restore();
+    });
+
+    describe('constructor', () => {
+      it('passes the meeting to the MembersRequest', () => {
+        createMembers({});
+
+        assert.calledOnceWithExactly(membersRequestSpy, {meeting}, {parent: webex});
+      });
     });
 
     describe('#addMembers', () => {

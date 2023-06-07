@@ -40,7 +40,6 @@ interface IInMeetingActions {
   isRealTimeTranslationEnabled?: boolean;
   canSelectSpokenLanguages?: boolean;
   waitingForOthersToJoin?: boolean;
-  canEnableReactions?: boolean;
   canSendReactions?: boolean;
   canManageBreakout?: boolean;
   canAdmitLobbyToBreakout?: boolean;
@@ -48,6 +47,23 @@ interface IInMeetingActions {
   canUserAskForHelp?: boolean;
   canUserRenameSelfAndObserved?: boolean;
   canUserRenameOthers?: boolean;
+  canMuteAll?: boolean;
+  canUnmuteAll?: boolean;
+  canEnableHardMute?: boolean;
+  canDisableHardMute?: boolean;
+  canEnableMuteOnEntry?: boolean;
+  canDisableMuteOnEntry?: boolean;
+  canEnableReactions?: boolean;
+  canDisableReactions?: boolean;
+  canEnableReactionDisplayNames?: boolean;
+  canDisableReactionDisplayNames?: boolean;
+  canUpdateShareControl?: boolean;
+  canEnableViewTheParticipantsList?: boolean;
+  canDisableViewTheParticipantsList?: boolean;
+  canEnableRaiseHand?: boolean;
+  canDisableRaiseHand?: boolean;
+  canEnableVideo?: boolean;
+  canDisableVideo?: boolean;
 }
 
 /**
@@ -118,8 +134,6 @@ export default class InMeetingActions implements IInMeetingActions {
 
   waitingForOthersToJoin = null;
 
-  canEnableReactions = null;
-
   canSendReactions = null;
 
   canManageBreakout = null;
@@ -133,6 +147,40 @@ export default class InMeetingActions implements IInMeetingActions {
   canUserRenameSelfAndObserved = null;
 
   canUserRenameOthers = null;
+
+  canMuteAll = null;
+
+  canUnmuteAll = null;
+
+  canEnableHardMute = null;
+
+  canDisableHardMute = null;
+
+  canEnableMuteOnEntry = null;
+
+  canDisableMuteOnEntry = null;
+
+  canEnableReactions = null;
+
+  canDisableReactions = null;
+
+  canEnableReactionDisplayNames = null;
+
+  canDisableReactionDisplayNames = null;
+
+  canUpdateShareControl = null;
+
+  canEnableViewTheParticipantsList = null;
+
+  canDisableViewTheParticipantsList = null;
+
+  canEnableRaiseHand = null;
+
+  canDisableRaiseHand = null;
+
+  canEnableVideo = null;
+
+  canDisableVideo = null;
 
   /**
    * Returns all meeting action options
@@ -170,7 +218,6 @@ export default class InMeetingActions implements IInMeetingActions {
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
     canSelectSpokenLanguages: this.canSelectSpokenLanguages,
     waitingForOthersToJoin: this.waitingForOthersToJoin,
-    canEnableReactions: this.canEnableReactions,
     canSendReactions: this.canSendReactions,
     canManageBreakout: this.canManageBreakout,
     canAdmitLobbyToBreakout: this.canAdmitLobbyToBreakout,
@@ -178,6 +225,23 @@ export default class InMeetingActions implements IInMeetingActions {
     canUserAskForHelp: this.canUserAskForHelp,
     canUserRenameSelfAndObserved: this.canUserRenameSelfAndObserved,
     canUserRenameOthers: this.canUserRenameOthers,
+    canMuteAll: this.canMuteAll,
+    canUnmuteAll: this.canUnmuteAll,
+    canEnableHardMute: this.canEnableHardMute,
+    canDisableHardMute: this.canDisableHardMute,
+    canEnableMuteOnEntry: this.canEnableMuteOnEntry,
+    canDisableMuteOnEntry: this.canDisableMuteOnEntry,
+    canEnableReactions: this.canEnableReactions,
+    canDisableReactions: this.canDisableReactions,
+    canEnableReactionDisplayNames: this.canEnableReactionDisplayNames,
+    canDisableReactionDisplayNames: this.canDisableReactionDisplayNames,
+    canUpdateShareControl: this.canUpdateShareControl,
+    canEnableViewTheParticipantsList: this.canEnableViewTheParticipantsList,
+    canDisableViewTheParticipantsList: this.canDisableViewTheParticipantsList,
+    canEnableRaiseHand: this.canEnableRaiseHand,
+    canDisableRaiseHand: this.canDisableRaiseHand,
+    canEnableVideo: this.canEnableVideo,
+    canDisableVideo: this.canDisableVideo,
   });
 
   /**

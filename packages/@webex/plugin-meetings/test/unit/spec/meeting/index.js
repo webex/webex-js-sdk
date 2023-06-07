@@ -7,7 +7,7 @@ import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert} from '@webex/test-helper-chai';
-import {Credentials} from '@webex/webex-core';
+import {Credentials, Token} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {
@@ -19,8 +19,10 @@ import {
   EVENT_TRIGGERS,
   _SIP_URI_,
   _MEETING_ID_,
+  MEETING_REMOVED_REASON,
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
+  DISPLAY_HINTS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -38,8 +40,10 @@ import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Members from '@webex/plugin-meetings/src/members';
+import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
+import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/request';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
@@ -83,7 +87,7 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 
-const {getBrowserName} = BrowserDetection();
+const {getBrowserName, getOSVersion} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -167,6 +171,8 @@ describe('plugin-meetings', () => {
   let test3;
   let test4;
   let testDestination;
+  let membersSpy;
+  let meetingRequestSpy;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -179,7 +185,7 @@ describe('plugin-meetings', () => {
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id',
+          client_id: 'mock-client-id'
         },
         meetings: {
           reconnection: {
@@ -201,6 +207,8 @@ describe('plugin-meetings', () => {
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.llm.on = sinon.stub();
+    membersSpy = sinon.spy(MembersImport, 'default');
+    meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
@@ -254,6 +262,16 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.deviceUrl, uuid3);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
+          assert.calledOnceWithExactly(
+            membersSpy,
+            {
+              locusUrl: meeting.locusUrl,
+              receiveSlotManager: meeting.receiveSlotManager,
+              mediaRequestManagers: meeting.mediaRequestManagers,
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.roap, Roap);
           assert.instanceOf(meeting.reconnectionManager, ReconnectionManager);
           assert.isNull(meeting.audio);
@@ -268,6 +286,13 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.hostId);
           assert.isNull(meeting.policy);
           assert.instanceOf(meeting.meetingRequest, MeetingRequest);
+          assert.calledOnceWithExactly(
+            meetingRequestSpy,
+            {
+              meeting,
+            },
+            {parent: meeting.webex}
+          );
           assert.instanceOf(meeting.locusInfo, LocusInfo);
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
           assert.instanceOf(meeting.mediaProperties, MediaProperties);
@@ -994,6 +1019,66 @@ describe('plugin-meetings', () => {
             await meeting.join();
             sinon.assert.called(meeting.setCorrelationId);
           });
+
+          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
+            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledThrice(Metrics.postEvent)
+
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].data, {
+              isRoapCallEnabled: true,
+              trigger: 'user-interaction',
+            });
+            assert.deepEqual(
+              Metrics.postEvent.getCall(1).args[0].event,
+              'client.meetinginfo.request'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(1).args[0].data, undefined);
+            assert.deepEqual(
+              Metrics.postEvent.getCall(2).args[0].event,
+              'client.meetinginfo.response'
+            );
+            assert.deepEqual(Metrics.postEvent.getCall(2).args[0].data, {
+              meetingLookupUrl: 'url',
+            });
+          });
+
+          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
+            meeting.meetingInfo = {};
+
+            const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.CALL_INITIATED,
+              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            });
+
+            assert.exists(join.then);
+            const result = await join;
+
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+            assert.equal(result, joinMeetingResult);
+
+            assert.calledOnce(Metrics.postEvent)
+
+            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+          });
         });
         describe('failure', () => {
           beforeEach(() => {
@@ -1675,7 +1760,21 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
+            deviceUrl: meeting.deviceUrl
+          });
+        });
+        it('should leave the meeting on the resource with reason', async () => {
+          const leave = meeting.leave({resourceId: meeting.resourceId, reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST});
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(meeting.meetingRequest.leaveMeeting, {
+            locusUrl: meeting.locusUrl,
+            correlationId: meeting.correlationId,
+            selfId: meeting.selfId,
+            resourceId: meeting.resourceId,
             deviceUrl: meeting.deviceUrl,
+            reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST
           });
         });
       });
@@ -2887,7 +2986,6 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.dialOut = sinon
             .stub()
             .returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.locusInfo.onFullLocus = sinon.stub().returns(Promise.resolve());
         });
 
         it('with no parameters triggers dial-in, delegating request to meetingRequest correctly', async () => {
@@ -2900,11 +2998,9 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
 
           meeting.meetingRequest.dialIn.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial in urls should match
           await meeting.usePhoneAudio();
@@ -2915,7 +3011,6 @@ describe('plugin-meetings', () => {
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
         });
 
@@ -2932,11 +3027,9 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
 
           meeting.meetingRequest.dialOut.resetHistory();
-          meeting.locusInfo.onFullLocus.resetHistory();
 
           // try again. the dial out urls should match
           await meeting.usePhoneAudio(phoneNumber);
@@ -2948,7 +3041,6 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
-          assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
         });
 
@@ -2994,6 +3086,8 @@ describe('plugin-meetings', () => {
         const FAKE_CAPTCHA_AUDIO_URL = 'http://captchaaudio';
         const FAKE_CAPTCHA_REFRESH_URL = 'http://captcharefresh';
         const FAKE_INSTALLED_ORG_ID = '123456';
+        const FAKE_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
+        let FAKE_OPTIONS;
         const FAKE_MEETING_INFO = {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
@@ -3001,6 +3095,8 @@ describe('plugin-meetings', () => {
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id', // this.owner;
         };
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+
         const FAKE_SDK_CAPTCHA_INFO = {
           captchaId: FAKE_CAPTCHA_ID,
           verificationImageURL: FAKE_CAPTCHA_IMAGE_URL,
@@ -3014,9 +3110,15 @@ describe('plugin-meetings', () => {
           refreshURL: `${FAKE_CAPTCHA_REFRESH_URL}-2`,
         };
 
+        beforeEach(() => {
+          meeting.locusId = 'locus-id';
+          meeting.id = 'meeting-id';
+          FAKE_OPTIONS = {meetingId: meeting.id};
+        });
+
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
@@ -3027,6 +3129,7 @@ describe('plugin-meetings', () => {
           await meeting.fetchMeetingInfo({
             password: FAKE_PASSWORD,
             captchaCode: FAKE_CAPTCHA_CODE,
+            extraParams: FAKE_EXTRA_PARAMS,
           });
 
           assert.calledWith(
@@ -3035,11 +3138,14 @@ describe('plugin-meetings', () => {
             FAKE_TYPE,
             FAKE_PASSWORD,
             {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID},
-            FAKE_INSTALLED_ORG_ID
+            FAKE_INSTALLED_ORG_ID,
+            meeting.locusId,
+            FAKE_EXTRA_PARAMS,
+            FAKE_OPTIONS
           );
 
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3054,7 +3160,7 @@ describe('plugin-meetings', () => {
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
@@ -3077,13 +3183,17 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            meeting.locusId,
+            {},
+            {meetingId: meeting.id}
           );
 
           // parseMeeting info
-          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
+          assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}, FAKE_DESTINATION);
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
@@ -3099,7 +3209,7 @@ describe('plugin-meetings', () => {
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.requiredCaptcha = null;
           meeting.destination = FAKE_DESTINATION;
@@ -3118,7 +3228,7 @@ describe('plugin-meetings', () => {
 
         it('fails if password is provided when not required', async () => {
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
           };
           meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
           meeting.destination = FAKE_DESTINATION;
@@ -3151,7 +3261,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3180,7 +3294,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             null,
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3214,7 +3332,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3255,7 +3377,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3284,10 +3410,14 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            null
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
-          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.deepEqual(meeting.meetingInfo, {...FAKE_MEETING_INFO, meetingLookupUrl: undefined});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.VERIFIED);
           assert.equal(meeting.requiredCaptcha, null);
@@ -3329,7 +3459,11 @@ describe('plugin-meetings', () => {
             FAKE_DESTINATION,
             FAKE_TYPE,
             'aaa',
-            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+            {code: 'bbb', id: FAKE_CAPTCHA_ID},
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id},
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3471,6 +3605,17 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'mediaNegotiatedEvent'},
             'media:negotiated'
           );
+        });
+      });
+
+      describe('#postMetrics', () => {
+        it('should have #postMetrics', () => {
+          assert.exists(meeting.postMetrics);
+        });
+
+        it('should trigger `postMetrics`', async () => {
+          await meeting.postMetrics(eventType.LEAVE);
+          assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
         });
       });
 
@@ -4673,6 +4818,19 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE
           );
         });
+
+        it('listens to the breakout ask for help event and triggers the ask for help event', () => {
+          TriggerProxy.trigger.reset();
+          const helpEvent = {sessionId:'sessionId', participant: 'participant'}
+          meeting.breakouts.trigger('ASK_FOR_HELP', helpEvent);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
+            helpEvent
+          );
+        });
       });
 
       describe('#setupLocusControlsListener', () => {
@@ -4694,6 +4852,132 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+          );
+        });
+
+        it('listens to CONTROLS_MUTE_ON_ENTRY_CHANGED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_SHARE_CONTROL_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_REACTIONS_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_RAISE_HAND_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED,
+            {state},
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_VIDEO_UPDATED', async () => {
+          const state = {example: 'value'}
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+            {state},
           );
         });
 
@@ -5126,28 +5410,7 @@ describe('plugin-meetings', () => {
           checkParseMeetingInfo(expectedInfoToParse);
         });
       });
-      describe('#parseLocus', () => {
-        describe('when CALL and participants', () => {
-          beforeEach(() => {
-            meeting.setLocus = sinon.stub().returns(true);
-            MeetingUtil.getLocusPartner = sinon.stub().returns({person: {sipUrl: uuid3}});
-          });
-          it('should parse the locus object and set meeting properties and return null', () => {
-            meeting.type = 'CALL';
-            meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
-            assert.calledOnce(meeting.setLocus);
-            assert.calledWith(meeting.setLocus, {
-              url: url1,
-              participants: [{id: uuid1}],
-              self: {id: uuid2},
-            });
-            assert.calledOnce(MeetingUtil.getLocusPartner);
-            assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
-            assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
-            assert.equal(meeting.sipUri, uuid3);
-          });
-        });
-      });
+
       describe('#setCorrelationId', () => {
         it('should set the correlationId and return undefined', () => {
           assert.ok(meeting.correlationId);
@@ -5222,10 +5485,10 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let handleDataChannelUrlChangeSpy;
-        let canEnableReactionsSpy;
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let hasHintsSpy;
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -5249,7 +5512,6 @@ describe('plugin-meetings', () => {
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
-          canEnableReactionsSpy = sinon.spy(MeetingUtil, 'canEnableReactions');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
@@ -5262,6 +5524,10 @@ describe('plugin-meetings', () => {
         });
 
         it('registers the correct MEETING_INFO_UPDATED event', () => {
+          // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
+          const restorableHasHints = ControlsOptionsUtil.hasHints;
+          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5296,10 +5562,62 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
-          assert.calledWith(canEnableReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5317,6 +5635,8 @@ describe('plugin-meetings', () => {
           callback(payload);
 
           assert.notCalled(TriggerProxy.trigger);
+
+          ControlsOptionsUtil.hasHints = restorableHasHints;
         });
       });
 
@@ -5441,8 +5761,9 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusInfo.initialSetup = sinon.stub().returns(true);
         });
+
         it('should read the locus object, set on the meeting and return null', () => {
-          meeting.parseLocus({
+          meeting.setLocus({
             mediaConnections: [test1],
             locusUrl: url1,
             locusId: uuid1,
@@ -5467,6 +5788,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.hostId, uuid4);
         });
       });
+
       describe('preferred video device', () => {
         describe('#getVideoDeviceId', () => {
           it('returns the preferred video device', () => {
@@ -5556,7 +5878,7 @@ describe('plugin-meetings', () => {
               'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
-          const generateContent = (beneficiaryId = null, disposition = null) => ({
+          const generateContent = (beneficiaryId = null, disposition = null,annotation = undefined) => ({
             beneficiaryId,
             disposition,
           });
@@ -5573,7 +5895,10 @@ describe('plugin-meetings', () => {
             beneficiaryId,
             resourceUrl,
             isAccepting,
-            otherBeneficiaryId
+            otherBeneficiaryId,
+            annotation,
+            url,
+            shareInstanceId
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -5599,7 +5924,7 @@ describe('plugin-meetings', () => {
             if (isGranting) {
               if (isContent) {
                 activeSharingId.content = beneficiaryId;
-                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED);
+                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED,annotation);
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
                   eventTrigger.member = null;
@@ -5653,7 +5978,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId},
                     });
                   }
                 }
@@ -6226,6 +6551,28 @@ describe('plugin-meetings', () => {
             });
           });
 
+          describe('annotation policy', () => {
+
+            it('Scenario #1: blank annotation', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2, data3, data4]);
+            });
+
+            it('Scenario #2: annotation', () => {
+              const annotationInfo = {version: '1', policy: 'Approval'};
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, annotationInfo);
+              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2, data3, data4]);
+            });
+          });
+
           describe('Desktop A --> Desktop B', () => {
             it('Scenario #1: you share desktop A and then share desktop B', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
@@ -6628,6 +6975,66 @@ describe('plugin-meetings', () => {
 
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
+        });
+      });
+
+      describe('getAnalyzerMetricsPrePayload', () => {
+        it('should have #getAnalyzerMetricsPrePayload', () => {
+          assert.exists(meeting.getAnalyzerMetricsPrePayload);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.getAnalyzerMetricsPrePayload = sinon
+            .stub()
+            .returns(Promise.resolve());
+          meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
+          meeting.correlationId = 'correlation-id';
+        });
+
+        it('it should include meetingLookupUrl if provided', () => {
+          const res = meeting.getAnalyzerMetricsPrePayload({
+            meetingLookupUrl: 'https://service-url.com',
+            event: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.event,  {
+            canProceed: true,
+            eventData: {
+              webClientDomain: '',
+            },
+            identifiers: {
+              correlationId: 'correlation-id',
+              deviceId: uuid3,
+              locusUrl: 'Locus URL',
+              meetingLookupUrl: 'https://service-url.com',
+              orgId: undefined,
+              userId: uuid1,
+            },
+            name: 'client.meetinginfo.response',
+          });
+
+          assert.deepEqual(res.origin, {
+            channel: undefined,
+            loginType: undefined,
+            userType: undefined,
+            clientInfo: {
+              browser: '',
+              browserVersion: '',
+              clientType: undefined,
+              clientVersion: 'webex-js-sdk/undefined',
+              localNetworkPrefix: null,
+              os: 'other',
+              osVersion: getOSVersion() || 'unknown',
+              subClientType: undefined,
+            },
+            name: 'endpoint',
+            networkType: 'unknown',
+            userAgent: 'webex-js-sdk/test-undefined client=undefined; (os=linux/5)',
+          });
+
+          assert.deepEqual(res.senderCountryCode, undefined);
+          assert.deepEqual(res.version, 1);
+
         });
       });
     });

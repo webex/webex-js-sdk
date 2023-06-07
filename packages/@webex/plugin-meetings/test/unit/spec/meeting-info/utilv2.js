@@ -150,6 +150,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#getRequestBody', () => {
+
       it('for _PERSONAL_ROOM_', () => {
         const res = MeetingInfoUtil.getRequestBody({
           type: _PERSONAL_ROOM_,
@@ -217,6 +218,26 @@ describe('plugin-meetings', () => {
         assert.equal(
           res.conversationUrl,
           'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49280'
+        );
+      });
+
+      it('allows for extra params to be provided', () => {
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+
+        const res = MeetingInfoUtil.getRequestBody({
+          type: _CONVERSATION_URL_,
+          destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
+          extraParams,
+        });
+
+        assert.deepEqual(
+          res,
+          {
+            conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
+            supportHostKey: true,
+            supportCountryList: true,
+            ...extraParams,
+          }
         );
       });
     });

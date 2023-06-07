@@ -19,7 +19,6 @@ import {
   LEAVE,
   LOCI,
   LOCUS,
-  MEDIA,
   PARTICIPANT,
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
@@ -29,12 +28,15 @@ import {
   ANNOTATION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
+import MeetingUtil from './util';
 
 /**
  * @class MeetingRequest
  */
 export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
+  meetingRef: WeakRef<any>;
+  locusDeltaRequest: (options: object) => Promise<any>;
 
   /**
    * Constructor
@@ -42,7 +44,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Object} options
    */
   constructor(attrs: any, options: any) {
-    super(attrs, options);
+    const {meeting, ...otherAttrs} = attrs;
+
+    super(otherAttrs, options);
+
+    this.locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
     this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
       leading: true,
       trailing: true,
@@ -89,6 +96,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
    * @param {boolean} options.breakoutsSupported
+   * @param {String} options.locale,
+   * @param {Array} options.deviceCapabilities
    * @param {boolean} options.liveAnnotationSupported
    * @returns {Promise}
    */
@@ -109,6 +118,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     permissionToken: any;
     preferTranscoding: any;
     breakoutsSupported: boolean;
+    locale?: string;
+    deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
   }) {
     const {
@@ -127,6 +138,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       roapMessage,
       preferTranscoding,
       breakoutsSupported,
+      locale,
+      deviceCapabilities = [],
       liveAnnotationSupported,
     } = options;
 
@@ -156,17 +169,21 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     };
 
-    let deviceCapabilities = [];
     if (breakoutsSupported) {
-      deviceCapabilities = [...deviceCapabilities, BREAKOUTS.BREAKOUTS_SUPPORTED];
+      deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
     }
     if (liveAnnotationSupported) {
-      deviceCapabilities = [...deviceCapabilities, ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED];
-    }
-    if (deviceCapabilities.length > 0) {
-      body.deviceCapabilities = deviceCapabilities;
+      deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
     }
 
+    if (locale) {
+      body.locale = locale;
+    }
+
+    // add deviceCapabilities prop
+    if (deviceCapabilities.length) {
+      body.deviceCapabilities = deviceCapabilities;
+    }
     // @ts-ignore
     if (this.webex.meetings.clientRegion) {
       // @ts-ignore
@@ -296,7 +313,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     };
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.POST,
       uri,
       body,
@@ -351,7 +368,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     };
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.POST,
       uri,
       body,
@@ -466,7 +483,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     };
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,
       body,
@@ -515,8 +532,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       correlationId,
     };
 
-    // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,
       body,
@@ -542,14 +558,19 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       correlationId: options.correlationId,
     };
 
-    // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,
       body,
     });
   }
 
+  /**
+   * Makes a network request to lock the meeting
+   * @param {Object} options
+   * @param {Boolean} options.lock Whether it is locked or not
+   * @returns {Promise}
+   */
   lockMeeting(options) {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {
@@ -558,8 +579,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     };
 
-    // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PATCH,
       uri,
       body,
@@ -585,54 +605,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       ...(options.reason && {reason: options.reason}),
     };
 
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.PUT,
-      uri,
-      body,
-    });
-  }
-
-  /**
-   * Toggle remote audio and/or video
-   * @param {Object} options options for toggling
-   * @param {String} options.selfId Locus self id??
-   * @param {String} options.locusUrl Locus url
-   * @param {String} options.deviceUrl Url of a device
-   * @param {String} options.resourceId Populated if you are paired to a device
-   * @param {String} options.localMedias local sdps
-   * @param {Boolean} options.preferTranscoding false for multistream (Homer), true for transcoded media (Edonus)
-   * @returns {Promise}
-   */
-  remoteAudioVideoToggle(
-    options:
-      | {
-          selfId: string;
-          locusUrl: string;
-          deviceUrl: string;
-          resourceId: string;
-          localMedias: string;
-        }
-      | any
-  ) {
-    const uri = `${options.locusUrl}/${PARTICIPANT}/${options.selfId}/${MEDIA}`;
-    const body = {
-      device: {
-        // @ts-ignore
-        deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl,
-      },
-      usingResource: options.resourceId || null,
-      correlationId: options.correlationId,
-      respOnlySdp: true,
-      localMedias: options.localMedias,
-      clientMediaPreferences: {
-        preferTranscoding: options.preferTranscoding ?? true,
-      },
-    };
-
-    // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,
       body,
@@ -713,7 +686,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    */
   sendDTMF({locusUrl, deviceUrl, tones}: {locusUrl: string; deviceUrl: string; tones: string}) {
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.POST,
       uri: `${locusUrl}/${SEND_DTMF_ENDPOINT}`,
       body: {
@@ -794,7 +767,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         : undefined;
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri: `${locusUrl}/${CONTROLS}`,
       body: {
@@ -817,7 +790,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const uri = `${locusUrl}/${END}`;
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.POST,
       uri,
     });
@@ -869,7 +842,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const uri = `${locusUrl}/${CONTROLS}`;
 
     // @ts-ignore
-    return this.request({
+    return this.locusDeltaRequest({
       method: HTTP_VERBS.PUT,
       uri,
       body: {
