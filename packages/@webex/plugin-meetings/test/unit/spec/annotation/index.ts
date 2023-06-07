@@ -240,14 +240,13 @@ describe('live-annotation', () => {
               }], "type": "curve", "name": "contentUpdate"
             }], "action": "contentUpdate", "sender": {"name": "perfect", "id": "4dd5eaf9-4cf8-4f0f-a1d6-014bf5d00741"}
           },
-          fromUserId: "525ead98-6c93-4fcb-899d-517305c47503",
-          fromDeviceUrl: "https://wdm.wbx2.com/wdm/api/v1/devices/0bbecbf8-59ac-410a-b906-b310d1a50867",
+          deviceId: "525ead98-6c93-4fcb-899d-517305c47513",
+          requesterId: '525ead98-6c93-4fcb-899d-517305c47513',
           toUserId: "987ead98-6c93-4fcb-899d-517305c47503",
-          locusUrl: "https://locus.wbx2.com/locus/api/v1/loci/163c1787-c1f5-47cc-95eb-ab2d660999e6",
-          shareInstanceId: "7fa6fe07-dcb1-41ad-973d-7bcf65fab55d",
+          shareInstanceId: '7fa6fe07-dcb1-41ad-973d-7bcf65fab55d',
           encryptionKeyUrl: "encryptionKeyUrl",
           version: '1',
-        };
+        } ;
 
         annotationService.publishEncrypted(strokeData.content, strokeData);
 
@@ -261,15 +260,13 @@ describe('live-annotation', () => {
             relayType: ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT,
             request: {
               value: {
-                sessionId: sinon.match.string,
                 type: ANNOTATION_REQUEST_TYPE.ANNOTATION_MESSAGE,
-                locusUrl: locusUrl,
                 content: strokeData.content,
                 version: '1',
-                fromUserId: strokeData.fromUserId,
-                fromDeviceUrl: strokeData.fromDeviceUrl,
+                seq:sinon.match.number,
+                deviceId: sinon.match.string,
+                requesterId: sinon.match.string,
                 shareInstanceId: strokeData.shareInstanceId,
-                locusId: '163c1787-c1f5-47cc-95eb-ab2d660999e6',
                 encryptionKeyUrl: 'encryptionKeyUrl',
               }
             }

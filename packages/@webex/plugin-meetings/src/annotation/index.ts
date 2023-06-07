@@ -311,15 +311,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         relayType: ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT,
         request: {
           value: {
-            sessionId: uuid.v4(),
             type: ANNOTATION_REQUEST_TYPE.ANNOTATION_MESSAGE,
-            locusUrl: this.locusUrl,
             content: encryptedContent,
+            deviceId: strokeData.deviceId,
+            seq: this.seqNum,
+            requesterId: strokeData.requesterId,
             version: strokeData.version,
-            fromUserId: strokeData.fromUserId,
-            fromDeviceUrl: strokeData.fromDeviceUrl,
             shareInstanceId: strokeData.shareInstanceId,
-            locusId: this.locusUrl && this.locusUrl.split('/').pop(),
             encryptionKeyUrl: strokeData.encryptionKeyUrl,
           },
         },
