@@ -1381,7 +1381,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#fetchUserPreferredWebexSite', () => {
+      describe.only('#fetchUserPreferredWebexSite', () => {
         it('should call request.getMeetingPreferences to get the preferred webex site ', async () => {
           assert.isDefined(webex.meetings.preferredWebexSite);
           await webex.meetings.fetchUserPreferredWebexSite();
@@ -1389,7 +1389,22 @@ describe('plugin-meetings', () => {
           assert.equal(webex.meetings.preferredWebexSite, 'go.webex.com');
         });
 
+        const setup = ({user} = {}) => {
+          Object.assign(webex.internal, {
+            services: {
+              getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
+            },
+            user: {
+              get: sinon.stub().returns(
+                Promise.resolve(user)
+              ),
+            },
+          });
+        }
+
         it('should not fail if UserPreferred info is not fetched ', async () => {
+          setup();
+
           Object.assign(webex.internal, {
             services: {
               getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
@@ -1400,6 +1415,48 @@ describe('plugin-meetings', () => {
             assert.equal(webex.meetings.preferredWebexSite, '');
           });
         });
+
+        it('should fall back to fetching the site from the user', async () => {
+          setup({
+            user: {
+              userPreferences: {
+                userPreferencesItems: {
+                  preferredWebExSite: 'site.webex.com',
+                },
+              },
+            },
+          });
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
+        });
+
+        forEach([
+          {user: undefined},
+          {user: {userPreferences: {}}},
+          {user: {userPreferences: {userPreferencesItems: {}}}},
+          {user: {userPreferences: {userPreferencesItems: {preferredWebExSite: undefined}}}},
+        ], ({user}) => {
+          it(`should handle invalid user data ${user}`, async () => {
+            setup({user});
+
+            await webex.meetings.fetchUserPreferredWebexSite();
+
+            assert.equal(webex.meetings.preferredWebexSite, '');
+          });
+        });
+
+        it('should handle a get user failure', async () => {
+          setup();
+
+          webex.internal.user.get.rejects(new Error());
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, '');
+        });
+
       });
     });
 

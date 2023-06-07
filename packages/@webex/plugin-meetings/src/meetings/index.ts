@@ -942,6 +942,27 @@ export default class Meetings extends WebexPlugin {
       if (res) {
         this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
       }
+
+      // fall back to getting the preferred site from the user information
+      if (!this.preferredWebexSite) {
+        // @ts-ignore
+        return this.webex.internal.user
+          .get()
+          .then((user) => {
+            const preferredWebexSite =
+              user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
+            if (preferredWebexSite) {
+              this.preferredWebexSite = preferredWebexSite;
+            }
+          })
+          .catch(() => {
+            LoggerProxy.logger.error(
+              'Failed to fetch preferred site from user - no site will be set'
+            );
+          });
+      }
+
+      return Promise.resolve();
     });
   }
 
