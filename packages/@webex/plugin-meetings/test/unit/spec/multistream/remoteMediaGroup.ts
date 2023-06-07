@@ -97,6 +97,68 @@ describe('RemoteMediaGroup', () => {
     });
   });
 
+  describe('setPreferLiveVideo', () => {
+    it('sets to true initial option was false', () => {
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: false,
+      });
+
+      group.setPreferLiveVideo(true);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledTwice(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            preferLiveVideo: true
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        })
+      );
+    });
+
+    it('sets to false initial option was true', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      group.setPreferLiveVideo(false);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledTwice(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            preferLiveVideo: false
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        })
+      );
+    });
+
+  });
+
   describe('pinning', () => {
     it('works as expected', () => {
       const PINNED_INDEX = 2;

@@ -151,6 +151,11 @@ export class RemoteMediaGroup {
     throw new Error(`remote media object ${remoteMedia.id} not found in the group`);
   }
 
+  public setPreferLiveVideo(preferLiveVideo: boolean) {
+    this.options.preferLiveVideo = preferLiveVideo;
+    this.sendActiveSpeakerMediaRequest(false);
+  }
+
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 

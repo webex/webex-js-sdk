@@ -491,6 +491,16 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * sets the preferLiveVideo
+   */
+  public setPreferLiveVideo(preferLiveVideo: boolean) {
+    this.config.video.preferLiveVideo = preferLiveVideo;
+    Object.values(this.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
+      activeSpeakerGroup.setPreferLiveVideo(preferLiveVideo);
+    });
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {
