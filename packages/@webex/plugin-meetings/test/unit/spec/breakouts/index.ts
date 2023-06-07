@@ -106,19 +106,29 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.namespace, 'Meetings');
       });
 
-      it('emits BREAKOUTS_CLOSING event when the status is CLOSING', () => {
-        let called = false;
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, () => {
-          called = true;
+      it('emits BREAKOUTS_CLOSING event when the breakoutStatus is CLOSING', () => {
+        const checkIsCalled = (deps) => {
+          let called = false;
+          breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, () => {
+            called = true;
+          });
+          assert.isFalse(called);
+          breakouts.set(deps);
+          assert.isTrue(called);
+        }
+
+        checkIsCalled({
+          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          groups: [{status: BREAKOUTS.STATUS.CLOSING}],
+          status: undefined
         });
 
-        breakouts.set('status', 'something');
+        checkIsCalled({
+          sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+          groups: undefined,
+          status: BREAKOUTS.STATUS.CLOSING
+        });
 
-        assert.isFalse(called);
-
-        breakouts.set({status: BREAKOUTS.STATUS.CLOSING});
-
-        assert.isTrue(called);
       });
 
       it('debounces querying rosters on add', () => {
@@ -491,6 +501,20 @@ describe('plugin-meetings', () => {
       it('return empty group id if group status is CLOSED', () => {
         breakouts.set('manageGroups', [{id: 'groupId1', status: 'CLOSED'}]);
         assert.equal(breakouts.breakoutGroupId, '');
+      });
+    });
+
+    describe('#breakoutStatus', () => {
+      it('return status from groups with session type', () => {
+        breakouts.set('groups', [{status: "OPEN"}]);
+        breakouts.set('status', "CLOSED");
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+
+        assert.equal(breakouts.breakoutStatus, "OPEN")
+
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.BREAKOUT);
+
+        assert.equal(breakouts.breakoutStatus, "CLOSED")
       });
     });
 
