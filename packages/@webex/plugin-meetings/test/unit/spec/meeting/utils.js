@@ -158,7 +158,7 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(body, {});
       });
- 
+
       it('should work with an undefined locusInfo', () => {
         const body = {};
 
@@ -335,6 +335,24 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with liveAnnotationSupported=true when passed in as true', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          liveAnnotationSupported: true,
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.liveAnnotationSupported, true);
       });
 
       it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
