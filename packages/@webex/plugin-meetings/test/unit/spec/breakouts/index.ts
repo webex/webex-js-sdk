@@ -106,7 +106,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.namespace, 'Meetings');
       });
 
-      it.only('emits BREAKOUTS_CLOSING event when the breakoutStatus is CLOSING', () => {
+      it('emits BREAKOUTS_CLOSING event when the breakoutStatus is CLOSING', () => {
         const checkIsCalled = (deps) => {
           let called = false;
           breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, () => {
