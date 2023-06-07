@@ -53,6 +53,33 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.videoEnabled = controls.video.enabled;
   }
 
+  if (controls?.muteOnEntry) {
+    parsedControls.muteOnEntry = {enabled: controls.muteOnEntry.enabled};
+  }
+
+  if (controls?.shareControl) {
+    parsedControls.shareControl = {control: controls.shareControl.control};
+  }
+
+  if (controls?.disallowUnmute) {
+    parsedControls.disallowUnmute = {enabled: controls.disallowUnmute.enabled};
+  }
+
+  if (controls?.reactions) {
+    parsedControls.reactions = {
+      enabled: controls.reactions.enabled,
+      showDisplayNameWithReactions: controls.reactions.showDisplayNameWithReactions,
+    };
+  }
+
+  if (controls?.viewTheParticipantList) {
+    parsedControls.viewTheParticipantList = {enabled: controls.viewTheParticipantList.enabled};
+  }
+
+  if (controls?.raiseHand) {
+    parsedControls.raiseHand = {enabled: controls.raiseHand.enabled};
+  }
+
   return parsedControls;
 };
 
@@ -70,6 +97,36 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
     previous,
     current,
     updates: {
+      hasMuteOnEntryChanged:
+        current?.muteOnEntry?.enabled &&
+        current?.muteOnEntry?.enabled !== previous?.muteOnEntry?.enabled,
+
+      hasShareControlChanged:
+        current?.shareControl?.control &&
+        current?.shareControl?.control !== previous?.shareControl?.control,
+
+      hasDisallowUnmuteChanged:
+        current?.disallowUnmute?.enabled &&
+        current?.disallowUnmute?.enabled !== previous?.disallowUnmute?.enabled,
+
+      hasReactionsChanged:
+        current?.reactions?.enabled && current?.reactions?.enabled !== previous?.reactions?.enabled,
+
+      hasReactionDisplayNamesChanged:
+        current?.reactions?.showDisplayNameWithReactions &&
+        current?.reactions?.showDisplayNameWithReactions !==
+          previous?.reactions?.showDisplayNameWithReactions,
+
+      hasViewTheParticipantListChanged:
+        current?.viewTheParticipantList?.enabled &&
+        current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled,
+
+      hasRaiseHandChanged:
+        current?.raiseHand?.enabled && current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
+
+      hasVideoChanged:
+        current?.video?.enabled && current?.video?.enabled !== previous?.video?.enabled,
+
       hasRecordingPausedChanged:
         current?.record &&
         !isEqual(previous?.record?.paused, current.record.paused) &&

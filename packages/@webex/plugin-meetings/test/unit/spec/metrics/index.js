@@ -109,6 +109,72 @@ browserOnly(describe)('Meeting metrics', () => {
     });
   });
 
+  describe('parseWebexApiError', () => {
+    it('returns the correct error data for meeting lookup info error', () => {
+      const err = {
+        body: {
+          code: 58400,
+        },
+        statusCode: 400,
+      };
+      const res = metrics.parseWebexApiError(err, false);
+
+      assert.deepEqual(res, {
+        shownToUser: false,
+        category: 'signaling',
+        errorDescription: 'MeetingInfoLookupError',
+        errorCode: 4100,
+        fatal: true,
+        name: 'other',
+        serviceErrorCode: 58400,
+        errorData:  { error: { code: 58400 } },
+        httpCode: 400
+      });
+    });
+
+    it('returns the correct error data for access rights error error', () => {
+      const err = {
+        body: {
+          code: 403041,
+        },
+        statusCode: 400,
+      };
+      const res = metrics.parseWebexApiError(err, false);
+
+      assert.deepEqual(res, {
+        shownToUser: false,
+        "category": "expected",
+        "errorCode": 4005,
+        errorDescription: 'Moderator_Pin_Or_Guest_PIN_Required',
+        fatal: false,
+        name: 'other',
+        serviceErrorCode: 403041,
+        errorData: { error: { code: 403041 } },
+        httpCode: 400
+      });
+    });
+
+    it('returns default 4100 mapping for unknown error', () => {
+      const err = {
+        body: {
+          code: 123456,
+        },
+      };
+      const res = metrics.parseWebexApiError(err, false);
+
+      assert.deepEqual(res, {
+        shownToUser: false,
+        category: 'signaling',
+        errorDescription: 'MeetingInfoLookupError',
+        errorCode: 4100,
+        fatal: true,
+        name: 'other',
+        serviceErrorCode: 123456,
+        errorData:  { error: { code: 123456 } },
+      });
+    });
+  });
+
   describe('#generateErrorPayload', () => {
     it('generates the correct payload for a valid error code', () => {
       const errorCode = 4008;
@@ -119,7 +185,7 @@ browserOnly(describe)('Meeting metrics', () => {
         body: errBody,
         statusCode: 404,
       };
-      
+
       const payload = metrics.generateErrorPayload(
         errorCode,
         shownToUser,
@@ -135,6 +201,7 @@ browserOnly(describe)('Meeting metrics', () => {
         fatal: true,
         name,
         errorData: {error: errBody},
+        serviceErrorCode: undefined,
         httpCode: 404,
       });
     });

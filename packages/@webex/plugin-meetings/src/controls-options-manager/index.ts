@@ -140,8 +140,8 @@ export default class ControlsOptionsManager {
    * @param {Array<ControlConfig>} controls - Spread Array of ControlConfigs
    * @returns {Promise<Array<any>>}- Promise resolving if the request was successful.
    */
-  protected update(...controls: Array<ControlConfig>) {
-    const payload = controls.reduce((output, control) => {
+  public update(...controls: Array<ControlConfig>) {
+    const payloads = controls.map((control) => {
       if (!Object.keys(Control).includes(control.scope)) {
         throw new Error(
           `updating meeting control scope "${control.scope}" is not a supported scope`
@@ -155,17 +155,20 @@ export default class ControlsOptionsManager {
       }
 
       return {
-        ...output,
         [control.scope]: control.properties,
       };
-    }, {});
-
-    // @ts-ignore
-    return this.request.request({
-      uri: `${this.locusUrl}/${CONTROLS}`,
-      body: payload,
-      method: HTTP_VERBS.PATCH,
     });
+
+    return payloads.reduce((previous, payload) => {
+      return previous.then(() =>
+        // @ts-ignore
+        this.request.request({
+          uri: `${this.locusUrl}/${CONTROLS}`,
+          body: payload,
+          method: HTTP_VERBS.PATCH,
+        })
+      );
+    }, Promise.resolve());
   }
 
   /**

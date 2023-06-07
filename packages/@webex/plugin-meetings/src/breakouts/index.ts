@@ -5,11 +5,12 @@ import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {BREAKOUTS, MEETINGS, HTTP_VERBS} from '../constants';
+import {BREAKOUTS, MEETINGS, HTTP_VERBS, _ID_} from '../constants';
 
 import Breakout from './breakout';
 import BreakoutCollection from './collection';
 import BreakoutRequest from './request';
+import breakoutEvent from './events';
 import {boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from './utils';
 
 /**
@@ -38,6 +39,8 @@ const Breakouts = WebexPlugin.extend({
     breakoutServiceUrl: 'string', // the current breakout resource url
     mainLocusUrl: 'string', // the locus url of the main session
     groups: 'array', // appears when create breakouts
+    manageGroups: 'array', // appears when manage breakouts
+    preAssignments: 'array', // appears when getPreAssignments info hasBreakoutPreAssignments = true
     shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
@@ -75,14 +78,16 @@ const Breakouts = WebexPlugin.extend({
     },
     breakoutGroupId: {
       cache: false,
-      deps: ['groups'],
+      deps: ['manageGroups'],
       /**
        * Returns the actived group id
        * @returns {boolean}
        */
       fn() {
-        if (this.groups?.length) {
-          return this.groups[0].id;
+        if (this.manageGroups?.length) {
+          return this.manageGroups[0].status !== BREAKOUTS.STATUS.CLOSED
+            ? this.manageGroups[0].id
+            : '';
         }
 
         return '';
@@ -104,12 +109,17 @@ const Breakouts = WebexPlugin.extend({
       leading: true,
       trailing: false,
     });
-    this.listenTo(this.breakouts, 'add', () => {
+    this.listenTo(this.breakouts, 'add', (breakout) => {
       this.debouncedQueryRosters();
+      this.triggerReturnToMainEvent(breakout);
+    });
+    this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
+      this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
     this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
+    this.listenToBreakoutHelp();
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -234,6 +244,19 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Sets up a listener for ask help notify from mecury
+   * @returns {void}
+   */
+  listenToBreakoutHelp() {
+    this.listenTo(this.webex.internal.mercury, 'event:breakout.help', (event) => {
+      const {
+        data: {participant, sessionId},
+      } = event;
+      this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
+    });
+  },
+
+  /**
    * Updates the information about the current breakout
    * @param {Object} params
    * @returns {void}
@@ -241,7 +264,11 @@ const Breakouts = WebexPlugin.extend({
   updateBreakout(params) {
     const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
+
+    // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
+    this.set('startTime', params.startTime);
+    this.set('status', params.status);
 
     this.set('currentBreakoutSession', {
       sessionId: params.sessionId,
@@ -258,12 +285,21 @@ const Breakouts = WebexPlugin.extend({
     });
 
     // We need to call queryPreAssignments when enableBreakoutSession become true
+    if (preEnableBreakoutSession !== params.enableBreakoutSession) {
+      this.queryPreAssignments(params);
+    }
+
     if (
-      params.enableBreakoutSession &&
-      params.hasBreakoutPreAssignments &&
-      preEnableBreakoutSession !== params.enableBreakoutSession
+      this.currentBreakoutSession.previous('sessionId') !== this.currentBreakoutSession.sessionId ||
+      this.currentBreakoutSession.previous('groupId') !== this.currentBreakoutSession.groupId
     ) {
-      this.queryPreAssignments();
+      // should report joined session changed
+      const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+      breakoutEvent.onBreakoutJoinResponse({
+        currentSession: this.currentBreakoutSession,
+        meeting,
+        breakoutMoveId: params.breakoutMoveId,
+      });
     }
   },
 
@@ -290,6 +326,10 @@ const Breakouts = WebexPlugin.extend({
           }
 
           breakouts[sessionId][state] = true;
+
+          if (state === BREAKOUTS.SESSION_STATES.REQUESTED) {
+            breakouts[sessionId].requestedLastModifiedTime = breakout.modifiedAt;
+          }
         });
       });
     }
@@ -300,10 +340,6 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this.breakouts.set(Object.values(breakouts));
-
-    if (this.allowBackToMain && this.getMainSession().requested) {
-      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
-    }
   },
   /**
    * get main session
@@ -421,6 +457,17 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * set groups to manageGroups prop
+   * @param {Object} breakoutInfo -- breakout groups
+   * @returns {void}
+   */
+  _setManageGroups(breakoutInfo) {
+    if (breakoutInfo?.body?.groups) {
+      this.set('manageGroups', breakoutInfo.body.groups);
+    }
+  },
+
+  /**
    * Create new breakout sessions
    * @param {object} params -- breakout session group
    * @returns {Promise}
@@ -432,7 +479,7 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
     // @ts-ignore
-    const breakInfo = await this.webex
+    const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
@@ -442,14 +489,12 @@ const Breakouts = WebexPlugin.extend({
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#create'));
       });
 
-    if (breakInfo.body?.groups) {
-      this.set('groups', breakInfo.body.groups);
-    }
+    this._setManageGroups(breakoutInfo);
 
     // clear edit lock info after save breakout session info
     this._clearEditLockInfo();
 
-    return Promise.resolve(breakInfo);
+    return breakoutInfo;
   },
 
   /**
@@ -462,7 +507,7 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
     };
     // @ts-ignore
-    const breakInfo = await this.webex
+    const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
@@ -472,12 +517,10 @@ const Breakouts = WebexPlugin.extend({
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#clearSessions'));
       });
 
-    if (breakInfo.body?.groups) {
-      this.set('groups', breakInfo.body.groups);
-    }
+    this._setManageGroups(breakoutInfo);
     this.shouldFetchPreassignments = false;
 
-    return Promise.resolve(breakInfo);
+    return breakoutInfo;
   },
 
   /**
@@ -485,7 +528,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  start(params = {}) {
+  async start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
       id: this.breakoutGroupId,
@@ -503,13 +546,17 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#start'));
     });
+
+    this._setManageGroups(breakoutInfo);
+
+    return breakoutInfo;
   },
 
   /**
@@ -517,7 +564,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  end(params = {}) {
+  async end(params = {}) {
     const {delayCloseTime, breakoutGroupId: id} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
     const payload = {
@@ -534,39 +581,54 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#end'));
     });
+
+    this._setManageGroups(breakoutInfo);
+
+    return breakoutInfo;
   },
 
   /**
    * Host or cohost update breakout sessions
    * @param {Object} params
    * @param {String} params.id
+   * @param {Boolean} unlockEdit
    * @returns {Promise}
    */
-  update(params: {id: string}) {
+  async update(params: {id: string}, unlockEdit?: boolean) {
     if (!params.id) {
       return Promise.reject(new Error('Missing breakout group id'));
     }
     const payload = {...params};
 
     const body = {
-      ...(this.editLock?.token ? {editlock: {token: this.editLock.token, refresh: true}} : {}),
+      ...(this.editLock?.token
+        ? {editlock: {token: this.editLock.token, refresh: !unlockEdit}}
+        : {}),
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#update'));
     });
+
+    if (unlockEdit) {
+      this._clearEditLockInfo();
+    }
+
+    this._setManageGroups(breakoutInfo);
+
+    return breakoutInfo;
   },
 
   /**
@@ -580,9 +642,7 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
     });
 
-    if (breakout.body?.groups) {
-      this.set('groups', breakout.body.groups);
-    }
+    this._setManageGroups(breakout);
     if (editlock && breakout.body?.editlock?.token) {
       this.set('editLock', breakout.body.editlock);
       this.keepEditLockAlive();
@@ -719,15 +779,19 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * The pre-assignments need to be queried when "hasBreakoutPreAssignments" is true
+   * @param {Object} params
    * @returns {void}
    */
-  queryPreAssignments() {
+  queryPreAssignments(params) {
+    if (!params || !params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
+      return;
+    }
     if (!this.shouldFetchPreassignments) {
       this.webex
         .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
         .then((result) => {
           if (result.body?.groups) {
-            this.set('groups', result.body.groups);
+            this.set('preAssignments', result.body.groups);
           }
         })
         .catch((error) => {
@@ -770,6 +834,16 @@ const Breakouts = WebexPlugin.extend({
       uri: `${this.url}/dynamicAssign`,
       body,
     });
+  },
+  /**
+   * trigger ASK_RETURN_TO_MAIN event when main session requested
+   * @param {Object} breakout
+   * @returns {void}
+   */
+  triggerReturnToMainEvent(breakout) {
+    if (breakout.isMain && breakout.requested) {
+      this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+    }
   },
 });
 

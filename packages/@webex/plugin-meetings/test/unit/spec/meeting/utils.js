@@ -133,51 +133,169 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('remoteUpdateAudioVideo', () => {
-      it('#Should call meetingRequest.remoteAudioVideoToggle with correct parameters (multistream)', async () => {
-        const meeting = {
-          correlationId: 'correlation id',
-          isMultistream: true,
-          mediaId: '12345',
-          meetingJoinUrl: 'meetingJoinUrl',
-          locusUrl: 'locusUrl',
-          deviceUrl: 'some device url',
-          selfId: 'self id',
-          meetingRequest: {
-            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-        };
+    describe('addSequence', () => {
+      it('should add the sequence object to a request body', () => {
+        const body = {};
 
-        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
+        MeetingUtil.addSequence({
+          locusInfo: {
+            sequence: 'sequence'
+          }
+        }, body);
 
-        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
-        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
-
-        assert.equal(parameter.locusUrl, 'locusUrl');
-        assert.equal(parameter.selfId, 'self id');
-        assert.equal(parameter.correlationId, 'correlation id');
-        assert.equal(parameter.deviceUrl, 'some device url');
-        assert.deepEqual(parameter.localMedias, [
-          {localSdp: '{"audioMuted":true,"videoMuted":false}', mediaId: '12345'},
-        ]);
-        assert.equal(parameter.preferTranscoding, false);
+        assert.deepEqual(body, {
+          sequence: 'sequence'
+        });
       });
 
-      it('#Should call meetingRequest.remoteAudioVideoToggle with preferTranscoding:true for non multistream connections', async () => {
+      it('should work with an undefined meeting', () => {
+        const body = {};
+
+        MeetingUtil.addSequence(
+          undefined,
+          body
+        );
+
+        assert.deepEqual(body, {});
+      });
+ 
+      it('should work with an undefined locusInfo', () => {
+        const body = {};
+
+        MeetingUtil.addSequence({}, body);
+
+        assert.deepEqual(body, {});
+      });
+
+      it('should work with an undefined sequence', () => {
+        const body = {};
+
+        MeetingUtil.addSequence({locusInfo: {}}, body);
+
+        assert.deepEqual(body, {});
+      });
+    });
+
+    describe('updateLocusWithDelta', () => {
+      it('should call onDeltaLocus with the new delta locus', () => {
         const meeting = {
-          isMultistream: false,
-          mediaId: '12345',
-          meetingRequest: {
-            remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          locusInfo: {
+            onDeltaLocus: sinon.stub(),
+          }
+        }
+
+        const originalResponse = {
+          body: {
+            locus: 'locus'
+          }
+        };
+
+        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, 'locus');
+      });
+
+      it('should handle locus being missing from the response', () => {
+        const meeting = {
+          locusInfo: {
+            onDeltaLocus: sinon.stub(),
           },
         };
 
-        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
+        const originalResponse = {
+          body: {},
+        };
 
-        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
-        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
+        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
 
-        assert.equal(parameter.preferTranscoding, true);
+        assert.deepEqual(response, originalResponse);
+        assert.notCalled(meeting.locusInfo.onDeltaLocus);
+      });
+
+      it('should work with an undefined meeting', () => {
+        const originalResponse = {
+          body: {
+            locus: 'locus',
+          },
+        };
+
+        const response = MeetingUtil.updateLocusWithDelta(undefined, originalResponse);
+        assert.deepEqual(response, originalResponse);
+      });
+    });
+
+    describe('generateLocusDeltaRequest', () => {
+
+      afterEach(() => {
+        WeakRef.prototype.deref.restore();
+      });
+
+      it('generates the correct wrapper function', async () => {
+        const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
+        const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
+
+        const meeting = {
+          request: sinon.stub().returns(Promise.resolve('result')),
+        }
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const options = {
+          some: 'option',
+          body: {}
+        };
+
+        let result = await locusDeltaRequest(options);
+
+        assert.equal(result, 'result');
+        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
+
+        updateLocusWithDeltaSpy.resetHistory();
+        addSequenceSpy.resetHistory();
+
+        // body missing from options
+        result = await locusDeltaRequest({});
+        assert.equal(result, 'result');
+        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
+
+        // meeting disappears so the WeakRef returns undefined
+        sinon.stub(WeakRef.prototype, 'deref').returns(undefined);
+
+        result = await locusDeltaRequest(options);
+        assert.equal(result, undefined);
+
+      });
+
+    });
+
+    describe('remoteUpdateAudioVideo', () => {
+      it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
+        const meeting = {
+          mediaId: '12345',
+          selfUrl: 'self url',
+          locusInfo: {
+            sequence: {},
+          },
+          locusMediaRequest: {
+            send: sinon.stub().resolves({body: {}, headers: {}}),
+          },
+        };
+
+        await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
+
+        assert.calledOnceWithExactly(meeting.locusMediaRequest.send, {
+          mediaId: '12345',
+          muteOptions: {
+            audioMuted: true,
+            videoMuted: false,
+          },
+          selfUrl: 'self url',
+          sequence: {},
+          type: 'LocalMute',
+        });
       });
     });
 
@@ -217,6 +335,26 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          locale: 'en_UK',
+          deviceCapabilities: ['TEST'],
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.locale, 'en_UK');
+        assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
       });
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
@@ -423,27 +561,6 @@ describe('plugin-meetings', () => {
         it('works as expected', () => {
           assert.deepEqual(MeetingUtil[functionName]([displayHint]), true);
           assert.deepEqual(MeetingUtil[functionName]([]), false);
-        });
-      });
-    });
-
-    describe('reactions', () => {
-      describe('canEnableReactions', () => {
-        [
-          [null, DISPLAY_HINTS.ENABLE_REACTIONS, true],
-          [null, DISPLAY_HINTS.DISABLE_REACTIONS, false],
-          [null, undefined, null],
-        ].forEach(() => ([originalValue, displayHint, expected]) => {
-          assert.deepEqual(MeetingUtil.canEnableReactions(originalValue, [displayHint]), expected);
-        });
-      });
-      describe('canEnableReactions', () => {
-        [
-          [null, DISPLAY_HINTS.REACTIONS_ACTIVE, true],
-          [null, DISPLAY_HINTS.REACTIONS_INACTIVE, false],
-          [null, undefined, null],
-        ].forEach(([originalValue, displayHint, expected]) => {
-          assert.deepEqual(MeetingUtil.canSendReactions(originalValue, [displayHint]), expected);
         });
       });
     });

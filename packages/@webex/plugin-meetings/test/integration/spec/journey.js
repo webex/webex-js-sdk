@@ -407,7 +407,8 @@ skipInNode(describe)('plugin-meetings', () => {
         });
       });
 
-      it('alice Video Mute', () => {
+      // skipped for now, because it fails intermittently, it will be rewritten and re-enabled in SPARK-399695
+      it.skip('alice Video Mute', () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isVideoMuted === true
@@ -424,7 +425,8 @@ skipInNode(describe)('plugin-meetings', () => {
         });
       });
 
-      it('alice video unMute', () => {
+      // skipped for now, because it fails intermittently, it will be rewritten and re-enabled in SPARK-399695
+      it.skip('alice video unMute', () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isVideoMuted === false

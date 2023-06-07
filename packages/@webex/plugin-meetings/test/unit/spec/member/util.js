@@ -9,21 +9,21 @@ describe('plugin-meetings', () => {
         MemberUtil.isHandRaised();
       }, 'Raise hand could not be processed, participant is undefined.');
     });
-  
+
     it('returns false when controls is not there', () => {
       const participant = {};
-  
+
       assert.isFalse(MemberUtil.isHandRaised(participant));
     });
-  
+
     it('returns false when hand is not there in controls', () => {
       const participant = {
         controls: {},
       };
-  
+
       assert.isFalse(MemberUtil.isHandRaised(participant));
     });
-  
+
     it('returns true when hand raised is true', () => {
       const participant = {
         controls: {
@@ -32,10 +32,10 @@ describe('plugin-meetings', () => {
           },
         },
       };
-  
+
       assert.isTrue(MemberUtil.isHandRaised(participant));
     });
-  
+
     it('returns false when hand raised is false', () => {
       const participant = {
         controls: {
@@ -44,7 +44,7 @@ describe('plugin-meetings', () => {
           },
         },
       };
-  
+
       assert.isFalse(MemberUtil.isHandRaised(participant));
     });
   });
@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasRole(participant, ServerRoles.Presenter));
       });
 
@@ -109,7 +109,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Presenter));
       });
 
@@ -123,7 +123,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Presenter));
       });
     })
@@ -139,7 +139,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasRole(participant, ServerRoles.Moderator));
       });
 
@@ -153,7 +153,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Moderator));
       });
 
@@ -167,7 +167,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Moderator));
       });
     })
@@ -183,7 +183,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasRole(participant, ServerRoles.Cohost));
       });
 
@@ -197,7 +197,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Cohost));
       });
 
@@ -211,7 +211,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasRole(participant, ServerRoles.Cohost));
       });
     })
@@ -229,7 +229,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasPresenter(participant, ServerRoles.Presenter));
       });
 
@@ -243,7 +243,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasPresenter(participant));
       });
 
@@ -257,7 +257,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasPresenter(participant));
       });
     })
@@ -273,7 +273,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasModerator(participant));
       });
 
@@ -287,7 +287,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasModerator(participant));
       });
 
@@ -301,7 +301,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasModerator(participant));
       });
     })
@@ -317,7 +317,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isTrue(MemberUtil.hasCohost(participant));
       });
 
@@ -331,7 +331,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasCohost(participant));
       });
 
@@ -345,7 +345,7 @@ describe('plugin-meetings', () => {
             }
           }
         }
-  
+
         assert.isFalse(MemberUtil.hasCohost(participant));
       });
     })
@@ -372,6 +372,30 @@ describe('plugin-meetings', () => {
       };
 
       assert.isFalse(MemberUtil.isBreakoutsSupported(participant));
+    });
+  });
+
+  describe('MemberUtil.isLiveAnnotationSupported', () => {
+    it('throws error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.isLiveAnnotationSupported();
+      }, 'LiveAnnotation support could not be processed, participant is undefined.');
+    });
+
+    it('returns true when hand live annotation are supported', () => {
+      const participant = {
+        annotatorAssignmentNotAllowed: false
+      };
+
+      assert.isTrue(MemberUtil.isLiveAnnotationSupported(participant));
+    });
+
+    it('returns false when hand live annotation are not supported', () => {
+      const participant = {
+        annotatorAssignmentNotAllowed: true
+      };
+
+      assert.isFalse(MemberUtil.isLiveAnnotationSupported(participant));
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   UNKNOWN,
   CLIENT_NAME,
   mediaType,
+  WebexAPIServiceErrorCodes,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -31,10 +32,10 @@ const anonymizeIPAddress = (localIp) => anonymize(localIp, 28, 96);
 const triggerTimers = ({event, meeting, data}) => {
   switch (event) {
     case eventType.CALL_INITIATED:
-      meeting.setStartCallInitiateJoinReq();
+      meeting.setStartCallInitJoinReq();
       break;
     case eventType.LOCUS_JOIN_REQUEST:
-      meeting.setEndCallInitiateJoinReq();
+      meeting.setEndCallInitJoinReq();
       meeting.setStartJoinReqResp();
       break;
     case eventType.LOCUS_JOIN_RESPONSE:
@@ -189,6 +190,9 @@ class Metrics {
         name: 'endpoint',
         networkType: 'unknown',
         userAgent: this.userAgentToString(),
+        userType: options.userType,
+        loginType: options.loginType,
+        channel: options.channel,
         clientInfo: {
           clientType: options.clientType,
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
@@ -449,6 +453,33 @@ class Metrics {
     return this.generateErrorPayload(errorCode, showToUser, error.name.LOCUS_RESPONSE, err);
   }
 
+  /**
+   * Pareses webex api error.
+   *
+   * @param {object} err
+   * @param {boolean} showToUser
+   * @returns {object | null}
+   */
+  parseWebexApiError(err: any, showToUser: boolean) {
+    const serviceErrorCode = err?.body?.code;
+    const clientCodeError = WebexAPIServiceErrorCodes[serviceErrorCode];
+
+    if (clientCodeError) {
+      return this.generateErrorPayload(clientCodeError, showToUser, error.name.OTHER, err);
+    }
+
+    return this.generateErrorPayload(4100, showToUser, error.name.OTHER, err);
+  }
+
+  /**
+   * Generates Error for the CA event
+   *
+   * @param {integer} errorCode
+   * @param {boolean} shownToUser
+   * @param {string} name
+   * @param {any} err
+   * @returns {any}
+   */
   generateErrorPayload(errorCode, shownToUser, name, err) {
     if (error.errors[errorCode]) {
       const errorPayload: any = {
@@ -458,6 +489,7 @@ class Metrics {
         errorCode,
         fatal: !includes(error.notFatalErrorList, errorCode),
         name: name || error.name.OTHER,
+        serviceErrorCode: err?.body?.code,
       };
 
       if (err && err.body) {

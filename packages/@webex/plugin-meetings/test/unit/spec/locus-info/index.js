@@ -19,6 +19,7 @@ import {
 } from '../../../../src/constants';
 
 import { self, selfWithInactivity } from "./selfConstant";
+import uuid from "uuid";
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -66,8 +67,12 @@ describe('plugin-meetings', () => {
 
       beforeEach('setup new controls', () => {
         newControls = {
+          disallowUnmute: {enabled: true},
           lock: {},
           meetingFull: {},
+          muteOnEntry: {enabled: true},
+          raiseHand: {enabled: true},
+          reactions: {enabled: true, showDisplayNameWithReactions: true},
           record: {
             recording: false,
             paused: false,
@@ -76,8 +81,9 @@ describe('plugin-meetings', () => {
               modifiedBy: 'George Kittle',
             },
           },
-          shareControl: {},
+          shareControl: {control: 'example-value'},
           transcribe: {},
+          viewTheParticipantList: {enabled: true},
           meetingContainer: {
             meetingContainerUrl: 'http://new-url.com',
           },
@@ -94,6 +100,97 @@ describe('plugin-meetings', () => {
         locusInfo.updateControls(newControls);
 
         assert.equal(locusInfo.controls, newControls);
+      });
+
+      it('should trigger the CONTROLS_MUTE_ON_ENTRY_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
+          {state: newControls.muteOnEntry},
+        );
+      });
+
+      it('should trigger the CONTROLS_SHARE_CONTROL_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
+          {state: newControls.shareControl},
+        );
+      });
+
+      it('should trigger the CONTROLS_DISALLOW_UNMUTE_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
+          {state: newControls.disallowUnmute},
+        );
+      });
+
+      it('should trigger the CONTROLS_REACTIONS_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
+          {state: newControls.reactions},
+        );
+      });
+
+      it('should trigger the CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
+          {state: newControls.viewTheParticipantList},
+        );
+      });
+
+      it('should trigger the CONTROLS_RAISE_HAND_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
+          {state: newControls.raiseHand},
+        );
+      });
+
+      it('should trigger the CONTROLS_VIDEO_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
+          {state: newControls.video},
+        );
       });
 
       it('should not trigger the CONTROLS_RECORDING_UPDATED event', () => {
@@ -280,9 +377,11 @@ describe('plugin-meetings', () => {
 
       it('should update the breakout state', () => {
         locusInfo.emitScoped = sinon.stub();
-        newControls.breakout = 'new breakout';
+        let tmpStub = sinon.stub(SelfUtils, 'getReplacedBreakoutMoveId').returns('breakoutMoveId');
+        newControls.breakout = { 'breakout': {} };
+        let selfInfo = {};
 
-        locusInfo.updateControls(newControls);
+        locusInfo.updateControls(newControls, selfInfo);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -292,9 +391,10 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED,
           {
-            breakout: 'new breakout',
+            breakout: newControls.breakout,
           }
         );
+        tmpStub.restore();
       });
 
       it('should update the transcript state', () => {
@@ -1360,6 +1460,7 @@ describe('plugin-meetings', () => {
         fakeLocus = {
           meeting: true,
           participants: true,
+          url: 'newLocusUrl',
         };
       });
 
@@ -1502,12 +1603,18 @@ describe('plugin-meetings', () => {
           locusInfo: {
             onFullLocus: sandbox.stub(),
           },
+          locusUrl: 'oldLocusUrl',
         };
 
         locusInfo.locusParser.resume = sandbox.stub();
         locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
 
-        assert.calledOnce(meeting.meetingRequest.getFullLocus);
+        assert.calledOnceWithExactly(meeting.meetingRequest.getFullLocus,
+          {
+            desync: true,
+            locusUrl: 'newLocusUrl',
+          }
+          );
       });
 
       it('getFullLocus handles DESYNC action correctly', () => {
@@ -1677,14 +1784,19 @@ describe('plugin-meetings', () => {
       let cachedLocus;
       let newLocus;
       beforeEach(() => {
-        cachedLocus = {controls: {}, participants: []};
-        newLocus = {self: {}, participants: [{id: '111'}]};
+        cachedLocus = {controls: {}, participants: [], info: {webExMeetingId: 'testId1', topic: 'test'}};
+        newLocus = {self: {}, participants: [{id: '111'}], info: {testId: 'testId2', webExMeetingName: 'hello'}};
       });
-      it('merge new locus into cache', () => {
+      it('shallow merge new locus into cache', () => {
         locusInfo.mainSessionLocusCache = cachedLocus;
         locusInfo.updateMainSessionLocusCache(newLocus);
 
-        assert.deepEqual(locusInfo.mainSessionLocusCache, {controls: {}, participants: [{id: '111'}], self: {}})
+        assert.deepEqual(locusInfo.mainSessionLocusCache, {
+          controls: {},
+          participants: [{id: '111'}],
+          info: {testId: 'testId2', webExMeetingName: 'hello'},
+          self: {},
+        });
       });
 
       it('cache new locus if no cache before', () => {

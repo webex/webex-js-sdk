@@ -17,6 +17,10 @@ export interface AudioProperties {
   muteOnEntry?: boolean;
 }
 
+export interface RaiseHandProperties {
+  enabled?: boolean;
+}
+
 export interface ReactionsProperties {
   enabled?: boolean;
   showDisplayNameWithReactions?: boolean;
@@ -26,14 +30,20 @@ export interface ShareControlProperties {
   control?: 'ANYONE' | 'MODERATOR_PRESENTER';
 }
 
+export interface VideoProperties {
+  enabled?: boolean;
+}
+
 export interface ViewTheParticipantListProperties {
   enabled?: boolean;
 }
 
 export type Properties =
   | AudioProperties
+  | RaiseHandProperties
   | ReactionsProperties
   | ShareControlProperties
+  | VideoProperties
   | ViewTheParticipantListProperties;
 
 export interface ControlConfig<Props = Properties> {

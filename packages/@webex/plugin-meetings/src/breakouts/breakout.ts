@@ -5,12 +5,10 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import uuid from 'uuid';
-import {HTTP_VERBS, MEETINGS} from '../constants';
-import LocusInfo from '../locus-info';
+import {_ID_, HTTP_VERBS, MEETINGS} from '../constants';
 import Members from '../members';
 import BreakoutRequest from './request';
-import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
+import breakoutEvent from './events';
 /**
  * @class
  */
@@ -32,6 +30,7 @@ const Breakout = WebexPlugin.extend({
     sessionType: 'string',
     groupId: 'string',
     url: 'string', // where to send requests to
+    requestedLastModifiedTime: 'string',
   },
 
   derived: {
@@ -48,8 +47,11 @@ const Breakout = WebexPlugin.extend({
     },
   },
 
+  /**
+   * initializer for the Breakout class
+   * @returns {void}
+   */
   initialize() {
-    this.members = new Members({}, {parent: this.webex});
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -60,33 +62,21 @@ const Breakout = WebexPlugin.extend({
    */
   async join() {
     const breakoutMoveId = uuid.v4();
+    const deviceUrl = this.webex.internal.device.url;
     const {meetingId} = this.collection.parent;
-    Metrics.postEvent({
-      event: eventType.MOVE_TO_BREAKOUT,
-      meetingId,
-      data: {
-        breakoutMoveId,
-        breakoutSessionId: this.sessionId,
-        breakoutGroupId: this.groupId,
-      },
-    });
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
+    breakoutEvent.onBreakoutMoveRequest({currentSession: this, meeting, breakoutMoveId});
     const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
       body: {
+        breakoutMoveId,
+        deviceUrl,
         groupId: this.groupId,
         sessionId: this.sessionId,
       },
     });
-    Metrics.postEvent({
-      event: eventType.JOIN_BREAKOUT_RESPONSE,
-      meetingId,
-      data: {
-        breakoutMoveId,
-        breakoutSessionId: this.sessionId,
-        breakoutGroupId: this.groupId,
-      },
-    });
+    breakoutEvent.onBreakoutMoveResponse({currentSession: this, meeting, breakoutMoveId});
 
     return result;
   },
@@ -126,15 +116,34 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
-   * Parses the participants from the locus object
-   * @param locus Locus object
+   * inits the members object
    * @returns {void}
    */
+  initMembers() {
+    const {meetingId} = this.collection.parent;
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
+    this.members = new Members(
+      {
+        meeting,
+      },
+      {parent: this.webex}
+    );
+  },
 
+  /**
+   * Parses the participants from the locus object
+   * @param {Object} locus Locus object
+   * @returns {void}
+   */
   parseRoster(locus) {
+    if (!this.members) {
+      this.initMembers();
+    }
+
     this.members.locusParticipantsUpdate(locus);
   },
-  /*
+
+  /**
    * Broadcast message to this breakout session's participants
    * @param {String} message
    * @param {Object} options

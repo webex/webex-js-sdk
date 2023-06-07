@@ -6,6 +6,7 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
+import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -156,13 +157,37 @@ export default class MeetingInfoV2 {
   }
 
   /**
+   * Raises a MeetingInfoV2PolicyError for policy error codes
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handlePolicyError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (POLICY_ERROR_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2PolicyError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
    * Creates adhoc space meetings for a space by fetching the conversation infomation
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {String} installedOrgID org ID of user's machine
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  async createAdhocSpaceMeeting(conversationUrl: string) {
+  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
     if (!this.webex.meetings.preferredWebexSite) {
       throw Error('No preferred webex site found');
     }
@@ -184,7 +209,14 @@ export default class MeetingInfoV2 {
     return this.webex.internal.conversation
       .get({url: conversationUrl}, {includeParticipants: true, disableTransform: true})
       .then((conversation) => {
-        const body = {
+        const body: {
+          title: string;
+          spaceUrl: string;
+          keyUrl: string;
+          kroUrl: string;
+          invitees: any[];
+          installedOrgID?: string;
+        } = {
           title: conversation.displayName,
           spaceUrl: conversation.url,
           keyUrl: conversation.encryptionKeyUrl,
@@ -192,11 +224,13 @@ export default class MeetingInfoV2 {
           invitees: getInvitees(conversation.participants?.items),
         };
 
+        if (installedOrgID) {
+          body.installedOrgID = installedOrgID;
+        }
+
         const uri = this.webex.meetings.preferredWebexSite
           ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`
           : '';
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
 
         return this.webex.request({
           method: HTTP_VERBS.POST,
@@ -204,7 +238,14 @@ export default class MeetingInfoV2 {
           body,
         });
       })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+
+        return requestResult;
+      })
       .catch((err) => {
+        this.handlePolicyError(err);
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
           reason: err.message,
           stack: err.stack,
@@ -221,8 +262,10 @@ export default class MeetingInfoV2 {
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
    * @param {String} captchaInfo.id
-   * @param {String} installedOrgID
+   * @param {String} installedOrgID org ID of user's machine
    * @param {String} locusId
+   * @param {Object} extraParams
+   * @param {Object} options
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -236,8 +279,12 @@ export default class MeetingInfoV2 {
       id: string;
     } = null,
     installedOrgID = null,
-    locusId = null
+    locusId = null,
+    extraParams: object = {},
+    options: {meetingId?: string} = {}
   ) {
+    const {meetingId} = options;
+
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
       type,
@@ -249,7 +296,7 @@ export default class MeetingInfoV2 {
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {
-      return this.createAdhocSpaceMeeting(destinationType.destination);
+      return this.createAdhocSpaceMeeting(destinationType.destination, installedOrgID);
     }
 
     const body = await MeetingInfoUtil.getRequestBody({
@@ -258,6 +305,7 @@ export default class MeetingInfoV2 {
       captchaInfo,
       installedOrgID,
       locusId,
+      extraParams,
     });
 
     // If the body only contains the default properties, we don't have enough to
@@ -276,7 +324,7 @@ export default class MeetingInfoV2 {
       throw err;
     }
 
-    const options: any = {
+    const requestOptions: any = {
       method: HTTP_VERBS.POST,
       body,
     };
@@ -284,32 +332,34 @@ export default class MeetingInfoV2 {
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (directURI) {
-      options.uri = directURI;
+      requestOptions.uri = directURI;
     } else {
-      options.service = WBXAPPAPI_SERVICE;
-      options.resource = 'meetingInfo';
+      requestOptions.service = WBXAPPAPI_SERVICE;
+      requestOptions.resource = 'meetingInfo';
     }
 
     return this.webex
-      .request(options)
+      .request(requestOptions)
       .then((response) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
-        if (err?.statusCode === 403) {
-          if (POLICY_ERROR_CODES.includes(err.body?.code)) {
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR, {
-              code: err.body?.code,
-            });
+        if (meetingId) {
+          const parsedError = Metrics.parseWebexApiError(err, true);
+          Metrics.postEvent({
+            event: eventType.MEETING_INFO_RESPONSE,
+            meetingId,
+            data: {
+              errors: parsedError ? [parsedError] : undefined,
+              meetingLookupUrl: err?.url,
+            },
+          });
+        }
 
-            throw new MeetingInfoV2PolicyError(
-              err.body?.code,
-              err.body?.data?.meetingInfo,
-              err.body?.message
-            );
-          }
+        if (err?.statusCode === 403) {
+          this.handlePolicyError(err);
 
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,
