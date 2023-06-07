@@ -684,7 +684,7 @@ describe('RemoteMediaManager', () => {
 
       expect(config.video.preferLiveVideo).to.equal(true);
 
-      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
+      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup: any) => {
         expect(activeSpeakerGroup.options.preferLiveVideo).to.equal(true);
       });
     });
@@ -707,7 +707,7 @@ describe('RemoteMediaManager', () => {
 
       expect(config.video.preferLiveVideo).to.equal(false);
 
-      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
+      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup: any) => {
         expect(activeSpeakerGroup.options.preferLiveVideo).to.equal(false);
       });
     });
