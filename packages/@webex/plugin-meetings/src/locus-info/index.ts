@@ -1,4 +1,4 @@
-import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
+import {isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';

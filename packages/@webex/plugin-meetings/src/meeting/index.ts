@@ -2,7 +2,6 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
