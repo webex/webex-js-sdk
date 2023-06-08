@@ -953,6 +953,8 @@ export default class Meetings extends WebexPlugin {
               user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
             if (preferredWebexSite) {
               this.preferredWebexSite = preferredWebexSite;
+            } else {
+              throw new Error('site not found');
             }
           })
           .catch(() => {

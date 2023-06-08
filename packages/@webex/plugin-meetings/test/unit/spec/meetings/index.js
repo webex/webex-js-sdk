@@ -1382,6 +1382,9 @@ describe('plugin-meetings', () => {
       });
 
       describe('#fetchUserPreferredWebexSite', () => {
+
+        let loggerProxySpy;
+
         it('should call request.getMeetingPreferences to get the preferred webex site ', async () => {
           assert.isDefined(webex.meetings.preferredWebexSite);
           await webex.meetings.fetchUserPreferredWebexSite();
@@ -1390,6 +1393,8 @@ describe('plugin-meetings', () => {
         });
 
         const setup = ({user} = {}) => {
+          loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
+
           Object.assign(webex.internal, {
             services: {
               getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
@@ -1414,6 +1419,10 @@ describe('plugin-meetings', () => {
           await webex.meetings.fetchUserPreferredWebexSite().then(() => {
             assert.equal(webex.meetings.preferredWebexSite, '');
           });
+          assert.calledOnceWithExactly(
+            loggerProxySpy,
+            'Failed to fetch preferred site from user - no site will be set'
+          );
         });
 
         it('should fall back to fetching the site from the user', async () => {
@@ -1430,6 +1439,7 @@ describe('plugin-meetings', () => {
           await webex.meetings.fetchUserPreferredWebexSite();
 
           assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
+          assert.notCalled(loggerProxySpy);
         });
 
         forEach([
@@ -1444,6 +1454,10 @@ describe('plugin-meetings', () => {
             await webex.meetings.fetchUserPreferredWebexSite();
 
             assert.equal(webex.meetings.preferredWebexSite, '');
+            assert.calledOnceWithExactly(
+              loggerProxySpy,
+              'Failed to fetch preferred site from user - no site will be set'
+            );
           });
         });
 
@@ -1455,6 +1469,10 @@ describe('plugin-meetings', () => {
           await webex.meetings.fetchUserPreferredWebexSite();
 
           assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.calledOnceWithExactly(
+            loggerProxySpy,
+            'Failed to fetch preferred site from user - no site will be set'
+          );
         });
 
       });
