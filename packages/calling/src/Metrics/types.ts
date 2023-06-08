@@ -32,6 +32,7 @@ export enum TRANSFER_ACTION {
 export enum VOICEMAIL_ACTION {
   GET_VOICEMAILS = 'get_voicemails',
   GET_VOICEMAIL_CONTENT = 'get_voicemail_content',
+  GET_VOICEMAIL_SUMMARY = 'get_voicemail_summary',
   MARK_READ = 'mark_read',
   MARK_UNREAD = 'mark_unread',
   DELETE = 'delete',

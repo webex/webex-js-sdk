@@ -125,6 +125,7 @@ describe('Voicemail Client tests', () => {
     voicemailClient['backendConnector'] = {
       getVoicemailList: jest.fn(),
       getVoicemailContent: jest.fn(),
+      getVoicemailSummary: jest.fn(),
       voicemailMarkAsRead: jest.fn(),
       voicemailMarkAsUnread: jest.fn(),
       deleteVoicemail: jest.fn(),
@@ -160,6 +161,10 @@ describe('Voicemail Client tests', () => {
         metricAction: VOICEMAIL_ACTION.TRANSCRIPT,
         method: voicemailClient.getVMTranscript.name,
       },
+      {
+        metricAction: VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY,
+        method: voicemailClient.getVoicemailSummary.name,
+      },
     ].map((stat) =>
       Object.assign(stat, {
         toString() {
@@ -176,7 +181,10 @@ describe('Voicemail Client tests', () => {
       } as VoicemailResponseEvent;
 
       const args =
-        data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAILS ? [0, 0, SORT.ASC] : [messageId];
+        (data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY && []) ||
+        data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAILS
+          ? [0, 0, SORT.ASC]
+          : [messageId];
 
       voicemailClient['backendConnector'][data.method].mockResolvedValue(response);
       await voicemailClient[data.method](...args);
@@ -185,7 +193,11 @@ describe('Voicemail Client tests', () => {
         METRIC_EVENT.VOICEMAIL,
         data.metricAction,
         METRIC_TYPE.BEHAVIORAL,
-        data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAILS ? undefined : messageId
+        [VOICEMAIL_ACTION.GET_VOICEMAILS, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY].includes(
+          data.metricAction
+        )
+          ? undefined
+          : messageId
       );
 
       metricSpy.mockClear();
@@ -202,7 +214,11 @@ describe('Voicemail Client tests', () => {
         METRIC_EVENT.VOICEMAIL_ERROR,
         data.metricAction,
         METRIC_TYPE.BEHAVIORAL,
-        data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAILS ? undefined : messageId,
+        [VOICEMAIL_ACTION.GET_VOICEMAILS, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY].includes(
+          data.metricAction
+        )
+          ? undefined
+          : messageId,
         errorMessage,
         errorCode
       );

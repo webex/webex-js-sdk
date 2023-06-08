@@ -34,6 +34,13 @@ export type CallingPartyInfo = {
   userExternalId?: ResponseString$;
 };
 
+export type SummaryInfo = {
+  newMessages?: number;
+  oldMessages?: number;
+  newUrgentMessages?: number;
+  oldUrgentMessages?: number;
+};
+
 export type MessageInfo = {
   duration: ResponseString$;
   callingPartyInfo: CallingPartyInfo;
@@ -63,6 +70,7 @@ export type VoicemailResponseEvent = {
       type: string | null;
       content: string | null;
     };
+    voicemailSummary?: SummaryInfo;
     voicemailTranscript?: string | null;
     error?: string;
   };
@@ -79,6 +87,7 @@ export interface IVoicemail {
     refresh?: boolean
   ) => Promise<VoicemailResponseEvent>;
   getVoicemailContent: (messageId: string) => Promise<VoicemailResponseEvent>;
+  getVoicemailSummary: () => Promise<VoicemailResponseEvent | null>;
   voicemailMarkAsRead: (messageId: string) => Promise<VoicemailResponseEvent>;
   voicemailMarkAsUnread: (messageId: string) => Promise<VoicemailResponseEvent>;
   deleteVoicemail: (messageId: string) => Promise<VoicemailResponseEvent>;

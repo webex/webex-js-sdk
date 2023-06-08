@@ -195,6 +195,14 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   }
 
   /**
+   * Fetches a quantitative summary of voicemails for a user.
+   * Not implemented for this connector.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    return Promise.resolve(null);
+  }
+
+  /**
    * @param messageId - MessageId from voicemail list api to get voicemail content.
    */
   public async getVoicemailContentUcm(messageId: string) {

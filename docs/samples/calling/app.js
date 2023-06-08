@@ -79,6 +79,8 @@ const contactGroupsHeader = document.getElementById('contactGroupsHeaderId');
 const cloudContactsElem = document.querySelector('#cloud-contact-form');
 const contactObj = document.querySelector('#contact-object');
 const contactGroupObj = document.querySelector('#contactgroup-object');
+const summaryContent = document.querySelector('#summary-data');
+
 
 let base64;
 let audio64;
@@ -1094,6 +1096,23 @@ async function fetchTranscript() {
 
   console.log('Voicemail transcript', transcript);
   transcriptContent.innerText = JSON.stringify(transcript.data.voicemailTranscript, undefined, 2);
+}
+
+/**
+ * Fetches a quantitative summary of voicemails for a user.
+ */
+async function fetchVoicemailSummary() {
+  const logger = {level: 'info'};
+
+  // eslint-disable-next-line prefer-template
+  if (window.voicemail === undefined) {
+    voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
+    voicemail.init();
+  }
+
+  const summary = await voicemail.getVoicemailSummary();
+  const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);
+  summaryContent.innerText = summaryStr.replace(/[\{\}"|"]/g, '');
 }
 
 async function getContacts() {

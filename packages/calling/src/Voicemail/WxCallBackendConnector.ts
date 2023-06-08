@@ -1,6 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable valid-jsdoc */
+import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {
   RAW_REQUEST,
@@ -44,6 +44,13 @@ import {
   RADIX_RAND,
   PREFIX,
   TRANSCRIPT_STATUS,
+  MESSAGE_SUMMARY,
+  CALLS,
+  SUMMARY,
+  NEW_MESSAGES,
+  NEW_URGENT_MESSAGES,
+  OLD_URGENT_MESSAGES,
+  OLD_MESSAGES,
 } from './constants';
 /**
  *
@@ -116,6 +123,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     log.info(`XsiEndpoint is ${this.xsiEndpoint}`, loggerContext);
     if (this.userId) {
       this.xsiVoiceMessageURI = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${this.userId}/${VOICE_MESSAGING_MESSAGES}`;
+
       responseDetails = {
         statusCode: SUCCESS_STATUS_CODE,
         data: {},
@@ -251,6 +259,65 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       log.info(`Voice mail content error is ${errorStatus}`, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Fetches a quantitative summary of voicemails for a user.
+   *
+   * @returns - A Promise that resolves with the data containing counters for newMessages, oldMessage, newUrgentMessages, oldUrgentMessages.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent> {
+    const loggerContext = {
+      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      method: 'getVoicemailSummary',
+    };
+
+    try {
+      const voicemailSummaryUrl = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${this.userId}/${CALLS}/${MESSAGE_SUMMARY}`;
+
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${voicemailSummaryUrl}`,
+        method: HTTP_METHODS.GET,
+      });
+
+      const parser = new DOMParser();
+      const xmlDOM = parser.parseFromString(response[RAW_REQUEST].response, XML_TYPE);
+      const voicemailSummary = xmlDOM.getElementsByTagName(SUMMARY)[0];
+
+      const newMessages = voicemailSummary.getElementsByTagName(NEW_MESSAGES)[0];
+      const newUrgentMessages = voicemailSummary.getElementsByTagName(NEW_URGENT_MESSAGES)[0];
+      const oldMessages = voicemailSummary.getElementsByTagName(OLD_MESSAGES)[0];
+      const oldUrgentMessages = voicemailSummary.getElementsByTagName(OLD_URGENT_MESSAGES)[0];
+
+      const responseDetails: VoicemailResponseEvent = {
+        statusCode: Number(response.statusCode),
+        data: {
+          voicemailSummary: {
+            newMessages: newMessages ? Number(newMessages.textContent) : undefined,
+            newUrgentMessages: newUrgentMessages
+              ? Number(newUrgentMessages.textContent)
+              : undefined,
+            oldMessages: oldMessages ? Number(oldMessages.textContent) : undefined,
+            oldUrgentMessages: oldUrgentMessages
+              ? Number(oldUrgentMessages.textContent)
+              : undefined,
+          },
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      return responseDetails;
+    } catch (err: unknown) {
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      log.error(
+        new Error(`Voicemail summary error is ${errorStatus}`) as ExtendedError,
+        loggerContext
+      );
 
       return errorStatus;
     }

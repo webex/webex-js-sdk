@@ -26,6 +26,7 @@ export const name = 'Adrian';
 export const userid = 'admin';
 export const address = 'tel1372';
 export const userId = '8a67806f-fc4d-446b-a131-31e71ea5b0e9';
+export const voicemailSummaryUrl = `https://api-rialto.broadcloudpbx.com/com.broadsoft.xsi-actions/v2.0/user/${userId}/calls/MessageSummary`;
 
 const MOCK_VOICEMAIL_FIRST_MESSAGE = {
   duration: {$: '780'},

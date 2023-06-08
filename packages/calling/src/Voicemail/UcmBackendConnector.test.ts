@@ -366,4 +366,10 @@ describe('Voicemail failure tests for UCM', () => {
       },
     });
   });
+
+  it('verify fetching voicemail summary returned to be null', async () => {
+    const response = await ucmBackendConnector.getVoicemailSummary();
+
+    expect(response).toBeNull();
+  });
 });

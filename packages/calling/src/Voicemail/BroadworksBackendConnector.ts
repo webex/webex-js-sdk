@@ -331,6 +331,14 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   }
 
   /**
+   * Fetches a quantitative summary of voicemails for a user.
+   * Not implemented for this connector.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    return Promise.resolve(null);
+  }
+
+  /**
    * Fetch voicemail read message status for the messageId.
    *
    * @param messageId -string result from the voicemail list.

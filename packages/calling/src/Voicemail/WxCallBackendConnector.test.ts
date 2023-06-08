@@ -1,7 +1,7 @@
 /* eslint-disable dot-notation */
 import {LOGGER} from '../Logger/types';
 import {getSamplePeopleListResponse, getTestUtilsWebex} from '../common/testUtil';
-import {SORT, WebexRequestPayload} from '../common/types';
+import {HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {CallingPartyInfo, IWxCallBackendConnector} from './types';
 import {NO_VOICEMAIL_MSG, NO_VOICEMAIL_STATUS_CODE} from './constants';
 import {
@@ -11,6 +11,7 @@ import {
   mockVoicemailBody,
   mockVoicemailTranscriptResponse,
   mockWXCData,
+  voicemailSummaryUrl,
 } from './voicemailFixture';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import * as utils from '../common/Utils';
@@ -36,7 +37,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
   });
 
   describe('Voicemail failure tests for webex call', () => {
-    const failure = 'FAILURE';
+    const FAILURE = 'FAILURE';
     let serviceErrorCodeHandlerSpy: jest.SpyInstance;
 
     beforeAll(() => {
@@ -68,11 +69,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
-        message: failure,
+        message: FAILURE,
       };
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -94,13 +95,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -122,13 +123,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -151,13 +152,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -180,13 +181,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.getVMTranscript(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response?.message).toBe(failure);
+      expect(response?.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -209,11 +210,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
-        message: failure,
+        message: FAILURE,
       };
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
@@ -235,13 +236,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
@@ -263,13 +264,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
@@ -292,13 +293,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response.message).toBe(failure);
+      expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
@@ -321,13 +322,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
-        message: failure,
+        message: FAILURE,
       };
 
       const response = await wxCallBackendConnector.getVMTranscript(messageId.$);
 
       expect(response).toStrictEqual(responseDetails);
-      expect(response?.message).toBe(failure);
+      expect(response?.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
@@ -338,15 +339,122 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         }
       );
     });
+
+    it('verify failure voicemail summary when bad request occur', async () => {
+      const failurePayload = {
+        statusCode: 400,
+      };
+
+      webex.request.mockRejectedValueOnce(failurePayload);
+      const response = await wxCallBackendConnector.getVoicemailSummary();
+
+      const responseDetails = {
+        statusCode: 400,
+        data: {error: '400 Bad request'},
+        message: FAILURE,
+      };
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: voicemailSummaryUrl,
+      });
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 400,
+        },
+        {
+          file: 'WxCallBackendConnector',
+          method: 'getVoicemailSummary',
+        }
+      );
+    });
   });
 
   describe('Voicemail success tests for webex call', () => {
-    const success = 'SUCCESS';
+    const SUCCESS = 'SUCCESS';
     const EMPTY_SUCCESS_RESPONSE = {
       data: {},
-      message: success,
+      message: SUCCESS,
       statusCode: 200,
     };
+
+    it('verify successfully fetching voicemail summary with newMessages and newUrgentMessage', async () => {
+      const mockRawRequest = {
+        response: `<?xml version="1.0" encoding="UTF-8"?><VoiceMailMessageSummary xmlns="http://schema.broadsoft.com/xsi"><summary><newMessages>2</newMessages><newUrgentMessages>1</newUrgentMessages></summary></VoiceMailMessageSummary>`,
+      } as XMLHttpRequest;
+
+      const mockVoicemailSummary = {
+        statusCode: 200,
+        rawRequest: mockRawRequest,
+      };
+
+      const voicemailSummary = <WebexRequestPayload>(<unknown>mockVoicemailSummary);
+
+      webex.request.mockResolvedValueOnce(voicemailSummary);
+
+      const response = await wxCallBackendConnector.getVoicemailSummary();
+
+      const voicemailSummaryResponseInfo = {
+        voicemailSummary: {
+          newMessages: 2,
+          newUrgentMessages: 1,
+          oldMessages: undefined,
+          oldUrgentMessages: undefined,
+        },
+      };
+
+      const responseDetails = {
+        data: voicemailSummaryResponseInfo,
+        message: SUCCESS,
+        statusCode: 200,
+      };
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: voicemailSummaryUrl,
+      });
+      expect(response).toStrictEqual(responseDetails);
+    });
+
+    it('verify successfully fetching voicemail summary with oldMessages and oldUrgentMessage', async () => {
+      const mockRawRequest = {
+        response: `<?xml version="1.0" encoding="UTF-8"?><VoiceMailMessageSummary xmlns="http://schema.broadsoft.com/xsi"><summary><oldMessages>2</oldMessages><oldUrgentMessages>1</oldUrgentMessages></summary></VoiceMailMessageSummary>`,
+      } as XMLHttpRequest;
+
+      const mockVoicemailSummary = {
+        statusCode: 200,
+        rawRequest: mockRawRequest,
+      };
+
+      const voicemailSummary = <WebexRequestPayload>(<unknown>mockVoicemailSummary);
+
+      webex.request.mockResolvedValueOnce(voicemailSummary);
+
+      const response = await wxCallBackendConnector.getVoicemailSummary();
+
+      const voicemailSummaryResponseInfo = {
+        voicemailSummary: {
+          newMessages: undefined,
+          newUrgentMessages: undefined,
+          oldMessages: 2,
+          oldUrgentMessages: 1,
+        },
+      };
+
+      const responseDetails = {
+        data: voicemailSummaryResponseInfo,
+        message: SUCCESS,
+        statusCode: 200,
+      };
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: voicemailSummaryUrl,
+      });
+      expect(response).toStrictEqual(responseDetails);
+    });
 
     it('verify that PENDING transcription status is passed while transcribing is in progress in the backend', async () => {
       const pending = 'PENDING';
@@ -498,11 +606,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       const responseDetails = {
         data: voicemailResponseInfo,
-        message: success,
+        message: SUCCESS,
         statusCode: 200,
       };
 
-      expect(response.message).toBe(success);
+      expect(response.message).toBe(SUCCESS);
       expect(response).toStrictEqual(responseDetails);
       expect(getSortedVoicemailListSpy).toBeCalledOnceWith(
         getDescVoicemailListJsonWXC.body.VoiceMessagingMessages.messageInfoList.messageInfo,
@@ -534,11 +642,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       const responseDetails = {
         data: voicemailResponseInfo,
-        message: success,
+        message: SUCCESS,
         statusCode: 200,
       };
 
-      expect(response.message).toBe(success);
+      expect(response.message).toBe(SUCCESS);
       expect(response).toStrictEqual(responseDetails);
       expect(getSortedVoicemailListSpy).toBeCalledOnceWith(
         getAscVoicemailListJsonWXC.body.VoiceMessagingMessages.messageInfoList.messageInfo,
@@ -578,11 +686,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       const responseDetails = {
         data: voicemailResponseInfo,
-        message: success,
+        message: SUCCESS,
         statusCode: 200,
       };
 
-      expect(response.message).toBe(success);
+      expect(response.message).toBe(SUCCESS);
       expect(response).toStrictEqual(responseDetails);
       expect(getSortedVoicemailListSpy).not.toBeCalled();
       expect(storeVoicemailListSpy).not.toBeCalled();

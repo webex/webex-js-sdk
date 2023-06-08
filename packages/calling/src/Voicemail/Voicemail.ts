@@ -162,6 +162,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   }
 
   /**
+   * Fetches a quantitative summary of voicemails for a user.
+   *
+   * @returns - A Promise that resolves with the data containing null or counters for newMessages, oldMessage, newUrgentMessages, oldUrgentMessages.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    const response = await this.backendConnector.getVoicemailSummary();
+
+    /* istanbul ignore else */
+    if (response !== null) {
+      this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY);
+    }
+
+    return response;
+  }
+
+  /**
    * Fetch voicemail read message status for the messageId.
    *
    * @param messageId -string result from the voicemail list.
