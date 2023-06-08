@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.125](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.124...v3.0.0-beta.125) (2023-06-08)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** processStrokeMessage format bug ([#2858](https://github.com/webex/webex-js-sdk/issues/2858)) ([432da81](https://github.com/webex/webex-js-sdk/commit/432da81df08755d52ef623b5d710b700f294beeb))
+
 ## [3.0.0-beta.124](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.123...v3.0.0-beta.124) (2023-06-07)
 
 
