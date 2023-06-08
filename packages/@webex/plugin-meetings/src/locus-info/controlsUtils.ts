@@ -80,6 +80,10 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.raiseHand = {enabled: controls.raiseHand.enabled};
   }
 
+  if (controls?.video) {
+    parsedControls.video = {enabled: controls.video.enabled};
+  }
+
   return parsedControls;
 };
 
@@ -97,35 +101,25 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
     previous,
     current,
     updates: {
-      hasMuteOnEntryChanged:
-        current?.muteOnEntry?.enabled &&
-        current?.muteOnEntry?.enabled !== previous?.muteOnEntry?.enabled,
+      hasMuteOnEntryChanged: current?.muteOnEntry?.enabled !== previous?.muteOnEntry?.enabled,
 
-      hasShareControlChanged:
-        current?.shareControl?.control &&
-        current?.shareControl?.control !== previous?.shareControl?.control,
+      hasShareControlChanged: current?.shareControl?.control !== previous?.shareControl?.control,
 
       hasDisallowUnmuteChanged:
-        current?.disallowUnmute?.enabled &&
         current?.disallowUnmute?.enabled !== previous?.disallowUnmute?.enabled,
 
-      hasReactionsChanged:
-        current?.reactions?.enabled && current?.reactions?.enabled !== previous?.reactions?.enabled,
+      hasReactionsChanged: current?.reactions?.enabled !== previous?.reactions?.enabled,
 
       hasReactionDisplayNamesChanged:
-        current?.reactions?.showDisplayNameWithReactions &&
         current?.reactions?.showDisplayNameWithReactions !==
-          previous?.reactions?.showDisplayNameWithReactions,
+        previous?.reactions?.showDisplayNameWithReactions,
 
       hasViewTheParticipantListChanged:
-        current?.viewTheParticipantList?.enabled &&
         current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled,
 
-      hasRaiseHandChanged:
-        current?.raiseHand?.enabled && current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
+      hasRaiseHandChanged: current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
 
-      hasVideoChanged:
-        current?.video?.enabled && current?.video?.enabled !== previous?.video?.enabled,
+      hasVideoChanged: current?.video?.enabled !== previous?.video?.enabled,
 
       hasRecordingPausedChanged:
         current?.record &&
