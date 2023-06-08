@@ -1,6 +1,6 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {ClientEvent, NewMetrics} from '@webex/internal-plugin-metrics';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {
@@ -21,7 +21,6 @@ import {
   TrackMuteEvent,
 } from '@webex/media-helpers';
 
-import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
 import {
   MeetingNotActiveError,
   UserInLobbyError,

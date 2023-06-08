@@ -1,6 +1,5 @@
 // eslint-disable-next-line import/prefer-default-export
-import {NewMetrics} from '@webex/internal-plugin-metrics';
-import {ClientEvent} from '@webex/internal-plugin-metrics/src/ClientEvent';
+import {ClientEvent, NewMetrics} from '@webex/internal-plugin-metrics';
 import {eventType} from '../metrics/config';
 
 const breakoutEvent: any = {};

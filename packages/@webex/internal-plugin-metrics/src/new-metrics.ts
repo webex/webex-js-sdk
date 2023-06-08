@@ -154,9 +154,10 @@ class Metrics extends WebexPlugin {
 
   /**
    * Client Event (used for CA)
+   * @public
    * @param args
    */
-  submitClientEvent({
+  public submitClientEvent({
     name,
     payload,
     options,
