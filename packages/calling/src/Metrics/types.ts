@@ -24,9 +24,9 @@ export enum REG_ACTION {
   KEEPALIVE_FAILURE = 'keepaliveFailure',
 }
 
-export enum TRANSFER_METRIC {
-  BLIND_TRANSFER = 'Blind Transfer',
-  CONSULT_TRANSFER = 'Consult Transfer',
+export enum TRANSFER_ACTION {
+  BLIND = 'TRANSFER_BLIND',
+  CONSULT = 'TRANSFER_CONSULT',
 }
 
 export enum VOICEMAIL_ACTION {

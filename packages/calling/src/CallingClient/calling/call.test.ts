@@ -7,7 +7,7 @@ import * as Utils from '../../common/Utils';
 import {CallEvent, EVENT_KEYS, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_METRIC, METRIC_TYPE} from '../../Metrics/types';
+import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -2018,7 +2018,7 @@ describe('Supplementary Services tests', () => {
       expect(requestSpy).toBeCalled();
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL,
-        TRANSFER_METRIC.CONSULT_TRANSFER,
+        TRANSFER_ACTION.CONSULT,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -2064,7 +2064,7 @@ describe('Supplementary Services tests', () => {
       expect(requestSpy).toBeCalled();
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL,
-        TRANSFER_METRIC.BLIND_TRANSFER,
+        TRANSFER_ACTION.BLIND,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -2121,7 +2121,7 @@ describe('Supplementary Services tests', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL_ERROR,
-        call['callStateMachine'].state.value.toString(),
+        TRANSFER_ACTION.BLIND,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -2167,7 +2167,7 @@ describe('Supplementary Services tests', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL_ERROR,
-        call['callStateMachine'].state.value.toString(),
+        TRANSFER_ACTION.CONSULT,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),

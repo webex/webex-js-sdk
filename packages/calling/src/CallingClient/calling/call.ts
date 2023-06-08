@@ -76,7 +76,7 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_METRIC} from '../../Metrics/types';
+import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {SERVICES_ENDPOINT} from '../../common/constants';
 
@@ -2185,7 +2185,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
-          TRANSFER_METRIC.BLIND_TRANSFER,
+          TRANSFER_ACTION.BLIND,
           METRIC_TYPE.BEHAVIORAL,
           this.getCallId(),
           this.getCorrelationId(),
@@ -2202,7 +2202,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           (error: CallError) => {
             this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
-            this.submitCallErrorMetric(error);
+            this.submitCallErrorMetric(error, TRANSFER_ACTION.BLIND);
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2230,7 +2230,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
-          TRANSFER_METRIC.CONSULT_TRANSFER,
+          TRANSFER_ACTION.CONSULT,
           METRIC_TYPE.BEHAVIORAL,
           this.getCallId(),
           this.getCorrelationId(),
@@ -2247,7 +2247,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           (error: CallError) => {
             this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
-            this.submitCallErrorMetric(error);
+            this.submitCallErrorMetric(error, TRANSFER_ACTION.CONSULT);
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2426,12 +2426,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   /**
    * @param state - Current state of the call state machine.
    * @param error - Error object containing the message and type.
+   * @param transferMetricAction - Metric action type incase of a transfer metric.
    */
-  private submitCallErrorMetric(error: CallError) {
+  private submitCallErrorMetric(error: CallError, transferMetricAction?: TRANSFER_ACTION) {
     if (error.getCallError().errorLayer === ERROR_LAYER.CALL_CONTROL) {
       this.metricManager.submitCallMetric(
         METRIC_EVENT.CALL_ERROR,
-        this.callStateMachine.state.value.toString(),
+        transferMetricAction || this.callStateMachine.state.value.toString(),
         METRIC_TYPE.BEHAVIORAL,
         this.callId,
         this.correlationId,
