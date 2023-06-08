@@ -4126,6 +4126,43 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#enableMusicMode', () => {
+      beforeEach(() => {
+        meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            setCodecParameters: sinon.stub().resolves({}),
+            deleteCodecParameters: sinon.stub().resolves({}),
+          };
+      });
+      [
+        {shouldEnableMusicMode: true},
+        {shouldEnableMusicMode: false},
+      ].forEach(({shouldEnableMusicMode}) => {
+        it(`fails if there is no media connection for shouldEnableMusicMode: ${shouldEnableMusicMode}`, async () => {
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+          await assert.isRejected(meeting.enableMusicMode(shouldEnableMusicMode));
+        });
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+        await meeting.enableMusicMode(true);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters, MediaType.AudioMain, {
+          maxaveragebitrate: '64000',
+          maxplaybackrate: '48000',
+        });
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters);
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+        await meeting.enableMusicMode(false);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters, MediaType.AudioMain, [
+          'maxaveragebitrate',
+          'maxplaybackrate',
+        ]);
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters);
+      });
+    });
+
     describe('Public Event Triggers', () => {
       let sandbox;
       const {ENDED} = CONSTANTS;

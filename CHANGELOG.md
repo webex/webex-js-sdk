@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.124](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.123...v3.0.0-beta.124) (2023-06-07)
+
+
+### Features
+
+* **calendar:** spark-413846 replace id with uri when call calendar api getPartipants and getNotes ([#2852](https://github.com/webex/webex-js-sdk/issues/2852)) ([acf99d9](https://github.com/webex/webex-js-sdk/commit/acf99d952dcb30feeda440d936eb3028c5aa4789))
+
+## [3.0.0-beta.123](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.122...v3.0.0-beta.123) (2023-06-07)
+
+
+### Features
+
+* **plugin-meetings:** add method to enable music mode ([#2856](https://github.com/webex/webex-js-sdk/issues/2856)) ([7bd7d7e](https://github.com/webex/webex-js-sdk/commit/7bd7d7eedf6b2532106d2f580d870ea33cd897c0))
+
+## [3.0.0-beta.122](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.121...v3.0.0-beta.122) (2023-06-07)
+
+
+### Features
+
+* **Live-Annotation:** update for new protocol ([#2857](https://github.com/webex/webex-js-sdk/issues/2857)) ([0528206](https://github.com/webex/webex-js-sdk/commit/0528206c2fdd0b44c238869338fe988e26229418))
+
+## [3.0.0-beta.121](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.120...v3.0.0-beta.121) (2023-06-07)
+
+
+### Features
+
+* **breakouts:** emits BREAKOUTS_CLOSING depends on breakoutStatus ([#2855](https://github.com/webex/webex-js-sdk/issues/2855)) ([44cda19](https://github.com/webex/webex-js-sdk/commit/44cda19878759605c0e2ecca399690985480c6b5))
+
 ## [3.0.0-beta.120](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.119...v3.0.0-beta.120) (2023-06-06)
 
 
