@@ -201,13 +201,13 @@ export class StatsAnalyzer extends EventsScope {
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['audio-send']?.trackLabel,
+        information: this.statsResults['audio-send']?.trackLabel || _UNKNOWN_, // fallback to unknown, required in CA
         name: MEDIA_DEVICES.MICROPHONE,
       });
     }
     if (this.statsResults['video-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['video-send']?.trackLabel,
+        information: this.statsResults['video-send']?.trackLabel || _UNKNOWN_, // fallback to unknown, required in CA
         name: MEDIA_DEVICES.CAMERA,
       });
     }

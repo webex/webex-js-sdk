@@ -1,5 +1,6 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/types/ClientEvent';
 import {FeatureEvent as RawFeatureEvent} from './call-diagnostic/types/FeatureEvent';
+import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/types/MediaQualityEvent';
 import {SubmitClientEventOptions} from './call-diagnostic/call-diagnostic-metrics';
 
 export type InternalEvent = {
@@ -8,7 +9,7 @@ export type InternalEvent = {
   options: SubmitClientEventOptions;
 };
 
-export interface GenericMetric {
+interface GenericMetric {
   name: string;
   payload?: any;
   options?: any;
@@ -38,6 +39,12 @@ export interface FeatureEvent extends GenericMetric {
   options?: never;
 }
 
+export interface MediaQualityEvent extends GenericMetric {
+  name: RawMediaQualityEvent['name'];
+  payload: RawMediaQualityEvent;
+  options?: never;
+}
+
 export type RecursivePartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]
     ? RecursivePartial<U>[]
@@ -51,4 +58,5 @@ export type MetricEventNames =
   | BehavioralEvent['name']
   | OperationalEvent['name']
   | FeatureEvent['name']
-  | InternalEvent['name'];
+  | InternalEvent['name']
+  | MediaQualityEvent['name'];

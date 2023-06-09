@@ -268,4 +268,32 @@ export default class CallAnalyzerLatencies {
 
     return undefined;
   }
+
+  /**
+   * Audio setup delay receive
+   */
+  public getAudioJoinRespRxStart() {
+    return this.getDiffBetweenLatencies('client.locus.join.response', 'client.media.rx.start');
+  }
+
+  /**
+   * Video setup delay receive
+   */
+  public getVideoJoinRespRxStart() {
+    return this.getDiffBetweenLatencies('client.locus.join.response', 'client.media.rx.start');
+  }
+
+  /**
+   * Audio setup delay transmit
+   */
+  public getAudioJoinRespTxStart() {
+    return this.getDiffBetweenLatencies('client.locus.join.response', 'client.media.tx.start');
+  }
+
+  /**
+   * Video setup delay transmit
+   */
+  public getVideoJoinRespTxStart() {
+    return this.getDiffBetweenLatencies('client.locus.join.response', 'client.media.tx.start');
+  }
 }

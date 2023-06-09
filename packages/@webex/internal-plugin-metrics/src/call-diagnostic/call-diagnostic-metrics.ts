@@ -8,17 +8,19 @@ import {anonymizeIPAddress, clearEmpty, userAgentToString} from './call-diagnost
 import {CLIENT_NAME} from '../config';
 import {Event as RawEvent} from './types/Event';
 import {FeatureEvent} from './types/FeatureEvent';
+import {MediaQualityEvent} from './types/MediaQualityEvent';
 import {ClientEvent} from './types/ClientEvent';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {RecursivePartial} from '../types';
 
-type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent};
+type Event = Omit<RawEvent, 'event'> & {event: ClientEvent | FeatureEvent | MediaQualityEvent};
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 type GetOriginOptions = {
   clientType: NonNullable<Event['origin']['clientInfo']>['clientType'];
   subClientType: NonNullable<Event['origin']['clientInfo']>['subClientType'];
+  networkType?: Event['origin']['networkType'];
 };
 
 type GetIdentifiersOptions = {
@@ -77,11 +79,14 @@ export default class CallDiagnosticMetrics {
   getOrigin(options: GetOriginOptions, meetingId?: string) {
     let defaultClientType: Event['origin']['clientInfo']['clientType'];
     let defaultSubClientType: Event['origin']['clientInfo']['subClientType'];
+    let environment: Event['origin']['environment'];
 
     if (meetingId) {
       const meeting = this.meetingCollection.get(meetingId);
+
       defaultClientType = meeting.config.metrics?.clientType;
       defaultSubClientType = meeting.config.metrics?.subClientType;
+      environment = meeting.environment;
     }
 
     if (
@@ -90,7 +95,7 @@ export default class CallDiagnosticMetrics {
     ) {
       const origin: Event['origin'] = {
         name: 'endpoint',
-        networkType: 'unknown',
+        networkType: options.networkType || 'unknown',
         userAgent: userAgentToString({
           clientName: this.webex.meetings?.metrics?.clientName,
           webexVersion: this.webex.version,
@@ -106,6 +111,7 @@ export default class CallDiagnosticMetrics {
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
         },
+        environment,
       };
 
       return origin;
@@ -176,7 +182,11 @@ export default class CallDiagnosticMetrics {
     };
 
     // sanitize (remove empty properties, CA requires it)
-    clearEmpty(event);
+    // but we don't want to sanitize MQE as most of the times
+    // values will be 0, [] etc, and they are required.
+    if (eventData.name !== 'client.mediaquality.event') {
+      clearEmpty(event);
+    }
 
     return event;
   }
@@ -227,7 +237,6 @@ export default class CallDiagnosticMetrics {
   /**
    * TODO: NOT IMPLEMENTED
    * @param rawError
-   * @returns
    */
   generateErrorPayload(rawError?: any) {
     // grab the type of the elements in the errors array
@@ -252,7 +261,7 @@ export default class CallDiagnosticMetrics {
    * @param event - event key
    * @param payload - payload for the event
    * @param options - payload
-   * @returns
+   * @throws
    */
   public submitClientEvent({
     name,
@@ -295,6 +304,69 @@ export default class CallDiagnosticMetrics {
         errors,
         eventData: {
           webClientDomain: window.location.hostname,
+        },
+        userType: meeting.getCurUserType(),
+        loginType: meeting.getCurLoginType(),
+      };
+
+      // merge any new properties, or override existing ones
+      clientEventObject = merge(clientEventObject, payload);
+
+      // append feature event data to the call diagnostic event
+      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      this.submitToCallDiagnostics(diagnosticEvent);
+    } else {
+      // any pre join events or events that are outside the meeting.
+      throw new Error('Not implemented');
+    }
+  }
+
+  /**
+   * Submit Media Quality Event
+   * @param args
+   */
+  submitMQE({
+    name,
+    // additional payload to be merged with default payload
+    payload,
+    options,
+  }: {
+    name: MediaQualityEvent['name'];
+    // additional payload to be merged with default payload
+    payload: RecursivePartial<MediaQualityEvent> & {intervals: MediaQualityEvent['intervals']};
+    options: {
+      meetingId: string;
+      mediaConnections?: any[];
+      networkType?: Event['origin']['networkType'];
+    };
+  }) {
+    const {meetingId, mediaConnections} = options;
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      const meeting = this.meetingCollection.get(meetingId);
+
+      // merge identifiers
+      const identifiers = this.getIdentifiers({
+        meeting,
+        mediaConnections: meeting.mediaConnections || mediaConnections,
+      });
+
+      // create feature event object
+      let clientEventObject: MediaQualityEvent = {
+        name,
+        canProceed: true,
+        identifiers,
+        eventData: {
+          webClientDomain: window.location.hostname,
+        },
+        intervals: payload.intervals,
+        sourceMetadata: {
+          applicationSoftwareType: CLIENT_NAME,
+          applicationSoftwareVersion: this.webex.version,
+          mediaEngineSoftwareType: getBrowserName() || 'browser',
+          mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
+          startTime: new Date().toISOString(),
         },
       };
 

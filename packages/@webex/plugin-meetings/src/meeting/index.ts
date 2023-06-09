@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
+import {cloneDeep, isEqual, isString, defer, isEmpty} from 'lodash';
 import {ClientEvent, NewMetrics} from '@webex/internal-plugin-metrics';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -38,7 +38,6 @@ import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from './request';
 import Members from '../members/index';
@@ -468,7 +467,6 @@ export default class Meeting extends StatelessWebexPlugin {
   type: string;
   userId: string;
   video: any;
-  callEvents: any[];
   deferJoin: Promise<any>;
   dialInDeviceStatus: string;
   dialInUrl: string;
@@ -958,14 +956,6 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.shareStatus = SHARE_STATUS.NO_SHARE;
 
-    /**
-     * @instance
-     * @type {Array}
-     * @readonly
-     * @public
-     * @memberof Meeting
-     */
-    this.callEvents = [];
     /**
      * There is a pending floor requested by the user
      * @instance
@@ -1616,203 +1606,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.FULL_STATE_TYPE_UPDATE, (payload) => {
       this.members.locusFullStateTypeUpdate(payload);
     });
-  }
-
-  /**
-   * get the metrics payload pre
-   * @param {Object} options
-   * @param {String} options.event
-   * @param {String} options.trackingId
-   * @param {Object} options.locus
-   * @param {Array} options.mediaConnections
-   * @param {Object} options.errors
-   * @returns {Object}
-   * @memberof Meeting
-   */
-  getAnalyzerMetricsPrePayload(options: {
-    type?: string;
-    event: string;
-    trackingId: string;
-    locus: object;
-    mediaConnections?: Array<any>;
-    errors?: object;
-    meetingLookupUrl?: string;
-    clientType?: any;
-    subClientType?: any;
-    [key: string]: any;
-  }) {
-    if (options) {
-      const {event, trackingId, mediaConnections, meetingLookupUrl} = options;
-
-      if (!event) {
-        LoggerProxy.logger.error(
-          'Meeting:index#getAnalyzerMetricsPrePayload --> Error [Call Analyzer Event',
-          event || '',
-          `]: invalid identifers or event type! ${this.correlationId}`
-        );
-
-        return null;
-      }
-
-      const identifiers: any = {
-        correlationId: this.correlationId,
-        userId: this.userId,
-        deviceId: this.deviceUrl,
-        orgId: this.orgId,
-        // @ts-ignore fix type
-        locusUrl: this.webex.internal.services.get('locus'),
-      };
-
-      if (this.locusUrl && this.locusInfo.fullState) {
-        identifiers.locusUrl = this.locusUrl;
-        identifiers.locusId = this.locusUrl && this.locusUrl.split('/').pop();
-        identifiers.locusStartTime =
-          this.locusInfo.fullState && this.locusInfo.fullState.lastActive;
-      }
-
-      // Check if mediaConnections has been passed in or else use this.mediaConnections
-      if (mediaConnections) {
-        identifiers.mediaAgentAlias = mediaConnections?.[0].mediaAgentAlias;
-        identifiers.mediaAgentGroupId = mediaConnections?.[0].mediaAgentGroupId;
-        identifiers.mediaAgentCluster = mediaConnections?.[0].mediaAgentCluster;
-      } else if (this.mediaConnections) {
-        identifiers.mediaAgentAlias = this.mediaConnections?.[0].mediaAgentAlias;
-        identifiers.mediaAgentGroupId = this.mediaConnections?.[0].mediaAgentGroupId;
-        identifiers.mediaAgentCluster = this.mediaConnections?.[0].mediaAgentCluster;
-      }
-
-      if (meetingLookupUrl) {
-        identifiers.meetingLookupUrl = meetingLookupUrl;
-      }
-
-      if (options.trackingId) {
-        identifiers.trackingId = trackingId;
-      }
-
-      let payload = {};
-
-      const joinRespRxStartAudio = this.getSetupDelayDuration('audio');
-
-      if (joinRespRxStartAudio) {
-        options.audioSetupDelay = {
-          joinRespRxStart: joinRespRxStartAudio,
-        };
-      }
-
-      const joinRespRxStartVideo = this.getSetupDelayDuration('video');
-
-      if (joinRespRxStartAudio) {
-        options.videoSetupDelay = {
-          joinRespRxStart: joinRespRxStartVideo,
-        };
-      }
-
-      const joinRespTxStartAudio = this.getSendingMediaDelayDuration('audio');
-
-      if (joinRespTxStartAudio) {
-        options.audioSetupDelay = {
-          ...options.audioSetupDelay,
-          joinRespTxStart: joinRespTxStartAudio,
-        };
-      }
-
-      const joinRespTxStartVideo = this.getSendingMediaDelayDuration('video');
-
-      if (joinRespTxStartVideo) {
-        options.videoSetupDelay = {
-          ...options.videoSetupDelay,
-          joinRespTxStart: joinRespTxStartVideo,
-        };
-      }
-
-      const localSDPGenRemoteSDPRecv = this.getLocalSDPGenRemoteSDPRecvDelay();
-
-      if (localSDPGenRemoteSDPRecv) {
-        options.joinTimes = {
-          ...options.joinTimes,
-          localSDPGenRemoteSDPRecv,
-        };
-      }
-
-      const callInitJoinReq = this.getCallInitJoinReq();
-
-      if (callInitJoinReq) {
-        options.joinTimes = {
-          ...options.joinTimes,
-          callInitJoinReq,
-        };
-      }
-
-      const joinReqResp = this.getJoinReqResp();
-
-      if (joinReqResp) {
-        options.joinTimes = {
-          ...options.joinTimes,
-          joinReqResp,
-        };
-      }
-
-      const totalJmt = this.getTotalJmt();
-
-      if (totalJmt) {
-        options.joinTimes = {
-          ...options.joinTimes,
-          totalJmt,
-        };
-      }
-
-      const curUserType = this.getCurUserType();
-
-      if (curUserType) {
-        options.userType = curUserType;
-      }
-
-      const curLoginType = this.getCurLoginType();
-
-      if (curLoginType) {
-        options.loginType = curLoginType;
-      }
-
-      if (this.environment) {
-        options.environment = this.environment;
-      }
-
-      if (options.type === MQA_STATS.CA_TYPE) {
-        payload = Metrics.initMediaPayload(options.event, identifiers, options);
-      } else {
-        payload = Metrics.initPayload(options.event, identifiers, options);
-      }
-
-      return payload;
-    }
-
-    return null;
-  }
-
-  /**
-   * Send the metrics to Media Quality Analyzer dashboard
-   * @param {Object} options
-   * @param {String} options.event
-   * @param {String} options.trackingId
-   * @param {Object} options.locus
-   * @returns {Promise}
-   * @private
-   * @memberof Meeting
-   */
-  private sendMediaQualityAnalyzerMetrics(options: {
-    event: string;
-    trackingId: string;
-    locus: object;
-  }) {
-    const payload = this.getAnalyzerMetricsPrePayload({
-      type: MQA_STATS.CA_TYPE,
-      // @ts-ignore - config coming from registerPlugin
-      ...pick(this.config.metrics, ['clientType', 'subClientType']),
-      ...options,
-    });
-
-    // @ts-ignore
-    return this.webex.internal.metrics.submitCallDiagnosticEvents(payload);
   }
 
   /**
@@ -5400,11 +5193,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.meetings.geoHintInfo?.clientAddress ||
         options.data.intervalMetadata.peerReflexiveIP ||
         MQA_STATS.DEFAULT_IP;
-      // TODO: this is part of MQE, so will be a different method
-      Metrics.postEvent({
-        event: eventType.MEDIA_QUALITY,
-        meeting: this,
-        data: {intervalData: options.data, networkType: options.networkType},
+      NewMetrics.submitMQE({
+        name: 'client.mediaquality.event',
+        options: {
+          meetingId: this.id,
+          networkType: options.networkType,
+        },
+        payload: {
+          intervals: [options.data],
+        },
       });
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_MEDIA_STARTED, (data) => {
@@ -7177,7 +6974,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   setStartSetupDelay(typeMedia: string) {
-    this[`startSetupDelay${typeMedia}`] = performance.now();
+    this[`startSetupDelay${typeMedia}`] = performance.now(); // locus response
     this[`endSetupDelay${typeMedia}`] = undefined;
   }
 
@@ -7186,7 +6983,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   setEndSetupDelay(typeMedia: string) {
-    this[`endSetupDelay${typeMedia}`] = performance.now();
+    this[`endSetupDelay${typeMedia}`] = performance.now(); // media rx start
   }
 
   /**

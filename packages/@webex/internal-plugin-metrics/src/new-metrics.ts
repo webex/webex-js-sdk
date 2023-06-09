@@ -14,6 +14,7 @@ import {
   FeatureEvent,
   BehavioralEvent,
   OperationalEvent,
+  MediaQualityEvent,
 } from './types';
 import CallAnalyzerLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 
@@ -98,7 +99,6 @@ class Metrics extends WebexPlugin {
     options: any;
   }) {
     this.callAnalyzerLatencies.saveLatency(name);
-    this.behavioralMetrics.submitBehavioralEvent();
   }
 
   /**
@@ -127,12 +127,14 @@ class Metrics extends WebexPlugin {
     payload,
     options,
   }: {
-    name: OperationalEvent['name'];
-    payload?: RecursivePartial<OperationalEvent['payload']>;
+    name: MediaQualityEvent['name'];
+    payload: RecursivePartial<MediaQualityEvent['payload']> & {
+      intervals: MediaQualityEvent['payload']['intervals'];
+    };
     options: any;
   }) {
     this.callAnalyzerLatencies.saveLatency(name);
-    // TODO: not implemented
+    this.callDiagnosticMetrics.submitMQE({name, payload, options});
   }
 
   /**

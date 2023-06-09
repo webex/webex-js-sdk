@@ -8,6 +8,8 @@ import Batcher from '../batcher';
 import NewMetrics from '../new-metrics';
 import EventJSonSchema from './types/Event.json';
 import {ClientEvent} from './types/ClientEvent';
+import {MediaQualityEvent} from './types/MediaQualityEvent';
+import {MetricEventNames} from '../types';
 
 const ajv = new Ajv();
 
@@ -43,8 +45,10 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // metrics-a payload type
 
     // check event names and append latencies?
-    const eventName = item.eventPayload?.event?.name as ClientEvent['name'];
+    const eventName = item.eventPayload?.event?.name as MetricEventNames;
     const joinTimes: ClientEvent['joinTimes'] = {};
+    const audioSetupDelay: MediaQualityEvent['audioSetupDelay'] = {};
+    const videoSetupDelay: MediaQualityEvent['videoSetupDelay'] = {};
 
     switch (eventName) {
       case 'client.locus.join.response':
@@ -55,24 +59,33 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
       case 'client.call.initiated':
         joinTimes.meetingInfoReqResp = NewMetrics.callAnalyzerLatencies.getMeetingInfoReqResp();
         joinTimes.showInterstitialTime = NewMetrics.callAnalyzerLatencies.getShowInterstitialTime();
+        break;
 
-      // eslint-disable-next-line no-fallthrough
+      // always try to set these up
       default:
+        audioSetupDelay.joinRespRxStart =
+          NewMetrics.callAnalyzerLatencies.getAudioJoinRespRxStart();
+        audioSetupDelay.joinRespTxStart =
+          NewMetrics.callAnalyzerLatencies.getAudioJoinRespTxStart();
+        videoSetupDelay.joinRespTxStart =
+          NewMetrics.callAnalyzerLatencies.getVideoJoinRespRxStart();
+        videoSetupDelay.joinRespTxStart =
+          NewMetrics.callAnalyzerLatencies.getVideoJoinRespTxStart();
         break;
     }
-
-    // networkType should be a enum value: `wifi`, `ethernet`, `cellular`, or `unknown`.
-    // Browsers cannot provide such information right now. However, it is a required field.
-    const origin = {
-      buildType: this.getBuildType(item.eventPayload?.eventData?.webClientDomain),
-      // network type is supported in chrome.
-      networkType: 'unknown',
-    };
 
     item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
     if (!isEmpty(joinTimes)) {
       item.eventPayload.event = merge(item.eventPayload.event, {joinTimes});
+    }
+
+    if (!isEmpty(audioSetupDelay)) {
+      item.eventPayload.event = merge(item.eventPayload.event, {audioSetupDelay});
+    }
+
+    if (!isEmpty(videoSetupDelay)) {
+      item.eventPayload.event = merge(item.eventPayload.event, {videoSetupDelay});
     }
 
     return Promise.resolve(item);
@@ -91,14 +104,20 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
       this.logger.info(
         `Call Diagnostic Event -> Validating against JSON Schema...:\n${JSON.stringify(
-          item.eventPayload
+          item.eventPayload,
+          undefined,
+          2
         )}`
       );
 
       const isValid = validate(item.eventPayload);
       if (!isValid) {
         this.logger.info(
-          `Call Diagnostic Event -> Error: Event is not valid!\n${JSON.stringify(validate.errors)}`
+          `Call Diagnostic Event -> Error: Event is not valid!\n${JSON.stringify(
+            validate.errors,
+            undefined,
+            2
+          )}`
         );
         throw new Error('Invalid event.');
       }
