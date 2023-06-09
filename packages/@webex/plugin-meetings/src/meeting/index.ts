@@ -5728,6 +5728,26 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       })
       .catch((error) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+          correlation_id: this.correlationId,
+          locus_id: this.locusUrl.split('/').pop(),
+          reason: error.message,
+          stack: error.stack,
+          code: error.code,
+          turnDiscoverySkippedReason,
+          turnServerUsed,
+          isMultistream: this.isMultistream,
+          signalingState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.signalingState || 'unknown',
+          connectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.connectionState || 'unknown',
+          iceConnectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.iceConnectionState || 'unknown',
+        });
+
         // Clean up stats analyzer, peer connection, and turn off listeners
         const stopStatsAnalyzer = this.statsAnalyzer
           ? this.statsAnalyzer.stopAnalyzer()
@@ -5745,17 +5765,6 @@ export default class Meeting extends StatelessWebexPlugin {
             `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
             error
           );
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            code: error.code,
-            turnDiscoverySkippedReason,
-            turnServerUsed,
-            isMultistream: this.isMultistream,
-          });
 
           // Upload logs on error while adding media
           Trigger.trigger(
