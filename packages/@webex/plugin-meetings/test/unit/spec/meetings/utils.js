@@ -201,6 +201,7 @@ describe('plugin-meetings', () => {
           seq: "seq",
           messageType: 'messageType',
           errorType: 'errorType',
+          tieBreaker: 'tieBreaker',
           errorCause: 'errorCause',
           sdp: {id:'sdp-1'}
         })

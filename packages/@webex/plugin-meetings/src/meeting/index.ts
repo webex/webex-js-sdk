@@ -5739,13 +5739,19 @@ export default class Meeting extends StatelessWebexPlugin {
           isMultistream: this.isMultistream,
           signalingState:
             this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.signalingState || 'unknown',
+              ?.signalingState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
+            'unknown',
           connectionState:
             this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.connectionState || 'unknown',
+              ?.connectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.connectionState ||
+            'unknown',
           iceConnectionState:
             this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.iceConnectionState || 'unknown',
+              ?.iceConnectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
+            'unknown',
         });
 
         // Clean up stats analyzer, peer connection, and turn off listeners

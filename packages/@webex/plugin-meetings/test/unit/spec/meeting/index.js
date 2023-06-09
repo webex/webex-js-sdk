@@ -1290,7 +1290,7 @@ describe('plugin-meetings', () => {
 
         });
 
-        it('should include the peer connection properties correctly', async () => {
+        it('should include the peer connection properties correctly for multistream', async () => {
           meeting.meetingState = 'ACTIVE';
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
@@ -1303,6 +1303,47 @@ describe('plugin-meetings', () => {
                   connectionState: 'connecting',
                   iceConnectionState: 'checking',
                 }
+              }
+            }
+          });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'have-local-offer',
+              connectionState: 'connecting',
+              iceConnectionState: 'checking'
+
+            })
+          );
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+        });
+
+        it('should include the peer connection properties correctly for transcoded', async () => {
+          meeting.meetingState = 'ACTIVE';
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
+            mediaConnection :{
+              pc: {
+                signalingState: 'have-local-offer',
+                connectionState: 'connecting',
+                iceConnectionState: 'checking',
               }
             }
           });
