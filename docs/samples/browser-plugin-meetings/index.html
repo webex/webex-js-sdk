@@ -22,7 +22,7 @@
           <audio id="multistream-remote-share-audio" autoplay ></audio>
           <div id="multistream-videos-container" class="multistream-videos-container">
           </div>
-          <div class="multistream-buttons"">
+          <div class="multistream-buttons">
             <div class="stage-control-wrapper">
               <span>Choose Layout:</span>
               <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
@@ -44,11 +44,12 @@
             <input id="size-hint-input" />
             <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
           </div>
-          <div style="display: flex">
-            <div class="u-mb">
-              <input id="prefer-live-video-input" />
-              <button id="ts-toggle-prefer-live-video" type="button" onclick="setPreferLiveVideo()">Set PreferLiveVideo</button>
-            </div>
+          <div class="prefer-live-video">
+            <span>Set Prefer Live Video:</span>
+            <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
+              <option value="Enable">Enable</option>
+              <option value="Disable">Disable</option>
+            </select>
           </div>
         </fieldset>
       </div>

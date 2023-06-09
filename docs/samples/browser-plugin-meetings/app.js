@@ -1966,6 +1966,7 @@ function updateMultistreamVideoLayout() {
 }
 
 function setPreferLiveVideo () {
+  let preferLiveVideo = false;
   const meeting = getCurrentMeeting();
 
   if (!meeting) {
@@ -1974,10 +1975,14 @@ function setPreferLiveVideo () {
   if (!meeting.mediaProperties.webrtcMediaConnection) {
     return;
   }
-  const value = document.getElementById("ts-toggle-prefer-live-video").value;
+  const value = document.getElementById("prefer-live-video").value;
+
+  if (value === 'Enable') {
+    preferLiveVideo = true;
+  }
 
   if (meeting.remoteMediaManager) {
-    meeting.remoteMediaManager.setPreferLiveVideo(Boolean.parseBoolean(value));
+    meeting.remoteMediaManager.setPreferLiveVideo(preferLiveVideo);
   }
 
 }
