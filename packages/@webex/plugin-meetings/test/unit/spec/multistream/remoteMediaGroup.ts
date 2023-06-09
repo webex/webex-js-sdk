@@ -98,18 +98,18 @@ describe('RemoteMediaGroup', () => {
   });
 
   describe('setPreferLiveVideo', () => {
-    it('sets to true initial option was false', () => {
+    it('updates prefer live video', () => {
 
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
         resolution: 'medium',
         preferLiveVideo: false,
       });
-
-      group.setPreferLiveVideo(true);
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
 
       assert.calledOnce(fakeMediaRequestManager.cancelRequest);
 
-      assert.calledTwice(fakeMediaRequestManager.addRequest);
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
 
       assert.calledWith(
         fakeMediaRequestManager.addRequest,
@@ -128,33 +128,17 @@ describe('RemoteMediaGroup', () => {
       );
     });
 
-    it('sets to false initial option was true', () => {
+    it('does not call add request when prefer live video has not changed', () => {
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
         resolution: 'medium',
         preferLiveVideo: true,
       });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
 
-      group.setPreferLiveVideo(false);
+      assert.notCalled(fakeMediaRequestManager.cancelRequest);
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-
-      assert.calledTwice(fakeMediaRequestManager.addRequest);
-
-      assert.calledWith(
-        fakeMediaRequestManager.addRequest,
-        sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-            preferLiveVideo: false
-          }),
-          receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        })
-      );
+      assert.notCalled(fakeMediaRequestManager.addRequest);
     });
 
   });

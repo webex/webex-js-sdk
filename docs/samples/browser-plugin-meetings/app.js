@@ -1965,6 +1965,23 @@ function updateMultistreamVideoLayout() {
   }
 }
 
+function setPreferLiveVideo () {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    return;
+  }
+  if (!meeting.mediaProperties.webrtcMediaConnection) {
+    return;
+  }
+  const value = document.getElementById("ts-toggle-prefer-live-video").value;
+
+  if (meeting.remoteMediaManager) {
+    meeting.remoteMediaManager.setPreferLiveVideo(Boolean.parseBoolean(value));
+  }
+
+}
+
 async function getStatsForVideoPane(meeting, videoPane) {
   const {remoteMedia} = videoPane;
   const {wcmeReceiveSlot} = remoteMedia.getUnderlyingReceiveSlot();

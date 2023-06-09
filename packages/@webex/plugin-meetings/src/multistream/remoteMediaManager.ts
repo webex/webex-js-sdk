@@ -494,10 +494,14 @@ export class RemoteMediaManager extends EventsScope {
    * sets the preferLiveVideo
    */
   public setPreferLiveVideo(preferLiveVideo: boolean) {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#setPreferLiveVideo --> setPreferLiveVideo is called to set preferLiveVideo to ${preferLiveVideo}`
+    );
     this.config.video.preferLiveVideo = preferLiveVideo;
     Object.values(this.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
-      activeSpeakerGroup.setPreferLiveVideo(preferLiveVideo);
+      activeSpeakerGroup.setPreferLiveVideo(preferLiveVideo, false);
     });
+    this.mediaRequestManagers.video.commit();
   }
 
   /**

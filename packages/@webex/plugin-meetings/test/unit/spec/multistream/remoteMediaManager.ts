@@ -666,7 +666,7 @@ describe('RemoteMediaManager', () => {
 
   describe('setPreferLiveVideo', () => {
 
-    it('sets preferLiveVideo to true', async () => {
+    it('sets preferLiveVideo', async () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'OnePlusFive';
@@ -683,33 +683,13 @@ describe('RemoteMediaManager', () => {
       remoteMediaManager.setPreferLiveVideo(true);
 
       expect(config.video.preferLiveVideo).to.equal(true);
-
-      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup: any) => {
-        expect(activeSpeakerGroup.options.preferLiveVideo).to.equal(true);
+      
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) =>
+          assert.calledOnceWithExactly(group.setPreferLiveVideo, true, false)
+        );
       });
-    });
-
-    it('sets preferLiveVideo to false', async () => {
-      const config = cloneDeep(DefaultTestConfiguration);
-
-      config.video.initialLayoutId = 'OnePlusFive';
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-  
-      await remoteMediaManager.start();
-  
-      resetHistory();
-      remoteMediaManager.setPreferLiveVideo(false);
-
-      expect(config.video.preferLiveVideo).to.equal(false);
-
-      Object.values(remoteMediaManager.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup: any) => {
-        expect(activeSpeakerGroup.options.preferLiveVideo).to.equal(false);
-      });
+      assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
   });
 
