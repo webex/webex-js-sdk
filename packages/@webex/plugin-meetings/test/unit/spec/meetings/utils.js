@@ -194,15 +194,12 @@ describe('plugin-meetings', () => {
           correlation_id: 'correlationId',
           seq: "seq",
           message_type: 'messageType',
-          tie_breaker: 'tieBreaker',
           error_type: 'errorType',
           error_cause: 'errorCause',
-          sdp: { id: 'sdp-1' }
         })
         assert.calledWith(roapMessageReceived, {
           seq: "seq",
           messageType: 'messageType',
-          tieBreaker: 'tieBreaker',
           errorType: 'errorType',
           errorCause: 'errorCause',
           sdp: {id:'sdp-1'}

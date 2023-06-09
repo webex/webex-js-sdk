@@ -55,8 +55,6 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
         correlation_id: data.correlationId,
         seq,
         message_type: messageType,
-        sdp: data.message.sdps?.length > 0 ? data.message.sdps[0] : undefined,
-        tie_breaker: tieBreaker,
         error_type: errorType,
         error_cause: errorCause,
       });
