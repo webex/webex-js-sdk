@@ -1006,7 +1006,7 @@ describe('resolveContact tests', () => {
     const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
 
     expect(webexSpy).toBeCalledOnceWith(expect.objectContaining({uri: query}));
-    expect(displayInfo?.num).toStrictEqual('5009');
+    expect(displayInfo?.num).toStrictEqual('5008');
     webexSpy.mockReset();
 
     scimResponse.Resources[0].phoneNumbers[1].primary = true;

@@ -1220,7 +1220,9 @@ export async function resolveCallerIdDisplay(filter: string) {
     displayResult.name = scimResource.displayName;
 
     /* Pick only the primary number  OR  2nd preference Work */
-    const numberObj = scimResource.phoneNumbers.find((num) => num.primary === true);
+    const numberObj =
+      scimResource.phoneNumbers.find((num) => num.primary) ||
+      scimResource.phoneNumbers.find((num) => num.type.toLowerCase() === 'work');
 
     if (numberObj) {
       displayResult.num = <string>numberObj.value;
