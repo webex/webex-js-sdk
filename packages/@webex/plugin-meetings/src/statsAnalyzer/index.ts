@@ -394,7 +394,6 @@ export class StatsAnalyzer extends EventsScope {
         this.peerConnection = null;
       });
     }
-    this.peerConnection = null;
 
     return Promise.resolve();
   }
