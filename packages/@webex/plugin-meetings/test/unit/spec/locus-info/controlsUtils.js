@@ -97,6 +97,14 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.raiseHand.enabled, newControls.raiseHand.enabled);
       });
 
+      it('should parse the video control', () => {
+        const newControls = {video: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.video.enabled, newControls.video.enabled);
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});
@@ -175,6 +183,14 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasRaiseHandChanged, true);
+      });
+
+      it('returns hasVideoChanged = true when changed', () => {
+        const newControls = {video: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasVideoChanged, true);
       });
 
       it('returns hasEntryExitToneChanged = true when mode changed', () => {

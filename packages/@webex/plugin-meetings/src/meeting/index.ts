@@ -748,6 +748,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locusUrl: attrs.locus && attrs.locus.url,
         receiveSlotManager: this.receiveSlotManager,
         mediaRequestManagers: this.mediaRequestManagers,
+        meeting: this,
       },
       // @ts-ignore - Fix type
       {parent: this.webex}
@@ -890,7 +891,12 @@ export default class Meeting extends StatelessWebexPlugin {
      * @private
      * @memberof Meeting
      */
-    this.meetingRequest = new MeetingRequest({}, options);
+    this.meetingRequest = new MeetingRequest(
+      {
+        meeting: this,
+      },
+      options
+    );
     /**
      * @instance
      * @type {Array}
@@ -2171,6 +2177,15 @@ export default class Meeting extends StatelessWebexPlugin {
         {state}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -2187,6 +2202,18 @@ export default class Meeting extends StatelessWebexPlugin {
       const {content: contentShare, whiteboard: whiteboardShare} = payload.current;
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
+
+      if (!isEqual(contentShare?.annotation, previousContentShare?.annotation)) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meetings/index',
+            function: 'remoteShare',
+          },
+          EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
+          contentShare.annotation
+        );
+      }
 
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
@@ -2321,6 +2348,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                 {
                   memberId: contentShare.beneficiaryId,
+                  url: contentShare.url,
+                  shareInstanceId: contentShare.shareInstanceId,
                 }
               );
             };
@@ -2395,6 +2424,8 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
           {
             memberId: contentShare.beneficiaryId,
+            url: contentShare.url,
+            shareInstanceId: contentShare.shareInstanceId,
           }
         );
         this.members.locusMediaSharesUpdate(payload);
@@ -3229,35 +3260,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Sets the first locus info on the class instance
-   * @param {Object} locus
-   * @param {String} locus.url
-   * @param {Array} locus.participants
-   * @param {Object} locus.self
-   * @returns {undefined}
-   * @private
-   * @memberof Meeting
-   */
-  private parseLocus(locus: {url: string; participants: Array<any>; self: object}) {
-    if (locus) {
-      this.locusUrl = locus.url;
-      // TODO: move this to parse participants module
-      this.setLocus(locus);
-
-      // check if we can extract this info from partner
-      // Parsing of locus object must be finished at this state
-      if (locus.participants && locus.self) {
-        this.partner = MeetingUtil.getLocusPartner(locus.participants, locus.self);
-      }
-
-      // For webex meeting the sipUrl gets updated in info parser
-      if (!this.sipUri && this.partner && this.type === _CALL_) {
-        this.setSipUri(this.partner.person.sipUrl || this.partner.person.id);
-      }
-    }
-  }
-
-  /**
    * Sets the sip uri on the class instance
    * uses meeting info as precedence
    * @param {String} sipUri
@@ -3283,7 +3285,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setLocus(
+  setLocus(
     locus:
       | {
           mediaConnections: Array<any>;
@@ -4656,9 +4658,6 @@ export default class Meeting extends StatelessWebexPlugin {
           locusUrl,
           clientUrl: this.deviceUrl,
         })
-        .then((res) => {
-          this.locusInfo.onFullLocus(res.body.locus);
-        })
         .catch((error) => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
             correlation_id: this.correlationId,
@@ -4697,9 +4696,6 @@ export default class Meeting extends StatelessWebexPlugin {
           phoneNumber,
           locusUrl,
           clientUrl: this.deviceUrl,
-        })
-        .then((res) => {
-          this.locusInfo.onFullLocus(res.body.locus);
         })
         .catch((error) => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
@@ -6842,11 +6838,6 @@ export default class Meeting extends StatelessWebexPlugin {
         main: layoutInfo.main,
         content: layoutInfo.content,
       })
-      .then((response) => {
-        if (response && response.body && response.body.locus) {
-          this.locusInfo.onFullLocus(response.body.locus);
-        }
-      })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:index#changeVideoLayout --> Error ', error);
 
@@ -7583,6 +7574,32 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
     throw new Error('Webrtc media connection is missing, call addMedia() first');
+  }
+
+  /**
+   * Method to enable or disable the 'Music mode' effect on audio track
+   *
+   * @param {boolean} shouldEnableMusicMode
+   * @returns {Promise}
+   */
+  async enableMusicMode(shouldEnableMusicMode: boolean) {
+    this.checkMediaConnection();
+
+    if (!this.isMultistream) {
+      throw new Error('enableMusicMode() only supported with multistream');
+    }
+
+    if (shouldEnableMusicMode) {
+      await this.mediaProperties.webrtcMediaConnection.setCodecParameters(MediaType.AudioMain, {
+        maxaveragebitrate: '64000',
+        maxplaybackrate: '48000',
+      });
+    } else {
+      await this.mediaProperties.webrtcMediaConnection.deleteCodecParameters(MediaType.AudioMain, [
+        'maxaveragebitrate',
+        'maxplaybackrate',
+      ]);
+    }
   }
 
   /**

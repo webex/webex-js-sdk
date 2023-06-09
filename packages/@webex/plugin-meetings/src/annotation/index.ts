@@ -44,20 +44,22 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private processStrokeMessage(request) {
-    this.decryptContent(request.encryptionKeyUrl, request.content).then((decryptedContent) => {
-      request.content = decryptedContent;
-      TriggerProxy.trigger(
-        this,
-        {
-          file: 'annotation',
-          function: 'processStrokeMessage',
-        },
-        EVENT_TRIGGERS.ANNOTATION_STROKE_DATA,
-        {
-          data: request,
-        }
-      );
-    });
+    this.decryptContent(request.value.encryptionKeyUrl, request.value.content).then(
+      (decryptedContent) => {
+        request.value.content = decryptedContent;
+        TriggerProxy.trigger(
+          this,
+          {
+            file: 'annotation',
+            function: 'processStrokeMessage',
+          },
+          EVENT_TRIGGERS.ANNOTATION_STROKE_DATA,
+          {
+            payload: request.value,
+          }
+        );
+      }
+    );
   }
 
   /** bind all events from mercury
@@ -311,15 +313,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         relayType: ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT,
         request: {
           value: {
-            sessionId: uuid.v4(),
             type: ANNOTATION_REQUEST_TYPE.ANNOTATION_MESSAGE,
-            locusUrl: this.locusUrl,
             content: encryptedContent,
-            version: 'mVersion',
-            fromUserId: strokeData.fromUserId,
-            fromDeviceUrl: strokeData.fromDeviceUrl,
+            deviceId: strokeData.deviceId,
+            seq: this.seqNum,
+            requesterId: strokeData.requesterId,
+            version: strokeData.version,
             shareInstanceId: strokeData.shareInstanceId,
-            locusId: this.locusUrl && this.locusUrl.split('/').pop(),
             encryptionKeyUrl: strokeData.encryptionKeyUrl,
           },
         },

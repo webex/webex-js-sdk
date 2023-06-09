@@ -93,6 +93,17 @@ const Breakouts = WebexPlugin.extend({
         return '';
       },
     },
+    breakoutStatus: {
+      cache: false,
+      deps: ['isInMainSession', 'status', 'groups'],
+      /**
+       * Returns the breakout status
+       * @returns {boolean}
+       */
+      fn() {
+        return this.isInMainSession ? this.groups?.[0]?.status : this.status;
+      },
+    },
   },
 
   /**
@@ -100,8 +111,8 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   initialize() {
-    this.listenTo(this, 'change:status', () => {
-      if (this.status === BREAKOUTS.STATUS.CLOSING) {
+    this.listenTo(this, 'change:breakoutStatus', () => {
+      if (this.breakoutStatus === BREAKOUTS.STATUS.CLOSING) {
         this.trigger(BREAKOUTS.EVENTS.BREAKOUTS_CLOSING);
       }
     });
@@ -457,6 +468,17 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * set groups to manageGroups prop
+   * @param {Object} breakoutInfo -- breakout groups
+   * @returns {void}
+   */
+  _setManageGroups(breakoutInfo) {
+    if (breakoutInfo?.body?.groups) {
+      this.set('manageGroups', breakoutInfo.body.groups);
+    }
+  },
+
+  /**
    * Create new breakout sessions
    * @param {object} params -- breakout session group
    * @returns {Promise}
@@ -468,7 +490,7 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
     // @ts-ignore
-    const breakInfo = await this.webex
+    const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
@@ -478,14 +500,12 @@ const Breakouts = WebexPlugin.extend({
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#create'));
       });
 
-    if (breakInfo.body?.groups) {
-      this.set('manageGroups', breakInfo.body.groups);
-    }
+    this._setManageGroups(breakoutInfo);
 
     // clear edit lock info after save breakout session info
     this._clearEditLockInfo();
 
-    return Promise.resolve(breakInfo);
+    return breakoutInfo;
   },
 
   /**
@@ -498,7 +518,7 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
     };
     // @ts-ignore
-    const breakInfo = await this.webex
+    const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
         uri: this.url,
@@ -508,12 +528,10 @@ const Breakouts = WebexPlugin.extend({
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#clearSessions'));
       });
 
-    if (breakInfo.body?.groups) {
-      this.set('manageGroups', breakInfo.body.groups);
-    }
+    this._setManageGroups(breakoutInfo);
     this.shouldFetchPreassignments = false;
 
-    return Promise.resolve(breakInfo);
+    return breakoutInfo;
   },
 
   /**
@@ -521,7 +539,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  start(params = {}) {
+  async start(params = {}) {
     const action = BREAKOUTS.ACTION.START;
     const payload = {
       id: this.breakoutGroupId,
@@ -539,13 +557,17 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#start'));
     });
+
+    this._setManageGroups(breakoutInfo);
+
+    return breakoutInfo;
   },
 
   /**
@@ -553,7 +575,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params
    * @returns {Promise}
    */
-  end(params = {}) {
+  async end(params = {}) {
     const {delayCloseTime, breakoutGroupId: id} = this;
     const action = BREAKOUTS.ACTION.CLOSE;
     const payload = {
@@ -570,13 +592,17 @@ const Breakouts = WebexPlugin.extend({
       ...{groups: [payload]},
     };
 
-    return this.request({
+    const breakoutInfo = await this.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
     }).catch((error) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#end'));
     });
+
+    this._setManageGroups(breakoutInfo);
+
+    return breakoutInfo;
   },
 
   /**
@@ -611,6 +637,8 @@ const Breakouts = WebexPlugin.extend({
       this._clearEditLockInfo();
     }
 
+    this._setManageGroups(breakoutInfo);
+
     return breakoutInfo;
   },
 
@@ -625,9 +653,7 @@ const Breakouts = WebexPlugin.extend({
       uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
     });
 
-    if (breakout.body?.groups) {
-      this.set('manageGroups', breakout.body.groups);
-    }
+    this._setManageGroups(breakout);
     if (editlock && breakout.body?.editlock?.token) {
       this.set('editLock', breakout.body.editlock);
       this.keepEditLockAlive();

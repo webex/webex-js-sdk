@@ -192,7 +192,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-export const PC_BAIL_TIMEOUT = 8000;
+export const PC_BAIL_TIMEOUT = 15000;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -283,6 +283,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_SHARING_LOCAL: 'meeting:stoppedSharingLocal',
   MEETING_STARTED_SHARING_REMOTE: 'meeting:startedSharingRemote',
   MEETING_STOPPED_SHARING_REMOTE: 'meeting:stoppedSharingRemote',
+  MEETING_UPDATE_ANNOTATION_INFO: 'meeting:updateAnnotationInfo',
   MEETING_STARTED_SHARING_WHITEBOARD: 'meeting:startedSharingWhiteboard',
   MEETING_STOPPED_SHARING_WHITEBOARD: 'meeting:stoppedSharingWhiteboard',
   MEETING_MEDIA_LOCAL_STARTED: 'meeting:media:local:start',
@@ -354,6 +355,7 @@ export const EVENT_TRIGGERS = {
   MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED:
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
+  MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
 };
 
 export const EVENT_TYPES = {
@@ -606,6 +608,7 @@ export const LOCUSINFO = {
     CONTROLS_REACTIONS_CHANGED: 'CONTROLS_REACTIONS_CHANGED',
     CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED: 'CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED',
     CONTROLS_RAISE_HAND_CHANGED: 'CONTROLS_RAISE_HAND_CHANGED',
+    CONTROLS_VIDEO_CHANGED: 'CONTROLS_VIDEO_CHANGED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
     SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
     SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED: 'SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED',

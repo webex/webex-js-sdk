@@ -2,12 +2,13 @@
  * Type for an StrokeData Object
  */
 type StrokeData = {
-  fromUserId: string;
-  fromDeviceUrl: string;
+  deviceId: string;
   toUserId: string;
+  requesterId: string;
   content: string;
   shareInstanceId: string;
   encryptionKeyUrl: string;
+  version: string;
 };
 
 type RequestData = {
