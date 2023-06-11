@@ -192,7 +192,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-export const PC_BAIL_TIMEOUT = 8000;
+export const PC_BAIL_TIMEOUT = 15000;
 
 // ******************** REGEX **********************
 // Please alphabetize

@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.129](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.129) (2023-06-09)
+
+
+### Features
+
+* **media-helper:** add effects from web media effects ([#2842](https://github.com/webex/webex-js-sdk/issues/2842)) ([85c879e](https://github.com/webex/webex-js-sdk/commit/85c879e07036fdbe409c6bbbb30bbb355cb8af7a))
+* **media-timeout:** add more metrics ([#2866](https://github.com/webex/webex-js-sdk/issues/2866)) ([8e5ca68](https://github.com/webex/webex-js-sdk/commit/8e5ca68dbabccae85a5a8fb1baeb99f56a31cf18))
+
+
+### Bug Fixes
+
+* Increase addmedia timeout ([#2862](https://github.com/webex/webex-js-sdk/issues/2862)) ([50f3daf](https://github.com/webex/webex-js-sdk/commit/50f3daf1065d92611a38833b06fea2c00585c1b4))
+
+## [3.0.0-beta.128](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.128) (2023-06-09)
+
+
+### Features
+
+* **media-helper:** add effects from web media effects ([#2842](https://github.com/webex/webex-js-sdk/issues/2842)) ([85c879e](https://github.com/webex/webex-js-sdk/commit/85c879e07036fdbe409c6bbbb30bbb355cb8af7a))
+
+
+### Bug Fixes
+
+* Increase addmedia timeout ([#2862](https://github.com/webex/webex-js-sdk/issues/2862)) ([50f3daf](https://github.com/webex/webex-js-sdk/commit/50f3daf1065d92611a38833b06fea2c00585c1b4))
+
+## [3.0.0-beta.127](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.126...v3.0.0-beta.127) (2023-06-08)
+
+
+### Bug Fixes
+
+* **meetings:** video control meeting events ([#2863](https://github.com/webex/webex-js-sdk/issues/2863)) ([d1ffed2](https://github.com/webex/webex-js-sdk/commit/d1ffed25f1f87df90baec36d3cfd38ab00683df6))
+
+## [3.0.0-beta.126](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.125...v3.0.0-beta.126) (2023-06-08)
+
+
+### Features
+
+* **plugin-meetings:** fallback to getting preferred site from user ([#2860](https://github.com/webex/webex-js-sdk/issues/2860)) ([28ebb6d](https://github.com/webex/webex-js-sdk/commit/28ebb6d8c67fe2a91c6475ab21da0fbb70df8ca9))
+* **plugin-meetings:** update internal-media-core - 1.38.2 ([#2861](https://github.com/webex/webex-js-sdk/issues/2861)) ([9a11124](https://github.com/webex/webex-js-sdk/commit/9a111249cc2a7ab1ddcbef95abe05b4b7026cb1d))
+
 ## [3.0.0-beta.125](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.124...v3.0.0-beta.125) (2023-06-08)
 
 

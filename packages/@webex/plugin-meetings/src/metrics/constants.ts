@@ -9,6 +9,7 @@ const BEHAVIORAL_METRICS = {
   JOIN_FAILURE: 'js_sdk_join_failures',
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
+  ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',
   MEETING_LEAVE_FAILURE: 'js_sdk_meeting_leave_failure',
