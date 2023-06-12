@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.129](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.129) (2023-06-09)
+
+
+### Features
+
+* **media-helper:** add effects from web media effects ([#2842](https://github.com/webex/webex-js-sdk/issues/2842)) ([85c879e](https://github.com/webex/webex-js-sdk/commit/85c879e07036fdbe409c6bbbb30bbb355cb8af7a))
+* **media-timeout:** add more metrics ([#2866](https://github.com/webex/webex-js-sdk/issues/2866)) ([8e5ca68](https://github.com/webex/webex-js-sdk/commit/8e5ca68dbabccae85a5a8fb1baeb99f56a31cf18))
+
+
+### Bug Fixes
+
+* Increase addmedia timeout ([#2862](https://github.com/webex/webex-js-sdk/issues/2862)) ([50f3daf](https://github.com/webex/webex-js-sdk/commit/50f3daf1065d92611a38833b06fea2c00585c1b4))
+
 ## [3.0.0-beta.128](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.128) (2023-06-09)
 
 
