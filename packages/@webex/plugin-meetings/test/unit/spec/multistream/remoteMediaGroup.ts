@@ -124,7 +124,8 @@ describe('RemoteMediaGroup', () => {
             codec: 'h264',
             maxFs: 3600,
           }),
-        })
+        }),
+        false,
       );
     });
 

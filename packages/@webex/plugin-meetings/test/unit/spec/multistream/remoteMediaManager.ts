@@ -668,6 +668,7 @@ describe('RemoteMediaManager', () => {
 
     it('sets preferLiveVideo', async () => {
       const config = cloneDeep(DefaultTestConfiguration);
+      let stubs = [];
 
       config.video.initialLayoutId = 'OnePlusFive';
 
@@ -676,19 +677,22 @@ describe('RemoteMediaManager', () => {
         fakeMediaRequestManagers,
         config
       );
-  
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setPreferLiveVideo')));
+
+      });
       await remoteMediaManager.start();
-  
       resetHistory();
-      remoteMediaManager.setPreferLiveVideo(true);
+      await remoteMediaManager.setPreferLiveVideo(true);
+
+
+      stubs.forEach((stub) => {
+        assert.calledWith(stub, true, false)
+      });
 
       expect(config.video.preferLiveVideo).to.equal(true);
       
-      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
-        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) =>
-          assert.calledOnceWithExactly(group.setPreferLiveVideo, true, false)
-        );
-      });
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
   });

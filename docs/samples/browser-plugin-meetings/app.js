@@ -34,6 +34,7 @@ const integrationEnv = document.getElementById('integration-env');
 const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
+const preferLiveVideoElm = document.quesrySelector('#prefer-live-video')
 const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
@@ -2250,6 +2251,7 @@ function addMedia() {
     // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
     // so we need to hardcode it like this:
     multistreamLayoutElm.value = 'AllEqual';
+    preferLiveVideoElm.value = 'Enable';
 
     // addMedia using the default RemoteMediaManagerConfig
     meeting.addMedia().then(() => {
