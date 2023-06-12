@@ -5750,6 +5750,26 @@ describe('plugin-meetings', () => {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
             displayHints: payload.info.userDisplayHints,
           });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
