@@ -4547,9 +4547,6 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-          LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
         return join;
@@ -4638,7 +4635,17 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // @ts-ignore - Fix type
-    return this.webex.internal.llm.registerAndConnect(url, datachannelUrl);
+    return this.webex.internal.llm
+      .registerAndConnect(url, datachannelUrl)
+      .then((registerAndConnectResult) => {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        LoggerProxy.logger.info(
+          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+        );
+
+        return Promise.resolve(registerAndConnectResult);
+      });
   }
 
   /**
