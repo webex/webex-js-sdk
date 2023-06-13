@@ -6,9 +6,9 @@ import Webex from 'webex';
 export const initializeWebex = (token) => {
   const webex = Webex.init({
     credentials: {
-      access_token: token
+      access_token: token,
     },
   });
 
   return webex;
-}
+};

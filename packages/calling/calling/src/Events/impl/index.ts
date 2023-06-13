@@ -7,6 +7,7 @@ import {LOG_PREFIX} from '../../Logger/types';
  *
  */
 export class Eventing<T extends EventMap> extends (EventEmitter as {
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   new <T extends EventMap>(): TypedEmitter<T>;
 })<T> {
   /**

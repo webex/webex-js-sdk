@@ -1,4 +1,3 @@
-import {DSSLookupResponse, LookupOptions} from '../Contacts/types';
 import {PeopleListResponse, WebexRequestPayload} from '../common/types';
 /* eslint-disable no-shadow */
 
@@ -42,6 +41,37 @@ export type ClientRegionInfo = {
   disclaimer: string;
   regionCode: string;
   timezone: string;
+};
+
+export type ContactDetail = {
+  type?: string;
+  value: string;
+};
+
+export interface LookupOptions {
+  ids: string[];
+}
+
+export type DSSLookupResponse = {
+  additionalInfo: {
+    department: string;
+    firstName: string;
+    identityManager: {
+      managerId: string;
+      displayName: string;
+    };
+    jobTitle: string;
+    lastName: string;
+  };
+  displayName: string;
+  emails: ContactDetail[];
+  entityProviderType: string;
+  identity: string;
+  orgId: string;
+  phoneNumbers: ContactDetail[];
+  photos: ContactDetail[];
+  sipAddresses: ContactDetail[];
+  type: string;
 };
 
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?

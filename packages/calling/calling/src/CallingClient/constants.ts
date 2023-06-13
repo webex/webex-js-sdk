@@ -15,31 +15,31 @@ export const DEFAULT_SESSION_TIMER = 1000 * 60 * 10;
 export const DEVICES_ENDPOINT_RESOURCE = 'devices';
 export const DISCOVERY_URL = 'https://ds.ciscospark.com/v1/region';
 export const DUMMY_METRICS = {
-    'rtp-rxstat': {
-        Dur: 0,
-        Pkt: 0,
-        Oct: 0,
-        LatePkt: 0,
-        LostPkt: 0,
-        AvgJit: 0,
-        VQMetrics: {
-            VoRxCodec: 'unknown',
-            VoPktSizeMs: 0,
-            maxJitter: 0,
-            VoOneWayDelayMs: 0,
-            networkType: 'unknown',
-            hwType: 'unknown',
-        },
+  'rtp-rxstat': {
+    Dur: 0,
+    Pkt: 0,
+    Oct: 0,
+    LatePkt: 0,
+    LostPkt: 0,
+    AvgJit: 0,
+    VQMetrics: {
+      VoRxCodec: 'unknown',
+      VoPktSizeMs: 0,
+      maxJitter: 0,
+      VoOneWayDelayMs: 0,
+      networkType: 'unknown',
+      hwType: 'unknown',
     },
-    'rtp-txstat': {
-        Dur: 0,
-        Pkt: 0,
-        Oct: 0,
-        VQMetrics: {
-            VoTxCodec: 'unknown',
-            rtpBitRate: 0,
-        },
+  },
+  'rtp-txstat': {
+    Dur: 0,
+    Pkt: 0,
+    Oct: 0,
+    VQMetrics: {
+      VoTxCodec: 'unknown',
+      rtpBitRate: 0,
     },
+  },
 };
 export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1';
 export const FETCH_NAME = /^[a-zA-Z ]+/;

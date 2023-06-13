@@ -205,16 +205,16 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       const mercuryApi = `${this.webex.internal.services._serviceUrls.mercuryApi}`;
 
       this.returnUcmPromise(voicemailContentUrl, mercuryApi)
-        .then((response: VoicemailResponseEvent) => {
-          if (response.statusCode === 200) {
-            resolve(response);
-          } else if (response.statusCode === 202) {
+        .then((res: VoicemailResponseEvent) => {
+          if (res.statusCode === 200) {
+            resolve(res);
+          } else if (res.statusCode === 202) {
             this.sdkConnector.registerListener(
               'event:ucm.voicemail_download_complete',
               async (event) => {
                 const responseEvent = event as VoicemailEvent;
-                const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${responseEvent?.data?.messageId}/${CONTENT}`;
-                const response = await this.returnUcmPromise(voicemailContentUrl, mercuryApi);
+                const vmContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${responseEvent?.data?.messageId}/${CONTENT}`;
+                const response = await this.returnUcmPromise(vmContentUrl, mercuryApi);
 
                 if (response.statusCode === 200) {
                   this.sdkConnector.unregisterListener('event:ucm.voicemail_download_complete');
@@ -226,7 +226,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
               }
             );
           } else {
-            reject(response);
+            reject(res);
           }
         })
         .catch((err) => {

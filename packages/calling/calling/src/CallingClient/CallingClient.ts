@@ -186,7 +186,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @param webex - A webex instance.
    * @param config - Config to start the CallingClient with.
    */
-  constructor(webex: WebexSDK,  config?: CallingClientConfig) {
+  constructor(webex: WebexSDK, config?: CallingClientConfig) {
     super();
     this.sdkConnector = SDKConnector;
 
@@ -980,9 +980,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           const abort = await this.registerDevice(FAILBACK_UTIL);
 
           if (!abort && !this.isDeviceRegistered()) {
-            const abort = await this.restorePreviousRegistration(FAILBACK_UTIL);
+            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-            if (abort) {
+            if (abortNew) {
               this.clearFailbackTimer();
 
               return;

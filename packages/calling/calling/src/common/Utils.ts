@@ -1215,7 +1215,7 @@ export async function resolveCallerIdDisplay(filter: string) {
     }
 
     /* For Webapp, we are only picking thumbnail photo */
-    const photo = scimResource.photos?.find((photo) => photo.type === 'thumbnail');
+    const photo = scimResource.photos?.find((photoObj) => photoObj.type === 'thumbnail');
 
     displayResult.avatarSrc = photo ? photo.value : 'unknown';
 

@@ -156,15 +156,15 @@ describe('Call Tests', () => {
       },
     });
 
-    const callManager = getCallManager(webex, defaultServiceIndicator);
+    const localCallManager = getCallManager(webex, defaultServiceIndicator);
 
     const track = {} as MediaStreamTrack;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = localCallManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
 
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
-    expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
+    expect(Object.keys(localCallManager.getActiveCalls()).length).toBe(1);
     call.mute(track);
     expect(call.isMuted()).toEqual(true);
     expect(track.enabled).toEqual(false);
@@ -179,7 +179,7 @@ describe('Call Tests', () => {
     expect(call.getDisconnectReason().cause).toBe(DisconnectCause.NORMAL);
 
     /* After call ends, call manager should have 0 record */
-    expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
+    expect(Object.keys(localCallManager.getActiveCalls()).length).toBe(0);
   });
 
   it('Check whether media requests succeed or not', async () => {

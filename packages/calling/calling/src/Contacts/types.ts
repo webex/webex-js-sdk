@@ -1,12 +1,8 @@
-import {ISDKConnector} from '../SDKConnector/types';
+import {ContactDetail, ISDKConnector} from '../SDKConnector/types';
 
 export enum ContactType {
   CUSTOM = 'CUSTOM',
   CLOUD = 'CLOUD',
-}
-
-export interface LookupOptions {
-  ids: string[];
 }
 
 export type AddressType = {
@@ -15,11 +11,6 @@ export type AddressType = {
   state?: string;
   street?: string;
   zipCode?: string;
-};
-
-export type ContactDetail = {
-  type?: string;
-  value: string;
 };
 
 export type Contact = {
@@ -59,28 +50,6 @@ export interface IContacts {
   getSDKConnector: () => ISDKConnector;
   getContacts: () => Promise<ContactResponse>;
 }
-
-export type DSSLookupResponse = {
-  additionalInfo: {
-    department: string;
-    firstName: string;
-    identityManager: {
-      managerId: string;
-      displayName: string;
-    };
-    jobTitle: string;
-    lastName: string;
-  };
-  displayName: string;
-  emails: ContactDetail[];
-  entityProviderType: string;
-  identity: string;
-  orgId: string;
-  phoneNumbers: ContactDetail[];
-  photos: ContactDetail[];
-  sipAddresses: ContactDetail[];
-  type: string;
-};
 
 export type ContactIdGroupInfoMap = {
   [Key: string]: string[];

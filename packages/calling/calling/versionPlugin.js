@@ -8,9 +8,12 @@ let file;
 
 // eslint-disable-next-line consistent-return
 /**
+ * .
  *
  * @param err-.
  * @param data-.
+ * @param err
+ * @param data
  */
 // eslint-disable-next-line consistent-return
 const replaceVersion = (err, data) => {
@@ -27,6 +30,7 @@ const replaceVersion = (err, data) => {
 };
 
 /**
+ * .
  *
  * @param options -.
  */

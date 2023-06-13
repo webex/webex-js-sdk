@@ -7,8 +7,9 @@ describe('webex initialization', () => {
   const mockWebex = getTestUtilsWebex();
 
   it('initialize webex based on access token provided', () => {
-    jest.spyOn(Webex,'init').mockReturnValue(mockWebex);
+    jest.spyOn(Webex, 'init').mockReturnValue(mockWebex);
     const testWebex = initializeWebex(mockToken);
+
     expect(testWebex).toEqual(mockWebex);
   });
 });

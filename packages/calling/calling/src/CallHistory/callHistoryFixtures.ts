@@ -1,5 +1,4 @@
-
-import {Disposition, MOBIUS_EVENT_KEYS,CallSessionEvent, SessionType} from '../Events/types';
+import {Disposition, MOBIUS_EVENT_KEYS, CallSessionEvent, SessionType} from '../Events/types';
 
 export const sortedCallHistory = {
   body: {

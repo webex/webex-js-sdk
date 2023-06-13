@@ -1416,7 +1416,6 @@ describe('CallingClient Tests', () => {
       const restoreSpy = jest.spyOn(callingClient as any, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(callingClient as any, 'restartRegistration');
       const reconnectSpy = jest.spyOn(callingClient as any, 'reconnectOnFailure');
-      const logSpy = jest.spyOn(log, 'log');
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 503,
         body: mockKeepAliveBody,

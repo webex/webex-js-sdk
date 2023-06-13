@@ -74,14 +74,14 @@ describe('Call history tests', () => {
 
   describe('Call History Session Event test', () => {
     const mockOn = webex.internal.mercury.on;
-    let callHistory: ICallHistory;
+    let localCallHistory: ICallHistory;
 
     beforeEach(() => {
-      callHistory = createCallHistoryClient(webex, {level: LOGGER.INFO});
+      localCallHistory = createCallHistoryClient(webex, {level: LOGGER.INFO});
     });
 
     it('verify the recent user session event ', (done) => {
-      callHistory.on(EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, (event: CallSessionEvent) => {
+      localCallHistory.on(EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, (event: CallSessionEvent) => {
         expect(event.data).toEqual(MOCK_SESSION_EVENT.data);
         done();
       });

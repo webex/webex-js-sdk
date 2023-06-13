@@ -1401,9 +1401,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }
 
         handleCallErrors(
-          (error: CallError) => {
-            this.emit(EVENT_KEYS.CALL_ERROR, error);
-            this.submitCallErrorMetric(error);
+          (callError: CallError) => {
+            this.emit(EVENT_KEYS.CALL_ERROR, callError);
+            this.submitCallErrorMetric(callError);
           },
           ERROR_LAYER.CALL_CONTROL,
           (interval: number) => {
