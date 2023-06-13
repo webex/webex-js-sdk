@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.134](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.133...v3.0.0-beta.134) (2023-06-13)
+
+
+### Bug Fixes
+
+* **meetings:** reaction controls service workaround ([#2876](https://github.com/webex/webex-js-sdk/issues/2876)) ([4423391](https://github.com/webex/webex-js-sdk/commit/44233912911598ecad3b0483c6bd528616682776))
+
 ## [3.0.0-beta.133](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.132...v3.0.0-beta.133) (2023-06-13)
 
 
