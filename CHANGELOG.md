@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.133](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.132...v3.0.0-beta.133) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** listen to relay event from llm when update llm ([#2869](https://github.com/webex/webex-js-sdk/issues/2869)) ([bbfe179](https://github.com/webex/webex-js-sdk/commit/bbfe1794a7831968c73d1d47fe5e9b88fffb81c8))
+
 ## [3.0.0-beta.132](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.131...v3.0.0-beta.132) (2023-06-13)
 
 
