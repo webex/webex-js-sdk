@@ -1217,6 +1217,44 @@ describe('plugin-meetings', () => {
           {isSharingBlocked: true}
         );
       });
+
+      it('should trigger SELF_ROLES_CHANGED if self roles changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.role.roles = [{type: 'COHOST', hasRole: true}];
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ROLES_CHANGED,
+          {oldRoles: ['PRESENTER'], newRoles: ['COHOST']}
+        );
+      });
+
+      it('should not trigger SELF_ROLES_CHANGED if self roles not changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.role.roles = [{type: 'PRESENTER', hasRole: true}];
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ROLES_CHANGED,
+          {oldRoles: ['PRESENTER'], newRoles: ['PRESENTER']}
+        );
+      });
     });
 
     describe('#updateMeetingInfo', () => {
