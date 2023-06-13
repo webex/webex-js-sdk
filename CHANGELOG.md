@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.132](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.131...v3.0.0-beta.132) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** peerconnection detached only after sending last mqa ([#2873](https://github.com/webex/webex-js-sdk/issues/2873)) ([8ff3444](https://github.com/webex/webex-js-sdk/commit/8ff34444324084d1c77b79156ed3447655e5dabf))
+
 ## [3.0.0-beta.131](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.130...v3.0.0-beta.131) (2023-06-13)
 
 ## [3.0.0-beta.130](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.129...v3.0.0-beta.130) (2023-06-12)
