@@ -808,6 +808,36 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Creates a noise reduction effect
+   *
+   * @param {Object} options optional custom effect options
+   * @returns {Promise<effect>} noise reduction effect.
+   * @public
+   * @memberof Meetings
+   */
+  createNoiseReductionEffect = async (options = {}) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.NoiseReductionEffect({authToken, ...options});
+  };
+
+  /**
+   * Creates a virtual background effect
+   *
+   * @param {Object} options optional custom effect options
+   * @returns {Promise<effect>} virtual background effect.
+   * @public
+   * @memberof Meetings
+   */
+  createVirtualBackgroundEffect = async (options = {}) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.VirtualBackgroundEffect({authToken, ...options});
+  };
+
+  /**
    * Uploads logs to the webex services for tracking
    * @param {Object} [options={}]
    * @param {String} [options.callStart] Call Start Time

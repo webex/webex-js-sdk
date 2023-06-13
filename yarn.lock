@@ -5234,18 +5234,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:^2.8.0":
-  version: 2.8.0
-  resolution: "@webex/web-media-effects@npm:2.8.0"
-  dependencies:
-    "@webex/ladon-ts": "npm:^4.0.0"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^1.4.0"
-  checksum: 8fa81dd66989d1150b506c79e2f62a1e44a96e88ef56d80ff5278b66c95145466d2f120ac070387b798e327d331d904e954f8297120fe40994972e1ea4387df9
-  languageName: node
-  linkType: hard
-
 "@webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
