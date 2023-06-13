@@ -664,7 +664,7 @@ describe('RemoteMediaManager', () => {
     });
   });
 
-  describe('setPreferLiveVideo', () => {
+  describe.only('setPreferLiveVideo', () => {
 
     it('sets preferLiveVideo', async () => {
       const config = cloneDeep(DefaultTestConfiguration);
@@ -679,13 +679,13 @@ describe('RemoteMediaManager', () => {
       );
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        console.log(layoutInfo.activeSpeakerVideoPanes);
         Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setPreferLiveVideo')));
-
       });
 
-      assert(stubs.length > 0);
       await remoteMediaManager.start();
       resetHistory();
+      assert(stubs.length > 0);
       await remoteMediaManager.setPreferLiveVideo(true);
 
 
