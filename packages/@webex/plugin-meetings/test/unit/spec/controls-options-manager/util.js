@@ -203,7 +203,22 @@ describe('plugin-meetings', () => {
                 });
               });
 
-              it('should call hasHints() with all properties after negotiating hints', () => {
+              it('should call hasHints() with only enabled hints when respective property is provided', () => {
+                const properties = {
+                  enabled: true,
+                };
+
+                ControlsOptionsUtil.canUpdateReactions({properties}, []);
+
+                assert.calledWith(ControlsOptionsUtil.hasHints, {
+                  requiredHints: [
+                    DISPLAY_HINTS.ENABLE_REACTIONS,
+                  ],
+                  displayHints: [],
+                });
+              });
+
+              it('should call hasHints() with only display name hints when respective property is provided', () => {
                 const properties = {
                   enabled: true,
                   showDisplayNameWithReactions: true,
@@ -213,7 +228,6 @@ describe('plugin-meetings', () => {
 
                 assert.calledWith(ControlsOptionsUtil.hasHints, {
                   requiredHints: [
-                    DISPLAY_HINTS.ENABLE_REACTIONS,
                     DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME,
                   ],
                   displayHints: [],
