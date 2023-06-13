@@ -192,7 +192,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-export const PC_BAIL_TIMEOUT = 8000;
+export const PC_BAIL_TIMEOUT = 15000;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -584,7 +584,6 @@ export const BREAKOUTS = {
     EDIT_LOCK_TOKEN_MISMATCH: 201409024,
     EDIT_NOT_AUTHORIZED: 201403007,
   },
-  DEFAULT_DURATION: 60000,
   EDIT_LOCK_STATUS: {
     LOCKED: 'LOCKED',
     NOT_LOCKED: 'NOT_LOCKED',
@@ -856,6 +855,13 @@ export const DISPLAY_HINTS = {
   // video
   DISABLE_VIDEO: 'DISABLE_VIDEO',
   ENABLE_VIDEO: 'ENABLE_VIDEO',
+
+  // Sharing
+  SHARE_FILE: 'SHARE_FILE',
+  SHARE_APPLICATION: 'SHARE_APPLICATION',
+  SHARE_CAMERA: 'SHARE_CAMERA',
+  SHARE_DESKTOP: 'SHARE_DESKTOP',
+  SHARE_CONTENT: 'SHARE_CONTENT',
 };
 
 export const SELF_ROLES = {

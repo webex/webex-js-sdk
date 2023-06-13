@@ -546,7 +546,6 @@ const Breakouts = WebexPlugin.extend({
       action,
       allowBackToMain: false,
       allowToJoinLater: false,
-      duration: BREAKOUTS.DEFAULT_DURATION,
       ...params,
     };
 

@@ -2657,6 +2657,26 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
+          canShareFile: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareApplication: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareCamera: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareDesktop: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareContent: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -5728,6 +5748,32 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       })
       .catch((error) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+          correlation_id: this.correlationId,
+          locus_id: this.locusUrl.split('/').pop(),
+          reason: error.message,
+          stack: error.stack,
+          code: error.code,
+          turnDiscoverySkippedReason,
+          turnServerUsed,
+          isMultistream: this.isMultistream,
+          signalingState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.signalingState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
+            'unknown',
+          connectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.connectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.connectionState ||
+            'unknown',
+          iceConnectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.iceConnectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
+            'unknown',
+        });
+
         // Clean up stats analyzer, peer connection, and turn off listeners
         const stopStatsAnalyzer = this.statsAnalyzer
           ? this.statsAnalyzer.stopAnalyzer()
@@ -5745,17 +5791,6 @@ export default class Meeting extends StatelessWebexPlugin {
             `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
             error
           );
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            code: error.code,
-            turnDiscoverySkippedReason,
-            turnServerUsed,
-            isMultistream: this.isMultistream,
-          });
 
           // Upload logs on error while adding media
           Trigger.trigger(
@@ -7563,6 +7598,32 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
     throw new Error('Webrtc media connection is missing, call addMedia() first');
+  }
+
+  /**
+   * Method to enable or disable the 'Music mode' effect on audio track
+   *
+   * @param {boolean} shouldEnableMusicMode
+   * @returns {Promise}
+   */
+  async enableMusicMode(shouldEnableMusicMode: boolean) {
+    this.checkMediaConnection();
+
+    if (!this.isMultistream) {
+      throw new Error('enableMusicMode() only supported with multistream');
+    }
+
+    if (shouldEnableMusicMode) {
+      await this.mediaProperties.webrtcMediaConnection.setCodecParameters(MediaType.AudioMain, {
+        maxaveragebitrate: '64000',
+        maxplaybackrate: '48000',
+      });
+    } else {
+      await this.mediaProperties.webrtcMediaConnection.deleteCodecParameters(MediaType.AudioMain, [
+        'maxaveragebitrate',
+        'maxplaybackrate',
+      ]);
+    }
   }
 
   /**

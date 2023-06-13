@@ -1229,6 +1229,9 @@ describe('plugin-meetings', () => {
             turnDiscoverySkippedReason: undefined,
             turnServerUsed: true,
             isMultistream: false,
+            signalingState: 'unknown',
+            connectionState: 'unknown',
+            iceConnectionState: 'unknown'
           });
         });
 
@@ -1248,6 +1251,9 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: 'config',
               turnServerUsed: false,
               isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown'
             });
           });
         });
@@ -1261,8 +1267,6 @@ describe('plugin-meetings', () => {
           });
           const result = await assert.isRejected(meeting.addMedia());
 
-          assert.instanceOf(result, Error);
-          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
 
           assert(Metrics.sendBehavioralMetric.calledOnce);
           assert.calledWith(
@@ -1275,8 +1279,99 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
               isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown'
             })
           );
+
+          assert.instanceOf(result, Error);
+          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
+
+        });
+
+        it('should include the peer connection properties correctly for multistream', async () => {
+          meeting.meetingState = 'ACTIVE';
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
+            multistreamConnection :{
+              pc: {
+                pc: {
+                  signalingState: 'have-local-offer',
+                  connectionState: 'connecting',
+                  iceConnectionState: 'checking',
+                }
+              }
+            }
+          });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'have-local-offer',
+              connectionState: 'connecting',
+              iceConnectionState: 'checking'
+
+            })
+          );
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+        });
+
+        it('should include the peer connection properties correctly for transcoded', async () => {
+          meeting.meetingState = 'ACTIVE';
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
+            mediaConnection :{
+              pc: {
+                signalingState: 'have-local-offer',
+                connectionState: 'connecting',
+                iceConnectionState: 'checking',
+              }
+            }
+          });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'have-local-offer',
+              connectionState: 'connecting',
+              iceConnectionState: 'checking'
+
+            })
+          );
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -4126,6 +4221,43 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#enableMusicMode', () => {
+      beforeEach(() => {
+        meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            setCodecParameters: sinon.stub().resolves({}),
+            deleteCodecParameters: sinon.stub().resolves({}),
+          };
+      });
+      [
+        {shouldEnableMusicMode: true},
+        {shouldEnableMusicMode: false},
+      ].forEach(({shouldEnableMusicMode}) => {
+        it(`fails if there is no media connection for shouldEnableMusicMode: ${shouldEnableMusicMode}`, async () => {
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+          await assert.isRejected(meeting.enableMusicMode(shouldEnableMusicMode));
+        });
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+        await meeting.enableMusicMode(true);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters, MediaType.AudioMain, {
+          maxaveragebitrate: '64000',
+          maxplaybackrate: '48000',
+        });
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters);
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+        await meeting.enableMusicMode(false);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters, MediaType.AudioMain, [
+          'maxaveragebitrate',
+          'maxplaybackrate',
+        ]);
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters);
+      });
+    });
+
     describe('Public Event Triggers', () => {
       let sandbox;
       const {ENDED} = CONSTANTS;
@@ -5616,6 +5748,26 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
             displayHints: payload.info.userDisplayHints,
           });
 

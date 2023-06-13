@@ -2705,6 +2705,7 @@ const createBreakoutOperations = ()=>{
   const hostOperationsEl = document.createElement('div');
   let groupId = '';
   let sessionList = [];
+  let currentGroup;
   if(isHostUser && meetingsBreakoutSupportElm.checked){
     breakoutHostOperation.innerHTML = '';
     const hostOperationsTitleEl = document.createElement('h3');
@@ -2721,21 +2722,23 @@ const createBreakoutOperations = ()=>{
         breakoutTable.querySelector('table').lastChild.appendChild(tr);
       })
     }
-    const createBtn = createButton('Create Breakout Sessions', async ()=>{
+    const createGroup = async (newGroup)=>{
       await meeting.breakouts.getBreakout().then((res)=>{
-        createBtn.disabled = true;
-        deleteBtn.disabled = false;
-        startBtn.disabled = false;
+        if(!newGroup){
+          createBtn.disabled = true;
+          deleteBtn.disabled = false;
+          startBtn.disabled = false;
+        }
 
         const existedGroup = res.body.groups?.length && res.body.groups[0];
         if(existedGroup && existedGroup.status !== 'CLOSED'){
           const group = res.body.groups[0];
           const {id, sessions} = group;
           groupId = id;
-          sessionList = sessions
+          sessionList = sessions;
         }else{
           sessionList = [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}];
-          meeting.breakouts.create({
+          meeting.breakouts.create(newGroup || {
             allowBackToMain: true,
             allowToJoinLater: true,
             delayCloseTime: 60,
@@ -2744,8 +2747,11 @@ const createBreakoutOperations = ()=>{
             groupId = res.body.groups[0].id;
           })
         }
-        createSessionRow();
       })
+    }
+    const createBtn = createButton('Create Breakout Sessions', async ()=>{
+      await createGroup();
+      createSessionRow();
     });
     const startBtn = createButton('Start Breakout Sessions', ()=>{
       endBtn.disabled = false;
@@ -2756,14 +2762,29 @@ const createBreakoutOperations = ()=>{
         if (!groups.length) {
           return;
         }
-        meeting.breakouts.start(groups[0]);
+        currentGroup = groups[0];
+        meeting.breakouts.start(currentGroup);
       });
     });
     const endBtn = createButton('End Breakout Sessions', ()=>{
       let countDown = meeting.breakouts.delayCloseTime;
       countDown = countDown<0?0:countDown;
       meeting.breakouts.end().then(()=>{
-        setTimeout(() => {
+        setTimeout(async () => {
+          const {sessions} = currentGroup;
+          const newSessions = sessions.map((session)=>{
+            const newSession = {...session};
+            delete newSession.id;
+            delete newSession.locusUrl;
+            return newSession;
+          })
+          const newGroup = {...currentGroup, sessions: newSessions};
+          delete newGroup.id;
+          delete newGroup.status;
+          delete newGroup.duration;
+          delete newGroup.type;
+
+          await createGroup(newGroup)
           createSessionRow();
         }, 500);
       });

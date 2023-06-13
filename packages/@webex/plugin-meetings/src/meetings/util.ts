@@ -16,6 +16,8 @@ import {
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import Metrics from '../metrics';
 
 /**
  * Meetings Media Codec Missing Event
@@ -48,6 +50,14 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
 
     if (meeting) {
       const {seq, messageType, tieBreaker, errorType, errorCause} = data.message;
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED, {
+        correlation_id: data.correlationId,
+        seq,
+        message_type: messageType,
+        error_type: errorType,
+        error_cause: errorCause,
+      });
 
       if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
         // turn discovery is not part of normal roap protocol and so we are not handling it

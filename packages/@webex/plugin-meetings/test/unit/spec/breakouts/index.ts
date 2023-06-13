@@ -918,7 +918,6 @@ describe('plugin-meetings', () => {
           action: 'START',
           allowBackToMain: false,
           allowToJoinLater: false,
-          duration: BREAKOUTS.DEFAULT_DURATION,
         });
         assert.deepEqual(argObj2, {
           id: 'id',
@@ -926,7 +925,6 @@ describe('plugin-meetings', () => {
           allowBackToMain: false,
           allowToJoinLater: false,
           someOtherParam: 'someOtherParam',
-          duration: BREAKOUTS.DEFAULT_DURATION,
         });
         assert.deepEqual(result, {body: mockedReturnBody});
         assert.calledWithExactly(breakouts._setManageGroups, {body: mockedReturnBody})
