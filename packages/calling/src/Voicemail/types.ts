@@ -35,10 +35,10 @@ export type CallingPartyInfo = {
 };
 
 export type SummaryInfo = {
-  newMessages?: number;
-  oldMessages?: number;
-  newUrgentMessages?: number;
-  oldUrgentMessages?: number;
+  newMessages: number;
+  oldMessages: number;
+  newUrgentMessages: number;
+  oldUrgentMessages: number;
 };
 
 export type MessageInfo = {

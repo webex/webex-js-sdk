@@ -400,8 +400,8 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         voicemailSummary: {
           newMessages: 2,
           newUrgentMessages: 1,
-          oldMessages: undefined,
-          oldUrgentMessages: undefined,
+          oldMessages: 0,
+          oldUrgentMessages: 0,
         },
       };
 
@@ -436,8 +436,8 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       const voicemailSummaryResponseInfo = {
         voicemailSummary: {
-          newMessages: undefined,
-          newUrgentMessages: undefined,
+          newMessages: 0,
+          newUrgentMessages: 0,
           oldMessages: 2,
           oldUrgentMessages: 1,
         },

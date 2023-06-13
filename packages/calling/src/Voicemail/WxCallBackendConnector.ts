@@ -296,14 +296,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         statusCode: Number(response.statusCode),
         data: {
           voicemailSummary: {
-            newMessages: newMessages ? Number(newMessages.textContent) : undefined,
-            newUrgentMessages: newUrgentMessages
-              ? Number(newUrgentMessages.textContent)
-              : undefined,
-            oldMessages: oldMessages ? Number(oldMessages.textContent) : undefined,
-            oldUrgentMessages: oldUrgentMessages
-              ? Number(oldUrgentMessages.textContent)
-              : undefined,
+            newMessages: newMessages ? Number(newMessages.textContent) : 0,
+            newUrgentMessages: newUrgentMessages ? Number(newUrgentMessages.textContent) : 0,
+            oldMessages: oldMessages ? Number(oldMessages.textContent) : 0,
+            oldUrgentMessages: oldUrgentMessages ? Number(oldUrgentMessages.textContent) : 0,
           },
         },
         message: SUCCESS_MESSAGE,
