@@ -96,6 +96,7 @@ const OnePlusFiveLayout: VideoLayout = {
 };
 
 // A layout with 2 big panes for 2 main active speakers and a strip of 6 small panes for other active speakers:
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TwoMainPlusSixSmallLayout: VideoLayout = {
   activeSpeakerVideoPaneGroups: [
     {
