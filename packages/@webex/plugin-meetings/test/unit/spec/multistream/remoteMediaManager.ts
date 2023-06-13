@@ -664,7 +664,7 @@ describe('RemoteMediaManager', () => {
     });
   });
 
-  describe.only('setPreferLiveVideo', () => {
+  describe('setPreferLiveVideo', () => {
 
     it('sets preferLiveVideo', async () => {
       const config = cloneDeep(DefaultTestConfiguration);
