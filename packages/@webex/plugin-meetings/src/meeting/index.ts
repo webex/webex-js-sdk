@@ -2922,6 +2922,20 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
+        {
+          payload,
+        }
+      );
+    });
+
     // We need to reinitialize  when user upgrades to host or cohost
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
       this.breakouts.queryPreAssignments(payload);

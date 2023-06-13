@@ -1226,6 +1226,17 @@ export default class LocusInfo extends EventsScope {
           self
         );
       }
+
+      if (parsedSelves.updates.isRolesChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ROLES_CHANGED,
+          {oldRoles: parsedSelves.previous?.roles, newRoles: parsedSelves.current?.roles}
+        );
+      }
       // When the user upgrades to moderator or cohost
       if (parsedSelves.updates.isUpgradeToModeratorOrCohost) {
         this.emitScoped(

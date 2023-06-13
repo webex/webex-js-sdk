@@ -391,10 +391,26 @@ describe('plugin-meetings', () => {
         state: 'JOINED',
       };
       assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
-
     });
-
-
   });
 
+  describe('isRolesChanged', () => {
+    it('should return true if self roles has changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['COHOST'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), true);
+    });
+
+    it('should return false if self roles has not changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['PRESENTER'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), false);
+    });
+  });
 });

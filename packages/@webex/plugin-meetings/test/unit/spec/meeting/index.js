@@ -4873,6 +4873,24 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
         });
+
+        it('listens to the self roles changed event', () => {
+          const payload = {oldRoles: [], newRoles: ['COHOST']};
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_ROLES_CHANGED',
+            payload
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+            EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
+            {payload}
+          );
+        });
       });
 
       describe('#setUpBreakoutsPreAssignmentsListener', () => {
