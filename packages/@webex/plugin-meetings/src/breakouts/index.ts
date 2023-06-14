@@ -41,10 +41,10 @@ const Breakouts = WebexPlugin.extend({
     groups: 'array', // appears when create breakouts
     manageGroups: 'array', // appears when manage breakouts
     preAssignments: 'array', // appears when getPreAssignments info hasBreakoutPreAssignments = true
-    shouldFetchPreassignments: 'boolean', // Controlling the lifecycle of the pre-assign API
     editLock: 'object', // appears when getBreakout info editlock = true
     intervalID: 'number',
     meetingId: 'string',
+    canManageBreakouts: 'boolean', // appear the ability to manage breakouts
   },
   children: {
     currentBreakoutSession: Breakout,
@@ -80,7 +80,7 @@ const Breakouts = WebexPlugin.extend({
       cache: false,
       deps: ['manageGroups'],
       /**
-       * Returns the actived group id
+       * Returns the active group id
        * @returns {boolean}
        */
       fn() {
@@ -104,6 +104,21 @@ const Breakouts = WebexPlugin.extend({
         return this.isInMainSession ? this.groups?.[0]?.status : this.status;
       },
     },
+    shouldQueryPreAssignments: {
+      cache: false,
+      deps: ['canManageBreakouts', 'enableBreakoutSession', 'hasBreakoutPreAssignments'],
+      /**
+       * Returns should query preAssignments or not
+       * @returns {boolean}
+       */
+      fn() {
+        return !!(
+          this.canManageBreakouts &&
+          this.enableBreakoutSession &&
+          this.hasBreakoutPreAssignments
+        );
+      },
+    },
   },
 
   /**
@@ -114,6 +129,11 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this, 'change:breakoutStatus', () => {
       if (this.breakoutStatus === BREAKOUTS.STATUS.CLOSING) {
         this.trigger(BREAKOUTS.EVENTS.BREAKOUTS_CLOSING);
+      }
+    });
+    this.listenTo(this, 'change:shouldQueryPreAssignments', () => {
+      if (this.shouldQueryPreAssignments && !this.preAssignments) {
+        this.queryPreAssignments();
       }
     });
     this.debouncedQueryRosters = debounce(this.queryRosters, 10, {
@@ -154,6 +174,15 @@ const Breakouts = WebexPlugin.extend({
     if (isInMainSession || !mainLocusUrl) {
       this.set('mainLocusUrl', locusUrl);
     }
+  },
+
+  /**
+   * Update whether self is moderator/cohost or not
+   * @param {boolean} canManageBreakouts
+   * @returns {void}
+   */
+  updateCanManageBreakouts(canManageBreakouts) {
+    this.set('canManageBreakouts', canManageBreakouts);
   },
 
   /**
@@ -273,7 +302,6 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   updateBreakout(params) {
-    const preEnableBreakoutSession = this.get('enableBreakoutSession');
     this.set(params);
 
     // These values are set manually so they are unset when they are not included in params
@@ -294,11 +322,6 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
-
-    // We need to call queryPreAssignments when enableBreakoutSession become true
-    if (preEnableBreakoutSession !== params.enableBreakoutSession) {
-      this.queryPreAssignments(params);
-    }
 
     if (
       this.currentBreakoutSession.previous('sessionId') !== this.currentBreakoutSession.sessionId ||
@@ -529,7 +552,6 @@ const Breakouts = WebexPlugin.extend({
       });
 
     this._setManageGroups(breakoutInfo);
-    this.shouldFetchPreassignments = false;
 
     return breakoutInfo;
   },
@@ -788,27 +810,21 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
-   * The pre-assignments need to be queried when "hasBreakoutPreAssignments" is true
-   * @param {Object} params
+   * query preAssignments
    * @returns {void}
    */
-  queryPreAssignments(params) {
-    if (!params || !params.enableBreakoutSession || !params.hasBreakoutPreAssignments) {
-      return;
-    }
-    if (!this.shouldFetchPreassignments) {
-      this.webex
-        .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
-        .then((result) => {
-          if (result.body?.groups) {
-            this.set('preAssignments', result.body.groups);
-          }
-        })
-        .catch((error) => {
-          LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
-        });
-      this.shouldFetchPreassignments = true;
-    }
+  queryPreAssignments() {
+    this.webex
+      .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
+      .then((result) => {
+        if (result.body?.groups) {
+          this.set('preAssignments', result.body.groups);
+          this.trigger(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE);
+        }
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
+      });
   },
   /**
    * assign participants dynamically after breakout sessions started,

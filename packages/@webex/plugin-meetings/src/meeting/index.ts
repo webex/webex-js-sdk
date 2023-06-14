@@ -1523,6 +1523,17 @@ export default class Meeting extends StatelessWebexPlugin {
         helpEvent
       );
     });
+
+    this.breakouts.on(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE, () => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpBreakoutsListener',
+        },
+        EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE
+      );
+    });
   }
 
   /**
@@ -2922,6 +2933,11 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
+      const isModeratorOrCohost =
+        payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
+        payload.newRoles?.includes(SELF_ROLES.COHOST);
+      this.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
+
       Trigger.trigger(
         this,
         {
@@ -2933,12 +2949,6 @@ export default class Meeting extends StatelessWebexPlugin {
           payload,
         }
       );
-    });
-
-    // We need to reinitialize  when user upgrades to host or cohost
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
-      this.breakouts.queryPreAssignments(payload);
-      // ...
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
