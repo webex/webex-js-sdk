@@ -1,9 +1,4 @@
 import {ISDKConnector} from '../SDKConnector/types';
-import {LOGGER} from '../Logger/types';
-
-export interface LoggerInterface {
-  level: LOGGER;
-}
 
 export type ToggleSetting = {
   enabled: boolean;

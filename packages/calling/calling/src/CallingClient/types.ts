@@ -1,6 +1,5 @@
 import * as Media from '@webex/internal-media-core';
-import {CallingClientError} from 'Errors';
-import {LOGGER} from '../Logger/types';
+import {CallingClientError} from '../Errors';
 import {ISDKConnector} from '../SDKConnector/types';
 
 import {Eventing} from '../Events/impl';
@@ -16,9 +15,9 @@ import {
 import {ICall} from './calling/types';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from './metrics/types';
 
-export interface LoggerConfig {
-  level: LOGGER;
-}
+import {LOGGER} from '../Logger/types';
+import {LoggerConfig} from '../Calling/types';
+
 
 interface DiscoveryConfig {
   country: string;
@@ -26,7 +25,7 @@ interface DiscoveryConfig {
 }
 
 export interface CallingClientConfig {
-  logger?: LoggerConfig;
+  logger: LoggerConfig;
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;
 }

@@ -3,7 +3,7 @@
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
-import {ICallHistory, JanusResponseEvent, LoggerInterface} from './types';
+import {ICallHistory, JanusResponseEvent} from './types';
 import log from '../Logger';
 import {serviceErrorCodeHandler} from '../common/Utils';
 import {CALL_HISTORY_FILE, FROM_DATE, HISTORY, LIMIT, NUMBER_OF_DAYS} from './constants';
@@ -16,6 +16,8 @@ import {
   UserSession,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
+import { LoggerConfig } from '../Calling/types';
+
 /**
  *
  */
@@ -41,12 +43,9 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
    * @param webex - WebexSDK.
    * @param logger -.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(logger: LoggerConfig) {
     super();
     this.sdkConnector = SDKConnector;
-    if (!this.sdkConnector.getWebex()) {
-      SDKConnector.setWebex(webex);
-    }
     this.webex = this.sdkConnector.getWebex();
     this.janusUrl = this.webex.internal.services._serviceUrls.janus;
     this.registerSessionsListener();
@@ -152,5 +151,5 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
  * @param webex -.
  * @param logger -.
  */
-export const createCallHistoryClient = (webex: WebexSDK, logger: LoggerInterface): ICallHistory =>
-  new CallHistory(webex, logger);
+export const createCallHistoryClient = (logger: LoggerConfig): ICallHistory =>
+  new CallHistory(logger);

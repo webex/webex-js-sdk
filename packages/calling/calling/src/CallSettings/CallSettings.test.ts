@@ -21,9 +21,13 @@ import {
   XSI_VERSION,
 } from './constants';
 import * as utils from '../common/Utils';
+import { ISDKConnector } from '../SDKConnector/types';
+import SDKConnector from '../SDKConnector';
 
 describe('Call Settings Test', () => {
   const webex = getTestUtilsWebex();
+  let sdkConnector: ISDKConnector = SDKConnector;
+  sdkConnector.setWebex(webex);
   let serviceErrorCodeHandlerSpy: jest.SpyInstance;
   const hydraEndpoint = 'https://hydra-a.wbx2.com/v1/';
   const personId =
@@ -46,7 +50,7 @@ describe('Call Settings Test', () => {
 
   describe('Call Settings Client Test', () => {
     it('get callSettings object, setting webex object in it', async () => {
-      const callSettingsClient = createCallSettingsClient(webex, {level: LOGGER.INFO});
+      const callSettingsClient = createCallSettingsClient({level: LOGGER.INFO});
 
       expect(callSettingsClient).toBeTruthy();
       expect(callSettingsClient.getSDKConnector().getWebex()).toBeTruthy();
@@ -61,7 +65,7 @@ describe('Call Settings Test', () => {
     const callWaitingUrl = `${xsiEndpoint}/${XSI_VERSION}/${USER_ENDPOINT}/${userId}/${SERVICES_ENDPOINT}/${CALL_WAITING_ENDPOINT}`;
 
     beforeAll(() => {
-      callSettingsClient = new CallSettings(webex, {level: LOGGER.INFO});
+      callSettingsClient = new CallSettings({level: LOGGER.INFO});
 
       const mockedUrlResponse = {
         items: [
@@ -201,7 +205,7 @@ describe('Call Settings Test', () => {
     const uri = `${hydraEndpoint}/${PEOPLE_ENDPOINT}/${personId}/${DND_ENDPOINT}?${ORG_ENDPOINT}=${orgId}`;
 
     beforeAll(() => {
-      callSettingsClient = new CallSettings(webex, {level: LOGGER.INFO});
+      callSettingsClient = new CallSettings({level: LOGGER.INFO});
     });
 
     it('Success: Set DND settings', async () => {
@@ -315,7 +319,7 @@ describe('Call Settings Test', () => {
     const uri = `${hydraEndpoint}/${PEOPLE_ENDPOINT}/${personId}/${CF_ENDPOINT}?${ORG_ENDPOINT}=${orgId}`;
 
     beforeAll(() => {
-      callSettingsClient = new CallSettings(webex, {level: LOGGER.INFO});
+      callSettingsClient = new CallSettings({level: LOGGER.INFO});
     });
 
     it('Success: Set Call Forward setting', async () => {
@@ -432,7 +436,7 @@ describe('Call Settings Test', () => {
     const uri = `${hydraEndpoint}/${PEOPLE_ENDPOINT}/${personId}/${VM_ENDPOINT}?${ORG_ENDPOINT}=${orgId}`;
 
     beforeAll(() => {
-      callSettingsClient = new CallSettings(webex, {level: LOGGER.INFO});
+      callSettingsClient = new CallSettings({level: LOGGER.INFO});
     });
 
     it('Success: Set Voicemail setting', async () => {

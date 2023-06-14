@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import {STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {LoggerInterface} from '../Voicemail/types';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
 
@@ -16,6 +15,7 @@ import {
   IContacts,
 } from './types';
 import {serviceErrorCodeHandler} from '../common/Utils';
+import {LoggerConfig} from '../Calling/types';
 
 /**
  *
@@ -29,12 +29,12 @@ export class ContactsClient implements IContacts {
    * @param webex - A webex instance.
    * @param logger - Logger to set logger level.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(logger: LoggerConfig) {
     this.sdkConnector = SDKConnector;
 
-    if (!this.sdkConnector.getWebex()) {
-      SDKConnector.setWebex(webex);
-    }
+    // if (!this.sdkConnector.getWebex()) {
+    //   SDKConnector.setWebex(webex);
+    // }
 
     this.webex = this.sdkConnector.getWebex();
 
@@ -303,5 +303,5 @@ export class ContactsClient implements IContacts {
  * @param webex - A webex instance.
  * @param logger - Logger to set logger level.
  */
-export const createContactsClient = (webex: WebexSDK, logger: LoggerInterface): IContacts =>
-  new ContactsClient(webex, logger);
+export const createContactsClient = (logger: LoggerConfig): IContacts =>
+  new ContactsClient(logger);

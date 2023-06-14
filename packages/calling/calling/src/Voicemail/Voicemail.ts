@@ -6,7 +6,6 @@ import {
   IVoicemail,
   CALLING_BACKEND,
   VoicemailResponseEvent,
-  LoggerInterface,
   CallingPartyInfo,
 } from './types';
 import log from '../Logger';
@@ -17,6 +16,7 @@ import {DisplayInformation, SORT} from '../common/types';
 import {VoicemailEventTypes} from '../Events/types';
 import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
+import {LoggerConfig} from '../Calling/types';
 /**
  *
  */
@@ -30,15 +30,11 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   private backendConnector!: IVoicemail;
 
   /**
-   * @param webex -.
    * @param logger -.
    */
-  constructor(webex: WebexSDK, public logger: LoggerInterface) {
+  constructor(public logger: LoggerConfig) {
     super();
     this.sdkConnector = SDKConnector;
-    if (!this.sdkConnector.getWebex()) {
-      SDKConnector.setWebex(webex);
-    }
     this.webex = this.sdkConnector.getWebex();
     this.callingBackend = getCallingBackEnd(this.webex);
     this.initializeBackendConnector();
@@ -190,5 +186,5 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
  * @param webex -.
  * @param logger -.
  */
-export const createVoicemailClient = (webex: WebexSDK, logger: LoggerInterface): IVoicemail =>
-  new Voicemail(webex, logger);
+export const createVoicemailClient = (logger: LoggerConfig): IVoicemail =>
+  new Voicemail(logger);

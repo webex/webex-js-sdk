@@ -81,7 +81,7 @@ describe('CallingClient Tests', () => {
      */
     it('Verify valid calling serviceData with no input sdk config', async () => {
       expect(() => {
-        callingClient = createClient(webex, {logger: {level: LOGGER.INFO}});
+        callingClient = createClient({logger: {level: LOGGER.INFO}});
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
       expect(createRegistrationSpy).toBeCalledWith(webex, defaultServiceData);
@@ -99,7 +99,10 @@ describe('CallingClient Tests', () => {
       const serviceDataObj: any = {indicator: '', domain: ''};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({
+          serviceData: serviceDataObj,
+          logger: {level: LOGGER.INFO}
+        });
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
       expect(createRegistrationSpy).toBeCalledWith(webex, defaultServiceData);
@@ -118,7 +121,10 @@ describe('CallingClient Tests', () => {
       const serviceDataObj: any = {indicator: 'test', domain: ''};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({
+          serviceData: serviceDataObj,
+          logger: {level: LOGGER.INFO}
+        });
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
       expect(createRegistrationSpy).not.toHaveBeenCalled();
@@ -137,7 +143,7 @@ describe('CallingClient Tests', () => {
       const serviceDataObj: any = {indicator: 'test', domain: 'test.example.com'};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
       expect(createRegistrationSpy).not.toHaveBeenCalled();
@@ -156,7 +162,7 @@ describe('CallingClient Tests', () => {
       const serviceDataObj = {indicator: ServiceIndicator.CALLING, domain: 'test'};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
       expect(createRegistrationSpy).not.toHaveBeenCalled();
@@ -174,7 +180,7 @@ describe('CallingClient Tests', () => {
       const serviceDataObj = {indicator: ServiceIndicator.CALLING, domain: ''};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
       expect(createRegistrationSpy).toBeCalledWith(webex, serviceDataObj);
@@ -192,7 +198,7 @@ describe('CallingClient Tests', () => {
       const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
       expect(createRegistrationSpy).not.toHaveBeenCalled();
@@ -210,7 +216,7 @@ describe('CallingClient Tests', () => {
       const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: 'test'};
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
       expect(createRegistrationSpy).not.toHaveBeenCalled();
@@ -231,7 +237,7 @@ describe('CallingClient Tests', () => {
       };
 
       expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+        callingClient = createClient({serviceData: serviceDataObj, logger: {level: LOGGER.INFO}});
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
       expect(createRegistrationSpy).toBeCalledWith(webex, serviceDataObj);
@@ -242,7 +248,7 @@ describe('CallingClient Tests', () => {
     let callingClient: ICallingClient;
 
     beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
     });
 
     afterEach(() => {
@@ -713,7 +719,7 @@ describe('CallingClient Tests', () => {
         body: catalogBody,
       });
 
-      callingClient = new CallingClient(webex, {
+      callingClient = new CallingClient({
         discovery: {
           region: 'AP-SOUTHEAST',
           country: 'IN',
@@ -743,7 +749,7 @@ describe('CallingClient Tests', () => {
   });
 
   describe('Registration failback tests', () => {
-    const callingClient: ICallingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+    const callingClient: ICallingClient = new CallingClient({logger: {level: LOGGER.INFO}});
     const failbackSpy = jest.spyOn(callingClient as any, FAILBACK_UTIL);
     const restartSpy = jest.spyOn(callingClient as any, 'restartRegistration');
     const failbackRetry429Spy = jest.spyOn(callingClient as any, FAILBACK_429_RETRY_UTIL);
@@ -1118,7 +1124,7 @@ describe('CallingClient Tests', () => {
     let callingClient: ICallingClient;
 
     beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
     });
 
     afterAll(() => {
@@ -1496,7 +1502,7 @@ describe('CallingClient Tests', () => {
     let callingClient: ICallingClient;
 
     beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
     });
 
     afterAll(() => {
@@ -1586,7 +1592,7 @@ describe('CallingClient Tests', () => {
     let callingClient: ICallingClient;
 
     beforeEach(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
     });
 
     afterEach(() => {
@@ -1628,7 +1634,7 @@ describe('CallingClient Tests', () => {
     const logSpy = jest.spyOn(log, 'log');
 
     beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
 
       const mockRegistrationBody = getMockDeviceInfo();
       const registrationPayload = <WebexRequestPayload>(<unknown>{
@@ -1756,7 +1762,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap before initial registration is done', async () => {
-      const newCallingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+      const newCallingClient = new CallingClient({logger: {level: LOGGER.INFO}});
       const restoreSpy = jest.spyOn(newCallingClient, 'restorePreviousRegistration');
       const deRegSpy = jest.spyOn(newCallingClient, 'deregister');
       const registerSpy = jest.spyOn(newCallingClient as any, REGISTER_UTIL);

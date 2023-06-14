@@ -19,7 +19,6 @@ import {
 } from '../common/Utils';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
-  LoggerInterface,
   IWxCallBackendConnector,
   MessageInfo,
   VoicemailResponseEvent,
@@ -43,6 +42,7 @@ import {
   RADIX_RAND,
   PREFIX,
 } from './constants';
+import { LoggerConfig } from '../Calling/types';
 /**
  *
  */
@@ -63,7 +63,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    * @param webex - An object of the webex-js-sdk type.
    * @param logger - Logger interface.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerConfig) {
     this.sdkConnector = SDKConnector;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);

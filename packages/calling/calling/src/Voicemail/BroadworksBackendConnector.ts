@@ -21,7 +21,6 @@ import {
 } from '../common/Utils';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
-  LoggerInterface,
   IBroadworksCallBackendConnector,
   MessageInfo,
   VoicemailResponseEvent,
@@ -46,6 +45,7 @@ import {
   RADIX_RAND,
   PREFIX,
 } from './constants';
+import {LoggerConfig} from '../Calling/types';
 /**
  *
  */
@@ -70,7 +70,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
    * @param webex -.
    * @param logger -.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerConfig) {
     this.sdkConnector = SDKConnector;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);

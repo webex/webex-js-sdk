@@ -2,7 +2,6 @@ import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
   ICallSettings,
-  LoggerInterface,
   ToggleSetting,
   CallForwardSetting,
   CallSettingResponse,
@@ -31,6 +30,7 @@ import {
   XSI_VERSION,
 } from './constants';
 import {inferIdFromUuid, serviceErrorCodeHandler} from '../common/Utils';
+import { LoggerConfig } from '../Calling/types';
 
 /**
  *
@@ -54,12 +54,8 @@ export class CallSettings implements ICallSettings {
    * @param webex - A webex instance.
    * @param logger - Logger to set logger level.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(logger: LoggerConfig) {
     this.sdkConnector = SDKConnector;
-
-    if (!this.sdkConnector.getWebex()) {
-      SDKConnector.setWebex(webex);
-    }
 
     this.webex = this.sdkConnector.getWebex();
     /* eslint no-underscore-dangle: 0 */
@@ -364,5 +360,5 @@ export class CallSettings implements ICallSettings {
  * @param webex - A webex instance.
  * @param logger - Logger to set logger level.
  */
-export const createCallSettingsClient = (webex: WebexSDK, logger: LoggerInterface): ICallSettings =>
-  new CallSettings(webex, logger);
+export const createCallSettingsClient = (logger: LoggerConfig): ICallSettings =>
+  new CallSettings(logger);

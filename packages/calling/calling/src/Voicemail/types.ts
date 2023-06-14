@@ -1,10 +1,5 @@
 import {ISDKConnector} from '../SDKConnector/types';
-import {LOGGER} from '../Logger/types';
 import {WebexRequestPayload, SORT, DisplayInformation} from '../common/types';
-
-export interface LoggerInterface {
-  level: LOGGER;
-}
 
 export enum CALLING_BACKEND {
   WXC = 'WEBEX_CALLING',

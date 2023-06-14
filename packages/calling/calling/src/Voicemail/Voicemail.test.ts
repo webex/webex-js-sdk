@@ -12,9 +12,13 @@ import {CALLING_BACKEND} from './types';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
+import { ISDKConnector } from '../SDKConnector/types';
+import SDKConnector from '../SDKConnector';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();
+  let sdkConnector: ISDKConnector = SDKConnector;
+  sdkConnector.setWebex(webex);
 
   describe('createVoicemailClient tests', () => {
     /**
@@ -79,7 +83,7 @@ describe('Voicemail Client tests', () => {
       webex.internal.device.callingBehavior = data.callingBehavior;
       webex.internal.device.features.entitlement.models = [{_values: {key: data.entitlement}}];
       if (data.valid) {
-        const voiceMailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
+        const voiceMailClient = createVoicemailClient({level: LOGGER.INFO});
 
         expect(voiceMailClient).toBeTruthy();
         expect(voiceMailClient.getSDKConnector().getWebex()).toBeTruthy();
@@ -106,7 +110,7 @@ describe('Voicemail Client tests', () => {
         }
       } else {
         expect(() => {
-          createVoicemailClient(webex, {level: LOGGER.INFO});
+          createVoicemailClient({level: LOGGER.INFO});
         }).toThrowError('Calling backend is not identified, exiting....');
       }
     });

@@ -7,14 +7,17 @@ import {CallHistory, createCallHistoryClient} from './CallHistory';
 import {ICallHistory} from './types';
 import {sortedCallHistory, mockCallHistoryBody, MOCK_SESSION_EVENT} from './callHistoryFixtures';
 import {CallSessionEvent, EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
+import SDKConnector from '../SDKConnector';
 
 const webex = getTestUtilsWebex();
 
 describe('Call history tests', () => {
   let callHistory: ICallHistory;
+  const sdkConnector = SDKConnector;
+  sdkConnector.setWebex(webex);
 
   beforeAll(() => {
-    callHistory = new CallHistory(webex, {level: LOGGER.INFO});
+    callHistory = new CallHistory({level: LOGGER.INFO});
   });
 
   it('verify successful call history case', async () => {
@@ -77,7 +80,7 @@ describe('Call history tests', () => {
     let callHistory: ICallHistory;
 
     beforeEach(() => {
-      callHistory = createCallHistoryClient(webex, {level: LOGGER.INFO});
+      callHistory = createCallHistoryClient({level: LOGGER.INFO});
     });
 
     it('verify the recent user session event ', (done) => {

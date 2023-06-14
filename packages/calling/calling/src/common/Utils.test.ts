@@ -55,12 +55,16 @@ import {
   getDescVoicemailListJsonWXC,
 } from '../Voicemail/voicemailFixture';
 import {INFER_ID_CONSTANT} from './constants';
+import { ISDKConnector } from '../SDKConnector/types';
+import SDKConnector from '../SDKConnector';
 
 const mockSubmitRegistrationMetric = jest.fn();
 
 const webex = getTestUtilsWebex();
+let sdkConnector: ISDKConnector = SDKConnector;
+sdkConnector.setWebex(webex);
 
-const callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+const callingClient = new CallingClient({logger: {level: LOGGER.INFO}});
 const fakeCallingClient = mockCallingClient as unknown as typeof callingClient;
 
 fakeCallingClient.sendMetric = mockSubmitRegistrationMetric;

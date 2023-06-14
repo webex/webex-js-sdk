@@ -21,7 +21,6 @@ import {
 import {
   CallingPartyInfo,
   IUcmBackendConnector,
-  LoggerInterface,
   MessageInfo,
   UcmVmMessageInfo,
   UcmVMResponse,
@@ -32,6 +31,7 @@ import {
   ResponseString$,
   ResponseNumber$,
 } from './types';
+import {LoggerConfig} from '../Calling/types';
 
 /**
  *
@@ -53,7 +53,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * @param webex - Webex object to get the userid, service urls, etc...
    * @param logger - Logger to set logger level.
    */
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerConfig) {
     this.sdkConnector = SDKConnector;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);

@@ -29,11 +29,15 @@ import {
   mockDisplayNameTwo,
   mockContactResponseBodyThird,
 } from './contactFixtures';
+import {ISDKConnector} from '../SDKConnector/types';
+import SDKConnector from '../SDKConnector';
 
 describe('ContactClient Tests', () => {
   const webex = getTestUtilsWebex();
 
   let contactClient: IContacts | undefined;
+  let sdkConnector: ISDKConnector = SDKConnector;
+  sdkConnector.setWebex(webex);
 
   afterEach(() => {
     contactClient = undefined;
@@ -176,7 +180,7 @@ describe('ContactClient Tests', () => {
       webex.request.mockRejectedValueOnce(respPayload);
     }
 
-    contactClient = createContactsClient(webex, {level: LOGGER.INFO});
+    contactClient = createContactsClient({level: LOGGER.INFO});
 
     expect(contactClient).toBeTruthy();
     expect(contactClient.getSDKConnector().getWebex()).toBeTruthy();
