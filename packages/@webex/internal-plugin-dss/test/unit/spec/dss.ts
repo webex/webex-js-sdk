@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 
 import {assert} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';

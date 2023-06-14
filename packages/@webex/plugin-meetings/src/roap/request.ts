@@ -1,4 +1,3 @@
-/* global window */
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 

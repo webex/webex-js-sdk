@@ -2,17 +2,18 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
+
 import type {
   SearchOptions,
   LookupDetailOptions,
   LookupOptions,
   LookupByEmailOptions,
 } from './types';
-
 import {
   DSS_REGISTERED,
   DSS_UNREGISTERED,

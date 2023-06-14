@@ -2,7 +2,6 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
@@ -2657,6 +2656,26 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
+          canShareFile: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareApplication: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareCamera: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareDesktop: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareContent: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -2899,6 +2918,20 @@ export default class Meeting extends StatelessWebexPlugin {
           function: 'setUpLocusInfoSelfListener',
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
+        {
+          payload,
+        }
       );
     });
 
@@ -4513,9 +4546,6 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-          LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
         return join;
@@ -4604,7 +4634,17 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // @ts-ignore - Fix type
-    return this.webex.internal.llm.registerAndConnect(url, datachannelUrl);
+    return this.webex.internal.llm
+      .registerAndConnect(url, datachannelUrl)
+      .then((registerAndConnectResult) => {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        LoggerProxy.logger.info(
+          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+        );
+
+        return Promise.resolve(registerAndConnectResult);
+      });
   }
 
   /**

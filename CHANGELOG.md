@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.134](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.133...v3.0.0-beta.134) (2023-06-13)
+
+
+### Bug Fixes
+
+* **meetings:** reaction controls service workaround ([#2876](https://github.com/webex/webex-js-sdk/issues/2876)) ([4423391](https://github.com/webex/webex-js-sdk/commit/44233912911598ecad3b0483c6bd528616682776))
+
+## [3.0.0-beta.133](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.132...v3.0.0-beta.133) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** listen to relay event from llm when update llm ([#2869](https://github.com/webex/webex-js-sdk/issues/2869)) ([bbfe179](https://github.com/webex/webex-js-sdk/commit/bbfe1794a7831968c73d1d47fe5e9b88fffb81c8))
+
+## [3.0.0-beta.132](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.131...v3.0.0-beta.132) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** peerconnection detached only after sending last mqa ([#2873](https://github.com/webex/webex-js-sdk/issues/2873)) ([8ff3444](https://github.com/webex/webex-js-sdk/commit/8ff34444324084d1c77b79156ed3447655e5dabf))
+
+## [3.0.0-beta.131](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.130...v3.0.0-beta.131) (2023-06-13)
+
+## [3.0.0-beta.130](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.129...v3.0.0-beta.130) (2023-06-12)
+
+
+### Features
+
+* **plugin-meetings:** display hints for share ([#2870](https://github.com/webex/webex-js-sdk/issues/2870)) ([b7e509c](https://github.com/webex/webex-js-sdk/commit/b7e509c2093de1623ec587ded21473d480ab8803))
+
 ## [3.0.0-beta.129](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.129) (2023-06-09)
 
 

@@ -1,4 +1,4 @@
-import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
+import {isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -1224,6 +1224,17 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.SELF_MODERATOR_CHANGED,
           self
+        );
+      }
+
+      if (parsedSelves.updates.isRolesChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ROLES_CHANGED,
+          {oldRoles: parsedSelves.previous?.roles, newRoles: parsedSelves.current?.roles}
         );
       }
       // When the user upgrades to moderator or cohost

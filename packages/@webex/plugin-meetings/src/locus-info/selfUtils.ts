@@ -108,6 +108,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     current
   );
   updates.moderatorChanged = SelfUtils.moderatorChanged(previous, current);
+  updates.isRolesChanged = SelfUtils.isRolesChanged(previous, current);
   updates.isUpgradeToModeratorOrCohost = SelfUtils.isUpgradeToModeratorOrCohost(previous, current);
   updates.isMediaInactiveOrReleased = SelfUtils.wasMediaInactiveOrReleased(previous, current);
   updates.isUserObserving = SelfUtils.isDeviceObserving(previous, current);
@@ -339,6 +340,13 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
   return oldSelf.moderator !== changedSelf.moderator;
 };
 
+SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
+  if (!oldSelf || !changedSelf) {
+    return false;
+  }
+
+  return !isEqual(oldSelf.roles, changedSelf.roles);
+};
 /**
  * @param {Object} oldSelf
  * @param {Object} changedSelf
