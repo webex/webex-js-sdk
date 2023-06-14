@@ -1976,7 +1976,7 @@ function setPreferLiveVideo () {
   if (!meeting.mediaProperties.webrtcMediaConnection) {
     return;
   }
-  const value = document.getElementById("prefer-live-video").value;
+  const value = preferLiveVideoElm.value;
 
   if (value === 'Enable') {
     preferLiveVideo = true;
