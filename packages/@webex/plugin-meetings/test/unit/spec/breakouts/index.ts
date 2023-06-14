@@ -6,9 +6,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
-import breakoutEvent from "../../../../src/breakouts/events";
-import SelfUtils from "../../../../src/locus-info/selfUtils";
-import { self } from "../locus-info/selfConstant";
+import breakoutEvent from '../../../../src/breakouts/events';
 
 const getBOResponse = (status: string) => {
   return {
@@ -149,6 +147,16 @@ describe('plugin-meetings', () => {
         breakouts.triggerReturnToMainEvent = sinon.stub();
         breakouts.breakouts.get('session1').set({requestedLastModifiedTime: "2023-05-09T17:16:01.000Z"});
         assert.calledOnceWithExactly(breakouts.triggerReturnToMainEvent, breakouts.breakouts.get('session1'));
+      });
+
+      it('call queryPreAssignments correctly when should query preAssignments is true', () => {
+        breakouts.queryPreAssignments = sinon.stub();
+        breakouts.set({
+          canManageBreakouts: true,
+          enableBreakoutSession: true,
+          hasBreakoutPreAssignments: true,
+        });
+        assert.calledThrice(breakouts.queryPreAssignments);
       });
     });
 
@@ -448,6 +456,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateCanManageBreakouts', () => {
+      it('update canManageBreakouts', () => {
+        breakouts.updateCanManageBreakouts(true);
+
+        assert.equal(breakouts.canManageBreakouts, true);
+
+        breakouts.updateCanManageBreakouts(false);
+
+        assert.equal(breakouts.canManageBreakouts, false);
+      });
+    });
+
     describe('#cleanUp', () => {
       it('stops listening', () => {
         breakouts.stopListening = sinon.stub();
@@ -501,6 +521,18 @@ describe('plugin-meetings', () => {
       it('return empty group id if group status is CLOSED', () => {
         breakouts.set('manageGroups', [{id: 'groupId1', status: 'CLOSED'}]);
         assert.equal(breakouts.breakoutGroupId, '');
+      });
+    });
+
+    describe('#shouldQueryPreAssignments', () => {
+      it('returns should query preAssignments depends on status', () => {
+        assert.equal(breakouts.shouldQueryPreAssignments, false);
+        breakouts.set('canManageBreakouts', true);
+        assert.equal(breakouts.shouldQueryPreAssignments, false);
+        breakouts.set('enableBreakoutSession', true);
+        assert.equal(breakouts.shouldQueryPreAssignments, false);
+        breakouts.set('hasBreakoutPreAssignments', true);
+        assert.equal(breakouts.shouldQueryPreAssignments, true);
       });
     });
 
@@ -1453,58 +1485,50 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('queryPreAssignments', () => {
+    describe('#queryPreAssignments', () => {
       it('makes the expected query', async () => {
+        const mockPreAssignments = [
+            {
+              sessions: [
+                {
+                  name: 'Breakout session 1',
+                  assignedEmails: ['aa@aa.com', 'bb@bb.com', 'cc@cc.com'],
+                  anyoneCanJoin: false,
+                },
+                {
+                  name: 'Breakout session 2',
+                  anyoneCanJoin: false,
+                },
+                {
+                  name: 'Breakout session 3',
+                  assignedEmails: ['cc@cc.com'],
+                  anyoneCanJoin: false,
+                },
+              ],
+              unassignedInvitees: {
+                emails: ['dd@dd.com'],
+              },
+              type: 'BREAKOUT',
+            },
+          ];
         webex.request.returns(
           Promise.resolve({
             body: {
-              groups: [
-                {
-                  sessions: [
-                    {
-                      name: 'Breakout session 1',
-                      assignedEmails: ['a@a.com', 'b@b.com', 'jial2@cisco.com'],
-                      anyoneCanJoin: false,
-                    },
-                    {
-                      name: 'Breakout session 2',
-                      anyoneCanJoin: false,
-                    },
-                    {
-                      name: 'Breakout session 3',
-                      assignedEmails: ['c@c.com'],
-                      anyoneCanJoin: false,
-                    },
-                  ],
-                  unassignedInvitees: {
-                    emails: ['d@d.com'],
-                  },
-                  type: 'BREAKOUT',
-                },
-              ],
+              groups: mockPreAssignments,
             },
           })
         );
-        breakouts.shouldFetchPreassignments = false;
-        const result = await breakouts.queryPreAssignments({enableBreakoutSession: true, hasBreakoutPreAssignments: true});
-        const arg = webex.request.getCall(0).args[0];
-        assert.equal(arg.uri, 'url/preassignments');
-        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.preAssignments[0].sessions[0].name, 'Breakout session 1');
-        assert.equal(breakouts.preAssignments[0].sessions[0].anyoneCanJoin, false);
-        assert.equal(
-          breakouts.preAssignments[0].sessions[0].assignedEmails.toString(),
-          ['a@a.com', 'b@b.com', 'jial2@cisco.com'].toString()
-        );
-        assert.equal(breakouts.preAssignments[0].sessions[1].name, 'Breakout session 2');
-        assert.equal(breakouts.preAssignments[0].sessions[1].anyoneCanJoin, false);
-        assert.equal(breakouts.preAssignments[0].sessions[1].assignedEmails, undefined);
-        assert.equal(breakouts.preAssignments[0].sessions[2].name, 'Breakout session 3');
-        assert.equal(breakouts.preAssignments[0].sessions[2].anyoneCanJoin, false);
-        assert.equal(breakouts.preAssignments[0].sessions[2].assignedEmails[0], 'c@c.com');
-        assert.equal(breakouts.preAssignments[0].unassignedInvitees.emails[0], 'd@d.com');
-        assert.equal(breakouts.preAssignments[0].type, 'BREAKOUT');
-        assert.equal(breakouts.shouldFetchPreassignments, true);
+        breakouts.set('locusUrl', 'test');
+
+        await breakouts.queryPreAssignments();
+        assert.calledOnceWithExactly(webex.request, {
+          uri: 'url/preassignments',
+          qs: {
+            locusUrl: 'dGVzdA==',
+          }
+        });
+
+        assert.deepEqual(breakouts.preAssignments, mockPreAssignments);
       });
 
       it('rejects when no pre-assignments created for this meeting', async () => {
