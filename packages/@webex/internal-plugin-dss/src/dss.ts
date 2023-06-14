@@ -22,6 +22,11 @@ import {
   DSS_SERVICE_NAME,
   DSS_SEARCH_MERCURY_EVENT,
   DSS_RESULT,
+  LOOKUP_DATA_PATH,
+  LOOKUP_FOUND_PATH,
+  LOOKUP_NOT_FOUND_PATH,
+  LOOKUP_REQUEST_KEY,
+  SEARCH_DATA_PATH,
 } from './constants';
 import DssBatcher from './dss-batcher';
 
@@ -233,10 +238,10 @@ const DSS = WebexPlugin.extend({
    */
   _batchedLookup(options) {
     const {resource, lookupValue} = options;
-    const dataPath = 'lookupResult.entities';
-    const entitiesFoundPath = 'lookupResult.entitiesFound';
-    const entitiesNotFoundPath = 'lookupResult.entitiesNotFound';
-    const requestKey = 'lookupValues';
+    const dataPath = LOOKUP_DATA_PATH;
+    const entitiesFoundPath = LOOKUP_FOUND_PATH;
+    const entitiesNotFoundPath = LOOKUP_NOT_FOUND_PATH;
+    const requestKey = LOOKUP_REQUEST_KEY;
 
     this.batchers[resource] =
       this.batchers[resource] ||
@@ -264,8 +269,8 @@ const DSS = WebexPlugin.extend({
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/identity/${id}/detail`;
 
     return this._request({
-      dataPath: 'lookupResult.entities',
-      foundPath: 'lookupResult.entitiesFound',
+      dataPath: LOOKUP_DATA_PATH,
+      foundPath: LOOKUP_FOUND_PATH,
       resource,
     }).then(({resultArray, foundArray}) => {
       // TODO: find out what is actually returned!
@@ -300,11 +305,11 @@ const DSS = WebexPlugin.extend({
     }
 
     return this._request({
-      dataPath: 'lookupResult.entities',
-      foundPath: 'lookupResult.entitiesFound',
+      dataPath: LOOKUP_DATA_PATH,
+      foundPath: LOOKUP_FOUND_PATH,
       resource,
       params: {
-        lookupValues: [id],
+        [LOOKUP_REQUEST_KEY]: [id],
       },
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === id) {
@@ -326,11 +331,11 @@ const DSS = WebexPlugin.extend({
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/emails`;
 
     return this._request({
-      dataPath: 'lookupResult.entities',
-      foundPath: 'lookupResult.entitiesFound',
+      dataPath: LOOKUP_DATA_PATH,
+      foundPath: LOOKUP_FOUND_PATH,
       resource,
       params: {
-        lookupValues: [email],
+        [LOOKUP_REQUEST_KEY]: [email],
       },
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === email) {
@@ -353,7 +358,7 @@ const DSS = WebexPlugin.extend({
     const {requestedTypes, resultSize, queryString} = options;
 
     return this._request({
-      dataPath: 'directoryEntities',
+      dataPath: SEARCH_DATA_PATH,
       resource: `/search/orgid/${this.webex.internal.device.orgId}/entities`,
       params: {
         queryString,
