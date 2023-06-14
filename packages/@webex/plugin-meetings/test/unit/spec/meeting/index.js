@@ -4867,6 +4867,7 @@ describe('plugin-meetings', () => {
 
         it('listens to the self roles changed event', () => {
           const payload = {oldRoles: [], newRoles: ['COHOST']};
+          meeting.breakouts.updateCanManageBreakouts = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4874,6 +4875,7 @@ describe('plugin-meetings', () => {
             payload
           );
 
+          assert.calledOnceWithExactly(meeting.breakouts.updateCanManageBreakouts, true);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
@@ -4881,19 +4883,6 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
             {payload}
           );
-        });
-      });
-
-      describe('#setUpBreakoutsPreAssignmentsListener', () => {
-        it('listens to the self moderator or cohost upgrade event', () => {
-          meeting.breakouts.queryPreAssignments = sinon.stub();
-          const payload = 'payload';
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'SELF_MODERATOR_OR_COHOST_UPGRADE',
-            payload,
-          );
-          assert.calledOnceWithExactly(meeting.breakouts.queryPreAssignments, payload);
         });
       });
 
@@ -4970,6 +4959,18 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'setUpBreakoutsListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
             helpEvent
+          );
+        });
+
+        it('listens to the preAssignments update event from breakouts and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('PRE_ASSIGNMENTS_UPDATE');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE
           );
         });
       });
@@ -5881,7 +5882,7 @@ describe('plugin-meetings', () => {
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
-          
+
 
           const result = await meeting.updateLLMConnection();
 
