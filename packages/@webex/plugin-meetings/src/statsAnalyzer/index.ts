@@ -300,7 +300,6 @@ export class StatsAnalyzer extends EventsScope {
         this.mediaConnection = null;
       });
     }
-    this.mediaConnection = null;
 
     return Promise.resolve();
   }

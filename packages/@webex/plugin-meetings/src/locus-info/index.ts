@@ -1,4 +1,4 @@
-import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
+import {isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -1237,6 +1237,7 @@ export default class LocusInfo extends EventsScope {
           {oldRoles: parsedSelves.previous?.roles, newRoles: parsedSelves.current?.roles}
         );
       }
+
       if (parsedSelves.updates.isVideoMutedByOthersChanged) {
         this.emitScoped(
           {

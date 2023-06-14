@@ -981,24 +981,15 @@ describe('plugin-meetings', () => {
 
           it('should call updateLLMConnection upon joining if config value is set', async () => {
             meeting.config.enableAutomaticLLM = true;
-            meeting.webex.internal.llm.on = sinon.stub();
-            meeting.processRelayEvent = sinon.stub();
             await meeting.join();
 
             assert.calledOnce(meeting.updateLLMConnection);
-            assert.calledOnceWithExactly(
-              meeting.webex.internal.llm.on,
-              'event:relay.event',
-              meeting.processRelayEvent
-            );
           });
 
           it('should not call updateLLMConnection upon joining if config value is not set', async () => {
-            meeting.webex.internal.llm.on = sinon.stub();
             await meeting.join();
 
             assert.notCalled(meeting.updateLLMConnection);
-            assert.notCalled(meeting.webex.internal.llm.on);
           });
 
           it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
@@ -5855,6 +5846,8 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(Promise.resolve('something'));
           webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
+          meeting.webex.internal.llm.on = sinon.stub();
+          meeting.processRelayEvent = sinon.stub();
         });
 
         it('does not connect if the call is not joined yet', async () => {
@@ -5868,6 +5861,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.equal(result, undefined);
+          assert.notCalled(meeting.webex.internal.llm.on);
         });
 
         it('returns undefined if llm is already connected and the locus url is unchanged', async () => {
@@ -5882,17 +5876,24 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.equal(result, undefined);
+          assert.notCalled(meeting.webex.internal.llm.on);
         });
 
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
+
           const result = await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
 
         it('disconnects if first if the locus url has changed', async () => {
@@ -5911,12 +5912,19 @@ describe('plugin-meetings', () => {
             'a datachannel url'
           );
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
 
         it('disconnects when the state is not JOINED', async () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
+          meeting.webex.internal.llm.off = sinon.stub();
+          meeting.processRelayEvent = sinon.stub();
 
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
@@ -5925,7 +5933,13 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.disconnectLLM);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
+
       });
 
       describe('#setLocus', () => {

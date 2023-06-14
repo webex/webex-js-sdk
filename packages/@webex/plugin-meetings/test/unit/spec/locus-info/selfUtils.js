@@ -363,6 +363,7 @@ describe('plugin-meetings', () => {
 
       assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, null), false);
     });
+
     it('should return true if self roles has changed', () => {
       const parsedSelf = SelfUtils.parse(self);
       const clonedSelf = cloneDeep(parsedSelf);
