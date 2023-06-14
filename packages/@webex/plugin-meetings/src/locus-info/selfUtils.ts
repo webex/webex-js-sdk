@@ -14,7 +14,6 @@ import {
   AUDIO,
   VIDEO,
   MediaContent,
-  SELF_ROLES,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
