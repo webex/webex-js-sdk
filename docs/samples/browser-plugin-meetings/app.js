@@ -34,6 +34,7 @@ const integrationEnv = document.getElementById('integration-env');
 const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
+const preferLiveVideoElm = document.querySelector('#prefer-live-video');
 const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
@@ -1965,6 +1966,28 @@ function updateMultistreamVideoLayout() {
   }
 }
 
+function setPreferLiveVideo () {
+  let preferLiveVideo = false;
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    return;
+  }
+  if (!meeting.mediaProperties.webrtcMediaConnection) {
+    return;
+  }
+  const value = preferLiveVideoElm.value;
+
+  if (value === 'Enable') {
+    preferLiveVideo = true;
+  }
+
+  if (meeting.remoteMediaManager) {
+    meeting.remoteMediaManager.setPreferLiveVideo(preferLiveVideo);
+  }
+
+}
+
 async function getStatsForVideoPane(meeting, videoPane) {
   const {remoteMedia} = videoPane;
   const {wcmeReceiveSlot} = remoteMedia.getUnderlyingReceiveSlot();
@@ -2228,6 +2251,7 @@ function addMedia() {
     // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
     // so we need to hardcode it like this:
     multistreamLayoutElm.value = 'AllEqual';
+    preferLiveVideoElm.value = 'Enable';
 
     // addMedia using the default RemoteMediaManagerConfig
     meeting.addMedia().then(() => {
