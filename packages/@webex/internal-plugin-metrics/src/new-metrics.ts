@@ -18,6 +18,7 @@ import {
 
 /**
  * Metrics plugin to centralize all types of metrics.
+ * @class
  */
 class Metrics extends WebexPlugin {
   // eslint-disable-next-line no-use-before-define
@@ -27,8 +28,10 @@ class Metrics extends WebexPlugin {
   callDiagnosticMetrics: CallDiagnosticMetrics;
 
   /**
-   *
+   * Constructor
    * @param args
+   * @constructor
+   * @private
    * @returns
    */
   constructor(...args) {
@@ -45,7 +48,7 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Initialize Call diagnostic class
+   * Initialize Call Diagnostic class
    * @param meetingCollection
    * @param webex
    */

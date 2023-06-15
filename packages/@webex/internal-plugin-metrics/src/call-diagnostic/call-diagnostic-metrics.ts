@@ -37,7 +37,6 @@ export type SubmitClientEventOptions = {
  * @class CallDiagnosticMetrics
  */
 export default class CallDiagnosticMetrics {
-  // eslint-disable-next-line no-use-before-define
   meetingCollection: any;
   webex: any;
   // @ts-ignore
@@ -50,7 +49,6 @@ export default class CallDiagnosticMetrics {
    */
   constructor() {
     this.meetingCollection = null;
-    // eslint-disable-next-line no-constructor-return
   }
 
   /**
@@ -68,7 +66,10 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * Gather origin details.
+   * Get origin object for Call Diagnostic Event payload.
+   * @param options
+   * @param meetingId
+   * @returns
    */
   getOrigin(options: GetOriginOptions, meetingId?: string) {
     let defaultClientType: Event['origin']['clientInfo']['clientType'];
@@ -115,7 +116,7 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * Gather identifier details.
+   * Gather identifier details for call diagnostic payload.
    * @throws Error if initialization fails.
    * @param options
    */
@@ -152,8 +153,8 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * Create diagnostic event, and pass in concrete event
-   * data for Client Event or Feature Event etc..
+   * Create diagnostic event, which can hold client event, feature event or MQE event data.
+   * This just initiates the shared properties that are required for all the 3 event categories.
    * @param eventData
    * @param options
    * @returns
@@ -199,7 +200,7 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * Submit Client Event CA event
+   * Submit Client Event CA event.
    * @param event - event key
    * @param payload - payload for the event
    * @param options - payload
@@ -239,7 +240,7 @@ export default class CallDiagnosticMetrics {
         }
       }
 
-      // create feature event object
+      // create client event object
       let clientEventObject: ClientEvent = {
         name,
         canProceed: true,
@@ -255,7 +256,7 @@ export default class CallDiagnosticMetrics {
       // merge any new properties, or override existing ones
       clientEventObject = merge(clientEventObject, payload);
 
-      // append feature event data to the call diagnostic event
+      // append client event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
       this.submitToCallDiagnostics(diagnosticEvent);
     } else {
@@ -265,7 +266,7 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * Prepare the event and send the request to metrics-a.
+   * Prepare the event and send the request to metrics-a service.
    * @param event
    */
   submitToCallDiagnostics(event: Event) {

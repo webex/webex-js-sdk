@@ -142,7 +142,6 @@ describe('internal-plugin-metrics', () => {
     it('should prepare diagnostic event successfully', () => {
       cd.initialSetup(meetingCollection, webex);
 
-
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
       const clearEmptyStub = sinon.stub(Utils, 'clearEmpty');
