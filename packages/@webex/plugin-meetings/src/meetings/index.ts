@@ -10,6 +10,7 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import Metrics from '../metrics';
 import {trigger, eventType} from '../metrics/config';
 import LoggerConfig from '../common/logs/logger-config';
@@ -640,6 +641,8 @@ export default class Meetings extends WebexPlugin {
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
       Metrics.initialSetup(this.meetingCollection, this.webex);
+      // @ts-ignore
+      NewMetrics.initialSetupCallDiagnosticMetrics(this.meetingCollection, this.webex);
     });
   }
 
