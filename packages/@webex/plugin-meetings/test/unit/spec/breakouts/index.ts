@@ -701,18 +701,19 @@ describe('plugin-meetings', () => {
     });
 
     describe('#toggleBreakout', () => {
+      const mockEnableResponse = {
+        body: {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url',
+        },
+      };
       it('enableBreakoutSession is undefined, run enableBreakouts then toggleBreakout', async () => {
         breakouts.enableBreakoutSession = undefined;
-        breakouts.enableBreakouts = sinon.stub().resolves({
-          body: {
-            sessionId: 'sessionId',
-            groupId: 'groupId',
-            name: 'name',
-            current: true,
-            sessionType: 'sessionType',
-            url: 'url',
-          },
-        });
+        breakouts.enableBreakouts = sinon.stub().resolves(mockEnableResponse);
         breakouts.updateBreakout = sinon.stub().resolves();
         breakouts.doToggleBreakout = sinon.stub().resolves();
 
@@ -727,6 +728,25 @@ describe('plugin-meetings', () => {
           url: 'url',
         });
         assert.calledOnceWithExactly(breakouts.doToggleBreakout, false);
+      });
+
+      it('first time enable breakouts, call updateBreakout to set initial params', async () => {
+        breakouts.enableBreakoutSession = undefined;
+        breakouts.enableBreakouts = sinon.stub().resolves(mockEnableResponse);
+        breakouts.updateBreakout = sinon.stub().resolves();
+        breakouts.doToggleBreakout = sinon.stub();
+
+        await breakouts.toggleBreakout(true);
+        assert.calledOnceWithExactly(breakouts.updateBreakout, {
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          name: 'name',
+          current: true,
+          sessionType: 'sessionType',
+          url: 'url',
+        });
+
+        assert.notCalled(breakouts.doToggleBreakout);
       });
 
       it('enableBreakoutSession is exist, run toggleBreakout', async () => {
