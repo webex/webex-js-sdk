@@ -59,6 +59,7 @@ import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
+import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 
 let mediaLogger;
 
@@ -810,12 +811,12 @@ export default class Meetings extends WebexPlugin {
   /**
    * Creates a noise reduction effect
    *
-   * @param {Object} options optional custom effect options
+   * @param {INoiseReductionEffect} options optional custom effect options
    * @returns {Promise<effect>} noise reduction effect.
    * @public
    * @memberof Meetings
    */
-  createNoiseReductionEffect = async (options = {}) => {
+  createNoiseReductionEffect = async (options?: INoiseReductionEffect) => {
     // @ts-ignore
     const authToken = this.webex.credentials.supertoken.access_token;
 
@@ -825,12 +826,12 @@ export default class Meetings extends WebexPlugin {
   /**
    * Creates a virtual background effect
    *
-   * @param {Object} options optional custom effect options
+   * @param {IVirtualBackgroundEffect} options optional custom effect options
    * @returns {Promise<effect>} virtual background effect.
    * @public
    * @memberof Meetings
    */
-  createVirtualBackgroundEffect = async (options = {}) => {
+  createVirtualBackgroundEffect = async (options?: IVirtualBackgroundEffect) => {
     // @ts-ignore
     const authToken = this.webex.credentials.supertoken.access_token;
 
