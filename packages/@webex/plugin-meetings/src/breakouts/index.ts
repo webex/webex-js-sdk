@@ -704,13 +704,11 @@ const Breakouts = WebexPlugin.extend({
    * @returns {boolean}
    */
   hasBreakoutLocked() {
-    if (this.editLock && !!this.editLock.token) {
-      if (this.editLock.state === BREAKOUTS.EDIT_LOCK_STATUS.LOCKED) {
-        return true;
-      }
-    }
-
-    return false;
+    return (
+      this.editLock &&
+      this.editLock.token &&
+      this.editLock.state === BREAKOUTS.EDIT_LOCK_STATUS.LOCKED
+    );
   },
 
   /**
