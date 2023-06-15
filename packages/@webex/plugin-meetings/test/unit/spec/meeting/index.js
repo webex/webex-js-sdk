@@ -5838,7 +5838,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#updateLLMConnection', () => {
+      describe.only('#updateLLMConnection', () => {
         beforeEach(() => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
           webex.internal.llm.getLocusUrl = sinon.stub();
@@ -5847,6 +5847,7 @@ describe('plugin-meetings', () => {
             .returns(Promise.resolve('something'));
           webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
           meeting.webex.internal.llm.on = sinon.stub();
+          meeting.webex.internal.llm.off = sinon.stub();
           meeting.processRelayEvent = sinon.stub();
         });
 
@@ -5890,6 +5891,11 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
           assert.equal(result, 'something');
           assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledOnceWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
             meeting.processRelayEvent
@@ -5912,6 +5918,14 @@ describe('plugin-meetings', () => {
             'a datachannel url'
           );
           assert.equal(result, 'something');
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledTwice(
+            meeting.webex.internal.llm.off
+          );
           assert.calledOnceWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
@@ -5923,8 +5937,6 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          meeting.webex.internal.llm.off = sinon.stub();
-          meeting.processRelayEvent = sinon.stub();
 
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
