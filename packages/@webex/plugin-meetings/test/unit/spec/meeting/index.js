@@ -5838,7 +5838,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('#updateLLMConnection', () => {
+      describe('#updateLLMConnection', () => {
         beforeEach(() => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
           webex.internal.llm.getLocusUrl = sinon.stub();
