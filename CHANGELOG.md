@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.137](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.136...v3.0.0-beta.137) (2023-06-14)
+
+
+### Features
+
+* **bulk dss:** add batcher to dss ([#2678](https://github.com/webex/webex-js-sdk/issues/2678)) ([2175be9](https://github.com/webex/webex-js-sdk/commit/2175be940be2905a77b7234aa3f7623c5396efaf))
+
+## [3.0.0-beta.136](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.135...v3.0.0-beta.136) (2023-06-14)
+
+
+### Features
+
+* **plugin-meetings:** preferLiveVideo ([#2859](https://github.com/webex/webex-js-sdk/issues/2859)) ([e5f6f89](https://github.com/webex/webex-js-sdk/commit/e5f6f8947cc2651210523000a422b208e58c283f))
+
+## [3.0.0-beta.135](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.134...v3.0.0-beta.135) (2023-06-14)
+
 ## [3.0.0-beta.134](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.133...v3.0.0-beta.134) (2023-06-13)
 
 
