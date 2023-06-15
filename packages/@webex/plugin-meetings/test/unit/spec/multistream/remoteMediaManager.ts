@@ -663,6 +663,42 @@ describe('RemoteMediaManager', () => {
       remoteMediaManager.stop();
     });
   });
+
+  describe('setPreferLiveVideo', () => {
+
+    it('sets preferLiveVideo', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
+      let stubs = [];
+
+      config.video.initialLayoutId = 'OnePlusFive';
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        console.log(layoutInfo.activeSpeakerVideoPanes);
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setPreferLiveVideo')));
+      });
+
+      await remoteMediaManager.start();
+      resetHistory();
+      assert(stubs.length > 0);
+      await remoteMediaManager.setPreferLiveVideo(true);
+
+
+      stubs.forEach((stub) => {
+        assert.calledWith(stub, true, false)
+      });
+
+      expect(config.video.preferLiveVideo).to.equal(true);
+      
+      assert.calledOnce(fakeMediaRequestManagers.video.commit);
+    });
+  });
+
   describe('setLayout', () => {
     it('rejects if called with invalid layoutId', async () => {
       await assert.isRejected(remoteMediaManager.setLayout('invalid value'));

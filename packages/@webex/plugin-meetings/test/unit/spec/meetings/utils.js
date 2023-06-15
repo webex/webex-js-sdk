@@ -1,8 +1,17 @@
 import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
 
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import Metrics from '@webex/plugin-meetings/src/metrics';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
 describe('plugin-meetings', () => {
+  beforeEach(() => {
+    sinon.stub(Metrics, 'sendBehavioralMetric');
+  });
+  afterEach(() => {
+    sinon.restore();
+  });
   describe('Meetings utils function', () => {
     describe('#parseDefaultSiteFromMeetingPreferences', () => {
       it('should return the default true site from user preferences', () => {
@@ -151,6 +160,54 @@ describe('plugin-meetings', () => {
         assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus, '123'), true);
       });
     });
+
+    describe("#handleRoapMercury", () => {
+      it('it sends the correct behaviour metric', () => {
+        const roapMessageReceived = sinon.stub();
+        const envelope = {
+          data: {
+            message:{
+              seq: "seq",
+              messageType: 'messageType',
+              tieBreaker: 'tieBreaker',
+              errorType: 'errorType',
+              errorCause: 'errorCause',
+              sdps: [{id:'sdp-1'}]
+            },
+            correlationId: 'correlationId',
+            eventType: 'locus.message.roap',
+          }
+        };
+        const meetingCollection = {
+          getByKey: () => ({
+            id: 'meeting-id',
+            mediaProperties: {
+              webrtcMediaConnection: {
+                roapMessageReceived
+              }
+            }
+          })
+        };
+
+        MeetingsUtil.handleRoapMercury(envelope, meetingCollection);
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED,  {
+          correlation_id: 'correlationId',
+          seq: "seq",
+          message_type: 'messageType',
+          error_type: 'errorType',
+          error_cause: 'errorCause',
+        })
+        assert.calledWith(roapMessageReceived, {
+          seq: "seq",
+          messageType: 'messageType',
+          errorType: 'errorType',
+          tieBreaker: 'tieBreaker',
+          errorCause: 'errorCause',
+          sdp: {id:'sdp-1'}
+        })
+
+      });
+    })
   });
 
   describe('#isValidBreakoutLocus', () => {

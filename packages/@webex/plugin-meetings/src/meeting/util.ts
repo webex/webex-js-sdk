@@ -109,6 +109,7 @@ const MeetingUtil = {
         breakoutsSupported: options.breakoutsSupported,
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
+        liveAnnotationSupported: options.liveAnnotationSupported,
       })
       .then((res) => {
         Metrics.postEvent({

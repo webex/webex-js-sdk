@@ -981,24 +981,15 @@ describe('plugin-meetings', () => {
 
           it('should call updateLLMConnection upon joining if config value is set', async () => {
             meeting.config.enableAutomaticLLM = true;
-            meeting.webex.internal.llm.on = sinon.stub();
-            meeting.processRelayEvent = sinon.stub();
             await meeting.join();
 
             assert.calledOnce(meeting.updateLLMConnection);
-            assert.calledOnceWithExactly(
-              meeting.webex.internal.llm.on,
-              'event:relay.event',
-              meeting.processRelayEvent
-            );
           });
 
           it('should not call updateLLMConnection upon joining if config value is not set', async () => {
-            meeting.webex.internal.llm.on = sinon.stub();
             await meeting.join();
 
             assert.notCalled(meeting.updateLLMConnection);
-            assert.notCalled(meeting.webex.internal.llm.on);
           });
 
           it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
@@ -1229,6 +1220,9 @@ describe('plugin-meetings', () => {
             turnDiscoverySkippedReason: undefined,
             turnServerUsed: true,
             isMultistream: false,
+            signalingState: 'unknown',
+            connectionState: 'unknown',
+            iceConnectionState: 'unknown'
           });
         });
 
@@ -1248,6 +1242,9 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: 'config',
               turnServerUsed: false,
               isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown'
             });
           });
         });
@@ -1261,8 +1258,6 @@ describe('plugin-meetings', () => {
           });
           const result = await assert.isRejected(meeting.addMedia());
 
-          assert.instanceOf(result, Error);
-          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
 
           assert(Metrics.sendBehavioralMetric.calledOnce);
           assert.calledWith(
@@ -1275,8 +1270,99 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
               isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown'
             })
           );
+
+          assert.instanceOf(result, Error);
+          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
+
+        });
+
+        it('should include the peer connection properties correctly for multistream', async () => {
+          meeting.meetingState = 'ACTIVE';
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
+            multistreamConnection :{
+              pc: {
+                pc: {
+                  signalingState: 'have-local-offer',
+                  connectionState: 'connecting',
+                  iceConnectionState: 'checking',
+                }
+              }
+            }
+          });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'have-local-offer',
+              connectionState: 'connecting',
+              iceConnectionState: 'checking'
+
+            })
+          );
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+        });
+
+        it('should include the peer connection properties correctly for transcoded', async () => {
+          meeting.meetingState = 'ACTIVE';
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
+            mediaConnection :{
+              pc: {
+                signalingState: 'have-local-offer',
+                connectionState: 'connecting',
+                iceConnectionState: 'checking',
+              }
+            }
+          });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'have-local-offer',
+              connectionState: 'connecting',
+              iceConnectionState: 'checking'
+
+            })
+          );
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -4126,6 +4212,43 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#enableMusicMode', () => {
+      beforeEach(() => {
+        meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            setCodecParameters: sinon.stub().resolves({}),
+            deleteCodecParameters: sinon.stub().resolves({}),
+          };
+      });
+      [
+        {shouldEnableMusicMode: true},
+        {shouldEnableMusicMode: false},
+      ].forEach(({shouldEnableMusicMode}) => {
+        it(`fails if there is no media connection for shouldEnableMusicMode: ${shouldEnableMusicMode}`, async () => {
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+          await assert.isRejected(meeting.enableMusicMode(shouldEnableMusicMode));
+        });
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+        await meeting.enableMusicMode(true);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters, MediaType.AudioMain, {
+          maxaveragebitrate: '64000',
+          maxplaybackrate: '48000',
+        });
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters);
+      });
+
+      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+        await meeting.enableMusicMode(false);
+        assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters, MediaType.AudioMain, [
+          'maxaveragebitrate',
+          'maxplaybackrate',
+        ]);
+        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters);
+      });
+    });
+
     describe('Public Event Triggers', () => {
       let sandbox;
       const {ENDED} = CONSTANTS;
@@ -4741,18 +4864,25 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
           );
         });
-      });
 
-      describe('#setUpBreakoutsPreAssignmentsListener', () => {
-        it('listens to the self moderator or cohost upgrade event', () => {
-          meeting.breakouts.queryPreAssignments = sinon.stub();
-          const payload = 'payload';
+        it('listens to the self roles changed event', () => {
+          const payload = {oldRoles: [], newRoles: ['COHOST']};
+          meeting.breakouts.updateCanManageBreakouts = sinon.stub();
+
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
-            'SELF_MODERATOR_OR_COHOST_UPGRADE',
-            payload,
+            'SELF_ROLES_CHANGED',
+            payload
           );
-          assert.calledOnceWithExactly(meeting.breakouts.queryPreAssignments, payload);
+
+          assert.calledOnceWithExactly(meeting.breakouts.updateCanManageBreakouts, true);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+            EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
+            {payload}
+          );
         });
       });
 
@@ -4829,6 +4959,18 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'setUpBreakoutsListener'},
             EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP,
             helpEvent
+          );
+        });
+
+        it('listens to the preAssignments update event from breakouts and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.breakouts.trigger('PRE_ASSIGNMENTS_UPDATE');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpBreakoutsListener'},
+            EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE
           );
         });
       });
@@ -5618,6 +5760,26 @@ describe('plugin-meetings', () => {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
             displayHints: payload.info.userDisplayHints,
           });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+            displayHints: payload.info.userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5684,6 +5846,8 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(Promise.resolve('something'));
           webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
+          meeting.webex.internal.llm.on = sinon.stub();
+          meeting.processRelayEvent = sinon.stub();
         });
 
         it('does not connect if the call is not joined yet', async () => {
@@ -5697,6 +5861,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.equal(result, undefined);
+          assert.notCalled(meeting.webex.internal.llm.on);
         });
 
         it('returns undefined if llm is already connected and the locus url is unchanged', async () => {
@@ -5711,17 +5876,24 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.equal(result, undefined);
+          assert.notCalled(meeting.webex.internal.llm.on);
         });
 
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
+
           const result = await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
 
         it('disconnects if first if the locus url has changed', async () => {
@@ -5740,12 +5912,19 @@ describe('plugin-meetings', () => {
             'a datachannel url'
           );
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
 
         it('disconnects when the state is not JOINED', async () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
+          meeting.webex.internal.llm.off = sinon.stub();
+          meeting.processRelayEvent = sinon.stub();
 
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
@@ -5754,7 +5933,13 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.disconnectLLM);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
+          assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
         });
+
       });
 
       describe('#setLocus', () => {

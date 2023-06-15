@@ -2,7 +2,6 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {base64} from '@webex/common';
 import {
   ConnectionState,
   Errors,
@@ -1524,6 +1523,17 @@ export default class Meeting extends StatelessWebexPlugin {
         helpEvent
       );
     });
+
+    this.breakouts.on(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE, () => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpBreakoutsListener',
+        },
+        EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE
+      );
+    });
   }
 
   /**
@@ -2657,6 +2667,26 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
+          canShareFile: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareApplication: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareCamera: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareDesktop: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+            displayHints: payload.info.userDisplayHints,
+          }),
+          canShareContent: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -2902,10 +2932,23 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
-    // We need to reinitialize  when user upgrades to host or cohost
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE, (payload) => {
-      this.breakouts.queryPreAssignments(payload);
-      // ...
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
+      const isModeratorOrCohost =
+        payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
+        payload.newRoles?.includes(SELF_ROLES.COHOST);
+      this.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
+        {
+          payload,
+        }
+      );
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
@@ -4513,9 +4556,6 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           await this.updateLLMConnection();
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-          LoggerProxy.logger.info('Meeting:index#join --> enabled to receive relay events!');
         }
 
         return join;
@@ -4604,7 +4644,17 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // @ts-ignore - Fix type
-    return this.webex.internal.llm.registerAndConnect(url, datachannelUrl);
+    return this.webex.internal.llm
+      .registerAndConnect(url, datachannelUrl)
+      .then((registerAndConnectResult) => {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        LoggerProxy.logger.info(
+          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+        );
+
+        return Promise.resolve(registerAndConnectResult);
+      });
   }
 
   /**
@@ -5728,6 +5778,32 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       })
       .catch((error) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+          correlation_id: this.correlationId,
+          locus_id: this.locusUrl.split('/').pop(),
+          reason: error.message,
+          stack: error.stack,
+          code: error.code,
+          turnDiscoverySkippedReason,
+          turnServerUsed,
+          isMultistream: this.isMultistream,
+          signalingState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.signalingState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
+            'unknown',
+          connectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.connectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.connectionState ||
+            'unknown',
+          iceConnectionState:
+            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+              ?.iceConnectionState ||
+            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
+            'unknown',
+        });
+
         // Clean up stats analyzer, peer connection, and turn off listeners
         const stopStatsAnalyzer = this.statsAnalyzer
           ? this.statsAnalyzer.stopAnalyzer()
@@ -5745,17 +5821,6 @@ export default class Meeting extends StatelessWebexPlugin {
             `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
             error
           );
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            code: error.code,
-            turnDiscoverySkippedReason,
-            turnServerUsed,
-            isMultistream: this.isMultistream,
-          });
 
           // Upload logs on error while adding media
           Trigger.trigger(
@@ -7563,6 +7628,32 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
     throw new Error('Webrtc media connection is missing, call addMedia() first');
+  }
+
+  /**
+   * Method to enable or disable the 'Music mode' effect on audio track
+   *
+   * @param {boolean} shouldEnableMusicMode
+   * @returns {Promise}
+   */
+  async enableMusicMode(shouldEnableMusicMode: boolean) {
+    this.checkMediaConnection();
+
+    if (!this.isMultistream) {
+      throw new Error('enableMusicMode() only supported with multistream');
+    }
+
+    if (shouldEnableMusicMode) {
+      await this.mediaProperties.webrtcMediaConnection.setCodecParameters(MediaType.AudioMain, {
+        maxaveragebitrate: '64000',
+        maxplaybackrate: '48000',
+      });
+    } else {
+      await this.mediaProperties.webrtcMediaConnection.deleteCodecParameters(MediaType.AudioMain, [
+        'maxaveragebitrate',
+        'maxplaybackrate',
+      ]);
+    }
   }
 
   /**

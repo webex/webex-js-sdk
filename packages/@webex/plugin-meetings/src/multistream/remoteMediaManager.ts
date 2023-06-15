@@ -96,6 +96,7 @@ const OnePlusFiveLayout: VideoLayout = {
 };
 
 // A layout with 2 big panes for 2 main active speakers and a strip of 6 small panes for other active speakers:
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TwoMainPlusSixSmallLayout: VideoLayout = {
   activeSpeakerVideoPaneGroups: [
     {
@@ -488,6 +489,20 @@ export class RemoteMediaManager extends EventsScope {
    */
   public getLayoutId(): LayoutId | undefined {
     return this.currentLayoutId;
+  }
+
+  /**
+   * sets the preferLiveVideo
+   */
+  public setPreferLiveVideo(preferLiveVideo: boolean) {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#setPreferLiveVideo --> setPreferLiveVideo is called to set preferLiveVideo to ${preferLiveVideo}`
+    );
+    this.config.video.preferLiveVideo = preferLiveVideo;
+    Object.values(this.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
+      activeSpeakerGroup.setPreferLiveVideo(preferLiveVideo, false);
+    });
+    this.mediaRequestManagers.video.commit();
   }
 
   /**

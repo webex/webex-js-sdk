@@ -64,6 +64,11 @@ interface IInMeetingActions {
   canDisableRaiseHand?: boolean;
   canEnableVideo?: boolean;
   canDisableVideo?: boolean;
+  canShareFile?: boolean;
+  canShareApplication?: boolean;
+  canShareCamera?: boolean;
+  canShareDesktop?: boolean;
+  canShareContent?: boolean;
 }
 
 /**
@@ -182,6 +187,16 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canDisableVideo = null;
 
+  canShareFile = null;
+
+  canShareApplication = null;
+
+  canShareCamera = null;
+
+  canShareDesktop = null;
+
+  canShareContent = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -242,6 +257,11 @@ export default class InMeetingActions implements IInMeetingActions {
     canDisableRaiseHand: this.canDisableRaiseHand,
     canEnableVideo: this.canEnableVideo,
     canDisableVideo: this.canDisableVideo,
+    canShareFile: this.canShareFile,
+    canShareApplication: this.canShareApplication,
+    canShareCamera: this.canShareCamera,
+    canShareDesktop: this.canShareDesktop,
+    canShareContent: this.canShareContent,
   });
 
   /**
