@@ -381,6 +381,23 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
+  it('removes the events maxFsUpdate and sourceUpdate when cancelRequest() is called', () => {
+
+    const requestId = addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p);
+
+    mediaRequestManager.cancelRequest(requestId, true);
+
+    const sourceUpdateHandler = fakeReceiveSlots[2].off.getCall(0);
+
+    const maxFsHandlerCall = fakeReceiveSlots[2].off.getCall(1);
+
+    const maxFsEventName = maxFsHandlerCall.args[0];
+    const sourceUpdateEventName = sourceUpdateHandler.args[0];
+
+    assert.equal(maxFsEventName, 'maxFsUpdate')
+    assert.equal(sourceUpdateEventName, 'sourceUpdate')
+  });
+
   it('cancels the requests correctly when cancelRequest() is called with commit=true', () => {
     const requestIds = [
       addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]], MAX_FS_720p),
