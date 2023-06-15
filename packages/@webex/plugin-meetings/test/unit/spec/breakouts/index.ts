@@ -1255,6 +1255,38 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('hasBreakoutLocked', () => {
+      it('has breakout locked is true', async () => {
+        breakouts.editLock = {
+          ttl: 30,
+          token: 'token',
+          state: 'LOCKED',
+        };
+
+        assert.equal(breakouts.hasBreakoutLocked(), true);
+      });
+
+      it('breakout locked by others', async () => {
+        breakouts.editLock = {
+          ttl: 30,
+          token: '',
+          state: 'LOCKED',
+        };
+
+        assert.equal(breakouts.hasBreakoutLocked(), false);
+      });
+
+      it('breakout not locked', async () => {
+        breakouts.editLock = {
+          ttl: 30,
+          token: '',
+          state: 'UNLOCKED',
+        };
+
+        assert.equal(breakouts.hasBreakoutLocked(), false);
+      });
+    });
+
     describe('lockBreakout', () => {
       it('lock breakout is true', async () => {
         breakouts.editLock = {
