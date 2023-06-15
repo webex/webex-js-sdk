@@ -144,7 +144,7 @@ describe('internal-plugin-metrics', () => {
 
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-      const clearEmptyStub = sinon.stub(Utils, 'clearEmpty');
+      const clearEmptyKeysRecursivelyStub = sinon.stub(Utils, 'clearEmptyKeysRecursively');
 
       const res = cd.prepareDiagnosticEvent(
         {
@@ -156,7 +156,7 @@ describe('internal-plugin-metrics', () => {
       );
 
       assert.calledWith(getOriginStub, options, options.meetingId);
-      assert.calledOnce(clearEmptyStub);
+      assert.calledOnce(clearEmptyKeysRecursivelyStub);
       assert.deepEqual(res, {
         event: {
           canProceed: false,
