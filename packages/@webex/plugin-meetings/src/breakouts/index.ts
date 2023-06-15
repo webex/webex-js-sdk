@@ -700,6 +700,18 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * breakout edit locked by yourself or not
+   * @returns {boolean}
+   */
+  hasBreakoutLocked() {
+    return (
+      this.editLock &&
+      this.editLock.token &&
+      this.editLock.state === BREAKOUTS.EDIT_LOCK_STATUS.LOCKED
+    );
+  },
+
+  /**
    * send breakout edit lock
    * @returns {void}
    */
