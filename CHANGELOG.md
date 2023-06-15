@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.54.2](https://github.com/webex/webex-js-sdk/compare/v2.54.1...v2.54.2) (2023-06-15)
+
+
+### Bug Fixes
+
+* move runtime-corejs2 to dependency from devDependency ([#2880](https://github.com/webex/webex-js-sdk/issues/2880)) ([3d27e47](https://github.com/webex/webex-js-sdk/commit/3d27e4756c89a21d6b4db262f3068135c4cae813))
+
 ### [2.54.1](https://github.com/webex/webex-js-sdk/compare/v2.54.0...v2.54.1) (2023-06-12)
 
 
