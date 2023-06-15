@@ -60,7 +60,7 @@ export const userAgentToString = ({clientName, webexVersion}) => {
  * @param obj - input
  * @returns
  */
-export const clearEmpty = (obj: any) => {
+export const clearEmptyKeysRecursively = (obj: any) => {
   // Check if the object is empty
   if (Object.keys(obj).length === 0) {
     return;
@@ -77,7 +77,7 @@ export const clearEmpty = (obj: any) => {
       obj[key] = [...obj[key].filter((x) => !!x)];
     }
     if (typeof obj[key] === 'object') {
-      clearEmpty(obj[key]);
+      clearEmptyKeysRecursively(obj[key]);
     }
   });
 };

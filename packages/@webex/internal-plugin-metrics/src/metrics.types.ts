@@ -52,3 +52,7 @@ export type RecursivePartial<T> = {
 };
 
 export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent};
+
+export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
+export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
+export type NetworkType = RawEvent['origin']['networkType'];

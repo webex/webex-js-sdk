@@ -1,5 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-import {anonymizeIPAddress, clearEmpty, userAgentToString} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
+import {anonymizeIPAddress, clearEmptyKeysRecursively, userAgentToString} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import sinon from 'sinon';
 import * as anonymize from 'ip-anonymize';
 
@@ -21,7 +21,7 @@ describe('internal-plugin-metrics', () => {
   //   })
   // })
 
-  describe('clearEmpty', () => {
+  describe('clearEmptyKeysRecursively', () => {
     it('should clear empty objects and empty nested objects recursively', () => {
       const obj = {
         foo: '',
@@ -32,7 +32,7 @@ describe('internal-plugin-metrics', () => {
           arr: ['test'],
         },
       };
-      clearEmpty(obj);
+      clearEmptyKeysRecursively(obj);
       console.log(obj);
       assert.deepEqual(obj, {nested: {arr: ['test']}});
     });
@@ -42,7 +42,7 @@ describe('internal-plugin-metrics', () => {
         foo: 'bar',
         arr: [1, 2, 3],
       };
-      clearEmpty(obj);
+      clearEmptyKeysRecursively(obj);
       assert.deepEqual(obj, {foo: 'bar', arr: [1, 2, 3]});
     });
 
@@ -51,7 +51,7 @@ describe('internal-plugin-metrics', () => {
         prop1: 'value1',
         prop2: 123,
       };
-      clearEmpty(obj);
+      clearEmptyKeysRecursively(obj);
       assert.deepEqual(obj, {prop1: 'value1', prop2: 123});
     });
 
@@ -62,13 +62,13 @@ describe('internal-plugin-metrics', () => {
           baz: [],
         },
       };
-      clearEmpty(obj);
+      clearEmptyKeysRecursively(obj);
       assert.deepEqual(obj, {foo: {}});
     });
 
     it('should handle an empty input object', () => {
       const obj = {};
-      clearEmpty(obj);
+      clearEmptyKeysRecursively(obj);
       assert.deepEqual(obj, {});
     });
   });

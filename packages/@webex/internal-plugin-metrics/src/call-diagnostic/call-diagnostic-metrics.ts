@@ -4,19 +4,22 @@ import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
-import {anonymizeIPAddress, clearEmpty, userAgentToString} from './call-diagnostic-metrics.util';
+import {
+  anonymizeIPAddress,
+  clearEmptyKeysRecursively,
+  userAgentToString,
+} from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
-import {Event as RawEvent} from './generated-types-temp/Event';
 import {ClientEvent} from './generated-types-temp/ClientEvent';
-import {RecursivePartial, Event} from '../metrics.types';
+import {RecursivePartial, Event, ClientType, SubClientType, NetworkType} from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 type GetOriginOptions = {
-  clientType: NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
-  subClientType: NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
-  networkType?: RawEvent['origin']['networkType'];
+  clientType: ClientType;
+  subClientType: SubClientType;
+  networkType?: NetworkType;
 };
 
 type GetIdentifiersOptions = {
@@ -177,7 +180,7 @@ export default class CallDiagnosticMetrics {
     };
 
     // clear any empty properties on the event object (required by CA)
-    clearEmpty(event);
+    clearEmptyKeysRecursively(event);
 
     return event;
   }
@@ -202,13 +205,12 @@ export default class CallDiagnosticMetrics {
   /**
    * Submit Client Event CA event.
    * @param event - event key
-   * @param payload - payload for the event
+   * @param payload - additional payload to be merged with default payload
    * @param options - payload
    * @throws
    */
   public submitClientEvent({
     name,
-    // additional payload to be merged with default payload
     payload,
     options,
   }: {
