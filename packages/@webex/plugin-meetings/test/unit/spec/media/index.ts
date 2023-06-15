@@ -35,10 +35,10 @@ describe('createMediaConnection', () => {
     Media.createMediaConnection(false, 'some debug id', {
       mediaProperties: {
         mediaDirection: {
-          sendAudio: true,
+          sendAudio: false,
           sendVideo: true,
           sendShare: false,
-          receiveAudio: true,
+          receiveAudio: false,
           receiveVideo: true,
           receiveShare: true,
         },
@@ -88,9 +88,9 @@ describe('createMediaConnection', () => {
           screenShareVideo: undefined,
         },
         receive: {
-          audio: true,
-          video: true,
-          screenShareVideo: true,
+          audio: 'inactive',
+          video: 'sendrecv',
+          screenShareVideo: 'recvonly',
           remoteQualityLevel: 'HIGH',
         },
       },
@@ -291,9 +291,9 @@ describe('createMediaConnection', () => {
           screenShareVideo: fakeVideoTrack.underlyingTrack,
         },
         receive: {
-          audio: true,
-          video: true,
-          screenShareVideo: true,
+          audio: 'sendrecv',
+          video: 'sendrecv',
+          screenShareVideo: 'sendrecv',
           remoteQualityLevel: 'HIGH',
         },
       },

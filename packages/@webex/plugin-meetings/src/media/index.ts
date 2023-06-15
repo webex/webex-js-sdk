@@ -77,6 +77,22 @@ Media.getLocalMedia = (options: any, config: object) => {
   return Promise.resolve(undefined);
 };
 
+Media.getDirection = (receive: boolean, send: boolean) => {
+  if (!receive && !send) {
+    return 'inactive';
+  }
+
+  if (receive && send) {
+    return 'sendrecv';
+  }
+
+  if (receive) {
+    return 'recvonly';
+  }
+
+  return 'sendonly';
+};
+
 /**
  * creates a webrtc media connection with provided tracks and mediaDirection configuration
  *
@@ -186,9 +202,9 @@ Media.createMediaConnection = (
         screenShareVideo: shareTrack?.underlyingTrack,
       },
       receive: {
-        audio: mediaDirection.receiveAudio,
-        video: mediaDirection.receiveVideo,
-        screenShareVideo: mediaDirection.receiveShare,
+        audio: Media.getDirection(mediaDirection.receiveAudio, mediaDirection.sendAudio),
+        video: Media.getDirection(mediaDirection.receiveVideo, mediaDirection.sendVideo),
+        screenShareVideo: Media.getDirection(mediaDirection.receiveShare, mediaDirection.sendShare),
         remoteQualityLevel,
       },
     },

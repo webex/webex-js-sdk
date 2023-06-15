@@ -2333,9 +2333,9 @@ describe('plugin-meetings', () => {
                     {
                       send: {audio: FAKE_AUDIO_TRACK},
                       receive: {
-                        audio: true,
-                        video: true,
-                        screenShareVideo: true,
+                        audio: 'sendrecv',
+                        video: 'sendrecv',
+                        screenShareVideo: 'recvonly',
                         remoteQualityLevel: 'HIGH',
                       },
                     }
@@ -2517,9 +2517,9 @@ describe('plugin-meetings', () => {
                 screenShareVideo: FAKE_TRACKS.screenshareVideo,
               },
               receive: {
-                audio: true,
-                video: true,
-                screenShareVideo: true,
+                audio: 'sendrecv',
+                video: 'sendrecv',
+                screenShareVideo: 'sendrecv',
                 remoteQualityLevel: 'HIGH',
               },
             }

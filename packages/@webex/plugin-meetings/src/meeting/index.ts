@@ -6007,9 +6007,18 @@ export default class Meeting extends StatelessWebexPlugin {
                 : null,
             },
             receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveShare,
+                this.mediaProperties.mediaDirection.sendShare
+              ),
               remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
             },
           })
@@ -6099,9 +6108,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
           send: {audio: track},
           receive: {
-            audio: options.receiveAudio,
-            video: this.mediaProperties.mediaDirection.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+            audio: Media.getDirection(receiveAudio, sendAudio),
+            video: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveVideo,
+              this.mediaProperties.mediaDirection.sendVideo
+            ),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
             remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           },
         })
@@ -6156,9 +6171,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
           send: {video: track},
           receive: {
-            audio: this.mediaProperties.mediaDirection.receiveAudio,
-            video: options.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+            audio: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveAudio,
+              this.mediaProperties.mediaDirection.sendAudio
+            ),
+            video: Media.getDirection(receiveVideo, sendVideo),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
             remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           },
         })
@@ -6244,9 +6265,15 @@ export default class Meeting extends StatelessWebexPlugin {
           .updateSendReceiveOptions({
             send: {screenShareVideo: track},
             receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: options.receiveShare,
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(receiveShare, sendShare),
               remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
             },
           })
