@@ -97,6 +97,53 @@ describe('RemoteMediaGroup', () => {
     });
   });
 
+  describe('setPreferLiveVideo', () => {
+    it('updates prefer live video', () => {
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: false,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            preferLiveVideo: true
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        }),
+        false,
+      );
+    });
+
+    it('does not call add request when prefer live video has not changed', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
+
+      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+
+      assert.notCalled(fakeMediaRequestManager.addRequest);
+    });
+
+  });
+
   describe('pinning', () => {
     it('works as expected', () => {
       const PINNED_INDEX = 2;
