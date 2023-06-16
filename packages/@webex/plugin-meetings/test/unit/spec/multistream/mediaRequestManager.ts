@@ -5,6 +5,8 @@ import {assert} from '@webex/test-helper-chai';
 import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as mediaCore from '@webex/internal-media-core';
+import { assertFunction } from '@babel/types';
+import { expect } from 'chai';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -79,7 +81,7 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false) =>
+  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false) => 
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -381,7 +383,7 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('removes the events maxFsUpdate and sourceUpdate when cancelRequest() is called', () => {
+  it('removes the events maxFsUpdate and sourceUpdate when cancelRequest() is called', async () => {
 
     const requestId = addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p);
 
@@ -393,6 +395,9 @@ describe('MediaRequestManager', () => {
 
     const maxFsEventName = maxFsHandlerCall.args[0];
     const sourceUpdateEventName = sourceUpdateHandler.args[0];
+
+    expect(sourceUpdateHandler.args[1]).to.be.a('function');
+    expect(maxFsHandlerCall.args[1]).to.be.a('function');
 
     assert.equal(maxFsEventName, 'maxFsUpdate')
     assert.equal(sourceUpdateEventName, 'sourceUpdate')
@@ -1075,3 +1080,7 @@ describe('MediaRequestManager', () => {
     });
   });
 });
+function assertEqual(arg0: any, arg1: string) {
+  throw new Error('Function not implemented.');
+}
+
