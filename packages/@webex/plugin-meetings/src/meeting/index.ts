@@ -5994,8 +5994,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.preMedia(localStream, localShare, mediaSettings))
       .then(() =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {
+          .update({
+            localTracks: {
               audio: this.mediaProperties.mediaDirection.sendAudio
                 ? this.mediaProperties.audioTrack.underlyingTrack
                 : null,
@@ -6006,17 +6006,24 @@ export default class Meeting extends StatelessWebexPlugin {
                 ? this.mediaProperties.shareTrack.underlyingTrack
                 : null,
             },
-            receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+            direction: {
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveShare,
+                this.mediaProperties.mediaDirection.sendShare
+              ),
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() => {
-            LoggerProxy.logger.info(
-              `${LOG_HEADER} webrtcMediaConnection.updateSendReceiveOptions done`
-            );
+            LoggerProxy.logger.info(`${LOG_HEADER} webrtcMediaConnection.update done`);
           })
           .catch((error) => {
             LoggerProxy.logger.error(`${LOG_HEADER} Error updatedMedia, `, error);
@@ -6096,14 +6103,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {audio: track},
-          receive: {
-            audio: options.receiveAudio,
-            video: this.mediaProperties.mediaDirection.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {audio: track},
+          direction: {
+            audio: Media.getDirection(receiveAudio, sendAudio),
+            video: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveVideo,
+              this.mediaProperties.mediaDirection.sendVideo
+            ),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6153,14 +6166,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendVideo, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {video: track},
-          receive: {
-            audio: this.mediaProperties.mediaDirection.receiveAudio,
-            video: options.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {video: track},
+          direction: {
+            audio: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveAudio,
+              this.mediaProperties.mediaDirection.sendAudio
+            ),
+            video: Media.getDirection(receiveVideo, sendVideo),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6241,14 +6260,20 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.checkForStopShare(sendShare, previousSendShareStatus))
       .then((startShare) =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {screenShareVideo: track},
-            receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: options.receiveShare,
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+          .update({
+            localTracks: {screenShareVideo: track},
+            direction: {
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(receiveShare, sendShare),
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() =>
             this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
