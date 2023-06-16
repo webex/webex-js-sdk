@@ -29,7 +29,7 @@ interface IAnnotationChannel {
   acceptRequest: (approval) => undefined | Promise<void>;
   declineRequest: (approval) => undefined | Promise<void>;
   closeAnnotation: (requestData: RequestData) => undefined | Promise<void>;
-  changeAnnotationOptions: (options, meeting) => undefined | Promise<void>;
+  changeAnnotationOptions: (remoteShareUrl, annotationInfo) => undefined | Promise<void>;
   // === below is for attendee
   approveAnnotation: (requestData: RequestData) => undefined | Promise<void>;
   cancelApproveAnnotation: (requestData: RequestData, approval) => undefined | Promise<void>;

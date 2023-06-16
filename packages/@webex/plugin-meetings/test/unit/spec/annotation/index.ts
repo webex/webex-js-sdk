@@ -341,20 +341,21 @@ describe('live-annotation', () => {
       });
 
       describe('change annotation options', () => {
-        it('makes change annotation options as expected', () => {
-          const options =  {
+        it('makes change annotation options as expected', async() => {
+          const options =  { annotationInfo:{
               version: '1',
               policy: 'AnnotationNotAllowed',
-          };
-          const meeting = {
-            meetingRequest : {
-              changeMeetingFloor: () => {
-              }
-            }
-          }
-          sinon.spy(meeting.meetingRequest, 'changeMeetingFloor');
-          annotationService.changeAnnotationOptions(options,meeting);
-          assert.calledOnceWithExactly(meeting.meetingRequest.changeMeetingFloor, options);
+          }};
+
+          const remoteShareUrl = 'remoteShareUrl';
+          const result = await annotationService.changeAnnotationOptions(remoteShareUrl,options);
+          assert.calledOnceWithExactly(webex.request, {
+              method: 'PATCH',
+              url: 'remoteShareUrl',
+              body: {annotationInfo: { version: '1', policy: 'AnnotationNotAllowed' }}
+          });
+
+        //  assert.calledOnceWithExactly(meeting.meetingRequest.changeMeetingFloor, options);
         });
       });
 
