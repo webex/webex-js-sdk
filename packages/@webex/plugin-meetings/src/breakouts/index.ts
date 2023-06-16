@@ -461,9 +461,9 @@ const Breakouts = WebexPlugin.extend({
   async toggleBreakout(enable) {
     if (this.enableBreakoutSession === undefined) {
       const info = await this.enableBreakouts();
+      // first time enable, set the initial data
+      this.updateBreakout(info?.body);
       if (!enable) {
-        // if enable is false, updateBreakout set the param then set enableBreakoutSession as false
-        this.updateBreakout(info.body);
         await this.doToggleBreakout(enable);
       }
     } else {
@@ -697,6 +697,18 @@ const Breakouts = WebexPlugin.extend({
         this.lockBreakout();
       }
     }
+  },
+
+  /**
+   * breakout edit locked by yourself or not
+   * @returns {boolean}
+   */
+  hasBreakoutLocked() {
+    return (
+      this.editLock &&
+      this.editLock.token &&
+      this.editLock.state === BREAKOUTS.EDIT_LOCK_STATUS.LOCKED
+    );
   },
 
   /**

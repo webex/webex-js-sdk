@@ -2714,6 +2714,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {String} datachannelUrl
    * @returns {void}
    */
+
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
     if (datachannelUrl && this.config.enableAutomaticLLM) {
@@ -4647,6 +4648,8 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, datachannelUrl)
       .then((registerAndConnectResult) => {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
         LoggerProxy.logger.info(
