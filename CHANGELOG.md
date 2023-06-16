@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.141](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.140...v3.0.0-beta.141) (2023-06-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove listeners ([#2883](https://github.com/webex/webex-js-sdk/issues/2883)) ([f667d41](https://github.com/webex/webex-js-sdk/commit/f667d417fff02c07418de57b7d47bd41ce7b65cf))
+
 ## [3.0.0-beta.140](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.139...v3.0.0-beta.140) (2023-06-15)
 
 ## [3.0.0-beta.139](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.138...v3.0.0-beta.139) (2023-06-15)
