@@ -5994,8 +5994,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.preMedia(localStream, localShare, mediaSettings))
       .then(() =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {
+          .update({
+            localTracks: {
               audio: this.mediaProperties.mediaDirection.sendAudio
                 ? this.mediaProperties.audioTrack.underlyingTrack
                 : null,
@@ -6006,7 +6006,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 ? this.mediaProperties.shareTrack.underlyingTrack
                 : null,
             },
-            receive: {
+            direction: {
               audio: Media.getDirection(
                 this.mediaProperties.mediaDirection.receiveAudio,
                 this.mediaProperties.mediaDirection.sendAudio
@@ -6019,13 +6019,11 @@ export default class Meeting extends StatelessWebexPlugin {
                 this.mediaProperties.mediaDirection.receiveShare,
                 this.mediaProperties.mediaDirection.sendShare
               ),
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() => {
-            LoggerProxy.logger.info(
-              `${LOG_HEADER} webrtcMediaConnection.updateSendReceiveOptions done`
-            );
+            LoggerProxy.logger.info(`${LOG_HEADER} webrtcMediaConnection.update done`);
           })
           .catch((error) => {
             LoggerProxy.logger.error(`${LOG_HEADER} Error updatedMedia, `, error);
@@ -6105,9 +6103,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {audio: track},
-          receive: {
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {audio: track},
+          direction: {
             audio: Media.getDirection(receiveAudio, sendAudio),
             video: Media.getDirection(
               this.mediaProperties.mediaDirection.receiveVideo,
@@ -6117,8 +6115,8 @@ export default class Meeting extends StatelessWebexPlugin {
               this.mediaProperties.mediaDirection.receiveShare,
               this.mediaProperties.mediaDirection.sendShare
             ),
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6168,9 +6166,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendVideo, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {video: track},
-          receive: {
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {video: track},
+          direction: {
             audio: Media.getDirection(
               this.mediaProperties.mediaDirection.receiveAudio,
               this.mediaProperties.mediaDirection.sendAudio
@@ -6180,8 +6178,8 @@ export default class Meeting extends StatelessWebexPlugin {
               this.mediaProperties.mediaDirection.receiveShare,
               this.mediaProperties.mediaDirection.sendShare
             ),
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6262,9 +6260,9 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.checkForStopShare(sendShare, previousSendShareStatus))
       .then((startShare) =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {screenShareVideo: track},
-            receive: {
+          .update({
+            localTracks: {screenShareVideo: track},
+            direction: {
               audio: Media.getDirection(
                 this.mediaProperties.mediaDirection.receiveAudio,
                 this.mediaProperties.mediaDirection.sendAudio
@@ -6274,8 +6272,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 this.mediaProperties.mediaDirection.sendVideo
               ),
               screenShareVideo: Media.getDirection(receiveShare, sendShare),
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() =>
             this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {

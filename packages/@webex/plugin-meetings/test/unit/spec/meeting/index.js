@@ -2313,11 +2313,11 @@ describe('plugin-meetings', () => {
                 receiveShare: true,
               };
               meeting.mediaProperties.webrtcMediaConnection = {
-                updateSendReceiveOptions: sinon.stub(),
+                update: sinon.stub(),
               };
               sinon.stub(MeetingUtil, 'getTrack').returns({audioTrack: FAKE_AUDIO_TRACK});
             });
-            it('calls this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions', () =>
+            it('calls this.mediaProperties.webrtcMediaConnection.update', () =>
               meeting
                 .updateAudio({
                   sendAudio: true,
@@ -2326,18 +2326,18 @@ describe('plugin-meetings', () => {
                 })
                 .then(() => {
                   assert.calledOnce(
-                    meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions
+                    meeting.mediaProperties.webrtcMediaConnection.update
                   );
                   assert.calledWith(
-                    meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions,
+                    meeting.mediaProperties.webrtcMediaConnection.update,
                     {
-                      send: {audio: FAKE_AUDIO_TRACK},
-                      receive: {
+                      localTracks: {audio: FAKE_AUDIO_TRACK},
+                      direction: {
                         audio: 'sendrecv',
                         video: 'sendrecv',
                         screenShareVideo: 'recvonly',
-                        remoteQualityLevel: 'HIGH',
                       },
+                      remoteQualityLevel: 'HIGH',
                     }
                   );
                 }));
@@ -2481,7 +2481,7 @@ describe('plugin-meetings', () => {
 
           sandbox.stub(meeting, 'canUpdateMedia').returns(false);
           meeting.mediaProperties.webrtcMediaConnection = {
-            updateSendReceiveOptions: sinon.stub().resolves({}),
+            update: sinon.stub().resolves({}),
           };
 
           let myPromiseResolved = false;
@@ -2497,7 +2497,7 @@ describe('plugin-meetings', () => {
             });
 
           // verify that nothing was done
-          assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.update);
 
           // now trigger processing of the queue
           meeting.canUpdateMedia.restore();
@@ -2506,22 +2506,22 @@ describe('plugin-meetings', () => {
           meeting.processNextQueuedMediaUpdate();
           await testUtils.flushPromises();
 
-          // and check that updateSendReceiveOptions is called with the original args
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          // and check that update is called with the original args
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.calledWith(
-            meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions,
+            meeting.mediaProperties.webrtcMediaConnection.update,
             {
-              send: {
+              localTracks: {
                 audio: FAKE_TRACKS.audio,
                 video: FAKE_TRACKS.video,
                 screenShareVideo: FAKE_TRACKS.screenshareVideo,
               },
-              receive: {
+              direction: {
                 audio: 'sendrecv',
                 video: 'sendrecv',
                 screenShareVideo: 'sendrecv',
-                remoteQualityLevel: 'HIGH',
               },
+              remoteQualityLevel: 'HIGH',
             }
           );
           assert.isTrue(myPromiseResolved);
@@ -2544,8 +2544,8 @@ describe('plugin-meetings', () => {
               eventListeners[event] = listener;
             }),
 
-            updateSendReceiveOptions: sinon.stub().callsFake(() => {
-              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+            update: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before update() resolves
               if (eventListeners[Event.ROAP_STARTED]) {
                 eventListeners[Event.ROAP_STARTED]();
               } else {
@@ -2583,7 +2583,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.isFalse(myPromiseResolved);
 
           // verify that requestScreenShareFloorStub was not called yet
@@ -2636,8 +2636,8 @@ describe('plugin-meetings', () => {
               eventListeners[event] = listener;
             }),
 
-            updateSendReceiveOptions: sinon.stub().callsFake(() => {
-              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+            update: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before update() resolves
               if (eventListeners[Event.ROAP_STARTED]) {
                 eventListeners[Event.ROAP_STARTED]();
               } else {
@@ -2678,7 +2678,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.isFalse(myPromiseResolved);
 
           // verify that requestScreenShareFloorStub was not called yet
@@ -2694,8 +2694,8 @@ describe('plugin-meetings', () => {
         it('when changing screen share stream and no roap transaction happening, it requests floor immediately', async () => {
           let myPromiseResolved = false;
 
-          // simulate a case when no roap transaction is triggered by updateSendReceiveOptions
-          meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions = sinon
+          // simulate a case when no roap transaction is triggered by update
+          meeting.mediaProperties.webrtcMediaConnection.update = sinon
             .stub()
             .resolves({});
 
@@ -2711,7 +2711,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.calledOnce(requestScreenShareFloorStub);
           assert.isTrue(myPromiseResolved);
         });

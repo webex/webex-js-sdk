@@ -196,17 +196,17 @@ Media.createMediaConnection = (
       },
     },
     {
-      send: {
+      localTracks: {
         audio: audioTrack?.underlyingTrack,
         video: videoTrack?.underlyingTrack,
         screenShareVideo: shareTrack?.underlyingTrack,
       },
-      receive: {
+      direction: {
         audio: Media.getDirection(mediaDirection.receiveAudio, mediaDirection.sendAudio),
         video: Media.getDirection(mediaDirection.receiveVideo, mediaDirection.sendVideo),
         screenShareVideo: Media.getDirection(mediaDirection.receiveShare, mediaDirection.sendShare),
-        remoteQualityLevel,
       },
+      remoteQualityLevel,
     },
     debugId
   );

@@ -82,17 +82,17 @@ describe('createMediaConnection', () => {
         },
       },
       {
-        send: {
+        localTracks: {
           audio: fakeAudioTrack.underlyingTrack,
           video: fakeVideoTrack.underlyingTrack,
           screenShareVideo: undefined,
         },
-        receive: {
+        direction: {
           audio: 'inactive',
           video: 'sendrecv',
           screenShareVideo: 'recvonly',
-          remoteQualityLevel: 'HIGH',
         },
+        remoteQualityLevel: 'HIGH',
       },
       'some debug id'
     );
@@ -208,7 +208,7 @@ describe('createMediaConnection', () => {
       const multistreamRoapMediaConnectionConstructorStub = sinon
         .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
         .returns(fakeRoapMediaConnection);
-  
+
       Media.createMediaConnection(true, 'debug string', {
         mediaProperties: {
           mediaDirection: {
@@ -285,17 +285,17 @@ describe('createMediaConnection', () => {
         },
       },
       {
-        send: {
+        localTracks: {
           audio: fakeAudioTrack.underlyingTrack,
           video: undefined,
           screenShareVideo: fakeVideoTrack.underlyingTrack,
         },
-        receive: {
+        direction: {
           audio: 'sendrecv',
           video: 'sendrecv',
           screenShareVideo: 'sendrecv',
-          remoteQualityLevel: 'HIGH',
         },
+        remoteQualityLevel: 'HIGH',
       },
       'some debug id'
     );
