@@ -144,7 +144,10 @@ describe('live-annotation', () => {
 
         annotationService.eventDataProcessor({data: {relayType: 'annotation.client', request:{value:{encryptionKeyUrl:"encryptionKeyUrl"}}}});
 
-        assert.calledOnceWithExactly(spy, {value:{encryptionKeyUrl:"encryptionKeyUrl"}});
+        assert.calledOnceWithExactly(spy, {
+          relayType: 'annotation.client',
+          request: { value: { encryptionKeyUrl: 'encryptionKeyUrl' } }
+        } );
 
       });
 
@@ -153,7 +156,7 @@ describe('live-annotation', () => {
         const spy = sinon.spy();
         annotationService.on(EVENT_TRIGGERS.ANNOTATION_STROKE_DATA, spy);
 
-        await annotationService.processStrokeMessage({value:{encryptionKeyUrl: 'encryptionKeyUrl', content: 'content'}});
+        await annotationService.processStrokeMessage({request:{value:{encryptionKeyUrl: 'encryptionKeyUrl', content: 'content'}}});
 
         assert.calledOnceWithExactly(spy, {
           payload: {encryptionKeyUrl: 'encryptionKeyUrl', content: 'decryptedContent'},
