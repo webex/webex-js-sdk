@@ -1,26 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
-import {anonymizeIPAddress, clearEmptyKeysRecursively, userAgentToString} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import sinon from 'sinon';
-import * as anonymize from 'ip-anonymize';
-
+import {clearEmptyKeysRecursively} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 
 describe('internal-plugin-metrics', () => {
-  // describe('userAgentToString', () => {
-  //   it('returns the correct result', () => {
-  //     const res = userAgentToString({clientName: 'client-name', webexVersion: '123'});
-  //     assert.equal(res, 'webex-js-sdk/test-123 client=client-name; (os=linux/5)');
-  //   })
-  // })
-
-  // describe('anonymizeIPAddress', () => {
-  //   it('calls the correct function', () => {
-  //     const anonymizeSpy = sinon.stub(anonymize, 'default');
-  //     anonymizeIPAddress("1.1.1.1");
-  //     assert.calledOnce(anonymizeSpy)
-  //     assert.calledWith(anonymizeSpy, "1.1.1.1", 28, 96);
-  //   })
-  // })
-
   describe('clearEmptyKeysRecursively', () => {
     it('should clear empty objects and empty nested objects recursively', () => {
       const obj = {

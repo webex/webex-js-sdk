@@ -14,6 +14,7 @@ import {
   BehavioralEvent,
   OperationalEvent,
   MediaQualityEvent,
+  InternalEvent,
 } from './metrics.types';
 
 /**
@@ -65,8 +66,8 @@ class Metrics extends WebexPlugin {
     payload,
     options,
   }: {
-    name: BehavioralEvent['name'];
-    payload?: RecursivePartial<BehavioralEvent['payload']>;
+    name: InternalEvent['name'];
+    payload?: RecursivePartial<InternalEvent['payload']>;
     options: any;
   }) {
     throw new Error('Not implemented.');

@@ -12,7 +12,6 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
    */
   getBuildType(webClientDomain) {
     if (
-      webClientDomain?.includes('teams.webex.com') ||
       webClientDomain?.includes('localhost') ||
       webClientDomain?.includes('127.0.0.1') ||
       process.env.NODE_ENV !== 'production'
