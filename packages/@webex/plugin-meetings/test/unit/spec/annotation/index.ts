@@ -354,8 +354,7 @@ describe('live-annotation', () => {
               url: 'remoteShareUrl',
               body: {annotationInfo: { version: '1', policy: 'AnnotationNotAllowed' }}
           });
-
-        //  assert.calledOnceWithExactly(meeting.meetingRequest.changeMeetingFloor, options);
+          assert.equal(result, 'REQUEST_RETURN_VALUE')
         });
       });
 
