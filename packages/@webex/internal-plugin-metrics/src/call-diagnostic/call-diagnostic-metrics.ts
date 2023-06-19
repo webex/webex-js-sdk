@@ -270,14 +270,15 @@ export default class CallDiagnosticMetrics {
   /**
    * Prepare the event and send the request to metrics-a service.
    * @param event
+   * @returns promise
    */
-  submitToCallDiagnostics(event: Event) {
+  submitToCallDiagnostics(event: Event): Promise<any> {
     // build metrics-a event type
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
     };
 
-    this.callDiagnosticEventsBatcher.request(finalEvent);
+    return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
 }

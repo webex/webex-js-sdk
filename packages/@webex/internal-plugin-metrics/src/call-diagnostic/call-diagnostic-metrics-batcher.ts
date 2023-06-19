@@ -1,7 +1,10 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
+import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {isEmpty, merge} from 'lodash';
 import Batcher from '../batcher';
+import {ClientEvent, MetricEventNames} from '../metrics.types';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -32,6 +35,54 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
       buildType: this.getBuildType(item.event?.eventData?.webClientDomain),
       networkType: 'unknown',
     };
+
+    // check event names and append latencies?
+    const eventName = item.eventPayload?.event?.name as MetricEventNames;
+    const joinTimes: ClientEvent['payload']['joinTimes'] = {};
+    const cdl = NewMetrics.callDiagnosticLatencies;
+
+    switch (eventName) {
+      case 'client.interstitial-window.launched':
+        joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+        joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+        break;
+
+      case 'client.call.initiated':
+        joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+        joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
+        break;
+
+      case 'client.locus.join.response':
+        joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+        joinTimes.callInitJoinReq = cdl.getCallInitJoinReq();
+        joinTimes.joinReqResp = cdl.getJoinReqResp();
+        joinTimes.joinReqSentReceived = cdl.getJoinRespSentReceived();
+        joinTimes.pageJmt = cdl.getPageJMT();
+        joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+        joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();
+        joinTimes.totalJmt = cdl.getTotalJMT();
+        break;
+
+      case 'client.ice.end':
+        joinTimes.ICESetupTime = cdl.getICESetupTime();
+        joinTimes.audioICESetupTime = cdl.getAudioICESetupTime();
+        joinTimes.videoICESetupTime = cdl.getVideoICESetupTime();
+        joinTimes.shareICESetupTime = cdl.getShareICESetupTime();
+        break;
+
+      case 'client.media.rx.start':
+        joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+        break;
+
+      // TODO: Figure out equivalent for WEBRTC
+      case 'client.media-engine.ready':
+        joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
+        break;
+    }
+
+    if (!isEmpty(joinTimes)) {
+      item.eventPayload.event = merge(item.eventPayload.event, {joinTimes});
+    }
 
     item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 

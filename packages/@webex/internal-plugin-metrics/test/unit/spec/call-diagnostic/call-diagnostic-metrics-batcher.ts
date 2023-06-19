@@ -3,22 +3,12 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import FakeTimers from '@sinonjs/fake-timers';
 import Metrics, {config} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {WebexHttpError} from '@webex/webex-core';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 
-function promiseTick(count) {
-  let promise = Promise.resolve();
-
-  while (count > 1) {
-    promise = promise.then(() => promiseTick(1));
-    count -= 1;
-  }
-
-  return promise;
-}
+const flushPromises = () => new Promise(setImmediate);
 
 describe('plugin-metrics', () => {
   describe('CallDiagnosticEventsBatcher', () => {
@@ -32,174 +22,173 @@ describe('plugin-metrics', () => {
         },
       });
 
-      webex.config.metrics = config.metrics;
-
-      webex.request = function (options) {
-        return Promise.resolve({
-          statusCode: 204,
-          body: undefined,
-          options,
-        });
-      };
+      webex.request = (options) => Promise.resolve({body: {items: []}, options});
       sinon.spy(webex, 'request');
-    });
 
-    let clock;
+      NewMetrics.initialSetupCallDiagnosticMetrics({}, webex);
 
-    beforeEach(() => {
-      //@ts-ignore
-      clock = FakeTimers.install();
+      webex.config.metrics = config.metrics;
     });
 
     afterEach(() => {
-      clock.uninstall();
+      sinon.restore();
     });
 
     describe('#request()', () => {
-      describe('when the request completes successfully', () => {
-        it('clears the queue', () => {
-          clock.uninstall();
+      describe('when the request completes successfully', async () => {
+        it('clears the queue', async () => {
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.interstitial-window.launched'}}
+          );
+          await flushPromises();
 
-          return webex.internal.metrics.callDiagnosticEventsBatcher
-            .request({
-              type: 'diagnostic-event',
-              eventPayload: {
-                originTime: {
-                  triggered: 'mock triggered timestamp',
-                },
-              },
-            })
-            .then(() => {
-              //@ts-ignore
-              assert.calledOnce(webex.request);
-              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
-            });
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
         });
-      });
 
-      describe('when the request fails due to network disconnect', () => {
-        it('reenqueues the payload', () => {
-          // sinon appears to have gap in its api where stub.onCall(n) doesn't
-          // accept a function, so the following is more verbose than one might
-          // desire
-          webex.request = function () {
-            // noop
-          };
-          let count = 0;
+        it('doesnt include any joinTimes for other events', async () => {
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.alert.displayed'}}
+          );
+          await flushPromises();
 
-          sinon.stub(webex, 'request').callsFake((options) => {
-            options.headers = {
-              trackingid: count,
-            };
-
-            count += 1;
-            if (count < 9) {
-              return Promise.reject(
-                new WebexHttpError.NetworkOrCORSError({
-                  statusCode: 0,
-                  options,
-                })
-              );
-            }
-
-            return Promise.resolve({
-              statusCode: 204,
-              body: undefined,
-              options,
-            });
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.alert.displayed',
           });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
 
-          const promise = webex.internal.metrics.callDiagnosticEventsBatcher.request({
-            type: 'diagnostic-event',
-            eventPayload: {
-              originTime: {
-                triggered: 'mock triggered timestamp',
-              },
+        it('appends the correct join times to the request for client.interstitial-window.launched', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.interstitial-window.launched'}}
+          );
+          await flushPromises();
+
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.interstitial-window.launched',
+            joinTimes: {
+              clickToInterstitial: 10,
+              meetingInfoReqResp: 10,
             },
           });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
 
-          return promiseTick(50)
-            .then(() =>
-              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 1)
-            )
-            .then(() => clock.tick(config.metrics.batcherWait))
-             //@ts-ignore
-            .then(() => assert.calledOnce(webex.request))
-
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(1000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
+        it('appends the correct join times to the request for client.call.initiated', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
-            .then(() => assert.calledTwice(webex.request))
+            {event: {name: 'client.call.initiated'}}
+          );
+          await flushPromises();
 
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(2000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.call.initiated',
+            joinTimes: {
+              meetingInfoReqResp: 10,
+              showInterstitialTime: 10,
+            },
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
+
+        it('appends the correct join times to the request for client.locus.join.response', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          NewMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon.stub().returns(20);
+          NewMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
-            .then(() => assert.calledThrice(webex.request))
+            {event: {name: 'client.locus.join.response'}}
+          );
+          await flushPromises();
 
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(4000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.locus.join.response',
+            joinTimes: {
+              callInitJoinReq: 10,
+              clickToInterstitial: 10,
+              interstitialToJoinOK: 10,
+              joinReqResp: 10,
+              joinReqSentReceived: 20,
+              meetingInfoReqResp: 10,
+              pageJmt: 30,
+              totalJmt: 20,
+            },
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
+
+        it('appends the correct join times to the request for client.ice.end', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
-            .then(() => assert.callCount(webex.request, 4))
+            {event: {name: 'client.ice.end'}}
+          );
+          await flushPromises();
 
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(8000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.ice.end',
+            joinTimes: {
+              ICESetupTime: 10,
+              audioICESetupTime: 10,
+              shareICESetupTime: 10,
+              videoICESetupTime: 10,
+            },
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
+
+        it('appends the correct join times to the request for client.media.rx.start', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
-            .then(() => assert.callCount(webex.request, 5))
+            {event: {name: 'client.media.rx.start'}}
+          );
+          await flushPromises();
 
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(16000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.media.rx.start',
+            joinTimes: {
+              localSDPGenRemoteSDPRecv: 10,
+            },
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
+
+        it('appends the correct join times to the request for client.media-engine.ready', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
-            .then(() => assert.callCount(webex.request, 6))
+            {event: {name: 'client.media-engine.ready'}}
+          );
+          await flushPromises();
 
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(32000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
-            //@ts-ignore
-            .then(() => assert.callCount(webex.request, 7))
-
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(32000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
-            //@ts-ignore
-            .then(() => assert.callCount(webex.request, 8))
-
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(32000))
-            .then(() => promiseTick(50))
-            .then(() => clock.tick(config.metrics.batcherWait))
-            //@ts-ignore
-            .then(() => assert.callCount(webex.request, 9))
-
-            .then(() => promiseTick(50))
-            .then(() =>
-              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0)
-            )
-            .then(() => promise)
-            .then(() => {
-              assert.lengthOf(
-                webex.request.args[1][0].body.metrics,
-                1,
-                'Reenqueuing the metric once did not increase the number of metrics to be submitted'
-              );
-              assert.lengthOf(
-                webex.request.args[2][0].body.metrics,
-                1,
-                'Reenqueuing the metric twice did not increase the number of metrics to be submitted'
-              );
-              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
-            });
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.media-engine.ready',
+            joinTimes: {
+              totalMediaJMT: 40,
+            },
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
         });
       });
     });
