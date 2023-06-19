@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {CallErrorObject, ErrorContext, ErrorMessage, ERROR_LAYER, ERROR_TYPE} from '../types';
 import ExtendedError from './ExtendedError';
 import {CorrelationId} from '../../common/types';

@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 // eslint-disable-next-line
 const typescriptTransform = require('karma-typescript-es6-transform');
 // eslint-disable-next-line

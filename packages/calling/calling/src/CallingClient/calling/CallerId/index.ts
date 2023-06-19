@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable no-underscore-dangle */
 import {CallerIdInfo} from '../../../Events/types';
 import {ISDKConnector, WebexSDK} from '../../../SDKConnector/types';

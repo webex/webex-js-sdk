@@ -4,4 +4,4 @@
 
 . "$(dirname "$0")/_/husky.sh"
 
-yarn run --silent srcdist && yarn run --silent lint:staged && yarn workspace @webex/calling run lint
+yarn run --silent srcdist && yarn run --silent lint:staged

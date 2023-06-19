@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable no-await-in-loop */
 import {STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';

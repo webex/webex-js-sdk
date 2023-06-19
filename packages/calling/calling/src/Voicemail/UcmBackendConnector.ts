@@ -1,8 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable jsdoc/require-returns-type */
-/* eslint-disable jsdoc/require-param-type */
-/* eslint-disable jsdoc/require-returns */
-/* eslint-disable jsdoc/require-description */
+/* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {WebexRequestPayload, SORT, HTTP_METHODS, DisplayInformation} from '../common/types';

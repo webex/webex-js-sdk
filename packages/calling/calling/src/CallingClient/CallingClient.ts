@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable valid-jsdoc */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
 import {emitFinalFailure, handleErrors} from '../common/Utils';

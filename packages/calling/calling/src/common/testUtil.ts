@@ -4,6 +4,7 @@
  In our respective UTs, we can specify the return values of these functions
  using webex.request.mockReturnValue() or webex.request.mockReturnValueOnce().
 */
+/* eslint-disable valid-jsdoc */
 import {MediaConnectionConfig} from '@webex/internal-media-core/dist/types/MediaConnection';
 import {ReceiveOptions} from '@webex/internal-media-core/dist/types/MediaConnection/MediaConnection';
 import platform from 'platform';

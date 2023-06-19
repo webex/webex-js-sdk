@@ -37,4 +37,4 @@ umd/
 types/
 webex.min.js
 *.yml
-packages/calling
+packages/calling/calling/docs/

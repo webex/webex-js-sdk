@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {RoapMediaConnection, Event} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';

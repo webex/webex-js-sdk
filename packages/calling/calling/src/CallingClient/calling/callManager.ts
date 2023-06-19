@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable dot-notation */
 import {CALL_MANAGER_FILE} from '../constants';
 import {CallEventTypes, EVENT_KEYS} from '../../Events/types';

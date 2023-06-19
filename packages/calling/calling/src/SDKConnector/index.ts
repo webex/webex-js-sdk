@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {WebexRequestPayload} from '../common/types';
 import {ISDKConnector, WebexSDK} from './types';
 /* eslint-disable class-methods-use-this */
@@ -27,6 +28,7 @@ class SDKConnector implements ISDKConnector {
       throw new Error('An unknown error occurred setting up the webex instance.');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     instance = this;
   }
 

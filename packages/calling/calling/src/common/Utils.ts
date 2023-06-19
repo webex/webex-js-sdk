@@ -1,7 +1,4 @@
-/* eslint-disable jsdoc/require-returns-type */
-/* eslint-disable jsdoc/check-param-names */
-/* eslint-disable jsdoc/require-description */
-/* eslint-disable jsdoc/require-param-type */
+/* eslint-disable valid-jsdoc */
 /* eslint-disable no-fallthrough */
 /* eslint-disable no-underscore-dangle */
 import * as platform from 'platform';

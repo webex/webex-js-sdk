@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 expect.extend({
   /**
    * @param received - result we received from an action
