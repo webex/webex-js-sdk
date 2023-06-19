@@ -174,16 +174,6 @@ export const MEDIA_UPDATE_TYPE = {
  */
 
 /**
- * AudioVideo
- * @typedef {Object} AudioVideo
- * @property {Object} audio
- * @property {String} audio.deviceId
- * @property {Object} video
- * @property {String} video.deviceId
- * @property {String} video.localVideoQuality // [240p, 360p, 480p, 720p, 1080p]
- */
-
-/**
  * SharePreferences
  * @typedef {Object} SharePreferences
  * @property {Object} [shareConstraints]
@@ -201,14 +191,6 @@ export const MEDIA_UPDATE_TYPE = {
  * @property {Boolean} [rejoin]
  * @property {Boolean} [enableMultistream]
  * @property {String} [correlationId]
- */
-
-/**
- * SendOptions
- * @typedef {Object} SendOptions
- * @property {Boolean} sendAudio
- * @property {Boolean} sendVideo
- * @property {Boolean} sendShare
  */
 
 /**
@@ -2981,13 +2963,13 @@ export default class Meeting extends StatelessWebexPlugin {
           });
       }
     });
-    this.locusInfo.on(EVENTS.DESTROY_MEETING, (payload) => {
+    this.locusInfo.on(EVENTS.DESTROY_MEETING, async (payload) => {
       // if self state is NOT left
 
       // TODO: Handle sharing and wireless sharing when meeting end
       if (this.wirelessShare) {
         if (this.mediaProperties.shareTrack) {
-          this.setLocalShareTrack(undefined);
+          await this.setLocalShareTrack(undefined);
         }
       }
       // when multiple WEB deviceType join with same user
@@ -3001,18 +2983,18 @@ export default class Meeting extends StatelessWebexPlugin {
       if (payload.shouldLeave) {
         // TODO:  We should do cleaning of meeting object if the shouldLeave: false because there might be meeting object which we are not cleaning
 
-        this.leave({reason: payload.reason})
-          .then(() => {
-            LoggerProxy.logger.warn(
-              'Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. The meeting has been left, but has not been destroyed, you should see a later event for leave.'
-            );
-          })
-          .catch((error) => {
-            // @ts-ignore
-            LoggerProxy.logger.error(
-              `Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. Issue with leave for meeting, meeting still in collection: ${this}, error: ${error}`
-            );
-          });
+        try {
+          await this.leave({reason: payload.reason});
+
+          LoggerProxy.logger.warn(
+            'Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. The meeting has been left, but has not been destroyed, you should see a later event for leave.'
+          );
+        } catch (error) {
+          // @ts-ignore
+          LoggerProxy.logger.error(
+            `Meeting:index#setUpLocusInfoMeetingListener --> DESTROY_MEETING. Issue with leave for meeting, meeting still in collection: ${this}, error: ${error}`
+          );
+        }
       } else {
         LoggerProxy.logger.info(
           'Meeting:index#setUpLocusInfoMeetingListener --> MEETING_REMOVED_REASON',
@@ -3381,9 +3363,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * on it, cleans up previous track, etc.
    *
    * @param {LocalMicrophoneTrack | null} localTrack local microphone track
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  private setLocalAudioTrack(localTrack?: LocalMicrophoneTrack) {
+  private async setLocalAudioTrack(localTrack?: LocalMicrophoneTrack) {
     const oldTrack = this.mediaProperties.audioTrack;
 
     oldTrack?.off(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
@@ -3396,6 +3378,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     localTrack?.on(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
     localTrack?.on(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+
+    if (!this.isMultistream || !localTrack) {
+      // for multistream WCME automatically un-publishes the old track when we publish a new one
+      await this.unpublishTrack(oldTrack);
+    }
+    await this.publishTrack(this.mediaProperties.audioTrack);
   }
 
   /**
@@ -3403,9 +3391,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * on it, cleans up previous track, etc.
    *
    * @param {LocalCameraTrack | null} localTrack local camera track
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  private setLocalVideoTrack(localTrack?: LocalCameraTrack) {
+  private async setLocalVideoTrack(localTrack?: LocalCameraTrack) {
     const oldTrack = this.mediaProperties.videoTrack;
 
     oldTrack?.off(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
@@ -3418,6 +3406,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     localTrack?.on(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
     localTrack?.on(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+
+    if (!this.isMultistream || !localTrack) {
+      // for multistream WCME automatically un-publishes the old track when we publish a new one
+      await this.unpublishTrack(oldTrack);
+    }
+    await this.publishTrack(this.mediaProperties.videoTrack);
   }
 
   /**
@@ -3436,17 +3430,19 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.setLocalShareTrack(localDisplayTrack);
 
-    if (localDisplayTrack) {
-      localDisplayTrack.on(LocalTrackEvents.Ended, this.handleShareTrackEnded);
-      localDisplayTrack.on(
-        LocalTrackEvents.UnderlyingTrackChange,
-        this.underlyingLocalTrackChangeHandler
-      );
+    localDisplayTrack?.on(LocalTrackEvents.Ended, this.handleShareTrackEnded);
+    localDisplayTrack?.on(
+      LocalTrackEvents.UnderlyingTrackChange,
+      this.underlyingLocalTrackChangeHandler
+    );
 
-      this.mediaProperties.mediaDirection.sendShare = true;
-    } else {
-      this.mediaProperties.mediaDirection.sendShare = false;
+    this.mediaProperties.mediaDirection.sendShare = !!localDisplayTrack;
+
+    if (!this.isMultistream || !localDisplayTrack) {
+      // for multistream WCME automatically un-publishes the old track when we publish a new one
+      await this.unpublishTrack(oldTrack);
     }
+    await this.publishTrack(this.mediaProperties.shareTrack);
   }
 
   /**
@@ -5051,19 +5047,22 @@ export default class Meeting extends StatelessWebexPlugin {
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
 
+    const promises = [];
+
     // setup all the references to local tracks in this.mediaProperties before creating media connection
+    // and before TURN discovery, so that the correct mute state is sent with TURN discovery roap messages
     if (localTracks?.microphone) {
-      this.setLocalAudioTrack(localTracks.microphone);
+      promises.push(this.setLocalAudioTrack(localTracks.microphone));
     }
     if (localTracks?.camera) {
-      this.setLocalVideoTrack(localTracks.camera);
+      promises.push(this.setLocalVideoTrack(localTracks.camera));
     }
     if (localTracks?.screenShare?.video) {
-      this.setLocalShareTrack(localTracks.screenShare.video);
+      promises.push(this.setLocalShareTrack(localTracks.screenShare.video));
     }
 
-    return this.roap
-      .doTurnDiscovery(this, false)
+    return Promise.all(promises)
+      .then(() => this.roap.doTurnDiscovery(this, false))
       .then(async (turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
         turnServerUsed = !turnDiscoverySkippedReason;
@@ -6666,11 +6665,17 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {LocalTrack} track to publish
    * @returns {Promise}
    */
-  private async publishTrack(track: LocalTrack) {
-    if (this.isMultistream) {
-      await this.mediaProperties.webrtcMediaConnection.publishTrack(track);
-    } else {
-      track.setPublished(true); // for multistream, this call is done by WCME
+  private async publishTrack(track?: LocalTrack) {
+    if (!track) {
+      return;
+    }
+
+    if (this.mediaProperties.webrtcMediaConnection) {
+      if (this.isMultistream) {
+        await this.mediaProperties.webrtcMediaConnection.publishTrack(track);
+      } else {
+        track.setPublished(true); // for multistream, this call is done by WCME
+      }
     }
   }
 
@@ -6680,8 +6685,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {LocalTrack} track to unpublish
    * @returns {Promise}
    */
-  private async unpublishTrack(track: LocalTrack) {
-    if (this.isMultistream) {
+  private async unpublishTrack(track?: LocalTrack) {
+    if (!track) {
+      return;
+    }
+
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       await this.mediaProperties.webrtcMediaConnection.unpublishTrack(track);
     } else {
       track.setPublished(false); // for multistream, this call is done by WCME
@@ -6712,21 +6721,15 @@ export default class Meeting extends StatelessWebexPlugin {
     if (tracks.screenShare?.video) {
       await this.setLocalShareTrack(tracks.screenShare?.video);
 
-      await this.publishTrack(this.mediaProperties.shareTrack);
-
       floorRequestNeeded = true;
     }
 
     if (tracks.microphone) {
-      this.setLocalAudioTrack(tracks.microphone);
-
-      await this.publishTrack(this.mediaProperties.audioTrack);
+      await this.setLocalAudioTrack(tracks.microphone);
     }
 
     if (tracks.camera) {
-      this.setLocalVideoTrack(tracks.camera);
-
-      await this.publishTrack(this.mediaProperties.videoTrack);
+      await this.setLocalVideoTrack(tracks.camera);
     }
 
     if (!this.isMultistream) {
@@ -6758,26 +6761,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     for (const track of tracks.filter((t) => !!t)) {
       if (track === this.mediaProperties.shareTrack) {
-        this.setLocalShareTrack(undefined);
-
         try {
           this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
         } catch (e) {
           // nothing to do here, error is logged already inside releaseScreenShareFloor()
         }
-        promises.push(this.unpublishTrack(track));
+        promises.push(this.setLocalShareTrack(undefined));
       }
 
       if (track === this.mediaProperties.audioTrack) {
-        this.setLocalAudioTrack(undefined);
-
-        promises.push(this.unpublishTrack(track));
+        promises.push(this.setLocalAudioTrack(undefined));
       }
 
       if (track === this.mediaProperties.videoTrack) {
-        this.setLocalVideoTrack(undefined);
-
-        promises.push(this.unpublishTrack(track));
+        promises.push(this.setLocalVideoTrack(undefined));
       }
     }
 
