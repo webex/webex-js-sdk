@@ -15,7 +15,7 @@ import {
   IContacts,
 } from './types';
 import {serviceErrorCodeHandler} from '../common/Utils';
-import {LoggerConfig} from '../Calling/types';
+import {LoggerConfig} from '../Logger/types';
 
 /**
  *
@@ -303,5 +303,4 @@ export class ContactsClient implements IContacts {
  * @param webex - A webex instance.
  * @param logger - Logger to set logger level.
  */
-export const createContactsClient = (logger: LoggerConfig): IContacts =>
-  new ContactsClient(logger);
+export const createContactsClient = (logger: LoggerConfig): IContacts => new ContactsClient(logger);

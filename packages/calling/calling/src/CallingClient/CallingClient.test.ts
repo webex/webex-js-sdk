@@ -69,7 +69,7 @@ describe('CallingClient Tests', () => {
      */
     it('Verify valid calling serviceData with no input sdk config', async () => {
       expect(() => {
-        callingClient = createClient(webex);
+        callingClient = createClient({logger: {level: LOGGER.INFO}});
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
       expect(createRegistrationSpy).toBeCalledWith(webex, defaultServiceData);
@@ -101,7 +101,7 @@ describe('CallingClient Tests', () => {
       expect(() => {
         callingClient = createClient({
           serviceData: serviceDataObj,
-          logger: {level: LOGGER.INFO}
+          logger: {level: LOGGER.INFO},
         });
       }).not.toThrow(Error);
       expect(callingClient).toBeTruthy();
@@ -123,7 +123,7 @@ describe('CallingClient Tests', () => {
       expect(() => {
         callingClient = createClient({
           serviceData: serviceDataObj,
-          logger: {level: LOGGER.INFO}
+          logger: {level: LOGGER.INFO},
         });
       }).toThrow(Error);
       expect(callingClient).toBe(undefined);
@@ -1422,7 +1422,6 @@ describe('CallingClient Tests', () => {
       const restoreSpy = jest.spyOn(callingClient as any, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(callingClient as any, 'restartRegistration');
       const reconnectSpy = jest.spyOn(callingClient as any, 'reconnectOnFailure');
-      const logSpy = jest.spyOn(log, 'log');
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 503,
         body: mockKeepAliveBody,

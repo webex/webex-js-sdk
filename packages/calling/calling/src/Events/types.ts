@@ -5,6 +5,7 @@ import {CallError, CallingClientError} from '../Errors';
 
 /** External Eventing Start */
 export enum EVENT_KEYS {
+  READY = 'calling:ready',
   ALERTING = 'call:alerting',
   CALL_ERROR = 'call:error',
   CALLER_ID = 'call:caller_id',
@@ -162,6 +163,10 @@ export enum MEDIA_CONNECTION_EVENT_KEYS {
 export type CallerIdDisplay = {
   correlationId: string;
   callerId: DisplayInformation;
+};
+
+export type CallingEventTypes = {
+  [EVENT_KEYS.READY]: () => void;
 };
 
 export type CallEventTypes = {

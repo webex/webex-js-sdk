@@ -24,6 +24,7 @@ export function getTestUtilsWebex() {
       getUserToken: jest.fn(),
     },
     ready: true,
+    once: jest.fn(),
     request: jest.fn(),
     // internal plugins
     internal: {
@@ -35,6 +36,7 @@ export function getTestUtilsWebex() {
         off: jest.fn(),
         connected: true,
         connecting: false,
+        connect: jest.fn(),
       },
       calendar: null,
       device: {
@@ -48,6 +50,7 @@ export function getTestUtilsWebex() {
             models: [{_values: {key: 'bc-sp-standard'}}],
           },
         },
+        register: jest.fn(),
       },
       dss: {
         lookup: jest.fn(),

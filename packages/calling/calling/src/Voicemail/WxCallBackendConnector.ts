@@ -42,7 +42,7 @@ import {
   RADIX_RAND,
   PREFIX,
 } from './constants';
-import { LoggerConfig } from '../Calling/types';
+import {LoggerConfig} from '../Logger/types';
 /**
  *
  */

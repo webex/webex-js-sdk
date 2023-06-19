@@ -30,7 +30,7 @@ import {
   XSI_VERSION,
 } from './constants';
 import {inferIdFromUuid, serviceErrorCodeHandler} from '../common/Utils';
-import { LoggerConfig } from '../Calling/types';
+import {LoggerConfig} from '../Logger/types';
 
 /**
  *

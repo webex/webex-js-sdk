@@ -164,3 +164,34 @@ export enum DecodeType {
   PEOPLE = 'PEOPLE',
   ORGANIZATION = 'ORGANIZATION',
 }
+
+export interface LookupOptions {
+  ids: string[];
+}
+
+export type ContactDetail = {
+  type?: string;
+  value: string;
+};
+
+export type DSSLookupResponse = {
+  additionalInfo: {
+    department: string;
+    firstName: string;
+    identityManager: {
+      managerId: string;
+      displayName: string;
+    };
+    jobTitle: string;
+    lastName: string;
+  };
+  displayName: string;
+  emails: ContactDetail[];
+  entityProviderType: string;
+  identity: string;
+  orgId: string;
+  phoneNumbers: ContactDetail[];
+  photos: ContactDetail[];
+  sipAddresses: ContactDetail[];
+  type: string;
+};

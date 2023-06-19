@@ -16,7 +16,7 @@ import {
   UserSession,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
-import { LoggerConfig } from '../Calling/types';
+import {LoggerConfig} from '../Logger/types';
 
 /**
  *

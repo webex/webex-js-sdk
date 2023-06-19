@@ -14,10 +14,7 @@ import {
 } from '../common/types';
 import {ICall} from './calling/types';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from './metrics/types';
-
-import {LOGGER} from '../Logger/types';
-import {LoggerConfig} from '../Calling/types';
-
+import {LOGGER, LoggerConfig} from '../Logger/types';
 
 interface DiscoveryConfig {
   country: string;

@@ -1,5 +1,9 @@
-import {DSSLookupResponse, LookupOptions} from '../Contacts/types';
-import {PeopleListResponse, WebexRequestPayload} from '../common/types';
+import {
+  DSSLookupResponse,
+  LookupOptions,
+  PeopleListResponse,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
@@ -54,6 +58,7 @@ export interface WebexSDK {
     getUserToken: () => Promise<string>;
   };
   ready: boolean;
+  once: Listener;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
   // internal plugins
   internal: {
@@ -62,6 +67,7 @@ export interface WebexSDK {
       off: ListenerOff;
       connected: boolean;
       connecting: boolean;
+      connect: <T>() => Promise<T>;
     };
     calendar: unknown;
     device: {
@@ -75,6 +81,7 @@ export interface WebexSDK {
           models: Model[];
         };
       };
+      register: <T>() => Promise<T>;
     };
     dss: {
       lookup: (options: LookupOptions) => Promise<DSSLookupResponse[]>;

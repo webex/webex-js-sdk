@@ -2,12 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {
-  IVoicemail,
-  CALLING_BACKEND,
-  VoicemailResponseEvent,
-  CallingPartyInfo,
-} from './types';
+import {IVoicemail, CALLING_BACKEND, VoicemailResponseEvent, CallingPartyInfo} from './types';
 import log from '../Logger';
 import {getCallingBackEnd} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
@@ -16,7 +11,7 @@ import {DisplayInformation, SORT} from '../common/types';
 import {VoicemailEventTypes} from '../Events/types';
 import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
-import {LoggerConfig} from '../Calling/types';
+import {LoggerConfig} from '../Logger/types';
 /**
  *
  */
@@ -186,5 +181,4 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
  * @param webex -.
  * @param logger -.
  */
-export const createVoicemailClient = (logger: LoggerConfig): IVoicemail =>
-  new Voicemail(logger);
+export const createVoicemailClient = (logger: LoggerConfig): IVoicemail => new Voicemail(logger);

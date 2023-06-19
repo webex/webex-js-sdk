@@ -27,3 +27,7 @@ export enum LOGGER {
   LOG = 'log',
   TRACE = 'trace',
 }
+
+export interface LoggerConfig {
+  level: LOGGER;
+}

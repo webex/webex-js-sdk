@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex , createClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
+/* global Webex , createCalling */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -14,6 +14,7 @@
 
 // Globals
 let webex;
+let calling;
 let callingClient;
 let correlationId;
 let callHistory;
@@ -173,69 +174,89 @@ function initWebex(e) {
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
-  const webexConfig = {
-    config: {
-      logger: {
-        level: 'debug', // set the desired log level
-      },
-      meetings: {
-        reconnection: {
-          enabled: true,
-        },
-        enableRtx: true,
-      },
-      encryption: {
-        kmsInitialTimeout: 8000,
-        kmsMaxTimeout: 40000,
-        batcherMaxCalls: 30,
-        caroots: null,
-      },
-      dss: {
+  // const webexConfig = {
+  //   config: {
+  //     logger: {
+  //       level: 'debug', // set the desired log level
+  //     },
+  //     meetings: {
+  //       reconnection: {
+  //         enabled: true,
+  //       },
+  //       enableRtx: true,
+  //     },
+  //     encryption: {
+  //       kmsInitialTimeout: 8000,
+  //       kmsMaxTimeout: 40000,
+  //       batcherMaxCalls: 30,
+  //       caroots: null,
+  //     },
+  //     dss: {
 
-      },
-      // Any other sdk config we need
-    },
-    credentials: {
-      access_token: tokenElm.value,
-    }
-  };
+  //     },
+  //     // Any other sdk config we need
+  //   },
+  //   credentials: {
+  //     access_token: tokenElm.value,
+  //   }
+  // };
 
-  if (!enableProd) {
-    webexConfig.config.services = {
-      discovery: {
-        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-        hydra: 'https://apialpha.ciscospark.com/v1/',
-      },
-    };
+  // if (!enableProd) {
+  //   webexConfig.config.services = {
+  //     discovery: {
+  //       u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+  //       hydra: 'https://apialpha.ciscospark.com/v1/',
+  //     },
+  //   };
+  // }
+
+  // webex = window.webex = Webex.init(webexConfig);
+
+  // webex.once('ready', () => {
+  //   console.log('Authentication#initWebex() :: Webex Ready');
+  //   registerElm.disabled = false;
+  //   callHistoryElm.disabled = false;
+  //   voicemailElm.disabled = false;
+  //   authStatusElm.innerText = 'Saved access token!';
+  //   registerElm.classList.add('btn--green');
+  //   callHistoryElm.classList.add('btn--green');
+  //   voicemailElm.classList.add('btn--green');
+  //   dndButton.classList.add('btn--red');
+  //   dndButton.innerHTML = 'Fetching DND Status';
+  //   dndButton.disabled = true;
+  //   callWaitingButton.classList.add('btn--red');
+  //   callWaitingButton.innerHTML = 'Fetching Call Waiting Status';
+  //   callWaitingButton.disabled = true;
+
+  //   register().then(() => {
+  //     fetchDNDSetting();
+  //     fetchCallWaitingSetting();
+  //     fetchCallForwardSetting();
+  //     fetchVoicemailSetting();
+  //   });
+  // });
+
+  // return false;
+  const loggerConfig = {level: 'info'};
+
+  const callingConfig = {
+    clientConfig: {calling: true, contact: true, history: true, settings: true,  voicemail: true,},
+    callingClientConfig: {logger: loggerConfig},
+    logger: loggerConfig,
   }
 
-  webex = window.webex = Webex.init(webexConfig);
+  calling = window.calling = createCalling(callingConfig, {token: tokenElm.value})
 
-  webex.once('ready', () => {
-    console.log('Authentication#initWebex() :: Webex Ready');
-    registerElm.disabled = false;
-    callHistoryElm.disabled = false;
-    voicemailElm.disabled = false;
-    authStatusElm.innerText = 'Saved access token!';
-    registerElm.classList.add('btn--green');
-    callHistoryElm.classList.add('btn--green');
-    voicemailElm.classList.add('btn--green');
-    dndButton.classList.add('btn--red');
-    dndButton.innerHTML = 'Fetching DND Status';
-    dndButton.disabled = true;
-    callWaitingButton.classList.add('btn--red');
-    callWaitingButton.innerHTML = 'Fetching Call Waiting Status';
-    callWaitingButton.disabled = true;
-
-    register().then(() => {
+  calling.on('calling:ready', () => {
+    calling.register().then(() => {
       fetchDNDSetting();
       fetchCallWaitingSetting();
       fetchCallForwardSetting();
       fetchVoicemailSetting();
     });
-  });
+  })
 
-  return false;
+  console.log('Calling Object: ', calling);
 }
 credentialsFormElm.addEventListener('submit', initWebex);
 
