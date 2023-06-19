@@ -34,6 +34,7 @@ import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error
 import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
+import { NewMetrics } from '@webex/internal-plugin-metrics';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -70,6 +71,7 @@ describe('plugin-meetings', () => {
   describe('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
+      sinon.stub(NewMetrics, 'initialSetupCallDiagnosticMetrics');
       uuid1 = uuid.v4();
       url1 = `https://example.com/${uuid.v4()}`;
       uri1 = `test-${uuid.v4()}@example.com`;
@@ -177,6 +179,11 @@ describe('plugin-meetings', () => {
 
     it('Should trigger h264 download', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
+    });
+
+    it('Should call initialize metrics', () => {
+      assert(NewMetrics.initialSetupCallDiagnosticMetrics.calledOnce);
+      assert.calledWith(NewMetrics.initialSetupCallDiagnosticMetrics, webex.meetings.meetingCollection, webex);
     });
 
     describe('#_toggleUnifiedMeetings', () => {

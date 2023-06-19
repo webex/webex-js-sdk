@@ -5,6 +5,7 @@
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
+  "types": "dist/types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -22,6 +23,9 @@
   "devDependencies": {
     "@sinonjs/fake-timers": "^6.0.1",
     "sinon": "^9.2.4"
+  },
+  "scripts": {
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "dependencies": {
     "@webex/common": "workspace:^",

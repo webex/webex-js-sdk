@@ -8,10 +8,11 @@ import {registerInternalPlugin} from '@webex/webex-core';
 
 import Metrics from './metrics';
 import config from './config';
+import NewMetrics from './new-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {config};
+export {config, NewMetrics};
