@@ -138,24 +138,24 @@ describe('plugin-meetings', () => {
       it('should add the sequence object to a request body', () => {
         const body = {};
 
-        MeetingUtil.addSequence(
-          {
-            locusInfo: {
-              sequence: 'sequence',
-            },
-          },
-          body
-        );
+        MeetingUtil.addSequence({
+          locusInfo: {
+            sequence: 'sequence'
+          }
+        }, body);
 
         assert.deepEqual(body, {
-          sequence: 'sequence',
+          sequence: 'sequence'
         });
       });
 
       it('should work with an undefined meeting', () => {
         const body = {};
 
-        MeetingUtil.addSequence(undefined, body);
+        MeetingUtil.addSequence(
+          undefined,
+          body
+        );
 
         assert.deepEqual(body, {});
       });
@@ -181,13 +181,13 @@ describe('plugin-meetings', () => {
       it('should call onDeltaLocus with the new delta locus', () => {
         const meeting = {
           locusInfo: {
-            onDeltaLocus: sinon.stub(),
+            onDeltaLocus: sinon.stub()
           },
         };
 
         const originalResponse = {
           body: {
-            locus: 'locus',
+            locus: 'locus'
           },
         };
 
@@ -227,6 +227,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('generateLocusDeltaRequest', () => {
+
       afterEach(() => {
         WeakRef.prototype.deref.restore();
       });
@@ -237,13 +238,13 @@ describe('plugin-meetings', () => {
 
         const meeting = {
           request: sinon.stub().returns(Promise.resolve('result')),
-        };
+        }
 
         const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
 
         const options = {
           some: 'option',
-          body: {},
+          body: {}
         };
 
         let result = await locusDeltaRequest(options);
@@ -266,7 +267,9 @@ describe('plugin-meetings', () => {
 
         result = await locusDeltaRequest(options);
         assert.equal(result, undefined);
+
       });
+
     });
 
     describe('remoteUpdateAudioVideo', () => {
