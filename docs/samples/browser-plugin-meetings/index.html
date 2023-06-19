@@ -111,6 +111,72 @@
             </fieldset>
           </div>
 
+          <!-- Track / effects -->
+          <div>
+            <form id="media-effects">
+              <fieldset>
+                <legend>Effects</legend>
+                <div class="video-section">
+                  <div>
+                    <div class="flex" style="gap: 0.5rem;">
+                      <fieldset>
+                        <legend>Pre Meeting Local Video</legend>
+                        <div class="video-container">
+                          <video id="pre-meeting-local-video" class="video-el" muted="true" autoplay playsinline
+                            style="height: 250px;"></video>
+                        </div>
+                      </fieldset>
+
+                      <fieldset style="display: flex; align-items: center;">
+                        <legend>Pre Meeting Local Audio</legend>
+                        <audio id="pre-meeting-local-audio" controls autoplay></audio>
+                      </fieldset>
+
+                    </div>
+                    <div class="flex">
+                      <!--enable virtual bg -->
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-load-camera" disabled type="button" onclick="loadCamera()">Load Camera</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-enable-VBG" disabled type="button" onclick="handleVbg()">Enable VBG</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-dispose-VBG" disabled type="button" onclick="disposeVbg()">Dispose VBG</button>
+                        </div>
+                      </div>
+                    </div>
+
+
+                    <div class="flex">
+                      <!--enable noise reduction -->
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-load-mic" disabled type="button" onclick="loadMicrophone()">Load Microhone</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-enable-BNR" disabled type="button" onclick="handleBNR()">Enable BNR</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-dispose-BNR" disabled type="button" onclick="disposeBNR()">Dispose BNR</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+
           <!-- meeting / authentication-registration -->
           <div>
             <form id="auth-registration">
@@ -530,13 +596,13 @@
                 <!-- change background -->
                 <div>
                   <div class="u-mb">
-                    <button id="ts-change-bg" type="button" onclick="">Change Background</button>
+                    <button id="ts-change-bg" type="button" onclick="handleVbg()">Virtual Background</button>
                   </div>
                 </div>
                 <!-- BNR -->
                 <div>
                   <div class="u-mb">
-                    <button id="ts-toggle-BNR" type="button" onclick="toggleBNR()">Enable BNR</button>
+                    <button id="ts-toggle-BNR" type="button" onclick="handleBNR()">Enable BNR</button>
                   </div>
                 </div>
               </div>
