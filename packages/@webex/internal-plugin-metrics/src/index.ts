@@ -9,6 +9,7 @@ import {registerInternalPlugin} from '@webex/webex-core';
 import Metrics from './metrics';
 import config from './config';
 import NewMetrics from './new-metrics';
+import {ClientEvent} from './metrics.types';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -16,3 +17,4 @@ registerInternalPlugin('metrics', Metrics, {
 
 export {default, getOSNameInternal} from './metrics';
 export {config, NewMetrics};
+export type {ClientEvent};

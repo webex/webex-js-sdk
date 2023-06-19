@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
-import Metrics from '@webex/plugin-meetings/src/metrics/index';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
@@ -12,7 +12,7 @@ describe('plugin-meetings', () => {
     const meeting = {};
 
     beforeEach(() => {
-      Metrics.postEvent = sinon.stub();
+      NewMetrics.submitClientEvent = sinon.stub();
       const logger = {
         info: sandbox.stub(),
         log: sandbox.stub(),
@@ -44,6 +44,7 @@ describe('plugin-meetings', () => {
 
     afterEach(() => {
       sandbox.restore();
+      sinon.restore();
     });
 
     describe('#cleanup', () => {
@@ -137,24 +138,24 @@ describe('plugin-meetings', () => {
       it('should add the sequence object to a request body', () => {
         const body = {};
 
-        MeetingUtil.addSequence({
-          locusInfo: {
-            sequence: 'sequence'
-          }
-        }, body);
+        MeetingUtil.addSequence(
+          {
+            locusInfo: {
+              sequence: 'sequence',
+            },
+          },
+          body
+        );
 
         assert.deepEqual(body, {
-          sequence: 'sequence'
+          sequence: 'sequence',
         });
       });
 
       it('should work with an undefined meeting', () => {
         const body = {};
 
-        MeetingUtil.addSequence(
-          undefined,
-          body
-        );
+        MeetingUtil.addSequence(undefined, body);
 
         assert.deepEqual(body, {});
       });
@@ -181,13 +182,13 @@ describe('plugin-meetings', () => {
         const meeting = {
           locusInfo: {
             onDeltaLocus: sinon.stub(),
-          }
-        }
+          },
+        };
 
         const originalResponse = {
           body: {
-            locus: 'locus'
-          }
+            locus: 'locus',
+          },
         };
 
         const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
@@ -226,7 +227,6 @@ describe('plugin-meetings', () => {
     });
 
     describe('generateLocusDeltaRequest', () => {
-
       afterEach(() => {
         WeakRef.prototype.deref.restore();
       });
@@ -237,13 +237,13 @@ describe('plugin-meetings', () => {
 
         const meeting = {
           request: sinon.stub().returns(Promise.resolve('result')),
-        }
+        };
 
         const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
 
         const options = {
           some: 'option',
-          body: {}
+          body: {},
         };
 
         let result = await locusDeltaRequest(options);
@@ -266,14 +266,13 @@ describe('plugin-meetings', () => {
 
         result = await locusDeltaRequest(options);
         assert.equal(result, undefined);
-
       });
-
     });
 
     describe('remoteUpdateAudioVideo', () => {
       it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
         const meeting = {
+          id: 'meeting-id',
           mediaId: '12345',
           selfUrl: 'self url',
           locusInfo: {
@@ -296,6 +295,16 @@ describe('plugin-meetings', () => {
           sequence: {},
           type: 'LocalMute',
         });
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.locus.media.request',
+          options: {meetingId: meeting.id},
+        });
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.locus.media.response',
+          options: {meetingId: meeting.id},
+        });
       });
     });
 
@@ -305,7 +314,14 @@ describe('plugin-meetings', () => {
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
           meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+            joinMeeting: sinon.stub().returns(
+              Promise.resolve({
+                body: {mediaConnections: 'mediaConnections'},
+                headers: {
+                  trackingid: 'trackingId',
+                },
+              })
+            ),
           },
         };
 
@@ -317,6 +333,25 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, true);
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.locus.join.request',
+          options: {meetingId: meeting.id},
+        });
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.locus.join.response',
+          payload: {
+            trigger: 'loci-update',
+            identifiers: {
+              trackingId: 'trackingId',
+            },
+          },
+          options: {
+            meetingId: meeting.id,
+            mediaConnections: 'mediaConnections',
+          },
+        });
       });
 
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
@@ -432,6 +467,43 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.meetingNumber, 'meetingNumber');
       });
     });
+
+    describe('joinMeetingOptions', () => {
+      it('sends client events correctly', async () => {
+        MeetingUtil.joinMeeting = sinon.stub().rejects({});
+        MeetingUtil.isPinOrGuest = sinon.stub().returns(true);
+        const meeting = {
+          id: 'meeting-id',
+          mediaId: '12345',
+          selfUrl: 'self url',
+          locusInfo: {
+            sequence: {},
+          },
+          locusMediaRequest: {
+            send: sinon.stub().resolves({body: {}, headers: {}}),
+          },
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {pin: true});
+
+          assert.calledWith(NewMetrics.submitClientEvent, {
+            name: 'client.pin.collected',
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        } catch (err) {
+          assert.calledWith(NewMetrics.submitClientEvent, {
+            name: 'client.pin.prompt',
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        }
+      });
+
+    })
 
     describe('getUserDisplayHintsFromLocusInfo', () => {
       it('returns display hints', () => {

@@ -9,6 +9,7 @@ import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 import {
   LOCUSINFO,
@@ -16,6 +17,10 @@ import {
   LOCUSEVENT,
   EVENTS,
   DISPLAY_HINTS,
+  _CALL_,
+  LOCUS,
+  MEETING_STATE,
+  _MEETING_,
 } from '../../../../src/constants';
 
 import { self, selfWithInactivity } from "./selfConstant";
@@ -42,6 +47,7 @@ describe('plugin-meetings', () => {
     });
 
     beforeEach(() => {
+      NewMetrics.submitClientEvent = sinon.stub();
       mockMeeting = {};
       locusInfo = new LocusInfo(updateMeeting, webex, meetingId);
 
@@ -1898,6 +1904,114 @@ describe('plugin-meetings', () => {
             remoteAnswered: true,
           }
         );
+      });
+    });
+
+    describe('#isMeetingActive', () => {
+      it('sends client event correctly for state = inactive', () => {
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+        };
+
+        locusInfo.fullState = {
+          state: LOCUS.STATE.INACTIVE,
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = PARTNER_LEFT', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+          self: {
+            state:  MEETING_STATE.STATES.DECLINED,
+          },
+        };
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = SELF_LEFT', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+          self: {
+            state:  MEETING_STATE.STATES.LEFT,
+          },
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
+          },
+        };
+
+        locusInfo.fullState = {
+          state: LOCUS.STATE.INACTIVE,
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
+          },
+        };
+
+        locusInfo.fullState = {
+          removed: true
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(NewMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
       });
     });
   });
