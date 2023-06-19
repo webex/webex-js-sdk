@@ -1,14 +1,10 @@
 import Webex from 'webex';
 
 /**
- * @param token - Acces token of the user.
+ * @param webexConfig - Webex config.
  */
-export const initializeWebex = (token) => {
-  const webex = Webex.init({
-    credentials: {
-      access_token: token,
-    },
-  });
+export const initializeWebex = (webexConfig) => {
+  const webex = Webex.init(webexConfig);
 
   return webex;
 };

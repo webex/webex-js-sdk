@@ -1,7 +1,7 @@
 expect.extend({
   /**
-   * @param received
-   * @param {...any} expected
+   * @param received - result we received from an action
+   * @param {...any} expected - result we are expecting from an action
    */
   toBeCalledOnceWith(received, ...expected) {
     try {
@@ -9,9 +9,6 @@ expect.extend({
       expect(received).toBeCalledWith(...expected);
     } catch (error) {
       return {
-        /**
-         *
-         */
         message: () => error,
         pass: false,
       };

@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
 import {emitFinalFailure, handleErrors} from '../common/Utils';
@@ -980,9 +981,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           const abort = await this.registerDevice(FAILBACK_UTIL);
 
           if (!abort && !this.isDeviceRegistered()) {
-            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
+            const abort = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-            if (abortNew) {
+            if (abort) {
               this.clearFailbackTimer();
 
               return;

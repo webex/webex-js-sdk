@@ -10,10 +10,8 @@ let file;
 /**
  * .
  *
- * @param err-.
- * @param data-.
- * @param err
- * @param data
+ * @param err- error encountered while reading file.
+ * @param data- content from the file being read.
  */
 // eslint-disable-next-line consistent-return
 const replaceVersion = (err, data) => {
@@ -32,7 +30,7 @@ const replaceVersion = (err, data) => {
 /**
  * .
  *
- * @param options -.
+ * @param options - contains the encoding and an optional flag.
  */
 const versionPlugin = (options = []) => {
   const {hook = 'buildStart'} = options;

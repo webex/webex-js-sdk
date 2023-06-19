@@ -209,7 +209,7 @@ function initWebex(e) {
     };
   }
 
-  webex = window.webex = Calling.initializeWebex(tokenElm.value);
+  webex = window.webex = Calling.initializeWebex(webexConfig);
 
   webex.once('ready', () => {
     console.log('Authentication#initWebex() :: Webex Ready');

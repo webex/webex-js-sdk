@@ -164,3 +164,24 @@ export enum DecodeType {
   PEOPLE = 'PEOPLE',
   ORGANIZATION = 'ORGANIZATION',
 }
+
+export type WebexConfig = {
+  config: {
+    logger: {
+      level: string;
+    };
+    services?: {
+      discovery: {
+        u2c: string;
+        hydra: string;
+      };
+    };
+  };
+  credentials: {
+    access_token?: string;
+    client_id?: string;
+    client_secret?: string;
+    scope?: string;
+    redirect_uri: string;
+  };
+};
