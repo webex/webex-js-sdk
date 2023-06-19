@@ -951,8 +951,6 @@ function handleTrackUnpublished(track, mediaElement, debugString) {
     if (!isPublished) {
       console.log(`MeetingControls#getUserMedia() :: ${debugString} track unpublished, stopping it`);
       track.stop();
-
-      mediaElement.srcObject = null;
     }
   });
 }
