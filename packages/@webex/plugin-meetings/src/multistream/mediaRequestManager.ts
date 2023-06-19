@@ -47,6 +47,7 @@ export interface MediaRequest {
   receiveSlots: Array<ReceiveSlot>;
   codecInfo?: CodecInfo;
   preferredMaxFs?: number;
+  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
 }
 
 export type MediaRequestId = string;
@@ -287,12 +288,15 @@ export class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
+    const eventHandler = ({maxFs}) => {
+      mediaRequest.preferredMaxFs = maxFs;
+      this.debouncedSourceUpdateListener();
+    };
+    mediaRequest.handleMaxFs = eventHandler;
+
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
-      rs.on(ReceiveSlotEvents.MaxFsUpdate, ({maxFs}) => {
-        mediaRequest.preferredMaxFs = maxFs;
-        this.debouncedSourceUpdateListener();
-      });
+      rs.on(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
     });
 
     if (commit) {
@@ -303,8 +307,11 @@ export class MediaRequestManager {
   }
 
   public cancelRequest(requestId: MediaRequestId, commit = true) {
-    this.clientRequests[requestId]?.receiveSlots.forEach((rs) => {
+    const mediaRequest = this.clientRequests[requestId];
+
+    mediaRequest?.receiveSlots.forEach((rs) => {
       rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+      rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
     });
 
     delete this.clientRequests[requestId];
