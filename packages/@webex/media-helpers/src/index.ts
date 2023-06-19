@@ -14,3 +14,7 @@ export {
 } from './webrtc-core';
 
 export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';
+export type {
+  NoiseReductionEffectOptions,
+  VirtualBackgroundEffectOptions,
+} from '@webex/web-media-effects';

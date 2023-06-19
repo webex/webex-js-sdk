@@ -34,6 +34,7 @@ import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error
 import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
+import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -351,6 +352,102 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('virtual background effect', () => {
+        beforeEach(() => {
+          webex.credentials = {
+            supertoken: {
+              access_token: "fake_token"
+            }
+          };
+        })
+
+        it('creates background effect', async () => {
+          const result = await webex.meetings.createVirtualBackgroundEffect();
+
+          assert.exists(result);
+          assert.instanceOf(result, VirtualBackgroundEffect);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.deepEqual(result.options, {
+            mode: 'BLUR',
+            blurStrength: 'STRONG',
+            generator: 'worker',
+            quality: 'LOW',
+            authToken: 'fake_token',
+            mirror: false
+          });
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+
+        it('creates background effect with custom options passed', async () => {
+          const effectOptions = {
+            generator: "local",
+            frameRate: 45,
+            mode: "IMAGE",
+            mirror: false,
+            quality: "HIGH",
+            blurStrength: "STRONG",
+            bgImageUrl: "https://test.webex.com/landscape.5a535788.jpg",
+          };
+
+          const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
+
+          assert.exists(result);
+          assert.instanceOf(result, VirtualBackgroundEffect);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.deepEqual(result.options, {...effectOptions, authToken: "fake_token"});
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+      })
+
+      describe('noise reduction effect', () => {
+        beforeEach(() => {
+          webex.credentials = {
+            supertoken: {
+              access_token: "fake_token"
+            }
+          };
+        })
+
+        it('creates noise reduction effect', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({audioContext: {}});
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
+          assert.deepEqual(result.options, {
+            authToken: 'fake_token',
+            audioContext: {}
+          });
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+
+        it('creates noise reduction effect with custom options passed', async () => {
+          const effectOptions = {
+            audioContext: {},
+            workletProcessorUrl: "test.url.com",
+            mode: "WORKLET",
+            env: "prod",
+            avoidSimd: false
+          };
+
+          const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
+          assert.deepEqual(result.options, {...effectOptions, authToken: "fake_token"});
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+      })
 
       describe('gets', () => {
         describe('#getReachability', () => {
