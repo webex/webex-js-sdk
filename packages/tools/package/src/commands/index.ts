@@ -7,6 +7,7 @@ export type {
 } from './increment';
 
 export type {
+  ListMode,
   ListOptions,
 } from './list';
 

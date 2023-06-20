@@ -46,11 +46,13 @@ const increment: CommandsCommand<Options> = {
   handler: (options: Options) => {
     const rootDir = process.cwd();
 
+    const tag = options.tag?.split('/').pop();
+
     return Yarn.list({ since: options.since })
       .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
         location: path.join(rootDir, location),
         name,
-        tag: options.tag,
+        tag,
       })))
       .then((packs: Array<Package>) => packs.filter((pack) => (options.packages
         ? options.packages.includes(pack.name)
@@ -68,7 +70,13 @@ const increment: CommandsCommand<Options> = {
 
         return packs;
       })
-      .then((packs) => Promise.all(packs.map((pack) => pack.apply())));
+      .then((packs) => {
+        const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
+
+        process.stdout.write(output);
+
+        return Promise.all(packs.map((pack) => pack.apply()));
+      });
   },
 };
 
