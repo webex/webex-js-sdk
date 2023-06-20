@@ -706,7 +706,7 @@ skipInNode(describe)('plugin-meetings', () => {
         await testUtils.waitUntil(10000);
       });
 
-      it('bob stops sharing ', async () => {
+      it('bob stops sharing', async () => {
         const screenShareVideoUnpublished = waitForPublished(localTracks.bob.screenShare.video, false, "bob's screen share video track");
         const stoppedSharingLocal = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:stoppedSharingLocal'}]);
         const stoppedSharingRemote = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingRemote'}]);
@@ -783,7 +783,7 @@ skipInNode(describe)('plugin-meetings', () => {
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
 
-      it('bob stops sharing ', () =>
+      it('bob stops sharing again', () =>
         Promise.all([
           // Wait for peerConnection to stabalize
           testUtils.waitUntil(20000),
