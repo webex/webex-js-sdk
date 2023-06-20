@@ -1,3 +1,5 @@
+import {ANNOTATION_POLICY} from './constants';
+
 /**
  * Type for an StrokeData Object
  */
@@ -23,6 +25,10 @@ type CommandRequestBody = {
   shareInstanceId: string;
   receivers?: any[];
 };
+type AnnotationInfo = {
+  version: string;
+  policy: ANNOTATION_POLICY;
+};
 
 interface IAnnotationChannel {
   // === below is for presenter
@@ -40,4 +46,4 @@ interface IAnnotationChannel {
   locusUrlUpdate: (locusUrl: string) => void;
 }
 
-export type {StrokeData, RequestData, CommandRequestBody, IAnnotationChannel};
+export type {StrokeData, RequestData, CommandRequestBody, IAnnotationChannel, AnnotationInfo};
