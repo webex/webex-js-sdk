@@ -7,7 +7,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import RoapRequest from './request';
 import TurnDiscovery from './turnDiscovery';
 import Meeting from '../meeting';
-import MeetingUtil from '../meeting/util';
 
 /**
  * Roap options

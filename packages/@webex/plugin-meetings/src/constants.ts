@@ -4,7 +4,6 @@ import {hydraTypes} from '@webex/common';
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
 export const AUDIO = 'audio';
-export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
 export const ALIAS = 'alias';
@@ -67,7 +66,6 @@ export const SHARE = 'share';
 export const TYPE = 'type';
 
 export const VIDEO = 'video';
-export const VIDEO_INPUT = 'videoinput';
 export const VIDEO_STATUS = 'videoStatus';
 
 // *********** UPPERCASE ONLY STRINGS ************

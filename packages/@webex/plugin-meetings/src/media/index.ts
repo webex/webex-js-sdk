@@ -6,10 +6,9 @@
 import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
 import {LocalCameraTrack, LocalDisplayTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {AUDIO_INPUT, VIDEO_INPUT, MEDIA_TRACK_CONSTRAINT} from '../constants';
+import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
-import MediaError from '../common/errors/media';
 import BrowserDetection from '../common/browser-detection';
 
 const {isBrowser} = BrowserDetection();
