@@ -4954,12 +4954,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    * In order to send audio/video, call publishTracks() after addMedia() resolves.
    *
-   * @param {Object} options A configurable options object for joining a meeting
-   * @param {Object} options.audioEnabled set it to false if you don't want to send or receive any audio (default is true)
-   * @param {Object} options.videoEnabled set it to false if you don't want to send or receive any video (default is true)
-   * @param {Object} options.receiveShare set it to false if you don't want to receive any screen share (default is true)
-   * @param {BundlePolicy} options.bundlePolicy bundle policy for multistream meetings
-   * @param {Object} options.remoteMediaManagerConfig configuration for remote media (applies only to multistream meetings)
+   * @param {AddMediaOptions} options
    * @returns {Promise}
    * @public
    * @memberof Meeting
@@ -5017,7 +5012,7 @@ export default class Meeting extends StatelessWebexPlugin {
       },
     });
 
-    // we set sendAudio & sendVideo to true even before any tracks are published
+    // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any tracks are published
     // to avoid doing an extra SDP exchange when they are published for the first time
     this.mediaProperties.setMediaDirection({
       sendAudio: audioEnabled,
