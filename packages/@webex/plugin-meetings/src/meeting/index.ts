@@ -124,6 +124,7 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
+import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -537,6 +538,7 @@ export default class Meeting extends StatelessWebexPlugin {
   roles: any[];
   environment: string;
   namespace = MEETINGS;
+  annotationInfo: AnnotationInfo;
 
   /**
    * @param {Object} attrs
@@ -6583,6 +6585,7 @@ export default class Meeting extends StatelessWebexPlugin {
           deviceUrl: this.deviceUrl,
           uri: content.url,
           resourceUrl: this.resourceUrl,
+          annotationInfo: this.annotationInfo,
         })
         .then(() => {
           this.isSharing = true;
@@ -7700,13 +7703,14 @@ export default class Meeting extends StatelessWebexPlugin {
       audio?: LocalTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
       video?: LocalDisplayTrack;
     };
+    annotationInfo?: AnnotationInfo;
   }): Promise<void> {
     this.checkMediaConnection();
 
     if (!this.isMultistream) {
       throw new Error('publishTracks() only supported with multistream');
     }
-
+    this.annotationInfo = tracks.annotationInfo;
     if (tracks.screenShare?.video) {
       const oldTrack = this.mediaProperties.shareTrack;
       const localDisplayTrack = tracks.screenShare?.video;
