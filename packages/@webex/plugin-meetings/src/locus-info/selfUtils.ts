@@ -37,6 +37,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       remoteMuted: SelfUtils.getRemoteMuted(self),
       unmuteAllowed: SelfUtils.getUnmuteAllowed(self),
       localAudioUnmuteRequested: SelfUtils.getLocalAudioUnmuteRequested(self),
+      localAudioUnmuteRequestedTimeStamp: SelfUtils.getLocalAudioUnmuteRequestedTimeStamp(self),
       localAudioUnmuteRequired: SelfUtils.getLocalAudioUnmuteRequired(self),
       lastModified: SelfUtils.getLastModified(self),
       modifiedBy: SelfUtils.getModifiedBy(self),
@@ -270,6 +271,10 @@ SelfUtils.getRemoteMuted = (self: any) => {
 
 SelfUtils.getLocalAudioUnmuteRequested = (self) => !!self?.controls?.audio?.requestedToUnmute;
 
+// requestedToUnmute timestamp
+SelfUtils.getLocalAudioUnmuteRequestedTimeStamp = (self) =>
+  Date.parse(self?.controls?.audio?.lastModifiedRequestedToUnmute) || 0;
+
 SelfUtils.getUnmuteAllowed = (self) => {
   if (!self || !self.controls || !self.controls.audio) {
     return null;
@@ -443,7 +448,10 @@ SelfUtils.localAudioUnmuteRequestedByServer = (oldSelf: any = {}, changedSelf: a
     );
   }
 
-  return changedSelf.localAudioUnmuteRequested && !oldSelf.localAudioUnmuteRequested;
+  return (
+    changedSelf.localAudioUnmuteRequested &&
+    changedSelf.localAudioUnmuteRequestedTimeStamp > oldSelf.localAudioUnmuteRequestedTimeStamp
+  );
 };
 
 SelfUtils.localAudioUnmuteRequiredByServer = (oldSelf: any = {}, changedSelf: any) => {

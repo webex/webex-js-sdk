@@ -251,6 +251,55 @@ describe('plugin-meetings', () => {
           assert.equal(updates.canNotViewTheParticipantListChanged, false);
         });
       });
+
+      describe('localAudioUnmuteRequestedByServer', () => {
+        it('should return localAudioUnmuteRequestedByServer = false when requestedToUnmute = false', () => {
+          const clonedSelf = cloneDeep(self);
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, false);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = true when first request is made with requestedToUnmute = true', () => {
+          const clonedSelf = cloneDeep(self);
+
+          //request to unmute with timestamp
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, true);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = true when requestedToUnmute = true and new requests lastModifiedRequestedToUnmute timestamp is greater than old one', () => {
+          self.controls.audio.requestedToUnmute = true;
+          self.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+          const clonedSelf = cloneDeep(self);
+
+          //request to unmute with timestamp
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T19:25:04.369Z';
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, true);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = false when requestedToUnmute but lastModifiedRequestedToUnmute timestamps are same', () => {
+          self.controls.audio.requestedToUnmute = true;
+          self.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+          const clonedSelf = cloneDeep(self);
+
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z'
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, false);
+        });
+      });
     });
 
     describe('isSharingBlocked', () => {
