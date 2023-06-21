@@ -506,6 +506,21 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * fixCsis
+   */
+  public fixCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[]) {
+    Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
+      const groupRemoteMediaCsis = remoteMediaCsis.filter(({remoteMedia}) =>
+        remoteMediaGroup.includes(remoteMedia)
+      );
+      if (groupRemoteMediaCsis.length > 0) {
+        remoteMediaGroup.fixCsis(groupRemoteMediaCsis, false);
+      }
+    });
+    this.mediaRequestManagers.video.commit();
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {

@@ -1,6 +1,7 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable require-jsdoc */
 /* eslint-disable import/prefer-default-export */
+import {forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
@@ -64,6 +65,38 @@ export class RemoteMediaGroup {
     }
 
     return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
+  }
+
+  /**
+   * fixCsis
+   *
+   */
+  public fixCsis(
+    remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[],
+    commit = true
+  ): void {
+    forEach(remoteMediaCsis, ({csi, remoteMedia}) => {
+      if (csi) {
+        if (!(this.pinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
+          const unpinId = this.unpinnedRemoteMedia.indexOf(remoteMedia);
+          this.unpinnedRemoteMedia.splice(unpinId, 1);
+          this.pinnedRemoteMedia.push(remoteMedia);
+        }
+        remoteMedia.sendMediaRequest(csi, false);
+      } else {
+        if (!(this.unpinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
+          const pinId = this.pinnedRemoteMedia.indexOf(remoteMedia);
+          this.pinnedRemoteMedia.splice(pinId, 1);
+          this.unpinnedRemoteMedia.push(remoteMedia);
+        }
+        remoteMedia.cancelMediaRequest(false);
+      }
+    });
+    this.cancelActiveSpeakerMediaRequest(false);
+    this.sendActiveSpeakerMediaRequest(false);
+    if (commit) {
+      this.mediaRequestManager.commit();
+    }
   }
 
   /**
