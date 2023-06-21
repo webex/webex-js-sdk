@@ -124,6 +124,7 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
+import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -537,6 +538,7 @@ export default class Meeting extends StatelessWebexPlugin {
   roles: any[];
   environment: string;
   namespace = MEETINGS;
+  annotationInfo: AnnotationInfo;
 
   /**
    * @param {Object} attrs
@@ -2588,6 +2590,9 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canManageBreakout: MeetingUtil.canManageBreakout(payload.info.userDisplayHints),
+          canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
+            payload.info.userDisplayHints
+          ),
           canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(
             payload.info.userDisplayHints
           ),
@@ -2714,6 +2719,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {String} datachannelUrl
    * @returns {void}
    */
+
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
     if (datachannelUrl && this.config.enableAutomaticLLM) {
@@ -4648,6 +4654,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .registerAndConnect(url, datachannelUrl)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
+        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+        // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
@@ -5991,8 +5999,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.preMedia(localStream, localShare, mediaSettings))
       .then(() =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {
+          .update({
+            localTracks: {
               audio: this.mediaProperties.mediaDirection.sendAudio
                 ? this.mediaProperties.audioTrack.underlyingTrack
                 : null,
@@ -6003,17 +6011,24 @@ export default class Meeting extends StatelessWebexPlugin {
                 ? this.mediaProperties.shareTrack.underlyingTrack
                 : null,
             },
-            receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+            direction: {
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveShare,
+                this.mediaProperties.mediaDirection.sendShare
+              ),
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() => {
-            LoggerProxy.logger.info(
-              `${LOG_HEADER} webrtcMediaConnection.updateSendReceiveOptions done`
-            );
+            LoggerProxy.logger.info(`${LOG_HEADER} webrtcMediaConnection.update done`);
           })
           .catch((error) => {
             LoggerProxy.logger.error(`${LOG_HEADER} Error updatedMedia, `, error);
@@ -6093,14 +6108,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {audio: track},
-          receive: {
-            audio: options.receiveAudio,
-            video: this.mediaProperties.mediaDirection.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {audio: track},
+          direction: {
+            audio: Media.getDirection(receiveAudio, sendAudio),
+            video: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveVideo,
+              this.mediaProperties.mediaDirection.sendVideo
+            ),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6150,14 +6171,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendVideo, localStream: stream})
       .then(() =>
-        this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-          send: {video: track},
-          receive: {
-            audio: this.mediaProperties.mediaDirection.receiveAudio,
-            video: options.receiveVideo,
-            screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
-            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        this.mediaProperties.webrtcMediaConnection.update({
+          localTracks: {video: track},
+          direction: {
+            audio: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveAudio,
+              this.mediaProperties.mediaDirection.sendAudio
+            ),
+            video: Media.getDirection(receiveVideo, sendVideo),
+            screenShareVideo: Media.getDirection(
+              this.mediaProperties.mediaDirection.receiveShare,
+              this.mediaProperties.mediaDirection.sendShare
+            ),
           },
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         })
       )
       .then(() => {
@@ -6238,14 +6265,20 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => this.checkForStopShare(sendShare, previousSendShareStatus))
       .then((startShare) =>
         this.mediaProperties.webrtcMediaConnection
-          .updateSendReceiveOptions({
-            send: {screenShareVideo: track},
-            receive: {
-              audio: this.mediaProperties.mediaDirection.receiveAudio,
-              video: this.mediaProperties.mediaDirection.receiveVideo,
-              screenShareVideo: options.receiveShare,
-              remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+          .update({
+            localTracks: {screenShareVideo: track},
+            direction: {
+              audio: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveAudio,
+                this.mediaProperties.mediaDirection.sendAudio
+              ),
+              video: Media.getDirection(
+                this.mediaProperties.mediaDirection.receiveVideo,
+                this.mediaProperties.mediaDirection.sendVideo
+              ),
+              screenShareVideo: Media.getDirection(receiveShare, sendShare),
             },
+            remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
           })
           .then(() =>
             this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
@@ -6552,6 +6585,7 @@ export default class Meeting extends StatelessWebexPlugin {
           deviceUrl: this.deviceUrl,
           uri: content.url,
           resourceUrl: this.resourceUrl,
+          annotationInfo: this.annotationInfo,
         })
         .then(() => {
           this.isSharing = true;
@@ -7669,13 +7703,14 @@ export default class Meeting extends StatelessWebexPlugin {
       audio?: LocalTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
       video?: LocalDisplayTrack;
     };
+    annotationInfo?: AnnotationInfo;
   }): Promise<void> {
     this.checkMediaConnection();
 
     if (!this.isMultistream) {
       throw new Error('publishTracks() only supported with multistream');
     }
-
+    this.annotationInfo = tracks.annotationInfo;
     if (tracks.screenShare?.video) {
       const oldTrack = this.mediaProperties.shareTrack;
       const localDisplayTrack = tracks.screenShare?.video;

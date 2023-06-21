@@ -590,6 +590,13 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canBroadcastMessageToBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT']), true);
+        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout([]), false);
+      });
+    });
+
     describe('isSuppressBreakoutSupport', () => {
       it('works as expected', () => {
         assert.deepEqual(

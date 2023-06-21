@@ -86,6 +86,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
+import {ANNOTATION_POLICY} from "../../../../src/annotation/constants";
 
 const {getBrowserName, getOSVersion} = BrowserDetection();
 
@@ -2313,11 +2314,11 @@ describe('plugin-meetings', () => {
                 receiveShare: true,
               };
               meeting.mediaProperties.webrtcMediaConnection = {
-                updateSendReceiveOptions: sinon.stub(),
+                update: sinon.stub(),
               };
               sinon.stub(MeetingUtil, 'getTrack').returns({audioTrack: FAKE_AUDIO_TRACK});
             });
-            it('calls this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions', () =>
+            it('calls this.mediaProperties.webrtcMediaConnection.update', () =>
               meeting
                 .updateAudio({
                   sendAudio: true,
@@ -2326,18 +2327,18 @@ describe('plugin-meetings', () => {
                 })
                 .then(() => {
                   assert.calledOnce(
-                    meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions
+                    meeting.mediaProperties.webrtcMediaConnection.update
                   );
                   assert.calledWith(
-                    meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions,
+                    meeting.mediaProperties.webrtcMediaConnection.update,
                     {
-                      send: {audio: FAKE_AUDIO_TRACK},
-                      receive: {
-                        audio: true,
-                        video: true,
-                        screenShareVideo: true,
-                        remoteQualityLevel: 'HIGH',
+                      localTracks: {audio: FAKE_AUDIO_TRACK},
+                      direction: {
+                        audio: 'sendrecv',
+                        video: 'sendrecv',
+                        screenShareVideo: 'recvonly',
                       },
+                      remoteQualityLevel: 'HIGH',
                     }
                   );
                 }));
@@ -2481,7 +2482,7 @@ describe('plugin-meetings', () => {
 
           sandbox.stub(meeting, 'canUpdateMedia').returns(false);
           meeting.mediaProperties.webrtcMediaConnection = {
-            updateSendReceiveOptions: sinon.stub().resolves({}),
+            update: sinon.stub().resolves({}),
           };
 
           let myPromiseResolved = false;
@@ -2497,7 +2498,7 @@ describe('plugin-meetings', () => {
             });
 
           // verify that nothing was done
-          assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.update);
 
           // now trigger processing of the queue
           meeting.canUpdateMedia.restore();
@@ -2506,22 +2507,22 @@ describe('plugin-meetings', () => {
           meeting.processNextQueuedMediaUpdate();
           await testUtils.flushPromises();
 
-          // and check that updateSendReceiveOptions is called with the original args
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          // and check that update is called with the original args
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.calledWith(
-            meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions,
+            meeting.mediaProperties.webrtcMediaConnection.update,
             {
-              send: {
+              localTracks: {
                 audio: FAKE_TRACKS.audio,
                 video: FAKE_TRACKS.video,
                 screenShareVideo: FAKE_TRACKS.screenshareVideo,
               },
-              receive: {
-                audio: true,
-                video: true,
-                screenShareVideo: true,
-                remoteQualityLevel: 'HIGH',
+              direction: {
+                audio: 'sendrecv',
+                video: 'sendrecv',
+                screenShareVideo: 'sendrecv',
               },
+              remoteQualityLevel: 'HIGH',
             }
           );
           assert.isTrue(myPromiseResolved);
@@ -2544,8 +2545,8 @@ describe('plugin-meetings', () => {
               eventListeners[event] = listener;
             }),
 
-            updateSendReceiveOptions: sinon.stub().callsFake(() => {
-              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+            update: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before update() resolves
               if (eventListeners[Event.ROAP_STARTED]) {
                 eventListeners[Event.ROAP_STARTED]();
               } else {
@@ -2583,7 +2584,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.isFalse(myPromiseResolved);
 
           // verify that requestScreenShareFloorStub was not called yet
@@ -2636,8 +2637,8 @@ describe('plugin-meetings', () => {
               eventListeners[event] = listener;
             }),
 
-            updateSendReceiveOptions: sinon.stub().callsFake(() => {
-              // trigger ROAP_STARTED before updateSendReceiveOptions() resolves
+            update: sinon.stub().callsFake(() => {
+              // trigger ROAP_STARTED before update() resolves
               if (eventListeners[Event.ROAP_STARTED]) {
                 eventListeners[Event.ROAP_STARTED]();
               } else {
@@ -2678,7 +2679,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.isFalse(myPromiseResolved);
 
           // verify that requestScreenShareFloorStub was not called yet
@@ -2694,8 +2695,8 @@ describe('plugin-meetings', () => {
         it('when changing screen share stream and no roap transaction happening, it requests floor immediately', async () => {
           let myPromiseResolved = false;
 
-          // simulate a case when no roap transaction is triggered by updateSendReceiveOptions
-          meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions = sinon
+          // simulate a case when no roap transaction is triggered by update
+          meeting.mediaProperties.webrtcMediaConnection.update = sinon
             .stub()
             .resolves({});
 
@@ -2711,7 +2712,7 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
           assert.calledOnce(requestScreenShareFloorStub);
           assert.isTrue(myPromiseResolved);
         });
@@ -4129,6 +4130,14 @@ describe('plugin-meetings', () => {
             checkVideoPublished(videoTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
+        });
+        it('creates instance and publishes with annotation info', async () => {
+          const annotationInfo = {
+            version: '1',
+            policy: ANNOTATION_POLICY.APPROVAL,
+          };
+          await meeting.publishTracks({annotationInfo});
+          assert.equal(meeting.annotationInfo, annotationInfo);
         });
 
         describe('unpublishTracks', () => {
@@ -5847,6 +5856,7 @@ describe('plugin-meetings', () => {
             .returns(Promise.resolve('something'));
           webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
           meeting.webex.internal.llm.on = sinon.stub();
+          meeting.webex.internal.llm.off = sinon.stub();
           meeting.processRelayEvent = sinon.stub();
         });
 
@@ -5890,6 +5900,11 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
           assert.equal(result, 'something');
           assert.calledOnceWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledOnceWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
             meeting.processRelayEvent
@@ -5912,6 +5927,14 @@ describe('plugin-meetings', () => {
             'a datachannel url'
           );
           assert.equal(result, 'something');
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledTwice(
+            meeting.webex.internal.llm.off
+          );
           assert.calledOnceWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
@@ -5923,8 +5946,6 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          meeting.webex.internal.llm.off = sinon.stub();
-          meeting.processRelayEvent = sinon.stub();
 
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
