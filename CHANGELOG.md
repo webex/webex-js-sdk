@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.145](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.144...v3.0.0-beta.145) (2023-06-21)
+
+
+### Features
+
+* **plugin-meetings:** add canBroadcastMessageToBreakout in meetingActions ([#2895](https://github.com/webex/webex-js-sdk/issues/2895)) ([15a4cab](https://github.com/webex/webex-js-sdk/commit/15a4cab054c7b411d2eb44cf84bc84cf26d42de9))
+
 ## [3.0.0-beta.144](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.143...v3.0.0-beta.144) (2023-06-19)
 
 
