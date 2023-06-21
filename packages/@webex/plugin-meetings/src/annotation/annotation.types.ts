@@ -25,6 +25,9 @@ type CommandRequestBody = {
   shareInstanceId: string;
   receivers?: any[];
 };
+/**
+ * Type for an annotation Object include annotation version and privilege
+ */
 type AnnotationInfo = {
   version: string;
   policy: ANNOTATION_POLICY;
