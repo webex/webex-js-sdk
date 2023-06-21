@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.146](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.145...v3.0.0-beta.146) (2023-06-21)
+
+
+### Features
+
+* **Live-Annotation:** start share with annotation info ([#2894](https://github.com/webex/webex-js-sdk/issues/2894)) ([9695014](https://github.com/webex/webex-js-sdk/commit/96950146f750ba2a939ed95e539e6c5dce792085))
+
 ## [3.0.0-beta.145](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.144...v3.0.0-beta.145) (2023-06-21)
 
 
