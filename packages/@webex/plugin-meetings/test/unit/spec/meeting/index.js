@@ -210,6 +210,7 @@ describe('plugin-meetings', () => {
           metrics: {},
           stats: {},
           experimental: {enableUnifiedMeetings: true},
+          degradationPreferences: { maxMacroblocksLimit: 8192 },
         },
         metrics: {
           type: ['behavioral'],
@@ -1374,14 +1375,16 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
-      })
+      });
 
-      /* This set of tests are like semi-integration tests, they use real MuteState, Media and Roap modules.
+      /* This set of tests are like semi-integration tests, they use real MuteState, Media, LocusMediaRequest and Roap classes.
          They mock the @webex/internal-media-core and sending of /media http requests to Locus.
          Their main purpose is to test that we send the right http requests to Locus and make right calls
-         to @webex/internal-media-core.
+         to @webex/internal-media-core when addMedia, updateMedia, publishTracks, unpublishTracks are called
+         in various combinations.
       */
-      describe('addMedia/updateMedia with real MuteState and media/index', () => {
+      [true,false].forEach((isMultistream) =>
+      describe(`addMedia/updateMedia semi-integration tests (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
         const webrtcAudioTrack = {
           id: 'underlying audio track',
           getSettings: sinon.stub().returns({deviceId: 'fake device id for audio track'}),
@@ -1389,9 +1392,10 @@ describe('plugin-meetings', () => {
 
         let fakeMicrophoneTrack;
         let fakeRoapMediaConnection;
+        let fakeMultistreamRoapMediaConnection;
         let roapMediaConnectionConstructorStub;
+        let multistreamRoapMediaConnectionConstructorStub;
         let locusMediaRequestStub; // stub for /media requests to Locus
-        const isMultistream = false; // todo: test multistream
 
         const roapOfferMessage = {messageType: 'OFFER', sdp: 'sdp', seq: '1', tieBreaker: '123'};
 
@@ -1465,9 +1469,26 @@ describe('plugin-meetings', () => {
             on: sinon.stub(),
           };
 
+          fakeMultistreamRoapMediaConnection = {
+            id: 'multistream roap media connection',
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            publishTrack: sinon.stub().resolves({}),
+            unpublishTrack: sinon.stub().resolves({}),
+            on: sinon.stub(),
+            requestMedia: sinon.stub(),
+            createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
+            enableMultistreamAudio: sinon.stub(),
+          };
+
           roapMediaConnectionConstructorStub = sinon
             .stub(internalMediaModule, 'RoapMediaConnection')
             .returns(fakeRoapMediaConnection);
+
+          multistreamRoapMediaConnectionConstructorStub = sinon
+            .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
+            .returns(fakeMultistreamRoapMediaConnection);
 
           locusMediaRequestStub = sinon.stub(WebexPlugin.prototype, 'request').resolves({body: {locus: { fullState: {}}}});
         });
@@ -1485,12 +1506,16 @@ describe('plugin-meetings', () => {
         const resetHistory = () => {
           locusMediaRequestStub.resetHistory();
           fakeRoapMediaConnection.update.resetHistory();
+          fakeMultistreamRoapMediaConnection.publishTrack.resetHistory();
+          fakeMultistreamRoapMediaConnection.unpublishTrack.resetHistory();
         };
 
         const getRoapListener = () => {
-          for(let idx = 0; idx < fakeRoapMediaConnection.on.callCount; idx+= 1) {
-            if (fakeRoapMediaConnection.on.getCall(idx).args[0] === Event.ROAP_MESSAGE_TO_SEND) {
-              return fakeRoapMediaConnection.on.getCall(idx).args[1];
+          const roapMediaConnectionToCheck = isMultistream ? fakeMultistreamRoapMediaConnection : fakeRoapMediaConnection;
+
+          for(let idx = 0; idx < roapMediaConnectionToCheck.on.callCount; idx+= 1) {
+            if (roapMediaConnectionToCheck.on.getCall(idx).args[0] === Event.ROAP_MESSAGE_TO_SEND) {
+              return roapMediaConnectionToCheck.on.getCall(idx).args[1];
             }
           }
           assert.fail('listener for "roap:messageToSend" (Event.ROAP_MESSAGE_TO_SEND) was not registered')
@@ -1550,13 +1575,43 @@ describe('plugin-meetings', () => {
             });
         };
 
+        const checkMediaConnectionCreated = ({mediaConnectionConfig, localTracks, direction, remoteQualityLevel, expectedDebugId}) => {
+          if (isMultistream) {
+            const {iceServers} = mediaConnectionConfig;
+
+            assert.calledOnceWithExactly(multistreamRoapMediaConnectionConstructorStub, {
+              iceServers,
+              enableMainAudio: direction.audio !== 'inactive',
+              enableMainVideo: true
+            }, expectedDebugId);
+
+            Object.values(localTracks).forEach((track) => {
+              if (track) {
+                assert.calledOnceWithExactly(fakeMultistreamRoapMediaConnection.publishTrack, track);
+              }
+            })
+          } else {
+            assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, mediaConnectionConfig,
+              {
+                localTracks: {
+                  audio: localTracks.audio?.underlyingTrack,
+                  video: localTracks.video?.underlyingTrack,
+                  screenShareVideo: localTracks.screenShareVideo?.underlyingTrack,
+                },
+                direction,
+                remoteQualityLevel,
+              },
+              expectedDebugId);
+          }
+        }
+
         it('addMedia() works correctly when media is enabled without tracks to publish', async () => {
           await meeting.addMedia();
           await simulateRoapOffer();
 
           // check RoapMediaConnection was created correctly
-          assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, expectedMediaConnectionConfig,
-          {
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
             localTracks: {
               audio: undefined,
               video: undefined,
@@ -1568,8 +1623,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-          },
-          expectedDebugId);
+            expectedDebugId,
+          });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
@@ -1583,10 +1638,10 @@ describe('plugin-meetings', () => {
           await simulateRoapOffer();
 
           // check RoapMediaConnection was created correctly
-          assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, expectedMediaConnectionConfig,
-          {
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
             localTracks: {
-              audio: webrtcAudioTrack,
+              audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
             },
@@ -1596,8 +1651,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-          },
-          expectedDebugId);
+            expectedDebugId
+          });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: false, videoMuted: true});
@@ -1613,10 +1668,10 @@ describe('plugin-meetings', () => {
           await simulateRoapOffer();
 
           // check RoapMediaConnection was created correctly
-          assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, expectedMediaConnectionConfig,
-          {
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
             localTracks: {
-              audio: webrtcAudioTrack,
+              audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
             },
@@ -1626,8 +1681,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-          },
-          expectedDebugId);
+            expectedDebugId,
+          });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
@@ -1641,10 +1696,10 @@ describe('plugin-meetings', () => {
           await simulateRoapOffer();
 
           // check RoapMediaConnection was created correctly
-          assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, expectedMediaConnectionConfig,
-          {
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
             localTracks: {
-              audio: webrtcAudioTrack,
+              audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
             },
@@ -1654,8 +1709,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-          },
-          expectedDebugId);
+            expectedDebugId
+          });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
@@ -1669,8 +1724,8 @@ describe('plugin-meetings', () => {
           await simulateRoapOffer();
 
           // check RoapMediaConnection was created correctly
-          assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, expectedMediaConnectionConfig,
-          {
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
             localTracks: {
               audio: undefined,
               video: undefined,
@@ -1682,8 +1737,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-          },
-          expectedDebugId);
+            expectedDebugId
+          });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
@@ -1714,15 +1769,19 @@ describe('plugin-meetings', () => {
                 } else {
                   assert.notCalled(locusMediaRequestStub);
                 }
-                assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                  localTracks: { audio: webrtcAudioTrack, video: null, screenShareVideo: null },
-                  direction: {
-                    audio: expected.direction,
-                    video: 'sendrecv',
-                    screenShareVideo: 'recvonly',
-                  },
-                  remoteQualityLevel: 'HIGH'
-                });
+                if (isMultistream) {
+                  assert.calledOnceWithExactly(fakeMultistreamRoapMediaConnection.publishTrack, fakeMicrophoneTrack);
+                } else {
+                  assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
+                    localTracks: { audio: webrtcAudioTrack, video: null, screenShareVideo: null },
+                    direction: {
+                      audio: expected.direction,
+                      video: 'sendrecv',
+                      screenShareVideo: 'recvonly',
+                    },
+                    remoteQualityLevel: 'HIGH'
+                  });
+                }
               });
 
               it(`second publishTracks() call while media is ${mediaEnabled ? 'enabled' : 'disabled'}`, async () => {
@@ -1749,15 +1808,19 @@ describe('plugin-meetings', () => {
                 await stableState();
 
                 // only the roap media connection should be updated
-                assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                  localTracks: { audio: webrtcAudioTrack2, video: null, screenShareVideo: null },
-                  direction: {
-                    audio: expected.direction,
-                    video: 'sendrecv',
-                    screenShareVideo: 'recvonly',
-                  },
-                  remoteQualityLevel: 'HIGH'
-                });
+                if (isMultistream) {
+                  assert.calledOnceWithExactly(fakeMultistreamRoapMediaConnection.publishTrack, fakeMicrophoneTrack2);
+                } else {
+                  assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
+                    localTracks: { audio: webrtcAudioTrack2, video: null, screenShareVideo: null },
+                    direction: {
+                      audio: expected.direction,
+                      video: 'sendrecv',
+                      screenShareVideo: 'recvonly',
+                    },
+                    remoteQualityLevel: 'HIGH'
+                  });
+                }
 
                 // and no other roap messages or local mute requests were sent
                 assert.notCalled(locusMediaRequestStub);
@@ -1775,15 +1838,19 @@ describe('plugin-meetings', () => {
                 await stableState();
 
                 // the roap media connection should be updated
-                assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                  localTracks: { audio: null, video: null, screenShareVideo: null },
-                  direction: {
-                    audio: expected.direction,
-                    video: 'sendrecv',
-                    screenShareVideo: 'recvonly',
-                  },
-                  remoteQualityLevel: 'HIGH'
-                });
+                if (isMultistream) {
+                  assert.calledOnceWithExactly(fakeMultistreamRoapMediaConnection.unpublishTrack, fakeMicrophoneTrack);
+                } else {
+                  assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
+                    localTracks: { audio: null, video: null, screenShareVideo: null },
+                    direction: {
+                      audio: expected.direction,
+                      video: 'sendrecv',
+                      screenShareVideo: 'recvonly',
+                    },
+                    remoteQualityLevel: 'HIGH'
+                  });
+                }
 
                 if (expected.localMuteSentValue !== undefined) {
                   // and local mute sent to Locus
@@ -1805,21 +1872,29 @@ describe('plugin-meetings', () => {
             resetHistory();
           }
 
+          const checkAudioEnabled = (expectedTrack, expectedDirection) => {
+            if (isMultistream) {
+              assert.calledOnceWithExactly(fakeMultistreamRoapMediaConnection.enableMultistreamAudio, expectedDirection !== 'inactive');
+            } else {
+              assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
+                localTracks: { audio: expectedTrack, video: null, screenShareVideo: null },
+                direction: {
+                  audio: expectedDirection,
+                  video: 'sendrecv',
+                  screenShareVideo: 'recvonly',
+                },
+                remoteQualityLevel: 'HIGH'
+              });
+            }
+          }
+
           it('updateMedia() disables media when nothing is published', async () => {
             await addMedia(true);
 
             await meeting.updateMedia({audioEnabled: false});
 
             // the roap media connection should be updated
-            assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-              localTracks: { audio: null, video: null, screenShareVideo: null },
-              direction: {
-                audio: 'inactive',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH'
-            });
+            checkAudioEnabled(null, 'inactive');
 
             // and that would trigger a new offer so we simulate it happening
             await simulateRoapOffer();
@@ -1837,15 +1912,7 @@ describe('plugin-meetings', () => {
             await meeting.updateMedia({audioEnabled: true});
 
             // the roap media connection should be updated
-            assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-              localTracks: { audio: null, video: null, screenShareVideo: null },
-              direction: {
-                audio: 'sendrecv',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH'
-            });
+            checkAudioEnabled(null, 'sendrecv');
 
             // and that would trigger a new offer so we simulate it happening
             await simulateRoapOffer();
@@ -1864,15 +1931,7 @@ describe('plugin-meetings', () => {
             await stableState();
 
             // the roap media connection should be updated
-            assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-              localTracks: { audio: webrtcAudioTrack, video: null, screenShareVideo: null },
-              direction: {
-                audio: 'inactive',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH'
-            });
+            checkAudioEnabled(webrtcAudioTrack, 'inactive');
 
             checkLocalMuteSentToLocus({audioMuted: true, videoMuted: true});
 
@@ -1895,15 +1954,7 @@ describe('plugin-meetings', () => {
             await stableState();
 
             // the roap media connection should be updated
-            assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-              localTracks: { audio: webrtcAudioTrack, video: null, screenShareVideo: null },
-              direction: {
-                audio: 'sendrecv',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH'
-            });
+            checkAudioEnabled(webrtcAudioTrack, 'sendrecv');
 
             checkLocalMuteSentToLocus({audioMuted: false, videoMuted: true});
 
@@ -1955,7 +2006,8 @@ describe('plugin-meetings', () => {
             assert.notCalled(fakeRoapMediaConnection.update);
           })
         );
-      });
+      }));
+
       describe('#acknowledge', () => {
         it('should have #acknowledge', () => {
           assert.exists(meeting.acknowledge);
