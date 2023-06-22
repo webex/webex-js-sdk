@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {REPO_NAME, VERSION} from '../CallingClient/constants';
 import {IMetaContext} from '../common/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';

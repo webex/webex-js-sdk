@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {

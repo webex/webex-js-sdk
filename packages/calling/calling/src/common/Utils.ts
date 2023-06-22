@@ -1,9 +1,7 @@
-/* eslint-disable jsdoc/require-returns-type */
-/* eslint-disable jsdoc/check-param-names */
-/* eslint-disable jsdoc/require-description */
-/* eslint-disable jsdoc/require-param-type */
 /* eslint-disable no-fallthrough */
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable valid-jsdoc */
+/* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from '../CallingClient/metrics/types';
 import {ICallingClient} from '../CallingClient/types';

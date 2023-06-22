@@ -1,4 +1,5 @@
 /* eslint-disable dot-notation */
+/* eslint-disable valid-jsdoc */
 import {CALL_MANAGER_FILE} from '../constants';
 import {CallEventTypes, EVENT_KEYS} from '../../Events/types';
 import {Eventing} from '../../Events/impl';
@@ -132,14 +133,14 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         });
         /* Check whether MidCall or not */
         if (mobiusEvent.data.midCallService) {
-          mobiusEvent.data.midCallService.forEach((event: MidCallEvent) => {
+          mobiusEvent.data.midCallService.forEach((midCallEvent: MidCallEvent) => {
             const call = this.getCall(correlationId);
 
             if (call) {
-              call.handleMidCallEvent(event);
+              call.handleMidCallEvent(midCallEvent);
             } else {
               log.log(
-                `Dropping midcall event of type: ${event.eventType} as it doesn't match with any existing call`,
+                `Dropping midcall event of type: ${midCallEvent.eventType} as it doesn't match with any existing call`,
                 {
                   file: CALL_MANAGER_FILE,
                   method: 'dequeueWsEvents',

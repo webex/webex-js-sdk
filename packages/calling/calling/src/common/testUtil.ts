@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /*
  This file acts as a utility to create a mock Webex object that can be imported
  into UT. As we can see, the methods have been replaced with mock jest.fn().

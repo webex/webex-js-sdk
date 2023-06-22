@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable dot-notation */
+/* eslint-disable @typescript-eslint/no-shadow */
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {SORT, SORT_BY, WebexRequestPayload} from '../common/types';

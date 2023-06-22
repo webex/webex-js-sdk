@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {v4 as uuid} from 'uuid';
 import {
   CALLING_USER_AGENT,

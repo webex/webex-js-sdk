@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {WebexSDK} from './types';
 
 // TODO: add other cases necessary for fully qualified webex instance

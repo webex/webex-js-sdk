@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable valid-jsdoc */
 import {CallerIdInfo} from '../../../Events/types';
 import {ISDKConnector, WebexSDK} from '../../../SDKConnector/types';
 import {DisplayInformation} from '../../../common/types';

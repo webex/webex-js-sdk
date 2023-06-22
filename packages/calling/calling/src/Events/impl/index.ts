@@ -1,3 +1,5 @@
+/* eslint-disable valid-jsdoc */
+/* eslint-disable @typescript-eslint/no-shadow */
 import EventEmitter from 'events';
 import TypedEmitter, {EventMap} from 'typed-emitter'; // eslint-disable-line import/no-extraneous-dependencies
 import Logger from '../../Logger';

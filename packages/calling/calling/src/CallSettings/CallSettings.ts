@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {

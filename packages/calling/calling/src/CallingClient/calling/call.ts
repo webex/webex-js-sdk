@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {RoapMediaConnection, Event} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
@@ -1401,9 +1402,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }
 
         handleCallErrors(
-          (error: CallError) => {
-            this.emit(EVENT_KEYS.CALL_ERROR, error);
-            this.submitCallErrorMetric(error);
+          (callError: CallError) => {
+            this.emit(EVENT_KEYS.CALL_ERROR, callError);
+            this.submitCallErrorMetric(callError);
           },
           ERROR_LAYER.CALL_CONTROL,
           (interval: number) => {

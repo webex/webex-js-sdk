@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable dot-notation */
-/* eslint-disable jsdoc/require-description */
+/* eslint-disable @typescript-eslint/no-shadow */
 import * as MediaSDK from '@webex/internal-media-core';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';

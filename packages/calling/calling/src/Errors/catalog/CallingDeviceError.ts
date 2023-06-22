@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 import {MobiusStatus} from '../../common/types';
 
 import {ErrorContext, ErrorMessage, ErrorObject, ERROR_TYPE} from '../types';

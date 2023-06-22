@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable no-console */
+/* eslint-disable valid-jsdoc */
+/* eslint-disable  no-shadow */
 const fs = require('fs');
 const {version} = require('./package.json');
 

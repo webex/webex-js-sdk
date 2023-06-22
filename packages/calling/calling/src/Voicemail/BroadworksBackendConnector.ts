@@ -1,3 +1,4 @@
+/* eslint-disable valid-jsdoc */
 /* eslint-disable no-underscore-dangle */
 import {ERROR_CODE} from '../Errors/types';
 import SDKConnector from '../SDKConnector';

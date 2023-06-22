@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+/* eslint-disable valid-jsdoc */
 import {STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {LoggerInterface} from '../Voicemail/types';
