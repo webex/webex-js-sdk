@@ -94,7 +94,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     breakoutStatus: {
-      cache: false,
+      cache: true,
       deps: ['isInMainSession', 'status', 'groups'],
       /**
        * Returns the breakout status
