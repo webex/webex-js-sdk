@@ -144,7 +144,7 @@ describe('RemoteMediaGroup', () => {
 
   });
 
-  describe('fixCsis', () => {
+  describe('setCsis', () => {
     it('checks when there is a csi and remote media is not in pinned array', () => {
       const PINNED_INDEX = 2;
       const CSI = 11111;
@@ -164,7 +164,7 @@ describe('RemoteMediaGroup', () => {
 
       resetHistory();
 
-      group.fixCsis([{remoteMedia, csi: CSI}], false);
+      group.setCsis([{remoteMedia, csi: CSI}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -229,7 +229,7 @@ describe('RemoteMediaGroup', () => {
       resetHistory();
 
       // pin it so that it is in pinned array
-      group.fixCsis([{remoteMedia, csi: 1234}], false);
+      group.setCsis([{remoteMedia, csi: 1234}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -243,7 +243,7 @@ describe('RemoteMediaGroup', () => {
       const expectedReceiverSelectedSlots = [fakeReceiveSlots[PINNED_INDEX]];
 
       // pin again to same CSI
-      group.fixCsis([{remoteMedia, csi: 1234}], false);
+      group.setCsis([{remoteMedia, csi: 1234}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -272,7 +272,7 @@ describe('RemoteMediaGroup', () => {
       assert.notCalled(fakeMediaRequestManager.commit);
     });
 
-    it('checks fixCsis with array of remoteMedia to pin and unpin', () => {
+    it('checks setCsis with array of remoteMedia to pin and unpin', () => {
       const PINNED_INDEX = 2;
       const PINNED_INDEX2 = 0;
       const CSI = 11111;
@@ -291,20 +291,29 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
 
-      resetHistory();
-
       const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
 
-      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}, {remoteMedia}];
+      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}];
 
-      group.fixCsis(remoteMedisCsis, false);
+      group.setCsis(remoteMedisCsis, false);
+
+     assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 2);
+     assert.strictEqual(group.getRemoteMedia('pinned').length, 2);
+
+     assert.strictEqual(group.isPinned(remoteMedia), true);
+     assert.strictEqual(group.isPinned(remoteMedia2), true);
+
+     resetHistory();
+
+     group.setCsis([{remoteMedia}], false);
 
      // one pane should still remain pinned
      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
-
      assert.strictEqual(group.isPinned(remoteMedia), false);
      assert.strictEqual(group.isPinned(remoteMedia2), true);
 
@@ -332,9 +341,25 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}, {remoteMedia}];
 
-      group.fixCsis(remoteMedisCsis, true);
+      group.setCsis(remoteMedisCsis, true);
 
       assert.calledOnce(fakeMediaRequestManager.commit);
+    });
+
+    it.only('throws when remoteMedia id is not in unpinned and pinned array - csi is there', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      assert.throws(() => group.setCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
+    });
+
+    it.only('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      assert.throws(() => group.setCsis([{remoteMedia: {id: 'r1'} as any}], false), 'failed to unpin a remote media object r1, because it is not found in this remote media group');
     });
   });
 

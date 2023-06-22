@@ -68,26 +68,35 @@ export class RemoteMediaGroup {
   }
 
   /**
-   * fixCsis
+   * setCsis - sets csis for remoteMedia
    *
    */
-  public fixCsis(
-    remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number | undefined}[],
-    commit = true
-  ): void {
+  public setCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[], commit = true): void {
     forEach(remoteMediaCsis, ({csi, remoteMedia}) => {
       if (csi) {
         if (!(this.pinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
           const unpinId = this.unpinnedRemoteMedia.indexOf(remoteMedia);
-          this.unpinnedRemoteMedia.splice(unpinId, 1);
-          this.pinnedRemoteMedia.push(remoteMedia);
+          if (unpinId >= 0) {
+            this.unpinnedRemoteMedia.splice(unpinId, 1);
+            this.pinnedRemoteMedia.push(remoteMedia);
+          } else {
+            throw new Error(
+              `failed to pin a remote media object ${remoteMedia.id}, because it is not found in this remote media group`
+            );
+          }
         }
         remoteMedia.sendMediaRequest(csi, false);
       } else {
         if (!(this.unpinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
           const pinId = this.pinnedRemoteMedia.indexOf(remoteMedia);
-          this.pinnedRemoteMedia.splice(pinId, 1);
-          this.unpinnedRemoteMedia.push(remoteMedia);
+          if (pinId >= 0) {
+            this.pinnedRemoteMedia.splice(pinId, 1);
+            this.unpinnedRemoteMedia.push(remoteMedia);
+          } else {
+            throw new Error(
+              `failed to unpin a remote media object ${remoteMedia.id}, because it is not found in this remote media group`
+            );
+          }
         }
         remoteMedia.cancelMediaRequest(false);
       }
