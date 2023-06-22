@@ -42,6 +42,7 @@ interface IInMeetingActions {
   waitingForOthersToJoin?: boolean;
   canSendReactions?: boolean;
   canManageBreakout?: boolean;
+  canBroadcastMessageToBreakout?: boolean;
   canAdmitLobbyToBreakout?: boolean;
   isBreakoutPreassignmentsEnabled?: boolean;
   canUserAskForHelp?: boolean;
@@ -143,6 +144,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canManageBreakout = null;
 
+  canBroadcastMessageToBreakout = null;
+
   canAdmitLobbyToBreakout = null;
 
   isBreakoutPreassignmentsEnabled = null;
@@ -235,6 +238,7 @@ export default class InMeetingActions implements IInMeetingActions {
     waitingForOthersToJoin: this.waitingForOthersToJoin,
     canSendReactions: this.canSendReactions,
     canManageBreakout: this.canManageBreakout,
+    canBroadcastMessageToBreakout: this.canBroadcastMessageToBreakout,
     canAdmitLobbyToBreakout: this.canAdmitLobbyToBreakout,
     isBreakoutPreassignmentsEnabled: this.isBreakoutPreassignmentsEnabled,
     canUserAskForHelp: this.canUserAskForHelp,

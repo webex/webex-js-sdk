@@ -119,6 +119,7 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
+import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -144,6 +145,7 @@ export type LocalTracks = {
     audio?: LocalTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
     video?: LocalDisplayTrack;
   };
+  annotationInfo?: AnnotationInfo;
 };
 
 export type AddMediaOptions = {
@@ -530,6 +532,7 @@ export default class Meeting extends StatelessWebexPlugin {
   roles: any[];
   environment: string;
   namespace = MEETINGS;
+  annotationInfo: AnnotationInfo;
 
   /**
    * @param {Object} attrs
@@ -2559,6 +2562,9 @@ export default class Meeting extends StatelessWebexPlugin {
             payload.info.userDisplayHints
           ),
           canManageBreakout: MeetingUtil.canManageBreakout(payload.info.userDisplayHints),
+          canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
+            payload.info.userDisplayHints
+          ),
           canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(
             payload.info.userDisplayHints
           ),
@@ -3419,7 +3425,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * on it, cleans up previous track, etc.
    * It also sends the floor grant/release request.
    *
-   * @param {LocalDisplayTrack | null} localDisplayTrack local camera track
+   * @param {LocalDisplayTrack | undefined} localDisplayTrack local camera track
    * @returns {Promise<void>}
    */
   private async setLocalShareTrack(localDisplayTrack?: LocalDisplayTrack) {
@@ -4952,7 +4958,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
-   * In order to send audio/video, call publishTracks() after addMedia() resolves.
    *
    * @param {AddMediaOptions} options
    * @returns {Promise}
@@ -5041,6 +5046,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
+
+    this.annotationInfo = localTracks?.annotationInfo;
 
     const promises = [];
 
@@ -5686,6 +5693,7 @@ export default class Meeting extends StatelessWebexPlugin {
             deviceUrl: this.deviceUrl,
             uri: content.url,
             resourceUrl: this.resourceUrl,
+            annotationInfo: this.annotationInfo,
           })
           .then(() => {
             this.isSharing = true;
@@ -6700,6 +6708,8 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async publishTracks(tracks: LocalTracks): Promise<void> {
     this.checkMediaConnection();
+
+    this.annotationInfo = tracks.annotationInfo;
 
     if (
       !tracks.microphone &&

@@ -91,6 +91,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
+import {ANNOTATION_POLICY} from "../../../../src/annotation/constants";
 
 const {getBrowserName, getOSVersion} = BrowserDetection();
 
@@ -3595,6 +3596,14 @@ describe('plugin-meetings', () => {
             checkVideoPublished(videoTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
+        });
+        it('creates instance and publishes with annotation info', async () => {
+          const annotationInfo = {
+            version: '1',
+            policy: ANNOTATION_POLICY.APPROVAL,
+          };
+          await meeting.publishTracks({annotationInfo});
+          assert.equal(meeting.annotationInfo, annotationInfo);
         });
 
         describe('unpublishTracks', () => {
