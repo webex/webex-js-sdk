@@ -1,4 +1,4 @@
-import {Eventing} from 'Events/impl';
+import {Eventing} from '../Events/impl';
 import {CallHistoryEventTypes, UserSession} from '../Events/types';
 import {ISDKConnector} from '../SDKConnector/types';
 import {LOGGER} from '../Logger/types';

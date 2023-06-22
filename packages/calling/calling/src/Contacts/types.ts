@@ -1,4 +1,4 @@
-import {ISDKConnector} from 'SDKConnector/types';
+import {ISDKConnector} from '../SDKConnector/types';
 
 export enum ContactType {
   CUSTOM = 'CUSTOM',

@@ -1,4 +1,4 @@
-import {CallError, CallingClientError} from 'Errors';
+import {CallError, CallingClientError} from '../../Errors';
 import {CallId, CorrelationId, IDeviceInfo} from '../../common/types';
 
 export enum METRIC_TYPE {

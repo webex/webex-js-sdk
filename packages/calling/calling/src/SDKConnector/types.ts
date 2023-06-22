@@ -1,4 +1,4 @@
-import {DSSLookupResponse, LookupOptions} from 'Contacts/types';
+import {DSSLookupResponse, LookupOptions} from '../Contacts/types';
 import {PeopleListResponse, WebexRequestPayload} from '../common/types';
 /* eslint-disable no-shadow */
 

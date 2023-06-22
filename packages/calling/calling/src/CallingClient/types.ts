@@ -1,5 +1,5 @@
 import * as Media from '@webex/internal-media-core';
-import {CallingClientError} from 'Errors';
+import {CallingClientError} from '../Errors';
 import {LOGGER} from '../Logger/types';
 import {ISDKConnector} from '../SDKConnector/types';
 
