@@ -2215,7 +2215,10 @@ export default class Meeting extends StatelessWebexPlugin {
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
 
-      if (!isEqual(contentShare?.annotation, previousContentShare?.annotation)) {
+      if (
+        contentShare.annotation &&
+        !isEqual(contentShare?.annotation, previousContentShare?.annotation)
+      ) {
         Trigger.trigger(
           this,
           {

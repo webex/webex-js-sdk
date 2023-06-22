@@ -6777,6 +6777,16 @@ describe('plugin-meetings', () => {
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
+
+            it('Scenario #3: annotation is null', () => {
+              const annotationInfo = {version: '1', policy: 'Approval'};
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME,annotationInfo);
+              const data2 = generateData(data1.payload, true, true, USER_IDS.ME);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, true, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2]);
+            });
           });
 
           describe('Desktop A --> Desktop B', () => {
