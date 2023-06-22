@@ -72,7 +72,7 @@ export class RemoteMediaGroup {
    *
    */
   public fixCsis(
-    remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[],
+    remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number | undefined}[],
     commit = true
   ): void {
     forEach(remoteMediaCsis, ({csi, remoteMedia}) => {
