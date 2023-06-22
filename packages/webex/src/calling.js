@@ -47,4 +47,4 @@ class Calling {
   }
 }
 
-export {Calling};
+export default Calling;
