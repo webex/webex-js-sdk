@@ -68,8 +68,10 @@ export class RemoteMediaGroup {
   }
 
   /**
-   * setActiveSpeakerCsis - sets csis for remoteMedia
-   * pins when csis is there and unpins when csi is undefined
+   * Sets CSIs for multiple RemoteMedia instances belonging to this RemoteMediaGroup.
+   * For each entry in the remoteMediaCsis array:
+   * - if csi is specified, the RemoteMedia instance is pinned to that CSI
+   * - if csi is undefined, the RemoteMedia instance is unpinned
    * @internal
    */
   public setActiveSpeakerCsis(

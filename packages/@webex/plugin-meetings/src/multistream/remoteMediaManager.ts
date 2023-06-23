@@ -506,12 +506,12 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
-   * setActiveSpeakerCsis - sets the csis
-   * pins when csi is present and unpins when csi is undefined
+   * Sets CSIs for multiple RemoteMedia instances belonging to RemoteMediaGroup.
+   * For each entry in the remoteMediaCsis array:
+   * - if csi is specified, the RemoteMedia instance is pinned to that CSI
+   * - if csi is undefined, the RemoteMedia instance is unpinned
    */
-  public setActiveSpeakerCsis(
-    remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[]
-  ) {
+  public setActiveSpeakerCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[]) {
     Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
       const groupRemoteMediaCsis = remoteMediaCsis.filter(({remoteMedia}) =>
         remoteMediaGroup.includes(remoteMedia)
