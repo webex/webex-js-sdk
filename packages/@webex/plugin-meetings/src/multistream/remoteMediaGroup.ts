@@ -70,6 +70,7 @@ export class RemoteMediaGroup {
   /**
    * setActiveSpeakerCsis - sets csis for remoteMedia
    * pins when csis is there and unpins when csi is undefined
+   * @internal
    */
   public setActiveSpeakerCsis(
     remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[],
@@ -196,6 +197,10 @@ export class RemoteMediaGroup {
     throw new Error(`remote media object ${remoteMedia.id} not found in the group`);
   }
 
+  /**
+   * setPreferLiveVideo - sets preferLiveVideo to true/false
+   * @internal
+   */
   public setPreferLiveVideo(preferLiveVideo: boolean, commit: boolean) {
     if (this.options.preferLiveVideo !== preferLiveVideo) {
       this.options.preferLiveVideo = preferLiveVideo;
