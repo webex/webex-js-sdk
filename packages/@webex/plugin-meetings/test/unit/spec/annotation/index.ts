@@ -201,7 +201,7 @@ describe('live-annotation', () => {
         assert.equal(result, 'RETURN_VALUE')
       });
 
-      it('decryptContent ', async() => {
+      it('decryptContent', async() => {
         const result =  await annotationService.decryptContent("decryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.decryptText, "decryptionKeyUrl", "content");
         assert.equal(result, 'RETURN_VALUE')
