@@ -346,7 +346,7 @@ describe('RemoteMediaGroup', () => {
       assert.calledOnce(fakeMediaRequestManager.commit);
     });
 
-    it.only('throws when remoteMedia id is not in unpinned and pinned array - csi is there', () => {
+    it('throws when remoteMedia id is not in unpinned and pinned array - csi is there', () => {
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
         resolution: 'medium',
         preferLiveVideo: true,
@@ -354,7 +354,7 @@ describe('RemoteMediaGroup', () => {
       assert.throws(() => group.setCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
     });
 
-    it.only('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
+    it('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
         resolution: 'medium',
         preferLiveVideo: true,
