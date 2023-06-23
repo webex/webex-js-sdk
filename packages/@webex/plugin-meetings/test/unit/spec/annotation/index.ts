@@ -189,7 +189,7 @@ describe('live-annotation', () => {
     });
 
 
-    describe('encrypt/decrypt Content ', () => {
+    describe('encrypt/decrypt Content', () => {
       beforeEach(async () => {
         annotationService.webex.internal.encryption.encryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
         annotationService.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
