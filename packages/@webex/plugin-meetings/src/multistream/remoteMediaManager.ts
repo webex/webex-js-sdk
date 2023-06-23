@@ -506,15 +506,18 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
-   * setCsis - sets the csis
+   * setActiveSpeakerCsis - sets the csis
+   * pins when csi is present and unpins when csi is undefined
    */
-  public setCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[]) {
+  public setActiveSpeakerCsis(
+    remoteMediaCsis: {remoteMedia: RemoteMedia; csi: number | undefined}[]
+  ) {
     Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
       const groupRemoteMediaCsis = remoteMediaCsis.filter(({remoteMedia}) =>
         remoteMediaGroup.includes(remoteMedia)
       );
       if (groupRemoteMediaCsis.length > 0) {
-        remoteMediaGroup.setCsis(groupRemoteMediaCsis, false);
+        remoteMediaGroup.setActiveSpeakerCsis(groupRemoteMediaCsis, false);
       }
     });
     this.mediaRequestManagers.video.commit();

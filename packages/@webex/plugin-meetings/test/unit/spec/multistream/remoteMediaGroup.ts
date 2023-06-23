@@ -144,7 +144,7 @@ describe('RemoteMediaGroup', () => {
 
   });
 
-  describe('setCsis', () => {
+  describe('setActiveSpeakerCsis', () => {
     it('checks when there is a csi and remote media is not in pinned array', () => {
       const PINNED_INDEX = 2;
       const CSI = 11111;
@@ -164,7 +164,7 @@ describe('RemoteMediaGroup', () => {
 
       resetHistory();
 
-      group.setCsis([{remoteMedia, csi: CSI}], false);
+      group.setActiveSpeakerCsis([{remoteMedia, csi: CSI}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -229,7 +229,7 @@ describe('RemoteMediaGroup', () => {
       resetHistory();
 
       // pin it so that it is in pinned array
-      group.setCsis([{remoteMedia, csi: 1234}], false);
+      group.setActiveSpeakerCsis([{remoteMedia, csi: 1234}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -243,7 +243,7 @@ describe('RemoteMediaGroup', () => {
       const expectedReceiverSelectedSlots = [fakeReceiveSlots[PINNED_INDEX]];
 
       // pin again to same CSI
-      group.setCsis([{remoteMedia, csi: 1234}], false);
+      group.setActiveSpeakerCsis([{remoteMedia, csi: 1234}], false);
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
       assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -272,7 +272,7 @@ describe('RemoteMediaGroup', () => {
       assert.notCalled(fakeMediaRequestManager.commit);
     });
 
-    it('checks setCsis with array of remoteMedia to pin and unpin', () => {
+    it('checks setActiveSpeakerCsis with array of remoteMedia to pin and unpin', () => {
       const PINNED_INDEX = 2;
       const PINNED_INDEX2 = 0;
       const CSI = 11111;
@@ -295,7 +295,7 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}];
 
-      group.setCsis(remoteMedisCsis, false);
+      group.setActiveSpeakerCsis(remoteMedisCsis, false);
 
      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
@@ -307,7 +307,7 @@ describe('RemoteMediaGroup', () => {
 
      resetHistory();
 
-     group.setCsis([{remoteMedia}], false);
+     group.setActiveSpeakerCsis([{remoteMedia}], false);
 
      // one pane should still remain pinned
      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
@@ -341,7 +341,7 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}, {remoteMedia}];
 
-      group.setCsis(remoteMedisCsis, true);
+      group.setActiveSpeakerCsis(remoteMedisCsis, true);
 
       assert.calledOnce(fakeMediaRequestManager.commit);
     });
@@ -351,7 +351,7 @@ describe('RemoteMediaGroup', () => {
         resolution: 'medium',
         preferLiveVideo: true,
       });
-      assert.throws(() => group.setCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
+      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
     });
 
     it('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
@@ -359,7 +359,7 @@ describe('RemoteMediaGroup', () => {
         resolution: 'medium',
         preferLiveVideo: true,
       });
-      assert.throws(() => group.setCsis([{remoteMedia: {id: 'r1'} as any}], false), 'failed to unpin a remote media object r1, because it is not found in this remote media group');
+      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any}], false), 'failed to unpin a remote media object r1, because it is not found in this remote media group');
     });
   });
 

@@ -1724,14 +1724,14 @@ describe('RemoteMediaManager', () => {
     });
   });
 
-  describe('setCsis', () => {
-    it('calls setCsis on the correct remote media group', async () => {
+  describe('setActiveSpeakerCsis', () => {
+    it('calls setActiveSpeakerCsis on the correct remote media group', async () => {
       let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
       let setCsisStub;
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         currentLayoutInfo = layoutInfo;
-        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setCsis');
+        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setActiveSpeakerCsis');
       });
 
       await remoteMediaManager.start();
@@ -1742,7 +1742,7 @@ describe('RemoteMediaManager', () => {
       if (currentLayoutInfo) {
         const remoteVideo = currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
 
-        remoteMediaManager.setCsis([{remoteMedia: remoteVideo}]);
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: remoteVideo}]);
 
         assert.calledOnce(setCsisStub);
         assert.calledWith(setCsisStub, [{remoteMedia: remoteVideo}], false);
@@ -1750,13 +1750,13 @@ describe('RemoteMediaManager', () => {
       }
     });
 
-    it('does not call setCsis on the incorrect media group', async () => {
+    it('does not call setActiveSpeakerCsis on the incorrect media group', async () => {
       let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
       let setCsisStub;
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         currentLayoutInfo = layoutInfo;
-        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setCsis');
+        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setActiveSpeakerCsis');
       });
 
       await remoteMediaManager.start();
@@ -1765,7 +1765,7 @@ describe('RemoteMediaManager', () => {
       assert.isNotNull(currentLayoutInfo);
 
       if (currentLayoutInfo) {
-        remoteMediaManager.setCsis([{remoteMedia: {}}]);
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: {}}]);
 
         assert.notCalled(setCsisStub);
         assert.calledOnce(fakeMediaRequestManagers.video.commit);
@@ -1787,7 +1787,7 @@ describe('RemoteMediaManager', () => {
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         currentLayoutInfo = layoutInfo;
-        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setCsis')));
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setActiveSpeakerCsis')));
       });
 
       await remoteMediaManager.start();
@@ -1802,7 +1802,7 @@ describe('RemoteMediaManager', () => {
 
         const remoteMediaCsis = [{remoteMedia: remoteMedia1}, {remoteMedia: remoteMedia2}];
 
-        remoteMediaManager.setCsis([{remoteMedia: remoteMedia1}, {remoteMedia: remoteMedia2}]);
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: remoteMedia1}, {remoteMedia: remoteMedia2}]);
 
         stubs.forEach((stub, index) => {
           assert.calledWith(stub, [remoteMediaCsis[index]], false)

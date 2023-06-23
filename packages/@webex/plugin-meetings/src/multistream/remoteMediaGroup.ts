@@ -68,10 +68,13 @@ export class RemoteMediaGroup {
   }
 
   /**
-   * setCsis - sets csis for remoteMedia
-   *
+   * setActiveSpeakerCsis - sets csis for remoteMedia
+   * pins when csis is there and unpins when csi is undefined
    */
-  public setCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[], commit = true): void {
+  public setActiveSpeakerCsis(
+    remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[],
+    commit = true
+  ): void {
     forEach(remoteMediaCsis, ({csi, remoteMedia}) => {
       if (csi) {
         if (!(this.pinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
