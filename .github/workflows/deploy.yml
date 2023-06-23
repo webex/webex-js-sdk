@@ -64,7 +64,7 @@ jobs:
       - name: Build Tools
         run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
 
-      - name: Build # Optional, will remove this step once validated.
+      - name: Build
         run: yarn workspaces foreach --parallel --verbose run build:src
 
       - name: Cache Distributables
@@ -114,26 +114,32 @@ jobs:
       - name: Update Main Branch
         run: git fetch origin ${{ github.event.base_ref }} --unshallow
 
+        # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
         name: Generate Package Matrix
         run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
 
+        # Used for running node scripts against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-node-recursive
         name: Generate Package Matrix
         run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
 
+        # Used for running yarn tools against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-yarn-changed
         name: Generate Package Matrix
         run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
 
+        # Used for running yarn tools against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-yarn-recursive
         name: Generate Package Matrix
         run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
 
       - name: Display Package Matrix
         run: |
-          echo "changed packages - ${{ steps.generate-package-matrix-changed.outputs.changed}}"
-          echo "changed packages and dependents - ${{ steps.generate-package-matrix-recursive.outputs.recursive }}"
+          echo "changed packages for node - ${{ steps.generate-package-matrix-node-changed.outputs.node-changed}}"
+          echo "changed packages and dependents for node - ${{ steps.generate-package-matrix-node-recursive.outputs.node-recursive }}"
+          echo "changed packages for yarn - ${{ steps.generate-package-matrix-yarn-changed.outputs.yarn-changed}}"
+          echo "changed packages and dependents for yarn - ${{ steps.generate-package-matrix-yarn-recursive.outputs.yarn-recursive }}"
 
 
   publish-npm:
