@@ -5686,20 +5686,8 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.state === MEETING_STATE.STATES.JOINED) {
       const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
-      return this.meetingRequest
-        .changeMeetingFloor({
-          disposition: FLOOR_ACTION.GRANTED,
-          personUrl: this.locusInfo.self.url,
-          deviceUrl: this.deviceUrl,
-          uri: content.url,
-          resourceUrl: this.resourceUrl,
-          annotationInfo: this.annotationInfo,
-        })
-        .then(() => {
-          this.isSharing = true;
       if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
         Metrics.postEvent({event: eventType.SHARE_INITIATED, meeting: this});
-
 
         return this.meetingRequest
           .changeMeetingFloor({
@@ -6625,30 +6613,10 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {Promise<void>}
    */
-  async publishTracks(tracks: {
-    microphone?: LocalMicrophoneTrack;
-    camera?: LocalCameraTrack;
-    screenShare: {
-      audio?: LocalTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
-      video?: LocalDisplayTrack;
-    };
-    annotationInfo?: AnnotationInfo;
-  }): Promise<void> {
-    this.checkMediaConnection();
-
-    if (!this.isMultistream) {
-      throw new Error('publishTracks() only supported with multistream');
-    }
-    this.annotationInfo = tracks.annotationInfo;
-    if (tracks.screenShare?.video) {
-      const oldTrack = this.mediaProperties.shareTrack;
-      const localDisplayTrack = tracks.screenShare?.video;
-
   private updateTranscodedMediaConnection(): Promise<void> {
     const LOG_HEADER = 'Meeting:index#updateTranscodedMediaConnection -->';
 
     LoggerProxy.logger.info(`${LOG_HEADER} starting`);
-
 
     if (!this.canUpdateMedia()) {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.TRANSCODED_MEDIA_CONNECTION, {});
