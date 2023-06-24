@@ -10,13 +10,7 @@ export default {
   meetings: {
     deviceType: deviceType.WEB,
     mediaSettings: {
-      sendAudio: true,
-      sendVideo: true,
-      receiveAudio: true,
-      receiveVideo: true,
       pstn: false,
-      sendShare: false,
-      receiveShare: false,
     },
     reconnection: {
       enabled: false,
