@@ -232,7 +232,7 @@ describe('live-annotation', () => {
       });
 
 
-      it('works on  publish Stroke Data', async () => {
+      it('works on publish Stroke Data', async () => {
         const strokeData = {
           content: {
             "contentsBuffer": [{
