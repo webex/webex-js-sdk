@@ -85,7 +85,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
           payload: e.data.approval,
         }
       );
-      this.seqNum = (e?.sequenceNumber || 0) + 1;
     }
   }
 
@@ -96,7 +95,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   private eventDataProcessor(e) {
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
-        this.seqNum = (e?.sequenceNumber || 0) + 1;
         this.processStrokeMessage(e.data);
         break;
       default:
