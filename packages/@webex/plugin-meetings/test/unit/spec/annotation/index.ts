@@ -343,7 +343,7 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('change annotation info', () => {
+      describe('change annotation info by presenter', () => {
         it('makes change annotation options as expected', async() => {
           const options =  { annotationInfo:{
               version: '1',
