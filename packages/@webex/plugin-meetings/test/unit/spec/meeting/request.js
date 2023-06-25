@@ -560,13 +560,13 @@ describe('plugin-meetings', () => {
       const deviceUrl = 'deviceUrl';
       const locusUrl = 'locusUrl';
       meetingsRequest.config.meetings.deviceType = 'deviceType';
-  
+
       await meetingsRequest.declineMeeting({
         locusUrl,
         deviceUrl,
         reason
       });
-  
+
       const expectedBody = {
         device: {
           deviceType: 'deviceType',
@@ -574,7 +574,7 @@ describe('plugin-meetings', () => {
         },
         reason,
       };
-  
+
       checkRequest({
         method: 'PUT',
         uri: `${locusUrl}/participant/decline`,
@@ -606,7 +606,7 @@ describe('plugin-meetings', () => {
         resourceId: 'resourceId',
         resourceUrl: 'resourceUrl',
         uri: 'optionsUrl',
-        annotation:{
+        annotationInfo:{
           version: '1',
           policy: 'Approval',
         },
