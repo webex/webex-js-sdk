@@ -66,7 +66,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     }
   }
 
-  // @ts-ignore
+  /**
+   * Listen to websocket messages
+   * @returns {void}
+   */
   public deregisterEvents() {
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
@@ -74,6 +77,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
+    // @ts-ignore
+    this.webex.internal.llm.off('online', this.handleLLMOnline);
   }
 
   /**
@@ -327,11 +332,22 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * Turn on Captions
+   * Binding llm online event
+   * @param {function} callback
+   * @returns {void}
+   */
+  private onceLLMOnline = (callback) => {
+    // @ts-ignore
+    this.webex.internal.llm.off('online', callback);
+    // @ts-ignore
+    this.webex.internal.llm.once('online', callback);
+  };
+
+  /**
+   * request turn on Captions
    * @returns {Promise}
    */
-  public turnOnCaptions = async (): undefined | Promise<void> => {
-    if (this.hasVoiceaJoined && this.areCaptionsEnabled) return undefined;
+  private requestTurnOnCaptions = (): undefined | Promise<void> => {
     // @ts-ignore
     // eslint-disable-next-line newline-before-return
     return this.request({
@@ -353,6 +369,53 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       this.areCaptionsEnabled = true;
       this.sendAnnouncement();
     });
+  };
+
+  /**
+   * bind llm online event once to announce
+   * @returns {void}
+   */
+  private announceAfterLLMOnline = () => {
+    this.onceLLMOnline(this.announce);
+  };
+
+  /**
+   * announce to voicea data chanel
+   * @returns {void}
+   */
+  public announce = () => {
+    if (this.hasVoiceaJoined) return;
+    // @ts-ignore
+    if (!this.webex.internal.llm.connected) {
+      this.announceAfterLLMOnline();
+
+      return;
+    }
+    this.sendAnnouncement();
+  };
+
+  /**
+   * bind llm online event once to turn on captions
+   * @returns {void}
+   */
+  private turnOnCaptionsAfterLLMOnline = (): void => {
+    this.onceLLMOnline(this.turnOnCaptions);
+  };
+
+  /**
+   * Turn on Captions
+   * @returns {Promise}
+   */
+  public turnOnCaptions = async (): undefined | Promise<void> => {
+    if (this.hasVoiceaJoined && this.areCaptionsEnabled) return undefined;
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) {
+      this.turnOnCaptionsAfterLLMOnline();
+
+      return undefined;
+    }
+
+    return this.requestTurnOnCaptions();
   };
 
   /**
