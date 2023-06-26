@@ -1,5 +1,6 @@
-import {isArray, isEqual, assignWith, cloneDeep} from 'lodash';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {isEqual, assignWith, cloneDeep} from 'lodash';
+
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 import {
@@ -1247,18 +1248,7 @@ export default class LocusInfo extends EventsScope {
           {oldRoles: parsedSelves.previous?.roles, newRoles: parsedSelves.current?.roles}
         );
       }
-      // When the user upgrades to moderator or cohost
-      if (parsedSelves.updates.isUpgradeToModeratorOrCohost) {
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_MODERATOR_OR_COHOST_UPGRADE,
-          self
-        );
-      }
-      //
+
       if (parsedSelves.updates.isVideoMutedByOthersChanged) {
         this.emitScoped(
           {

@@ -12,7 +12,6 @@ import 'webrtc-adapter';
 
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import Metrics from '../metrics';
-import {trigger, eventType} from '../metrics/config';
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -44,7 +43,6 @@ import {
   _CONVERSATION_URL_,
   CONVERSATION_URL,
   MEETINGNUMBER,
-  BREAKOUTS,
   _JOINED_,
   _MOVED_,
 } from '../constants';
@@ -61,6 +59,7 @@ import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
+import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 
 let mediaLogger;
 
@@ -241,7 +240,6 @@ export default class Meetings extends WebexPlugin {
      */
     this.media = {
       getUserMedia: Media.getUserMedia,
-      getSupportedDevice: Media.getSupportedDevice,
     };
 
     this.onReady();
@@ -814,6 +812,36 @@ export default class Meetings extends WebexPlugin {
         })
     );
   }
+
+  /**
+   * Creates a noise reduction effect
+   *
+   * @param {INoiseReductionEffect} options optional custom effect options
+   * @returns {Promise<effect>} noise reduction effect.
+   * @public
+   * @memberof Meetings
+   */
+  createNoiseReductionEffect = async (options?: INoiseReductionEffect) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.NoiseReductionEffect({authToken, ...options});
+  };
+
+  /**
+   * Creates a virtual background effect
+   *
+   * @param {IVirtualBackgroundEffect} options optional custom effect options
+   * @returns {Promise<effect>} virtual background effect.
+   * @public
+   * @memberof Meetings
+   */
+  createVirtualBackgroundEffect = async (options?: IVirtualBackgroundEffect) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.VirtualBackgroundEffect({authToken, ...options});
+  };
 
   /**
    * Uploads logs to the webex services for tracking

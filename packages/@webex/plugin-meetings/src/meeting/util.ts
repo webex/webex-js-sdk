@@ -146,13 +146,10 @@ const MeetingUtil = {
       : Promise.resolve();
 
     return stopStatsAnalyzer
-      .then(() => meeting.closeLocalStream())
-      .then(() => meeting.closeLocalShare())
       .then(() => meeting.closeRemoteTracks())
       .then(() => meeting.closePeerConnections())
       .then(() => {
-        meeting.unsetLocalVideoTrack();
-        meeting.unsetLocalShareTrack();
+        meeting.cleanupLocalTracks();
         meeting.unsetRemoteTracks();
         meeting.unsetPeerConnections();
         meeting.reconnectionManager.cleanUp();
@@ -292,24 +289,6 @@ const MeetingUtil = {
       });
   },
 
-  validateOptions: (options) => {
-    const {sendVideo, sendAudio, sendShare, localStream, localShare} = options;
-
-    if (sendVideo && !MeetingUtil.getTrack(localStream).videoTrack) {
-      return Promise.reject(new ParameterError('please pass valid video streams'));
-    }
-
-    if (sendAudio && !MeetingUtil.getTrack(localStream).audioTrack) {
-      return Promise.reject(new ParameterError('please pass valid audio streams'));
-    }
-
-    if (sendShare && !MeetingUtil.getTrack(localShare).videoTrack) {
-      return Promise.reject(new ParameterError('please pass valid share streams'));
-    }
-
-    return Promise.resolve();
-  },
-
   getTrack: (stream) => {
     let audioTrack = null;
     let videoTrack = null;
@@ -379,6 +358,8 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
+  canBroadcastMessageToBreakout: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT),
 
   isSuppressBreakoutSupport: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.UCF_SUPPRESS_BREAKOUTS_SUPPORT),
@@ -407,7 +388,7 @@ const MeetingUtil = {
     return Promise.reject(new PermissionError('Unlock not allowed, due to joined property.'));
   },
 
-  handleAudioLogging: (audioTrack: LocalMicrophoneTrack | null) => {
+  handleAudioLogging: (audioTrack?: LocalMicrophoneTrack) => {
     const LOG_HEADER = 'MeetingUtil#handleAudioLogging -->';
 
     if (audioTrack) {
@@ -419,7 +400,7 @@ const MeetingUtil = {
     }
   },
 
-  handleVideoLogging: (videoTrack: LocalCameraTrack | null) => {
+  handleVideoLogging: (videoTrack?: LocalCameraTrack) => {
     const LOG_HEADER = 'MeetingUtil#handleVideoLogging -->';
 
     if (videoTrack) {

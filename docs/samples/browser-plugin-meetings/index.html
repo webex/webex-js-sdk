@@ -22,7 +22,7 @@
           <audio id="multistream-remote-share-audio" autoplay ></audio>
           <div id="multistream-videos-container" class="multistream-videos-container">
           </div>
-          <div class="multistream-buttons"">
+          <div class="multistream-buttons">
             <div class="stage-control-wrapper">
               <span>Choose Layout:</span>
               <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
@@ -43,6 +43,13 @@
             <select name="remote-media-selector" id="remote-media-selector"></select>
             <input id="size-hint-input" />
             <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
+          </div>
+          <div class="prefer-live-video">
+            <span>Set Prefer Live Video:</span>
+            <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
+              <option value="Enable">Enable</option>
+              <option value="Disable">Disable</option>
+            </select>
           </div>
         </fieldset>
       </div>
@@ -348,22 +355,13 @@
                 <label for="meetings-join-multistream">Use a multistream connection</label>
                 <div class="u-mv">
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
+                    <input type="checkbox" name="ts-media-direction" value="audioEnabled" checked="">audioEnabled
                   </label>
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveVideo" checked="">receiveVideo
+                    <input type="checkbox" name="ts-media-direction" value="videoEnabled" checked="">videoEnabled
                   </label>
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveShare" checked="">receiveShare
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendAudio" checked="">sendAudio
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendVideo" checked="">sendVideo
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendShare" id="sendShareToggle">sendShare
                   </label>
                 </div>
               </div>
@@ -376,7 +374,7 @@
                       <button style="width: 95%;" id="btn-join" onclick="joinMeeting()">Join Meeting</button>
                     </div>
                     <div>
-                      <button style="width: 95%;" id="btn-join" onclick="getMediaStreams()">Get Media Streams</button>
+                      <button style="width: 95%;" id="btn-join" onclick="getUserMedia()">Get Media Streams</button>
                     </div>
                     <div>
                       <button style="width: 95%;" id="btn-join" onclick="addMedia()">Add Media</button>
@@ -419,13 +417,13 @@
                 <label class="context-info">Audio Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-audio-input-devices"></select>
-                  <button type="button" onclick="setAudioInputDevice()">Update Audio</button>
+                  <button type="button" onclick="setAudioInputDevice()">Publish Audio</button>
                   <label id="sd-audio-input-device-status"></label>
                 </div>
                 <label class="context-info">Video Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-video-input-devices"></select>
-                  <button type="button" onclick="setVideoInputDevice()">Update Video</button>
+                  <button type="button" onclick="setVideoInputDevice()">Publish Video</button>
                   <label id="sd-video-input-device-status"></label>
                 </div>
                 <label class="context-info">Audio Output Device</label>

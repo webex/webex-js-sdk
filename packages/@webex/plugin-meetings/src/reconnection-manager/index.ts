@@ -19,7 +19,6 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
-import Media from '../media';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
@@ -240,13 +239,8 @@ export default class ReconnectionManager {
    * @private
    * @memberof ReconnectionManager
    */
-  private stopLocalShareTrack(reason: string) {
-    this.meeting.setLocalShareTrack(null);
-    this.meeting.isSharing = false;
-    if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
-      this.meeting.shareStatus = SHARE_STATUS.NO_SHARE;
-    }
-    this.meeting.mediaProperties.mediaDirection.sendShare = false;
+  private async stopLocalShareTrack(reason: string) {
+    await this.meeting.unpublishTracks([this.meeting.mediaProperties.shareTrack]); // todo screen share audio SPARK-399690
     Trigger.trigger(
       this.meeting,
       {
@@ -423,7 +417,7 @@ export default class ReconnectionManager {
     const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     if (wasSharing) {
-      this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
+      await this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
     }
 
     if (networkDisconnect) {
@@ -514,7 +508,7 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
 
       if (wasSharing) {
-        this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEETING_REJOIN);
+        await this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEETING_REJOIN);
       }
     } catch (joinError) {
       this.rejoinAttempts += 1;

@@ -12,11 +12,11 @@ export const ANNOTATION_STATUS = {
   RUNNING_ANNOTATION: 'RUNNING_ANNOTATION',
 };
 
-export const ANNOTATION_POLICY = {
-  ANYONE_CAN_ANNOTATE: 'AnyoneCanAnnotate',
-  APPROVAL: 'Approval',
-  ANNOTATION_NOT_ALLOWED: 'AnnotationNotAllowed',
-};
+export enum ANNOTATION_POLICY {
+  ANYONE_CAN_ANNOTATE = 'AnyoneCanAnnotate',
+  APPROVAL = 'Approval',
+  ANNOTATION_NOT_ALLOWED = 'AnnotationNotAllowed',
+}
 
 export const ANNOTATION_REQUEST_TYPE = {
   ANNOTATION_MESSAGE: 'annotation_message',

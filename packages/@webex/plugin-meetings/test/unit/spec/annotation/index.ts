@@ -144,7 +144,10 @@ describe('live-annotation', () => {
 
         annotationService.eventDataProcessor({data: {relayType: 'annotation.client', request:{value:{encryptionKeyUrl:"encryptionKeyUrl"}}}});
 
-        assert.calledOnceWithExactly(spy, {value:{encryptionKeyUrl:"encryptionKeyUrl"}});
+        assert.calledOnceWithExactly(spy, {
+          relayType: 'annotation.client',
+          request: { value: { encryptionKeyUrl: 'encryptionKeyUrl' } }
+        } );
 
       });
 
@@ -153,10 +156,10 @@ describe('live-annotation', () => {
         const spy = sinon.spy();
         annotationService.on(EVENT_TRIGGERS.ANNOTATION_STROKE_DATA, spy);
 
-        await annotationService.processStrokeMessage({value:{encryptionKeyUrl: 'encryptionKeyUrl', content: 'content'}});
+        await annotationService.processStrokeMessage({request:{value:{encryptionKeyUrl: 'encryptionKeyUrl', content: 'content'}}});
 
         assert.calledOnceWithExactly(spy, {
-          payload: {encryptionKeyUrl: 'encryptionKeyUrl', content: 'decryptedContent'},
+          payload:{request:{value:{encryptionKeyUrl: 'encryptionKeyUrl', content: 'decryptedContent'}}} ,
         });
 
       });
@@ -186,7 +189,7 @@ describe('live-annotation', () => {
     });
 
 
-    describe('encrypt/decrypt Content ', () => {
+    describe('encrypt/decrypt Content', () => {
       beforeEach(async () => {
         annotationService.webex.internal.encryption.encryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
         annotationService.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
@@ -198,7 +201,7 @@ describe('live-annotation', () => {
         assert.equal(result, 'RETURN_VALUE')
       });
 
-      it('decryptContent ', async() => {
+      it('decryptContent', async() => {
         const result =  await annotationService.decryptContent("decryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.decryptText, "decryptionKeyUrl", "content");
         assert.equal(result, 'RETURN_VALUE')
@@ -229,7 +232,7 @@ describe('live-annotation', () => {
       });
 
 
-      it('works on  publish Stroke Data', async () => {
+      it('works on publish Stroke Data', async () => {
         const strokeData = {
           content: {
             "contentsBuffer": [{
@@ -340,21 +343,21 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('change annotation options', () => {
-        it('makes change annotation options as expected', () => {
-          const options =  {
+      describe('change annotation info by presenter', () => {
+        it('makes change annotation options as expected', async() => {
+          const options =  { annotationInfo:{
               version: '1',
               policy: 'AnnotationNotAllowed',
-          };
-          const meeting = {
-            meetingRequest : {
-              changeMeetingFloor: () => {
-              }
-            }
-          }
-          sinon.spy(meeting.meetingRequest, 'changeMeetingFloor');
-          annotationService.changeAnnotationOptions(options,meeting);
-          assert.calledOnceWithExactly(meeting.meetingRequest.changeMeetingFloor, options);
+          }};
+
+          const remoteShareUrl = 'remoteShareUrl';
+          const result = await annotationService.changeAnnotationOptions(remoteShareUrl,options);
+          assert.calledOnceWithExactly(webex.request, {
+              method: 'PATCH',
+              url: 'remoteShareUrl',
+              body: {annotationInfo: { version: '1', policy: 'AnnotationNotAllowed' }}
+          });
+          assert.equal(result, 'REQUEST_RETURN_VALUE')
         });
       });
 

@@ -9,6 +9,7 @@ registerPlugin('meetings', Meetings, {
 });
 
 export {
+  getDevices,
   LocalTrack,
   LocalDisplayTrack,
   LocalTrackEvents,

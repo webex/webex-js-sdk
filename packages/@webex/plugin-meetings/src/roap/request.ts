@@ -1,12 +1,9 @@
-/* global window */
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {REACHABILITY} from '../constants';
-import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 
 /**
