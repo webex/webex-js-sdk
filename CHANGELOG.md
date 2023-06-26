@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.149](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.148...v3.0.0-beta.149) (2023-06-26)
+
+
+### Features
+
+* **plugin-meetings:** added setActiveSpeakerCsis() API ([#2899](https://github.com/webex/webex-js-sdk/issues/2899)) ([80dfafd](https://github.com/webex/webex-js-sdk/commit/80dfafd8fd64d07d3cfd3d9ae77d59e533860550))
+
 ## [3.0.0-beta.148](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.147...v3.0.0-beta.148) (2023-06-26)
 
 
