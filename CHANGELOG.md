@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.147](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.146...v3.0.0-beta.147) (2023-06-23)
+
+
+### Features
+
+* transcoded meetings APIs using webrtc-core local tracks ([#2853](https://github.com/webex/webex-js-sdk/issues/2853)) ([26d52f3](https://github.com/webex/webex-js-sdk/commit/26d52f3bdc66538b20bc7a2956deb291dbd1fadb))
+
 ## [3.0.0-beta.146](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.145...v3.0.0-beta.146) (2023-06-21)
 
 

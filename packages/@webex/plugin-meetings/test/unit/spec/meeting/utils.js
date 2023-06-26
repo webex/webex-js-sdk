@@ -26,13 +26,10 @@ describe('plugin-meetings', () => {
       });
       LoggerProxy.set(logger);
 
-      meeting.closeLocalStream = sinon.stub().returns(Promise.resolve());
-      meeting.closeLocalShare = sinon.stub().returns(Promise.resolve());
+      meeting.cleanupLocalTracks = sinon.stub().returns(Promise.resolve());
       meeting.closeRemoteTracks = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
 
-      meeting.unsetLocalVideoTrack = sinon.stub();
-      meeting.unsetLocalShareTrack = sinon.stub();
       meeting.unsetRemoteTracks = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
@@ -49,14 +46,10 @@ describe('plugin-meetings', () => {
     describe('#cleanup', () => {
       it('do clean up on meeting object', async () => {
         await MeetingUtil.cleanUp(meeting);
-        assert.calledOnce(meeting.closeLocalStream);
-        assert.calledOnce(meeting.closeLocalStream);
-        assert.calledOnce(meeting.closeLocalShare);
+        assert.calledOnce(meeting.cleanupLocalTracks);
         assert.calledOnce(meeting.closeRemoteTracks);
         assert.calledOnce(meeting.closePeerConnections);
 
-        assert.calledOnce(meeting.unsetLocalVideoTrack);
-        assert.calledOnce(meeting.unsetLocalShareTrack);
         assert.calledOnce(meeting.unsetRemoteTracks);
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);

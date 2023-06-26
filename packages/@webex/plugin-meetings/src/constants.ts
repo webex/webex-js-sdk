@@ -4,7 +4,6 @@ import {hydraTypes} from '@webex/common';
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
 export const AUDIO = 'audio';
-export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
 export const ALIAS = 'alias';
@@ -67,7 +66,6 @@ export const SHARE = 'share';
 export const TYPE = 'type';
 
 export const VIDEO = 'video';
-export const VIDEO_INPUT = 'videoinput';
 export const VIDEO_STATUS = 'videoStatus';
 
 // *********** UPPERCASE ONLY STRINGS ************
@@ -363,12 +361,10 @@ export const EVENT_TRIGGERS = {
 export const EVENT_TYPES = {
   SELF: 'self',
   OTHER: 'other',
-  LOCAL: 'local',
   REMOTE: 'remote',
   REMOTE_AUDIO: 'remoteAudio',
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
-  LOCAL_SHARE: 'localShare',
   ERROR: 'error',
 };
 
@@ -400,6 +396,7 @@ export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
   MEETING_REJOIN: 'MEETING_REJOIN',
   MEDIA_RECONNECTION: 'MEDIA_RECONNECTION',
+  TRACK_ENDED: 'TRACK_ENDED',
 };
 
 export const EVENTS = {
@@ -1136,16 +1133,6 @@ export const AVAILABLE_RESOLUTIONS = {
       },
     },
   },
-};
-
-export const VIDEO_RESOLUTIONS = {
-  [QUALITY_LEVELS.LOW]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS.MEDIUM]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS.HIGH]: AVAILABLE_RESOLUTIONS['1080p'],
-  [QUALITY_LEVELS['360p']]: AVAILABLE_RESOLUTIONS['360p'],
-  [QUALITY_LEVELS['480p']]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS['720p']]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS['1080p']]: AVAILABLE_RESOLUTIONS['1080p'],
 };
 
 /*

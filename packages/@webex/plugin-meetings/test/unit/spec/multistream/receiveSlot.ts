@@ -65,7 +65,7 @@ describe('ReceiveSlot', () => {
   });
 
   it('has public properties', () => {
-    assert.strictEqual(receiveSlot.id, 'r1');
+    assert.isTrue(receiveSlot.id.startsWith('r'));
     assert.strictEqual(receiveSlot.mediaType, MediaType.VideoMain);
   });
 

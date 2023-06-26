@@ -3,6 +3,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
+import {createCameraTrack, createMicrophoneTrack} from '@webex/plugin-meetings';
 
 import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
@@ -10,6 +11,21 @@ import integrationTestUtils from '../../utils/integrationTestUtils';
 import webexTestUsers from '../../utils/webex-test-users';
 
 config();
+
+const localTracks = {
+  alice: {
+    microphone: undefined,
+    camera: undefined,
+  },
+  bob: {
+    microphone: undefined,
+    camera: undefined,
+  },
+  chris: {
+    microphone: undefined,
+    camera: undefined,
+  },
+};
 
 skipInNode(describe)('plugin-meetings', () => {
   const {isBrowser} = BrowserDetection();
@@ -136,6 +152,17 @@ skipInNode(describe)('plugin-meetings', () => {
         assert.exists(chris.meeting.joinedWith);
       });
 
+      it('users "alice", "bob", and "chris" create local tracks', async () => {
+        localTracks.alice.microphone = await createMicrophoneTrack();
+        localTracks.alice.camera = await createCameraTrack();
+
+        localTracks.bob.microphone = await createMicrophoneTrack();
+        localTracks.bob.camera = await createCameraTrack();
+
+        localTracks.chris.microphone = await createMicrophoneTrack();
+        localTracks.chris.camera = await createCameraTrack();
+      });
+
       it('users "alice", "bob", and "chris" add media', async () => {
         mediaReadyListener = testUtils.waitForEvents([
           {scope: alice.meeting, event: 'media:negotiated'},
@@ -143,9 +170,9 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: chris.meeting, event: 'media:negotiated'},
         ]);
 
-        const addMediaAlice = integrationTestUtils.addMedia(alice, {multistream: true});
-        const addMediaBob = integrationTestUtils.addMedia(bob, {multistream: true});
-        const addMediaChris = integrationTestUtils.addMedia(chris, {multistream: true});
+        const addMediaAlice = integrationTestUtils.addMedia(alice, {multistream: true, microphone: localTracks.alice.microphone, camera: localTracks.alice.camera});
+        const addMediaBob = integrationTestUtils.addMedia(bob, {multistream: true, microphone: localTracks.bob.microphone, camera: localTracks.bob.camera});
+        const addMediaChris = integrationTestUtils.addMedia(chris, {multistream: true, microphone: localTracks.chris.microphone, camera: localTracks.chris.camera});
 
         await addMediaAlice;
         await addMediaBob;
@@ -171,6 +198,35 @@ skipInNode(describe)('plugin-meetings', () => {
         assert.equal(alice.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
         assert.equal(bob.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
         assert.equal(chris.meeting.mediaProperties.webrtcMediaConnection.mediaServer, MEDIA_SERVERS.HOMER);
+      });
+
+      it('users "alice", "bob", and "chris" stop their local tracks', () => {
+        if (localTracks.alice.microphone) {
+          localTracks.alice.microphone.stop();
+          localTracks.alice.microphone = undefined;
+        }
+        if (localTracks.alice.camera) {
+          localTracks.alice.camera.stop();
+          localTracks.alice.camera = undefined;
+        }
+
+        if (localTracks.bob.microphone) {
+          localTracks.bob.microphone.stop();
+          localTracks.bob.microphone = undefined;
+        }
+        if (localTracks.bob.camera) {
+          localTracks.bob.camera.stop();
+          localTracks.bob.camera = undefined;
+        }
+
+        if (localTracks.chris.microphone) {
+          localTracks.chris.microphone.stop();
+          localTracks.chris.microphone = undefined;
+        }
+        if (localTracks.chris.camera) {
+          localTracks.chris.camera.stop();
+          localTracks.chris.camera = undefined;
+        }
       });
     });
   }

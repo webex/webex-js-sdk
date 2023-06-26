@@ -240,7 +240,6 @@ export default class Meetings extends WebexPlugin {
      */
     this.media = {
       getUserMedia: Media.getUserMedia,
-      getSupportedDevice: Media.getSupportedDevice,
     };
 
     this.onReady();
