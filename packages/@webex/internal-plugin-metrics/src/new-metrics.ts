@@ -4,9 +4,7 @@
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 
-import CallDiagnosticMetrics, {
-  SubmitClientEventOptions,
-} from './call-diagnostic/call-diagnostic-metrics';
+import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import {
   RecursivePartial,
   ClientEvent,
@@ -15,6 +13,7 @@ import {
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
+  SubmitClientEventOptions,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 
