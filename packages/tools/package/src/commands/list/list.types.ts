@@ -1,3 +1,8 @@
+/**
+ * Compatability mode for finalized output.
+ *
+ * @public
+ */
 export type Mode = 'node' | 'yarn';
 
 /**
