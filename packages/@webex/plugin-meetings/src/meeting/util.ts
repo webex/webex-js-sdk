@@ -1,9 +1,7 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
-
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
-import Metrics from '../metrics';
-import {eventType, trigger} from '../metrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   INTENT_TO_JOIN,
@@ -55,7 +53,10 @@ const MeetingUtil = {
       );
     }
 
-    Metrics.postEvent({event: eventType.MEDIA_REQUEST, meeting});
+    NewMetrics.submitClientEvent({
+      name: 'client.locus.media.request',
+      options: {meetingId: meeting.id},
+    });
 
     return meeting.locusMediaRequest
       .send({
@@ -69,7 +70,10 @@ const MeetingUtil = {
         },
       })
       .then((response) => {
-        Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
+        NewMetrics.submitClientEvent({
+          name: 'client.locus.media.response',
+          options: {meetingId: meeting.id},
+        });
 
         return response?.body?.locus;
       });
@@ -86,7 +90,10 @@ const MeetingUtil = {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
 
-    Metrics.postEvent({event: eventType.LOCUS_JOIN_REQUEST, meeting});
+    NewMetrics.submitClientEvent({
+      name: 'client.locus.join.request',
+      options: {meetingId: meeting.id},
+    });
 
     // eslint-disable-next-line no-warning-comments
     // TODO: check if the meeting is in JOINING state
@@ -112,14 +119,17 @@ const MeetingUtil = {
         liveAnnotationSupported: options.liveAnnotationSupported,
       })
       .then((res) => {
-        Metrics.postEvent({
-          event: eventType.LOCUS_JOIN_RESPONSE,
-          meeting,
-          data: {
-            trigger: trigger.LOCI_UPDATE,
-            locus: res.body.locus,
+        NewMetrics.submitClientEvent({
+          name: 'client.locus.join.response',
+          payload: {
+            trigger: 'loci-update',
+            identifiers: {
+              trackingId: res.headers.trackingid,
+            },
+          },
+          options: {
+            meetingId: meeting.id,
             mediaConnections: res.body.mediaConnections,
-            trackingId: res.headers.trackingid,
           },
         });
 
@@ -241,9 +251,11 @@ const MeetingUtil = {
     }
 
     if (options.pin) {
-      Metrics.postEvent({
-        event: eventType.PIN_COLLECTED,
-        meeting,
+      NewMetrics.submitClientEvent({
+        name: 'client.pin.collected',
+        options: {
+          meetingId: meeting.id,
+        },
       });
     }
 
@@ -257,9 +269,11 @@ const MeetingUtil = {
       .catch((err) => {
         // joining a claimed PMR that is not my own, scenario B
         if (MeetingUtil.isPinOrGuest(err)) {
-          Metrics.postEvent({
-            event: eventType.PIN_PROMPT,
-            meeting,
+          NewMetrics.submitClientEvent({
+            name: 'client.pin.prompt',
+            options: {
+              meetingId: meeting.id,
+            },
           });
 
           // request host pin or non host for unclaimed PMR, start of Scenario C

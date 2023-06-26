@@ -1,4 +1,5 @@
 import lodash from 'lodash';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {
   HTTP_VERBS,
   _CONVERSATION_URL_,
@@ -6,7 +7,6 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -347,13 +347,16 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         if (meetingId) {
-          const parsedError = Metrics.parseWebexApiError(err, true);
-          Metrics.postEvent({
-            event: eventType.MEETING_INFO_RESPONSE,
-            meetingId,
-            data: {
-              errors: parsedError ? [parsedError] : undefined,
-              meetingLookupUrl: err?.url,
+          NewMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: err?.url,
+              },
+            },
+            options: {
+              meetingId,
+              error: err,
             },
           });
         }

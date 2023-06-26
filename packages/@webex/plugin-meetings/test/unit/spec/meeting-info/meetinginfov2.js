@@ -25,6 +25,7 @@ import MeetingInfo, {
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {forEach} from 'lodash';
 
@@ -382,7 +383,7 @@ describe('plugin-meetings', () => {
         ],
         ({errorCode}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
-            Metrics.postEvent = sinon.stub();
+            NewMetrics.submitClientEvent = sinon.stub();
             const message = 'a message';
             const meetingInfoData = 'meeting info';
 
@@ -407,34 +408,22 @@ describe('plugin-meetings', () => {
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              assert(Metrics.postEvent.calledOnce);
-              assert.calledWith(Metrics.postEvent, {
-                event: 'client.meetinginfo.response',
-                meetingId: 'meeting-id',
-                data: {
-                  errors: [
-                    {
-                      category: 'signaling',
-                      errorCode: 4100,
-                      errorData: {
-                        error: {
-                          code: errorCode,
-                          data: {
-                            meetingInfo: 'meeting info',
-                          },
-                          message: 'a message',
-                        }
-                      },
-                      errorDescription: 'MeetingInfoLookupError',
-                      fatal: true,
-                      httpCode: 403,
-                      name: 'other',
-                      serviceErrorCode: errorCode,
-                      shownToUser: true,
-                    },
-                  ],
-                  meetingLookupUrl: 'http://api-url.com',
-                }
+              assert(NewMetrics.submitClientEvent.calledOnce);
+              assert.calledWith(NewMetrics.submitClientEvent, {
+                name: 'client.meetinginfo.response',
+                payload: {
+                  identifiers: {
+                    meetingLookupUrl: 'http://api-url.com',
+                  },
+                },
+                options: {
+                  meetingId: 'meeting-id',
+                  error: {
+                    statusCode: 403,
+                    body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+                    url: 'http://api-url.com',
+                  },
+                },
               });
 
               assert.instanceOf(err, MeetingInfoV2PolicyError);
@@ -453,7 +442,7 @@ describe('plugin-meetings', () => {
       );
 
       it('should not send CA metric if meetingId is not provided', async () => {
-        Metrics.postEvent = sinon.stub();
+        NewMetrics.submitClientEvent = sinon.stub();
         const message = 'a message';
         const meetingInfoData = 'meeting info';
 
@@ -477,12 +466,12 @@ describe('plugin-meetings', () => {
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
-          assert.notCalled(Metrics.postEvent);
+          assert.notCalled(NewMetrics.submitClientEvent);
         }
       });
 
       it('should not have errors if parsing error returns null', async () => {
-        Metrics.postEvent = sinon.stub();
+        NewMetrics.submitClientEvent = sinon.stub();
         sinon.stub(Metrics, 'parseWebexApiError').returns(null);
         const message = 'a message';
         const meetingInfoData = 'meeting info';
@@ -508,13 +497,21 @@ describe('plugin-meetings', () => {
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
-          assert.calledWith(Metrics.postEvent, {
-            event: 'client.meetinginfo.response',
-            meetingId: 'meeting-id',
-            data: {
-              errors: undefined,
-              meetingLookupUrl: 'http://api-url.com',
-            }
+          assert.calledWith(NewMetrics.submitClientEvent, {
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: 'http://api-url.com',
+              },
+            },
+            options: {
+              error: {
+                statusCode: 403,
+                body: {message, code: 1000000, data: {meetingInfo: meetingInfoData}},
+                url: 'http://api-url.com',
+              },
+              meetingId: 'meeting-id',
+            },
           });
         }
       });
