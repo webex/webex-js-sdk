@@ -10,8 +10,15 @@ import {
   userAgentToString,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
-import {ClientEvent} from './generated-types-temp/ClientEvent';
-import {RecursivePartial, Event, ClientType, SubClientType, NetworkType} from '../metrics.types';
+import {
+  RecursivePartial,
+  Event,
+  ClientType,
+  SubClientType,
+  NetworkType,
+  ClientEvent,
+  SubmitClientEventOptions,
+} from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -25,13 +32,6 @@ type GetOriginOptions = {
 type GetIdentifiersOptions = {
   meeting?: any;
   mediaConnections?: any[];
-};
-
-export type SubmitClientEventOptions = {
-  meetingId?: string;
-  mediaConnections?: any[];
-  error?: any;
-  showToUser?: boolean;
 };
 
 /**
@@ -233,7 +233,7 @@ export default class CallDiagnosticMetrics {
 
       // check if we need to generate errors
       // TODO: TO BE IMPLEMENTED PROPERLY IN SEPARATE PR
-      const errors: ClientEvent['errors'] = [];
+      const errors: ClientEvent['payload']['errors'] = [];
 
       if (error) {
         const generatedError = this.generateErrorPayload(error);
@@ -243,7 +243,7 @@ export default class CallDiagnosticMetrics {
       }
 
       // create client event object
-      let clientEventObject: ClientEvent = {
+      let clientEventObject: ClientEvent['payload'] = {
         name,
         canProceed: true,
         identifiers,
@@ -272,7 +272,7 @@ export default class CallDiagnosticMetrics {
    * @param event
    * @returns promise
    */
-  submitToCallDiagnostics(event: Event): Promise<any> {
+  submitToCallDiagnostics(event: Event): Promise<void> {
     // build metrics-a event type
     const finalEvent = {
       eventPayload: event,

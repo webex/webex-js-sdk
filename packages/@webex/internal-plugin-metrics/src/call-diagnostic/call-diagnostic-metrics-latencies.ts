@@ -21,14 +21,14 @@ export default class CallDiagnosticLatencies {
   }
 
   /**
-   * Clear latencies
+   * Clear timestamps
    */
-  public clearLatencies() {
+  public clearTimestamps() {
     this.latencyTimestamps.clear();
   }
 
   /**
-   * Store Latency value
+   * Store timestamp value
    * @param key - key
    * @param  value -value
    * @throws
@@ -100,7 +100,7 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getJoinRespSentReceived() {
-    // TODO: not clear
+    // TODO: not clear SPARK-440554
     return undefined;
   }
 

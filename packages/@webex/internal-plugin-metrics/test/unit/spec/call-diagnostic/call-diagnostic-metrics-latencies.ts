@@ -39,7 +39,7 @@ describe("internal-plugin-metrics", () => {
       cdl.saveTimestamp('client.alert.displayed');
       cdl.saveTimestamp('client.alert.removed');
       assert.deepEqual(cdl.latencyTimestamps.size, 2);
-      cdl.clearLatencies();
+      cdl.clearTimestamps();
       assert.deepEqual(cdl.latencyTimestamps.size, 0);
     });
 

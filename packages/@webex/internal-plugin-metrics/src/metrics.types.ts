@@ -1,6 +1,12 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
-import {SubmitClientEventOptions} from './call-diagnostic/call-diagnostic-metrics';
+
+export type SubmitClientEventOptions = {
+  meetingId?: string;
+  mediaConnections?: any[];
+  error?: any;
+  showToUser?: boolean;
+};
 
 export type InternalEvent = {
   // TODO: not implemented
