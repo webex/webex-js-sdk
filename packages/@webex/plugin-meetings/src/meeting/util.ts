@@ -2,8 +2,6 @@ import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
-import Metrics from '../metrics';
-import {eventType, trigger} from '../metrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   INTENT_TO_JOIN,

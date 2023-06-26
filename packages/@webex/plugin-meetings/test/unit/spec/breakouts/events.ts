@@ -37,8 +37,8 @@ describe('plugin-meetings', () => {
           payload: {
             identifiers: {
               breakoutMoveId: 'breakoutMoveId',
-              breakoutSessionId: undefined,
-              breakoutGroupId: undefined,
+              breakoutSessionId: 'sessionId',
+              breakoutGroupId: 'groupId',
             },
           },
           options: {meetingId: 'activeMeetingId'},

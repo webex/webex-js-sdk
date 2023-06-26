@@ -2,9 +2,9 @@
 import {ClientEvent, NewMetrics} from '@webex/internal-plugin-metrics';
 
 const breakoutEvent: {
-  onBreakoutMoveRequest: any;
-  onBreakoutMoveResponse: any;
-  onBreakoutJoinResponse: any;
+  onBreakoutMoveRequest: (eventInfo: any) => void;
+  onBreakoutMoveResponse: (eventInfo: any) => void;
+  onBreakoutJoinResponse: (eventInfo: any) => void;
   postMoveCallAnalyzer: (event: ClientEvent['name'], eventInfo: any) => void;
 } = {
   onBreakoutMoveRequest: (eventInfo) => {
@@ -28,8 +28,8 @@ const breakoutEvent: {
       payload: {
         identifiers: {
           breakoutMoveId: eventInfo.breakoutMoveId,
-          breakoutSessionId: eventInfo.breakoutSessionId,
-          breakoutGroupId: eventInfo.breakoutGroupId,
+          breakoutSessionId: eventInfo?.currentSession?.sessionId,
+          breakoutGroupId: eventInfo?.currentSession?.groupId,
         },
       },
       options: {meetingId: eventInfo.meeting.id},
