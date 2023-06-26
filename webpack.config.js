@@ -50,7 +50,6 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
     filename: '[name].min.js',
-    libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
     path:
       env && env.umd

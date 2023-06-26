@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex , createClient, Calling.createCallHistoryClient, Calling.createVoicemailClient */
+/* global Webex, Calling */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -14,6 +14,7 @@
 
 // Globals
 let webex;
+let calling;
 let callingClient;
 let correlationId;
 let callHistory;
@@ -190,13 +191,10 @@ function initWebex(e) {
         batcherMaxCalls: 30,
         caroots: null,
       },
-      dss: {
-
-      },
-      // Any other sdk config we need
+      dss: {},
     },
     credentials: {
-      access_token: tokenElm.value,
+      access_token: tokenElm.value
     }
   };
 
@@ -209,10 +207,58 @@ function initWebex(e) {
     };
   }
 
-  webex = window.webex = Webex.init(webexConfig);
+  const clientConfig = {
+    calling: true,
+    contact: true,
+    callHistory: true,
+    callSettings: true,
+    voicemail: true,
+  }
 
-  webex.once('ready', () => {
-    console.log('Authentication#initWebex() :: Webex Ready');
+  const loggerConfig = {
+    level: 'info'
+  }
+
+  const {region, country} = registrationForm.elements;
+
+  const serviceData = {indicator: 'calling', domain: ''};
+
+  if (serviceIndicator.value) {
+    serviceData.indicator = serviceIndicator.value;
+  }
+
+  if (serviceDomain.value) {
+    serviceData.domain = serviceDomain.value;
+  }
+
+  const callingClientConfig = {
+    logger: loggerConfig,
+    discovery: {
+      region: region.value,
+      country: country.value,
+    },
+    serviceData,
+  };
+
+  if (callingClientConfig.discovery.country === 'Country') {
+    callingClientConfig.discovery.country = '';
+  }
+
+  if (callingClientConfig.discovery.region === 'Region') {
+    callingClientConfig.discovery.region = '';
+  }
+
+  const callingConfig = {
+    clientConfig : clientConfig,
+    callingClientConfig: callingClientConfig,
+    logger:loggerConfig
+  }
+
+  calling = new Calling({options: webexConfig, callingConfig: callingConfig});
+  webex = window.webex = calling.webex;
+
+  calling.on('calling:ready', () => {
+    console.log('Authentication :: Calling Ready');
     registerElm.disabled = false;
     callHistoryElm.disabled = false;
     voicemailElm.disabled = false;
@@ -227,16 +273,20 @@ function initWebex(e) {
     callWaitingButton.innerHTML = 'Fetching Call Waiting Status';
     callWaitingButton.disabled = true;
 
-    register().then(() => {
+    calling.register().then(() => {
+      unregisterElm.classList.add('btn--red');
+      registerElm.disabled = false;
+
       fetchDNDSetting();
       fetchCallWaitingSetting();
       fetchCallForwardSetting();
       fetchVoicemailSetting();
-    });
-  });
+    })
+  })
 
   return false;
 }
+
 credentialsFormElm.addEventListener('submit', initWebex);
 
 function toggleDisplay(elementId, status) {
@@ -272,38 +322,7 @@ function userSession() {
 }
 
 function createDevice() {
-  const {region, country} = registrationForm.elements;
-
-  const serviceData = {indicator: 'calling', domain: ''};
-
-  if (serviceIndicator.value) {
-    serviceData.indicator = serviceIndicator.value;
-  }
-
-  if (serviceDomain.value) {
-    serviceData.domain = serviceDomain.value;
-  }
-
-  const sdkConfig = {
-    logger: {
-      level: 'info',
-    },
-    discovery: {
-      region: region.value,
-      country: country.value,
-    },
-    serviceData,
-  };
-
-  if (sdkConfig.discovery.country === 'Country') {
-    sdkConfig.discovery.country = '';
-  }
-
-  if (sdkConfig.discovery.region === 'Region') {
-    sdkConfig.discovery.region = '';
-  }
-
-  callingClient = window.callingClient = Calling.createClient(webex, sdkConfig);
+  callingClient = window.callingClient = calling.callingClient;
   callingClient.register();
   userSession();
   callingClient.on('callingClient:registered', (deviceInfo) => {
@@ -575,7 +594,7 @@ async function getMediaStreams() {
 function createMeeting(e) {
   e.preventDefault();
 
-  callingClient = window.callingClient = Calling.createClient(webex);
+  callingClient = window.callingClient = calling.callingClient;
 }
 
 // Listen for submit on create meeting
@@ -744,7 +763,7 @@ async function createCallHistory() {
 
   try {
     if (window.callHistory === undefined) {
-      callHistory = window.callHistory = Calling.createCallHistoryClient(webex, logger);
+      callHistory = window.callHistory = calling.callHistoryClient;
     }
 
     callHistory.on('callHistory:user_recent_sessions', (sessionData) => {
@@ -786,7 +805,7 @@ async function createVoiceMail() {
 
     try {
       if (window.voicemail === undefined) {
-        voicemail = window.voicemail = Calling.createVoicemailClient(webex, logger);
+        voicemail = window.voicemail = calling.voicemailClient(webex, logger);
         const initResponse = await voicemail.init();
 
         console.log(`Init response `, initResponse);
@@ -899,7 +918,7 @@ async function createVoiceMail() {
 
     try {
       if (window.voicemail === undefined) {
-        voicemail = window.voicemail = Calling.createVoicemailClient(webex, logger);
+        voicemail = window.voicemail = calling.voicemailClient(webex, logger);
         const initResponse = await voicemail.init();
 
         console.log(`Init response `, initResponse);
@@ -975,7 +994,7 @@ async function createVoiceMailContentPlay(msgId, rowId) {
 async function VMPlay(msgId, rowId) {
   try {
     if (window.voicemail === undefined) {
-      voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
+      voicemail = window.voicemail = calling.voicemailClient;
       const initResponse = await voicemail.init();
 
       console.log(`Init response `, initResponse);
@@ -1007,7 +1026,7 @@ async function VMPlay(msgId, rowId) {
 
 async function voicemailMarkAsRead(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = calling.voicemailClient;
     voicemail.init();
   }
 
@@ -1034,7 +1053,7 @@ function markAsRead(rowId) {
 
 async function voicemailMarkAsUnRead(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = calling.voicemailClient;
     voicemail.init();
   }
 
@@ -1061,7 +1080,7 @@ function markAsUnRead(rowId) {
 
 async function deleteVoicemail(msgId, rowId) {
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = calling.voicemailClient;
     voicemail.init();
   }
   const deleteVmResponse = await voicemail.deleteVoicemail(msgId);
@@ -1117,7 +1136,7 @@ function fetchVoicemailList() {
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
   if (window.voicemail === undefined) {
-    voicemail = window.voicemail = Calling.createVoicemailClient(webex, this.logger);
+    voicemail = window.voicemail = calling.voicemailClient;
     voicemail.init();
   }
 
@@ -1145,10 +1164,10 @@ async function getContacts() {
   const logger = {level: 'info'};
 
   if (window.contacts === undefined) {
-    contacts = window.contacts = Calling.createContactsClient(webex, logger);
+    contacts = window.contacts = calling.contactsClient;
   }
 
-  const contactsList = await contacts.getContacts(); 
+  const contactsList = await contacts.getContacts();
   console.log('Contacts: ', contactsList);
   createContactsTable(contactsList);
 
@@ -1162,7 +1181,7 @@ async function deleteContact(contactId) {
 
 async function createCloudContact() {
   console.log('Create Cloud Contact');
-  
+
   const formData = new FormData(cloudContactsElem);
 
   const contact = {
@@ -1238,7 +1257,7 @@ async function fetchDNDSetting() {
   const logger = {level: 'info'};
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.getDoNotDisturbSetting();
@@ -1267,7 +1286,7 @@ async function fetchCallWaitingSetting() {
   const logger = {level: 'info'};
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.getCallWaitingSetting();
@@ -1288,7 +1307,7 @@ async function fetchCallForwardSetting() {
   let visibility;
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.getCallForwardSetting();
@@ -1357,7 +1376,7 @@ async function updateCallForwardSetting(form) {
   };
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.setCallForwardSetting(requestBody);
@@ -1372,7 +1391,7 @@ async function fetchVoicemailSetting() {
   let visibility;
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.getVoicemailSetting();
@@ -1451,7 +1470,7 @@ async function updateVoicemailSetting(form) {
   };
 
   if (window.callSettings === undefined) {
-    callSettings = window.callSettings = Calling.createCallSettingsClient(webex, logger);
+    callSettings = window.callSettings = calling.callSettingsClient;
   }
 
   const response = await callSettings.setVoicemailSetting(requestBody);
