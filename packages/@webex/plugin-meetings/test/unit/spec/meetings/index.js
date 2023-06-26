@@ -831,36 +831,37 @@ describe('plugin-meetings', () => {
             });
           });
 
-          //TODO: can't seem to make this pass
-          // it('sends client event correctly on finally', async () => {
-          //   webex.meetings.getMeetingByType = sinon.stub().returns(true);
+          it('sends client event correctly on finally', async () => {
+            webex.meetings.getMeetingByType = sinon.stub().returns(true);
 
-          //   await webex.meetings.handleLocusEvent({
-          //     locus: {
-          //       id: uuid1,
-          //       self: {
-          //         callBackInfo: {
-          //           callbackAddress: uri1,
-          //         },
-          //       },
-          //       info: {
-          //         webExMeetingId,
-          //       },
-          //     },
-          //     eventType: 'locus.difference',
-          //     locusUrl: url1,
-          //   });
+            await webex.meetings.handleLocusEvent({
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
+                  },
+                },
+                info: {
+                  webExMeetingId,
+                },
+              },
+              eventType: 'locus.difference',
+              locusUrl: url1,
+            });
 
-          //   assert.calledWith(NewMetrics.submitClientEvent, {
-          //     name: 'client.call.remote-started',
-          //     payload: {
-          //       trigger: 'mercury-event',
-          //     },
-          //     options: {
-          //       meetingId: 'meeting-id',
-          //     },
-          //   });
-          // });
+            await testUtils.flushPromises();
+
+            assert.calledWith(NewMetrics.submitClientEvent, {
+              name: 'client.call.remote-started',
+              payload: {
+                trigger: 'mercury-event',
+              },
+              options: {
+                meetingId: 'meeting-id',
+              },
+            });
+          });
 
           it('should setup the meeting by a not difference event', async () => {
             await webex.meetings.handleLocusEvent({
