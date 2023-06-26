@@ -35,10 +35,10 @@ describe('createMediaConnection', () => {
     Media.createMediaConnection(false, 'some debug id', {
       mediaProperties: {
         mediaDirection: {
-          sendAudio: true,
+          sendAudio: false,
           sendVideo: true,
           sendShare: false,
-          receiveAudio: true,
+          receiveAudio: false,
           receiveVideo: true,
           receiveShare: true,
         },
@@ -82,17 +82,17 @@ describe('createMediaConnection', () => {
         },
       },
       {
-        send: {
+        localTracks: {
           audio: fakeAudioTrack.underlyingTrack,
           video: fakeVideoTrack.underlyingTrack,
           screenShareVideo: undefined,
         },
-        receive: {
-          audio: true,
-          video: true,
-          screenShareVideo: true,
-          remoteQualityLevel: 'HIGH',
+        direction: {
+          audio: 'inactive',
+          video: 'sendrecv',
+          screenShareVideo: 'recvonly',
         },
+        remoteQualityLevel: 'HIGH',
       },
       'some debug id'
     );
@@ -208,7 +208,7 @@ describe('createMediaConnection', () => {
       const multistreamRoapMediaConnectionConstructorStub = sinon
         .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
         .returns(fakeRoapMediaConnection);
-  
+
       Media.createMediaConnection(true, 'debug string', {
         mediaProperties: {
           mediaDirection: {
@@ -285,17 +285,17 @@ describe('createMediaConnection', () => {
         },
       },
       {
-        send: {
+        localTracks: {
           audio: fakeAudioTrack.underlyingTrack,
           video: undefined,
           screenShareVideo: fakeVideoTrack.underlyingTrack,
         },
-        receive: {
-          audio: true,
-          video: true,
-          screenShareVideo: true,
-          remoteQualityLevel: 'HIGH',
+        direction: {
+          audio: 'sendrecv',
+          video: 'sendrecv',
+          screenShareVideo: 'sendrecv',
         },
+        remoteQualityLevel: 'HIGH',
       },
       'some debug id'
     );

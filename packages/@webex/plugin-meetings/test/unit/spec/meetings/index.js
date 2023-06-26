@@ -35,6 +35,7 @@ import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import { NewMetrics } from '@webex/internal-plugin-metrics';
+import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -358,6 +359,102 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('virtual background effect', () => {
+        beforeEach(() => {
+          webex.credentials = {
+            supertoken: {
+              access_token: "fake_token"
+            }
+          };
+        })
+
+        it('creates background effect', async () => {
+          const result = await webex.meetings.createVirtualBackgroundEffect();
+
+          assert.exists(result);
+          assert.instanceOf(result, VirtualBackgroundEffect);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.deepEqual(result.options, {
+            mode: 'BLUR',
+            blurStrength: 'STRONG',
+            generator: 'worker',
+            quality: 'LOW',
+            authToken: 'fake_token',
+            mirror: false
+          });
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+
+        it('creates background effect with custom options passed', async () => {
+          const effectOptions = {
+            generator: "local",
+            frameRate: 45,
+            mode: "IMAGE",
+            mirror: false,
+            quality: "HIGH",
+            blurStrength: "STRONG",
+            bgImageUrl: "https://test.webex.com/landscape.5a535788.jpg",
+          };
+
+          const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
+
+          assert.exists(result);
+          assert.instanceOf(result, VirtualBackgroundEffect);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.deepEqual(result.options, {...effectOptions, authToken: "fake_token"});
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+      })
+
+      describe('noise reduction effect', () => {
+        beforeEach(() => {
+          webex.credentials = {
+            supertoken: {
+              access_token: "fake_token"
+            }
+          };
+        })
+
+        it('creates noise reduction effect', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({audioContext: {}});
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
+          assert.deepEqual(result.options, {
+            authToken: 'fake_token',
+            audioContext: {}
+          });
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+
+        it('creates noise reduction effect with custom options passed', async () => {
+          const effectOptions = {
+            audioContext: {},
+            workletProcessorUrl: "test.url.com",
+            mode: "WORKLET",
+            env: "prod",
+            avoidSimd: false
+          };
+
+          const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
+          assert.deepEqual(result.options, {...effectOptions, authToken: "fake_token"});
+          assert.exists(result.enable);
+          assert.exists(result.disable);
+          assert.exists(result.dispose);
+        });
+      })
 
       describe('gets', () => {
         describe('#getReachability', () => {
@@ -995,7 +1092,7 @@ describe('plugin-meetings', () => {
               'meeting:meetingInfoAvailable'
             );
           };
-          
+
           it('creates the meeting from a successful meeting info fetch promise testing', async () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
@@ -1016,7 +1113,7 @@ describe('plugin-meetings', () => {
                 permissionToken: 'PT',
                 meetingJoinUrl: 'meetingJoinUrl',
               };
-  
+
               assert.instanceOf(
                 meeting,
                 Meeting,
@@ -1024,7 +1121,7 @@ describe('plugin-meetings', () => {
               );
               checkCreateWithoutDelay(meeting, 'test destination', 'test type', infoExtraParamsProvided ? infoExtraParams : {}, expectedMeetingData);
             });
-  
+
             it(`creates the meeting from a successful meeting info fetch with random delay${infoExtraParamsProvided ? ' with infoExtraParams' : ''}`, async () => {
               const FAKE_LOCUS_MEETING = {
                 conversationUrl: 'locusConvURL',
@@ -1041,14 +1138,14 @@ describe('plugin-meetings', () => {
                   active: false,
                 },
               };
-  
+
               const meeting = await webex.meetings.createMeeting(
                 FAKE_LOCUS_MEETING,
                 'test type',
                 true,
                 infoExtraParams
               );
-  
+
               assert.instanceOf(
                 meeting,
                 Meeting,
@@ -1056,7 +1153,7 @@ describe('plugin-meetings', () => {
               );
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
               assert.calledOnce(setTimeoutSpy);
-  
+
               // Parse meeting info with locus object
               assert.equal(meeting.conversationUrl, 'locusConvURL');
               assert.equal(meeting.locusUrl, 'locusUrl');
@@ -1065,7 +1162,7 @@ describe('plugin-meetings', () => {
               assert.isUndefined(meeting.meetingJoinUrl);
               assert.equal(meeting.owner, 'locusOwner');
               assert.isUndefined(meeting.permissionToken);
-  
+
               // Add meeting and send trigger
               assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
               assert.calledTwice(TriggerProxy.trigger);
@@ -1082,7 +1179,7 @@ describe('plugin-meetings', () => {
                   type: 'test meeting added type',
                 }
               );
-  
+
               // When timer expires
               clock.tick(FAKE_TIME_TO_START);
               assert.calledWith(
@@ -1095,7 +1192,7 @@ describe('plugin-meetings', () => {
                 undefined,
                 infoExtraParamsProvided ? infoExtraParams : {}
               );
-  
+
               // Parse meeting info is called again with new meeting info
               await testUtils.flushPromises();
               assert.equal(meeting.conversationUrl, 'locusConvURL');
@@ -1105,7 +1202,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
               assert.equal(meeting.owner, 'locusOwner');
               assert.equal(meeting.permissionToken, 'PT');
-  
+
               assert.calledWith(
                 TriggerProxy.trigger,
                 meeting,

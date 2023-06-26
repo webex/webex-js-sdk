@@ -29,6 +29,7 @@ import {
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
+import {AnnotationInfo} from '../annotation/annotation.types';
 
 /**
  * @class MeetingRequest
@@ -630,7 +631,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           deviceUrl: string;
           resourceId: string;
           uri: string;
-          annotation: any;
+          annotationInfo: AnnotationInfo;
         }
       | any
   ) {
@@ -664,8 +665,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     if (options?.resourceToken) {
       body.resourceToken = options?.resourceToken;
     }
-    if (options?.annotation) {
-      body.annotation = options?.annotation;
+    if (options?.annotationInfo) {
+      body.annotation = options?.annotationInfo;
     }
 
     // @ts-ignore

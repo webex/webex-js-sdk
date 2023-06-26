@@ -316,43 +316,6 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe('isUpgradeToModeratorOrCohost', () => {
-    it('returns true if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','MODERATOR']}),
-        true
-      );
-    });
-
-    it('returns true if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','COHOST']}),
-        true
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','MODERATOR']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','COHOST']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','HOST','MODERATOR']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-  });
-
   describe('getReplacedBreakoutMoveId', () => {
     const deviceId = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24';
     const breakoutMoveId = 'e5caeb2c-ffcc-4e06-a08a-1122e7710398';
@@ -395,6 +358,12 @@ describe('plugin-meetings', () => {
   });
 
   describe('isRolesChanged', () => {
+    it('should return false if new self is null', () => {
+      const parsedSelf = SelfUtils.parse(self);
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, null), false);
+    });
+
     it('should return true if self roles has changed', () => {
       const parsedSelf = SelfUtils.parse(self);
       const clonedSelf = cloneDeep(parsedSelf);

@@ -4164,9 +4164,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:1.38.2":
-  version: 1.38.2
-  resolution: "@webex/internal-media-core@npm:1.38.2"
+"@webex/internal-media-core@npm:1.38.3":
+  version: 1.38.3
+  resolution: "@webex/internal-media-core@npm:1.38.3"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:2.0.1"
@@ -4178,7 +4178,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: 2f125e9a2f5f15bf9b769befcb198d2f731e747ecc8d26b533b04e8e12f127bfc1c384fe69057f670efa81cdfcbcb06f6009756aea53ae88cf633fd0c0ae69d6
+  checksum: 1aad4e8b205b8057c325643e8341cca41202493107acd871bb3e726490a0e0fce3a11e75c7d4df88667a64f9d7be177f4d7bb05b7c75973d3bc9b064615a49e8
   languageName: node
   linkType: hard
 
@@ -4299,12 +4299,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss"
   dependencies:
+    "@webex/common": "workspace:^"
     "@webex/internal-plugin-dss": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/webex-core": "workspace:^"
     lodash: "npm:^4.17.21"
+    sinon: "npm:^9.2.4"
     uuid: "npm:^3.3.2"
   languageName: unknown
   linkType: soft
@@ -4643,7 +4645,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:1.38.2"
+    "@webex/internal-media-core": "npm:1.38.3"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/web-media-effects": "npm:^2.8.0"
@@ -4779,7 +4781,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:1.38.2"
+    "@webex/internal-media-core": "npm:1.38.3"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"

@@ -14,7 +14,6 @@ import {
   AUDIO,
   VIDEO,
   MediaContent,
-  SELF_ROLES,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -109,7 +108,6 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   );
   updates.moderatorChanged = SelfUtils.moderatorChanged(previous, current);
   updates.isRolesChanged = SelfUtils.isRolesChanged(previous, current);
-  updates.isUpgradeToModeratorOrCohost = SelfUtils.isUpgradeToModeratorOrCohost(previous, current);
   updates.isMediaInactiveOrReleased = SelfUtils.wasMediaInactiveOrReleased(previous, current);
   updates.isUserObserving = SelfUtils.isDeviceObserving(previous, current);
   updates.layoutChanged = SelfUtils.layoutChanged(previous, current);
@@ -340,38 +338,20 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
   return oldSelf.moderator !== changedSelf.moderator;
 };
 
-SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
-  if (!oldSelf || !changedSelf) {
-    return false;
-  }
-
-  return !isEqual(oldSelf.roles, changedSelf.roles);
-};
 /**
+ * determine whether the roles of self is changed or not
  * @param {Object} oldSelf
  * @param {Object} changedSelf
  * @returns {Boolean}
- * @throws {Error} if changed self was undefined
  */
-SelfUtils.isUpgradeToModeratorOrCohost = (oldSelf, changedSelf) => {
-  if (!oldSelf) {
+SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
+  if (!changedSelf) {
+    // no new self means no change
     return false;
   }
-  if (!changedSelf) {
-    throw new ParameterError(
-      'New self must be defined to determine if self transitioned moderator or cohost status.'
-    );
-  }
-  const isAttendeeOnly =
-    oldSelf.roles.includes(SELF_ROLES.ATTENDEE) &&
-    !oldSelf.roles.includes(SELF_ROLES.COHOST) &&
-    !oldSelf.roles.includes(SELF_ROLES.MODERATOR);
-  const isCohost = changedSelf.roles.includes(SELF_ROLES.COHOST);
-  const isModerator = changedSelf.roles.includes(SELF_ROLES.MODERATOR);
 
-  return isAttendeeOnly && (isCohost || isModerator);
+  return !isEqual(oldSelf?.roles, changedSelf?.roles);
 };
-
 /**
  * @param {Object} oldSelf
  * @param {Object} changedSelf
