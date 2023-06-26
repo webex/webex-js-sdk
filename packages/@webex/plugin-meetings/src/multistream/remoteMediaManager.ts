@@ -96,6 +96,7 @@ const OnePlusFiveLayout: VideoLayout = {
 };
 
 // A layout with 2 big panes for 2 main active speakers and a strip of 6 small panes for other active speakers:
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TwoMainPlusSixSmallLayout: VideoLayout = {
   activeSpeakerVideoPaneGroups: [
     {
@@ -488,6 +489,38 @@ export class RemoteMediaManager extends EventsScope {
    */
   public getLayoutId(): LayoutId | undefined {
     return this.currentLayoutId;
+  }
+
+  /**
+   * sets the preferLiveVideo
+   */
+  public setPreferLiveVideo(preferLiveVideo: boolean) {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#setPreferLiveVideo --> setPreferLiveVideo is called to set preferLiveVideo to ${preferLiveVideo}`
+    );
+    this.config.video.preferLiveVideo = preferLiveVideo;
+    Object.values(this.media.video.activeSpeakerGroups).forEach((activeSpeakerGroup) => {
+      activeSpeakerGroup.setPreferLiveVideo(preferLiveVideo, false);
+    });
+    this.mediaRequestManagers.video.commit();
+  }
+
+  /**
+   * Sets CSIs for multiple RemoteMedia instances belonging to RemoteMediaGroup.
+   * For each entry in the remoteMediaCsis array:
+   * - if csi is specified, the RemoteMedia instance is pinned to that CSI
+   * - if csi is undefined, the RemoteMedia instance is unpinned
+   */
+  public setActiveSpeakerCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[]) {
+    Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
+      const groupRemoteMediaCsis = remoteMediaCsis.filter(({remoteMedia}) =>
+        remoteMediaGroup.includes(remoteMedia)
+      );
+      if (groupRemoteMediaCsis.length > 0) {
+        remoteMediaGroup.setActiveSpeakerCsis(groupRemoteMediaCsis, false);
+      }
+    });
+    this.mediaRequestManagers.video.commit();
   }
 
   /**

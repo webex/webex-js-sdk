@@ -13,6 +13,7 @@ import {
 } from '@webex/internal-media-core';
 
 export {
+  getDevices,
   LocalTrack,
   LocalDisplayTrack,
   LocalTrackEvents,

@@ -185,13 +185,7 @@ function makeWebex(options) {
         voicea: {},
         meetings: {
           mediaSettings: {
-            sendAudio: true,
-            sendVideo: true,
-            receiveAudio: true,
-            receiveVideo: true,
             pstn: false,
-            sendShare: false,
-            receiveShare: false,
           },
           reconnection: {
             enabled: true,

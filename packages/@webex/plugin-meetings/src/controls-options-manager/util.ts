@@ -153,17 +153,22 @@ class Utils {
   ) {
     const requiredHints = [];
 
-    if (control.properties.enabled === true) {
-      requiredHints.push(DISPLAY_HINTS.ENABLE_REACTIONS);
-    }
-    if (control.properties.enabled === false) {
-      requiredHints.push(DISPLAY_HINTS.DISABLE_REACTIONS);
-    }
-    if (control.properties.showDisplayNameWithReactions === true) {
-      requiredHints.push(DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME);
-    }
-    if (control.properties.showDisplayNameWithReactions === false) {
-      requiredHints.push(DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME);
+    // This additional if statement avoids the display hint discrepency due to
+    // the service blocking partial requests with this property only.
+    if (control.properties.showDisplayNameWithReactions !== undefined) {
+      if (control.properties.showDisplayNameWithReactions === true) {
+        requiredHints.push(DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME);
+      }
+      if (control.properties.showDisplayNameWithReactions === false) {
+        requiredHints.push(DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME);
+      }
+    } else {
+      if (control.properties.enabled === true) {
+        requiredHints.push(DISPLAY_HINTS.ENABLE_REACTIONS);
+      }
+      if (control.properties.enabled === false) {
+        requiredHints.push(DISPLAY_HINTS.DISABLE_REACTIONS);
+      }
     }
 
     return Utils.hasHints({requiredHints, displayHints});

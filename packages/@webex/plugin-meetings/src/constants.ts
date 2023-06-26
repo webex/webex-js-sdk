@@ -4,7 +4,6 @@ import {hydraTypes} from '@webex/common';
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
 export const AUDIO = 'audio';
-export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
 export const ALIAS = 'alias';
@@ -67,7 +66,6 @@ export const SHARE = 'share';
 export const TYPE = 'type';
 
 export const VIDEO = 'video';
-export const VIDEO_INPUT = 'videoinput';
 export const VIDEO_STATUS = 'videoStatus';
 
 // *********** UPPERCASE ONLY STRINGS ************
@@ -318,6 +316,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN: 'meeting:breakouts:askReturnToMain',
   MEETING_BREAKOUTS_LEAVE: 'meeting:breakouts:leave',
   MEETING_BREAKOUTS_ASK_FOR_HELP: 'meeting:breakouts:askForHelp',
+  MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE: 'meeting:breakouts:preAssignmentsUpdate',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
@@ -362,12 +361,10 @@ export const EVENT_TRIGGERS = {
 export const EVENT_TYPES = {
   SELF: 'self',
   OTHER: 'other',
-  LOCAL: 'local',
   REMOTE: 'remote',
   REMOTE_AUDIO: 'remoteAudio',
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
-  LOCAL_SHARE: 'localShare',
   ERROR: 'error',
 };
 
@@ -399,6 +396,7 @@ export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
   MEETING_REJOIN: 'MEETING_REJOIN',
   MEDIA_RECONNECTION: 'MEDIA_RECONNECTION',
+  TRACK_ENDED: 'TRACK_ENDED',
 };
 
 export const EVENTS = {
@@ -563,6 +561,7 @@ export const BREAKOUTS = {
     ASK_RETURN_TO_MAIN: 'ASK_RETURN_TO_MAIN',
     LEAVE_BREAKOUT: 'LEAVE_BREAKOUT',
     ASK_FOR_HELP: 'ASK_FOR_HELP',
+    PRE_ASSIGNMENTS_UPDATE: 'PRE_ASSIGNMENTS_UPDATE',
   },
   SESSION_TYPES: {
     MAIN: 'MAIN',
@@ -633,7 +632,6 @@ export const LOCUSINFO = {
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
-    SELF_MODERATOR_OR_COHOST_UPGRADE: 'SELF_MODERATOR_OR_COHOST_UPGRADE',
   },
 };
 
@@ -841,6 +839,7 @@ export const DISPLAY_HINTS = {
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
+  BROADCAST_MESSAGE_TO_BREAKOUT: 'BROADCAST_MESSAGE_TO_BREAKOUT',
   UCF_SUPPRESS_BREAKOUTS_SUPPORT: 'UCF_SUPPRESS_BREAKOUTS_SUPPORT',
   DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
   DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
@@ -1134,16 +1133,6 @@ export const AVAILABLE_RESOLUTIONS = {
       },
     },
   },
-};
-
-export const VIDEO_RESOLUTIONS = {
-  [QUALITY_LEVELS.LOW]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS.MEDIUM]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS.HIGH]: AVAILABLE_RESOLUTIONS['1080p'],
-  [QUALITY_LEVELS['360p']]: AVAILABLE_RESOLUTIONS['360p'],
-  [QUALITY_LEVELS['480p']]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS['720p']]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS['1080p']]: AVAILABLE_RESOLUTIONS['1080p'],
 };
 
 /*

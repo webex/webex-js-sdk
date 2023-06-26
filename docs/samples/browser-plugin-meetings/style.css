@@ -217,6 +217,15 @@ button.btn-code {
   margin-right: 0.5rem;
 }
 
+.prefer-live-video {
+  display: flex;
+}
+
+.prefer-live-video span {
+  margin-top: 1rem;
+  margin-right: 0.5rem;
+}
+
 /* Utilities */
 
 .flex {
