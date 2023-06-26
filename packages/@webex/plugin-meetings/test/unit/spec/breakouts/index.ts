@@ -78,7 +78,7 @@ const getBOResponseWithEditLockInfo = (status: string, withOutToken?: boolean) =
   };
 };
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('Breakouts', () => {
     let webex;
     let breakouts;
