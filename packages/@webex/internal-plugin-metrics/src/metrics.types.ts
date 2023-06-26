@@ -1,6 +1,12 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
-import {SubmitClientEventOptions} from './call-diagnostic/call-diagnostic-metrics';
+
+export type SubmitClientEventOptions = {
+  meetingId?: string;
+  mediaConnections?: any[];
+  error?: any;
+  showToUser?: boolean;
+};
 
 export type InternalEvent = {
   // TODO: not implemented
@@ -17,7 +23,7 @@ export interface ClientEvent {
 
 export interface BehavioralEvent {
   // TODO: not implemented
-  name: never;
+  name: 'host.meeting.participant.admitted' | 'client.pageJMT.received' | 'sdk.media-flow.started';
   payload?: never;
   options?: never;
 }
@@ -52,6 +58,13 @@ export type RecursivePartial<T> = {
 };
 
 export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent};
+export type MetricEventNames =
+  | InternalEvent['name']
+  | ClientEvent['name']
+  | BehavioralEvent['name']
+  | OperationalEvent['name']
+  | FeatureEvent['name']
+  | MediaQualityEvent['name'];
 
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];

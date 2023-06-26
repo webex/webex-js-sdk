@@ -5,9 +5,7 @@
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 
-import CallDiagnosticMetrics, {
-  SubmitClientEventOptions,
-} from './call-diagnostic/call-diagnostic-metrics';
+import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import {
   RecursivePartial,
   ClientEvent,
@@ -16,7 +14,9 @@ import {
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
+  SubmitClientEventOptions,
 } from './metrics.types';
+import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -26,6 +26,8 @@ class Metrics extends WebexPlugin {
   // eslint-disable-next-line no-use-before-define
   static instance: Metrics;
 
+  // Call Diagnostic latencies
+  callDiagnosticLatencies: CallDiagnosticLatencies;
   // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
 
@@ -43,6 +45,7 @@ class Metrics extends WebexPlugin {
       Metrics.instance = this;
     }
 
+    this.callDiagnosticLatencies = new CallDiagnosticLatencies();
     this.callDiagnosticMetrics = new CallDiagnosticMetrics();
 
     // eslint-disable-next-line no-constructor-return
@@ -87,6 +90,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<BehavioralEvent['payload']>;
     options: any;
   }) {
+    this.callDiagnosticLatencies.saveTimestamp(name);
     throw new Error('Not implemented.');
   }
 
@@ -154,6 +158,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
+    this.callDiagnosticLatencies.saveTimestamp(name);
     this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
   }
 }
