@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
