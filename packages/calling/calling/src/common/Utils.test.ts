@@ -12,6 +12,7 @@ import {
   getSampleScimResponse,
   getSamplePeopleListResponse,
   getSampleRawAndParsedMediaStats,
+  getMobiusDiscoveryResponse,
 } from './testUtil';
 import {
   CallDirection,
@@ -35,7 +36,14 @@ import {
   REGISTER_UTIL,
   KEEPALIVE_UTIL,
 } from '../CallingClient/constants';
-import {CALL_ERROR_CODE, ErrorObject, ERROR_CODE, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
+import {
+  CALL_ERROR_CODE,
+  ErrorObject,
+  ERROR_CODE,
+  ERROR_LAYER,
+  ERROR_TYPE,
+  DEVICE_ERROR_CODE,
+} from '../Errors/types';
 import {EVENT_KEYS} from '../Events/types';
 import {
   handleCallErrors,
@@ -48,6 +56,7 @@ import {
   inferIdFromUuid,
   getXsiActionEndpoint,
   getVgActionEndpoint,
+  filterMobiusUris,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -57,6 +66,8 @@ import {
 import {INFER_ID_CONSTANT} from './constants';
 
 const mockSubmitRegistrationMetric = jest.fn();
+const mockEmitterCb = jest.fn();
+const mockRestoreCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 
@@ -66,71 +77,206 @@ const fakeCallingClient = mockCallingClient as unknown as typeof callingClient;
 fakeCallingClient.sendMetric = mockSubmitRegistrationMetric;
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
 
+describe('Mobius service discovery tests', () => {
+  it('test filter mobius uris', () => {
+    const defaultMobiusUrl = 'https://mobius.webex.com/api/v1/calling/web';
+    const callingContext = '/calling/web/';
+    const discoveryResponse = getMobiusDiscoveryResponse();
+
+    // add a duplicate which will be filtered out
+    discoveryResponse.backup.uris.push(discoveryResponse.backup.uris[0]);
+
+    let filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+
+    expect(filteredUris.primary.length).toBe(1);
+    expect(filteredUris.backup.length).toBe(2);
+    expect(filteredUris.primary[0]).toBe(discoveryResponse.primary.uris[0] + callingContext);
+    expect(filteredUris.backup[0]).toBe(discoveryResponse.backup.uris[0] + callingContext);
+    expect(filteredUris.backup[1]).toBe(defaultMobiusUrl + callingContext);
+
+    /** Remove Uris and test if the defaultUrls is returned */
+    discoveryResponse.backup.uris = [];
+    discoveryResponse.primary.uris = [];
+
+    filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+    expect(filteredUris.primary.length).toBe(1);
+    expect(filteredUris.backup.length).toBe(0);
+  });
+});
+
 describe('Registration Tests', () => {
-  /* Error flows tests starts */
+  /**
+   * TestCase inputs
+   * name: TestCase name
+   * code: Response code of type ERROR_CODE
+   * bodyPresent: Indicates if response has a body
+   * subErrorCode: sub error code of type CALL_ERROR_CODE
+   * retryAfter: Indicates if retry-after header is present
+   * message: Custom message for the error context
+   * type: Error type based on the response code
+   * errorLayer: Call control or media layer
+   * cbExpected: Indicates if event emitter callback is expected
+   * logMsg: log message.
+   */
+  const errorCodes: {
+    name: string;
+    statusCode: ERROR_CODE;
+    bodyPresent: boolean;
+    subErrorCode: CALL_ERROR_CODE;
+    retryAfter: number;
+    message: string;
+    type: ERROR_TYPE;
+    errorLayer: ERROR_LAYER;
+    cbExpected: boolean;
+    logMsg: string;
+  }[] = [
+    {
+      name: 'verify 404 error response',
+      statusCode: ERROR_CODE.DEVICE_NOT_FOUND,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message:
+        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
+      errorType: ERROR_TYPE.NOT_FOUND,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      logMsg: '404 Device Not Found',
+    },
+    {
+      name: 'verify 500 error response',
+      statusCode: ERROR_CODE.INTERNAL_SERVER_ERROR,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message: 'An unknown error occurred while placing the request. Wait a moment and try again.',
+      errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg: '500 Internal Server Error',
+    },
+    {
+      name: 'verify 503 error response',
+      statusCode: ERROR_CODE.SERVICE_UNAVAILABLE,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message:
+        'An error occurred on the server while processing the request. Wait a moment and try again.',
+      errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg: '503 Service Unavailable',
+    },
+    {
+      name: 'verify 403 response with no response body',
+      statusCode: ERROR_CODE.FORBIDDEN,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message:
+        'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
+      errorType: ERROR_TYPE.FORBIDDEN_ERROR,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg: 'Error response has no body, throwing default error',
+      customBodyPresent: true,
+      body: undefined,
+    },
+    {
+      name: 'verify 403 response with unknown device.errorCode',
+      statusCode: ERROR_CODE.FORBIDDEN,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message:
+        'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
+      errorType: ERROR_TYPE.FORBIDDEN_ERROR,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg: 'Error code found : 0',
+    },
+    {
+      name: 'verify 403 response with code 101',
+      statusCode: ERROR_CODE.FORBIDDEN,
+      deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED,
+      retryAfter: 0,
+      message: 'User device limit exceeded',
+      errorType: ERROR_TYPE.FORBIDDEN_ERROR,
+      emitterCbExpected: false,
+      finalError: false,
+      restoreCbExpected: true,
+      logMsg: 'User device limit exceeded',
+    },
+    {
+      name: 'verify 403 response with code 102',
+      statusCode: ERROR_CODE.FORBIDDEN,
+      deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED,
+      retryAfter: 0,
+      message:
+        'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
+      errorType: ERROR_TYPE.FORBIDDEN_ERROR,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      logMsg:
+        'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
+    },
+    {
+      name: 'verify 403 response with code 103',
+      statusCode: ERROR_CODE.FORBIDDEN,
+      deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED,
+      retryAfter: 0,
+      message:
+        'An unknown error occurred while provisioning the device. Wait a moment and try again.',
+      errorType: ERROR_TYPE.FORBIDDEN_ERROR,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg:
+        'An unknown error occurred while provisioning the device. Wait a moment and try again.',
+    },
+    {
+      name: 'verify 401 error response',
+      statusCode: ERROR_CODE.UNAUTHORIZED,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message: 'User is unauthorized due to an expired token. Sign out, then sign back in.',
+      errorType: ERROR_TYPE.TOKEN_ERROR,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      logMsg: '401 Unauthorized',
+    },
+    {
+      name: 'verify unknown error response',
+      statusCode: 206,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message: 'Unknown error',
+      errorType: ERROR_TYPE.DEFAULT,
+      emitterCbExpected: true,
+      finalError: false,
+      restoreCbExpected: false,
+      logMsg: 'Unknown Error',
+    },
+  ].map((stat) =>
+    Object.assign(stat, {
+      toString() {
+        return this.name;
+      },
+    })
+  );
   const logSpy = jest.spyOn(log, 'warn');
   const logObj = {
     file: 'CallingClient',
     method: REGISTER_UTIL,
   };
 
-  beforeEach(() => {
-    jest.clearAllTimers();
-    jest.useFakeTimers();
-  });
-
-  const checkMetric = (times: number, error?: unknown, webexObjCheck = false) => {
-    expect(mockSubmitRegistrationMetric).toBeCalledTimes(times);
-    if (webexObjCheck) {
-      expect(mockSubmitRegistrationMetric).toBeCalledOnceWith(
-        METRIC_EVENT.REGISTRATION_ERROR,
-        expect.any(Object)
-      );
-    } else {
-      expect(mockSubmitRegistrationMetric).toBeCalledOnceWith(
-        METRIC_EVENT.REGISTRATION_ERROR,
-        REG_ACTION.REGISTER,
-        METRIC_TYPE.BEHAVIORAL,
-        error
-      );
-    }
-  };
-
-  /* 500 error starts */
-  it('verify 500 response', () => {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  it.each(errorCodes)('%s', (codeObj) => {
     const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 500,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-    });
-
-    const mockErrorEvent: ErrorObject = {
-      type: ERROR_TYPE.SERVICE_UNAVAILABLE,
-      message: 'An unknown error occurred while placing the request. Wait a moment and try again.',
-      context: logObj,
-    };
-    const callClientError = new CallingClientError(
-      mockErrorEvent.message,
-      mockErrorEvent.context,
-      mockErrorEvent.type,
-      MobiusStatus.ACTIVE
-    );
-
-    handleErrors(fakeCallingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-
-    expect(logSpy).toBeCalledTimes(2);
-    expect(logSpy).toBeCalledWith('500 Internal Server Error', logObj);
-    expect(logSpy).toBeCalledWith('Status code: -> 500', logObj);
-    expect(fakeCallingClient.emit).toBeCalledOnceWith(EVENT_KEYS.UNREGISTERED);
-
-    checkMetric(1, callClientError);
-  });
-
-  /* 503 error starts */
-  it('verify 503 response without retry-after', () => {
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 503,
+      statusCode: codeObj.statusCode,
       headers: {
         trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
       },
@@ -138,125 +284,12 @@ describe('Registration Tests', () => {
         device: {
           deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
         },
-      },
-    });
-    const mockErrorEvent = {
-      type: ERROR_TYPE.SERVICE_UNAVAILABLE,
-      message:
-        'An error occurred on the server while processing the request. Wait a moment and try again.',
-      context: logObj,
-    };
-    const callClientError = new CallingClientError(
-      mockErrorEvent.message,
-      mockErrorEvent.context,
-      mockErrorEvent.type,
-      MobiusStatus.ACTIVE
-    );
-
-    handleErrors(fakeCallingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-
-    expect(logSpy).toBeCalledWith('503 Service Unavailable', logObj);
-    expect(logSpy).toBeCalledWith('Status code: -> 503', logObj);
-    expect(fakeCallingClient.emit).toBeCalledOnceWith(EVENT_KEYS.UNREGISTERED);
-
-    checkMetric(1, callClientError);
-  });
-
-  it('verify 503 response with retry-after', () => {
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 503,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-        'retry-after': 30,
-      },
-      body: {
-        device: {
-          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
-        },
-      },
-    });
-
-    const mockErrorEvent = {
-      type: ERROR_TYPE.SERVICE_UNAVAILABLE,
-      message:
-        'An error occurred on the server while processing the request. Wait a moment and try again.',
-      context: logObj,
-    };
-    const callClientError = new CallingClientError(
-      mockErrorEvent.message,
-      mockErrorEvent.context,
-      mockErrorEvent.type,
-      MobiusStatus.ACTIVE
-    );
-
-    jest.spyOn(global, 'setTimeout');
-    handleErrors(fakeCallingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-
-    expect(setTimeout).not.toBeCalled();
-    expect(fakeCallingClient.emit).toBeCalledOnceWith(EVENT_KEYS.UNREGISTERED);
-
-    checkMetric(1, callClientError);
-  });
-
-  it('verify 403 response with no response body', async () => {
-    const deRegSpy = jest.spyOn(callingClient, 'deregister');
-    const regSpy = jest.spyOn(callingClient, 'restorePreviousRegistration');
-
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_30',
-      },
-    });
-
-    const mockErrorEvent: ErrorObject = {
-      type: ERROR_TYPE.FORBIDDEN_ERROR,
-      message:
-        'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
-      context: logObj,
-    };
-    const callClientError = new CallingClientError(
-      mockErrorEvent.message,
-      mockErrorEvent.context,
-      mockErrorEvent.type,
-      MobiusStatus.DEFAULT
-    );
-
-    const ret = await handleErrors(
-      fakeCallingClient,
-      webexPayload,
-      logObj.method as string,
-      CALLING_CLIENT_FILE
-    );
-
-    expect(ret).toBe(false);
-    expect(deRegSpy).not.toBeCalled();
-    expect(regSpy).not.toBeCalled();
-    expect(fakeCallingClient.emit).toBeCalledOnceWith(EVENT_KEYS.UNREGISTERED);
-
-    checkMetric(1, callClientError);
-  });
-
-  it('verify 403 response with code 101: Retry Success', async () => {
-    const deRegSpy = jest.spyOn(callingClient, 'deregister');
-    const regSpy = jest.spyOn(callingClient, 'restorePreviousRegistration');
-    const regRetrySpy = jest.spyOn(callingClient, 'setRegRetry');
-    const mobiusUri = 'https://mobius.webex.com/api/v1/calling/web/';
-    const deviceId = '30d84f70-eb44-3ef0-8e59-28d0b8c7cad7';
-
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
         userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-        errorCode: 101,
+        errorCode: codeObj.deviceErrorCode,
         devices: [
           {
-            deviceId,
-            uri: `${mobiusUri}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
+            deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+            uri: 'https://mobius.webex.com/api/v1/calling/web/',
             status: 'active',
             lastSeen: '2022-04-07T18:00:40Z',
             addresses: ['sip:sipAddress@webex.com'],
@@ -264,285 +297,15 @@ describe('Registration Tests', () => {
         ],
       },
     });
-
-    const mockRegistrationBody = getMockDeviceInfo();
-
-    const successPayload = {
-      statusCode: 200,
-      body: mockRegistrationBody,
-    };
-
-    /* eslint-disable dot-notation */
-    jest.spyOn(callingClient['registration'], 'createDevice').mockResolvedValueOnce(successPayload);
-
-    let unregistered = false;
-
-    callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-      unregistered = true;
-    });
-
-    await handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    expect(unregistered).toBe(false);
-    expect(deRegSpy).toBeCalledOnceWith();
-    expect(regSpy).toBeCalledOnceWith(REGISTER_UTIL);
-    expect(regRetrySpy).toBeCalledTimes(2);
-    expect(regRetrySpy).toBeCalledWith(true);
-    expect(regRetrySpy).lastCalledWith(false);
-    expect(callingClient.getMobiusUrl()).toBe(mobiusUri);
-  });
-
-  it('verify 403 response with code 101: Retry Failure with same error', async () => {
-    const deRegSpy = jest.spyOn(callingClient, 'deregister');
-    const regSpy = jest.spyOn(callingClient, 'restorePreviousRegistration');
-    const regRetrySpy = jest.spyOn(callingClient, 'setRegRetry');
-    const mobiusUri = 'https://mobius.webex.com/api/v1/calling/web/';
-    const deviceId = '30d84f70-eb44-3ef0-8e59-28d0b8c7cad7';
-
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-        errorCode: 101,
-        devices: [
-          {
-            deviceId,
-            uri: `${mobiusUri}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
-            status: 'active',
-            lastSeen: '2022-04-07T18:00:40Z',
-            addresses: ['sip:sipAddress@webex.com'],
-          },
-        ],
-      },
-    });
-
-    jest.spyOn(callingClient['registration'], 'createDevice').mockRejectedValueOnce(webexPayload);
-
-    let unregistered = false;
-
-    callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-      unregistered = true;
-    });
-
-    await handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    expect(unregistered).toBe(true);
-    expect(deRegSpy).toBeCalledOnceWith();
-    expect(regSpy).toBeCalledOnceWith(REGISTER_UTIL);
-    expect(regRetrySpy).toBeCalledTimes(2);
-    expect(regRetrySpy).toBeCalledWith(true);
-    expect(regRetrySpy).lastCalledWith(false);
-  });
-
-  it('verify 403 response with code 101 and empty devices array', async () => {
-    const deRegSpy = jest.spyOn(callingClient, 'deregister');
-    const regSpy = jest.spyOn(callingClient, 'register');
-
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-        errorCode: 101,
-        devices: [],
-      },
-    });
-
-    let unregistered = false;
-
-    callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-      unregistered = true;
-    });
-
-    await handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    expect(unregistered).toBe(true);
-    expect(deRegSpy).not.toBeCalled();
-    expect(regSpy).not.toBeCalled();
-  });
-
-  it('verify 403 response with code 102', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        userId: 'c9f5cb96-e4b9-48c4-81a0-cffab97ce563',
-        errorCode: 102,
-        devices: [],
-      },
-    });
-    const mockErrorEvent = {
-      type: ERROR_TYPE.FORBIDDEN_ERROR,
-      message:
-        'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
-      context: logObj,
-    };
-
-    callingClient.on(EVENT_KEYS.ERROR, (errObj) => {
-      expect(errObj).toMatchObject(mockErrorEvent);
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
-  });
-
-  it('verify 403 response with code 103', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        userId: 'c9f5cb96-e4b9-48c4-81a0-cffab97ce563',
-        errorCode: 103,
-        devices: [],
-      },
-    });
-
-    callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
-  });
-
-  it('verify 403 response with unknown error code:- 999', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 403,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        userId: 'c9f5cb96-e4b9-48c4-81a0-cffab97ce563',
-        errorCode: 999,
-        devices: [],
-      },
-    });
-
-    callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
-  });
-
-  /* 403 error ends */
-
-  /* 401 error starts */
-  it('verify 401 error response', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 401,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        device: {
-          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
-        },
-      },
-    });
-    const mockErrorEvent = {
-      type: ERROR_TYPE.TOKEN_ERROR,
-      message: 'User is unauthorized due to an expired token. Sign out, then sign back in.',
-      context: logObj,
-    };
-
-    callingClient.on(EVENT_KEYS.ERROR, (errObj) => {
-      expect(errObj).toMatchObject(mockErrorEvent);
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
-  });
-
-  /* Error cases start */
-  /* 404 error starts */
-  it('verify 404 error response', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 404,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        device: {
-          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
-        },
-      },
-    });
-    const mockErrorEvent = {
-      type: ERROR_TYPE.NOT_FOUND,
-      message:
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-      context: logObj,
-    };
-
-    callingClient.on(EVENT_KEYS.ERROR, (errObj) => {
-      expect(errObj).toMatchObject(mockErrorEvent);
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
-  });
-});
-
-describe('KEEPALIVE Tests', () => {
-  const logSpy = jest.spyOn(log, 'warn');
-  const logObj = {
-    file: 'CallingClient',
-    method: KEEPALIVE_UTIL,
-  };
-
-  beforeEach(() => {
-    jest.clearAllTimers();
-    jest.useFakeTimers();
-  });
-
-  const checkMetric = (times: number, error?: unknown, webexObjCheck = false) => {
-    expect(mockSubmitRegistrationMetric).toBeCalledTimes(times);
-    if (webexObjCheck) {
-      expect(mockSubmitRegistrationMetric).toBeCalledOnceWith(
-        METRIC_EVENT.REGISTRATION,
-        expect.any(Object)
-      );
-    } else {
-      expect(mockSubmitRegistrationMetric).toBeCalledOnceWith(
-        METRIC_EVENT.REGISTRATION,
-        REG_ACTION.KEEPALIVE_FAILURE,
-        METRIC_TYPE.BEHAVIORAL,
-        error
-      );
+    if (codeObj.customBodyPresent) {
+      webexPayload.body = codeObj.body;
     }
-  };
-
-  it('verify non final error response for keepalive', () => {
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 500,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-    });
-
-    const mockErrorEvent: ErrorObject = {
-      type: ERROR_TYPE.SERVICE_UNAVAILABLE,
-      message: 'An unknown error occurred while placing the request. Wait a moment and try again.',
+    const mockErrorEvent = {
+      type: codeObj.errorType,
+      message: codeObj.message,
       context: logObj,
     };
+
     const callClientError = new CallingClientError(
       mockErrorEvent.message,
       mockErrorEvent.context,
@@ -550,43 +313,18 @@ describe('KEEPALIVE Tests', () => {
       MobiusStatus.ACTIVE
     );
 
-    handleErrors(fakeCallingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
+    handleErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
+    if (codeObj.emitterCbExpected) {
+      expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
+    }
+    if (codeObj.restoreCbExpected) {
+      expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj);
+    } else {
+      expect(mockRestoreCb).not.toHaveBeenCalled();
+    }
 
-    expect(logSpy).toBeCalledTimes(2);
-    expect(logSpy).toBeCalledWith('500 Internal Server Error', logObj);
-    expect(logSpy).toBeCalledWith('Status code: -> 500', logObj);
-    expect(fakeCallingClient.emit).toBeCalledTimes(0);
-
-    checkMetric(1, callClientError);
-  });
-
-  it('verify final error response for keepalive', (done) => {
-    callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-    const webexPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 404,
-      headers: {
-        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-      },
-      body: {
-        device: {
-          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
-        },
-      },
-    });
-    const mockErrorEvent = {
-      type: ERROR_TYPE.NOT_FOUND,
-      message:
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-      context: logObj,
-    };
-
-    callingClient.on(EVENT_KEYS.ERROR, (errObj) => {
-      expect(errObj).toMatchObject(mockErrorEvent);
-      done();
-    });
-
-    handleErrors(callingClient, webexPayload, logObj.method as string, CALLING_CLIENT_FILE);
-    checkMetric(1, undefined, true);
+    expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
+    expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
   });
 });
 
@@ -1025,7 +763,7 @@ describe('Call Tests', () => {
   ].map((stat) =>
     Object.assign(stat, {
       toString() {
-        return this['name'];
+        return this.name;
       },
     })
   );
@@ -1034,30 +772,30 @@ describe('Call Tests', () => {
   it.each(errorCodes)('%s', (codeObj, done: any) => {
     let cbTriggered = false;
     const mockPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: codeObj['code'],
+      statusCode: codeObj.code,
       headers: {
         trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-        ...(codeObj['retryAfter'] && {'retry-after': codeObj['retryAfter']}),
+        ...(codeObj.retryAfter && {'retry-after': codeObj.retryAfter}),
       },
-      ...(codeObj['bodyPresent'] && {
+      ...(codeObj.bodyPresent && {
         body: {
           device: {
             deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
           },
-          ...(codeObj['subErrorCode'] ? {errorCode: codeObj['subErrorCode']} : {}),
+          ...(codeObj.subErrorCode ? {errorCode: codeObj.subErrorCode} : {}),
         },
       }),
     });
 
     const mockErrorEvent = {
-      type: codeObj['type'],
-      message: codeObj['message'],
+      type: codeObj.type,
+      message: codeObj.message,
       context: logObj,
       correlationId: dummyCorrelationId,
-      errorLayer: codeObj['errorLayer'],
+      errorLayer: codeObj.errorLayer,
     };
 
-    if (codeObj['cbExpected']) {
+    if (codeObj.cbExpected) {
       call.on(EVENT_KEYS.CALL_ERROR, (errObj) => {
         expect(errObj).toMatchObject(mockErrorEvent);
         done();
@@ -1071,7 +809,7 @@ describe('Call Tests', () => {
         call.emit(EVENT_KEYS.CALL_ERROR, error);
         cbTriggered = true;
       },
-      codeObj['errorLayer'],
+      codeObj.errorLayer,
       retryCallback,
       dummyCorrelationId,
       mockPayload,
@@ -1079,10 +817,10 @@ describe('Call Tests', () => {
       logObj.file
     );
 
-    expect(cbTriggered).toBe(codeObj['cbExpected']);
-    expect(logSpy).toBeCalledWith(codeObj['logMsg'], logObj);
-    if (codeObj['retryAfter']) {
-      expect(retryCallback).toBeCalledOnceWith(codeObj['retryAfter']);
+    expect(cbTriggered).toBe(codeObj.cbExpected);
+    expect(logSpy).toBeCalledWith(codeObj.logMsg, logObj);
+    if (codeObj.retryAfter) {
+      expect(retryCallback).toBeCalledOnceWith(codeObj.retryAfter);
     } else {
       expect(retryCallback).not.toBeCalled();
     }
@@ -1147,16 +885,16 @@ describe('parseMediaQualityStatistics tests', () => {
   ].map((stat) =>
     Object.assign(stat, {
       toString() {
-        return this['name'];
+        return this.name;
       },
     })
   );
 
   it.each(mqStats)('%s', (stat) => {
-    const result = parseMediaQualityStatistics(stat['original'] as unknown as RTCStatsReport);
+    const result = parseMediaQualityStatistics(stat.original as unknown as RTCStatsReport);
 
-    expect(result).toStrictEqual(stat['parsed']);
-    expect(stat['logSpy']).toBeCalledOnceWith(stat['logMsg'], logObj);
+    expect(result).toStrictEqual(stat.parsed);
+    expect(stat.logSpy).toBeCalledOnceWith(stat.logMsg, logObj);
   });
 });
 

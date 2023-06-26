@@ -8,6 +8,7 @@
 import {MediaConnectionConfig} from '@webex/internal-media-core/dist/types/MediaConnection';
 import {ReceiveOptions} from '@webex/internal-media-core/dist/types/MediaConnection/MediaConnection';
 import platform from 'platform';
+import {MobiusServers} from './types';
 
 const MediaSDKMock = jest.createMockFromModule<typeof import('@webex/internal-media-core')>(
   '@webex/internal-media-core'
@@ -118,6 +119,19 @@ export const mockCallingClient = {
   sendMetric: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
+};
+
+export const getMobiusDiscoveryResponse = () => {
+  return {
+    primary: {
+      region: 'US-EAST',
+      uris: ['https://mobius-dfw.webex.com/api/v1/calling/web'],
+    },
+    backup: {
+      region: 'US-WEST',
+      uris: ['https://mobius-sjc.webex.com/api/v1/calling/web'],
+    },
+  } as MobiusServers;
 };
 
 /**

@@ -3,8 +3,8 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from '../CallingClient/metrics/types';
-import {ICallingClient} from '../CallingClient/types';
+import {restoreRegistrationCallBack} from 'CallingClient/registration/types';
+import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
   CallErrorEmitterCallBack,
@@ -33,34 +33,27 @@ import {
   DisplayInformation,
   HTTP_METHODS,
   IDeviceInfo,
+  MobiusServers,
   MobiusStatus,
   SORT,
   WebexRequestPayload,
 } from './types';
 import log from '../Logger';
-import {EVENT_KEYS} from '../Events/types';
 import {CallError, CallingClientError} from '../Errors';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 
-import type {CallingClient} from '../CallingClient/CallingClient';
 import {
   BYTES_RECEIVED,
   BYTES_SENT,
   CALLING_USER_AGENT,
   CISCO_DEVICE_URL,
   CODEC_ID,
-  DEFAULT_KEEPALIVE_INTERVAL,
-  DEFAULT_REHOMING_INTERVAL_MAX,
-  DEFAULT_REHOMING_INTERVAL_MIN,
-  DEVICES_ENDPOINT_RESOURCE,
   DUMMY_METRICS,
-  GET_MOBIUS_SERVERS_UTIL,
   IDENTITY_ENDPOINT_RESOURCE,
   INBOUND_CODEC_MATCH,
   INBOUND_RTP,
   JITTER_BUFFER_DELAY,
   JITTER_BUFFER_EMITTED_COUNT,
-  KEEPALIVE_UTIL,
   LOCAL_CANDIDATE_ID,
   MEDIA_ID,
   MEDIA_SOURCE,
@@ -72,7 +65,6 @@ import {
   PACKETS_LOST,
   PACKETS_RECEIVED,
   PACKETS_SENT,
-  REGISTER_UTIL,
   REMOTE_INBOUND_RTP,
   ROUND_TRIP_TIME_MEASUREMENTS,
   RTC_CODEC,
@@ -90,6 +82,7 @@ import {
   TOTAL_SAMPLES_DURATION,
   TRANSPORT,
   TYPE,
+  URL_ENDPOINT,
   UTILS_FILE,
 } from '../CallingClient/constants';
 import {JanusResponseEvent} from '../CallHistory/types';
@@ -127,34 +120,58 @@ import SDKConnector from '../SDKConnector';
 import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 
-/**
- * Restores the deviceInfo object in callingClient when receiving a 403 with error code 101.
- *
- * @param callingClient - Instance of CallingClient.
- * @param restoreData - Data from Mobius with existing device information.
- * @returns Boolean.
- */
-function restoreExistingDevice(callingClient: CallingClient, restoreData: IDeviceInfo) {
-  if (restoreData.devices && restoreData.devices.length > 0) {
-    callingClient.setDeviceInfo({
-      userId: restoreData.userId,
-      device: restoreData.devices[0],
-      keepaliveInterval: DEFAULT_KEEPALIVE_INTERVAL,
-      rehomingIntervalMax: DEFAULT_REHOMING_INTERVAL_MAX,
-      rehomingIntervalMin: DEFAULT_REHOMING_INTERVAL_MIN,
-    });
+export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
+  const logContext = {
+    file: UTILS_FILE,
+    method: filterMobiusUris.name,
+  };
 
-    const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${restoreData.devices[0].deviceId}`;
+  const urisArrayPrimary = [];
+  const urisArrayBackup = [];
 
-    const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
-
-    callingClient.setMobiusUrl(uri);
-    callingClient.setIsRegistered(MobiusStatus.ACTIVE);
-
-    return true;
+  if (mobiusServers?.primary?.uris) {
+    log.info('Adding Primary uris', logContext);
+    for (const uri of mobiusServers.primary.uris) {
+      urisArrayPrimary.push(`${uri}${URL_ENDPOINT}`);
+    }
   }
 
-  return false;
+  if (mobiusServers?.backup?.uris) {
+    log.info('Adding Backup uris', logContext);
+    for (const uri of mobiusServers.backup.uris) {
+      urisArrayBackup.push(`${uri}${URL_ENDPOINT}`);
+    }
+  }
+
+  /*
+   * If there are no entries in both primary and backup arrays then add the default
+   * uri in primary array, otherwise in backup.
+   */
+  log.info('Adding Default uri', logContext);
+  if (!urisArrayPrimary.length && !urisArrayBackup.length) {
+    urisArrayPrimary.push(`${defaultMobiusUrl}${URL_ENDPOINT}`);
+  } else {
+    urisArrayBackup.push(`${defaultMobiusUrl}${URL_ENDPOINT}`);
+  }
+
+  const primaryUris: string[] = [];
+  const backupUris: string[] = [];
+
+  /* Remove duplicates from primary by keeping the order intact */
+  for (let i = 0; i < urisArrayPrimary.length; i += 1) {
+    if (primaryUris.indexOf(urisArrayPrimary[i]) === -1) {
+      primaryUris.push(urisArrayPrimary[i]);
+    }
+  }
+
+  /* Remove duplicates from backup by keeping the order intact */
+  for (let i = 0; i < urisArrayBackup.length; i += 1) {
+    if (backupUris.indexOf(urisArrayBackup[i]) === -1) {
+      backupUris.push(urisArrayBackup[i]);
+    }
+  }
+
+  return {primary: primaryUris, backup: backupUris};
 }
 
 /**
@@ -205,43 +222,6 @@ function updateErrorContext(
 }
 
 /**
- * @param callingClient - CallingClient object.
- * @param caller - Calling function used to determine the type of metric to be sent.
- * @param clientError - Error object to pass error details in metric.
- */
-function submitErrorMetric(
-  callingClient: ICallingClient,
-  caller: string,
-  clientError: CallingClientError
-) {
-  switch (caller) {
-    case GET_MOBIUS_SERVERS_UTIL:
-    case REGISTER_UTIL: {
-      callingClient.sendMetric(
-        METRIC_EVENT.REGISTRATION_ERROR,
-        REG_ACTION.REGISTER,
-        METRIC_TYPE.BEHAVIORAL,
-        clientError
-      );
-      break;
-    }
-
-    case KEEPALIVE_UTIL: {
-      callingClient.sendMetric(
-        METRIC_EVENT.REGISTRATION,
-        REG_ACTION.KEEPALIVE_FAILURE,
-        METRIC_TYPE.BEHAVIORAL,
-        clientError
-      );
-      break;
-    }
-
-    default:
-      break;
-  }
-}
-
-/**
  * Emits final failure to the client after it gives up
  * retrying registration and records error metric.
  *
@@ -249,12 +229,11 @@ function submitErrorMetric(
  * @param caller - Method which called this handler.
  * @param file - File name from where error got reported.
  */
-export function emitFinalFailure(callingClient: CallingClient, caller: string, file: string) {
+export function emitFinalFailure(
+  emitterCb: CallingClientErrorEmitterCallback,
+  loggerContext: LogContext
+) {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
-  const loggerContext = {
-    file,
-    method: caller,
-  };
 
   updateErrorContext(
     loggerContext,
@@ -262,11 +241,17 @@ export function emitFinalFailure(callingClient: CallingClient, caller: string, f
     'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
     clientError
   );
-  submitErrorMetric(callingClient, caller, clientError);
-  callingClient.emit(EVENT_KEYS.ERROR, clientError);
+  emitterCb(clientError);
 }
 
 /**
+ * Handle various Error flows here. Decide whether to emit event or retry.
+ * @param err - Error body.
+ * @param emitterCb - CallingClientErrorEmitter
+ * @param loggerContext - Logging context that has method and file name
+ * @param restoreRegCb - Callback which will try restoring resgistration in case of 403
+ *
+ * In emitterCb,
  * For non final error scenarios in registration flow,
  * send Unregistered event only without any error message
  * in order to have the web client update only the UI
@@ -274,49 +259,14 @@ export function emitFinalFailure(callingClient: CallingClient, caller: string, f
  * to the end user as in those scenarios a retry will
  * be scheduled to attempt registration again.
  *
- * For all other cases, emit whatever is received as is.
- *
- * @param callingClient - Instance of CallingClient.
- * @param caller - Method which called this handler.
- * @param clientError - Error context given by the caller.
- * @param finalError - True if it's a final error, else false.
- */
-function emitClientError(
-  callingClient: ICallingClient,
-  caller: string,
-  clientError: CallingClientError,
-  finalError: boolean
-) {
-  submitErrorMetric(callingClient, caller, clientError);
-  if (finalError) {
-    callingClient.emit(EVENT_KEYS.ERROR, clientError);
-  } else if (caller === REGISTER_UTIL) {
-    callingClient.emit(EVENT_KEYS.UNREGISTERED);
-  } else if (caller !== KEEPALIVE_UTIL) {
-    callingClient.emit(EVENT_KEYS.ERROR, clientError);
-  }
-}
-
-/**
- * Handle various Error flows here. Decide whether to emit event or retry.
- *
- * @param callingClient - Instance of CallingClient.
- * @param err - Error body.
- * @param caller - Method which called this handler.
- * @param errObj - Error context given by the caller.
- * @param file - File name from where error got reported.
  */
 export async function handleErrors(
-  callingClient: CallingClient,
   err: WebexRequestPayload,
-  caller: string,
-  file: string
+  emitterCb: CallingClientErrorEmitterCallback,
+  loggerContext: LogContext,
+  restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
-  const loggerContext = {
-    file,
-    method: caller,
-  };
 
   const errorCode = err.statusCode as number;
   let finalError = false;
@@ -336,7 +286,7 @@ export async function handleErrors(
         clientError
       );
 
-      emitClientError(callingClient, caller, clientError, finalError);
+      emitterCb(clientError, finalError);
       break;
     }
 
@@ -349,7 +299,7 @@ export async function handleErrors(
         clientError
       );
 
-      emitClientError(callingClient, caller, clientError, finalError);
+      emitterCb(clientError, finalError);
       break;
     }
 
@@ -362,7 +312,7 @@ export async function handleErrors(
         clientError
       );
 
-      emitClientError(callingClient, caller, clientError, finalError);
+      emitterCb(clientError, finalError);
       break;
     }
 
@@ -380,7 +330,7 @@ export async function handleErrors(
           clientError
         );
 
-        emitClientError(callingClient, caller, clientError, finalError);
+        emitterCb(clientError, finalError);
 
         return finalError;
       }
@@ -390,57 +340,37 @@ export async function handleErrors(
       log.warn(`Error code found : ${code}`, loggerContext);
       switch (code) {
         case DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED: {
-          let errorMessage = 'User device limit exceeded';
-
-          if (!callingClient.isRegRetry()) {
-            const restore = restoreExistingDevice(callingClient, errorBody);
-
-            if (restore) {
-              callingClient.setRegRetry(true);
-              await callingClient.deregister();
-              finalError = await callingClient.restorePreviousRegistration(caller);
-              callingClient.setRegRetry(false);
-              if (callingClient.isDeviceRegistered()) {
-                errorMessage = 'Restored Successfully';
-              }
-            } else {
-              callingClient.emit(EVENT_KEYS.UNREGISTERED);
-            }
-          } else {
-            callingClient.emit(EVENT_KEYS.UNREGISTERED);
+          const errorMessage = 'User device limit exceeded';
+          log.warn(errorMessage, loggerContext);
+          if (restoreRegCb) {
+            const caller = loggerContext.method || 'handleErrors';
+            await restoreRegCb(errorBody, caller);
           }
-          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED: {
+          const errorMessage =
+            'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.';
           finalError = true;
-          updateErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
-            clientError
-          );
-          emitClientError(callingClient, caller, clientError, finalError);
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
+          log.warn(errorMessage, loggerContext);
+          emitterCb(clientError, true);
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED: {
-          updateErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            'An unknown error occurred while provisioning the device. Wait a moment and try again.',
-            clientError
-          );
-          emitClientError(callingClient, caller, clientError, finalError);
+          const errorMessage =
+            'An unknown error occurred while provisioning the device. Wait a moment and try again.';
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
+          log.warn(errorMessage, loggerContext);
+          emitterCb(clientError, finalError);
           break;
         }
         default: {
-          updateErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
-            clientError
-          );
-          emitClientError(callingClient, caller, clientError, finalError);
+          const errorMessage =
+            'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.';
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
+          log.warn(errorMessage, loggerContext);
+          emitterCb(clientError, finalError);
         }
       }
       break;
@@ -456,15 +386,14 @@ export async function handleErrors(
         'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
         clientError
       );
-      emitClientError(callingClient, caller, clientError, finalError);
+      emitterCb(clientError, finalError);
       break;
     }
 
     default: {
+      updateErrorContext(loggerContext, ERROR_TYPE.DEFAULT, 'Unknown error', clientError);
       log.warn(`Unknown Error`, loggerContext);
-      if (caller === REGISTER_UTIL) {
-        callingClient.emit(EVENT_KEYS.UNREGISTERED);
-      }
+      emitterCb(clientError, finalError);
     }
   }
 
