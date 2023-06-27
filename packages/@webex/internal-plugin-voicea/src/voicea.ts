@@ -384,7 +384,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public announce = () => {
     if (this.hasVoiceaJoined) return;
     // @ts-ignore
-    if (!this.webex.internal.llm.connected) {
+    if (!this.webex.internal.llm.isConnected()) {
       this.announceAfterLLMOnline();
 
       return;

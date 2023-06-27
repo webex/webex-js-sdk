@@ -243,6 +243,35 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe("#announce", () => {
+      beforeEach(() => {
+        voiceaService.hasVoiceaJoined = false;
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
+        voiceaService.sendAnnouncement = sinon.stub();
+        voiceaService.announceAfterLLMOnline = sinon.stub();
+      });
+
+      it('announce to llm data channel', ()=> {
+        voiceaService.announce();
+        assert.calledOnce(voiceaService.sendAnnouncement);
+        assert.notCalled(voiceaService.announceAfterLLMOnline);
+      });
+
+      it('announce to llm data channel before llm connected', ()=> {
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+        voiceaService.announce();
+        assert.calledOnce(voiceaService.announceAfterLLMOnline);
+        assert.notCalled(voiceaService.sendAnnouncement);
+      });
+
+      it('should not announce duplicate', () => {
+        voiceaService.hasVoiceaJoined = true;
+        voiceaService.announce();
+        assert.notCalled(voiceaService.sendAnnouncement);
+        assert.notCalled(voiceaService.announceAfterLLMOnline);
+      })
+    });
+
     describe('#turnOnCaptionsAfterLLMOnline', () => {
       it('should works', () => {
         voiceaService.onceLLMOnline = sinon.stub();
