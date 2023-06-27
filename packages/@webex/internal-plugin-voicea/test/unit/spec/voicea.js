@@ -198,7 +198,7 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#turnOnCaptions', () => {
+    describe('#requestTurnOnCaptions', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
 
@@ -240,6 +240,43 @@ describe('plugin-voicea', () => {
         const response = await voiceaService.turnOnCaptions();
 
         assert.equal(response, undefined);
+      });
+    });
+
+    describe('#turnOnCaptions', () => {
+      beforeEach(() => {
+        voiceaService.requestTurnOnCaptions = sinon.stub();
+        voiceaService.turnOnCaptionsAfterLLMOnline = sinon.stub();
+      });
+
+      it('request turn on captions after llm connected', () => {
+        voiceaService.hasVoiceaJoined = false;
+        voiceaService.areCaptionsEnabled = false;
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
+
+        voiceaService.turnOnCaptions();
+        assert.calledOnce(voiceaService.requestTurnOnCaptions);
+        assert.notCalled(voiceaService.turnOnCaptionsAfterLLMOnline);
+      });
+
+      it("turns on captions before llm connected", () => {
+        voiceaService.hasVoiceaJoined = false;
+        voiceaService.areCaptionsEnabled = false;
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+        voiceaService.turnOnCaptions();
+        assert.calledOnce(voiceaService.turnOnCaptionsAfterLLMOnline);
+        assert.notCalled(voiceaService.requestTurnOnCaptions);
+      });
+
+      it('should not turn on duplicate', () => {
+        const check = ({hasVoiceaJoined, areCaptionsEnabled}) => {
+          voiceaService.hasVoiceaJoined = hasVoiceaJoined;
+          voiceaService.areCaptionsEnabled = areCaptionsEnabled;
+          voiceaService.turnOnCaptions();
+          assert.notCalled(voiceaService.turnOnCaptionsAfterLLMOnline);
+          assert.notCalled(voiceaService.requestTurnOnCaptions);
+        }
+        check({hasVoiceaJoined: true, areCaptionsEnabled: true})
       });
     });
 
