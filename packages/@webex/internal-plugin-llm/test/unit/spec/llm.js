@@ -9,7 +9,7 @@ describe('plugin-llm', () => {
   const datachannelUrl = 'datachannelUrl';
 
   describe('llm', () => {
-    let webex, llmService;
+    let webex, llmService, mockWebSocket;
 
     beforeEach(() => {
       webex = new MockWebex({
@@ -20,7 +20,9 @@ describe('plugin-llm', () => {
       });
 
       llmService = webex.internal.llm;
-      llmService.connect = sinon.stub().resolves(true);
+      llmService.connect = sinon.stub().callsFake(() => {
+        llmService.connected = true;
+      });
       llmService.disconnect = sinon.stub().resolves(true);
       llmService.request = sinon.stub().resolves({
         headers: {},
