@@ -198,6 +198,17 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe("#onceLLMOnline", () => {
+      it('should once online event to llm', () => {
+        const callback = sinon.stub();
+        voiceaService.webex.internal.llm.once = sinon.stub();
+        voiceaService.webex.internal.llm.off = sinon.stub();
+        voiceaService.onceLLMOnline(callback);
+        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.off, 'online', callback);
+        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.once, 'online', callback);
+      });
+    });
+
     describe('#requestTurnOnCaptions', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
