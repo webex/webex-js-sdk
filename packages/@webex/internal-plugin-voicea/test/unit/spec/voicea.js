@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {assert} from '@webex/test-helper-chai';
