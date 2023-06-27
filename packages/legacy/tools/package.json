@@ -84,7 +84,7 @@
     "glob": "^9.3.0",
     "jest": "^29.3.1",
     "jest-environment-jsdom": "^29.1.2",
-    "jsdom": "19.0.0",
+    "jsdom": "22.1.0",
     "jsdom-global": "3.0.2",
     "karma": "^6.4.1",
     "karma-browserify": "^8.1.0",
