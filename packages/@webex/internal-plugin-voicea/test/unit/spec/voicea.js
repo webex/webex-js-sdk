@@ -28,6 +28,8 @@ describe('plugin-voicea', () => {
       voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
       voiceaService.webex.internal.llm.getBinding = sinon.stub().returns(undefined);
       voiceaService.webex.internal.llm.getLocusUrl = sinon.stub().returns(locusUrl);
+      voiceaService.webex.internal.llm.on = sinon.stub();
+      voiceaService.webex.internal.llm.off = sinon.stub();
 
       voiceaService.request = sinon.stub().resolves({
         headers: {},
@@ -106,6 +108,7 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.hasVoiceaJoined, false);
         assert.equal(voiceaService.areCaptionsEnabled, false);
         assert.equal(voiceaService.vmcDeviceId, undefined);
+        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.off, "online", voiceaService.handleLLMOnline);
       });
     });
     describe('#processAnnouncementMessage', () => {
