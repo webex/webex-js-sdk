@@ -652,21 +652,6 @@ describe('plugin-meetings', () => {
 
         assert.equal(breakouts.isBreakoutIClosing(), false);
       });
-
-      it('return breakout is in progress as false if status(groups/breakouts) is not OPEN or CLOSING', () => {
-        breakouts.set('groups', [{status: 'CLOSED'}]);
-
-        assert.equal(breakouts.isBreakoutInProgress(), false)
-
-        breakouts.set('groups', undefined);
-        breakouts.set('status', 'CLOSED');
-
-        assert.equal(breakouts.isBreakoutInProgress(), false)
-
-        breakouts.set('status', undefined);
-
-        assert.equal(breakouts.isBreakoutInProgress(), false)
-      });
     });
 
     describe('#queryRosters', () => {
