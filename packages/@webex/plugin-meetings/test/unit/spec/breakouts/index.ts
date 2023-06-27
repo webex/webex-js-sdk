@@ -577,65 +577,65 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#getIsBreakoutInProgress', () => {
+    describe('#isBreakoutInProgress', () => {
       it('return breakout is in progress depends on the status(groups/breakouts)', () => {
         breakouts.set('groups', [{status: 'CLOSING'}]);
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), true)
+        assert.equal(breakouts.isBreakoutInProgress(), true)
 
         breakouts.set('groups', undefined);
         breakouts.set('status', 'OPEN');
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), true);
+        assert.equal(breakouts.isBreakoutInProgress(), true);
 
         breakouts.set('groups', [{status: 'CLOSED'}]);
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false);
+        assert.equal(breakouts.isBreakoutInProgress(), false);
 
         breakouts.set('groups', undefined);
         breakouts.set('status', 'CLOSED');
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false);
+        assert.equal(breakouts.isBreakoutInProgress(), false);
 
         breakouts.set('status', undefined);
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false);
+        assert.equal(breakouts.isBreakoutInProgress(), false);
       });
     });
 
-    describe('#getIsBreakoutIClosing', () => {
+    describe('#isBreakoutIClosing', () => {
       it('return breakout is closing depends the status(groups/breakouts)', () => {
         breakouts.set('groups', [{status: 'CLOSING'}]);
 
-        assert.equal(breakouts.getIsBreakoutIClosing(), true);
+        assert.equal(breakouts.isBreakoutIClosing(), true);
 
         breakouts.set('groups', undefined);
         breakouts.set('status', 'CLOSING');
 
-        assert.equal(breakouts.getIsBreakoutIClosing(), true);
+        assert.equal(breakouts.isBreakoutIClosing(), true);
 
         breakouts.set('status', undefined);
 
-        assert.equal(breakouts.getIsBreakoutIClosing(), false);
+        assert.equal(breakouts.isBreakoutIClosing(), false);
 
         breakouts.set('groups', [{status: 'OPEN'}]);
 
-        assert.equal(breakouts.getIsBreakoutIClosing(), false);
+        assert.equal(breakouts.isBreakoutIClosing(), false);
       });
 
       it('return breakout is in progress as false if status(groups/breakouts) is not OPEN or CLOSING', () => {
         breakouts.set('groups', [{status: 'CLOSED'}]);
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false)
+        assert.equal(breakouts.isBreakoutInProgress(), false)
 
         breakouts.set('groups', undefined);
         breakouts.set('status', 'CLOSED');
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false)
+        assert.equal(breakouts.isBreakoutInProgress(), false)
 
         breakouts.set('status', undefined);
 
-        assert.equal(breakouts.getIsBreakoutInProgress(), false)
+        assert.equal(breakouts.isBreakoutInProgress(), false)
       });
     });
 

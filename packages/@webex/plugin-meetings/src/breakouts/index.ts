@@ -300,7 +300,7 @@ const Breakouts = WebexPlugin.extend({
    * get current breakout is in progress or not
    * @returns {boolean}
    */
-  getIsBreakoutInProgress() {
+  isBreakoutInProgress() {
     const currentStatus = this.groups?.[0]?.status || this.status;
 
     return currentStatus === BREAKOUTS.STATUS.OPEN || currentStatus === BREAKOUTS.STATUS.CLOSING;
@@ -310,7 +310,7 @@ const Breakouts = WebexPlugin.extend({
    * get current breakout is in closing or not
    * @returns {boolean}
    */
-  getIsBreakoutIClosing() {
+  isBreakoutIClosing() {
     return (this.groups?.[0]?.status || this.status) === BREAKOUTS.STATUS.CLOSING;
   },
   /**
@@ -339,7 +339,7 @@ const Breakouts = WebexPlugin.extend({
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
 
-    if (!this.getIsBreakoutInProgress()) {
+    if (!this.isBreakoutInProgress()) {
       this.clearBreakouts();
     }
 
@@ -364,7 +364,7 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakoutSessions(payload) {
     const breakouts = {};
-    if (this.getIsBreakoutIClosing()) {
+    if (this.isBreakoutIClosing()) {
       // fix issue: don't clear/update breakouts collection when in closing since locus DTO will send undefined or
       // only the MAIN session info here, if just update it, will miss the breakout roster info during
       // count down to end breakouts
