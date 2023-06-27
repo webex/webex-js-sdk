@@ -367,7 +367,13 @@ describe('plugin-meetings', () => {
 
         breakouts.updateBreakout({})
         assert.equal(breakouts.status, undefined);
-      })
+      });
+
+      it('call clearBreakouts if current breakout is not in-progress', () => {
+        breakouts.clearBreakouts = sinon.stub();
+        breakouts.updateBreakout({status: 'CLOSED'})
+        assert.calledOnce(breakouts.clearBreakouts);
+      });
 
       it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
         breakouts.webex.meetings = {
@@ -476,6 +482,12 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.breakouts.get('sessionId2').requestedLastModifiedTime, "2023-05-09T17:16:01.000Z")
       });
 
+      it('not update breakout sessions when breakouts is closing', () => {
+        breakouts.set('status', 'CLOSING');
+        breakouts.breakouts.set = sinon.stub();
+        breakouts.updateBreakoutSessions({breakoutSessions: {}});
+        assert.notCalled(breakouts.breakouts.set);
+      });
     });
 
     describe('#locusUrlUpdate', () => {
@@ -595,6 +607,53 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isBreakoutInProgress', () => {
+      it('return breakout is in progress depends on the status(groups/breakouts)', () => {
+        breakouts.set('groups', [{status: 'CLOSING'}]);
+
+        assert.equal(breakouts.isBreakoutInProgress(), true)
+
+        breakouts.set('groups', undefined);
+        breakouts.set('status', 'OPEN');
+
+        assert.equal(breakouts.isBreakoutInProgress(), true);
+
+        breakouts.set('groups', [{status: 'CLOSED'}]);
+
+        assert.equal(breakouts.isBreakoutInProgress(), false);
+
+        breakouts.set('groups', undefined);
+        breakouts.set('status', 'CLOSED');
+
+        assert.equal(breakouts.isBreakoutInProgress(), false);
+
+        breakouts.set('status', undefined);
+
+        assert.equal(breakouts.isBreakoutInProgress(), false);
+      });
+    });
+
+    describe('#isBreakoutIClosing', () => {
+      it('return breakout is closing depends the status(groups/breakouts)', () => {
+        breakouts.set('groups', [{status: 'CLOSING'}]);
+
+        assert.equal(breakouts.isBreakoutIClosing(), true);
+
+        breakouts.set('groups', undefined);
+        breakouts.set('status', 'CLOSING');
+
+        assert.equal(breakouts.isBreakoutIClosing(), true);
+
+        breakouts.set('status', undefined);
+
+        assert.equal(breakouts.isBreakoutIClosing(), false);
+
+        breakouts.set('groups', [{status: 'OPEN'}]);
+
+        assert.equal(breakouts.isBreakoutIClosing(), false);
+      });
+    });
+
     describe('#queryRosters', () => {
       it('makes the expected query', async () => {
         webex.request.returns(
@@ -659,6 +718,22 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.isInMainSession, false);
         breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
         assert.equal(breakouts.isInMainSession, true);
+      });
+    });
+
+    describe('#clearBreakouts', () => {
+      it('call reset to clear breakouts', () => {
+        breakouts.set('breakouts', [{id: 'session1'}]);
+        breakouts.breakouts.reset = sinon.stub();
+        breakouts.clearBreakouts();
+        assert.calledWith(breakouts.breakouts.reset);
+      });
+
+      it('do nothing if breakouts already is empty', () => {
+        breakouts.set('breakouts', []);
+        breakouts.breakouts.reset = sinon.stub();
+        breakouts.clearBreakouts();
+        assert.notCalled(breakouts.breakouts.reset);
       });
     });
 
