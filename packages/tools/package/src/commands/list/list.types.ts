@@ -1,9 +1,25 @@
 /**
+ * Compatability mode for finalized output.
+ *
+ * @public
+ */
+export type Mode = 'node' | 'yarn';
+
+/**
  * List Command Options inteface.
  *
  * @public
  */
 export interface Options {
+  /**
+   * Compatability mode for finalized output.
+   *
+   * @remarks
+   * 'node' will wrap the output for CLI usage. 'yarn' will wrap the output for
+   * yarn workspace usage.
+   */
+  mode?: Mode;
+
   /**
    * Whether or not to include private packages when listing packages.
    */

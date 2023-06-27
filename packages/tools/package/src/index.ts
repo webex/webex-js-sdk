@@ -22,6 +22,7 @@ export type {
 
 export type {
   IncrementOptions,
+  ListMode,
   ListOptions,
   ScriptsOptions,
 } from './commands';
