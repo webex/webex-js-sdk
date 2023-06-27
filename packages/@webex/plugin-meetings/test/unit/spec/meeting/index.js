@@ -798,7 +798,7 @@ describe('plugin-meetings', () => {
           it('should post error event if failed', async () => {
             await meeting.join().catch(() => {
               assert.deepEqual(NewMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
-              assert.match(NewMetrics.submitClientEvent.getCall(1).args[0].options.error, {
+              assert.match(NewMetrics.submitClientEvent.getCall(1).args[0].options.rawError, {
                 code: 2,
                 error: null,
                 joinOptions: {},
@@ -4029,7 +4029,7 @@ describe('plugin-meetings', () => {
               payload: {
                 canProceed: false,
               },
-              options: {showToUser: true, error, meetingId: meeting.id},
+              options: {showToUser: true, rawError: error, meetingId: meeting.id},
             });
           };
 

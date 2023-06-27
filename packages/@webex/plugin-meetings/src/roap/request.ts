@@ -144,7 +144,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
           name: 'client.locus.media.response',
           options: {
             meetingId,
-            error: err,
+            rawError: err,
           },
         });
         LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);

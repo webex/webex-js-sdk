@@ -67,7 +67,6 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics();
       sinon.stub(uuid, 'v4').returns('my-fake-id');
-
     });
 
     afterEach(() => {
@@ -178,95 +177,158 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('should submit client event successfully', () => {
-      cd.initialSetup(meetingCollection, webex);
-      const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
-      const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-      const generateErrorPayloadSpy = sinon.spy(cd, 'generateErrorPayload');
-      const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
-      sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-      const options = {
-        meetingId: fakeMeeting.id,
-        mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
-      };
+    describe('#submitClientEvent', () => {
+      it('should submit client event successfully', () => {
+        cd.initialSetup(meetingCollection, webex);
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
 
-      cd.submitClientEvent({
-        name: 'client.alert.displayed',
-        options,
-      });
-
-      assert.calledWith(getIdentifiersSpy, {
-        meeting: fakeMeeting,
-        mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
-      });
-      assert.notCalled(generateErrorPayloadSpy);
-      assert.calledWith(
-        prepareDiagnosticEventSpy,
-        {
-          canProceed: true,
-          eventData: {
-            webClientDomain: 'whatever',
-          },
-          identifiers: {
-            correlationId: 'correlationId',
-            deviceId: 'deviceUrl',
-            locusId: 'url',
-            locusStartTime: 'lastActive',
-            locusUrl: 'locus/url',
-            mediaAgentAlias: 'alias',
-            mediaAgentGroupId: '1',
-            orgId: 'orgId',
-            userId: 'userId',
-          },
-          loginType: 'login-ci',
-          name: 'client.alert.displayed',
-          userType: 'host',
-        },
-        options
-      );
-      assert.calledWith(submitToCallDiagnosticsSpy, {
-        event: {
-          canProceed: true,
-          eventData: {
-            webClientDomain: 'whatever',
-          },
-          identifiers: {
-            correlationId: 'correlationId',
-            deviceId: 'deviceUrl',
-            locusId: 'url',
-            locusStartTime: 'lastActive',
-            locusUrl: 'locus/url',
-            mediaAgentAlias: 'alias',
-            mediaAgentGroupId: '1',
-            orgId: 'orgId',
-            userId: 'userId',
-          },
-          loginType: 'login-ci',
-          name: 'client.alert.displayed',
-          userType: 'host',
-        },
-        eventId:'my-fake-id',
-        origin: {
-          origin: 'fake-origin'
-        },
-        originTime: {
-          sent: 'not_defined_yet',
-          triggered: now.toISOString(),
-        },
-        senderCountryCode: 'UK',
-        version: 1,
-      });
-    });
-
-    it('should throw if meetingId not provided', () => {
-      cd.initialSetup(meetingCollection, webex);
-
-      assert.throws(() =>
         cd.submitClientEvent({
           name: 'client.alert.displayed',
-          options: {},
-        })
-      );
+          options,
+        });
+
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: fakeMeeting,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('it should include errors if provided', () => {
+        cd.initialSetup(meetingCollection, webex);
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          rawError: {
+            body: {
+              errorCode: 2409005,
+            },
+          },
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            errors: [{
+              category: 'expected',
+              errorDescription: 'StartRecordingFailed',
+              fatal: true,
+              name: 'other',
+              shownToUser: false,
+            }],
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should throw if meetingId not provided', () => {
+        cd.initialSetup(meetingCollection, webex);
+
+        assert.throws(() =>
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options: {},
+          })
+        );
+      });
     });
 
     it('should send request to call diagnostic batcher', () => {
@@ -274,8 +336,55 @@ describe('internal-plugin-metrics', () => {
       //@ts-ignore
       cd.callDiagnosticEventsBatcher = {request: requestStub};
       //@ts-ignore
-      cd.submitToCallDiagnostics({event: "test"});
-      assert.calledWith(requestStub, {eventPayload: {event: "test"}, type: ['diagnostic-event']})
-    })
+      cd.submitToCallDiagnostics({event: 'test'});
+      assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+    });
+
+    describe('#getErrorPayloadForClientErrorCode', () => {
+      it('it should grab the payload for client error code correctly', () => {
+        const res = cd.getErrorPayloadForClientErrorCode(4008);
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'NewLocusError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+        });
+      });
+
+      it('it should return undefined if trying to get payload for client error code that doesnt exist', () => {
+        const res = cd.getErrorPayloadForClientErrorCode(123456);
+        assert.deepEqual(res, undefined);
+      });
+    });
+
+    describe('#generateClientEventErrorPayload', () => {
+      it('should generate event error payload correctly', () => {
+        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 2409005}}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'StartRecordingFailed',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+        });
+      });
+
+      it('should return default new locus event error payload correctly', () => {
+        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: -1}}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'NewLocusError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+        });
+      });
+
+      it('should return undefined if no error code provided', () => {
+        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: undefined}}});
+        assert.deepEqual(res, undefined);
+      });
+    });
   });
 });

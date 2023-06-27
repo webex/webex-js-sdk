@@ -356,7 +356,7 @@ export default class MeetingInfoV2 {
             },
             options: {
               meetingId,
-              error: err,
+              rawError: err,
             },
           });
         }
