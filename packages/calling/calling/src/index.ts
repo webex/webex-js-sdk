@@ -3,6 +3,7 @@ import {createContactsClient} from './Contacts/ContactsClient';
 import {createClient} from './CallingClient/CallingClient';
 import {createCallHistoryClient} from './CallHistory/CallHistory';
 import {createVoicemailClient} from './Voicemail/Voicemail';
+import Logger from './Logger';
 
 export default {
   createClient,
@@ -10,4 +11,5 @@ export default {
   createVoicemailClient,
   createContactsClient,
   createCallSettingsClient,
+  Logger,
 };

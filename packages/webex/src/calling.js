@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import CallingSdk from '@webex/calling';
 import EventEmitter from 'events';
 
@@ -15,11 +14,17 @@ const Webex = WebexCore.extend({
   webex: true,
 });
 
+const logContext = {
+  file: 'Calling',
+  method: 'calling.register',
+};
+
 class Calling extends EventEmitter {
   constructor({webex, options, callingConfig}) {
     super();
     this.callingConfig = callingConfig;
-    this.sdkConnector = CallingSdk.SDKConnector;
+    this.log = CallingSdk.Logger;
+    this.log.setLogger(callingConfig.logger.level);
 
     if (webex) {
       this.webex = webex;
@@ -39,17 +44,20 @@ class Calling extends EventEmitter {
     return this.webex.internal.device
       .register()
       .then(() => {
+        this.log.info('Authentication: webex.internal.device.register successful', logContext);
+
         return this.webex.internal.mercury
           .connect()
           .then(() => {
+            this.log.info('Authentication: webex.internal.mercury.connect successful', logContext);
             this.initializeClients();
           })
           .catch((error) => {
-            console.log('Error occurred during  mercury.connect()', error);
+            this.log.warn('Error occurred during mercury.connect()', error);
           });
       })
       .catch((error) => {
-        console.log('callingSdk: Error occurred during device.register()', error);
+        this.log.warn('Error occurred during device.register()', error);
       });
   }
 
