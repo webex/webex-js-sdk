@@ -243,6 +243,14 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#announceAfterLLMOnline', () => {
+      it('should works', () => {
+        voiceaService.onceLLMOnline = sinon.stub();
+        voiceaService.announceAfterLLMOnline();
+        assert.calledOnceWithExactly(voiceaService.onceLLMOnline, voiceaService.announce);
+      });
+    });
+
     describe("#announce", () => {
       beforeEach(() => {
         voiceaService.hasVoiceaJoined = false;
