@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
+import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {WebexPlugin, config} from '@webex/webex-core';
 
 import {
