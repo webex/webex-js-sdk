@@ -62,7 +62,7 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
+import {eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
@@ -230,7 +230,7 @@ describe('plugin-meetings', () => {
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     NewMetrics.submitClientEvent = sinon.stub();
-    Metrics.postEvent = sinon.stub();
+    NewMetrics.submitMQE = sinon.stub();
     Metrics.initialSetup(null, webex);
     MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
       return {
@@ -1345,7 +1345,7 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('MEDIA_QUALITY triggers the right metrics', async () => {
+          it('calls submitMQE correctly', async () => {
             const fakeData = {intervalMetadata: {bla: 'bla'}};
 
             statsAnalyzerStub.emit(
@@ -1354,9 +1354,15 @@ describe('plugin-meetings', () => {
               {data: fakeData, networkType: 'wifi'}
             );
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.MEDIA_QUALITY,
-              data: {intervalData: fakeData, networkType: 'wifi'},
+            assert.calledWithMatch(NewMetrics.submitMQE, {
+              name: 'client.mediaquality.event',
+              options: {
+                meetingId: meeting.id,
+                networkType: 'wifi',
+              },
+              payload: {
+                intervals: [fakeData]
+              }
             });
           });
         });
@@ -1452,8 +1458,6 @@ describe('plugin-meetings', () => {
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
 
           StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
-
-          Metrics.postEvent = sinon.stub();
 
           // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
           expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;

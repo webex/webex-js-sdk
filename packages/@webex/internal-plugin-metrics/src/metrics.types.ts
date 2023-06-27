@@ -1,11 +1,20 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
+import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/generated-types-temp/MediaQualityEvent';
+
+export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   error?: any;
   showToUser?: boolean;
+};
+
+export type SubmitMQEOptions = {
+  meetingId: string;
+  mediaConnections?: any[];
+  networkType?: Event['origin']['networkType'];
 };
 
 export type InternalEvent = {
@@ -43,10 +52,9 @@ export interface FeatureEvent {
 }
 
 export interface MediaQualityEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+  name: RawMediaQualityEvent['name'];
+  payload?: RawMediaQualityEvent;
+  options: SubmitMQEOptions;
 }
 
 export type RecursivePartial<T> = {
@@ -57,7 +65,6 @@ export type RecursivePartial<T> = {
     : T[P];
 };
 
-export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent};
 export type MetricEventNames =
   | InternalEvent['name']
   | ClientEvent['name']

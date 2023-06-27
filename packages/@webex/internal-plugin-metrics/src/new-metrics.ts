@@ -125,7 +125,8 @@ class Metrics extends WebexPlugin {
     };
     options: any;
   }) {
-    throw new Error('Not implemented.');
+    this.callDiagnosticLatencies.saveTimestamp(name);
+    this.callDiagnosticMetrics.submitMQE({name, payload, options});
   }
 
   /**

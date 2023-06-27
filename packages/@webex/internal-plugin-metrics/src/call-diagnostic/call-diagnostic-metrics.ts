@@ -19,6 +19,8 @@ import {
   NetworkType,
   ClientEvent,
   SubmitClientEventOptions,
+  MediaQualityEvent,
+  SubmitMQEOptions,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 
@@ -180,8 +182,12 @@ export default class CallDiagnosticMetrics {
       event: eventData,
     };
 
-    // clear any empty properties on the event object (required by CA)
-    clearEmptyKeysRecursively(event);
+    // sanitize (remove empty properties, CA requires it)
+    // but we don't want to sanitize MQE as most of the times
+    // values will be 0, [] etc, and they are required.
+    if (eventData.name !== 'client.mediaquality.event') {
+      clearEmptyKeysRecursively(event);
+    }
 
     return event;
   }
@@ -193,6 +199,66 @@ export default class CallDiagnosticMetrics {
    */
   public submitFeatureEvent() {
     throw Error('Not implemented');
+  }
+
+  /**
+   * Submit Media Quality Event
+   * @param args
+   */
+  submitMQE({
+    name,
+    // additional payload to be merged with default payload
+    payload,
+    options,
+  }: {
+    name: MediaQualityEvent['name'];
+    // additional payload to be merged with default payload
+    payload: RecursivePartial<MediaQualityEvent['payload']> & {
+      intervals: MediaQualityEvent['payload']['intervals'];
+    };
+    options: SubmitMQEOptions;
+  }) {
+    const {meetingId, mediaConnections} = options;
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      const meeting = this.meetingCollection.get(meetingId);
+
+      // merge identifiers
+      const identifiers = this.getIdentifiers({
+        meeting,
+        mediaConnections: meeting.mediaConnections || mediaConnections,
+      });
+
+      // create feature event object
+      let clientEventObject: MediaQualityEvent['payload'] = {
+        name,
+        canProceed: true,
+        identifiers,
+        eventData: {
+          webClientDomain: window.location.hostname,
+        },
+        intervals: payload.intervals,
+        sourceMetadata: {
+          applicationSoftwareType: CLIENT_NAME,
+          applicationSoftwareVersion: this.webex.version,
+          mediaEngineSoftwareType: getBrowserName() || 'browser',
+          mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
+          startTime: new Date().toISOString(),
+        },
+      };
+
+      // merge any new properties, or override existing ones
+      clientEventObject = merge(clientEventObject, payload);
+
+      // append feature event data to the call diagnostic event
+      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      this.submitToCallDiagnostics(diagnosticEvent);
+    } else {
+      throw new Error(
+        'Media quality events cant be sent outside the context of a meeting. Meeting id is required.'
+      );
+    }
   }
 
   /**

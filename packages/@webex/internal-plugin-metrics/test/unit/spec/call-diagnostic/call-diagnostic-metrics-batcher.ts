@@ -190,6 +190,46 @@ describe('plugin-metrics', () => {
           });
           assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
         });
+
+        it('appends the correct join times to the request for client.mediaquality.event', async () => {
+          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.mediaquality.event'}}
+          );
+          await flushPromises();
+
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          console.log({ss:webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event})
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.mediaquality.event',
+            audioSetupDelay: {
+              joinRespRxStart: 10,
+              joinRespTxStart: 10,
+            },
+            videoSetupDelay: {
+              joinRespRxStart: 10,
+              joinRespTxStart: 10,
+            }
+          });
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+        });
+
+        it('doesnt include audioSetup and videoSetup delays for other events', async () => {
+          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.alert.displayed'}}
+          );
+          await flushPromises();
+
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.audioSetupDelay, undefined);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.videoSetupDelay, undefined);
+          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+
+        })
       });
     });
   });
