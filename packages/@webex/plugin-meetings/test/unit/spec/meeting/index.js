@@ -5489,6 +5489,50 @@ describe('plugin-meetings', () => {
         });
       });
       describe('share scenarios', () => {
+
+        describe('triggerAnnotationInfoEvent', () => {
+          it('check triggerAnnotationInfoEvent event', () => {
+
+            TriggerProxy.trigger.reset();
+            const annotationInfo = {version: '1', policy: 'Approval'};
+            meeting.triggerAnnotationInfoEvent({annotation:annotationInfo},{});
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {
+                file: 'meeting/index',
+                function: 'triggerAnnotationInfoEvent',
+              },
+              'meeting:updateAnnotationInfo',
+              annotationInfo
+            );
+
+            TriggerProxy.trigger.reset();
+            meeting.triggerAnnotationInfoEvent({annotation:annotationInfo},{annotation:annotationInfo});
+            assert.notCalled(TriggerProxy.trigger);
+
+            TriggerProxy.trigger.reset();
+            const annotationInfoUpdated = {version: '1', policy: 'AnnotationNotAllowed'};
+            meeting.triggerAnnotationInfoEvent({annotation:annotationInfoUpdated},{annotation:annotationInfo});
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {
+                file: 'meeting/index',
+                function: 'triggerAnnotationInfoEvent',
+              },
+              'meeting:updateAnnotationInfo',
+              annotationInfoUpdated
+            );
+
+            TriggerProxy.trigger.reset();
+            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdated});
+            assert.notCalled(TriggerProxy.trigger);
+
+          });
+        });
+
         describe('setUpLocusMediaSharesListener', () => {
           beforeEach(() => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
@@ -6179,29 +6223,6 @@ describe('plugin-meetings', () => {
               payloadTestHelper([data1, data2, data3]);
             });
           });
-
-          describe('annotation policy', () => {
-
-            it('Scenario #1: blank annotation', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #2: annotation', () => {
-              const annotationInfo = {version: '1', policy: 'Approval'};
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, annotationInfo);
-              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-          });
-
           describe('Desktop A --> Desktop B', () => {
             it('Scenario #1: you share desktop A and then share desktop B', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
