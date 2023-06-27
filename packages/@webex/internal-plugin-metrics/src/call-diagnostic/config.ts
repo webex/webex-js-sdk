@@ -1,4 +1,6 @@
 /* eslint-disable import/prefer-default-export */
+// Most client error codes are mapped based on
+// https://sqbu-github.cisco.com/WebExSquared/event-dictionary/wiki/Error-codes-for-metric-events
 
 import {ClientEventError} from '../metrics.types';
 
