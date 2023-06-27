@@ -77,8 +77,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
-    // @ts-ignore
-    this.webex.internal.llm.off('online', this.handleLLMOnline);
   }
 
   /**
