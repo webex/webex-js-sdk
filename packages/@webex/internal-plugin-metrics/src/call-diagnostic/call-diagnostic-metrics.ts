@@ -230,7 +230,7 @@ export default class CallDiagnosticMetrics {
         mediaConnections: meeting.mediaConnections || mediaConnections,
       });
 
-      // create feature event object
+      // create media quality event object
       let clientEventObject: MediaQualityEvent['payload'] = {
         name,
         canProceed: true,
@@ -251,7 +251,7 @@ export default class CallDiagnosticMetrics {
       // merge any new properties, or override existing ones
       clientEventObject = merge(clientEventObject, payload);
 
-      // append feature event data to the call diagnostic event
+      // append media quality event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
       this.submitToCallDiagnostics(diagnosticEvent);
     } else {

@@ -191,7 +191,7 @@ describe('plugin-metrics', () => {
           assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
-        it('appends the correct join times to the request for client.mediaquality.event', async () => {
+        it('appends the correct audio and video setup delays to the request for client.mediaquality.event', async () => {
           NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
           await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
@@ -201,7 +201,6 @@ describe('plugin-metrics', () => {
 
           //@ts-ignore
           assert.calledOnce(webex.request);
-          console.log({ss:webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event})
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.mediaquality.event',
             audioSetupDelay: {
