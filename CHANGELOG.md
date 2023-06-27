@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.150](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.149...v3.0.0-beta.150) (2023-06-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** set breakoutStatus cache false avoid duplicate changes ([#2900](https://github.com/webex/webex-js-sdk/issues/2900)) ([a5c9e5e](https://github.com/webex/webex-js-sdk/commit/a5c9e5e2d852620d9c4d42fa25cd6b0dfb28fcb1))
+
 ## [3.0.0-beta.149](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.148...v3.0.0-beta.149) (2023-06-26)
 
 
