@@ -2,7 +2,13 @@ import uuid from 'uuid';
 import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {WebexPlugin, config} from '@webex/webex-core';
 
-import {EVENT_TRIGGERS, VOICEA_RELAY_TYPES, TRANSCRIPTION_TYPE, VOICEA} from './constants';
+import {
+  EVENT_TRIGGERS,
+  VOICEA_RELAY_TYPES,
+  TRANSCRIPTION_TYPE,
+  VOICEA,
+  LLM_EVENTS,
+} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
   AnnouncementPayload,
@@ -336,9 +342,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private onceLLMOnline = (callback) => {
     // @ts-ignore
-    this.webex.internal.llm.off('online', callback);
+    this.webex.internal.llm.off(LLM_EVENTS.ONLINE, callback);
     // @ts-ignore
-    this.webex.internal.llm.once('online', callback);
+    this.webex.internal.llm.once(LLM_EVENTS.ONLINE, callback);
   };
 
   /**

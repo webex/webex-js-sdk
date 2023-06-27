@@ -29,4 +29,8 @@ export const TRANSCRIPTION_TYPE = {
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
 };
 
+export const LLM_EVENTS = {
+  ONLINE: 'online',
+};
+
 export const VOICEA = 'voicea';
