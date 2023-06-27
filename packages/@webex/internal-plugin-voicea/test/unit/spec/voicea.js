@@ -243,6 +243,14 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#turnOnCaptionsAfterLLMOnline', () => {
+      it('should works', () => {
+        voiceaService.onceLLMOnline = sinon.stub();
+        voiceaService.turnOnCaptionsAfterLLMOnline();
+        assert.calledOnceWithExactly(voiceaService.onceLLMOnline, voiceaService.turnOnCaptions);
+      });
+    });
+
     describe('#turnOnCaptions', () => {
       beforeEach(() => {
         voiceaService.requestTurnOnCaptions = sinon.stub();
