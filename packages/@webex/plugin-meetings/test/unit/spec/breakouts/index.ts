@@ -105,28 +105,58 @@ describe('plugin-meetings', () => {
       });
 
       it('emits BREAKOUTS_CLOSING event when the breakoutStatus is CLOSING', () => {
-        const checkIsCalled = (deps) => {
-          let called = false;
-          breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, () => {
-            called = true;
-          });
-          assert.isFalse(called);
+        const checkIsCalled = (prev, deps) => {
+          breakouts.set(prev);
+          const breakoutClosingHandler = sinon.stub();
+          breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, breakoutClosingHandler);
+          assert.notCalled(breakoutClosingHandler);
           breakouts.set(deps);
-          assert.isTrue(called);
+          assert.calledOnce(breakoutClosingHandler);
         }
 
-        checkIsCalled({
+        checkIsCalled({sessionType: BREAKOUTS.SESSION_TYPES.MAIN, groups: undefined, status: undefined}, {
           sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
           groups: [{status: BREAKOUTS.STATUS.CLOSING}],
           status: undefined
         });
 
-        checkIsCalled({
+        checkIsCalled({sessionType: BREAKOUTS.SESSION_TYPES.MAIN, groups: [{status: BREAKOUTS.STATUS.OPEN}], status: undefined}, {
+          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          groups: [{status: BREAKOUTS.STATUS.CLOSING}],
+          status: undefined
+        });
+
+        checkIsCalled({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT, groups: undefined, status: undefined}, {
           sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
           groups: undefined,
           status: BREAKOUTS.STATUS.CLOSING
         });
 
+        checkIsCalled({sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT, groups: undefined, status: BREAKOUTS.STATUS.OPEN}, {
+          sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+          groups: undefined,
+          status: BREAKOUTS.STATUS.CLOSING
+        });
+
+      });
+
+      it('should not emits BREAKOUTS_CLOSING event when just sessionType changed from BREAKOUT to MAIN', () => {
+        breakouts.set({
+          sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+          groups: undefined,
+          status: BREAKOUTS.STATUS.CLOSING
+        });
+
+        const breakoutClosingHandler = sinon.stub();
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.BREAKOUTS_CLOSING, breakoutClosingHandler);
+
+        breakouts.set({
+          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+          groups: [{status: BREAKOUTS.STATUS.CLOSING}],
+          status: undefined
+        });
+
+        assert.notCalled(breakoutClosingHandler);
       });
 
       it('debounces querying rosters on add', () => {

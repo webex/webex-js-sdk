@@ -679,7 +679,6 @@ describe('RemoteMediaManager', () => {
       );
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
-        console.log(layoutInfo.activeSpeakerVideoPanes);
         Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setPreferLiveVideo')));
       });
 
@@ -1722,6 +1721,94 @@ describe('RemoteMediaManager', () => {
       // and a media request cancelled
       assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
       assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId);
+    });
+  });
+
+  describe('setActiveSpeakerCsis', () => {
+    it('calls setActiveSpeakerCsis on the correct remote media group', async () => {
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
+      let setCsisStub;
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        currentLayoutInfo = layoutInfo;
+        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setActiveSpeakerCsis');
+      });
+
+      await remoteMediaManager.start();
+      resetHistory();
+
+      assert.isNotNull(currentLayoutInfo);
+
+      if (currentLayoutInfo) {
+        const remoteVideo = currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
+
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: remoteVideo}]);
+
+        assert.calledOnce(setCsisStub);
+        assert.calledWith(setCsisStub, [{remoteMedia: remoteVideo}], false);
+        assert.calledOnce(fakeMediaRequestManagers.video.commit);
+      }
+    });
+
+    it('does not call setActiveSpeakerCsis on the incorrect media group', async () => {
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
+      let setCsisStub;
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        currentLayoutInfo = layoutInfo;
+        setCsisStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.main, 'setActiveSpeakerCsis');
+      });
+
+      await remoteMediaManager.start();
+      resetHistory();
+
+      assert.isNotNull(currentLayoutInfo);
+
+      if (currentLayoutInfo) {
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: {}}]);
+
+        assert.notCalled(setCsisStub);
+        assert.calledOnce(fakeMediaRequestManagers.video.commit);
+      }
+    });
+
+    it('checking when there is more than one group', async () => {
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
+      const config = cloneDeep(DefaultTestConfiguration);
+      let stubs = [];
+
+      config.video.initialLayoutId = 'OnePlusFive';
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        currentLayoutInfo = layoutInfo;
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) => stubs.push(sinon.stub(group, 'setActiveSpeakerCsis')));
+      });
+
+      await remoteMediaManager.start();
+      resetHistory();
+
+      assert.isNotNull(currentLayoutInfo);
+
+      if (currentLayoutInfo) {
+
+        const remoteMedia1 = currentLayoutInfo.activeSpeakerVideoPanes.mainBigOne.getRemoteMedia()[0];
+        const remoteMedia2 = currentLayoutInfo.activeSpeakerVideoPanes.secondarySetOfSmallPanes.getRemoteMedia()[0];
+
+        const remoteMediaCsis = [{remoteMedia: remoteMedia1}, {remoteMedia: remoteMedia2}];
+
+        remoteMediaManager.setActiveSpeakerCsis([{remoteMedia: remoteMedia1}, {remoteMedia: remoteMedia2}]);
+
+        stubs.forEach((stub, index) => {
+          assert.calledWith(stub, [remoteMediaCsis[index]], false)
+        });
+        assert.calledOnce(fakeMediaRequestManagers.video.commit);
+      }
     });
   });
 

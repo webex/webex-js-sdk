@@ -189,7 +189,7 @@ describe('live-annotation', () => {
     });
 
 
-    describe('encrypt/decrypt Content ', () => {
+    describe('encrypt/decrypt Content', () => {
       beforeEach(async () => {
         annotationService.webex.internal.encryption.encryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
         annotationService.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.resolve('RETURN_VALUE'));
@@ -201,7 +201,7 @@ describe('live-annotation', () => {
         assert.equal(result, 'RETURN_VALUE')
       });
 
-      it('decryptContent ', async() => {
+      it('decryptContent', async() => {
         const result =  await annotationService.decryptContent("decryptionKeyUrl", "content");
         assert.calledOnceWithExactly(webex.internal.encryption.decryptText, "decryptionKeyUrl", "content");
         assert.equal(result, 'RETURN_VALUE')
@@ -232,7 +232,7 @@ describe('live-annotation', () => {
       });
 
 
-      it('works on  publish Stroke Data', async () => {
+      it('works on publish Stroke Data', async () => {
         const strokeData = {
           content: {
             "contentsBuffer": [{
@@ -343,7 +343,7 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('change annotation options', () => {
+      describe('change annotation info by presenter', () => {
         it('makes change annotation options as expected', async() => {
           const options =  { annotationInfo:{
               version: '1',
