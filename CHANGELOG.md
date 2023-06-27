@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.55.0](https://github.com/webex/webex-js-sdk/compare/v2.54.3...v2.55.0) (2023-06-27)
+
+
+### Features
+
+* **automation:** github actions deploy foundation ([#2896](https://github.com/webex/webex-js-sdk/issues/2896)) ([7e5939d](https://github.com/webex/webex-js-sdk/commit/7e5939d9c2b27ee881707ae8c068b012fd977fdc))
+
 ### [2.54.3](https://github.com/webex/webex-js-sdk/compare/v2.54.2...v2.54.3) (2023-06-26)
 
 
