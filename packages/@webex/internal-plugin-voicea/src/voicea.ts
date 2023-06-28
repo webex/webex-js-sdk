@@ -8,6 +8,8 @@ import {
   TRANSCRIPTION_TYPE,
   VOICEA,
   LLM_EVENTS,
+  ANNOUNCE_STATUS,
+  TURN_ON_CAPTION_STATUS,
 } from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
@@ -53,7 +55,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
         this.vmcDeviceId = e.headers.from;
         this.hasVoiceaJoined = true;
-        this.announceStatus = 'joined';
+        this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
       case VOICEA_RELAY_TYPES.TRANSLATION_RESPONSE:
@@ -90,8 +92,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
-    this.announceStatus = 'idle';
-    this.captionStatus = 'idle';
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.turnOnCaptionsWaitingOnlinePromise = null;
   }
 
@@ -105,8 +107,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
-    this.announceStatus = 'idle';
-    this.captionStatus = 'idle';
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.turnOnCaptionsWaitingOnlinePromise = null;
   }
 
@@ -265,7 +267,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   private sendAnnouncement = (): void => {
-    this.announceStatus = 'joining';
+    this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
     // @ts-ignore
     this.webex.internal.llm.socket.send({
@@ -361,7 +363,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   private requestTurnOnCaptions = (): undefined | Promise<void> => {
-    this.captionStatus = 'sending';
+    this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
     // @ts-ignore
     // eslint-disable-next-line newline-before-return
     return this.request({
@@ -382,11 +384,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           EVENT_TRIGGERS.CAPTIONS_TURNED_ON
         );
         this.areCaptionsEnabled = true;
-        this.captionStatus = 'enabled';
+        this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
         this.announce();
       })
       .catch(() => {
-        this.captionStatus = 'idle';
+        this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
       });
   };
 
@@ -395,17 +397,19 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   private announceAfterLLMOnline = () => {
-    this.announceStatus = 'waitingLLMOnline';
+    this.announceStatus = ANNOUNCE_STATUS.WAITING_LLM_ONLINE;
     this.onceLLMOnline(() => {
-      if (this.announceStatus === 'waitingLLMOnline') {
-        this.announceStatus = 'idle';
+      if (this.announceStatus === ANNOUNCE_STATUS.WAITING_LLM_ONLINE) {
+        this.announceStatus = ANNOUNCE_STATUS.IDLE;
         this.announce();
       }
     });
   };
 
   private isAnnounceProcessing = () =>
-    ['joining', 'waitingLLMOnline', 'joined'].includes(this.announceStatus);
+    [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.WAITING_LLM_ONLINE, ANNOUNCE_STATUS.JOINED].includes(
+      this.announceStatus
+    );
 
   /**
    * announce to voicea data chanel
@@ -427,12 +431,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   private turnOnCaptionsAfterLLMOnline = (): Promise<void> => {
-    this.captionStatus = 'waitingLLMOnline';
+    this.captionStatus = TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE;
 
     return new Promise((resolve) => {
       this.onceLLMOnline(() => {
-        if (this.captionStatus === 'waitingLLMOnline') {
-          this.captionStatus = 'idle';
+        if (this.captionStatus === TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE) {
+          this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
           resolve(this.turnOnCaptions());
         }
       });
@@ -440,7 +444,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   private isCaptionProcessing = () =>
-    ['sending', 'waitingLLMOnline', 'enabled'].includes(this.captionStatus);
+    [
+      TURN_ON_CAPTION_STATUS.SENDING,
+      TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE,
+      TURN_ON_CAPTION_STATUS.ENABLED,
+    ].includes(this.captionStatus);
 
   /**
    * Turn on Captions
