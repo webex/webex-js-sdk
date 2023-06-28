@@ -262,19 +262,11 @@ describe('plugin-voicea', () => {
         assert.calledOnce(announcementSpy);
       });
 
-      // it("doesn't call API on captions", async () => {
-      //   await voiceaService.turnOnCaptions();
-
-      //   // eslint-disable-next-line no-underscore-dangle
-      //   voiceaService.webex.internal.llm._emit('event:relay.event', {
-      //     headers: {from: 'ws'},
-      //     data: {relayType: 'voicea.annc', voiceaPayload: {}},
-      //   });
-
-      //   const response = await voiceaService.turnOnCaptions();
-
-      //   assert.equal(response, undefined);
-      // });
+      it("should handle request fail", async () => {
+        voiceaService.request = sinon.stub().rejects();
+        await voiceaService.requestTurnOnCaptions();
+        assert.equal(voiceaService.captionStatus, 'idle');
+      });
     });
 
     describe('#announceAfterLLMOnline', () => {
