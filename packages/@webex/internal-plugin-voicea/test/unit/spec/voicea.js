@@ -213,7 +213,7 @@ describe('plugin-voicea', () => {
     });
 
     describe("#onceLLMOnline", () => {
-      let once, off;
+      let once;
       beforeEach(() => {
         once = sinon.stub(voiceaService.webex.internal.llm, 'once');
       });
