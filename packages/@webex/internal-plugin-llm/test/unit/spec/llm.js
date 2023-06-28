@@ -9,7 +9,7 @@ describe('plugin-llm', () => {
   const datachannelUrl = 'datachannelUrl';
 
   describe('llm', () => {
-    let webex, llmService, mockWebSocket;
+    let webex, llmService;
 
     beforeEach(() => {
       webex = new MockWebex({
