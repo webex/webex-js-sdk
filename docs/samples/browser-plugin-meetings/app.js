@@ -156,6 +156,8 @@ function initWebex(e) {
   integrationEnv.disabled = true;
   tokenElm.disabled = true;
   saveElm.disabled = true;
+  loadCameraBtn.disabled = false;
+  loadMicrophoneBtn.disabled = false;
   authStatusElm.innerText = 'initializing...';
 
   webex = window.webex = Webex.init({
@@ -644,6 +646,13 @@ const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-s
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
 const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
 
+const loadCameraBtn = document.querySelector('#ts-load-camera');
+const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
+const disposeVbgBtn = document.querySelector('#ts-dispose-VBG');
+const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
+const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const disposeBNRBtn = document.querySelector('#ts-dispose-BNR');
+
 let bnrEnabled = false;
 
 /**
@@ -951,6 +960,8 @@ function handleTrackUnpublished(track, mediaElement, debugString) {
     if (!isPublished) {
       console.log(`MeetingControls#getUserMedia() :: ${debugString} track unpublished, stopping it`);
       track.stop();
+      //mediaElement.srcObject = null;
+      localVideoResElm.innerText = '';
     }
   });
 }
@@ -978,7 +989,10 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
     return Promise.reject(new Error('No valid meeting object.'));
   }
 
-  if (constraints.audio) {
+  if (localMedia.microphoneTrack) {
+    console.log('MeetingControls#getUserMedia() :: microphone track is already available');
+  }
+  else if (constraints.audio) {
     const audioConstraints = {...constraints.audio};
 
     console.log('MeetingControls#getUserMedia() :: getting microphone track with constraints: ', audioConstraints);
@@ -989,7 +1003,10 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
   }
 
-  if (constraints.video) {
+  if (localMedia.cameraTrack) {
+    console.log('MeetingControls#getUserMedia() :: camera track is already available');
+  }
+  else if (constraints.video) {
     const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...constraints.video};
 
     console.log('MeetingControls#getUserMedia() :: getting camera track with constraints: ', videoConstraints);
@@ -1000,8 +1017,159 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
     meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
   }
 
-  console.log('MeetingControls#getUserMedia() :: got following local tracks:', localMedia.microphoneTrack, localMedia.cameraTrack);
+  console.log('MeetingControls#getUserMedia() :: following local tracks are ready to use:', localMedia.microphoneTrack, localMedia.cameraTrack);
   return;
+}
+
+async function loadCamera(constraints = {video: true}) {
+  try {
+    console.log('MeetingControls#loadCamera() :: using webrtc-core local camera track');
+    const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...constraints.video};
+
+    console.log('MeetingControls#loadCamera() :: getting camera track with constraints: ', videoConstraints);
+    localMedia.cameraTrack = await webex.meetings.mediaHelpers.createCameraTrack(videoConstraints);
+
+    handleLocalTrackEvents(localMedia.cameraTrack, meetingStreamsLocalVideo, 'local camera');
+
+    meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
+
+    toggleVbgBtn.disabled = false;
+    console.log('MeetingControls#loadCamera() :: Successfully got camera track:', localMedia.cameraTrack);
+    return;
+  }
+  catch (e) {
+    console.log('MeetingControls#loadCamera() :: Error getting camera stream!');
+    console.error();
+
+    return Promise.reject(e);
+  }
+}
+
+async function handleVbg() {
+  try {
+    if (toggleVbgBtn.innerText === "Enable VBG") {
+      console.log('MeetingControls#handleVbg() :: applying virtual background to local camera track');
+
+      const effect = await webex.meetings.createVirtualBackgroundEffect();
+      await localMedia.cameraTrack.addEffect("virtual-background", effect);
+      await effect.enable();
+      toggleVbgBtn.innerText = "Disable VBG"
+      disposeVbgBtn.disabled = false;
+      console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera track');
+    }
+    else {
+      console.log('MeetingControls#handleVbg() :: disabling virtual background from local camera track');
+
+      const effect = await localMedia.cameraTrack.getEffect("virtual-background");
+      await effect.disable();
+      toggleVbgBtn.innerText = "Enable VBG"
+      console.log('MeetingControls#handleVbg() :: successfully disabled virtual background from local camera track');
+    }
+  }
+  catch (e) {
+    console.log('MeetingControls#handleVbg() :: Error applying background effect!');
+    console.error();
+
+    return Promise.reject(e);
+  }
+}
+
+async function disposeVbg() {
+  try {
+    console.log('MeetingControls#disposeVbg() :: disposing virtual background effect');
+
+    await localMedia.cameraTrack.disposeEffects();
+
+    //meetingStreamsLocalVideo.srcObject = null;
+    toggleVbgBtn.innerText = "Enable VBG"
+    //toggleVbgBtn.disabled = true;
+    disposeVbgBtn.disabled = true;
+    console.log('MeetingControls#disposeVbg() :: successfully disposed virtual background effect');
+  }
+  catch (e) {
+    console.log('MeetingControls#disposeVbg() :: Error disposing background effect!');
+    console.error();
+
+    return Promise.reject(e);
+  }
+}
+
+async function loadMicrophone() {
+  try {
+    console.log('MeetingControls#loadMicrophone() :: using webrtc-core local microphone track');
+
+    localMedia.microphoneTrack = await webex.meetings.mediaHelpers.createMicrophoneTrack();
+
+    meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
+
+    localMedia.microphoneTrack.on('underlying-track-change', () => {
+      meetingStreamsLocalAudio.srcObject = localMedia.microphoneTrack.underlyingStream;
+    });
+    toggleBNRBtn.disabled = false;
+    console.log('MeetingControls#loadMicrophone() :: Successfully got microphone track:', localMedia.microphoneTrack);
+    return;
+  }
+  catch (e) {
+    console.log('MeetingControls#loadMicrophone() :: Error getting microphone stream!');
+    console.error();
+
+    return Promise.reject(e);
+  }
+}
+
+async function handleBNR() {
+  try {
+    if (toggleBNRBtn.innerText === "Enable BNR") {
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone track');
+
+      const effect = await webex.meetings.createNoiseReductionEffect();
+      await localMedia.microphoneTrack.addEffect("noise-reduction", effect);
+      await effect.enable();
+      toggleBNRBtn.innerText = "Disable BNR"
+      disposeBNRBtn.disabled = false;
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone track');
+    }
+    else {
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone track');
+
+      const effect = await localMedia.microphoneTrack.getEffect("noise-reduction");
+      await effect.disable();
+      toggleBNRBtn.innerText = "Enable BNR"
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone track');
+    }
+  }
+  catch (e) {
+    console.log('MeetingControls#handleVbg() :: Error applying noise reduction effect!');
+    console.error();
+
+    return Promise.reject(e);
+  }
+}
+
+async function disposeBNR() {
+  try {
+    console.log('MeetingControls#disposeBNR() :: disposing virtual background effect');
+
+    //this is one way to dispose but effect is still active
+    //await localMedia.microphoneTrack.disposeEffects();
+
+    //this is the way to dispose the complete effect
+    const effect = await localMedia.microphoneTrack.getEffect("noise-reduction");
+    if (effect)
+      await effect.dispose();
+
+    meetingStreamsLocalAudio.srcObject = null;
+    toggleBNRBtn.innerText = "Enable BNR"
+    toggleBNRBtn.disabled = true;
+    disposeBNRBtn.disabled = true;
+    console.log('MeetingControls#disposeBNR() :: successfully disposed BNR effect');
+  }
+  catch (e) {
+    console.log('MeetingControls#disposeBNR() :: Error disposing BNR effect!');
+    console.error();
+
+    return Promise.reject(e);
+  }
 }
 
 function populateSourceDevices(mediaDevice) {

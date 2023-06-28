@@ -111,6 +111,73 @@
             </fieldset>
           </div>
 
+          <!-- Track / effects -->
+          <div>
+            <form id="tracks">
+              <fieldset>
+                <legend>Tracks</legend>
+                <div class="video-section">
+                  <div>
+                    <div class="flex" style="gap: 0.5rem;">
+                      <fieldset>
+                        <legend>Local Video</legend>
+                        <div class="video-container">
+                          <video id="local-video" class="video-el" muted="true" autoplay playsinline
+                            style="height: 250px;"></video>
+                          <span id="local-video-resolution" class="video-resolution"></span>
+                        </div>
+                      </fieldset>
+
+                      <fieldset style="display: flex; align-items: center;">
+                        <legend>Local Audio</legend>
+                        <audio id="local-audio" controls autoplay></audio>
+                      </fieldset>
+
+                    </div>
+                    <div class="flex">
+                      <!--enable virtual bg -->
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-load-camera" disabled type="button" onclick="loadCamera()">Load Camera</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-enable-VBG" disabled type="button" onclick="handleVbg()">Enable VBG</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-dispose-VBG" disabled type="button" onclick="disposeVbg()">Dispose VBG</button>
+                        </div>
+                      </div>
+                    </div>
+
+
+                    <div class="flex">
+                      <!--enable noise reduction -->
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-load-mic" disabled type="button" onclick="loadMicrophone()">Load Microhone</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-enable-BNR" disabled type="button" onclick="handleBNR()">Enable BNR</button>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="u-mb">
+                          <button id="ts-dispose-BNR" disabled type="button" onclick="disposeBNR()">Dispose BNR</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+
           <!-- meeting / authentication-registration -->
           <div>
             <form id="auth-registration">
@@ -490,14 +557,6 @@
           <div class="video-section">
             <div>
               <div class="flex" style="gap: 0.5rem;">
-                <fieldset>
-                  <legend>Local Video</legend>
-                  <div class="video-container">
-                    <video id="local-video" class="video-el" muted="true" autoplay playsinline style="height: 200px;"></video>
-                    <span id="local-video-resolution" class="video-resolution"></span>
-                  </div>
-                </fieldset>
-
                 <fieldset style="display: flex; align-items: center;">
                   <legend>Local Audio</legend>
                   <audio id="local-audio" controls autoplay></audio>
