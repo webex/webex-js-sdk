@@ -5,6 +5,8 @@
 import {ClientEventError} from '../metrics.types';
 
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
+export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
+export const ICE_FAILURE_CLIENT_CODE = 2004;
 
 const ERROR_DESCRIPTIONS = {
   UNKNOWN_CALL_FAILURE: 'UnknownCallFailure',
@@ -35,7 +37,7 @@ const ERROR_DESCRIPTIONS = {
   MODERATOR_REQUIRED: 'Moderator_Required',
   USER_NOT_MEMBER_OF_ROOM: 'UserNotMemberOfRoom',
   NEW_LOCUS_ERROR: 'NewLocusError',
-  NET_WORK_UNAVAILABLE: 'NetworkUnavailable',
+  NETWORK_UNAVAILABLE: 'NetworkUnavailable',
   MEETING_UNAVAILABLE: 'MeetingUnavailable',
   MEETING_ID_INVALID: 'MeetingIDInvalid',
   MEETING_SITE_INVALID: 'MeetingSiteInvalid',
@@ -310,11 +312,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   4008: {
     errorDescription: ERROR_DESCRIPTIONS.NEW_LOCUS_ERROR,
-    category: 'expected',
+    category: 'signaling',
     fatal: true,
   },
   4009: {
-    errorDescription: ERROR_DESCRIPTIONS.NET_WORK_UNAVAILABLE,
+    errorDescription: ERROR_DESCRIPTIONS.NETWORK_UNAVAILABLE,
     category: 'expected',
     fatal: true,
   },
@@ -445,7 +447,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   3003: {
     errorDescription: ERROR_DESCRIPTIONS.CALL_FULL_ADD_GUEST,
-    category: 'signaling',
+    category: 'expected',
     fatal: false,
   },
 };

@@ -1,11 +1,12 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
 
+export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
-  parsedError?: any;
   showToUser?: boolean;
 };
 
@@ -70,4 +71,3 @@ export type MetricEventNames =
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = RawEvent['origin']['networkType'];
-export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];

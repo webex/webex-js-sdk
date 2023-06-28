@@ -2,7 +2,7 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, NewMetrics} from '@webex/internal-plugin-metrics';
+import {ClientEvent, NewMetrics, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -4930,10 +4930,16 @@ export default class Meeting extends StatelessWebexPlugin {
         this.reconnect({networkDisconnect: true});
         NewMetrics.submitClientEvent({
           name: 'client.ice.end',
-          payload: {canProceed: false},
+          payload: {
+            canProceed: false,
+            errors: [
+              NewMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+              ),
+            ],
+          },
           options: {
             meetingId: this.id,
-            parsedError: NewMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(2004),
           },
         });
 

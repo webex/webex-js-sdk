@@ -319,6 +319,68 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should include erros in payload if provided via payload', () => {
+        cd.initialSetup(meetingCollection, webex);
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          payload: {
+            errors: [{
+              name: 'locus.response',
+              fatal: true,
+              category: 'signaling'
+            }]
+          },
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            errors: [{
+              name: 'locus.response',
+              fatal: true,
+              category: 'signaling'
+            }],
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+
+      })
+
       it('should throw if meetingId not provided', () => {
         cd.initialSetup(meetingCollection, webex);
 
@@ -344,7 +406,7 @@ describe('internal-plugin-metrics', () => {
       it('it should grab the payload for client error code correctly', () => {
         const res = cd.getErrorPayloadForClientErrorCode(4008);
         assert.deepEqual(res, {
-          category: 'expected',
+          category: 'signaling',
           errorDescription: 'NewLocusError',
           fatal: true,
           name: 'other',
@@ -370,11 +432,23 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should return default new locus event error payload correctly', () => {
-        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: -1}}});
+      it('should return default new locus event error payload correctly if locus error', () => {
+        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 2400000}}});
         assert.deepEqual(res, {
-          category: 'expected',
+          category: 'signaling',
           errorDescription: 'NewLocusError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+        });
+      });
+
+
+      it('should return default meeting info lookup error payload correctly if not locus error', () => {
+        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 9400000}}});
+        assert.deepEqual(res, {
+          category: 'signaling',
+          errorDescription: 'MeetingInfoLookupError',
           fatal: true,
           name: 'other',
           shownToUser: false,
