@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.153](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.152...v3.0.0-beta.153) (2023-06-28)
+
+
+### Bug Fixes
+
+* **locus-info:** adding lastModified field when handling requestedToU… ([#2897](https://github.com/webex/webex-js-sdk/issues/2897)) ([42dc06c](https://github.com/webex/webex-js-sdk/commit/42dc06c48883741f2690aacade0f93e3386ccf0c))
+
 ## [3.0.0-beta.152](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.151...v3.0.0-beta.152) (2023-06-28)
 
 
