@@ -45,6 +45,6 @@ export const ANNOUNCE_STATUS = {
 export const TURN_ON_CAPTION_STATUS = {
   IDLE: 'idle',
   ENABLED: 'enabled',
-  SENDING: 'SENDING',
+  SENDING: 'sending',
   WAITING_LLM_ONLINE: 'waitingLLMOnline',
 };

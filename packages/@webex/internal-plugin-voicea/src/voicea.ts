@@ -389,6 +389,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       })
       .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+        throw new Error('turn on captions fail');
       });
   };
 

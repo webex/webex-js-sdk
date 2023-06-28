@@ -1,7 +1,7 @@
 import 'jsdom-global/register';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
@@ -238,6 +238,10 @@ describe('plugin-voicea', () => {
         voiceaService.captionStatus = 'idle';
       });
 
+      afterEach( () => {
+        voiceaService.captionStatus = 'idle';
+      })
+
       it('turns on captions', async () => {
         const announcementSpy = sinon.spy(voiceaService, 'announce');
 
@@ -263,8 +267,15 @@ describe('plugin-voicea', () => {
       });
 
       it("should handle request fail", async () => {
+        voiceaService.captionStatus = 'sending';
         voiceaService.request = sinon.stub().rejects();
-        await voiceaService.requestTurnOnCaptions();
+        
+        try {
+          await voiceaService.requestTurnOnCaptions();
+        } catch (error) {
+          expect(error.message).to.include('turn on captions fai');
+          return;
+        }
         assert.equal(voiceaService.captionStatus, 'idle');
       });
     });
