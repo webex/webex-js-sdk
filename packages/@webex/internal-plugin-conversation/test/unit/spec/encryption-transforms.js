@@ -36,6 +36,29 @@ describe('plugin-conversation', () => {
           });
       });
 
+      it('does not transform when object type is "policies" for a "meetingContainer" activity', async () => {
+        const transform = transforms.find((t) => t.name === 'encryptActivity');
+        const transformStub = sinon.stub().resolves();
+
+        const ctx = {
+          transform: transformStub,
+        };
+        const key = null;
+        const activity = {
+          object: {
+            objectType: 'policies',
+          },
+          objectType: 'activity',
+          target: {
+            objectType: 'meetingContainer',
+          },
+          verb: 'update',
+        };
+
+        const results = await transform.fn(ctx, key, activity);
+        assert.equal(results, undefined);
+      });
+
       it('does transfom when created is not True', async () => {
         const transform = transforms.find((t) => t.name === 'encryptActivity');
         const transformStub = sinon.stub().resolves();
