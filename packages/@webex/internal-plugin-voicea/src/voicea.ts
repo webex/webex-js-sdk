@@ -407,6 +407,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     });
   };
 
+  /**
+   * is announce processing
+   * @returns {boolean}
+   */
   private isAnnounceProcessing = () =>
     [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.WAITING_LLM_ONLINE, ANNOUNCE_STATUS.JOINED].includes(
       this.announceStatus
@@ -444,6 +448,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     });
   };
 
+  /**
+   * is turn on caption processing
+   * @returns {boolean}
+   */
   private isCaptionProcessing = () =>
     [
       TURN_ON_CAPTION_STATUS.SENDING,
