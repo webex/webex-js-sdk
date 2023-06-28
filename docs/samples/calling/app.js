@@ -81,7 +81,6 @@ const cloudContactsElem = document.querySelector('#cloud-contact-form');
 const contactObj = document.querySelector('#contact-object');
 const contactGroupObj = document.querySelector('#contactgroup-object');
 
-
 let base64;
 let audio64;
 let localAudioTrack;
@@ -118,32 +117,6 @@ function getAudioVideoInput() {
   return {audio: deviceId(audioInput), video: deviceId(videoInput)};
 }
 
-function register() {
-  console.log('Authentication#register()');
-  registerElm.disabled = true;
-  // unregisterElm.disabled = true;
-
-  return webex.internal.device
-    .register()
-    .then(() => {
-      console.log('Authentication#webex.internal.device.register successful');
-
-      return webex.internal.mercury
-        .connect()
-        .then(() => {
-          console.log('Authentication#webex.internal.mercury.connect successful');
-          unregisterElm.classList.add('btn--red');
-          registerElm.disabled = false;
-        })
-        .catch((error) => {
-          console.log('Error occurred during mercury.connect()', error);
-        });
-    })
-    .catch((error) => {
-      console.log('Error occurred during device.register()', error);
-    });
-}
-
 let enableProd = true;
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -166,7 +139,7 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
-function initWebex(e) {
+function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
 
@@ -254,7 +227,7 @@ function initWebex(e) {
     logger:loggerConfig
   }
 
-  calling = new Calling({options: webexConfig, callingConfig: callingConfig});
+  calling = new Calling({webexConfig, callingConfig});
   webex = window.webex = calling.webex;
 
   calling.on('calling:ready', () => {
@@ -273,9 +246,30 @@ function initWebex(e) {
     callWaitingButton.innerHTML = 'Fetching Call Waiting Status';
     callWaitingButton.disabled = true;
 
-    calling.register().then(() => {
+    calling.register().then(async () => {
       unregisterElm.classList.add('btn--red');
       registerElm.disabled = false;
+
+      callingClient = window.callingClient = calling.callingClient;
+
+      if (window.contacts === undefined) {
+        contacts = window.contacts = calling.contactsClient;
+      }
+
+      if (window.callHistory === undefined) {
+        callHistory = window.callHistory = calling.callHistoryClient;
+      }
+
+      if (window.callSettings === undefined) {
+        callSettings = window.callSettings = calling.callSettingsClient;
+      }
+
+      if (window.voicemail === undefined) {
+        voicemail = window.voicemail = calling.voicemailClient;
+        const initResponse = await voicemail.init();
+
+        console.log(`Init response `, initResponse);
+      }
 
       fetchDNDSetting();
       fetchCallWaitingSetting();
@@ -287,7 +281,7 @@ function initWebex(e) {
   return false;
 }
 
-credentialsFormElm.addEventListener('submit', initWebex);
+credentialsFormElm.addEventListener('submit', initCalling);
 
 function toggleDisplay(elementId, status) {
   const element = document.getElementById(elementId);
@@ -322,7 +316,6 @@ function userSession() {
 }
 
 function createDevice() {
-  callingClient = window.callingClient = calling.callingClient;
   callingClient.register();
   userSession();
   callingClient.on('callingClient:registered', (deviceInfo) => {
@@ -591,11 +584,6 @@ async function getMediaStreams() {
   localAudioTrack = audioTrack.getMediaStreamTrack();
   localAudioElem.srcObject = new MediaStream([audioTrack.getMediaStreamTrack()]);
 }
-function createMeeting(e) {
-  e.preventDefault();
-
-  callingClient = window.callingClient = calling.callingClient;
-}
 
 // Listen for submit on create meeting
 createCallForm.addEventListener('submit', createCall);
@@ -759,13 +747,7 @@ function definedTable(callHistoryResponse) {
  */
 
 async function createCallHistory() {
-  const logger = {level: 'info'};
-
   try {
-    if (window.callHistory === undefined) {
-      callHistory = window.callHistory = calling.callHistoryClient;
-    }
-
     callHistory.on('callHistory:user_recent_sessions', (sessionData) => {
       console.log('Users recent session data : ', sessionData.data.userSessions.userSessions[0]);
       userSessionData.innerText = `${JSON.stringify(
@@ -801,15 +783,14 @@ async function createVoiceMail() {
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
     voicemailElm.disabled = true;
-    const logger = {level: 'info'};
 
     try {
-      if (window.voicemail === undefined) {
-        voicemail = window.voicemail = calling.voicemailClient(webex, logger);
-        const initResponse = await voicemail.init();
+      // if (window.voicemail === undefined) {
+      //   voicemail = window.voicemail = calling.voicemailClient;
+      //   const initResponse = await voicemail.init();
 
-        console.log(`Init response `, initResponse);
-      }
+      //   console.log(`Init response `, initResponse);
+      // }
 
       const getVoicemailListResponse = await voicemail.getVoicemailList(
         voicemailOffset,
@@ -917,13 +898,6 @@ async function createVoiceMail() {
     const logger = {level: 'info'};
 
     try {
-      if (window.voicemail === undefined) {
-        voicemail = window.voicemail = calling.voicemailClient(webex, logger);
-        const initResponse = await voicemail.init();
-
-        console.log(`Init response `, initResponse);
-      }
-
       const getVoicemailListResponse = await voicemail.getVoicemailList(
         voicemailOffset,
         voicemailOffsetLimit,
@@ -993,12 +967,6 @@ async function createVoiceMailContentPlay(msgId, rowId) {
 
 async function VMPlay(msgId, rowId) {
   try {
-    if (window.voicemail === undefined) {
-      voicemail = window.voicemail = calling.voicemailClient;
-      const initResponse = await voicemail.init();
-
-      console.log(`Init response `, initResponse);
-    }
     const getVoicemailContentResponse = await voicemail.getVoicemailContent(msgId);
 
     if (getVoicemailContentResponse.data?.voicemailContent) {
@@ -1025,11 +993,6 @@ async function VMPlay(msgId, rowId) {
 }
 
 async function voicemailMarkAsRead(msgId, rowId) {
-  if (window.voicemail === undefined) {
-    voicemail = window.voicemail = calling.voicemailClient;
-    voicemail.init();
-  }
-
   const markVoicemailAsRead = await voicemail.voicemailMarkAsRead(msgId);
 
   if (markVoicemailAsRead.statusCode === 200 || markVoicemailAsRead.statusCode === 204) {
@@ -1052,11 +1015,6 @@ function markAsRead(rowId) {
 }
 
 async function voicemailMarkAsUnRead(msgId, rowId) {
-  if (window.voicemail === undefined) {
-    voicemail = window.voicemail = calling.voicemailClient;
-    voicemail.init();
-  }
-
   const markVoicemailAsRead = await voicemail.voicemailMarkAsUnread(msgId);
 
   if (markVoicemailAsRead.statusCode === 200 || markVoicemailAsRead.statusCode === 204) {
@@ -1079,10 +1037,6 @@ function markAsUnRead(rowId) {
 }
 
 async function deleteVoicemail(msgId, rowId) {
-  if (window.voicemail === undefined) {
-    voicemail = window.voicemail = calling.voicemailClient;
-    voicemail.init();
-  }
   const deleteVmResponse = await voicemail.deleteVoicemail(msgId);
 
   console.log(`deleteVmResponse status code : ${deleteVmResponse.statusCode}`);
@@ -1135,10 +1089,6 @@ function fetchVoicemailList() {
 
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
-  if (window.voicemail === undefined) {
-    voicemail = window.voicemail = calling.voicemailClient;
-    voicemail.init();
-  }
 
   const response = voicemail.getVoicemailList(
     parseInt(offset, 10),
@@ -1161,16 +1111,9 @@ async function fetchTranscript() {
 }
 
 async function getContacts() {
-  const logger = {level: 'info'};
-
-  if (window.contacts === undefined) {
-    contacts = window.contacts = calling.contactsClient;
-  }
-
   const contactsList = await contacts.getContacts();
   console.log('Contacts: ', contactsList);
   createContactsTable(contactsList);
-
 }
 
 async function deleteContact(contactId) {
@@ -1254,12 +1197,6 @@ function toggleButton(eleButton, disableText, enableText) {
 }
 
 async function fetchDNDSetting() {
-  const logger = {level: 'info'};
-
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
-
   const response = await callSettings.getDoNotDisturbSetting();
 
   if (response.statusCode === 200) {
@@ -1283,12 +1220,6 @@ async function toggleDNDSetting() {
 }
 
 async function fetchCallWaitingSetting() {
-  const logger = {level: 'info'};
-
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
-
   const response = await callSettings.getCallWaitingSetting();
 
   if (response.statusCode === 200) {
@@ -1303,12 +1234,7 @@ async function fetchCallWaitingSetting() {
 }
 
 async function fetchCallForwardSetting() {
-  const logger = {level: 'info'};
   let visibility;
-
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
 
   const response = await callSettings.getCallForwardSetting();
 
@@ -1352,7 +1278,6 @@ async function fetchCallForwardSetting() {
 }
 
 async function updateCallForwardSetting(form) {
-  const logger = {level: 'info'};
   const requestBody = {
     callForwarding: {
       always: {
@@ -1375,10 +1300,6 @@ async function updateCallForwardSetting(form) {
     },
   };
 
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
-
   const response = await callSettings.setCallForwardSetting(requestBody);
 
   if (response.statusCode !== 204) {
@@ -1387,12 +1308,7 @@ async function updateCallForwardSetting(form) {
 }
 
 async function fetchVoicemailSetting() {
-  const logger = {level: 'info'};
   let visibility;
-
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
 
   const response = await callSettings.getVoicemailSetting();
 
@@ -1468,10 +1384,6 @@ async function updateVoicemailSetting(form) {
       mwiEnabled: form.notifCb.checked,
     },
   };
-
-  if (window.callSettings === undefined) {
-    callSettings = window.callSettings = calling.callSettingsClient;
-  }
 
   const response = await callSettings.setVoicemailSetting(requestBody);
 

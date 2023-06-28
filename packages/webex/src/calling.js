@@ -1,4 +1,4 @@
-import CallingSdk from '@webex/calling';
+import WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
 
 /* eslint-disable require-jsdoc */
@@ -20,19 +20,19 @@ const logContext = {
 };
 
 class Calling extends EventEmitter {
-  constructor({webex, options, callingConfig}) {
+  constructor({webex, webexConfig, callingConfig}) {
     super();
     this.callingConfig = callingConfig;
-    this.log = CallingSdk.Logger;
+    this.log = WebexCalling.Logger;
     this.log.setLogger(callingConfig.logger.level);
 
     if (webex) {
       this.webex = webex;
       this.initializeClients();
     } else {
-      options.config = merge({}, config, options.config);
+      webexConfig.config = merge({}, config, webexConfig.config);
 
-      this.webex = new Webex(options);
+      this.webex = new Webex(webexConfig);
 
       this.webex.once('ready', () => {
         this.emit('calling:ready');
@@ -53,11 +53,11 @@ class Calling extends EventEmitter {
             this.initializeClients();
           })
           .catch((error) => {
-            this.log.warn('Error occurred during mercury.connect()', error);
+            this.log.warn(`Error occurred during mercury.connect() ${error}`, logContext);
           });
       })
       .catch((error) => {
-        this.log.warn('Error occurred during device.register()', error);
+        this.log.warn(`Error occurred during device.register() ${error}`, logContext);
       });
   }
 
@@ -65,19 +65,23 @@ class Calling extends EventEmitter {
     const {clientConfig, callingClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
-      ? CallingSdk.createClient(this.webex, callingClientConfig)
+      ? WebexCalling.createClient(this.webex, callingClientConfig)
       : undefined;
+
     this.contactClient = clientConfig.contact
-      ? CallingSdk.createContactsClient(this.webex, logger)
+      ? WebexCalling.createContactsClient(this.webex, logger)
       : undefined;
+
     this.callHistoryClient = clientConfig.callHistory
-      ? CallingSdk.createCallHistoryClient(this.webex, logger)
+      ? WebexCalling.createCallHistoryClient(this.webex, logger)
       : undefined;
-    this.callSettingsClient = clientConfig.callSettings
-      ? CallingSdk.createCallSettingsClient(this.webex, logger)
-      : undefined;
+
     this.voicemailClient = clientConfig.voicemail
-      ? CallingSdk.createVoicemailClient(this.webex, logger)
+      ? WebexCalling.createVoicemailClient(this.webex, logger)
+      : undefined;
+
+    this.callSettingsClient = clientConfig.callSettings
+      ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
   }
 }

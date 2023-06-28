@@ -197,6 +197,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     this.webex = this.sdkConnector.getWebex();
+
     this.sdkConfig = config;
     const serviceData = this.sdkConfig?.serviceData?.indicator
       ? this.sdkConfig.serviceData
