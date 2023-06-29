@@ -186,6 +186,26 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isNeedHandleRoster', () => {
+      it('return true if no sequence in locus/breakoutRosterLocus', () => {
+        breakout.breakoutRosterLocus = null;
+        assert.equal(breakout.isNeedHandleRoster(), true);
+
+        breakout.breakoutRosterLocus = {sequence: {entries: [123]}};
+        assert.equal(breakout.isNeedHandleRoster(null), true);
+
+        assert.equal(breakout.isNeedHandleRoster({sequence: {entries: []}}), true);
+      });
+      it('return true if the locus sequence is bigger than last one', () => {
+        breakout.breakoutRosterLocus = {sequence: {entries: [123]}};
+        assert.equal(breakout.isNeedHandleRoster({sequence: {entries: [124]}}), true);
+      });
+      it('return false if the locus sequence is smaller than last one', () => {
+        breakout.breakoutRosterLocus = {sequence: {entries: [123]}};
+        assert.equal(breakout.isNeedHandleRoster({sequence: {entries: [122]}}), false);
+      });
+    });
+
     describe('#parseRoster', () => {
       it('calls locusParticipantsUpdate', () => {
         breakout.members = {
@@ -197,7 +217,17 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
         assert.equal(result, undefined);
-      })
+      });
+      it('not call locusParticipantsUpdate if sequence is expired', () => {
+        breakout.members = {
+          locusParticipantsUpdate: sinon.stub(),
+        };
+        breakout.isNeedHandleRoster = sinon.stub().returns(false);
+        const locusData = {some: 'data'};
+        breakout.parseRoster(locusData);
+
+        assert.notCalled(breakout.members.locusParticipantsUpdate);
+      });
     })
   });
 });

@@ -46,7 +46,6 @@ const Breakout = WebexPlugin.extend({
       },
     },
   },
-
   /**
    * initializer for the Breakout class
    * @returns {void}
@@ -54,6 +53,7 @@ const Breakout = WebexPlugin.extend({
   initialize() {
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
+    this.breakoutRosterLocus = null;
   },
 
   /**
@@ -131,6 +131,20 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
+   * check sequence and determine whether to update the new roster or not
+   * @param {Object} locus Locus object
+   * @returns {Boolean}
+   */
+  isNeedHandleRoster(locus: any) {
+    if (!this.breakoutRosterLocus?.sequence?.entries?.length || !locus?.sequence?.entries?.length) {
+      return true;
+    }
+    const prevSequence = this.breakoutRosterLocus.sequence.entries[0];
+    const currentSequence = locus.sequence.entries[0];
+
+    return currentSequence > prevSequence;
+  },
+  /**
    * Parses the participants from the locus object
    * @param {Object} locus Locus object
    * @returns {void}
@@ -139,7 +153,10 @@ const Breakout = WebexPlugin.extend({
     if (!this.members) {
       this.initMembers();
     }
-
+    if (!this.isNeedHandleRoster(locus)) {
+      return;
+    }
+    this.breakoutRosterLocus = locus;
     this.members.locusParticipantsUpdate(locus);
   },
 
