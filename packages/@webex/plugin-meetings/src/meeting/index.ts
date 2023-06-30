@@ -2201,6 +2201,29 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Trigger annotation info update event
+   @returns {undefined}
+   @param {object} contentShare
+   @param {object} previousContentShare
+   */
+  private triggerAnnotationInfoEvent(contentShare, previousContentShare) {
+    if (
+      contentShare?.annotation &&
+      !isEqual(contentShare?.annotation, previousContentShare?.annotation)
+    ) {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'triggerAnnotationInfoEvent',
+        },
+        EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
+        contentShare.annotation
+      );
+    }
+  }
+
+  /**
    * Set up the locus info media shares listener
    * update content and whiteboard sharing id value for members, and updates the member
    * notifies consumer with members:content:update {activeContentSharingId, endedContentSharingId}
@@ -2215,17 +2238,7 @@ export default class Meeting extends StatelessWebexPlugin {
       const previousContentShare = payload.previous?.content;
       const previousWhiteboardShare = payload.previous?.whiteboard;
 
-      if (!isEqual(contentShare?.annotation, previousContentShare?.annotation)) {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meetings/index',
-            function: 'remoteShare',
-          },
-          EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
-          contentShare.annotation
-        );
-      }
+      this.triggerAnnotationInfoEvent(contentShare, previousContentShare);
 
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
