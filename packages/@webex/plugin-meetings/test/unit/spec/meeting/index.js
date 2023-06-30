@@ -1375,6 +1375,16 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
+
+        it('succeeds even if getDevices() throws', async () => {
+          meeting.meetingState = 'ACTIVE';
+
+          sinon
+            .stub(internalMediaModule, 'getDevices')
+            .rejects(new Error('fake error'));
+
+          await meeting.addMedia();
+        })
       });
 
       /* This set of tests are like semi-integration tests, they use real MuteState, Media, LocusMediaRequest and Roap classes.

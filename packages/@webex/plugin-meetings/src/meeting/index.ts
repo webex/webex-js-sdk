@@ -5117,10 +5117,13 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => {
         this.setMercuryListener();
       })
-      .then(() =>
-        getDevices().then((devices) => {
-          MeetingUtil.handleDeviceLogging(devices);
-        })
+      .then(
+        () =>
+          getDevices()
+            .then((devices) => {
+              MeetingUtil.handleDeviceLogging(devices);
+            })
+            .catch(() => {}) // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
       )
       .then(() => {
         this.handleMediaLogging(this.mediaProperties);
