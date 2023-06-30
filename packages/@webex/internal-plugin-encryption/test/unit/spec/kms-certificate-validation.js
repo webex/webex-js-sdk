@@ -165,20 +165,34 @@ describe('internal-plugin-encryption', () => {
 });
 
 describe('validateCommonName', () => {
+
+  const checkValidate = (SAN, kidHostname) => {
+    validateCommonName(
+      [
+        {
+          extensions: [
+            {
+              extnID: X509_SUBJECT_ALT_NAME_KEY,
+              parsedValue: {
+                altNames: [{value: 'Example.com'}],
+              },
+            },
+          ],
+        },
+      ],
+      {kid: 'https://Example.com'}
+    );
+  }
+
   it('handles mixed case SAN', () => {
-    validateCommonName([
-      {
-        extensions: [
-          {
-            extnID: X509_SUBJECT_ALT_NAME_KEY,
-            parsedValue: {
-              altNames: [
-                {value: 'Example.com'}
-              ]
-            }
-          },
-        ],
-      },
-    ], {kid: 'https://Example.com'});
+    checkValidate('Example.com', 'https://Example.com');
+  });
+
+  it('handles different case SAN', () => {
+    checkValidate('ExAmpLe.cOm', 'https://example.com');
+  });
+
+  it('handles different case kid hostname', () => {
+    checkValidate('example.com', 'https://ExAmpLe.cOm');
   });
 });
