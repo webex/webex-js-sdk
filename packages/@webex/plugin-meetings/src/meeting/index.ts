@@ -8,6 +8,7 @@ import {
   ErrorType,
   Event,
   MediaType,
+  MediaContent,
   RemoteTrackType,
 } from '@webex/internal-media-core';
 
@@ -4805,7 +4806,7 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         );
 
-        if (mediaContent === 'MAIN') {
+        if (mediaContent === MediaContent.Main) {
           this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
         }
       }
