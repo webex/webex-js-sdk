@@ -5,7 +5,7 @@
  In our respective UTs, we can specify the return values of these functions
  using webex.request.mockReturnValue() or webex.request.mockReturnValueOnce().
 */
-import {MediaConnectionConfig} from '@webex/internal-media-core/dist/types/MediaConnection';
+import {MediaConnectionConfig} from '@webex/internal-media-core';
 import platform from 'platform';
 import {MobiusServers} from './types';
 
