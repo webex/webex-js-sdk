@@ -431,10 +431,8 @@ describe('plugin-meetings', () => {
         it('creates noise reduction effect with custom options passed', async () => {
           const effectOptions = {
             audioContext: {},
-            workletProcessorUrl: "test.url.com",
             mode: "WORKLET",
-            env: "prod",
-            avoidSimd: false
+            env: "prod"
           };
 
           const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
