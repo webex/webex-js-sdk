@@ -1354,8 +1354,42 @@ describe('MediaRequestManager', () => {
             },
           ], {preferLiveVideo});
         });
+
+        it('resets num of sources to 0 when reset() is called', async () => {
+          // set available streams to non-zero value
+          limitNumAvailableStreams(preferLiveVideo, 4);
+          sendMediaRequestsCallback.resetHistory();
+
+          // do the reset
+          mediaRequestManager.reset();
+
+          // add some receiver-selected and active-speaker requests
+          addReceiverSelectedRequest(200, fakeReceiveSlots[0], MAX_FS_360p, false);
+          addActiveSpeakerRequest(
+            255,
+            [fakeReceiveSlots[1], fakeReceiveSlots[2], fakeReceiveSlots[3]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+
+          mediaRequestManager.commit();
+
+          // verify that AS request was trimmed to 0, because we've reset mediaRequestManager so available streams count is 0 now
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 200,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+          ], {preferLiveVideo});
+        });
       })
     );
+
 
     it('throws if there are 2 active-speaker requests with different preferLiveVideo values', () => {
       addActiveSpeakerRequest(

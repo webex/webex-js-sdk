@@ -427,6 +427,8 @@ export class MediaRequestManager {
 
   public reset() {
     this.clientRequests = {};
+    this.numTotalSources = 0;
+    this.numLiveSources = 0;
   }
 
   public setNumCurrentSources(numTotalSources: number, numLiveSources: number) {
