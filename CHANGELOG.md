@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.154](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.153...v3.0.0-beta.154) (2023-06-30)
+
+
+### Bug Fixes
+
+* cannot join meetings if we have no microphone or camera permissions ([#2917](https://github.com/webex/webex-js-sdk/issues/2917)) ([2d0fdd8](https://github.com/webex/webex-js-sdk/commit/2d0fdd86daf2a24cd46b52671eb16d5baa89e20f))
+* **internal-plugin-encryption:** allow mixed case SAN ([#2916](https://github.com/webex/webex-js-sdk/issues/2916)) ([27652c9](https://github.com/webex/webex-js-sdk/commit/27652c9769f809920ae9a9cf260c68225bac36f2))
+* SDK requesting too many streams from Homer ([#2836](https://github.com/webex/webex-js-sdk/issues/2836)) ([c9a5056](https://github.com/webex/webex-js-sdk/commit/c9a50560aa752fd94bf2ed9170ff4e41af097e7d))
+
 ## [3.0.0-beta.153](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.152...v3.0.0-beta.153) (2023-06-28)
 
 
