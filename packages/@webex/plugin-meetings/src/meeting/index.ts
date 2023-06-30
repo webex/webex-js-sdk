@@ -4930,7 +4930,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.reconnect({networkDisconnect: true});
         NewMetrics.submitClientEvent({
           name: 'client.ice.end',
-          payload: {canProceed: false},
+          payload: {canProceed: false, icePhase: 'JOIN_MEETING_RETRY'},
           options: {
             meetingId: this.id,
             error: {
@@ -4966,6 +4966,7 @@ export default class Meeting extends StatelessWebexPlugin {
         case ConnectionState.Connected:
           NewMetrics.submitClientEvent({
             name: 'client.ice.end',
+            payload: {icePhase: 'IN_MEETING'},
             options: {
               meetingId: this.id,
             },
@@ -5370,6 +5371,8 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       })
       .catch((error) => {
+        // Do we have to send any event
+        // send media-engine.ready with an error - UCF uses errorCode 2004 ?
         LoggerProxy.logger.error(
           `${LOG_HEADER} Error adding media , setting up peerconnection, `,
           error
@@ -5403,6 +5406,17 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() =>
         this.mediaProperties.waitForMediaConnectionConnected().catch(() => {
+          NewMetrics.submitClientEvent({
+            name: 'client.ice.end',
+            payload: {canProceed: false, icePhase: 'JOIN_MEETING_FINAL'},
+            options: {
+              meetingId: this.id,
+              error: {
+                // TODO: adapt this code to work in separate JIRA
+                error: 'this is not really mapped, this error is very contextual.',
+              },
+            },
+          });
           throw new Error(
             `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
           );
@@ -5425,8 +5439,16 @@ export default class Meeting extends StatelessWebexPlugin {
           connectionType,
           isMultistream: this.isMultistream,
         });
+        // send media-engine.ready event at the end of a successful Meeting.addMedia()
+        NewMetrics.submitClientEvent({
+          name: 'media-engine.ready',
+          options: {
+            meetingId: this.id,
+          },
+        });
       })
       .catch((error) => {
+        // send media-engine.ready with an error - UCF uses errorCode 2004
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
