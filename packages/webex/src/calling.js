@@ -1,5 +1,6 @@
 import WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
+import {CALLING_FILE} from '@webex/calling/src/CallingClient/constants';
 
 /* eslint-disable require-jsdoc */
 require('@webex/internal-plugin-device');
@@ -15,7 +16,7 @@ const Webex = WebexCore.extend({
 });
 
 const logContext = {
-  file: 'Calling',
+  file: CALLING_FILE,
   method: 'calling.register',
 };
 
@@ -24,7 +25,7 @@ class Calling extends EventEmitter {
     super();
     this.callingConfig = callingConfig;
     this.log = WebexCalling.Logger;
-    this.log.setLogger(callingConfig.logger.level);
+    this.log.setLogger(callingConfig.logger.level, CALLING_FILE);
 
     if (webex) {
       this.webex = webex;
@@ -50,7 +51,12 @@ class Calling extends EventEmitter {
           .connect()
           .then(() => {
             this.log.info('Authentication: webex.internal.mercury.connect successful', logContext);
-            this.initializeClients();
+
+            try {
+              this.initializeClients();
+            } catch (error) {
+              this.log.warn(`Error occurred while initializing clients ${error}`, logContext);
+            }
           })
           .catch((error) => {
             this.log.warn(`Error occurred during mercury.connect() ${error}`, logContext);

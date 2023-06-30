@@ -1,4 +1,5 @@
 export const API_V1 = 'api/v1';
+export const VOICEMAIL_FILE = 'VoicemailClient';
 export const BROADWORKS_VOICEMAIL_FILE = 'BroadworksBackendConnector';
 export const BW_XSI_ENDPOINT_VERSION = 'v2.0';
 export const BW_XSI_URL = 'broadworksXsiActionsUrl';

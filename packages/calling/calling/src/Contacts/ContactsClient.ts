@@ -39,7 +39,7 @@ export class ContactsClient implements IContacts {
 
     this.webex = this.sdkConnector.getWebex();
 
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, CONTACTS_FILE);
   }
 
   /**

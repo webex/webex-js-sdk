@@ -3,7 +3,7 @@
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
 
-/* global Webex, Calling */
+/* global Calling */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -13,7 +13,6 @@
 /* eslint-disable max-len */
 
 // Globals
-let webex;
 let calling;
 let callingClient;
 let correlationId;
@@ -228,7 +227,6 @@ function initCalling(e) {
   }
 
   calling = new Calling({webexConfig, callingConfig});
-  webex = window.webex = calling.webex;
 
   calling.on('calling:ready', () => {
     console.log('Authentication :: Calling Ready');
@@ -321,7 +319,7 @@ function createDevice() {
   callingClient.on('callingClient:registered', (deviceInfo) => {
     registerElm.disabled = true;
     registrationStatusElm.innerText =
-      webex.internal.device.url !== ''
+      calling.webex.internal.device.url !== ''
         ? `Registered, deviceId: ${deviceInfo.device.deviceId}`
         : 'Not Registered';
     // unregisterElm.disabled = false;
@@ -779,19 +777,12 @@ async function createCallHistory() {
  * Function to use Voice Mail API's.
  */
 async function createVoiceMail() {
-  const backendConnector = webex.internal.device.callingBehavior;
+  const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
     voicemailElm.disabled = true;
 
     try {
-      // if (window.voicemail === undefined) {
-      //   voicemail = window.voicemail = calling.voicemailClient;
-      //   const initResponse = await voicemail.init();
-
-      //   console.log(`Init response `, initResponse);
-      // }
-
       const getVoicemailListResponse = await voicemail.getVoicemailList(
         voicemailOffset,
         voicemailOffsetLimit,

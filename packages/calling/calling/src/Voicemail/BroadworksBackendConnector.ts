@@ -78,7 +78,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     }
     this.webex = this.sdkConnector.getWebex();
     this.context = Math.random().toString(RADIX_RAND).substring(PREFIX);
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, BROADWORKS_VOICEMAIL_FILE);
   }
 
   /**

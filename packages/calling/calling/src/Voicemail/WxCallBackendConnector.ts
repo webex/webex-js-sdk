@@ -72,7 +72,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     this.context = Math.random().toString(RADIX_RAND).substring(PREFIX);
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, WEBEX_CALLING_VOICEMAIL_FILE);
   }
 
   /**
