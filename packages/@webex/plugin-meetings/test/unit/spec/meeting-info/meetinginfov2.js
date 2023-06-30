@@ -25,7 +25,6 @@ import MeetingInfo, {
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {forEach} from 'lodash';
 
@@ -383,7 +382,6 @@ describe('plugin-meetings', () => {
         ],
         ({errorCode}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
-            NewMetrics.submitClientEvent = sinon.stub();
             const message = 'a message';
             const meetingInfoData = 'meeting info';
 
@@ -408,8 +406,8 @@ describe('plugin-meetings', () => {
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              assert(NewMetrics.submitClientEvent.calledOnce);
-              assert.calledWith(NewMetrics.submitClientEvent, {
+              assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
+              assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
                 name: 'client.meetinginfo.response',
                 payload: {
                   identifiers: {
@@ -442,7 +440,6 @@ describe('plugin-meetings', () => {
       );
 
       it('should not send CA metric if meetingId is not provided', async () => {
-        NewMetrics.submitClientEvent = sinon.stub();
         const message = 'a message';
         const meetingInfoData = 'meeting info';
 
@@ -466,12 +463,11 @@ describe('plugin-meetings', () => {
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
-          assert.notCalled(NewMetrics.submitClientEvent);
+          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
         }
       });
 
       it('should not have errors if parsing error returns null', async () => {
-        NewMetrics.submitClientEvent = sinon.stub();
         sinon.stub(Metrics, 'parseWebexApiError').returns(null);
         const message = 'a message';
         const meetingInfoData = 'meeting info';
@@ -497,7 +493,7 @@ describe('plugin-meetings', () => {
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
-          assert.calledWith(NewMetrics.submitClientEvent, {
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.meetinginfo.response',
             payload: {
               identifiers: {

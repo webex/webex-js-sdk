@@ -1,4 +1,3 @@
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {isEqual, assignWith, cloneDeep} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -26,6 +25,8 @@ import ControlsUtils from './controlsUtils';
 import EmbeddedAppsUtils from './embeddedAppsUtils';
 import MediaSharesUtils from './mediaSharesUtils';
 import LocusDeltaParser from './parser';
+
+let NewMetrics;
 
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
@@ -82,6 +83,7 @@ export default class LocusInfo extends EventsScope {
     this.meetingId = meetingId;
     this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
+    NewMetrics = this.webex.internal.newMetrics;
   }
 
   /**

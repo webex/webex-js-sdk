@@ -2,7 +2,7 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, NewMetrics, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
+import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -123,6 +123,7 @@ import {LocusMediaRequest} from './locusMediaRequest';
 import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
+let NewMetrics;
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -1207,6 +1208,21 @@ export default class Meeting extends StatelessWebexPlugin {
         this.updateTranscodedMediaConnection();
       }
     };
+
+    // @ts-ignore
+    NewMetrics = this.webex.internal.newMetrics;
+  }
+
+  /**
+   * Temporary func to return webex object,
+   * in order to access internal plugin metrics
+   * in the utils file.
+   * @internal
+   * @returns {object} webex object
+   */
+  getWebexObject() {
+    // @ts-ignore
+    return this.webex;
   }
 
   /**

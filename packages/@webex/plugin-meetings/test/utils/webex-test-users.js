@@ -13,6 +13,7 @@ require('@webex/internal-plugin-user');
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-conversation');
 require('@webex/internal-plugin-support');
+require('@webex/internal-plugin-metrics');
 require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
