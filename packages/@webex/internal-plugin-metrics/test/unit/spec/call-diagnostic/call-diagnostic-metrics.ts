@@ -40,9 +40,6 @@ describe('internal-plugin-metrics', () => {
         },
       },
     };
-    const meetingCollection = {
-      get: sinon.stub().returns(fakeMeeting),
-    };
 
     const webex = {
       version: 'webex-version',
@@ -52,6 +49,9 @@ describe('internal-plugin-metrics', () => {
         },
       },
       meetings: {
+        meetingCollection: {
+          get: sinon.stub().returns(fakeMeeting),
+        },
         metrics: {
           clientName: 'Cantina',
         },
@@ -65,7 +65,8 @@ describe('internal-plugin-metrics', () => {
     beforeEach(() => {
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
-      cd = new CallDiagnosticMetrics();
+
+      cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
 
     });
@@ -75,7 +76,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should build origin correctly', () => {
-      cd.initialSetup(meetingCollection, webex);
 
       sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
@@ -104,8 +104,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should build identifiers correctly', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       const res = cd.getIdentifiers({
         mediaConnections: [
           {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
@@ -127,8 +125,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should throw Error if correlationId is missing', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       assert.throws(() =>
         cd.getIdentifiers({
           mediaConnections: [
@@ -140,8 +136,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should prepare diagnostic event successfully', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
       const clearEmptyKeysRecursivelyStub = sinon.stub(Utils, 'clearEmptyKeysRecursively');
@@ -207,19 +201,6 @@ describe('internal-plugin-metrics', () => {
           eventData: {
             webClientDomain: 'whatever',
           },
-          identifiers: {
-            correlationId: 'correlationId',
-            deviceId: 'deviceUrl',
-            locusId: 'url',
-            locusStartTime: 'lastActive',
-            locusUrl: 'locus/url',
-            mediaAgentAlias: 'alias',
-            mediaAgentGroupId: '1',
-            orgId: 'orgId',
-            userId: 'userId',
-          },
-          loginType: 'login-ci',
-          name: 'client.alert.displayed',
           userType: 'host',
         },
         options

@@ -4,7 +4,6 @@
 
 /* eslint-disable no-warning-comments */
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import {
@@ -23,6 +22,7 @@ import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
+let NewMetrics;
 /**
  * Used to indicate that the reconnect logic needs to be retried.
  *
@@ -137,6 +137,8 @@ export default class ReconnectionManager {
 
     // Make sure reconnection state is in default
     this.reset();
+    // @ts-ignore
+    NewMetrics = meeting.webex.internal.newMetrics;
   }
 
   /**

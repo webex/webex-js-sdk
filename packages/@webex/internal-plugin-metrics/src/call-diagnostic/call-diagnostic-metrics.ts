@@ -5,6 +5,8 @@ import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
+import {StatelessWebexPlugin} from '@webex/webex-core';
+
 import {
   anonymizeIPAddress,
   clearEmptyKeysRecursively,
@@ -40,32 +42,17 @@ type GetIdentifiersOptions = {
  * @export
  * @class CallDiagnosticMetrics
  */
-export default class CallDiagnosticMetrics {
-  meetingCollection: any;
-  webex: any;
+export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
 
   /**
    * Constructor
-   * @constructor
-   * @public
+   * @param args
    */
-  constructor() {
-    this.meetingCollection = null;
-  }
-
-  /**
-   * Initializes the CallDiagnosticMetrics singleton with a meeting Collection.
-   *
-   * @param meetingCollection meetings object
-   * @param webex  webex SDK object
-   *
-   * @returns
-   */
-  public initialSetup(meetingCollection: any, webex: object) {
-    this.meetingCollection = meetingCollection;
-    this.webex = webex;
+  constructor(...args) {
+    super(...args);
+    // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
   }
 
@@ -81,7 +68,8 @@ export default class CallDiagnosticMetrics {
     let environment: Event['origin']['environment'];
 
     if (meetingId) {
-      const meeting = this.meetingCollection.get(meetingId);
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       defaultClientType = meeting.config?.metrics?.clientType;
       defaultSubClientType = meeting.config?.metrics?.subClientType;
@@ -96,13 +84,17 @@ export default class CallDiagnosticMetrics {
         name: 'endpoint',
         networkType: options.networkType || 'unknown',
         userAgent: userAgentToString({
+          // @ts-ignore
           clientName: this.webex.meetings?.metrics?.clientName,
+          // @ts-ignore
           webexVersion: this.webex.version,
         }),
         clientInfo: {
           clientType: defaultClientType || options.clientType,
+          // @ts-ignore
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
           localNetworkPrefix:
+            // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: defaultSubClientType || options.subClientType,
@@ -133,11 +125,11 @@ export default class CallDiagnosticMetrics {
       identifiers.userId = meeting.userId;
       identifiers.deviceId = meeting.deviceUrl;
       identifiers.orgId = meeting.orgId;
-      // @ts-ignore fix type
+      // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
     }
 
-    if (meeting.locusUrl && meeting.locusInfo.fullState) {
+    if (meeting?.locusUrl && meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
       identifiers.locusId = meeting.locusUrl && meeting.locusUrl.split('/').pop();
       identifiers.locusStartTime =
@@ -176,6 +168,7 @@ export default class CallDiagnosticMetrics {
         // is overridden in prepareRequest batcher
         sent: 'not_defined_yet',
       },
+      // @ts-ignore
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: eventData,
     };
@@ -224,7 +217,8 @@ export default class CallDiagnosticMetrics {
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      const meeting = this.meetingCollection.get(meetingId);
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       // grab identifiers
       const identifiers = this.getIdentifiers({

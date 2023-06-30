@@ -1,15 +1,26 @@
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {NewMetrics as NewMetricsType} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {REACHABILITY} from '../constants';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 
+let NewMetrics: NewMetricsType;
 /**
  * @class RoapRequest
  */
 export default class RoapRequest extends StatelessWebexPlugin {
+  /**
+   * Constructr
+   * @param {any} args
+   */
+  constructor(...args) {
+    super(...args);
+    // @ts-ignore
+    NewMetrics = this.webex.internal.newMetrics;
+  }
+
   /**
    * Returns reachability data.
    * @param {Object} localSdp

@@ -1,5 +1,4 @@
 import {LocalCameraTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -19,6 +18,7 @@ import PermissionError from '../common/errors/permission';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 
+let NewMetrics;
 const MeetingUtil = {
   parseLocusJoin: (response) => {
     const parsed: any = {};
@@ -41,6 +41,7 @@ const MeetingUtil = {
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
+    NewMetrics = meeting.getWebexObject().internal.newMetrics;
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -89,6 +90,7 @@ const MeetingUtil = {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
+    NewMetrics = meeting.getWebexObject().internal.newMetrics;
 
     NewMetrics.submitClientEvent({
       name: 'client.locus.join.request',
@@ -241,6 +243,8 @@ const MeetingUtil = {
     (currentMediaStatus.audio || currentMediaStatus.video || currentMediaStatus.share),
 
   joinMeetingOptions: (meeting, options: any = {}) => {
+    NewMetrics = meeting.getWebexObject().internal.newMetrics;
+
     meeting.resourceId = meeting.resourceId || options.resourceId;
 
     if (meeting.requiredCaptcha) {

@@ -1,7 +1,6 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {isEmpty, merge} from 'lodash';
 import Batcher from '../batcher';
 import {ClientEvent, MetricEventNames} from '../metrics.types';
@@ -39,7 +38,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // check event names and append latencies?
     const eventName = item.eventPayload?.event?.name as MetricEventNames;
     const joinTimes: ClientEvent['payload']['joinTimes'] = {};
-    const cdl = NewMetrics.callDiagnosticLatencies;
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
     switch (eventName) {
       case 'client.interstitial-window.launched':

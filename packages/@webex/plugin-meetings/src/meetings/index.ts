@@ -10,7 +10,6 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import Metrics from '../metrics';
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
@@ -60,6 +59,8 @@ import MeetingCollection from './collection';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
 import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
+
+let NewMetrics;
 
 let mediaLogger;
 
@@ -644,7 +645,7 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       Metrics.initialSetup(this.meetingCollection, this.webex);
       // @ts-ignore
-      NewMetrics.initialSetupCallDiagnosticMetrics(this.meetingCollection, this.webex);
+      NewMetrics = this.webex.internal.newMetrics;
     });
   }
 

@@ -9,7 +9,6 @@ import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 import {
   LOCUSINFO,
@@ -47,7 +46,6 @@ describe('plugin-meetings', () => {
     });
 
     beforeEach(() => {
-      NewMetrics.submitClientEvent = sinon.stub();
       mockMeeting = {};
       locusInfo = new LocusInfo(updateMeeting, webex, meetingId);
 
@@ -1900,7 +1898,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.remote-ended',
           options: {
             meetingId: locusInfo.meetingId,
@@ -1920,7 +1918,7 @@ describe('plugin-meetings', () => {
         };
         locusInfo.isMeetingActive();
 
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.remote-ended',
           options: {
             meetingId: locusInfo.meetingId,
@@ -1941,7 +1939,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.remote-ended',
           options: {
             meetingId: locusInfo.meetingId,
@@ -1963,7 +1961,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.remote-ended',
           options: {
             meetingId: locusInfo.meetingId,
@@ -1985,7 +1983,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.remote-ended',
           options: {
             meetingId: locusInfo.meetingId,

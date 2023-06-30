@@ -3,11 +3,10 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import Metrics, {config} from '@webex/internal-plugin-metrics';
+import {config} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-
 const flushPromises = () => new Promise(setImmediate);
 
 describe('plugin-metrics', () => {
@@ -18,14 +17,12 @@ describe('plugin-metrics', () => {
       //@ts-ignore
       webex = new MockWebex({
         children: {
-          metrics: Metrics,
-        },
+          newMetrics: NewMetrics
+        }
       });
 
       webex.request = (options) => Promise.resolve({body: {items: []}, options});
       sinon.spy(webex, 'request');
-
-      NewMetrics.initialSetupCallDiagnosticMetrics({}, webex);
 
       webex.config.metrics = config.metrics;
     });
@@ -37,7 +34,7 @@ describe('plugin-metrics', () => {
     describe('#request()', () => {
       describe('when the request completes successfully', async () => {
         it('clears the queue', async () => {
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
           );
@@ -45,11 +42,11 @@ describe('plugin-metrics', () => {
 
           //@ts-ignore
           assert.calledOnce(webex.request);
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('doesnt include any joinTimes for other events', async () => {
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.alert.displayed'}}
           );
@@ -60,12 +57,12 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.alert.displayed',
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.interstitial-window.launched', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
           );
@@ -80,12 +77,12 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.call.initiated', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.call.initiated'}}
           );
@@ -100,14 +97,14 @@ describe('plugin-metrics', () => {
               showInterstitialTime: 10,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.locus.join.response', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          NewMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon.stub().returns(20);
-          NewMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon.stub().returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
           );
@@ -128,12 +125,12 @@ describe('plugin-metrics', () => {
               totalJmt: 20,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.ice.end', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.ice.end'}}
           );
@@ -150,12 +147,12 @@ describe('plugin-metrics', () => {
               videoICESetupTime: 10,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.media.rx.start', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media.rx.start'}}
           );
@@ -169,12 +166,12 @@ describe('plugin-metrics', () => {
               localSDPGenRemoteSDPRecv: 10,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('appends the correct join times to the request for client.media-engine.ready', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10)
+          await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media-engine.ready'}}
           );
@@ -188,7 +185,7 @@ describe('plugin-metrics', () => {
               totalMediaJMT: 40,
             },
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
       });
     });
