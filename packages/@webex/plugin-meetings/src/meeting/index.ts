@@ -8,7 +8,6 @@ import {
   ErrorType,
   Event,
   MediaType,
-  MediaContent,
   RemoteTrackType,
 } from '@webex/internal-media-core';
 
@@ -670,6 +669,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       video: new MediaRequestManager(
@@ -690,6 +690,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: true,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -710,6 +711,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -730,6 +732,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: false,
         }
       ),
     };
@@ -4806,9 +4809,7 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         );
 
-        if (mediaContent === MediaContent.Main) {
-          this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
-        }
+        this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
       }
     );
 

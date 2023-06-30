@@ -72,6 +72,7 @@ type Kind = 'audio' | 'video';
 type Options = {
   degradationPreferences: DegradationPreferences;
   kind: Kind;
+  trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
 };
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
@@ -93,17 +94,19 @@ export class MediaRequestManager {
 
   private previousStreamRequests: Array<StreamRequest> = [];
 
-  private numTotalSources?: number;
-  private numLiveSources?: number;
+  private trimRequestsToNumOfSources: boolean;
+  private numTotalSources: number;
+  private numLiveSources: number;
 
   constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
-    this.numLiveSources = undefined;
-    this.numTotalSources = undefined;
+    this.numLiveSources = 0;
+    this.numTotalSources = 0;
     this.clientRequests = {};
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
+    this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -243,8 +246,7 @@ export class MediaRequestManager {
   private trimRequests(clientRequests: ClientRequestsMap) {
     const preferLiveVideo = this.getPreferLiveVideo();
 
-    if (this.numLiveSources === undefined || this.numTotalSources === undefined) {
-      // for audio and screen share we don't keep track of number of sources and we don't do trimming
+    if (!this.trimRequestsToNumOfSources) {
       return;
     }
 

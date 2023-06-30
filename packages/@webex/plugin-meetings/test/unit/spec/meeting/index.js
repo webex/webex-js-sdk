@@ -4282,6 +4282,8 @@ describe('plugin-meetings', () => {
             const numLiveSources = 6;
             const mediaContent = 'SLIDES';
 
+            sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
             eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
 
             assert.calledOnceWithExactly(TriggerProxy.trigger,
@@ -4315,28 +4317,15 @@ describe('plugin-meetings', () => {
             );
           });
 
-          it('calls setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for MAIN', () => {
+          it('calls setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event', () => {
             const numTotalSources = 20;
             const numLiveSources = 10;
-            const mediaContent = 'MAIN';
 
             const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
 
-            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, 'whatever');
 
             assert.calledOnceWithExactly(setNumCurrentSourcesSpy, numTotalSources, numLiveSources);
-          });
-
-          it('does not call setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for SLIDES', () => {
-            const numTotalSources = 20;
-            const numLiveSources = 10;
-            const mediaContent = 'SLIDES';
-
-            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
-
-            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
-
-            assert.notCalled(setNumCurrentSourcesSpy);
           });
         })
       });

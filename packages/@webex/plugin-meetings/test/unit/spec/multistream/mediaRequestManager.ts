@@ -55,6 +55,7 @@ describe('MediaRequestManager', () => {
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
       degradationPreferences,
       kind: 'video',
+      trimRequestsToNumOfSources: false,
     });
 
     // create some fake receive slots used by the tests
@@ -971,6 +972,7 @@ describe('MediaRequestManager', () => {
       const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, {
         degradationPreferences,
         kind: 'audio',
+        trimRequestsToNumOfSources: false,
       });
       mediaRequestManagerAudio.setNumCurrentSources(100, 100);
       sendMediaRequestsCallback.resetHistory();
@@ -1084,6 +1086,13 @@ describe('MediaRequestManager', () => {
   });
 
   describe('trimming of requested receive slots', () => {
+    beforeEach(() => {
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: true,
+      });
+    });
 
     const limitNumAvailableStreams = (preferLiveVideo, limit) => {
       if (preferLiveVideo) {
@@ -1273,22 +1282,30 @@ describe('MediaRequestManager', () => {
             preferLiveVideo
           );
 
-          // Set maxMacroblocksLimit to a value that's big enough just for the RS requests,
+          // Set maxMacroblocksLimit to a value that's big enough just for the 2 RS requests and 1 AS with 1 slot of 360p.
           // but not big enough for all of the RS and AS requests. If maxMacroblocksLimit
           // was applied first, the resolution of all requests (including RS ones) would be degraded
-          // This test verifies that it's not happening and the RS requests are not affected.
-          mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: MAX_FS_360p + MAX_FS_720p});
+          // This test verifies that it's not happening and the resolutions are not affected.
+          mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: MAX_FS_360p + MAX_FS_720p + MAX_FS_360p});
           sendMediaRequestsCallback.resetHistory();
 
-          /* Limit the num of streams so that only RS requests can be sent out */
-          limitNumAvailableStreams(preferLiveVideo, 2);
+          /* Limit the num of streams so that only 2 RS requests and 1 AS with 1 slot can be sent out */
+          limitNumAvailableStreams(preferLiveVideo, 3);
 
-          // check what got trimmed - only RS requests should remain and with unchanged resolutions
+          // check what got trimmed - the remaining requests should have unchanged resolutions
           checkMediaRequestsSent([
             {
               policy: 'receiver-selected',
               csi: 200,
               receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
+            },
+            {
+              policy: 'active-speaker',
+              priority: 255,
+              receiveSlots: [fakeWcmeSlots[1]],
               maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
               maxFs: MAX_FS_360p,
               maxMbps: MAX_MBPS_360p,
@@ -1300,6 +1317,40 @@ describe('MediaRequestManager', () => {
               maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
               maxFs: MAX_FS_720p,
               maxMbps: MAX_MBPS_720p,
+            },
+          ], {preferLiveVideo});
+        });
+
+        it('trims all AS requests completely until setNumCurrentSources() is called with non-zero values', async () => {
+          // add some receiver-selected and active-speaker requests
+          addReceiverSelectedRequest(200, fakeReceiveSlots[0], MAX_FS_360p, false);
+          addActiveSpeakerRequest(
+            255,
+            [fakeReceiveSlots[1], fakeReceiveSlots[2], fakeReceiveSlots[3]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+          addActiveSpeakerRequest(
+            254,
+            [fakeReceiveSlots[5]],
+            MAX_FS_360p,
+            false,
+            preferLiveVideo
+          );
+
+          mediaRequestManager.commit();
+
+          // we're not calling setNumCurrentSources(), so it should use the initial values of 0 for sources count
+          // and completely trim all AS requests to 0
+          checkMediaRequestsSent([
+            {
+              policy: 'receiver-selected',
+              csi: 200,
+              receiveSlot: fakeWcmeSlots[0],
+              maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+              maxFs: MAX_FS_360p,
+              maxMbps: MAX_MBPS_360p,
             },
           ], {preferLiveVideo});
         });
