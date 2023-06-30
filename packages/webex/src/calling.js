@@ -1,6 +1,5 @@
 import WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
-import {CALLING_FILE} from '@webex/calling/src/CallingClient/constants';
 
 /* eslint-disable require-jsdoc */
 require('@webex/internal-plugin-device');
@@ -14,6 +13,8 @@ const config = require('./config');
 const Webex = WebexCore.extend({
   webex: true,
 });
+
+const CALLING_FILE = 'Calling';
 
 const logContext = {
   file: CALLING_FILE,
