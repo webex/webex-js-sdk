@@ -36,7 +36,6 @@ button.btn--red {
 
 button.btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
-  margin: 0.2rem 0;
 }
 
 .container {
@@ -129,7 +128,9 @@ button.btn-code {
   align-content: center;
 }
 
-.video-container {
+.video-container,
+.audio-container,
+.screenshare-container {
   position: relative;
   display: flex;
   justify-content: center;
@@ -364,6 +365,38 @@ legend {
   position: absolute;
   left: 0.5rem;
   top: 0.5rem;
+  opacity: 0.75;
+  user-select: none;
+  color: #083f88;
+  background-color: rgb(255 255 255);
+  padding: 0.3rem;
+}
+
+.video-published {
+  position: absolute;
+  left: 6.5rem;
+  top: 0.5rem;
+  opacity: 0.75;
+  user-select: none;
+  color: #083f88;
+  background-color: rgb(255 255 255);
+  padding: 0.3rem;
+}
+
+.audio-published {
+  background: #f1f0ee;
+  position: absolute;
+  left: 7.5rem;
+  top: -5.5rem;
+  opacity: 0.75;
+  user-select: none;
+  color: #083f88;
+  padding: 0.3rem;
+}
+
+.screenshare-published {
+  position: absolute;
+  left: 0.5rem;
   opacity: 0.75;
   user-select: none;
   color: #083f88;
