@@ -8,6 +8,7 @@ import {Token, Credentials} from '@webex/webex-core';
 import FakeTimers from '@sinonjs/fake-timers';
 import sinon from 'sinon';
 import Metrics, {config} from '@webex/internal-plugin-metrics';
+import {expect} from 'chai';
 
 function promiseTick(count) {
   let promise = Promise.resolve();
@@ -128,6 +129,67 @@ describe('plugin-metrics', () => {
             assert.equal(metric.version, webex.version);
             assert.equal(metric.env, 'TEST');
           });
+      });
+    });
+
+    describe.only('#getClientMetricsPayload()', () => {
+      it('returns the expected payload', () => {
+        webex.credentials.supertoken = new Token(
+          {
+            access_token: 'a_b_orgid',
+          },
+          {parent: webex}
+        );
+
+        const testPayload = {
+          tags: {success: true},
+          fields: {perceivedDurationInMillis: 314},
+          context: {},
+          eventPayload: {value: 'splunk business metric payload'},
+        };
+        const date = clock.now;
+
+        const result = metrics.getClientMetricsPayload('test', testPayload);
+
+        assert.deepEqual(result, {
+          context: {
+            app: {
+              version: undefined,
+            },
+            locale: 'en-US',
+            os: {
+              name: 'other',
+              version: '4.15.0-65-generic',
+            },
+          },
+          eventPayload: {
+            value: 'splunk business metric payload',
+          },
+          fields: {
+            browser_version: '',
+            client_id: 'fake',
+            os_version: '4.15.0-65-generic',
+            perceivedDurationInMillis: 314,
+            platform: 'Web',
+            sdk_version: undefined,
+            spark_user_agent: 'webex-js-sdk appName/appVersion appPlatform',
+          },
+          metricName: 'test',
+          tags: {
+            browser: '',
+            domain: 'non-browser',
+            os: 'other',
+            success: true,
+          },
+          timestamp: 0,
+          type: ['operational'],
+        });
+      });
+
+      it('throws when no event name is specified', () => {
+        assert.throws(() => {
+          metrics.getClientMetricsPayload();
+        }, 'Missing behavioral metric name. Please provide one');
       });
     });
 
