@@ -22,7 +22,9 @@ export default function request(options) {
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
 
-  return intercept(options.interceptors, 'Request')
+  return intercept(options, options.interceptors, 'Request')
     .then((...args) => _request(options, ...args))
-    .then((...args) => intercept(options.interceptors.slice().reverse(), 'Response', ...args));
+    .then((...args) =>
+      intercept(options, options.interceptors.slice().reverse(), 'Response', ...args)
+    );
 }
