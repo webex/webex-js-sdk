@@ -7,6 +7,7 @@ import {
   Errors,
   ErrorType,
   Event,
+  MediaContent,
   MediaType,
   RemoteTrackType,
 } from '@webex/internal-media-core';
@@ -669,6 +670,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       video: new MediaRequestManager(
@@ -689,6 +691,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: true,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -709,6 +712,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -729,6 +733,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: false,
         }
       ),
     };
@@ -4804,6 +4809,10 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaContent,
           }
         );
+
+        if (mediaContent === MediaContent.Main) {
+          this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
+        }
       }
     );
 
@@ -5117,10 +5126,13 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => {
         this.setMercuryListener();
       })
-      .then(() =>
-        getDevices().then((devices) => {
-          MeetingUtil.handleDeviceLogging(devices);
-        })
+      .then(
+        () =>
+          getDevices()
+            .then((devices) => {
+              MeetingUtil.handleDeviceLogging(devices);
+            })
+            .catch(() => {}) // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
       )
       .then(() => {
         this.handleMediaLogging(this.mediaProperties);
