@@ -4930,7 +4930,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.reconnect({networkDisconnect: true});
         NewMetrics.submitClientEvent({
           name: 'client.ice.end',
-          payload: {canProceed: false, icePhase: 'JOIN_MEETING_RETRY'},
+          payload: {canProceed: false, icePhase: 'IN_MEETING'},
           options: {
             meetingId: this.id,
             error: {
@@ -4966,7 +4966,6 @@ export default class Meeting extends StatelessWebexPlugin {
         case ConnectionState.Connected:
           NewMetrics.submitClientEvent({
             name: 'client.ice.end',
-            payload: {icePhase: 'IN_MEETING'},
             options: {
               meetingId: this.id,
             },
@@ -5371,8 +5370,6 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       })
       .catch((error) => {
-        // Do we have to send any event
-        // send media-engine.ready with an error - UCF uses errorCode 2004 ?
         LoggerProxy.logger.error(
           `${LOG_HEADER} Error adding media , setting up peerconnection, `,
           error
@@ -5448,7 +5445,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       })
       .catch((error) => {
-        // send media-engine.ready with an error - UCF uses errorCode 2004
+        // remove send media-engine.ready with an error - UCF uses errorCode 2004
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),

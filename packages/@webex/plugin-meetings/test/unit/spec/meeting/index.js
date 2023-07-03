@@ -1216,6 +1216,22 @@ describe('plugin-meetings', () => {
               errorThrown = true;
             });
 
+          assert.calledTwice(NewMetrics.submitClientEvent);
+
+          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL'
+            },
+            options: {                   
+              meetingId: meeting.id,
+              error: {
+                error: 'this is not really mapped, this error is very contextual.',
+              }
+            },
+          });
+
           assert.isTrue(errorThrown);
         });
 
@@ -1231,6 +1247,14 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             isMultistream: false
+          });
+
+          assert.called(NewMetrics.submitClientEvent);
+          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            name: 'media-engine.ready',
+            options: {                   
+              meetingId: meeting.id,
+            },
           });
         });
 
@@ -4010,6 +4034,30 @@ describe('plugin-meetings', () => {
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
             type: 'remoteShare',
             stream: {id: 'stream'},
+          });
+        });
+
+        describe('submitClientEvent on connectionFailed', () => {
+          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Failed',
+            });
+            assert.calledOnce(NewMetrics.submitClientEvent);
+
+            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              payload: {
+                canProceed: false,
+                icePhase: 'IN_MEETING'
+              },
+              options: {                   
+                meetingId: meeting.id,
+                error: {
+                  error: 'this is not really mapped, this error is very contextual.',
+                }
+              },
+            });
           });
         });
 
