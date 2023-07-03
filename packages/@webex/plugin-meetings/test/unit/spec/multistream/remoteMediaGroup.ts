@@ -97,6 +97,272 @@ describe('RemoteMediaGroup', () => {
     });
   });
 
+  describe('setPreferLiveVideo', () => {
+    it('updates prefer live video', () => {
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: false,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            preferLiveVideo: true
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        }),
+        false,
+      );
+    });
+
+    it('does not call add request when prefer live video has not changed', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setPreferLiveVideo(true, false);
+
+      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+
+      assert.notCalled(fakeMediaRequestManager.addRequest);
+    });
+
+  });
+
+  describe('setActiveSpeakerCsis', () => {
+    it('checks when there is a csi and remote media is not in pinned array', () => {
+      const PINNED_INDEX = 2;
+      const CSI = 11111;
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      // initially nothing should be pinned
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
+
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
+
+      resetHistory();
+
+      group.setActiveSpeakerCsis([{remoteMedia, csi: CSI}], false);
+
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
+
+      assert.strictEqual(group.isPinned(remoteMedia), true);
+      // now check that correct media requests were sent...
+
+      const expectedReceiverSelectedSlots = [fakeReceiveSlots[PINNED_INDEX]];
+      const expectedActiveSpeakerReceiveSlots = fakeReceiveSlots.filter(
+        (_, idx) => idx !== PINNED_INDEX
+      );
+
+      // the previous active speaker media request for the group should have been cancelled
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake active speaker request 1');
+      // a new one should be sent for active speaker and for receiver selected
+      assert.calledTwice(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: expectedActiveSpeakerReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        })
+      );
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi: CSI,
+          }),
+          receiveSlots: expectedReceiverSelectedSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        })
+      );
+      assert.notCalled(fakeMediaRequestManager.commit);
+    });
+
+    it('checks when there is csi and remoteMedia is in pinned array', () => {
+      const PINNED_INDEX = 4;
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      // take one instance of remote media from the group
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
+
+      resetHistory();
+
+      // pin it so that it is in pinned array
+      group.setActiveSpeakerCsis([{remoteMedia, csi: 1234}], false);
+
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
+
+      resetHistory();
+      // normally this would result in the underlying receive slot csi to be updated, because we're using fake
+      // receive slots, we have to do that manually:
+      fakeReceiveSlots[PINNED_INDEX].csi = 1234;
+      const expectedReceiverSelectedSlots = [fakeReceiveSlots[PINNED_INDEX]];
+
+      // pin again to same CSI
+      group.setActiveSpeakerCsis([{remoteMedia, csi: 1234}], false);
+
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
+
+      assert.strictEqual(group.isPinned(remoteMedia), true);
+      
+      assert.calledTwice(fakeMediaRequestManager.cancelRequest);
+      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi: 1234,
+          }),
+          receiveSlots: expectedReceiverSelectedSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        })
+      );
+      assert.notCalled(fakeMediaRequestManager.commit);
+    });
+
+    it('checks setActiveSpeakerCsis with array of remoteMedia to pin and unpin', () => {
+      const PINNED_INDEX = 2;
+      const PINNED_INDEX2 = 0;
+      const CSI = 11111;
+      const CSI2 = 12345;
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      // initially nothing should be pinned
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
+
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
+
+      const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
+
+      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}];
+
+      group.setActiveSpeakerCsis(remoteMedisCsis, false);
+
+     assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 2);
+     assert.strictEqual(group.getRemoteMedia('pinned').length, 2);
+
+     assert.strictEqual(group.isPinned(remoteMedia), true);
+     assert.strictEqual(group.isPinned(remoteMedia2), true);
+
+     resetHistory();
+
+     group.setActiveSpeakerCsis([{remoteMedia}], false);
+
+     // one pane should still remain pinned
+     assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+     assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+     assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
+     assert.strictEqual(group.isPinned(remoteMedia), false);
+     assert.strictEqual(group.isPinned(remoteMedia2), true);
+
+     assert.calledTwice(fakeMediaRequestManager.cancelRequest);
+     assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+     assert.notCalled(fakeMediaRequestManager.commit);
+    });
+
+    it('check commit is only called once', () => {
+      const PINNED_INDEX = 2;
+      const PINNED_INDEX2 = 0;
+      const CSI = 11111;
+      const CSI2 = 12345;
+
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
+
+      resetHistory();
+
+      const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
+
+      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}, {remoteMedia}];
+
+      group.setActiveSpeakerCsis(remoteMedisCsis, true);
+
+      assert.calledOnce(fakeMediaRequestManager.commit);
+    });
+
+    it('throws when remoteMedia id is not in unpinned and pinned array - csi is there', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
+    });
+
+    it('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any}], false), 'failed to unpin a remote media object r1, because it is not found in this remote media group');
+    });
+  });
+
   describe('pinning', () => {
     it('works as expected', () => {
       const PINNED_INDEX = 2;

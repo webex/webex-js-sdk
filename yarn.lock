@@ -4164,13 +4164,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:1.38.2":
-  version: 1.38.2
-  resolution: "@webex/internal-media-core@npm:1.38.2"
+"@webex/internal-media-core@npm:1.38.5":
+  version: 1.38.5
+  resolution: "@webex/internal-media-core@npm:1.38.5"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:2.0.1"
-    "@webex/ts-sdp": "npm:1.3.2"
+    "@webex/ts-sdp": "npm:1.4.1"
     "@webex/web-client-media-engine": "npm:2.1.3"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
@@ -4178,7 +4178,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: 2f125e9a2f5f15bf9b769befcb198d2f731e747ecc8d26b533b04e8e12f127bfc1c384fe69057f670efa81cdfcbcb06f6009756aea53ae88cf633fd0c0ae69d6
+  checksum: ee9d23e90465182d7f4dce40ebfb9c04418deb00873c8222ada9d59cd8d8928e2d772361d3284c6dedd651d694bf3c45b475d6ce918d149039641c5b0e1bd497
   languageName: node
   linkType: hard
 
@@ -4299,12 +4299,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss"
   dependencies:
+    "@webex/common": "workspace:^"
     "@webex/internal-plugin-dss": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/webex-core": "workspace:^"
     lodash: "npm:^4.17.21"
+    sinon: "npm:^9.2.4"
     uuid: "npm:^3.3.2"
   languageName: unknown
   linkType: soft
@@ -4643,7 +4645,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:1.38.2"
+    "@webex/internal-media-core": "npm:1.38.5"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/web-media-effects": "npm:^2.8.0"
@@ -4779,7 +4781,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:1.38.2"
+    "@webex/internal-media-core": "npm:1.38.5"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -5195,10 +5197,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ts-sdp@npm:1.3.2":
-  version: 1.3.2
-  resolution: "@webex/ts-sdp@npm:1.3.2"
-  checksum: 6c96fcd880dc068315be85c9edea2b00deeb1ff1fa351f85ce3aeda335ced839b799883113925ee78ef9d77e4f59a8433dc73320aa4fcb03fe1fbc376ad59d2f
+"@webex/ts-sdp@npm:1.4.1":
+  version: 1.4.1
+  resolution: "@webex/ts-sdp@npm:1.4.1"
+  checksum: 1249d16ab5c8c6b150f292f5da8734badb65451a5c9a59683fcc0278274dcda7a52ff4914135c9b058cf960a50ff470d3820bb890cb910964fa9c73378654309
   languageName: node
   linkType: hard
 

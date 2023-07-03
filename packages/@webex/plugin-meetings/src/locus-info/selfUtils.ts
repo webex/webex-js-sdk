@@ -14,7 +14,6 @@ import {
   AUDIO,
   VIDEO,
   MediaContent,
-  SELF_ROLES,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -37,6 +36,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       remoteMuted: SelfUtils.getRemoteMuted(self),
       unmuteAllowed: SelfUtils.getUnmuteAllowed(self),
       localAudioUnmuteRequested: SelfUtils.getLocalAudioUnmuteRequested(self),
+      localAudioUnmuteRequestedTimeStamp: SelfUtils.getLocalAudioUnmuteRequestedTimeStamp(self),
       localAudioUnmuteRequired: SelfUtils.getLocalAudioUnmuteRequired(self),
       lastModified: SelfUtils.getLastModified(self),
       modifiedBy: SelfUtils.getModifiedBy(self),
@@ -108,7 +108,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     current
   );
   updates.moderatorChanged = SelfUtils.moderatorChanged(previous, current);
-  updates.isUpgradeToModeratorOrCohost = SelfUtils.isUpgradeToModeratorOrCohost(previous, current);
+  updates.isRolesChanged = SelfUtils.isRolesChanged(previous, current);
   updates.isMediaInactiveOrReleased = SelfUtils.wasMediaInactiveOrReleased(previous, current);
   updates.isUserObserving = SelfUtils.isDeviceObserving(previous, current);
   updates.layoutChanged = SelfUtils.layoutChanged(previous, current);
@@ -270,6 +270,10 @@ SelfUtils.getRemoteMuted = (self: any) => {
 
 SelfUtils.getLocalAudioUnmuteRequested = (self) => !!self?.controls?.audio?.requestedToUnmute;
 
+// requestedToUnmute timestamp
+SelfUtils.getLocalAudioUnmuteRequestedTimeStamp = (self) =>
+  Date.parse(self?.controls?.audio?.lastModifiedRequestedToUnmute) || 0;
+
 SelfUtils.getUnmuteAllowed = (self) => {
   if (!self || !self.controls || !self.controls.audio) {
     return null;
@@ -340,30 +344,19 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
 };
 
 /**
+ * determine whether the roles of self is changed or not
  * @param {Object} oldSelf
  * @param {Object} changedSelf
  * @returns {Boolean}
- * @throws {Error} if changed self was undefined
  */
-SelfUtils.isUpgradeToModeratorOrCohost = (oldSelf, changedSelf) => {
-  if (!oldSelf) {
+SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
+  if (!changedSelf) {
+    // no new self means no change
     return false;
   }
-  if (!changedSelf) {
-    throw new ParameterError(
-      'New self must be defined to determine if self transitioned moderator or cohost status.'
-    );
-  }
-  const isAttendeeOnly =
-    oldSelf.roles.includes(SELF_ROLES.ATTENDEE) &&
-    !oldSelf.roles.includes(SELF_ROLES.COHOST) &&
-    !oldSelf.roles.includes(SELF_ROLES.MODERATOR);
-  const isCohost = changedSelf.roles.includes(SELF_ROLES.COHOST);
-  const isModerator = changedSelf.roles.includes(SELF_ROLES.MODERATOR);
 
-  return isAttendeeOnly && (isCohost || isModerator);
+  return !isEqual(oldSelf?.roles, changedSelf?.roles);
 };
-
 /**
  * @param {Object} oldSelf
  * @param {Object} changedSelf
@@ -443,7 +436,10 @@ SelfUtils.localAudioUnmuteRequestedByServer = (oldSelf: any = {}, changedSelf: a
     );
   }
 
-  return changedSelf.localAudioUnmuteRequested && !oldSelf.localAudioUnmuteRequested;
+  return (
+    changedSelf.localAudioUnmuteRequested &&
+    changedSelf.localAudioUnmuteRequestedTimeStamp > oldSelf.localAudioUnmuteRequestedTimeStamp
+  );
 };
 
 SelfUtils.localAudioUnmuteRequiredByServer = (oldSelf: any = {}, changedSelf: any) => {

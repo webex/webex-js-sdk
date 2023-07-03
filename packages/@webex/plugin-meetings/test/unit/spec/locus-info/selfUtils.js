@@ -251,6 +251,55 @@ describe('plugin-meetings', () => {
           assert.equal(updates.canNotViewTheParticipantListChanged, false);
         });
       });
+
+      describe('localAudioUnmuteRequestedByServer', () => {
+        it('should return localAudioUnmuteRequestedByServer = false when requestedToUnmute = false', () => {
+          const clonedSelf = cloneDeep(self);
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, false);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = true when first request is made with requestedToUnmute = true', () => {
+          const clonedSelf = cloneDeep(self);
+
+          //request to unmute with timestamp
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, true);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = true when requestedToUnmute = true and new requests lastModifiedRequestedToUnmute timestamp is greater than old one', () => {
+          self.controls.audio.requestedToUnmute = true;
+          self.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+          const clonedSelf = cloneDeep(self);
+
+          //request to unmute with timestamp
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T19:25:04.369Z';
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, true);
+        });
+
+        it('should return localAudioUnmuteRequestedByServer = false when requestedToUnmute but lastModifiedRequestedToUnmute timestamps are same', () => {
+          self.controls.audio.requestedToUnmute = true;
+          self.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
+          const clonedSelf = cloneDeep(self);
+
+          clonedSelf.controls.audio.requestedToUnmute = true;
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z'
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.localAudioUnmuteRequestedByServer, false);
+        });
+      });
     });
 
     describe('isSharingBlocked', () => {
@@ -316,43 +365,6 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe('isUpgradeToModeratorOrCohost', () => {
-    it('returns true if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','MODERATOR']}),
-        true
-      );
-    });
-
-    it('returns true if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE']}, {roles: ['ATTENDEE','COHOST']}),
-        true
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','MODERATOR']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','COHOST']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-
-    it('returns false if changed', () => {
-      assert.equal(
-        SelfUtils.isUpgradeToModeratorOrCohost({roles: ['ATTENDEE','HOST','MODERATOR']}, {roles: ['ATTENDEE']}),
-        false
-      );
-    });
-  });
-
   describe('getReplacedBreakoutMoveId', () => {
     const deviceId = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24';
     const breakoutMoveId = 'e5caeb2c-ffcc-4e06-a08a-1122e7710398';
@@ -391,10 +403,32 @@ describe('plugin-meetings', () => {
         state: 'JOINED',
       };
       assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
-
     });
-
-
   });
 
+  describe('isRolesChanged', () => {
+    it('should return false if new self is null', () => {
+      const parsedSelf = SelfUtils.parse(self);
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, null), false);
+    });
+
+    it('should return true if self roles has changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['COHOST'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), true);
+    });
+
+    it('should return false if self roles has not changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['PRESENTER'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), false);
+    });
+  });
 });

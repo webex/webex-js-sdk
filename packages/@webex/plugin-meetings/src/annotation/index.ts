@@ -40,10 +40,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Process Stroke Data
-   * @param {request} request stroke data
+   * @param {object}  data
    * @returns {void}
    */
-  private processStrokeMessage(request) {
+  private processStrokeMessage(data) {
+    const {request} = data;
     this.decryptContent(request.value.encryptionKeyUrl, request.value.content).then(
       (decryptedContent) => {
         request.value.content = decryptedContent;
@@ -55,7 +56,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
           },
           EVENT_TRIGGERS.ANNOTATION_STROKE_DATA,
           {
-            payload: request.value,
+            payload: data,
           }
         );
       }
@@ -84,7 +85,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
           payload: e.data.approval,
         }
       );
-      this.seqNum = (e?.sequenceNumber || 0) + 1;
     }
   }
 
@@ -95,8 +95,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   private eventDataProcessor(e) {
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
-        this.seqNum = (e?.sequenceNumber || 0) + 1;
-        this.processStrokeMessage(e.data.request);
+        this.processStrokeMessage(e.data);
         break;
       default:
         break;
@@ -283,12 +282,17 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Change annotation options
-   * @param {object} options
-   * @param {object} meeting
+   * @param {remoteShareUrl} remoteShareUrl
+   * @param {annotationInfo} annotationInfo
    * @returns {Promise}
    */
-  public changeAnnotationOptions(options, meeting) {
-    return meeting?.meetingRequest.changeMeetingFloor(options);
+  public changeAnnotationOptions(remoteShareUrl, annotationInfo) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.PATCH,
+      url: remoteShareUrl,
+      body: annotationInfo,
+    });
   }
 
   /**

@@ -38,6 +38,7 @@ describe('plugin-meetings', () => {
         waitingForOthersToJoin: null,
         canSendReactions: null,
         canManageBreakout: null,
+        canBroadcastMessageToBreakout: null,
         canAdmitLobbyToBreakout: null,
         canUserAskForHelp: null,
         canUserRenameSelfAndObserved: null,
@@ -60,6 +61,11 @@ describe('plugin-meetings', () => {
         canDisableRaiseHand: null,
         canEnableVideo: null,
         canDisableVideo: null,
+        canShareFile: null,
+        canShareApplication: null,
+        canShareCamera: null,
+        canShareDesktop: null,
+        canShareContent: null,
         ...expected,
       };
 
@@ -103,6 +109,7 @@ describe('plugin-meetings', () => {
       'waitingForOthersToJoin',
       'canSendReactions',
       'canManageBreakout',
+      'canBroadcastMessageToBreakout',
       'canAdmitLobbyToBreakout',
       'canUserAskForHelp',
       'canUserRenameSelfAndObserved',
@@ -125,6 +132,11 @@ describe('plugin-meetings', () => {
       'canDisableRaiseHand',
       'canEnableVideo',
       'canDisableVideo',
+      'canShareFile',
+      'canShareApplication',
+      'canShareCamera',
+      'canShareDesktop',
+      'canShareContent',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

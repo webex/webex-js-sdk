@@ -1,6 +1,7 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable require-jsdoc */
 /* eslint-disable import/prefer-default-export */
+import {forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
@@ -64,6 +65,53 @@ export class RemoteMediaGroup {
     }
 
     return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
+  }
+
+  /**
+   * Sets CSIs for multiple RemoteMedia instances belonging to this RemoteMediaGroup.
+   * For each entry in the remoteMediaCsis array:
+   * - if csi is specified, the RemoteMedia instance is pinned to that CSI
+   * - if csi is undefined, the RemoteMedia instance is unpinned
+   * @internal
+   */
+  public setActiveSpeakerCsis(
+    remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: number}[],
+    commit = true
+  ): void {
+    forEach(remoteMediaCsis, ({csi, remoteMedia}) => {
+      if (csi) {
+        if (!(this.pinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
+          const unpinId = this.unpinnedRemoteMedia.indexOf(remoteMedia);
+          if (unpinId >= 0) {
+            this.unpinnedRemoteMedia.splice(unpinId, 1);
+            this.pinnedRemoteMedia.push(remoteMedia);
+          } else {
+            throw new Error(
+              `failed to pin a remote media object ${remoteMedia.id}, because it is not found in this remote media group`
+            );
+          }
+        }
+        remoteMedia.sendMediaRequest(csi, false);
+      } else {
+        if (!(this.unpinnedRemoteMedia.indexOf(remoteMedia) >= 0)) {
+          const pinId = this.pinnedRemoteMedia.indexOf(remoteMedia);
+          if (pinId >= 0) {
+            this.pinnedRemoteMedia.splice(pinId, 1);
+            this.unpinnedRemoteMedia.push(remoteMedia);
+          } else {
+            throw new Error(
+              `failed to unpin a remote media object ${remoteMedia.id}, because it is not found in this remote media group`
+            );
+          }
+        }
+        remoteMedia.cancelMediaRequest(false);
+      }
+    });
+    this.cancelActiveSpeakerMediaRequest(false);
+    this.sendActiveSpeakerMediaRequest(false);
+    if (commit) {
+      this.mediaRequestManager.commit();
+    }
   }
 
   /**
@@ -149,6 +197,17 @@ export class RemoteMediaGroup {
     }
 
     throw new Error(`remote media object ${remoteMedia.id} not found in the group`);
+  }
+
+  /**
+   * setPreferLiveVideo - sets preferLiveVideo to true/false
+   * @internal
+   */
+  public setPreferLiveVideo(preferLiveVideo: boolean, commit: boolean) {
+    if (this.options.preferLiveVideo !== preferLiveVideo) {
+      this.options.preferLiveVideo = preferLiveVideo;
+      this.sendActiveSpeakerMediaRequest(commit);
+    }
   }
 
   private sendActiveSpeakerMediaRequest(commit: boolean) {

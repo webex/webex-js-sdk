@@ -5,39 +5,53 @@ import {LocalCameraTrack, LocalMicrophoneTrack, LocalDisplayTrack} from '@webex/
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
+export type MediaDirection = {
+  sendAudio: boolean;
+  sendVideo: boolean;
+  sendShare: boolean;
+  receiveAudio: boolean;
+  receiveVideo: boolean;
+  receiveShare: boolean;
+};
+
 /**
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioTrack: LocalMicrophoneTrack | null;
-  localQualityLevel: any;
-  mediaDirection: any;
+  audioTrack?: LocalMicrophoneTrack;
+  mediaDirection: MediaDirection;
   mediaSettings: any;
   webrtcMediaConnection: any;
   remoteAudioTrack: any;
   remoteQualityLevel: any;
   remoteShare: any;
   remoteVideoTrack: any;
-  shareTrack: LocalDisplayTrack | null;
+  shareTrack?: LocalDisplayTrack;
   videoDeviceId: any;
-  videoTrack: LocalCameraTrack | null;
+  videoTrack?: LocalCameraTrack;
   namespace = MEETINGS;
 
   /**
    * @param {Object} [options] -- to auto construct
    * @returns {MediaProperties}
    */
-  constructor(options: any = {}) {
+  constructor() {
     this.webrtcMediaConnection = null;
-    this.mediaDirection = options.mediaDirection;
-    this.videoTrack = options.videoTrack || null;
-    this.audioTrack = options.audioTrack || null;
-    this.shareTrack = options.shareTrack || null;
-    this.remoteShare = options.remoteShare;
-    this.remoteAudioTrack = options.remoteAudioTrack;
-    this.remoteVideoTrack = options.remoteVideoTrack;
-    this.localQualityLevel = options.localQualityLevel || QUALITY_LEVELS['720p'];
-    this.remoteQualityLevel = options.remoteQualityLevel || QUALITY_LEVELS.HIGH;
+    this.mediaDirection = {
+      receiveAudio: false,
+      receiveVideo: false,
+      receiveShare: false,
+      sendAudio: false,
+      sendVideo: false,
+      sendShare: false,
+    };
+    this.videoTrack = null;
+    this.audioTrack = null;
+    this.shareTrack = null;
+    this.remoteShare = undefined;
+    this.remoteAudioTrack = undefined;
+    this.remoteVideoTrack = undefined;
+    this.remoteQualityLevel = QUALITY_LEVELS.HIGH;
     this.mediaSettings = {};
     this.videoDeviceId = null;
   }
@@ -62,19 +76,15 @@ export default class MediaProperties {
     this.webrtcMediaConnection = mediaPeerConnection;
   }
 
-  setLocalVideoTrack(videoTrack: LocalCameraTrack | null) {
+  setLocalVideoTrack(videoTrack?: LocalCameraTrack) {
     this.videoTrack = videoTrack;
   }
 
-  setLocalAudioTrack(audioTrack: LocalMicrophoneTrack | null) {
+  setLocalAudioTrack(audioTrack?: LocalMicrophoneTrack) {
     this.audioTrack = audioTrack;
   }
 
-  setLocalQualityLevel(localQualityLevel) {
-    this.localQualityLevel = localQualityLevel;
-  }
-
-  setLocalShareTrack(shareTrack: LocalDisplayTrack | null) {
+  setLocalShareTrack(shareTrack?: LocalDisplayTrack) {
     this.shareTrack = shareTrack;
   }
 
@@ -117,31 +127,6 @@ export default class MediaProperties {
     this.webrtcMediaConnection = null;
   }
 
-  unsetLocalVideoTrack() {
-    this.videoTrack = null;
-  }
-
-  unsetLocalShareTrack() {
-    this.shareTrack = null;
-  }
-
-  unsetLocalAudioTrack() {
-    this.audioTrack = null;
-  }
-
-  /**
-   * Removes remote stream from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
-   */
-  unsetRemoteStream() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetRemoteStream --> [DEPRECATION WARNING]: unsetRemoteStream has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
-    );
-    // unsets audio and video only
-    this.unsetRemoteMedia();
-  }
-
   /**
    * Removes both remote audio and video from class instance
    * @returns {void}
@@ -155,24 +140,6 @@ export default class MediaProperties {
     this.remoteShare = null;
   }
 
-  unsetLocalVideoTracks() {
-    this.unsetLocalVideoTrack();
-    this.unsetLocalShareTrack();
-  }
-
-  /**
-   * Removes remote stream and remote share from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
-   */
-  unsetRemoteStreams() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetRemoteStreams --> [DEPRECATION WARNING]: unsetRemoteStreams has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
-    );
-    this.unsetRemoteStream();
-    this.unsetRemoteShare();
-  }
-
   /**
    * Unsets all remote tracks
    * @returns {void}
@@ -180,33 +147,6 @@ export default class MediaProperties {
   unsetRemoteTracks() {
     this.unsetRemoteMedia();
     this.unsetRemoteShare();
-  }
-
-  unsetShareStreams() {
-    this.unsetLocalShareTrack();
-    this.unsetRemoteShare();
-  }
-
-  /**
-   * Removes both local and remote video stream from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
-   */
-  unsetMediaStreams() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetMediaStreams --> [DEPRECATION WARNING]: unsetMediaStreams has been deprecated after v1.89.3 (use unsetMediaTracks instead)'
-    );
-    this.unsetLocalVideoTrack();
-    this.unsetRemoteStream();
-  }
-
-  /**
-   * Removes both local and remote video stream from class instance
-   * @returns {void}
-   */
-  unsetMediaTracks() {
-    this.unsetLocalVideoTrack();
-    this.unsetRemoteMedia();
   }
 
   /**

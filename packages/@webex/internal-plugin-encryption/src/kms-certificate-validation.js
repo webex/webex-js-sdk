@@ -29,7 +29,7 @@ const VALID_KID_PROTOCOL = 'kms:';
 
 const X509_COMMON_NAME_KEY = '2.5.4.3';
 
-const X509_SUBJECT_ALT_NAME_KEY = '2.5.29.17';
+export const X509_SUBJECT_ALT_NAME_KEY = '2.5.29.17';
 
 /**
  * Customize Error so the SDK knows to quit retrying and notify
@@ -101,7 +101,7 @@ const validateKidHeader = ({kid}) => {
  * @throws {KMSError} if unable to validate certificate against KMS credentials
  * @returns {void}
  */
-const validateCommonName = ([certificate], {kid}) => {
+export const validateCommonName = ([certificate], {kid}) => {
   const kidHostname = parseUrl(kid).hostname;
   let validationSuccessful = false;
 
@@ -112,7 +112,7 @@ const validateCommonName = ([certificate], {kid}) => {
         const {altNames} = extension.parsedValue;
 
         for (const entry of altNames) {
-          const san = entry.value;
+          const san = entry.value.toLowerCase();
 
           validationSuccessful = san === kidHostname;
           if (validationSuccessful) {

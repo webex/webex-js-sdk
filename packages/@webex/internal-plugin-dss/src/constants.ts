@@ -12,3 +12,8 @@ export const SEARCH_TYPES = {
   ROOM: 'ROOM',
   ROBOT: 'ROBOT',
 };
+export const LOOKUP_DATA_PATH = 'lookupResult.entities';
+export const LOOKUP_FOUND_PATH = 'lookupResult.entitiesFound';
+export const LOOKUP_NOT_FOUND_PATH = 'lookupResult.entitiesNotFound';
+export const LOOKUP_REQUEST_KEY = 'lookupValues';
+export const SEARCH_DATA_PATH = 'directoryEntities';
