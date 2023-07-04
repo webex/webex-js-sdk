@@ -49,11 +49,11 @@ describe('internal-plugin-metrics', () => {
         },
       },
       meetings: {
-        meetingCollection: {
-          get: sinon.stub().returns(fakeMeeting),
-        },
         metrics: {
           clientName: 'Cantina',
+        },
+        meetingCollection: {
+          get: () => fakeMeeting
         },
         geoHintInfo: {
           clientAddress: '1.3.4.5',
@@ -65,7 +65,6 @@ describe('internal-plugin-metrics', () => {
     beforeEach(() => {
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
-
       cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
 
@@ -76,7 +75,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should build origin correctly', () => {
-
       sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
       //@ts-ignore
@@ -173,7 +171,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should submit client event successfully', () => {
-      cd.initialSetup(meetingCollection, webex);
       const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
       const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
       const generateErrorPayloadSpy = sinon.spy(cd, 'generateErrorPayload');
@@ -201,6 +198,19 @@ describe('internal-plugin-metrics', () => {
           eventData: {
             webClientDomain: 'whatever',
           },
+          identifiers: {
+            correlationId: 'correlationId',
+            deviceId: 'deviceUrl',
+            locusId: 'url',
+            locusStartTime: 'lastActive',
+            locusUrl: 'locus/url',
+            mediaAgentAlias: 'alias',
+            mediaAgentGroupId: '1',
+            orgId: 'orgId',
+            userId: 'userId',
+          },
+          loginType: 'login-ci',
+          name: 'client.alert.displayed',
           userType: 'host',
         },
         options
@@ -240,7 +250,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should throw if meetingId not provided', () => {
-      cd.initialSetup(meetingCollection, webex);
 
       assert.throws(() =>
         cd.submitClientEvent({

@@ -795,8 +795,8 @@ describe('plugin-meetings', () => {
 
           it('should post error event if failed', async () => {
             await meeting.join().catch(() => {
-              assert.deepEqual(NewMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
-              assert.match(NewMetrics.submitClientEvent.getCall(1).args[0].options.error, {
+              assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
+              assert.match(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.error, {
                 code: 2,
                 error: null,
                 joinOptions: {},
