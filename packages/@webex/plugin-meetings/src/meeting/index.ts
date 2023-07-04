@@ -5436,7 +5436,6 @@ export default class Meeting extends StatelessWebexPlugin {
           connectionType,
           isMultistream: this.isMultistream,
         });
-        // send media-engine.ready event at the end of a successful Meeting.addMedia()
         NewMetrics.submitClientEvent({
           name: 'media-engine.ready',
           options: {
@@ -5445,7 +5444,6 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       })
       .catch((error) => {
-        // remove send media-engine.ready with an error - UCF uses errorCode 2004
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
