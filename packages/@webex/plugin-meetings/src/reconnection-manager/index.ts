@@ -22,7 +22,6 @@ import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
-let NewMetrics;
 /**
  * Used to indicate that the reconnect logic needs to be retried.
  *
@@ -137,8 +136,6 @@ export default class ReconnectionManager {
 
     // Make sure reconnection state is in default
     this.reset();
-    // @ts-ignore
-    NewMetrics = meeting.webex.internal.newMetrics;
   }
 
   /**
@@ -327,7 +324,9 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info(
         'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
       );
-      NewMetrics.submitClientEvent({
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.reconnecting',
         options: {
           meetingId: this.meeting.id,
@@ -341,7 +340,9 @@ export default class ReconnectionManager {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#reconnect --> Sending reconnect success metric.'
         );
-        NewMetrics.submitClientEvent({
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.recovered',
           payload: {
             recoveredBy: 'new',
@@ -372,7 +373,8 @@ export default class ReconnectionManager {
           'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
         );
 
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.aborted',
           payload: {
             errors: [

@@ -2,6 +2,7 @@
 
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
@@ -59,8 +60,6 @@ import MeetingCollection from './collection';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
 import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
-
-let NewMetrics;
 
 let mediaLogger;
 
@@ -483,7 +482,8 @@ export default class Meetings extends WebexPlugin {
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
           if (this.getMeetingByType(_ID_, meeting.id)) {
-            NewMetrics.submitClientEvent({
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.call.remote-started',
               payload: {
                 trigger: 'mercury-event',
@@ -644,8 +644,6 @@ export default class Meetings extends WebexPlugin {
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
       Metrics.initialSetup(this.meetingCollection, this.webex);
-      // @ts-ignore
-      NewMetrics = this.webex.internal.newMetrics;
     });
   }
 

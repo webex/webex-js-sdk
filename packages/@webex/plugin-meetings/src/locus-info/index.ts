@@ -26,8 +26,6 @@ import EmbeddedAppsUtils from './embeddedAppsUtils';
 import MediaSharesUtils from './mediaSharesUtils';
 import LocusDeltaParser from './parser';
 
-let NewMetrics;
-
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -83,7 +81,6 @@ export default class LocusInfo extends EventsScope {
     this.meetingId = meetingId;
     this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
-    NewMetrics = this.webex.internal.newMetrics;
   }
 
   /**
@@ -431,7 +428,9 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.warn(
           'Locus-info:index#isMeetingActive --> Call Ended, locus state is inactive.'
         );
-        NewMetrics.submitClientEvent({
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
@@ -456,7 +455,8 @@ export default class LocusInfo extends EventsScope {
           this.parsedLocus.self.state === MEETING_STATE.STATES.NOTIFIED ||
           this.parsedLocus.self.state === MEETING_STATE.STATES.JOINED)
       ) {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
@@ -482,7 +482,8 @@ export default class LocusInfo extends EventsScope {
           partner.state === MEETING_STATE.STATES.NOTIFIED ||
           partner.state === MEETING_STATE.STATES.IDLE) // Happens when user just joins and adds no Media
       ) {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
@@ -511,7 +512,9 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.warn(
           'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
         );
-        NewMetrics.submitClientEvent({
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
@@ -530,7 +533,9 @@ export default class LocusInfo extends EventsScope {
         );
       } else if (this.fullState && this.fullState.removed) {
         // user has been dropped from a meeting
-        NewMetrics.submitClientEvent({
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,

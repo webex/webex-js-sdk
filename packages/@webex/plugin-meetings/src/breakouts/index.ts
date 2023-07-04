@@ -335,6 +335,7 @@ const Breakouts = WebexPlugin.extend({
           meeting,
           breakoutMoveId: params.breakoutMoveId,
         },
+        // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent
       );
     }
