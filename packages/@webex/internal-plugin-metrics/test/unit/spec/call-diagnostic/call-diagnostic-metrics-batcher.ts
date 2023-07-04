@@ -24,6 +24,8 @@ describe('plugin-metrics', () => {
       webex.request = (options) => Promise.resolve({body: {items: []}, options});
       sinon.spy(webex, 'request');
 
+      webex.emit("ready");
+
       webex.config.metrics = config.metrics;
     });
 
