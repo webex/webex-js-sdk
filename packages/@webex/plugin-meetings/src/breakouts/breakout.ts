@@ -67,6 +67,7 @@ const Breakout = WebexPlugin.extend({
     const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
     breakoutEvent.onBreakoutMoveRequest(
       {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent
     );
     const result = await this.request({
@@ -81,6 +82,7 @@ const Breakout = WebexPlugin.extend({
     });
     breakoutEvent.onBreakoutMoveResponse(
       {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent
     );
 

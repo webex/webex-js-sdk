@@ -18,7 +18,6 @@ import PermissionError from '../common/errors/permission';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 
-let NewMetrics;
 const MeetingUtil = {
   parseLocusJoin: (response) => {
     const parsed: any = {};
@@ -41,7 +40,7 @@ const MeetingUtil = {
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
-    NewMetrics = meeting.getWebexObject().internal.newMetrics;
+    const webex = meeting.getWebexObject();
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -54,7 +53,8 @@ const MeetingUtil = {
       );
     }
 
-    NewMetrics.submitClientEvent({
+    // @ts-ignore
+    webex.internal.newMetrics.submitClientEvent({
       name: 'client.locus.media.request',
       options: {meetingId: meeting.id},
     });
@@ -71,7 +71,8 @@ const MeetingUtil = {
         },
       })
       .then((response) => {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.media.response',
           options: {meetingId: meeting.id},
         });
@@ -90,9 +91,10 @@ const MeetingUtil = {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
-    NewMetrics = meeting.getWebexObject().internal.newMetrics;
+    const webex = meeting.getWebexObject();
 
-    NewMetrics.submitClientEvent({
+    // @ts-ignore
+    webex.internal.newMetrics.submitClientEvent({
       name: 'client.locus.join.request',
       options: {meetingId: meeting.id},
     });
@@ -121,7 +123,8 @@ const MeetingUtil = {
         liveAnnotationSupported: options.liveAnnotationSupported,
       })
       .then((res) => {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             trigger: 'loci-update',
@@ -243,7 +246,7 @@ const MeetingUtil = {
     (currentMediaStatus.audio || currentMediaStatus.video || currentMediaStatus.share),
 
   joinMeetingOptions: (meeting, options: any = {}) => {
-    NewMetrics = meeting.getWebexObject().internal.newMetrics;
+    const webex = meeting.getWebexObject();
 
     meeting.resourceId = meeting.resourceId || options.resourceId;
 
@@ -255,7 +258,8 @@ const MeetingUtil = {
     }
 
     if (options.pin) {
-      NewMetrics.submitClientEvent({
+      // @ts-ignore
+      webex.internal.newMetrics.submitClientEvent({
         name: 'client.pin.collected',
         options: {
           meetingId: meeting.id,
@@ -273,7 +277,8 @@ const MeetingUtil = {
       .catch((err) => {
         // joining a claimed PMR that is not my own, scenario B
         if (MeetingUtil.isPinOrGuest(err)) {
-          NewMetrics.submitClientEvent({
+          // @ts-ignore
+          webex.internal.newMetrics.submitClientEvent({
             name: 'client.pin.prompt',
             options: {
               meetingId: meeting.id,

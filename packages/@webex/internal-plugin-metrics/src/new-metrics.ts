@@ -42,8 +42,19 @@ class Metrics extends WebexPlugin {
     super(...args);
 
     this.callDiagnosticLatencies = new CallDiagnosticLatencies();
+
+    this.onReady();
+  }
+
+  /**
+   * On Ready
+   */
+  private onReady() {
     // @ts-ignore
-    this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+    this.webex.once('ready', () => {
+      // @ts-ignore
+      this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+    });
   }
 
   /**
