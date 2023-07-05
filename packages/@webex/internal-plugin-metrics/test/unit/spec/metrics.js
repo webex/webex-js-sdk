@@ -8,7 +8,9 @@ import {Token, Credentials} from '@webex/webex-core';
 import FakeTimers from '@sinonjs/fake-timers';
 import sinon from 'sinon';
 import Metrics, {config} from '@webex/internal-plugin-metrics';
-import {expect} from 'chai';
+import {BrowserDetection} from '@webex/common';
+
+const {getOSVersion} = BrowserDetection();
 
 function promiseTick(count) {
   let promise = Promise.resolve();
@@ -159,7 +161,7 @@ describe('plugin-metrics', () => {
             locale: 'en-US',
             os: {
               name: 'other',
-              version: '4.15.0-65-generic',
+              version: getOSVersion(),
             },
           },
           eventPayload: {
@@ -168,7 +170,7 @@ describe('plugin-metrics', () => {
           fields: {
             browser_version: '',
             client_id: 'fake',
-            os_version: '4.15.0-65-generic',
+            os_version: getOSVersion(),
             perceivedDurationInMillis: 314,
             platform: 'Web',
             sdk_version: undefined,
