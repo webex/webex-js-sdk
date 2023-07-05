@@ -2710,6 +2710,19 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe("#isJoined", () => {
+        it("should returns isJoined correctly", () => {
+          meeting.joinedWith = undefined;
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          assert.equal(meeting.isJoined(), false);
+          
+          meeting.joinedWith = {state: "JOINED"};
+          assert.equal(meeting.isJoined(), true);
+        });
+      });
+
       describe('#fetchMeetingInfo', () => {
         const FAKE_DESTINATION = 'something@somecompany.com';
         const FAKE_TYPE = _SIP_URI_;
@@ -4463,8 +4476,16 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('should not trigger ASK_RETURN_TO_MAIN before joined', () => {
+          TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.notCalled(TriggerProxy.trigger);
+        });
+
         it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
           TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "JOINED"};
           meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
           assert.calledWith(
             TriggerProxy.trigger,

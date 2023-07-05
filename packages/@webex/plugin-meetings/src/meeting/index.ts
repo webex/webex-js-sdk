@@ -1214,6 +1214,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * returns meeting is joined
+   * @private
+   * @memberof Meeting
+   * @returns {Boolean}
+   */
+  private isJoined() {
+    return this.joinedWith?.state === 'JOINED';
+  }
+
+  /**
    * Fetches meeting information.
    * @param {Object} options
    * @param {String} [options.password] optional
@@ -1502,14 +1512,16 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, () => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpBreakoutsListener',
-        },
-        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
-      );
+      if (this.isJoined()) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpBreakoutsListener',
+          },
+          EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
+        );
+      }
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.LEAVE_BREAKOUT, () => {
@@ -4178,7 +4190,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     const {url, info: {datachannelUrl} = {}} = this.locusInfo;
 
-    const isJoined = this.joinedWith && this.joinedWith.state === 'JOINED';
+    const isJoined = this.isJoined();
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
