@@ -46,7 +46,6 @@ describe('plugin-voicea', () => {
       it('should init status', () => {
         assert.equal(voiceaService.announceStatus, 'idle');
         assert.equal(voiceaService.captionStatus, 'idle');
-        assert.equal(voiceaService.turnOnCaptionsWaitingOnlinePromise, null);
       });
     });
 
@@ -119,7 +118,6 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.vmcDeviceId, undefined);
         assert.equal(voiceaService.announceStatus, 'idle');
         assert.equal(voiceaService.captionStatus, 'idle');
-        assert.equal(voiceaService.turnOnCaptionsWaitingOnlinePromise, null);
       });
     });
     describe('#processAnnouncementMessage', () => {

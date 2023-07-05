@@ -42,8 +42,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private captionStatus: string;
 
-  private turnOnCaptionsWaitingOnlinePromise: Promise<void> | null;
-
   /**
    * @param {Object} e
    * @returns {undefined}
@@ -94,7 +92,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.hasSubscribedToEvents = false;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-    this.turnOnCaptionsWaitingOnlinePromise = null;
   }
 
   /**
@@ -109,7 +106,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.vmcDeviceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-    this.turnOnCaptionsWaitingOnlinePromise = null;
   }
 
   /**
