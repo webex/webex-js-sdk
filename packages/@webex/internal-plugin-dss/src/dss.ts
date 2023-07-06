@@ -8,6 +8,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
 
+import {Timer} from '@webex/common-timers';
 import type {
   SearchOptions,
   LookupDetailOptions,
@@ -29,6 +30,8 @@ import {
   SEARCH_DATA_PATH,
 } from './constants';
 import DssBatcher from './dss-batcher';
+import {DssTimeoutError} from './dss-erros';
+import {RequestOptions, RequestResult} from './types';
 
 const DSS = WebexPlugin.extend({
   namespace: 'DSS',
@@ -154,7 +157,7 @@ const DSS = WebexPlugin.extend({
    * Makes the request to the directory service
    * @param {Object} options
    * @param {string} options.resource the URL to query
-   * @param {string} options.params additional params for the body of the request
+   * @param {Mixed} options.params additional params for the body of the request
    * @param {string} options.dataPath the path to get the data in the result object
    * @param {string} options.foundPath the path to get the lookups of the found data (optional)
    * @param {string} options.notFoundPath the path to get the lookups of the not found data (optional)
@@ -163,17 +166,23 @@ const DSS = WebexPlugin.extend({
    * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
    * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    */
-  _request(options) {
-    const {resource, params, dataPath, foundPath, notFoundPath} = options;
+  _request(options: RequestOptions): Promise<RequestResult> {
+    const {resource, params, dataPath, foundPath, notFoundPath, timeout} = options;
 
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const result = {};
-    let expectedSeqNums;
-    let notFoundArray;
+    let expectedSeqNums: string[];
+    let notFoundArray: unknown[];
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timer = new Timer(() => {
+        this.stopListening(this, eventName);
+        reject(new DssTimeoutError({requestId, timeout, resource, params}));
+      }, timeout || this.config.requestTimeout);
+
       this.listenTo(this, eventName, (data) => {
+        timer.reset();
         const resultData = get(data, dataPath, []);
         let found;
 
@@ -192,6 +201,8 @@ const DSS = WebexPlugin.extend({
         const done = isEqual(expectedSeqNums, Object.keys(result));
 
         if (done) {
+          timer.cancel();
+
           const resultArray: any[] = [];
           const foundArray: any[] = [];
 
@@ -205,7 +216,7 @@ const DSS = WebexPlugin.extend({
               }
             }
           });
-          const resolveValue: {resultArray: any[]; foundArray?: any[]; notFoundArray?: any[]} = {
+          const resolveValue: RequestResult = {
             resultArray,
           };
 
@@ -226,6 +237,7 @@ const DSS = WebexPlugin.extend({
         contentType: 'application/json',
         body: {requestId, ...params},
       });
+      timer.start();
     });
   },
 
@@ -264,7 +276,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with the entity found or null if not found
    */
   lookupDetail(options: LookupDetailOptions) {
-    const {id} = options;
+    const {id, timeout} = options;
 
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/identity/${id}/detail`;
 
@@ -272,6 +284,7 @@ const DSS = WebexPlugin.extend({
       dataPath: LOOKUP_DATA_PATH,
       foundPath: LOOKUP_FOUND_PATH,
       resource,
+      timeout,
     }).then(({resultArray, foundArray}) => {
       // TODO: find out what is actually returned!
       if (foundArray[0] === id) {
@@ -291,7 +304,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with the entity found or null if not found
    */
   lookup(options: LookupOptions) {
-    const {id, entityProviderType, shouldBatch = true} = options;
+    const {id, entityProviderType, shouldBatch = true, timeout} = options;
 
     const resource = entityProviderType
       ? `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}`
@@ -311,6 +324,7 @@ const DSS = WebexPlugin.extend({
       params: {
         [LOOKUP_REQUEST_KEY]: [id],
       },
+      timeout,
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === id) {
         return resultArray[0];
@@ -327,7 +341,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with the entity found or rejects if not found
    */
   lookupByEmail(options: LookupByEmailOptions) {
-    const {email} = options;
+    const {email, timeout} = options;
     const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/emails`;
 
     return this._request({
@@ -337,6 +351,7 @@ const DSS = WebexPlugin.extend({
       params: {
         [LOOKUP_REQUEST_KEY]: [email],
       },
+      timeout,
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === email) {
         return resultArray[0];
@@ -355,7 +370,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with an array of entities found
    */
   search(options: SearchOptions) {
-    const {requestedTypes, resultSize, queryString} = options;
+    const {requestedTypes, resultSize, queryString, timeout} = options;
 
     return this._request({
       dataPath: SEARCH_DATA_PATH,
@@ -365,6 +380,7 @@ const DSS = WebexPlugin.extend({
         resultSize,
         requestedTypes,
       },
+      timeout,
     }).then(({resultArray}) => resultArray);
   },
 });

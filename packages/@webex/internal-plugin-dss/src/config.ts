@@ -5,6 +5,12 @@
 export default {
   dss: {
     /**
+     * Timeout before DDS request fails.
+     * @type {Number}
+     */
+    requestTimeout: 6000,
+
+    /**
      * Debounce wait (ms) before sending a dss request (gap between lookups that will trigger a request)
      * @type {Number}
      */

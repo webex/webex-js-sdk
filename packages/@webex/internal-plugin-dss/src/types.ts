@@ -1,8 +1,22 @@
-export interface LookupDetailOptions {
+export interface RequestOptions {
+  resource: string;
+  dataPath: string;
+  foundPath?: string;
+  notFoundPath?: string;
+  params?: Record<string, unknown>;
+  timeout?: number;
+}
+
+export interface RequestResult {
+  foundArray?: any[];
+  notFoundArray?: any[];
+  resultArray: any[];
+}
+
+export interface LookupDetailOptions extends Pick<RequestOptions, 'timeout'> {
   id: string;
 }
 
-// eslint-disable-next-line no-shadow
 export enum EntityProviderType {
   CI_USER = 'CI_USER',
   CI_MACHINE = 'CI_MACHINE',
@@ -10,13 +24,13 @@ export enum EntityProviderType {
   CSDM = 'CSDM',
 }
 
-export interface LookupOptions {
+export interface LookupOptions extends Pick<RequestOptions, 'timeout'> {
   id: string;
   entityProviderType?: EntityProviderType;
   shouldBatch?: boolean;
 }
 
-export interface LookupByEmailOptions {
+export interface LookupByEmailOptions extends Pick<RequestOptions, 'timeout'> {
   email: string;
 }
 
@@ -29,7 +43,7 @@ export enum SearchType {
   ROBOT = 'ROBOT',
 }
 
-export interface SearchOptions {
+export interface SearchOptions extends Pick<RequestOptions, 'timeout'> {
   requestedTypes: SearchType[];
   resultSize: number;
   queryString: string;

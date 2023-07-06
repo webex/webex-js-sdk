@@ -2,7 +2,8 @@
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
 /* eslint-disable no-underscore-dangle */
-
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import {assert, expect} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';
 import {Batcher} from '@webex/webex-core';
@@ -12,6 +13,7 @@ import {set} from 'lodash';
 import uuid from 'uuid';
 import config from '@webex/internal-plugin-dss/src/config';
 
+chai.use(chaiAsPromised);
 describe('plugin-dss', () => {
   describe('DSS', () => {
     let webex;
@@ -203,6 +205,7 @@ describe('plugin-dss', () => {
             dataPath: 'lookupResult.entities',
             foundPath: 'lookupResult.entitiesFound',
             resource: '/lookup/orgid/userOrgId/identity/test id/detail',
+            timeout: undefined
           },
         ]);
         expect(result).to.equal('some return value');
@@ -239,6 +242,19 @@ describe('plugin-dss', () => {
 
         expect(result).to.be.null;
       });
+
+      it("fails with timeout when mercury does not respond", async () => {
+        const { promise } = await testMakeRequest({
+          method: 'lookupDetail',
+          resource: '/lookup/orgid/userOrgId/identity/test id/detail',
+          params: { id: 'test id', timeout: 1000 },
+          bodyParams: {},
+        });
+
+        clock.tick(1000)
+
+        return assert.isRejected(promise);
+      });
     });
 
     describe('#lookup', () => {
@@ -261,6 +277,7 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
+            timeout: undefined
           },
         ]);
         expect(result).to.equal('some return value');
@@ -289,6 +306,7 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
+            timeout: undefined
           },
         ]);
         expect(result).to.equal('some return value');
@@ -558,6 +576,19 @@ describe('plugin-dss', () => {
 
         expect(result2).to.equal('data2');
       });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {id: 'id1', shouldBatch: false, timeout: 1000},
+          bodyParams: {lookupValues: ['id1']},
+        });
+
+        clock.tick(1000)
+
+        return assert.isRejected(promise);
+      });
     });
 
     describe('#lookupByEmail', () => {
@@ -572,6 +603,7 @@ describe('plugin-dss', () => {
 
         const result = await webex.internal.dss.lookupByEmail({
           email: 'email1',
+          timeout: undefined
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -579,10 +611,10 @@ describe('plugin-dss', () => {
             dataPath: 'lookupResult.entities',
             foundPath: 'lookupResult.entitiesFound',
             resource: '/lookup/orgid/userOrgId/emails',
-
             params: {
               lookupValues: ['email1'],
             },
+            timeout: undefined
           },
         ]);
         expect(result).to.equal('some return value');
@@ -619,6 +651,19 @@ describe('plugin-dss', () => {
 
         expect(result).to.be.null;
       });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByEmail',
+          resource: '/lookup/orgid/userOrgId/emails',
+          params: {email: 'email1', timeout: 1000},
+          bodyParams: {lookupValues: ['email1']},
+        });
+
+        clock.tick(1000)
+
+        return assert.isRejected(promise);
+      });
     });
 
     describe('#search', () => {
@@ -632,6 +677,7 @@ describe('plugin-dss', () => {
           requestedTypes: ['PERSON', 'ROBOT'],
           resultSize: 100,
           queryString: 'query',
+          timeout: undefined
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -643,6 +689,7 @@ describe('plugin-dss', () => {
               resultSize: 100,
               requestedTypes: ['PERSON', 'ROBOT'],
             },
+            timeout: undefined
           },
         ]);
         expect(result).to.equal('some return value');
@@ -670,6 +717,53 @@ describe('plugin-dss', () => {
         const result = await promise;
 
         expect(result).to.deep.equal(['data0', 'data1', 'data2']);
+      });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'search',
+          resource: '/search/orgid/userOrgId/entities',
+          params: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+            timeout: 1000
+          },
+          bodyParams: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+          },
+        });
+
+        clock.tick(1000)
+
+        return assert.isRejected(promise);
+      });
+
+      it('fails with timeout when request only partially resolved', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'search',
+          resource: '/search/orgid/userOrgId/entities',
+          params: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+            timeout: 1000
+          },
+          bodyParams: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+          },
+        });
+
+        mercuryCallbacks['event:directory.search'](createData(requestId, 2, true, 'directoryEntities', ['data2']));
+        mercuryCallbacks['event:directory.search'](createData(requestId, 0, false, 'directoryEntities', ['data0']));
+
+        clock.tick(1000)
+
+        return assert.isRejected(promise);
       });
     });
 
@@ -826,7 +920,8 @@ describe('plugin-dss', () => {
         expect(batcher.config).to.deep.equal({
           batcherWait: 50,
           batcherMaxCalls: 50,
-          batcherMaxWait: 150
+          batcherMaxWait: 150,
+          requestTimeout: 6000
         });
       };
 
