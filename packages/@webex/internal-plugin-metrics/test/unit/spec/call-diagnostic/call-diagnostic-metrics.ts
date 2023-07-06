@@ -80,7 +80,7 @@ describe('internal-plugin-metrics', () => {
       //@ts-ignore
       const res = cd.getOrigin(
         {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
-        fakeMeeting
+        fakeMeeting.id
       );
 
       assert.deepEqual(res, {
@@ -134,7 +134,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should prepare diagnostic event successfully', () => {
-      const options = {meeting: fakeMeeting};
+      const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
       const clearEmptyKeysRecursivelyStub = sinon.stub(Utils, 'clearEmptyKeysRecursively');
 
@@ -147,7 +147,7 @@ describe('internal-plugin-metrics', () => {
         options
       );
 
-      assert.calledWith(getOriginStub, options, options.meeting);
+      assert.calledWith(getOriginStub, options, options.meetingId);
       assert.calledOnce(clearEmptyKeysRecursivelyStub);
       assert.deepEqual(res, {
         event: {
@@ -213,7 +213,7 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.displayed',
           userType: 'host',
         },
-        {...options, meeting: fakeMeeting}
+        options
       );
       assert.calledWith(submitToCallDiagnosticsSpy, {
         event: {

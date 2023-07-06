@@ -1274,11 +1274,11 @@ describe('plugin-meetings', () => {
                 type: 'audio',
               }
             );
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.tx.start',
               payload: {mediaType: 'audio'},
               options: {
-                meeting,
+                meetingId: meeting.id,
               },
             });
           });
@@ -1290,11 +1290,11 @@ describe('plugin-meetings', () => {
               {type: 'video'}
             );
 
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.tx.stop',
               payload: {mediaType:'video'},
               options: {
-                meeting,
+                meetingId: meeting.id,
               },
             });
           });
@@ -1318,11 +1318,11 @@ describe('plugin-meetings', () => {
                 type: 'video',
               }
             );
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.start',
               payload: {mediaType: 'video'},
               options: {
-                meeting,
+                meetingId: meeting.id,
               },
             });
           });
@@ -1334,11 +1334,11 @@ describe('plugin-meetings', () => {
               {type: 'audio'}
             );
 
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.stop',
               payload: {mediaType: 'audio'},
               options: {
-                meeting,
+                meetingId: meeting.id,
               },
             });
           });

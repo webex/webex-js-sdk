@@ -3,7 +3,6 @@ import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
-  meeting?: any;
   mediaConnections?: any[];
   error?: any;
   showToUser?: boolean;
