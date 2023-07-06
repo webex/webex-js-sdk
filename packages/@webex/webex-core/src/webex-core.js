@@ -6,7 +6,11 @@ import {EventEmitter} from 'events';
 import util from 'util';
 
 import {proxyEvents, retry, transferEvents} from '@webex/common';
-import {HttpStatusInterceptor, defaults as requestDefaults} from '@webex/http-core';
+import {
+  HttpStatusInterceptor,
+  defaults as requestDefaults,
+  protoprepareFetchOptions as prepareFetchOptions,
+} from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
 import uuid from 'uuid';
@@ -398,6 +402,11 @@ const WebexCore = AmpState.extend({
     ints = postInterceptors.reduce(addInterceptor, ints);
 
     this.request = requestDefaults({
+      json: true,
+      interceptors: ints,
+    });
+
+    this.prepareFetchOptions = prepareFetchOptions({
       json: true,
       interceptors: ints,
     });
