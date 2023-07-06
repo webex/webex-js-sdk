@@ -1402,6 +1402,16 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
+
+        it('succeeds even if getDevices() throws', async () => {
+          meeting.meetingState = 'ACTIVE';
+
+          sinon
+            .stub(internalMediaModule, 'getDevices')
+            .rejects(new Error('fake error'));
+
+          await meeting.addMedia();
+        })
       });
 
       /* This set of tests are like semi-integration tests, they use real MuteState, Media, LocusMediaRequest and Roap classes.
@@ -2724,6 +2734,19 @@ describe('plugin-meetings', () => {
 
               return Promise.resolve();
             });
+        });
+      });
+
+      describe("#isJoined", () => {
+        it("should returns isJoined correctly", () => {
+          meeting.joinedWith = undefined;
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          assert.equal(meeting.isJoined(), false);
+          
+          meeting.joinedWith = {state: "JOINED"};
+          assert.equal(meeting.isJoined(), true);
         });
       });
 
@@ -4306,6 +4329,81 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        describe('audio and video source count change events', () => {
+          beforeEach(() => {
+            TriggerProxy.trigger.resetHistory();
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('registers for audio and video source count changed', () => {
+            assert.isFunction(eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED]);
+            assert.isFunction(eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED]);
+          })
+
+          it('forwards the VIDEO_SOURCES_COUNT_CHANGED event as "media:remoteVideoSourceCountChanged"', () => {
+            const numTotalSources = 10;
+            const numLiveSources = 6;
+            const mediaContent = 'SLIDES';
+
+            sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteVideoSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('forwards the AUDIO_SOURCES_COUNT_CHANGED event as "media:remoteAudioSourceCountChanged"', () => {
+            const numTotalSources = 5;
+            const numLiveSources = 2;
+            const mediaContent = 'MAIN';
+
+            eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteAudioSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('calls setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for MAIN', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, 'MAIN');
+
+            assert.calledOnceWithExactly(setNumCurrentSourcesSpy, numTotalSources, numLiveSources);
+          });
+
+          it('does not call setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for SLIDES', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, 'SLIDES');
+
+            assert.notCalled(setNumCurrentSourcesSpy);
+          });
+
+        })
       });
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
@@ -4419,8 +4517,16 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('should not trigger ASK_RETURN_TO_MAIN before joined', () => {
+          TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.notCalled(TriggerProxy.trigger);
+        });
+
         it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
           TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "JOINED"};
           meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
           assert.calledWith(
             TriggerProxy.trigger,

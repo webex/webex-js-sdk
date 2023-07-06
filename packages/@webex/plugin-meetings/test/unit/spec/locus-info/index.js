@@ -1048,6 +1048,7 @@ describe('plugin-meetings', () => {
         const selfWithRequestedToUnmute = cloneDeep(self);
 
         selfWithRequestedToUnmute.controls.audio.requestedToUnmute = true;
+        selfWithRequestedToUnmute.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T19:25:04.369Z';
 
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();

@@ -261,6 +261,9 @@ export default class Meetings extends WebexPlugin {
     const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
     // @ts-ignore
     const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
+    const isResourceMovedOnThisDevice =
+      deviceFromNewLocus?.state === _LEFT_ && deviceFromNewLocus?.reason === _MOVED_;
+
     const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(
       meeting,
       newLocus,
@@ -300,9 +303,16 @@ export default class Meetings extends WebexPlugin {
 
       return false;
     }
-    if (isSelfMoved && newLocus?.self?.removed) {
+    if (isSelfMoved && (newLocus?.self?.removed || isResourceMovedOnThisDevice)) {
       LoggerProxy.logger.log(
-        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+      );
+
+      return false;
+    }
+    if (isSelfJoined && isResourceMovedOnThisDevice) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
       );
 
       return false;

@@ -83,8 +83,6 @@ const microphoneTrack = new LocalMicrophoneTrack(new MediaStream([audioTrackFrom
 // Create the effect.
 const effect = new NoiseReductionEffect({
   authToken: '<encoded-string>',
-  workletProcessorUrl: 'https://my-worklet-processor-url', // For 'WORKLET' mode
-  legacyProcessorUrl: 'https://my-legacy-processor-url', // For 'LEGACY' mode
   mode: 'WORKLET', // or 'LEGACY'
 });
 
