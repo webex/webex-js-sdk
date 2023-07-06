@@ -8,6 +8,7 @@ import {
   Errors,
   ErrorType,
   Event,
+  MediaContent,
   MediaType,
   RemoteTrackType,
 } from '@webex/internal-media-core';
@@ -670,6 +671,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       video: new MediaRequestManager(
@@ -690,6 +692,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: true,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -710,6 +713,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          trimRequestsToNumOfSources: false,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -730,6 +734,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          trimRequestsToNumOfSources: false,
         }
       ),
     };
@@ -1222,6 +1227,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * returns meeting is joined
+   * @private
+   * @memberof Meeting
+   * @returns {Boolean}
+   */
+  private isJoined() {
+    return this.joinedWith?.state === 'JOINED';
+  }
+
+  /**
    * Fetches meeting information.
    * @param {Object} options
    * @param {String} [options.password] optional
@@ -1513,14 +1528,16 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, () => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpBreakoutsListener',
-        },
-        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
-      );
+      if (this.isJoined()) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpBreakoutsListener',
+          },
+          EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
+        );
+      }
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.LEAVE_BREAKOUT, () => {
@@ -4419,7 +4436,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     const {url, info: {datachannelUrl} = {}} = this.locusInfo;
 
-    const isJoined = this.joinedWith && this.joinedWith.state === 'JOINED';
+    const isJoined = this.isJoined();
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -5070,6 +5087,10 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaContent,
           }
         );
+
+        if (mediaContent === MediaContent.Main) {
+          this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
+        }
       }
     );
 
@@ -5388,10 +5409,13 @@ export default class Meeting extends StatelessWebexPlugin {
       .then(() => {
         this.setMercuryListener();
       })
-      .then(() =>
-        getDevices().then((devices) => {
-          MeetingUtil.handleDeviceLogging(devices);
-        })
+      .then(
+        () =>
+          getDevices()
+            .then((devices) => {
+              MeetingUtil.handleDeviceLogging(devices);
+            })
+            .catch(() => {}) // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
       )
       .then(() => {
         this.handleMediaLogging(this.mediaProperties);

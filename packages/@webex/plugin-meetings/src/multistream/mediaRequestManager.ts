@@ -9,7 +9,7 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
 } from '@webex/internal-media-core';
-import {cloneDeep, debounce, isEmpty} from 'lodash';
+import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -72,7 +72,11 @@ type Kind = 'audio' | 'video';
 type Options = {
   degradationPreferences: DegradationPreferences;
   kind: Kind;
+  trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
 };
+
+type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
+
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
@@ -80,7 +84,7 @@ export class MediaRequestManager {
 
   private counter: number;
 
-  private clientRequests: {[key: MediaRequestId]: MediaRequest};
+  private clientRequests: ClientRequestsMap;
 
   private degradationPreferences: DegradationPreferences;
 
@@ -90,12 +94,19 @@ export class MediaRequestManager {
 
   private previousStreamRequests: Array<StreamRequest> = [];
 
+  private trimRequestsToNumOfSources: boolean;
+  private numTotalSources: number;
+  private numLiveSources: number;
+
   constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.counter = 0;
+    this.numLiveSources = 0;
+    this.numTotalSources = 0;
     this.clientRequests = {};
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
+    this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -108,8 +119,7 @@ export class MediaRequestManager {
     this.sendRequests(); // re-send requests after preferences are set
   }
 
-  private getDegradedClientRequests() {
-    const clientRequests = cloneDeep(this.clientRequests);
+  private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
     const maxFsLimits = [
       getMaxFs('best'),
       getMaxFs('large'),
@@ -122,7 +132,7 @@ export class MediaRequestManager {
     // reduce max-fs until total macroblocks is below limit
     for (let i = 0; i < maxFsLimits.length; i += 1) {
       let totalMacroblocksRequested = 0;
-      Object.entries(clientRequests).forEach(([id, mr]) => {
+      Object.values(clientRequests).forEach((mr) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
             mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
@@ -130,9 +140,7 @@ export class MediaRequestManager {
             maxFsLimits[i]
           );
           // we only consider sources with "live" state
-          const slotsWithLiveSource = this.clientRequests[id].receiveSlots.filter(
-            (rs) => rs.sourceState === 'live'
-          );
+          const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
           totalMacroblocksRequested += mr.codecInfo.maxFs * slotsWithLiveSource.length;
         }
       });
@@ -149,8 +157,6 @@ export class MediaRequestManager {
         );
       }
     }
-
-    return clientRequests;
   }
 
   /**
@@ -231,42 +237,136 @@ export class MediaRequestManager {
     this.previousStreamRequests = [];
   }
 
+  /** Modifies the passed in clientRequests and makes sure that in total they don't ask
+   *  for more streams than there are available.
+   *
+   * @param {Object} clientRequests
+   * @returns {void}
+   */
+  private trimRequests(clientRequests: ClientRequestsMap) {
+    const preferLiveVideo = this.getPreferLiveVideo();
+
+    if (!this.trimRequestsToNumOfSources) {
+      return;
+    }
+
+    // preferLiveVideo being undefined means that there are no active-speaker requests so we don't need to do any trimming
+    if (preferLiveVideo === undefined) {
+      return;
+    }
+
+    let numStreamsAvailable = preferLiveVideo ? this.numLiveSources : this.numTotalSources;
+
+    Object.values(clientRequests)
+      .sort((a, b) => {
+        // we have to count how many streams we're asking for
+        // and should not ask for more than numStreamsAvailable in total,
+        // so we might need to trim active-speaker requests and first ones to trim should be
+        // the ones with lowest priority
+
+        // receiver-selected requests have priority over active-speakers
+        if (a.policyInfo.policy === 'receiver-selected') {
+          return -1;
+        }
+        if (b.policyInfo.policy === 'receiver-selected') {
+          return 1;
+        }
+
+        // and active-speakers are sorted by descending priority
+        return b.policyInfo.priority - a.policyInfo.priority;
+      })
+      .forEach((request) => {
+        // we only trim active-speaker requests
+        if (request.policyInfo.policy === 'active-speaker') {
+          const trimmedCount = Math.min(numStreamsAvailable, request.receiveSlots.length);
+
+          request.receiveSlots.length = trimmedCount;
+
+          numStreamsAvailable -= trimmedCount;
+        } else {
+          numStreamsAvailable -= request.receiveSlots.length;
+        }
+
+        if (numStreamsAvailable < 0) {
+          numStreamsAvailable = 0;
+        }
+      });
+  }
+
+  private getPreferLiveVideo(): boolean | undefined {
+    let preferLiveVideo;
+
+    Object.values(this.clientRequests).forEach((mr) => {
+      if (mr.policyInfo.policy === 'active-speaker') {
+        // take the value from first encountered active speaker request
+        if (preferLiveVideo === undefined) {
+          preferLiveVideo = mr.policyInfo.preferLiveVideo;
+        }
+
+        if (mr.policyInfo.preferLiveVideo !== preferLiveVideo) {
+          throw new Error(
+            'a mix of active-speaker groups with different values for preferLiveVideo is not supported'
+          );
+        }
+      }
+    });
+
+    return preferLiveVideo;
+  }
+
+  private cloneClientRequests(): ClientRequestsMap {
+    // we clone the client requests but without cloning the ReceiveSlots that they reference
+    return cloneDeepWith(this.clientRequests, (value, key) => {
+      if (key === 'receiveSlots') {
+        return [...value];
+      }
+
+      return undefined;
+    });
+  }
+
   private sendRequests() {
     const streamRequests: StreamRequest[] = [];
 
-    const clientRequests = this.getDegradedClientRequests();
+    // clone the requests so that any modifications we do to them don't affect the original ones
+    const clientRequests = this.cloneClientRequests();
+
+    this.trimRequests(clientRequests);
+    this.getDegradedClientRequests(clientRequests);
 
     // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
-      streamRequests.push(
-        new StreamRequest(
-          mr.policyInfo.policy === 'active-speaker'
-            ? Policy.ActiveSpeaker
-            : Policy.ReceiverSelected,
-          mr.policyInfo.policy === 'active-speaker'
-            ? new ActiveSpeakerInfo(
-                mr.policyInfo.priority,
-                mr.policyInfo.crossPriorityDuplication,
-                mr.policyInfo.crossPolicyDuplication,
-                mr.policyInfo.preferLiveVideo
-              )
-            : new ReceiverSelectedInfo(mr.policyInfo.csi),
-          mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
-          this.getMaxPayloadBitsPerSecond(mr),
-          mr.codecInfo && [
-            new WcmeCodecInfo(
-              0x80,
-              new H264Codec(
-                mr.codecInfo.maxFs,
-                mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                this.getH264MaxMbps(mr),
-                mr.codecInfo.maxWidth,
-                mr.codecInfo.maxHeight
-              )
-            ),
-          ]
-        )
-      );
+      if (mr.receiveSlots.length > 0) {
+        streamRequests.push(
+          new StreamRequest(
+            mr.policyInfo.policy === 'active-speaker'
+              ? Policy.ActiveSpeaker
+              : Policy.ReceiverSelected,
+            mr.policyInfo.policy === 'active-speaker'
+              ? new ActiveSpeakerInfo(
+                  mr.policyInfo.priority,
+                  mr.policyInfo.crossPriorityDuplication,
+                  mr.policyInfo.crossPolicyDuplication,
+                  mr.policyInfo.preferLiveVideo
+                )
+              : new ReceiverSelectedInfo(mr.policyInfo.csi),
+            mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
+            this.getMaxPayloadBitsPerSecond(mr),
+            mr.codecInfo && [
+              new WcmeCodecInfo(
+                0x80,
+                new H264Codec(
+                  mr.codecInfo.maxFs,
+                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+                  this.getH264MaxMbps(mr),
+                  mr.codecInfo.maxWidth,
+                  mr.codecInfo.maxHeight
+                )
+              ),
+            ]
+          )
+        );
+      }
     });
 
     //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
@@ -327,5 +427,14 @@ export class MediaRequestManager {
 
   public reset() {
     this.clientRequests = {};
+    this.numTotalSources = 0;
+    this.numLiveSources = 0;
+  }
+
+  public setNumCurrentSources(numTotalSources: number, numLiveSources: number) {
+    this.numTotalSources = numTotalSources;
+    this.numLiveSources = numLiveSources;
+
+    this.sendRequests();
   }
 }

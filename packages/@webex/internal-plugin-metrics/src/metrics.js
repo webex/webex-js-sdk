@@ -48,13 +48,12 @@ const Metrics = WebexPlugin.extend({
   },
 
   /**
-   * This corresponds to #sendSemiStructured() in the deprecated metrics handler
+   * Returns the payload for submitting client metrics.
    * @param {string} eventName
-   * @param {Object} props
-   * @param {string} preLoginId
-   * @returns {Object} HttpResponse object
+   * @param {any} props
+   * @returns {any} - the payload
    */
-  submitClientMetrics(eventName, props = {}, preLoginId) {
+  getClientMetricsPayload(eventName, props) {
     if (!eventName) {
       throw Error('Missing behavioral metric name. Please provide one');
     }
@@ -102,6 +101,19 @@ const Metrics = WebexPlugin.extend({
     // Mocking the time in tests when running in node
     // is impossible so unable to use Date.now()
     payload.timestamp = new Date().valueOf();
+
+    return payload;
+  },
+
+  /**
+   * This corresponds to #sendSemiStructured() in the deprecated metrics handler
+   * @param {string} eventName
+   * @param {Object} props
+   * @param {string} preLoginId
+   * @returns {Object} HttpResponse object
+   */
+  submitClientMetrics(eventName, props = {}, preLoginId) {
+    const payload = this.getClientMetricsPayload(eventName, props);
 
     if (preLoginId) {
       const _payload = {
