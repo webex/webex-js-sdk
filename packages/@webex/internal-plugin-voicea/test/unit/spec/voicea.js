@@ -251,7 +251,7 @@ describe('plugin-voicea', () => {
         try {
           await voiceaService.requestTurnOnCaptions();
         } catch (error) {
-          expect(error.message).to.include('turn on captions fai');
+          expect(error.message).to.include('turn on captions fail');
           return;
         }
         assert.equal(voiceaService.captionStatus, 'idle');
