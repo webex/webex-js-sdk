@@ -733,15 +733,15 @@ describe('plugin-voicea', () => {
 
     describe("#getCaptionStatus", () => {
       it('works correctly', () => {
-        voiceaService.captionStatus = "ENABLED"
-        assert.equal(voiceaService.getCaptionStatus(), "ENABLED");
+        voiceaService.captionStatus = "enabled"
+        assert.equal(voiceaService.getCaptionStatus(), "enabled");
       });
     });
 
     describe("#getAnnounceStatus", () => {
       it('works correctly', () => {
-        voiceaService.announceStatus = "JOINED"
-        assert.equal(voiceaService.getAnnounceStatus(), "JOINED");
+        voiceaService.announceStatus = "joined"
+        assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
   });
