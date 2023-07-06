@@ -431,10 +431,8 @@ describe('plugin-meetings', () => {
         it('creates noise reduction effect with custom options passed', async () => {
           const effectOptions = {
             audioContext: {},
-            workletProcessorUrl: "test.url.com",
             mode: "WORKLET",
-            env: "prod",
-            avoidSimd: false
+            env: "prod"
           };
 
           const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
@@ -1085,7 +1083,7 @@ describe('plugin-meetings', () => {
               'meeting:meetingInfoAvailable'
             );
           };
-          
+
           it('creates the meeting from a successful meeting info fetch promise testing', async () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
@@ -1106,7 +1104,7 @@ describe('plugin-meetings', () => {
                 permissionToken: 'PT',
                 meetingJoinUrl: 'meetingJoinUrl',
               };
-  
+
               assert.instanceOf(
                 meeting,
                 Meeting,
@@ -1114,7 +1112,7 @@ describe('plugin-meetings', () => {
               );
               checkCreateWithoutDelay(meeting, 'test destination', 'test type', infoExtraParamsProvided ? infoExtraParams : {}, expectedMeetingData);
             });
-  
+
             it(`creates the meeting from a successful meeting info fetch with random delay${infoExtraParamsProvided ? ' with infoExtraParams' : ''}`, async () => {
               const FAKE_LOCUS_MEETING = {
                 conversationUrl: 'locusConvURL',
@@ -1131,14 +1129,14 @@ describe('plugin-meetings', () => {
                   active: false,
                 },
               };
-  
+
               const meeting = await webex.meetings.createMeeting(
                 FAKE_LOCUS_MEETING,
                 'test type',
                 true,
                 infoExtraParams
               );
-  
+
               assert.instanceOf(
                 meeting,
                 Meeting,
@@ -1146,7 +1144,7 @@ describe('plugin-meetings', () => {
               );
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
               assert.calledOnce(setTimeoutSpy);
-  
+
               // Parse meeting info with locus object
               assert.equal(meeting.conversationUrl, 'locusConvURL');
               assert.equal(meeting.locusUrl, 'locusUrl');
@@ -1155,7 +1153,7 @@ describe('plugin-meetings', () => {
               assert.isUndefined(meeting.meetingJoinUrl);
               assert.equal(meeting.owner, 'locusOwner');
               assert.isUndefined(meeting.permissionToken);
-  
+
               // Add meeting and send trigger
               assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
               assert.calledTwice(TriggerProxy.trigger);
@@ -1172,7 +1170,7 @@ describe('plugin-meetings', () => {
                   type: 'test meeting added type',
                 }
               );
-  
+
               // When timer expires
               clock.tick(FAKE_TIME_TO_START);
               assert.calledWith(
@@ -1185,7 +1183,7 @@ describe('plugin-meetings', () => {
                 undefined,
                 infoExtraParamsProvided ? infoExtraParams : {}
               );
-  
+
               // Parse meeting info is called again with new meeting info
               await testUtils.flushPromises();
               assert.equal(meeting.conversationUrl, 'locusConvURL');
@@ -1195,7 +1193,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
               assert.equal(meeting.owner, 'locusOwner');
               assert.equal(meeting.permissionToken, 'PT');
-  
+
               assert.calledWith(
                 TriggerProxy.trigger,
                 meeting,
@@ -1746,7 +1744,41 @@ describe('plugin-meetings', () => {
         assert.equal(result, false);
         assert.calledWith(
           LoggerProxy.logger.log,
-          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
+
+      it('check self is moved and device resource removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'MOVED';
+        sinon.stub(MeetingsUtil, 'getThisDevice').returns({
+          state: 'LEFT',
+          reason: 'MOVED',
+        });
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
+
+      it('check self is joined but device resource removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        sinon.stub(MeetingsUtil, 'joinedOnThisDevice').returns(false);
+        newLocus.self.state = 'JOINED';
+        sinon.stub(MeetingsUtil, 'getThisDevice').returns({
+          state: 'LEFT',
+          reason: 'MOVED',
+        });
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
         );
       });
     });
