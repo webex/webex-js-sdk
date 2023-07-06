@@ -134,7 +134,7 @@ describe('plugin-metrics', () => {
       });
     });
 
-    describe.only('#getClientMetricsPayload()', () => {
+    describe('#getClientMetricsPayload()', () => {
       it('returns the expected payload', () => {
         webex.credentials.supertoken = new Token(
           {
@@ -179,7 +179,7 @@ describe('plugin-metrics', () => {
           metricName: 'test',
           tags: {
             browser: '',
-            domain: 'non-browser',
+            domain: 'whatever',
             os: 'other',
             success: true,
           },
