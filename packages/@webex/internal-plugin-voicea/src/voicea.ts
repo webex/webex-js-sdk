@@ -7,7 +7,6 @@ import {
   VOICEA_RELAY_TYPES,
   TRANSCRIPTION_TYPE,
   VOICEA,
-  LLM_EVENTS,
   ANNOUNCE_STATUS,
   TURN_ON_CAPTION_STATUS,
 } from './constants';
@@ -30,8 +29,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private seqNum: number;
 
-  private hasVoiceaJoined: boolean;
-
   private areCaptionsEnabled: boolean;
 
   private hasSubscribedToEvents = false;
@@ -52,7 +49,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     switch (e.data.relayType) {
       case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
         this.vmcDeviceId = e.headers.from;
-        this.hasVoiceaJoined = true;
         this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
@@ -84,7 +80,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   public deregisterEvents() {
-    this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
     // @ts-ignore
@@ -101,7 +96,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   constructor(...args) {
     super(...args);
     this.seqNum = 1;
-    this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
@@ -345,16 +339,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * Binding llm online event
-   * @param {function} callback
-   * @returns {void}
-   */
-  private onceLLMOnline = (callback) => {
-    // @ts-ignore
-    this.webex.internal.llm.once(LLM_EVENTS.ONLINE, callback);
-  };
-
-  /**
    * request turn on Captions
    * @returns {Promise}
    */
@@ -390,27 +374,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * bind llm online event once to announce
-   * @returns {void}
-   */
-  private announceAfterLLMOnline = () => {
-    this.announceStatus = ANNOUNCE_STATUS.WAITING_LLM_ONLINE;
-    this.onceLLMOnline(() => {
-      if (this.announceStatus === ANNOUNCE_STATUS.WAITING_LLM_ONLINE) {
-        this.announceStatus = ANNOUNCE_STATUS.IDLE;
-        this.announce();
-      }
-    });
-  };
-
-  /**
    * is announce processing
    * @returns {boolean}
    */
   private isAnnounceProcessing = () =>
-    [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.WAITING_LLM_ONLINE, ANNOUNCE_STATUS.JOINED].includes(
-      this.announceStatus
-    );
+    [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
 
   /**
    * announce to voicea data chanel
@@ -420,28 +388,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (this.isAnnounceProcessing()) return;
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) {
-      this.announceAfterLLMOnline();
-
-      return;
+      throw new Error('voicea can not announce before llm connected');
     }
     this.sendAnnouncement();
-  };
-
-  /**
-   * bind llm online event once to turn on captions
-   * @returns {void}
-   */
-  private turnOnCaptionsAfterLLMOnline = (): Promise<void> => {
-    this.captionStatus = TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE;
-
-    return new Promise((resolve) => {
-      this.onceLLMOnline(() => {
-        if (this.captionStatus === TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE) {
-          this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-          resolve(this.turnOnCaptions());
-        }
-      });
-    });
   };
 
   /**
@@ -449,22 +398,17 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {boolean}
    */
   private isCaptionProcessing = () =>
-    [
-      TURN_ON_CAPTION_STATUS.SENDING,
-      TURN_ON_CAPTION_STATUS.WAITING_LLM_ONLINE,
-      TURN_ON_CAPTION_STATUS.ENABLED,
-    ].includes(this.captionStatus);
+    [TURN_ON_CAPTION_STATUS.SENDING, TURN_ON_CAPTION_STATUS.ENABLED].includes(this.captionStatus);
 
   /**
    * Turn on Captions
    * @returns {Promise}
    */
   public turnOnCaptions = async (): undefined | Promise<void> => {
-    if (this.hasVoiceaJoined && this.areCaptionsEnabled) return undefined;
     if (this.isCaptionProcessing()) return undefined;
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) {
-      return this.turnOnCaptionsAfterLLMOnline();
+      throw new Error('can not turn on captions before llm connected');
     }
 
     return this.requestTurnOnCaptions();
@@ -488,6 +432,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       if (activate && !this.areCaptionsEnabled) this.turnOnCaptions();
     });
   };
+
+  /**
+   * get caption status
+   * @returns {string}
+   */
+  public getCaptionStatus = () => this.captionStatus;
+
+  /**
+   * get announce status
+   * @returns {string}
+   */
+  public getAnnounceStatus = () => this.announceStatus;
 }
 
 export default VoiceaChannel;

@@ -29,22 +29,16 @@ export const TRANSCRIPTION_TYPE = {
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
 };
 
-export const LLM_EVENTS = {
-  ONLINE: 'online',
-};
-
 export const VOICEA = 'voicea';
 
 export const ANNOUNCE_STATUS = {
   IDLE: 'idle',
   JOINED: 'joined',
   JOINING: 'joining',
-  WAITING_LLM_ONLINE: 'waitingLLMOnline',
 };
 
 export const TURN_ON_CAPTION_STATUS = {
   IDLE: 'idle',
   ENABLED: 'enabled',
   SENDING: 'sending',
-  WAITING_LLM_ONLINE: 'waitingLLMOnline',
 };

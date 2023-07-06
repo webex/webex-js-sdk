@@ -108,12 +108,10 @@ describe('plugin-voicea', () => {
           data: {relayType: 'voicea.annc', voiceaPayload: {}},
         });
 
-        assert.equal(voiceaService.hasVoiceaJoined, true);
         assert.equal(voiceaService.areCaptionsEnabled, true);
         assert.equal(voiceaService.vmcDeviceId, 'ws');
 
         voiceaService.deregisterEvents();
-        assert.equal(voiceaService.hasVoiceaJoined, false);
         assert.equal(voiceaService.areCaptionsEnabled, false);
         assert.equal(voiceaService.vmcDeviceId, undefined);
         assert.equal(voiceaService.announceStatus, 'idle');
@@ -210,24 +208,6 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe("#onceLLMOnline", () => {
-      let once;
-      beforeEach(() => {
-        once = sinon.stub(voiceaService.webex.internal.llm, 'once');
-      });
-
-      afterEach(() => {
-        once.restore();
-      });
-
-      it('should once online event to llm', () => {
-        const callback = sinon.stub();
-        
-        voiceaService.onceLLMOnline(callback);
-        assert.calledOnceWithExactly(once, 'online', callback);
-      });
-    });
-
     describe('#requestTurnOnCaptions', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
@@ -278,45 +258,12 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#announceAfterLLMOnline', () => {
-      let onceLLMOnline, callback, announce;
-      beforeEach(() => {
-        callback = undefined;
-        onceLLMOnline = sinon.stub(voiceaService, 'onceLLMOnline').callsFake((c) => callback = c);
-        announce = sinon.stub(voiceaService, 'announce').callsFake(() => {})
-        voiceaService.announceStatus = 'idle';
-      });
-
-      afterEach(() => {
-        onceLLMOnline.restore();
-        announce.restore();
-        voiceaService.announceStatus = 'idle';
-      });
-
-      it('should announce after online', () => {
-        voiceaService.announceAfterLLMOnline();
-        assert.equal(voiceaService.announceStatus, 'waitingLLMOnline');
-        assert.calledOnce(onceLLMOnline);
-        callback();
-        assert.equal(voiceaService.announceStatus, 'idle');
-        assert.calledOnce(announce);
-      });
-
-      it('should announce when announce status is not waitingLLMOnline', () => {
-        voiceaService.announceAfterLLMOnline();
-        voiceaService.announceStatus = 'joined';
-        callback();
-        assert.equal(voiceaService.announceStatus, 'joined');
-        assert.notCalled(announce);
-      });
-    });
-
     describe("#isAnnounceProcessing", () => {
       afterEach(() => {
         voiceaService.announceStatus = 'idle';
       });
 
-      ['joining', 'waitingLLMOnline', 'joined'].forEach((status) => {
+      ['joining', 'joined'].forEach((status) => {
         it(`should return true when status is ${status}`, () => {
           voiceaService.announceStatus = status;
           assert.equal(voiceaService.isAnnounceProcessing(), true);
@@ -330,12 +277,10 @@ describe('plugin-voicea', () => {
     });
 
     describe("#announce", () => {
-      let isAnnounceProcessing, isConnected, sendAnnouncement, announceAfterLLMOnline;
+      let isAnnounceProcessing, sendAnnouncement;
       beforeEach(() => {
-        voiceaService.hasVoiceaJoined = false;
         voiceaService.webex.internal.llm.isConnected.returns(true);
         sendAnnouncement = sinon.stub(voiceaService, 'sendAnnouncement');
-        announceAfterLLMOnline = sinon.stub(voiceaService, 'announceAfterLLMOnline');
         isAnnounceProcessing = sinon.stub(voiceaService, 'isAnnounceProcessing').returns(false)
       });
 
@@ -343,19 +288,16 @@ describe('plugin-voicea', () => {
         voiceaService.webex.internal.llm.isConnected.returns(true);
         isAnnounceProcessing.restore();
         sendAnnouncement.restore();
-        announceAfterLLMOnline.restore();
       });
 
       it('announce to llm data channel', ()=> {
         voiceaService.announce();
         assert.calledOnce(sendAnnouncement);
-        assert.notCalled(announceAfterLLMOnline);
       });
 
       it('announce to llm data channel before llm connected', ()=> {
         voiceaService.webex.internal.llm.isConnected.returns(false);
-        voiceaService.announce();
-        assert.calledOnce(announceAfterLLMOnline);
+        assert.throws(() =>  voiceaService.announce(), "voicea can not announce before llm connected");
         assert.notCalled(sendAnnouncement);
       });
 
@@ -363,7 +305,6 @@ describe('plugin-voicea', () => {
         isAnnounceProcessing.returns(true);
         voiceaService.announce();
         assert.notCalled(sendAnnouncement);
-        assert.notCalled(announceAfterLLMOnline);
       })
     });
 
@@ -372,7 +313,7 @@ describe('plugin-voicea', () => {
         voiceaService.captionStatus = 'idle';
       });
 
-      ['sending', 'waitingLLMOnline', 'enabled'].forEach((status) => {
+      ['sending', 'enabled'].forEach((status) => {
         it(`should return true when status is ${status}`, () => {
           voiceaService.captionStatus = status;
           assert.equal(voiceaService.isCaptionProcessing(), true);
@@ -385,81 +326,37 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#turnOnCaptionsAfterLLMOnline', () => {
-      let onceLLMOnline, callback, turnOnCaptions;
-      beforeEach(() => {
-        onceLLMOnline = sinon.stub(voiceaService, 'onceLLMOnline').callsFake((c) => callback = c);
-        turnOnCaptions = sinon.stub(voiceaService, 'turnOnCaptions');
-      });
-
-      afterEach(() => {
-        onceLLMOnline.restore();
-        turnOnCaptions.restore();
-      });
-
-      it('should works', () => {
-        voiceaService.turnOnCaptionsAfterLLMOnline();
-        assert.equal(voiceaService.captionStatus, "waitingLLMOnline");
-        assert.calledOnce(onceLLMOnline);
-        callback();
-        callback();
-        assert.equal(voiceaService.captionStatus, "idle");
-        assert.calledOnce(turnOnCaptions);
-      });
-    });
-
     describe('#turnOnCaptions', () => {
-      let requestTurnOnCaptions, turnOnCaptionsAfterLLMOnline, isCaptionProcessing;
+      let requestTurnOnCaptions, isCaptionProcessing;
       beforeEach(() => {
         requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
-        turnOnCaptionsAfterLLMOnline = sinon.stub(voiceaService, 'turnOnCaptionsAfterLLMOnline');
         isCaptionProcessing = sinon.stub(voiceaService, 'isCaptionProcessing').returns(false);
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       afterEach(() => {
         requestTurnOnCaptions.restore();
-        turnOnCaptionsAfterLLMOnline.restore();
         isCaptionProcessing.restore();
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
-      it('request turn on captions after llm connected', () => {
-        voiceaService.hasVoiceaJoined = false;
-        voiceaService.areCaptionsEnabled = false;
-
+      it('call request turn on captions', () => {
+        isCaptionProcessing.returns(false);
         voiceaService.turnOnCaptions();
         assert.calledOnce(requestTurnOnCaptions);
-        assert.notCalled(turnOnCaptionsAfterLLMOnline);
       });
 
       it("turns on captions before llm connected", () => {
-        voiceaService.hasVoiceaJoined = false;
-        voiceaService.areCaptionsEnabled = false;
-        voiceaService.webex.internal.llm.isConnected.returns(false);
-        voiceaService.turnOnCaptions();
-        assert.calledOnce(turnOnCaptionsAfterLLMOnline);
+        isCaptionProcessing.returns(false);
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+        // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
         assert.notCalled(requestTurnOnCaptions);
       });
 
       it('should not turn on duplicate when processing', () => {
-        voiceaService.hasVoiceaJoined = false;
-        voiceaService.areCaptionsEnabled = false;
         isCaptionProcessing.returns(true);
         voiceaService.turnOnCaptions();
-          assert.notCalled(voiceaService.turnOnCaptionsAfterLLMOnline);
-          assert.notCalled(voiceaService.requestTurnOnCaptions);
-      });
-
-      it('should not turn on duplicate', () => {
-        const check = ({hasVoiceaJoined, areCaptionsEnabled}) => {
-          voiceaService.hasVoiceaJoined = hasVoiceaJoined;
-          voiceaService.areCaptionsEnabled = areCaptionsEnabled;
-          voiceaService.turnOnCaptions();
-          assert.notCalled(voiceaService.turnOnCaptionsAfterLLMOnline);
-          assert.notCalled(voiceaService.requestTurnOnCaptions);
-        }
-        check({hasVoiceaJoined: true, areCaptionsEnabled: true})
+        assert.notCalled(voiceaService.requestTurnOnCaptions);
       });
     });
 
@@ -831,6 +728,20 @@ describe('plugin-voicea', () => {
           highlightSource: 'voice-command',
           timestamp: '11:00',
         });
+      });
+    });
+
+    describe("#getCaptionStatus", () => {
+      it('works correctly', () => {
+        voiceaService.captionStatus = "ENABLED"
+        assert.equal(voiceaService.getCaptionStatus(), "ENABLED");
+      });
+    });
+
+    describe("#getAnnounceStatus", () => {
+      it('works correctly', () => {
+        voiceaService.announceStatus = "JOINED"
+        assert.equal(voiceaService.getAnnounceStatus(), "JOINED");
       });
     });
   });
