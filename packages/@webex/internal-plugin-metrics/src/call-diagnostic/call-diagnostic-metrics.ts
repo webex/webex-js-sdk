@@ -220,6 +220,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
+      if (!meeting) {
+        // TODO: add behavioral metrics to see if this actually happens in production.
+        console.warn(
+          'Attempt to send client event but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
+
       // grab identifiers
       const identifiers = this.getIdentifiers({
         meeting,
