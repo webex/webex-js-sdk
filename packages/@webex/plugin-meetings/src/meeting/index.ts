@@ -3574,7 +3574,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.mercury.connection.lost',
-        options: {meetingId: this.id},
+        options: {meeting: this},
       });
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
@@ -5130,7 +5130,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.start',
         payload: {mediaType: data.type},
         options: {
-          meetingId: this.id,
+          meeting: this,
         },
       });
     });
@@ -5140,7 +5140,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.stop',
         payload: {mediaType: data.type},
         options: {
-          meetingId: this.id,
+          meeting: this,
         },
       });
     });
@@ -5159,7 +5159,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.start',
         payload: {mediaType: data.type},
         options: {
-          meetingId: this.id,
+          meeting: this,
         },
       });
     });
@@ -5169,7 +5169,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.stop',
         payload: {mediaType: data.type},
         options: {
-          meetingId: this.id,
+          meeting: this,
         },
       });
     });

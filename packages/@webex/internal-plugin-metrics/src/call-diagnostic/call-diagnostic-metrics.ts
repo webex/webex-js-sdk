@@ -62,15 +62,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param meetingId
    * @returns
    */
-  getOrigin(options: GetOriginOptions, meetingId?: string) {
+  getOrigin(options: GetOriginOptions, meeting?: any) {
     let defaultClientType: Event['origin']['clientInfo']['clientType'];
     let defaultSubClientType: Event['origin']['clientInfo']['subClientType'];
     let environment: Event['origin']['environment'];
 
-    if (meetingId) {
-      // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
-
+    if (meeting) {
       defaultClientType = meeting.config?.metrics?.clientType;
       defaultSubClientType = meeting.config?.metrics?.subClientType;
       environment = meeting.environment;
@@ -156,8 +153,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns
    */
   prepareDiagnosticEvent(eventData: Event['event'], options: any) {
-    const {meetingId} = options;
-    const origin = this.getOrigin(options, meetingId);
+    const {meeting} = options;
+    const origin = this.getOrigin(options, meeting);
 
     const event: Event = {
       eventId: uuid.v4(),
@@ -213,12 +210,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: RecursivePartial<ClientEvent>;
     options: SubmitClientEventOptions;
   }) {
-    const {meetingId, mediaConnections, error} = options;
+    const {meetingId, meeting: meetingFromPayload, mediaConnections, error} = options;
 
     // events that will most likely happen in join phase
-    if (meetingId) {
+    if (meetingId || meetingFromPayload) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId) || meetingFromPayload;
+
+      if (!meeting) {
+        console.warn(
+          'Attempt to send client event but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
 
       // grab identifiers
       const identifiers = this.getIdentifiers({
@@ -254,7 +260,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       clientEventObject = merge(clientEventObject, payload);
 
       // append client event data to the call diagnostic event
-      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, {...options, meeting});
       this.submitToCallDiagnostics(diagnosticEvent);
     } else {
       // any pre join events or events that are outside the meeting.
