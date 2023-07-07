@@ -3,7 +3,12 @@
 
 import {isEmpty, merge} from 'lodash';
 import Batcher from '../batcher';
-import {ClientEvent, MetricEventNames} from '../metrics.types';
+import {
+  ClientEvent,
+  MetricEventNames,
+  MediaQualityEventAudioSetupDelayPayload,
+  MediaQualityEventVideoSetupDelayPayload,
+} from '../metrics.types';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -38,6 +43,9 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // check event names and append latencies?
     const eventName = item.eventPayload?.event?.name as MetricEventNames;
     const joinTimes: ClientEvent['payload']['joinTimes'] = {};
+    const audioSetupDelay: MediaQualityEventAudioSetupDelayPayload = {};
+    const videoSetupDelay: MediaQualityEventVideoSetupDelayPayload = {};
+
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
     switch (eventName) {
@@ -77,10 +85,24 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
       case 'client.media-engine.ready':
         joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
         break;
+
+      case 'client.mediaquality.event':
+        audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+        audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
+        videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
+        videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
     }
 
     if (!isEmpty(joinTimes)) {
       item.eventPayload.event = merge(item.eventPayload.event, {joinTimes});
+    }
+
+    if (!isEmpty(audioSetupDelay)) {
+      item.eventPayload.event = merge(item.eventPayload.event, {audioSetupDelay});
+    }
+
+    if (!isEmpty(videoSetupDelay)) {
+      item.eventPayload.event = merge(item.eventPayload.event, {videoSetupDelay});
     }
 
     item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);

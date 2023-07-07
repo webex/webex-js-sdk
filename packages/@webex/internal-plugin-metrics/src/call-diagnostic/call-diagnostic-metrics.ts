@@ -22,6 +22,9 @@ import {
   NetworkType,
   ClientEvent,
   SubmitClientEventOptions,
+  MediaQualityEvent,
+  SubmitMQEOptions,
+  SubmitMQEPayload,
   ClientEventError,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
@@ -181,8 +184,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       event: eventData,
     };
 
-    // clear any empty properties on the event object (required by CA)
-    clearEmptyKeysRecursively(event);
+    // sanitize (remove empty properties, CA requires it)
+    // but we don't want to sanitize MQE as most of the times
+    // values will be 0, [] etc, and they are required.
+    if (eventData.name !== 'client.mediaquality.event') {
+      clearEmptyKeysRecursively(event);
+    }
 
     return event;
   }
@@ -194,6 +201,76 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   public submitFeatureEvent() {
     throw Error('Not implemented');
+  }
+
+  /**
+   * Submit Media Quality Event
+   * @param args
+   */
+  submitMQE({
+    name,
+    // additional payload to be merged with default payload
+    payload,
+    options,
+  }: {
+    name: MediaQualityEvent['name'];
+    // additional payload to be merged with default payload
+    payload: SubmitMQEPayload;
+    options: SubmitMQEOptions;
+  }) {
+    const {meetingId, mediaConnections} = options;
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      if (!meeting) {
+        // TODO: add behavioral metrics to see if this actually happens in production.
+        console.warn(
+          'Attempt to send MQE but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
+
+      // merge identifiers
+      const identifiers = this.getIdentifiers({
+        meeting,
+        mediaConnections: meeting.mediaConnections || mediaConnections,
+      });
+
+      // create media quality event object
+      let clientEventObject: MediaQualityEvent['payload'] = {
+        name,
+        canProceed: true,
+        identifiers,
+        eventData: {
+          webClientDomain: window.location.hostname,
+        },
+        intervals: payload.intervals,
+        sourceMetadata: {
+          applicationSoftwareType: CLIENT_NAME,
+          // @ts-ignore
+          applicationSoftwareVersion: this.webex.version,
+          mediaEngineSoftwareType: getBrowserName() || 'browser',
+          mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
+          startTime: new Date().toISOString(),
+        },
+      };
+
+      // merge any new properties, or override existing ones
+      clientEventObject = merge(clientEventObject, payload);
+
+      // append media quality event data to the call diagnostic event
+      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      this.submitToCallDiagnostics(diagnosticEvent);
+    } else {
+      throw new Error(
+        'Media quality events cant be sent outside the context of a meeting. Meeting id is required.'
+      );
+    }
   }
 
   /**

@@ -391,6 +391,104 @@ describe('internal-plugin-metrics', () => {
       assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
     });
 
+    describe('#submitMQE', () => {
+      it('submits the event correctly', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const getErrorPayloadForClientErrorCodeSpy = sinon.spy(cd, 'getErrorPayloadForClientErrorCode');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          networkType: 'wifi' as const,
+          meetingId: fakeMeeting.id,
+        };
+
+        cd.submitMQE({
+          name: 'client.mediaquality.event',
+          payload: {
+            //@ts-ignore
+            intervals: [{}],
+          },
+          options,
+        });
+
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: fakeMeeting,
+          mediaConnections: undefined,
+        });
+        assert.notCalled(getErrorPayloadForClientErrorCodeSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            name: 'client.mediaquality.event',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: {webClientDomain: 'whatever'},
+            intervals: [{}],
+            sourceMetadata: {
+              applicationSoftwareType: 'webex-js-sdk',
+              applicationSoftwareVersion: 'webex-version',
+              mediaEngineSoftwareType: 'browser',
+              mediaEngineSoftwareVersion: getOSVersion(),
+              startTime: now.toISOString(),
+            },
+          },
+          options
+        );
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          eventId: 'my-fake-id',
+          version: 1,
+          origin: {origin: 'fake-origin'},
+          originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+          senderCountryCode: 'UK',
+          event: {
+            name: 'client.mediaquality.event',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: {webClientDomain: 'whatever'},
+            intervals: [{}],
+            sourceMetadata: {
+              applicationSoftwareType: 'webex-js-sdk',
+              applicationSoftwareVersion: 'webex-version',
+              mediaEngineSoftwareType: 'browser',
+              mediaEngineSoftwareVersion: getOSVersion(),
+              startTime: now.toISOString(),
+            },
+          },
+        });
+      });
+
+      it('throws if meeting id not provided', () => {
+        assert.throws(() =>
+          cd.submitMQE({
+            name: 'client.mediaquality.event',
+            payload: {
+              //@ts-ignore
+              intervals: [{}],
+            },
+            //@ts-ignore
+            options: {meetingId: undefined, networkType: 'wifi'},
+          })
+        );
+      });
+    });
     describe('#getErrorPayloadForClientErrorCode', () => {
       it('it should grab the payload for client error code correctly', () => {
         const res = cd.getErrorPayloadForClientErrorCode(4008);

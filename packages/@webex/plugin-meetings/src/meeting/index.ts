@@ -40,7 +40,6 @@ import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from './request';
 import Members from '../members/index';
@@ -5134,10 +5133,16 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.meetings.geoHintInfo?.clientAddress ||
         options.data.intervalMetadata.peerReflexiveIP ||
         MQA_STATS.DEFAULT_IP;
-      Metrics.postEvent({
-        event: eventType.MEDIA_QUALITY,
-        meeting: this,
-        data: {intervalData: options.data, networkType: options.networkType},
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitMQE({
+        name: 'client.mediaquality.event',
+        options: {
+          meetingId: this.id,
+          networkType: options.networkType,
+        },
+        payload: {
+          intervals: [options.data],
+        },
       });
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_MEDIA_STARTED, (data) => {
