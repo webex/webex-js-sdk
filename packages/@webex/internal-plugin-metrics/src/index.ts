@@ -10,6 +10,7 @@ import Metrics from './metrics';
 import config from './config';
 import NewMetrics from './new-metrics';
 import {ClientEvent} from './metrics.types';
+import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -20,5 +21,5 @@ registerInternalPlugin('newMetrics', NewMetrics, {
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {config, NewMetrics};
+export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics};
 export type {ClientEvent};

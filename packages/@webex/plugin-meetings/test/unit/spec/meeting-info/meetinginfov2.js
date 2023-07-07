@@ -416,7 +416,7 @@ describe('plugin-meetings', () => {
                 },
                 options: {
                   meetingId: 'meeting-id',
-                  error: {
+                  rawError: {
                     statusCode: 403,
                     body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
                     url: 'http://api-url.com',
@@ -501,7 +501,7 @@ describe('plugin-meetings', () => {
               },
             },
             options: {
-              error: {
+              rawError: {
                 statusCode: 403,
                 body: {message, code: 1000000, data: {meetingInfo: meetingInfoData}},
                 url: 'http://api-url.com',

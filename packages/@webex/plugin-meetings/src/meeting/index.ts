@@ -2,7 +2,7 @@ import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, defer, isEmpty} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent} from '@webex/internal-plugin-metrics';
+import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -4398,7 +4398,7 @@ export default class Meeting extends StatelessWebexPlugin {
           payload: {
             identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
           },
-          options: {meetingId: this.id, error, showToUser: true},
+          options: {meetingId: this.id, rawError: error, showToUser: true},
         });
 
         // TODO:  change this to error codes and pre defined dictionary
@@ -4771,7 +4771,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, error, showToUser: true},
+        options: {meetingId: this.id, rawError: error, showToUser: true},
       });
     } else if (
       error instanceof Errors.SdpOfferHandlingError ||
@@ -4785,7 +4785,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, error, showToUser: true},
+        options: {meetingId: this.id, rawError: error, showToUser: true},
       });
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
@@ -4797,7 +4797,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, error, showToUser: true},
+        options: {meetingId: this.id, rawError: error, showToUser: true},
       });
     }
   };
@@ -4985,13 +4985,17 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.ice.end',
-          payload: {canProceed: false},
+          payload: {
+            canProceed: false,
+            errors: [
+              // @ts-ignore
+              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+              ),
+            ],
+          },
           options: {
             meetingId: this.id,
-            error: {
-              // TODO: adapt this code to work in separate JIRA
-              error: 'this is not really mapped, this error is very contextual.',
-            },
           },
         });
 

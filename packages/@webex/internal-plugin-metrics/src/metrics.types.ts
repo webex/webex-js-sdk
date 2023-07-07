@@ -1,10 +1,12 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
 
+export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
-  error?: any;
+  rawError?: any;
   showToUser?: boolean;
 };
 

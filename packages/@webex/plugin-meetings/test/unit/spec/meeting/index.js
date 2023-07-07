@@ -796,7 +796,7 @@ describe('plugin-meetings', () => {
           it('should post error event if failed', async () => {
             await meeting.join().catch(() => {
               assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
-              assert.match(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.error, {
+              assert.match(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.rawError, {
                 code: 2,
                 error: null,
                 joinOptions: {},
@@ -2742,7 +2742,7 @@ describe('plugin-meetings', () => {
 
           meeting.joinedWith = {state: "NOT_JOINED"};
           assert.equal(meeting.isJoined(), false);
-          
+
           meeting.joinedWith = {state: "JOINED"};
           assert.equal(meeting.isJoined(), true);
         });
@@ -4050,7 +4050,7 @@ describe('plugin-meetings', () => {
               payload: {
                 canProceed: false,
               },
-              options: {showToUser: true, error, meetingId: meeting.id},
+              options: {showToUser: true, rawError: error, meetingId: meeting.id},
             });
           };
 

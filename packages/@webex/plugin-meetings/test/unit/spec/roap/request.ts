@@ -166,7 +166,7 @@ describe('plugin-meetings/roap', () => {
           name: 'client.locus.media.response',
           options: {
             meetingId: 'meeting-id',
-            error: {code: 300, message: 'error'},
+            rawError: {code: 300, message: 'error'},
           },
         });
       }

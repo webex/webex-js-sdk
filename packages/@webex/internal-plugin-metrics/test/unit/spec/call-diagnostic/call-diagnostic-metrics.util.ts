@@ -1,5 +1,8 @@
 import {assert} from '@webex/test-helper-chai';
-import {clearEmptyKeysRecursively} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
+import {
+  clearEmptyKeysRecursively,
+  isLocusServiceErrorCode,
+} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 
 describe('internal-plugin-metrics', () => {
   describe('clearEmptyKeysRecursively', () => {
@@ -51,6 +54,23 @@ describe('internal-plugin-metrics', () => {
       const obj = {};
       clearEmptyKeysRecursively(obj);
       assert.deepEqual(obj, {});
+    });
+  });
+
+  describe('isLocusServiceErrorCode', () => {
+    [
+      [10000, false],
+      [2400000, true],
+      ['2400000', true],
+      [2400001, true],
+      ['2400001', true],
+      [240000, false],
+      [14000000, false],
+    ].forEach(([error, expected]) => {
+      it(`for code ${error} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isLocusServiceErrorCode(error), expected);
+      });
     });
   });
 });
