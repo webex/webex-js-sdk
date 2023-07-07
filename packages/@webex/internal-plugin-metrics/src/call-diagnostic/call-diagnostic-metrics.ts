@@ -23,6 +23,7 @@ import {
   SubmitClientEventOptions,
   MediaQualityEvent,
   SubmitMQEOptions,
+  SubmitMQEPayload,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 
@@ -206,9 +207,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: MediaQualityEvent['name'];
     // additional payload to be merged with default payload
-    payload: RecursivePartial<MediaQualityEvent['payload']> & {
-      intervals: MediaQualityEvent['payload']['intervals'];
-    };
+    payload: SubmitMQEPayload;
     options: SubmitMQEOptions;
   }) {
     const {meetingId, mediaConnections} = options;

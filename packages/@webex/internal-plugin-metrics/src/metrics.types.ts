@@ -81,3 +81,7 @@ export type MediaQualityEventAudioSetupDelayPayload =
   MediaQualityEvent['payload']['audioSetupDelay'];
 export type MediaQualityEventVideoSetupDelayPayload =
   MediaQualityEvent['payload']['videoSetupDelay'];
+
+export type SubmitMQEPayload = RecursivePartial<MediaQualityEvent['payload']> & {
+  intervals: MediaQualityEvent['payload']['intervals'];
+};
