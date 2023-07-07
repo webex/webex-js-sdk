@@ -1,7 +1,6 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {isEmpty, merge} from 'lodash';
 import Batcher from '../batcher';
 import {ClientEvent, MetricEventNames, MediaQualityEvent} from '../metrics.types';
@@ -42,7 +41,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     const audioSetupDelay: MediaQualityEvent['payload']['audioSetupDelay'] = {};
     const videoSetupDelay: MediaQualityEvent['payload']['videoSetupDelay'] = {};
 
-    const cdl = NewMetrics.callDiagnosticLatencies;
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
     switch (eventName) {
       case 'client.interstitial-window.launched':

@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.157](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.156...v3.0.0-beta.157) (2023-07-04)
+
+
+### Bug Fixes
+
+* update internal media core ([#2921](https://github.com/webex/webex-js-sdk/issues/2921)) ([ba32678](https://github.com/webex/webex-js-sdk/commit/ba32678746e0b12dc9b14f0f3e67eb311a22bccf))
+
+## [3.0.0-beta.156](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.155...v3.0.0-beta.156) (2023-07-04)
+
+## [3.0.0-beta.155](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.154...v3.0.0-beta.155) (2023-07-03)
+
+
+### Bug Fixes
+
+* effects contraints update ([#2913](https://github.com/webex/webex-js-sdk/issues/2913)) ([408b8e5](https://github.com/webex/webex-js-sdk/commit/408b8e5acc873e1712e0ffc82297eac450b9b715))
+
+## [3.0.0-beta.154](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.153...v3.0.0-beta.154) (2023-06-30)
+
+
+### Bug Fixes
+
+* cannot join meetings if we have no microphone or camera permissions ([#2917](https://github.com/webex/webex-js-sdk/issues/2917)) ([2d0fdd8](https://github.com/webex/webex-js-sdk/commit/2d0fdd86daf2a24cd46b52671eb16d5baa89e20f))
+* **internal-plugin-encryption:** allow mixed case SAN ([#2916](https://github.com/webex/webex-js-sdk/issues/2916)) ([27652c9](https://github.com/webex/webex-js-sdk/commit/27652c9769f809920ae9a9cf260c68225bac36f2))
+* SDK requesting too many streams from Homer ([#2836](https://github.com/webex/webex-js-sdk/issues/2836)) ([c9a5056](https://github.com/webex/webex-js-sdk/commit/c9a50560aa752fd94bf2ed9170ff4e41af097e7d))
+
+## [3.0.0-beta.153](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.152...v3.0.0-beta.153) (2023-06-28)
+
+
+### Bug Fixes
+
+* **locus-info:** adding lastModified field when handling requestedToU… ([#2897](https://github.com/webex/webex-js-sdk/issues/2897)) ([42dc06c](https://github.com/webex/webex-js-sdk/commit/42dc06c48883741f2690aacade0f93e3386ccf0c))
+
+## [3.0.0-beta.152](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.151...v3.0.0-beta.152) (2023-06-28)
+
+
+### Features
+
+* **conversation:** do not encrypte meeting container policies ([#2886](https://github.com/webex/webex-js-sdk/issues/2886)) ([f082170](https://github.com/webex/webex-js-sdk/commit/f082170f5ff9a2a469bd0f7b0fbd60a3068e5476))
+
+## [3.0.0-beta.151](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.150...v3.0.0-beta.151) (2023-06-27)
+
+## [3.0.0-beta.150](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.149...v3.0.0-beta.150) (2023-06-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** set breakoutStatus cache false avoid duplicate changes ([#2900](https://github.com/webex/webex-js-sdk/issues/2900)) ([a5c9e5e](https://github.com/webex/webex-js-sdk/commit/a5c9e5e2d852620d9c4d42fa25cd6b0dfb28fcb1))
+
 ## [3.0.0-beta.149](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.148...v3.0.0-beta.149) (2023-06-26)
 
 

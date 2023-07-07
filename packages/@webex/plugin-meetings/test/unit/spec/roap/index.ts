@@ -1,6 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import TurnDiscovery from '@webex/plugin-meetings/src/roap/turnDiscovery';
+import MockWebex from '@webex/test-helper-mock-webex';
 
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import Roap from '@webex/plugin-meetings/src/roap/';
@@ -9,6 +10,8 @@ import Meeting from '@webex/plugin-meetings/src/meeting';
 describe('Roap', () => {
   describe('doTurnDiscovery', () => {
     it('calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments', async () => {
+      const webex = new MockWebex({});
+
       const RESULT = {something: 'some value'};
       const meeting = {id: 'some meeting id'} as Meeting;
 
@@ -16,7 +19,7 @@ describe('Roap', () => {
         .stub(TurnDiscovery.prototype, 'doTurnDiscovery')
         .resolves(RESULT);
 
-      const roap = new Roap({}, {parent: 'fake'});
+      const roap = new Roap({}, {parent: webex});
 
       // call with isReconnecting: true
       const result = await roap.doTurnDiscovery(meeting, true);
@@ -40,7 +43,10 @@ describe('Roap', () => {
     let sendRoapStub;
     let meeting;
 
+    let webex;
+
     beforeEach(() => {
+      webex = new MockWebex({});
       meeting = {
         id: 'some meeting id',
         correlationId: 'correlation id',
@@ -77,7 +83,7 @@ describe('Roap', () => {
       }reconnecting and TURN discovery is ${
         turnDiscoverySkipped ? 'skipped' : 'not skipped'
       }`, async () => {
-        const roap = new Roap({}, {parent: 'fake'});
+        const roap = new Roap({}, {parent: webex});
 
         sinon.stub(roap.turnDiscovery, 'isSkipped').resolves(turnDiscoverySkipped);
 

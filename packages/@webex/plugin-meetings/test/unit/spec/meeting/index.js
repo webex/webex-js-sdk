@@ -66,7 +66,6 @@ import {eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -642,7 +641,7 @@ describe('plugin-meetings', () => {
           it('should join the meeting and return promise', async () => {
             const join = meeting.join();
 
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
               payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
               options: {meetingId: meeting.id},
@@ -693,7 +692,7 @@ describe('plugin-meetings', () => {
 
             const join = meeting.join();
 
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
               payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
               options: {meetingId: meeting.id},
@@ -706,9 +705,9 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
 
-            assert.calledThrice(NewMetrics.submitClientEvent);
+            assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
 
-            assert.deepEqual(NewMetrics.submitClientEvent.getCall(0).args[0], {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
               name: 'client.call.initiated',
               payload: {
                 trigger: 'user-interaction',
@@ -717,11 +716,11 @@ describe('plugin-meetings', () => {
               options: {meetingId: meeting.id},
             });
 
-            assert.deepEqual(NewMetrics.submitClientEvent.getCall(1).args[0], {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0], {
               name: 'client.meetinginfo.request',
               options: {meetingId: meeting.id},
             });
-            assert.deepEqual(NewMetrics.submitClientEvent.getCall(2).args[0], {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(2).args[0], {
               name: 'client.meetinginfo.response',
               payload: {
                 identifiers: {meetingLookupUrl: 'url'},
@@ -735,7 +734,7 @@ describe('plugin-meetings', () => {
 
             const join = meeting.join();
 
-            assert.calledWith(NewMetrics.submitClientEvent, {
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
               payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
               options: {meetingId: meeting.id},
@@ -748,9 +747,9 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
 
-            assert.calledOnce(NewMetrics.submitClientEvent)
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent)
 
-            assert.equal(NewMetrics.submitClientEvent.getCall(0).args[0].name, 'client.call.initiated');
+            assert.equal(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].name, 'client.call.initiated');
           });
         });
         describe('failure', () => {
@@ -797,8 +796,8 @@ describe('plugin-meetings', () => {
 
           it('should post error event if failed', async () => {
             await meeting.join().catch(() => {
-              assert.deepEqual(NewMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
-              assert.match(NewMetrics.submitClientEvent.getCall(1).args[0].options.error, {
+              assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
+              assert.match(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.error, {
                 code: 2,
                 error: null,
                 joinOptions: {},
@@ -1276,7 +1275,7 @@ describe('plugin-meetings', () => {
                 type: 'audio',
               }
             );
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.tx.start',
               payload: {mediaType: 'audio'},
               options: {
@@ -1292,7 +1291,7 @@ describe('plugin-meetings', () => {
               {type: 'video'}
             );
 
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.tx.stop',
               payload: {mediaType:'video'},
               options: {
@@ -1320,7 +1319,7 @@ describe('plugin-meetings', () => {
                 type: 'video',
               }
             );
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.start',
               payload: {mediaType: 'video'},
               options: {
@@ -1336,7 +1335,7 @@ describe('plugin-meetings', () => {
               {type: 'audio'}
             );
 
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.stop',
               payload: {mediaType: 'audio'},
               options: {
@@ -1408,6 +1407,16 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
+
+        it('succeeds even if getDevices() throws', async () => {
+          meeting.meetingState = 'ACTIVE';
+
+          sinon
+            .stub(internalMediaModule, 'getDevices')
+            .rejects(new Error('fake error'));
+
+          await meeting.addMedia();
+        })
       });
 
       /* This set of tests are like semi-integration tests, they use real MuteState, Media, LocusMediaRequest and Roap classes.
@@ -2731,6 +2740,19 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe("#isJoined", () => {
+        it("should returns isJoined correctly", () => {
+          meeting.joinedWith = undefined;
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "JOINED"};
+          assert.equal(meeting.isJoined(), true);
+        });
+      });
+
       describe('#fetchMeetingInfo', () => {
         const FAKE_DESTINATION = 'something@somecompany.com';
         const FAKE_TYPE = _SIP_URI_;
@@ -3271,8 +3293,8 @@ describe('plugin-meetings', () => {
 
         it('should trigger `submitClientEvent`', async () => {
           await meeting.postMetrics(eventType.LEAVE);
-          console.log({s: NewMetrics.submitClientEvent.getCall(0).args[0]})
-          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+          console.log({s: webex.internal.newMetrics.submitClientEvent.getCall(0).args[0]})
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.leave',
             options: {meetingId: meeting.id},
           });
@@ -3365,7 +3387,7 @@ describe('plugin-meetings', () => {
 
         it('should submitClientEvent on moveTo ', async () => {
           await meeting.moveTo('resourceId');
-          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.media.capabilities',
             payload: {
               mediaCapabilities: {
@@ -3387,7 +3409,7 @@ describe('plugin-meetings', () => {
             },
             options: {meetingId: meeting.id},
           });
-          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.move-media',
             options: {meetingId: meeting.id}
           });
@@ -3503,7 +3525,7 @@ describe('plugin-meetings', () => {
         it('should submitClientEvent on moveFrom ', async () => {
           await meeting.moveFrom('resourceId');
 
-          assert.calledWithMatch(NewMetrics.submitClientEvent, {
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.move-media',
             options: {meetingId: meeting.id},
           });
@@ -4027,8 +4049,8 @@ describe('plugin-meetings', () => {
           });
 
           const checkMetricSent = (event, error) => {
-            assert.calledOnce(NewMetrics.submitClientEvent);
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: event,
               payload: {
                 canProceed: false,
@@ -4167,8 +4189,8 @@ describe('plugin-meetings', () => {
               roapMessage: {messageType: 'OK', seq: 1},
             });
 
-            assert.calledOnce(NewMetrics.submitClientEvent);
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               options: {meetingId: meeting.id},
             });
@@ -4191,8 +4213,8 @@ describe('plugin-meetings', () => {
               },
             });
 
-            assert.calledOnce(NewMetrics.submitClientEvent);
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.local-sdp-generated',
               options: {meetingId: meeting.id},
             });
@@ -4217,8 +4239,8 @@ describe('plugin-meetings', () => {
               },
             });
 
-            assert.calledOnce(NewMetrics.submitClientEvent);
-            assert.calledWithMatch(NewMetrics.submitClientEvent, {
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               options: {meetingId: meeting.id},
             });
@@ -4310,6 +4332,81 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        describe('audio and video source count change events', () => {
+          beforeEach(() => {
+            TriggerProxy.trigger.resetHistory();
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('registers for audio and video source count changed', () => {
+            assert.isFunction(eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED]);
+            assert.isFunction(eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED]);
+          })
+
+          it('forwards the VIDEO_SOURCES_COUNT_CHANGED event as "media:remoteVideoSourceCountChanged"', () => {
+            const numTotalSources = 10;
+            const numLiveSources = 6;
+            const mediaContent = 'SLIDES';
+
+            sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteVideoSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('forwards the AUDIO_SOURCES_COUNT_CHANGED event as "media:remoteAudioSourceCountChanged"', () => {
+            const numTotalSources = 5;
+            const numLiveSources = 2;
+            const mediaContent = 'MAIN';
+
+            eventListeners[Event.AUDIO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, mediaContent);
+
+            assert.calledOnceWithExactly(TriggerProxy.trigger,
+              meeting,
+              sinon.match.object,
+              'media:remoteAudioSourceCountChanged',
+              {
+                numTotalSources,
+                numLiveSources,
+                mediaContent,
+              }
+            );
+          });
+
+          it('calls setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for MAIN', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, 'MAIN');
+
+            assert.calledOnceWithExactly(setNumCurrentSourcesSpy, numTotalSources, numLiveSources);
+          });
+
+          it('does not call setNumCurrentSources() when receives VIDEO_SOURCES_COUNT_CHANGED event for SLIDES', () => {
+            const numTotalSources = 20;
+            const numLiveSources = 10;
+
+            const setNumCurrentSourcesSpy = sinon.stub(meeting.mediaRequestManagers.video, 'setNumCurrentSources');
+
+            eventListeners[Event.VIDEO_SOURCES_COUNT_CHANGED](numTotalSources, numLiveSources, 'SLIDES');
+
+            assert.notCalled(setNumCurrentSourcesSpy);
+          });
+
+        })
       });
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
@@ -4423,8 +4520,16 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('should not trigger ASK_RETURN_TO_MAIN before joined', () => {
+          TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.notCalled(TriggerProxy.trigger);
+        });
+
         it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
           TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "JOINED"};
           meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
           assert.calledWith(
             TriggerProxy.trigger,
