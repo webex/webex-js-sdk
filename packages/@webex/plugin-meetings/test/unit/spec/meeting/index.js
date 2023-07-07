@@ -60,9 +60,7 @@ import ControlsOptionsUtil from '@webex/plugin-meetings/src/controls-options-man
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
-import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
@@ -92,8 +90,6 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {ANNOTATION_POLICY} from "../../../../src/annotation/constants";
-
-const {getBrowserName, getOSVersion} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -228,7 +224,7 @@ describe('plugin-meetings', () => {
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
-    Metrics.initialSetup(null, webex);
+    Metrics.initialSetup(webex);
     MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
       return {
         getTracks: () => tracks,
@@ -3290,7 +3286,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should trigger `submitClientEvent`', async () => {
-          await meeting.postMetrics(eventType.LEAVE);
+          await meeting.postMetrics('client.call.leave');
           console.log({s: webex.internal.newMetrics.submitClientEvent.getCall(0).args[0]})
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.leave',
@@ -6773,64 +6769,6 @@ describe('plugin-meetings', () => {
 
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
-        });
-      });
-
-      describe('getAnalyzerMetricsPrePayload', () => {
-        it('should have #getAnalyzerMetricsPrePayload', () => {
-          assert.exists(meeting.getAnalyzerMetricsPrePayload);
-        });
-
-        beforeEach(() => {
-          meeting.meetingRequest.getAnalyzerMetricsPrePayload = sinon
-            .stub()
-            .returns(Promise.resolve());
-          meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
-          meeting.correlationId = 'correlation-id';
-        });
-
-        it('it should include meetingLookupUrl if provided', () => {
-          const res = meeting.getAnalyzerMetricsPrePayload({
-            meetingLookupUrl: 'https://service-url.com',
-            event: 'client.meetinginfo.response',
-          });
-
-          assert.deepEqual(res.event,  {
-            canProceed: true,
-            eventData: {
-              webClientDomain: '',
-            },
-            identifiers: {
-              correlationId: 'correlation-id',
-              deviceId: uuid3,
-              locusUrl: 'Locus URL',
-              meetingLookupUrl: 'https://service-url.com',
-              orgId: undefined,
-              userId: uuid1,
-            },
-            name: 'client.meetinginfo.response',
-          });
-
-          assert.match(res.origin, {
-            channel: undefined,
-            loginType: undefined,
-            userType: undefined,
-            clientInfo: {
-              browserVersion: '',
-              clientType: undefined,
-              clientVersion: 'webex-js-sdk/undefined',
-              localNetworkPrefix: null,
-              os: 'other',
-              osVersion: getOSVersion() || 'unknown',
-              subClientType: undefined,
-            },
-            name: 'endpoint',
-            networkType: 'unknown',
-          });
-
-          assert.deepEqual(res.senderCountryCode, undefined);
-          assert.deepEqual(res.version, 1);
-
         });
       });
     });
