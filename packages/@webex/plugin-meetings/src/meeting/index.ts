@@ -5129,7 +5129,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.meetings.geoHintInfo?.clientAddress ||
         options.data.intervalMetadata.peerReflexiveIP ||
         MQA_STATS.DEFAULT_IP;
-      NewMetrics.submitMQE({
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitMQE({
         name: 'client.mediaquality.event',
         options: {
           meetingId: this.id,

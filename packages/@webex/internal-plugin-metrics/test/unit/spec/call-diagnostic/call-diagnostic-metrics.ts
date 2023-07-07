@@ -269,7 +269,6 @@ describe('internal-plugin-metrics', () => {
 
     describe('#submitMQE', () => {
       it('submits the event correctly', () => {
-        cd.initialSetup(meetingCollection, webex);
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateErrorPayloadSpy = sinon.spy(cd, 'generateErrorPayload');

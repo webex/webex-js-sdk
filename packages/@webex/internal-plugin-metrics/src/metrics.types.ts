@@ -76,3 +76,8 @@ export type MetricEventNames =
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = RawEvent['origin']['networkType'];
+
+export type MediaQualityEventAudioSetupDelayPayload =
+  MediaQualityEvent['payload']['audioSetupDelay'];
+export type MediaQualityEventVideoSetupDelayPayload =
+  MediaQualityEvent['payload']['videoSetupDelay'];

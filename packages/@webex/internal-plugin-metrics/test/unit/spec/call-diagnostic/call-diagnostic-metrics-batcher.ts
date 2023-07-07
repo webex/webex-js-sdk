@@ -191,8 +191,8 @@ describe('plugin-metrics', () => {
         });
 
         it('appends the correct audio and video setup delays to the request for client.mediaquality.event', async () => {
-          NewMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          await  webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.mediaquality.event'}}
           );
@@ -211,11 +211,11 @@ describe('plugin-metrics', () => {
               joinRespTxStart: 10,
             }
           });
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
 
         it('doesnt include audioSetup and videoSetup delays for other events', async () => {
-          await NewMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+          await  webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.alert.displayed'}}
           );
@@ -225,8 +225,7 @@ describe('plugin-metrics', () => {
           assert.calledOnce(webex.request);
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.audioSetupDelay, undefined);
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.videoSetupDelay, undefined);
-          assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
-
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         })
       });
     });

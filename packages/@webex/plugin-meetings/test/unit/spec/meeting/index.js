@@ -228,8 +228,6 @@ describe('plugin-meetings', () => {
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
-    NewMetrics.submitClientEvent = sinon.stub();
-    NewMetrics.submitMQE = sinon.stub();
     Metrics.initialSetup(null, webex);
     MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
       return {
@@ -1353,7 +1351,7 @@ describe('plugin-meetings', () => {
               {data: fakeData, networkType: 'wifi'}
             );
 
-            assert.calledWithMatch(NewMetrics.submitMQE, {
+            assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
               name: 'client.mediaquality.event',
               options: {
                 meetingId: meeting.id,

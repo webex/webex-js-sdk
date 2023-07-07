@@ -3,7 +3,12 @@
 
 import {isEmpty, merge} from 'lodash';
 import Batcher from '../batcher';
-import {ClientEvent, MetricEventNames, MediaQualityEvent} from '../metrics.types';
+import {
+  ClientEvent,
+  MetricEventNames,
+  MediaQualityEventAudioSetupDelayPayload,
+  MediaQualityEventVideoSetupDelayPayload,
+} from '../metrics.types';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -38,8 +43,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // check event names and append latencies?
     const eventName = item.eventPayload?.event?.name as MetricEventNames;
     const joinTimes: ClientEvent['payload']['joinTimes'] = {};
-    const audioSetupDelay: MediaQualityEvent['payload']['audioSetupDelay'] = {};
-    const videoSetupDelay: MediaQualityEvent['payload']['videoSetupDelay'] = {};
+    const audioSetupDelay: MediaQualityEventAudioSetupDelayPayload = {};
+    const videoSetupDelay: MediaQualityEventVideoSetupDelayPayload = {};
 
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 

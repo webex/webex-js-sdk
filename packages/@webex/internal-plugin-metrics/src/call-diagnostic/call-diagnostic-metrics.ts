@@ -215,7 +215,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      const meeting = this.meetingCollection.get(meetingId);
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      if (!meeting) {
+        // TODO: add behavioral metrics to see if this actually happens in production.
+        console.warn(
+          'Attempt to send MQE but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
 
       // merge identifiers
       const identifiers = this.getIdentifiers({
@@ -234,6 +245,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         intervals: payload.intervals,
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
+          // @ts-ignore
           applicationSoftwareVersion: this.webex.version,
           mediaEngineSoftwareType: getBrowserName() || 'browser',
           mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
@@ -276,7 +288,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: ClientEvent['name'];
     // additional payload to be merged with default payload
-    payload?: RecursivePartial<ClientEvent>;
+    payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
     const {meetingId, mediaConnections, error} = options;
