@@ -224,7 +224,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Generate error payload for Client Event
    * @param rawError
    */
-  generateClientEventErrorPayload({rawError}: {rawError?: any}) {
+  generateClientEventErrorPayload(rawError: any) {
     const errorCode = rawError?.body?.errorCode || rawError?.body?.code;
     if (errorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[errorCode];
@@ -288,7 +288,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const errors: ClientEvent['payload']['errors'] = [];
 
       if (rawError) {
-        const generatedError = this.generateClientEventErrorPayload({rawError});
+        const generatedError = this.generateClientEventErrorPayload(rawError);
         if (generatedError) {
           errors.push(generatedError);
         }

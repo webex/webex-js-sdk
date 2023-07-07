@@ -411,7 +411,7 @@ describe('internal-plugin-metrics', () => {
 
     describe('#generateClientEventErrorPayload', () => {
       it('should generate event error payload correctly', () => {
-        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 2409005}}});
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2409005}});
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'StartRecordingFailed',
@@ -422,7 +422,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return default new locus event error payload correctly if locus error', () => {
-        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 2400000}}});
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2400000}});
         assert.deepEqual(res, {
           category: 'signaling',
           errorDescription: 'NewLocusError',
@@ -434,7 +434,7 @@ describe('internal-plugin-metrics', () => {
 
 
       it('should return default meeting info lookup error payload correctly if not locus error', () => {
-        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: 9400000}}});
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 9400000}});
         assert.deepEqual(res, {
           category: 'signaling',
           errorDescription: 'MeetingInfoLookupError',
@@ -445,7 +445,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return undefined if no error code provided', () => {
-        const res = cd.generateClientEventErrorPayload({rawError: {body: {errorCode: undefined}}});
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: undefined}});
         assert.deepEqual(res, undefined);
       });
     });
