@@ -129,7 +129,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.locusUrl = this.webex.internal.services.get('locus');
     }
 
-    if (meeting?.locusUrl && meeting?.locusInfo?.fullState) {
+    if (meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
       identifiers.locusId = meeting.locusUrl && meeting.locusUrl.split('/').pop();
       identifiers.locusStartTime =
