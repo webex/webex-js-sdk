@@ -395,7 +395,7 @@ describe('internal-plugin-metrics', () => {
       it('submits the event correctly', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        const generateErrorPayloadSpy = sinon.spy(cd, 'generateErrorPayload');
+        const getErrorPayloadForClientErrorCodeSpy = sinon.spy(cd, 'getErrorPayloadForClientErrorCode');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const options = {
@@ -416,7 +416,7 @@ describe('internal-plugin-metrics', () => {
           meeting: fakeMeeting,
           mediaConnections: undefined,
         });
-        assert.notCalled(generateErrorPayloadSpy);
+        assert.notCalled(getErrorPayloadForClientErrorCodeSpy);
         assert.calledWith(
           prepareDiagnosticEventSpy,
           {
