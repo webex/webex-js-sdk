@@ -81,3 +81,22 @@ export const clearEmptyKeysRecursively = (obj: any) => {
     }
   });
 };
+
+/**
+ * Locus error codes start with 2. The next three digits are the
+ * HTTP status code related to the error code (like 400, 403, 502, etc.)
+ * The remaining three digits are just an increasing integer.
+ * If it is 7 digits and starts with a 2, it is locus.
+ *
+ * @param errorCode
+ * @returns
+ */
+export const isLocusServiceErrorCode = (errorCode: string | number) => {
+  const code = `${errorCode}`;
+
+  if (code.length === 7 && code.charAt(0) === '2') {
+    return true;
+  }
+
+  return false;
+};

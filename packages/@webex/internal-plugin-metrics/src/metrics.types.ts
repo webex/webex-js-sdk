@@ -4,10 +4,12 @@ import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/gener
 
 export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
 
+export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
-  error?: any;
+  rawError?: any;
   showToUser?: boolean;
 };
 

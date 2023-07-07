@@ -10,6 +10,7 @@ import {StatelessWebexPlugin} from '@webex/webex-core';
 import {
   anonymizeIPAddress,
   clearEmptyKeysRecursively,
+  isLocusServiceErrorCode,
   userAgentToString,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
@@ -24,8 +25,15 @@ import {
   MediaQualityEvent,
   SubmitMQEOptions,
   SubmitMQEPayload,
+  ClientEventError,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
+import {
+  CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
+  MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+  NEW_LOCUS_ERROR_CLIENT_CODE,
+  SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
+} from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -266,10 +274,50 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * TODO: NOT IMPLEMENTED
+   * Return Client Event payload by client error code
+   * @param clientErrorCode
+   * @returns
+   */
+  public getErrorPayloadForClientErrorCode(clientErrorCode: number): ClientEventError {
+    let error: ClientEventError;
+
+    if (clientErrorCode) {
+      const partialParsedError = CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD[clientErrorCode];
+
+      if (partialParsedError) {
+        error = merge(
+          {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
+          partialParsedError
+        );
+
+        return error;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Generate error payload for Client Event
    * @param rawError
    */
-  generateErrorPayload(error: any) {
+  generateClientEventErrorPayload(rawError: any) {
+    const errorCode = rawError?.body?.errorCode || rawError?.body?.code;
+    if (errorCode) {
+      const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[errorCode];
+      if (clientErrorCode) {
+        return this.getErrorPayloadForClientErrorCode(clientErrorCode);
+      }
+
+      // by default, if it is locus error, return nre locus err
+      if (isLocusServiceErrorCode(errorCode)) {
+        return this.getErrorPayloadForClientErrorCode(NEW_LOCUS_ERROR_CLIENT_CODE);
+      }
+
+      // otherwise return meeting info
+      return this.getErrorPayloadForClientErrorCode(MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE);
+    }
+
     return undefined;
   }
 
@@ -290,7 +338,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
-    const {meetingId, mediaConnections, error} = options;
+    const {meetingId, mediaConnections, rawError} = options;
 
     // events that will most likely happen in join phase
     if (meetingId) {
@@ -314,11 +362,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
 
       // check if we need to generate errors
-      // TODO: TO BE IMPLEMENTED PROPERLY IN SEPARATE PR
       const errors: ClientEvent['payload']['errors'] = [];
 
-      if (error) {
-        const generatedError = this.generateErrorPayload(error);
+      if (rawError) {
+        const generatedError = this.generateClientEventErrorPayload(rawError);
         if (generatedError) {
           errors.push(generatedError);
         }
