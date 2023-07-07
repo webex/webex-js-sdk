@@ -283,6 +283,21 @@ function makeWebex(options) {
     mercury: {},
     llm: {},
     voicea: {},
+    newMetrics: {
+      submitMQE: sinon.stub(),
+      submitClientEvent: sinon.stub(),
+      callDiagnosticLatencies: {
+        saveTimestamp: sinon.stub(),
+      },
+      callDiagnosticMetrics: {
+        submitClientEvent: sinon.stub(),
+        submitMQE: sinon.stub(),
+        callDiagnosticEventsBatcher: {
+          queue: sinon.stub(),
+        },
+        submitToCallDiagnostics: sinon.stub(),
+      },
+    },
   });
 
   return webex;

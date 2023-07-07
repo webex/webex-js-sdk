@@ -3,7 +3,6 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {REACHABILITY} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings/roap', () => {
@@ -31,6 +30,9 @@ describe('plugin-meetings/roap', () => {
       device: {
         url: 'url',
       },
+      newMetrics: {
+        submitClientEvent: sinon.stub()
+      },
     };
 
     // @ts-ignore
@@ -50,8 +52,6 @@ describe('plugin-meetings/roap', () => {
         },
       })
     );
-
-    NewMetrics.submitClientEvent = sinon.stub().returns();
 
     await webex.boundedStorage.put(
       REACHABILITY.namespace,
@@ -120,14 +120,14 @@ describe('plugin-meetings/roap', () => {
         locusMediaRequest,
       });
 
-      assert.calledWith(NewMetrics.submitClientEvent, {
+      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
         name: 'client.locus.media.request',
         options: {
           meetingId: 'meeting-id',
         },
       });
 
-      assert.calledWith(NewMetrics.submitClientEvent, {
+      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
         name: 'client.locus.media.response',
         options: {
           meetingId: 'meeting-id',
@@ -162,11 +162,11 @@ describe('plugin-meetings/roap', () => {
           locusMediaRequest,
         });
       } catch (err) {
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.media.response',
           options: {
             meetingId: 'meeting-id',
-            error: {code: 300, message: 'error'},
+            rawError: {code: 300, message: 'error'},
           },
         });
       }

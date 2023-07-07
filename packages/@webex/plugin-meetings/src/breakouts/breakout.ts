@@ -46,7 +46,6 @@ const Breakout = WebexPlugin.extend({
       },
     },
   },
-
   /**
    * initializer for the Breakout class
    * @returns {void}
@@ -54,6 +53,7 @@ const Breakout = WebexPlugin.extend({
   initialize() {
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
+    this.breakoutRosterLocus = null;
   },
 
   /**
@@ -65,7 +65,11 @@ const Breakout = WebexPlugin.extend({
     const deviceUrl = this.webex.internal.device.url;
     const {meetingId} = this.collection.parent;
     const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
-    breakoutEvent.onBreakoutMoveRequest({currentSession: this, meeting, breakoutMoveId});
+    breakoutEvent.onBreakoutMoveRequest(
+      {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent
+    );
     const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
@@ -76,7 +80,11 @@ const Breakout = WebexPlugin.extend({
         sessionId: this.sessionId,
       },
     });
-    breakoutEvent.onBreakoutMoveResponse({currentSession: this, meeting, breakoutMoveId});
+    breakoutEvent.onBreakoutMoveResponse(
+      {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent
+    );
 
     return result;
   },
@@ -131,6 +139,20 @@ const Breakout = WebexPlugin.extend({
   },
 
   /**
+   * check sequence and determine whether to update the new roster or not
+   * @param {Object} locus Locus object
+   * @returns {Boolean}
+   */
+  isNeedHandleRoster(locus: any) {
+    if (!this.breakoutRosterLocus?.sequence?.entries?.length || !locus?.sequence?.entries?.length) {
+      return true;
+    }
+    const prevSequence = this.breakoutRosterLocus.sequence.entries[0];
+    const currentSequence = locus.sequence.entries[0];
+
+    return currentSequence > prevSequence;
+  },
+  /**
    * Parses the participants from the locus object
    * @param {Object} locus Locus object
    * @returns {void}
@@ -139,7 +161,10 @@ const Breakout = WebexPlugin.extend({
     if (!this.members) {
       this.initMembers();
     }
-
+    if (!this.isNeedHandleRoster(locus)) {
+      return;
+    }
+    this.breakoutRosterLocus = locus;
     this.members.locusParticipantsUpdate(locus);
   },
 

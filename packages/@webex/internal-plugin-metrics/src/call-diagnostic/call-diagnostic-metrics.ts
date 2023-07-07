@@ -5,9 +5,12 @@ import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
+import {StatelessWebexPlugin} from '@webex/webex-core';
+
 import {
   anonymizeIPAddress,
   clearEmptyKeysRecursively,
+  isLocusServiceErrorCode,
   userAgentToString,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
@@ -19,8 +22,18 @@ import {
   NetworkType,
   ClientEvent,
   SubmitClientEventOptions,
+  MediaQualityEvent,
+  SubmitMQEOptions,
+  SubmitMQEPayload,
+  ClientEventError,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
+import {
+  CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
+  MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+  NEW_LOCUS_ERROR_CLIENT_CODE,
+  SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
+} from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -40,32 +53,17 @@ type GetIdentifiersOptions = {
  * @export
  * @class CallDiagnosticMetrics
  */
-export default class CallDiagnosticMetrics {
-  meetingCollection: any;
-  webex: any;
+export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
 
   /**
    * Constructor
-   * @constructor
-   * @public
+   * @param args
    */
-  constructor() {
-    this.meetingCollection = null;
-  }
-
-  /**
-   * Initializes the CallDiagnosticMetrics singleton with a meeting Collection.
-   *
-   * @param meetingCollection meetings object
-   * @param webex  webex SDK object
-   *
-   * @returns
-   */
-  public initialSetup(meetingCollection: any, webex: object) {
-    this.meetingCollection = meetingCollection;
-    this.webex = webex;
+  constructor(...args) {
+    super(...args);
+    // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
   }
 
@@ -81,7 +79,8 @@ export default class CallDiagnosticMetrics {
     let environment: Event['origin']['environment'];
 
     if (meetingId) {
-      const meeting = this.meetingCollection.get(meetingId);
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       defaultClientType = meeting.config?.metrics?.clientType;
       defaultSubClientType = meeting.config?.metrics?.subClientType;
@@ -96,13 +95,17 @@ export default class CallDiagnosticMetrics {
         name: 'endpoint',
         networkType: options.networkType || 'unknown',
         userAgent: userAgentToString({
+          // @ts-ignore
           clientName: this.webex.meetings?.metrics?.clientName,
+          // @ts-ignore
           webexVersion: this.webex.version,
         }),
         clientInfo: {
           clientType: defaultClientType || options.clientType,
+          // @ts-ignore
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
           localNetworkPrefix:
+            // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: defaultSubClientType || options.subClientType,
@@ -133,11 +136,11 @@ export default class CallDiagnosticMetrics {
       identifiers.userId = meeting.userId;
       identifiers.deviceId = meeting.deviceUrl;
       identifiers.orgId = meeting.orgId;
-      // @ts-ignore fix type
+      // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
     }
 
-    if (meeting.locusUrl && meeting.locusInfo.fullState) {
+    if (meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
       identifiers.locusId = meeting.locusUrl && meeting.locusUrl.split('/').pop();
       identifiers.locusStartTime =
@@ -176,12 +179,17 @@ export default class CallDiagnosticMetrics {
         // is overridden in prepareRequest batcher
         sent: 'not_defined_yet',
       },
+      // @ts-ignore
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: eventData,
     };
 
-    // clear any empty properties on the event object (required by CA)
-    clearEmptyKeysRecursively(event);
+    // sanitize (remove empty properties, CA requires it)
+    // but we don't want to sanitize MQE as most of the times
+    // values will be 0, [] etc, and they are required.
+    if (eventData.name !== 'client.mediaquality.event') {
+      clearEmptyKeysRecursively(event);
+    }
 
     return event;
   }
@@ -196,10 +204,120 @@ export default class CallDiagnosticMetrics {
   }
 
   /**
-   * TODO: NOT IMPLEMENTED
+   * Submit Media Quality Event
+   * @param args
+   */
+  submitMQE({
+    name,
+    // additional payload to be merged with default payload
+    payload,
+    options,
+  }: {
+    name: MediaQualityEvent['name'];
+    // additional payload to be merged with default payload
+    payload: SubmitMQEPayload;
+    options: SubmitMQEOptions;
+  }) {
+    const {meetingId, mediaConnections} = options;
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      if (!meeting) {
+        // TODO: add behavioral metrics to see if this actually happens in production.
+        console.warn(
+          'Attempt to send MQE but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
+
+      // merge identifiers
+      const identifiers = this.getIdentifiers({
+        meeting,
+        mediaConnections: meeting.mediaConnections || mediaConnections,
+      });
+
+      // create media quality event object
+      let clientEventObject: MediaQualityEvent['payload'] = {
+        name,
+        canProceed: true,
+        identifiers,
+        eventData: {
+          webClientDomain: window.location.hostname,
+        },
+        intervals: payload.intervals,
+        sourceMetadata: {
+          applicationSoftwareType: CLIENT_NAME,
+          // @ts-ignore
+          applicationSoftwareVersion: this.webex.version,
+          mediaEngineSoftwareType: getBrowserName() || 'browser',
+          mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
+          startTime: new Date().toISOString(),
+        },
+      };
+
+      // merge any new properties, or override existing ones
+      clientEventObject = merge(clientEventObject, payload);
+
+      // append media quality event data to the call diagnostic event
+      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      this.submitToCallDiagnostics(diagnosticEvent);
+    } else {
+      throw new Error(
+        'Media quality events cant be sent outside the context of a meeting. Meeting id is required.'
+      );
+    }
+  }
+
+  /**
+   * Return Client Event payload by client error code
+   * @param clientErrorCode
+   * @returns
+   */
+  public getErrorPayloadForClientErrorCode(clientErrorCode: number): ClientEventError {
+    let error: ClientEventError;
+
+    if (clientErrorCode) {
+      const partialParsedError = CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD[clientErrorCode];
+
+      if (partialParsedError) {
+        error = merge(
+          {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
+          partialParsedError
+        );
+
+        return error;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Generate error payload for Client Event
    * @param rawError
    */
-  generateErrorPayload(error: any) {
+  generateClientEventErrorPayload(rawError: any) {
+    const errorCode = rawError?.body?.errorCode || rawError?.body?.code;
+    if (errorCode) {
+      const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[errorCode];
+      if (clientErrorCode) {
+        return this.getErrorPayloadForClientErrorCode(clientErrorCode);
+      }
+
+      // by default, if it is locus error, return nre locus err
+      if (isLocusServiceErrorCode(errorCode)) {
+        return this.getErrorPayloadForClientErrorCode(NEW_LOCUS_ERROR_CLIENT_CODE);
+      }
+
+      // otherwise return meeting info
+      return this.getErrorPayloadForClientErrorCode(MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE);
+    }
+
     return undefined;
   }
 
@@ -217,14 +335,25 @@ export default class CallDiagnosticMetrics {
   }: {
     name: ClientEvent['name'];
     // additional payload to be merged with default payload
-    payload?: RecursivePartial<ClientEvent>;
+    payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
-    const {meetingId, mediaConnections, error} = options;
+    const {meetingId, mediaConnections, rawError} = options;
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      const meeting = this.meetingCollection.get(meetingId);
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      if (!meeting) {
+        // TODO: add behavioral metrics to see if this actually happens in production.
+        console.warn(
+          'Attempt to send client event but no meeting was found...',
+          `event: ${name}, meetingId: ${meetingId}`
+        );
+
+        return;
+      }
 
       // grab identifiers
       const identifiers = this.getIdentifiers({
@@ -233,11 +362,10 @@ export default class CallDiagnosticMetrics {
       });
 
       // check if we need to generate errors
-      // TODO: TO BE IMPLEMENTED PROPERLY IN SEPARATE PR
       const errors: ClientEvent['payload']['errors'] = [];
 
-      if (error) {
-        const generatedError = this.generateErrorPayload(error);
+      if (rawError) {
+        const generatedError = this.generateClientEventErrorPayload(rawError);
         if (generatedError) {
           errors.push(generatedError);
         }

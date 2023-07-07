@@ -41,24 +41,20 @@ class Metrics extends WebexPlugin {
   constructor(...args) {
     super(...args);
 
-    if (!Metrics.instance) {
-      Metrics.instance = this;
-    }
-
     this.callDiagnosticLatencies = new CallDiagnosticLatencies();
-    this.callDiagnosticMetrics = new CallDiagnosticMetrics();
 
-    // eslint-disable-next-line no-constructor-return
-    return Metrics.instance;
+    this.onReady();
   }
 
   /**
-   * Initialize Call Diagnostic class
-   * @param meetingCollection
-   * @param webex
+   * On Ready
    */
-  initialSetupCallDiagnosticMetrics(meetingCollection: any, webex: object) {
-    this.callDiagnosticMetrics.initialSetup(meetingCollection, webex);
+  private onReady() {
+    // @ts-ignore
+    this.webex.once('ready', () => {
+      // @ts-ignore
+      this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+    });
   }
 
   /**
@@ -125,7 +121,8 @@ class Metrics extends WebexPlugin {
     };
     options: any;
   }) {
-    throw new Error('Not implemented.');
+    this.callDiagnosticLatencies.saveTimestamp(name);
+    this.callDiagnosticMetrics.submitMQE({name, payload, options});
   }
 
   /**
@@ -163,6 +160,4 @@ class Metrics extends WebexPlugin {
   }
 }
 
-// Singleton
-const instance = new Metrics();
-export default instance;
+export default Metrics;

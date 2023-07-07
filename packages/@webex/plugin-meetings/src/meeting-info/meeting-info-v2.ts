@@ -1,5 +1,4 @@
 import lodash from 'lodash';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {
   HTTP_VERBS,
   _CONVERSATION_URL_,
@@ -19,7 +18,6 @@ const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
-
 /**
  * Error to indicate that wbxappapi requires a password
  */
@@ -347,7 +345,8 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         if (meetingId) {
-          NewMetrics.submitClientEvent({
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.meetinginfo.response',
             payload: {
               identifiers: {
@@ -356,7 +355,7 @@ export default class MeetingInfoV2 {
             },
             options: {
               meetingId,
-              error: err,
+              rawError: err,
             },
           });
         }

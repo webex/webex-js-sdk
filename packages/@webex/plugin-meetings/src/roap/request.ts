@@ -1,7 +1,6 @@
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {REACHABILITY} from '../constants';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
@@ -94,7 +93,8 @@ export default class RoapRequest extends StatelessWebexPlugin {
       `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
     );
 
-    NewMetrics.submitClientEvent({
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.locus.media.request',
       options: {
         meetingId,
@@ -111,7 +111,8 @@ export default class RoapRequest extends StatelessWebexPlugin {
         reachability: localSdpWithReachabilityData.reachability,
       })
       .then((res) => {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.media.response',
           options: {
             meetingId,
@@ -140,11 +141,12 @@ export default class RoapRequest extends StatelessWebexPlugin {
         };
       })
       .catch((err) => {
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.media.response',
           options: {
             meetingId,
-            error: err,
+            rawError: err,
           },
         });
         LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);

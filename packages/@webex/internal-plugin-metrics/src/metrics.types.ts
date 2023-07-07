@@ -1,11 +1,22 @@
 import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
 import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
+import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/generated-types-temp/MediaQualityEvent';
+
+export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
+
+export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
-  error?: any;
+  rawError?: any;
   showToUser?: boolean;
+};
+
+export type SubmitMQEOptions = {
+  meetingId: string;
+  mediaConnections?: any[];
+  networkType?: Event['origin']['networkType'];
 };
 
 export type InternalEvent = {
@@ -43,10 +54,9 @@ export interface FeatureEvent {
 }
 
 export interface MediaQualityEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+  name: RawMediaQualityEvent['name'];
+  payload?: RawMediaQualityEvent;
+  options: SubmitMQEOptions;
 }
 
 export type RecursivePartial<T> = {
@@ -57,7 +67,6 @@ export type RecursivePartial<T> = {
     : T[P];
 };
 
-export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent};
 export type MetricEventNames =
   | InternalEvent['name']
   | ClientEvent['name']
@@ -69,3 +78,12 @@ export type MetricEventNames =
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = RawEvent['origin']['networkType'];
+
+export type MediaQualityEventAudioSetupDelayPayload =
+  MediaQualityEvent['payload']['audioSetupDelay'];
+export type MediaQualityEventVideoSetupDelayPayload =
+  MediaQualityEvent['payload']['videoSetupDelay'];
+
+export type SubmitMQEPayload = RecursivePartial<MediaQualityEvent['payload']> & {
+  intervals: MediaQualityEvent['payload']['intervals'];
+};

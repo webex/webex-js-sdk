@@ -2,6 +2,7 @@
 
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
@@ -10,7 +11,6 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import Metrics from '../metrics';
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
@@ -261,6 +261,9 @@ export default class Meetings extends WebexPlugin {
     const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
     // @ts-ignore
     const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
+    const isResourceMovedOnThisDevice =
+      deviceFromNewLocus?.state === _LEFT_ && deviceFromNewLocus?.reason === _MOVED_;
+
     const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(
       meeting,
       newLocus,
@@ -300,9 +303,16 @@ export default class Meetings extends WebexPlugin {
 
       return false;
     }
-    if (isSelfMoved && newLocus?.self?.removed) {
+    if (isSelfMoved && (newLocus?.self?.removed || isResourceMovedOnThisDevice)) {
       LoggerProxy.logger.log(
-        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+      );
+
+      return false;
+    }
+    if (isSelfJoined && isResourceMovedOnThisDevice) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
       );
 
       return false;
@@ -482,7 +492,8 @@ export default class Meetings extends WebexPlugin {
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
           if (this.getMeetingByType(_ID_, meeting.id)) {
-            NewMetrics.submitClientEvent({
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.call.remote-started',
               payload: {
                 trigger: 'mercury-event',
@@ -643,8 +654,6 @@ export default class Meetings extends WebexPlugin {
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
       Metrics.initialSetup(this.meetingCollection, this.webex);
-      // @ts-ignore
-      NewMetrics.initialSetupCallDiagnosticMetrics(this.meetingCollection, this.webex);
     });
   }
 
