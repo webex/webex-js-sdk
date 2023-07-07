@@ -34,7 +34,6 @@ import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error
 import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
-import { NewMetrics } from '@webex/internal-plugin-metrics';
 import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
 
 describe('plugin-meetings', () => {
@@ -71,9 +70,6 @@ describe('plugin-meetings', () => {
 
   describe('meetings index', () => {
     beforeEach(() => {
-      NewMetrics.initialSetupCallDiagnosticMetrics = sinon.stub();
-      NewMetrics.submitClientEvent = sinon.stub();
-
       MeetingsUtil.checkH264Support = sinon.stub();
          uuid1 = uuid.v4();
       url1 = `https://example.com/${uuid.v4()}`;
@@ -182,11 +178,6 @@ describe('plugin-meetings', () => {
 
     it('Should trigger h264 download', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
-    });
-
-    it('Should call initialize metrics', () => {
-      assert(NewMetrics.initialSetupCallDiagnosticMetrics.calledOnce);
-      assert.calledWith(NewMetrics.initialSetupCallDiagnosticMetrics, webex.meetings.meetingCollection, webex);
     });
 
     describe('#_toggleUnifiedMeetings', () => {
@@ -947,7 +938,7 @@ describe('plugin-meetings', () => {
 
             await testUtils.flushPromises();
 
-            assert.calledWith(NewMetrics.submitClientEvent, {
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.remote-started',
               payload: {
                 trigger: 'mercury-event',

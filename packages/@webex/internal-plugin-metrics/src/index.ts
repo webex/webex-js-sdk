@@ -15,6 +15,10 @@ registerInternalPlugin('metrics', Metrics, {
   config,
 });
 
+registerInternalPlugin('newMetrics', NewMetrics, {
+  config,
+});
+
 export {default, getOSNameInternal} from './metrics';
 export {config, NewMetrics};
 export type {ClientEvent};

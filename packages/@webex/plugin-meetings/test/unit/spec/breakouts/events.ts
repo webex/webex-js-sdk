@@ -2,7 +2,6 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import breakoutEvent from "../../../../src/breakouts/events";
-import { NewMetrics } from '@webex/internal-plugin-metrics';
 
 describe('plugin-meetings', () => {
   describe('breakoutEvent', () => {
@@ -29,10 +28,10 @@ describe('plugin-meetings', () => {
     });
     describe('postMoveCallAnalyzer', () => {
       it('send metric as expected', () => {
-        NewMetrics.submitClientEvent = sinon.stub();
+        const submitClientEvent = sinon.stub();
         const eventInfo = {currentSession: newSession, meeting: mockMeeting, breakoutMoveId};
-        breakoutEvent.postMoveCallAnalyzer('client.breakout-session.join.response', eventInfo);
-        assert.calledWithMatch(NewMetrics.submitClientEvent, {
+        breakoutEvent.postMoveCallAnalyzer('client.breakout-session.join.response', eventInfo, submitClientEvent);
+        assert.calledWithMatch(submitClientEvent, {
           name: 'client.breakout-session.join.response',
           payload: {
             identifiers: {
@@ -48,29 +47,35 @@ describe('plugin-meetings', () => {
 
     describe('onBreakoutMoveRequest', () => {
       it('send metric as expected', () => {
+        const submitClientEvent = sinon.stub();
+
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
-        breakoutEvent.onBreakoutMoveRequest(eventInfo);
-        assert.calledWithMatch(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.move.request', eventInfo);
+        breakoutEvent.onBreakoutMoveRequest(eventInfo, submitClientEvent);
+        assert.calledWith(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.move.request', eventInfo, submitClientEvent);
 
       });
     });
 
     describe('onBreakoutMoveResponse', () => {
       it('send metric as expected', () => {
+        const submitClientEvent = sinon.stub();
+
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
-        breakoutEvent.onBreakoutMoveResponse(eventInfo);
-        assert.calledWithMatch(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.move.response', eventInfo);
+        breakoutEvent.onBreakoutMoveResponse(eventInfo, submitClientEvent);
+        assert.calledWith(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.move.response', eventInfo, submitClientEvent);
       });
     });
 
     describe('onBreakoutJoinResponse', () => {
       it('send metric as expected', () => {
+        const submitClientEvent = sinon.stub();
+
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
-        breakoutEvent.onBreakoutJoinResponse(eventInfo);
-        assert.calledWithMatch(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.join.response', eventInfo);
+        breakoutEvent.onBreakoutJoinResponse(eventInfo, submitClientEvent);
+        assert.calledWith(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.join.response', eventInfo, submitClientEvent);
       });
     });
 
