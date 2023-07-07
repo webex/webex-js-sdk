@@ -34,7 +34,6 @@ import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error
 import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
-import { NewMetrics } from '@webex/internal-plugin-metrics';
 import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
 
 describe('plugin-meetings', () => {
@@ -71,9 +70,6 @@ describe('plugin-meetings', () => {
 
   describe('meetings index', () => {
     beforeEach(() => {
-      NewMetrics.initialSetupCallDiagnosticMetrics = sinon.stub();
-      NewMetrics.submitClientEvent = sinon.stub();
-
       MeetingsUtil.checkH264Support = sinon.stub();
          uuid1 = uuid.v4();
       url1 = `https://example.com/${uuid.v4()}`;
@@ -182,11 +178,6 @@ describe('plugin-meetings', () => {
 
     it('Should trigger h264 download', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
-    });
-
-    it('Should call initialize metrics', () => {
-      assert(NewMetrics.initialSetupCallDiagnosticMetrics.calledOnce);
-      assert.calledWith(NewMetrics.initialSetupCallDiagnosticMetrics, webex.meetings.meetingCollection, webex);
     });
 
     describe('#_toggleUnifiedMeetings', () => {
@@ -440,10 +431,8 @@ describe('plugin-meetings', () => {
         it('creates noise reduction effect with custom options passed', async () => {
           const effectOptions = {
             audioContext: {},
-            workletProcessorUrl: "test.url.com",
             mode: "WORKLET",
-            env: "prod",
-            avoidSimd: false
+            env: "prod"
           };
 
           const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
@@ -949,7 +938,7 @@ describe('plugin-meetings', () => {
 
             await testUtils.flushPromises();
 
-            assert.calledWith(NewMetrics.submitClientEvent, {
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.remote-started',
               payload: {
                 trigger: 'mercury-event',
@@ -1789,7 +1778,41 @@ describe('plugin-meetings', () => {
         assert.equal(result, false);
         assert.calledWith(
           LoggerProxy.logger.log,
-          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status, not need to handle'
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
+
+      it('check self is moved and device resource removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'MOVED';
+        sinon.stub(MeetingsUtil, 'getThisDevice').returns({
+          state: 'LEFT',
+          reason: 'MOVED',
+        });
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
+
+      it('check self is joined but device resource removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        sinon.stub(MeetingsUtil, 'joinedOnThisDevice').returns(false);
+        newLocus.self.state = 'JOINED';
+        sinon.stub(MeetingsUtil, 'getThisDevice').returns({
+          state: 'LEFT',
+          reason: 'MOVED',
+        });
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
         );
       });
     });

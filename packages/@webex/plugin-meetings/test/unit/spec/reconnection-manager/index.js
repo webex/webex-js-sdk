@@ -3,7 +3,6 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
-import { NewMetrics } from '@webex/internal-plugin-metrics';
 
 const {assert} = chai;
 
@@ -16,7 +15,6 @@ describe('plugin-meetings', () => {
     let fakeMeeting;
 
     beforeEach(() => {
-      NewMetrics.submitClientEvent = sinon.stub();
       fakeMediaConnection = {
         initiateOffer: sinon.stub().resolves({}),
         reconnect: sinon.stub().resolves({}),
@@ -64,6 +62,11 @@ describe('plugin-meetings', () => {
             getMeetingByType: sinon.stub().returns(true),
             syncMeetings: sinon.stub().resolves({}),
           },
+          internal: {
+            newMetrics: {
+              submitClientEvent: sinon.stub()
+            }
+          }
         },
       };
     });
@@ -83,14 +86,14 @@ describe('plugin-meetings', () => {
         },
       ]);
 
-      assert.calledWith(NewMetrics.submitClientEvent, {
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
         name: 'client.media.reconnecting',
         options: {
           meetingId: rm.meeting.id,
         },
       });
 
-      assert.calledWith(NewMetrics.submitClientEvent, {
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
         name: 'client.media.recovered',
         payload: {
           recoveredBy: 'new',
@@ -134,7 +137,7 @@ describe('plugin-meetings', () => {
       try {
         await rm.reconnect();
       } catch (err) {
-        assert.calledWith(NewMetrics.submitClientEvent, {
+        assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
           name: 'client.call.aborted',
           payload: {
             errors: [

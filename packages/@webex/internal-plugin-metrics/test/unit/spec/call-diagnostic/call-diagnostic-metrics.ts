@@ -40,9 +40,6 @@ describe('internal-plugin-metrics', () => {
         },
       },
     };
-    const meetingCollection = {
-      get: sinon.stub().returns(fakeMeeting),
-    };
 
     const webex = {
       version: 'webex-version',
@@ -55,6 +52,9 @@ describe('internal-plugin-metrics', () => {
         metrics: {
           clientName: 'Cantina',
         },
+        meetingCollection: {
+          get: () => fakeMeeting
+        },
         geoHintInfo: {
           clientAddress: '1.3.4.5',
           countryCode: 'UK',
@@ -65,7 +65,7 @@ describe('internal-plugin-metrics', () => {
     beforeEach(() => {
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
-      cd = new CallDiagnosticMetrics();
+      cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
     });
 
@@ -74,8 +74,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should build origin correctly', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
       //@ts-ignore
@@ -103,8 +101,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should build identifiers correctly', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       const res = cd.getIdentifiers({
         mediaConnections: [
           {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
@@ -126,8 +122,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should throw Error if correlationId is missing', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       assert.throws(() =>
         cd.getIdentifiers({
           mediaConnections: [
@@ -139,8 +133,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('should prepare diagnostic event successfully', () => {
-      cd.initialSetup(meetingCollection, webex);
-
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
       const clearEmptyKeysRecursivelyStub = sinon.stub(Utils, 'clearEmptyKeysRecursively');
@@ -179,7 +171,6 @@ describe('internal-plugin-metrics', () => {
 
     describe('#submitClientEvent', () => {
       it('should submit client event successfully', () => {
-        cd.initialSetup(meetingCollection, webex);
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -259,7 +250,6 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('it should include errors if provided', () => {
-        cd.initialSetup(meetingCollection, webex);
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -320,7 +310,6 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should include erros in payload if provided via payload', () => {
-        cd.initialSetup(meetingCollection, webex);
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -335,7 +324,8 @@ describe('internal-plugin-metrics', () => {
             errors: [{
               name: 'locus.response',
               fatal: true,
-              category: 'signaling'
+              category: 'signaling',
+              shownToUser: false,
             }]
           },
           options,
@@ -361,7 +351,8 @@ describe('internal-plugin-metrics', () => {
             errors: [{
               name: 'locus.response',
               fatal: true,
-              category: 'signaling'
+              category: 'signaling',
+              shownToUser: false,
             }],
             loginType: 'login-ci',
             name: 'client.alert.displayed',
@@ -382,8 +373,6 @@ describe('internal-plugin-metrics', () => {
       })
 
       it('should throw if meetingId not provided', () => {
-        cd.initialSetup(meetingCollection, webex);
-
         assert.throws(() =>
           cd.submitClientEvent({
             name: 'client.alert.displayed',

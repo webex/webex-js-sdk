@@ -6,6 +6,7 @@ import {assign, curry, defaults as lodashDefaults, isString} from 'lodash';
 
 import HttpStatusInterceptor from './interceptors/http-status';
 import _request from './request';
+import {prepareFetchOptions as _prepareFetchOptions} from './request/utils';
 
 // Curry protorequest so we generate a function with default options built in.
 const protorequest = curry(function protorequest(defaultOptions, options) {
@@ -39,6 +40,32 @@ const protorequest = curry(function protorequest(defaultOptions, options) {
   options.logger = options.logger || this.logger || console;
 
   return _request(options);
+});
+
+export const protoprepareFetchOptions = curry(function protoprepareFetchOptions(
+  defaultOptions,
+  options
+) {
+  // Hide useless elements from logs
+  ['download', 'interceptors', 'logger', 'upload'].forEach((prop) => {
+    let descriptor = Reflect.getOwnPropertyDescriptor(options, prop);
+
+    descriptor = assign({}, descriptor, {
+      enumerable: false,
+      writable: true,
+    });
+    Reflect.defineProperty(options, prop, descriptor);
+  });
+
+  lodashDefaults(options, defaultOptions);
+
+  if (!options.json && options.json !== false) {
+    Reflect.deleteProperty(options, 'json');
+  }
+
+  options.logger = options.logger || this.logger || console;
+
+  return _prepareFetchOptions(options);
 });
 
 const defaultOptions = {

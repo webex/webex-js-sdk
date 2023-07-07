@@ -94,7 +94,7 @@ const Breakouts = WebexPlugin.extend({
       },
     },
     breakoutStatus: {
-      cache: false,
+      cache: true,
       deps: ['isInMainSession', 'status', 'groups'],
       /**
        * Returns the breakout status
@@ -297,13 +297,29 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * get current breakout is in progress or not
+   * @returns {boolean}
+   */
+  isBreakoutInProgress() {
+    const currentStatus = this.groups?.[0]?.status || this.status;
+
+    return currentStatus === BREAKOUTS.STATUS.OPEN || currentStatus === BREAKOUTS.STATUS.CLOSING;
+  },
+
+  /**
+   * get current breakout is in closing or not
+   * @returns {boolean}
+   */
+  isBreakoutIClosing() {
+    return (this.groups?.[0]?.status || this.status) === BREAKOUTS.STATUS.CLOSING;
+  },
+  /**
    * Updates the information about the current breakout
    * @param {Object} params
    * @returns {void}
    */
   updateBreakout(params) {
     this.set(params);
-
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
@@ -318,10 +334,14 @@ const Breakouts = WebexPlugin.extend({
       url: params.url,
       [BREAKOUTS.SESSION_STATES.ACTIVE]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
-      [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
+      [BREAKOUTS.SESSION_STATES.ASSIGNED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });
+
+    if (!this.isBreakoutInProgress()) {
+      this.clearBreakouts();
+    }
 
     if (
       this.currentBreakoutSession.previous('sessionId') !== this.currentBreakoutSession.sessionId ||
@@ -329,11 +349,15 @@ const Breakouts = WebexPlugin.extend({
     ) {
       // should report joined session changed
       const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
-      breakoutEvent.onBreakoutJoinResponse({
-        currentSession: this.currentBreakoutSession,
-        meeting,
-        breakoutMoveId: params.breakoutMoveId,
-      });
+      breakoutEvent.onBreakoutJoinResponse(
+        {
+          currentSession: this.currentBreakoutSession,
+          meeting,
+          breakoutMoveId: params.breakoutMoveId,
+        },
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent
+      );
     }
   },
 
@@ -344,7 +368,12 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakoutSessions(payload) {
     const breakouts = {};
-
+    if (this.isBreakoutIClosing()) {
+      // fix issue: don't clear/update breakouts collection when in closing since locus DTO will send undefined or
+      // only the MAIN session info here, if just update it, will miss the breakout roster info during
+      // count down to end breakouts
+      return;
+    }
     if (payload.breakoutSessions) {
       forEach(BREAKOUTS.SESSION_STATES, (state) => {
         forEach(payload.breakoutSessions[state], (breakout) => {
@@ -367,13 +396,21 @@ const Breakouts = WebexPlugin.extend({
         });
       });
     }
-
     forEach(breakouts, (breakout: typeof Breakout) => {
       // eslint-disable-next-line no-param-reassign
       breakout.url = this.url;
     });
 
     this.breakouts.set(Object.values(breakouts));
+  },
+  /**
+   * clear breakouts collection
+   * @returns {void}
+   */
+  clearBreakouts() {
+    if (this.breakouts.length > 0) {
+      this.breakouts.reset();
+    }
   },
   /**
    * get main session

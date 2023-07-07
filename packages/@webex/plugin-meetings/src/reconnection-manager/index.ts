@@ -4,7 +4,6 @@
 
 /* eslint-disable no-warning-comments */
 
-import {NewMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import {
@@ -325,7 +324,9 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info(
         'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
       );
-      NewMetrics.submitClientEvent({
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.reconnecting',
         options: {
           meetingId: this.meeting.id,
@@ -339,7 +340,9 @@ export default class ReconnectionManager {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#reconnect --> Sending reconnect success metric.'
         );
-        NewMetrics.submitClientEvent({
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.recovered',
           payload: {
             recoveredBy: 'new',
@@ -370,7 +373,8 @@ export default class ReconnectionManager {
           'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
         );
 
-        NewMetrics.submitClientEvent({
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.aborted',
           payload: {
             errors: [
