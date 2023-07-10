@@ -653,7 +653,7 @@ export default class Meetings extends WebexPlugin {
 
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
-      Metrics.initialSetup(this.meetingCollection, this.webex);
+      Metrics.initialSetup(this.webex);
     });
   }
 
