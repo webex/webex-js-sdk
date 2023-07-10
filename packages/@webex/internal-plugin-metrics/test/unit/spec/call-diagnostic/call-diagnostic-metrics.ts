@@ -41,28 +41,33 @@ describe('internal-plugin-metrics', () => {
       },
     };
 
-    const webex = {
-      version: 'webex-version',
-      internal: {
-        services: {
-          get: () => 'locus-url',
-        },
-      },
-      meetings: {
-        metrics: {
-          clientName: 'Cantina',
-        },
-        meetingCollection: {
-          get: () => fakeMeeting
-        },
-        geoHintInfo: {
-          clientAddress: '1.3.4.5',
-          countryCode: 'UK',
-        },
-      },
-    };
+    let webex;
 
     beforeEach(() => {
+      webex = {
+        version: 'webex-version',
+        internal: {
+          services: {
+            get: () => 'locus-url',
+          },
+          metrics: {
+            submitClientMetrics: sinon.stub()
+          }
+        },
+        meetings: {
+          metrics: {
+            clientName: 'Cantina',
+          },
+          meetingCollection: {
+            get: () => fakeMeeting
+          },
+          geoHintInfo: {
+            clientAddress: '1.3.4.5',
+            countryCode: 'UK',
+          },
+        },
+      };
+
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics({}, {parent: webex});
@@ -380,6 +385,18 @@ describe('internal-plugin-metrics', () => {
           })
         );
       });
+
+      it('should send behavioral event if meeting is undefined', () => {
+        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
+        assert.calledWith(
+          webex.internal.metrics.submitClientMetrics,
+          'js_sdk_call_diagnostic_event_failed_to_send',
+          {
+            fields: {meetingId: 'meetingId', name: 'client.alert.displayed'},
+          }
+        );
+      })
     });
 
     it('should send request to call diagnostic batcher', () => {
@@ -488,6 +505,25 @@ describe('internal-plugin-metrics', () => {
           })
         );
       });
+
+      it('should send behavioral event if meeting is undefined', () => {
+        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        cd.submitMQE({
+          name: 'client.mediaquality.event',
+          payload: {
+            //@ts-ignore
+            intervals: [{}],
+          },
+          options: {meetingId: 'meetingId'},
+        });
+        assert.calledWith(
+          webex.internal.metrics.submitClientMetrics,
+          'js_sdk_call_diagnostic_event_failed_to_send',
+          {
+            fields: {meetingId: 'meetingId', name: 'client.mediaquality.event'},
+          }
+        );
+      })
     });
     describe('#getErrorPayloadForClientErrorCode', () => {
       it('it should grab the payload for client error code correctly', () => {
