@@ -70,7 +70,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<InternalEvent['payload']>;
     options: any;
   }) {
-    throw new Error('Not implemented.');
+    this.callDiagnosticLatencies.saveTimestamp(name);
   }
 
   /**

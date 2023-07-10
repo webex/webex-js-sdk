@@ -20,8 +20,7 @@ export type SubmitMQEOptions = {
 };
 
 export type InternalEvent = {
-  // TODO: not implemented
-  name: never;
+  name: 'internal.client.meetinginfo.request' | 'internal.client.meetinginfo.response';
   payload?: never;
   options?: never;
 };

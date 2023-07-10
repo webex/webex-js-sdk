@@ -56,12 +56,18 @@ export default class CallDiagnosticLatencies {
 
   /**
    * Meeting Info Request
+   * @note Meeting Info request happen not just in the join phase. CA requires
+   * metrics around meeting info request that are only part of join phase.
+   * This internal.* event is used to track the real timestamps
+   * (when the actual request/response happen). This is because the actual CA event is
+   * sent inside the join method on the meeting object based on some logic, but that's not exactly when
+   * those events are actually fired. The logic only confirms that they have happened, and we send them over.
    * @returns - latency
    */
   public getMeetingInfoReqResp() {
     return this.getDiffBetweenTimestamps(
-      'client.meetinginfo.request',
-      'client.meetinginfo.response'
+      'internal.client.meetinginfo.request',
+      'internal.client.meetinginfo.response'
     );
   }
 

@@ -407,6 +407,13 @@ describe('plugin-meetings', () => {
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
               assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
+              const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+              assert(submitInternalEventCalls[0].args, {
+                name: 'internal.client.meetinginfo.request',
+              });
+              assert(submitInternalEventCalls[1].args, {
+                name: 'internal.client.meetinginfo.response',
+              });
               assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
                 name: 'client.meetinginfo.response',
                 payload: {
@@ -439,6 +446,50 @@ describe('plugin-meetings', () => {
         }
       );
 
+      it('should send internal CA metric if meetingId is provided', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          _MEETING_ID_,
+          null,
+          null,
+          null,
+          null,
+          extraParams,
+          {meetingId: 'meetingId'}
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            ...extraParams,
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+
+        const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+        assert(submitInternalEventCalls[0].args, {
+          name: 'internal.client.meetinginfo.request',
+        });
+        assert(submitInternalEventCalls[1].args, {
+          name: 'internal.client.meetinginfo.response',
+        });
+      });
+
       it('should not send CA metric if meetingId is not provided', async () => {
         const message = 'a message';
         const meetingInfoData = 'meeting info';
@@ -464,6 +515,7 @@ describe('plugin-meetings', () => {
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
           assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
         }
       });
 
