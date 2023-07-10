@@ -5482,15 +5482,21 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() =>
         this.mediaProperties.waitForMediaConnectionConnected().catch(() => {
+          // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.ice.end',
-            payload: {canProceed: false, icePhase: 'JOIN_MEETING_FINAL'},
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [
+                // @ts-ignore
+                this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                  CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                ),
+              ],
+            },
             options: {
               meetingId: this.id,
-              error: {
-                // TODO: adapt this code to work in separate JIRA
-                error: 'this is not really mapped, this error is very contextual.',
-              },
             },
           });
           throw new Error(
@@ -5515,6 +5521,7 @@ export default class Meeting extends StatelessWebexPlugin {
           connectionType,
           isMultistream: this.isMultistream,
         });
+        // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'media-engine.ready',
           options: {

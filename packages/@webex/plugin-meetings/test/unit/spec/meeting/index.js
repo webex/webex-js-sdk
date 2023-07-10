@@ -1200,6 +1200,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject if waitForMediaConnectionConnected() rejects', async () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({});
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1219,13 +1220,11 @@ describe('plugin-meetings', () => {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
-              icePhase: 'JOIN_MEETING_FINAL'
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [{}],
             },
             options: {                   
               meetingId: meeting.id,
-              error: {
-                error: 'this is not really mapped, this error is very contextual.',
-              }
             },
           });
 
@@ -4063,6 +4062,7 @@ describe('plugin-meetings', () => {
 
         describe('submitClientEvent on connectionFailed', () => {
           it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
+            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({})
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
               state: 'Failed',
@@ -4073,13 +4073,11 @@ describe('plugin-meetings', () => {
               name: 'client.ice.end',
               payload: {
                 canProceed: false,
-                icePhase: 'IN_MEETING'
+                icePhase: 'IN_MEETING',
+                errors: [{}],
               },
               options: {                   
                 meetingId: meeting.id,
-                error: {
-                  error: 'this is not really mapped, this error is very contextual.',
-                }
               },
             });
           });
