@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is running Deploy CD
 
 on:
   push:
-    branches: # White-list of deployable tags and branches.
+    branches: # White-list of deployable tags and branches. [testing]
       - latest
 
 env:
