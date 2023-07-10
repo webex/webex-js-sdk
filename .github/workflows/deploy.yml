@@ -80,10 +80,10 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      node-changed: ${{ steps.generate-package-matrix-changed.outputs.node-changed }} # Used for execution.
-      node-recursive: ${{ steps.generate-package-matrix-recursive.outputs.node-recursive }} # Used for execution.
-      yarn-changed: ${{ steps.generate-package-matrix-changed.outputs.yarn-changed }} # Used for workspaces.
-      yarn-recursive: ${{ steps.generate-package-matrix-recursive.outputs.yarn-recursive }} # Used for workspaces.
+      node-changed: ${{ steps.generate-package-matrix-node-changed.outputs.node-changed }} # Used for execution.
+      node-recursive: ${{ steps.generate-package-matrix-node-recursive.outputs.node-recursive }} # Used for execution.
+      yarn-changed: ${{ steps.generate-package-matrix-yarn-changed.outputs.yarn-changed }} # Used for workspaces.
+      yarn-recursive: ${{ steps.generate-package-matrix-yarn-recursive.outputs.yarn-recursive }} # Used for workspaces.
 
     steps:
       - name: Checkout Project
@@ -174,7 +174,7 @@ jobs:
         run: yarn
 
       - name: Increment Package Versions
-        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag {{ github.event.base_ref }}
+        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag {{ GITHUB_REF }}
 
       - name: Deploy Packages - TODO
         run: echo "TODO - NPM Deploy Packages"
