@@ -174,7 +174,7 @@ jobs:
         run: yarn
 
       - name: Increment Package Versions
-        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag {{ GITHUB_REF }}
+        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${{ github.event.ref }}
 
       - name: Deploy Packages - TODO
         run: echo "TODO - NPM Deploy Packages"
