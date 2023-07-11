@@ -408,10 +408,10 @@ describe('plugin-meetings', () => {
             } catch (err) {
               assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
               const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
-              assert(submitInternalEventCalls[0].args, {
+              assert.deepEqual(submitInternalEventCalls[0].args[0], {
                 name: 'internal.client.meetinginfo.request',
               });
-              assert(submitInternalEventCalls[1].args, {
+              assert.deepEqual(submitInternalEventCalls[1].args[0], {
                 name: 'internal.client.meetinginfo.response',
               });
               assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
@@ -482,10 +482,10 @@ describe('plugin-meetings', () => {
         );
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
-        assert(submitInternalEventCalls[0].args, {
+        assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
-        assert(submitInternalEventCalls[1].args, {
+        assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
         });
       });

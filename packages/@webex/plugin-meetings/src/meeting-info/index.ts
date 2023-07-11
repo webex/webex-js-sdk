@@ -166,7 +166,7 @@ export default class MeetingInfo {
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
       (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo(options).catch((error) => {
+        this.requestFetchInfo({...infoOptions, meetingId: options.meetingId}).catch((error) => {
           // if it failed the first time as meeting link
           if (infoOptions.type === _MEETING_LINK_) {
             // convert the meeting link to sip URI and retry
