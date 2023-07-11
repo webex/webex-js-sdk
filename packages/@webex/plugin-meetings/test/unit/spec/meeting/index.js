@@ -5620,7 +5620,6 @@ describe('plugin-meetings', () => {
             assert.notCalled(TriggerProxy.trigger);
 
             TriggerProxy.trigger.reset();
-            meeting.webex.meetings ={}
             const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'}
             const expectAnnotationInfoUpdated = { annotationInfo: annotationInfoUpdate, meetingId:meeting.id };
             meeting.triggerAnnotationInfoEvent({annotation: annotationInfoUpdate},{annotation:annotationInfo});
