@@ -278,7 +278,7 @@ const DSS = WebexPlugin.extend({
         isOnlySchedulableRooms,
       },
     }).catch((error) => {
-      this.logger.info(`DSS->search place#ERROR, ${error.message}`);
+      this.logger.error(`DSS->search place#ERROR, search place failure, ${error.message}`);
 
       return Promise.reject(error);
     });
