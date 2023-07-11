@@ -26,6 +26,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
+  SI,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
@@ -122,6 +123,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
+    siHostSupported: boolean;
+    siInterpreterSupported: boolean;
   }) {
     const {
       asResourceOccupant,
@@ -142,6 +145,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       locale,
       deviceCapabilities = [],
       liveAnnotationSupported,
+      siHostSupported,
+      siInterpreterSupported,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -175,6 +180,14 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     }
     if (liveAnnotationSupported) {
       deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
+    }
+
+    if (siHostSupported) {
+      deviceCapabilities.push(SI.HOST_CONTROL_SI_SUPPORTED);
+    }
+
+    if (siInterpreterSupported) {
+      deviceCapabilities.push(SI.INTERPRETER_CONTROL_SI_SUPPORTED);
     }
 
     if (locale) {

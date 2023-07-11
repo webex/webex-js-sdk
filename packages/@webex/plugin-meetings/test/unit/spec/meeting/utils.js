@@ -348,6 +348,42 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.liveAnnotationSupported, true);
       });
 
+      it('#Should call meetingRequest.joinMeeting with siHostSupported=true when passed in as true', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          siHostSupported: true,
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.siHostSupported, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with siInterpreterSupported=true when passed in as true', async () => {
+        const meeting = {
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          siInterpreterSupported: true,
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.siInterpreterSupported, true);
+      });
+
       it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
         const meeting = {
           meetingRequest: {

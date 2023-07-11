@@ -110,6 +110,8 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
+        siHostSupported: options.siHostSupported,
+        siInterpreterSupported: options.siInterpreterSupported,
       })
       .then((res) => {
         Metrics.postEvent({

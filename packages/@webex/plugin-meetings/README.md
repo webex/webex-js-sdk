@@ -492,6 +492,17 @@ This option provides toggles that Locus service needs, and those toggles will co
     deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
   }
 ```
+###### Simultaneous Interpretation
+```
+  if (siHostSupported) {
+      deviceCapabilities.push(SI.HOST_CONTROL_SI_SUPPORTED);
+    }
+```
+```
+  if (siInterpreterSupported) {
+    deviceCapabilities.push(SI.INTERPRETER_CONTROL_SI_SUPPORTED);
+  }
+```
 ###### Audio Disclaimer
 ```
 const joinOptions = {

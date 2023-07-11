@@ -267,6 +267,24 @@ describe('plugin-meetings', () => {
 
       });
 
+      it('adds deviceCapabilities to request when si host are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          siHostSupported: true
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['HOST_CONTROL_SI_SUPPORTED']);
+      });
+
+      it('adds deviceCapabilities to request when si interpreter are supported', async () => {
+        await meetingsRequest.joinMeeting({
+          siInterpreterSupported: true
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['INTERPRETER_CONTROL_SI_SUPPORTED']);
+      });
+
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
           locale: 'en_UK',
