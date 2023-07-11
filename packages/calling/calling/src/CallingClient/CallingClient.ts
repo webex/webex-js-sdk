@@ -62,8 +62,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private webex: WebexSDK;
 
-  private activeMobiusUrl!: string;
-
   private deviceInfo: IDeviceInfo = {};
 
   private mutex: Mutex;
@@ -154,8 +152,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    *
    * @returns Url - Active url of Mobius.
    */
-  public getMobiusUrl(): string {
-    return this.activeMobiusUrl;
+  public getActiveMobiusUrl(): string {
+    return this.registration.getActiveMobiusUrl();
   }
 
   /**
@@ -453,7 +451,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.emit(EVENT_KEYS.CONNECTING);
       await this.getMobiusServers();
       this.registration.setMobiusServers(this.primaryMobiusUris, this.backupMobiusUris);
-      this.registration.triggerRegistration();
+      await this.registration.triggerRegistration();
     });
   }
 
@@ -471,11 +469,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    *
    * @param uri - Active Mobius Url.
    */
-  public setMobiusUrl(uri: string) {
-    this.activeMobiusUrl = uri;
-
+  public setActiveMobiusUrl(uri: string) {
     /* Update the url in CallManager so that the Call Object can access it */
-    this.callManager.updateActiveMobius(this.activeMobiusUrl);
+    this.callManager.updateActiveMobius(uri);
+    this.registration.setActiveMobiusUrl(uri);
   }
 
   /**

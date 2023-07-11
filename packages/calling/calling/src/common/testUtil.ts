@@ -95,8 +95,7 @@ export function getTestUtilsWebex() {
 }
 
 export const registration = {
-  postKeepAlive: jest.fn(),
-  createDevice: jest.fn(),
+  triggerRegistration: () => jest.fn(),
 };
 
 export const mediaConnection = new MediaSDKMock.RoapMediaConnection(
@@ -121,15 +120,26 @@ export const mockCallingClient = {
   off: jest.fn(),
 };
 
+export const getMockRequestTemplate = () => {
+  return {
+    headers: {
+      'cisco-device-url':
+        'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
+      'spark-user-agent': 'web-calling-sdk/1.66.0 (web-calling)',
+    },
+    service: 'mobius',
+  };
+};
+
 export const getMobiusDiscoveryResponse = () => {
   return {
     primary: {
       region: 'US-EAST',
-      uris: ['https://mobius-dfw.webex.com/api/v1/calling/web'],
+      uris: ['https://mobius-dfw.webex.com/api/v1'],
     },
     backup: {
       region: 'US-WEST',
-      uris: ['https://mobius-sjc.webex.com/api/v1/calling/web'],
+      uris: ['https://mobius-sjc.webex.com/api/v1'],
     },
   } as MobiusServers;
 };

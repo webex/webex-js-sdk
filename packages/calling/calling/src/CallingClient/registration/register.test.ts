@@ -4,6 +4,7 @@ import {createRegistration} from './register';
 import {
   getMobiusDiscoveryResponse,
   getMockDeviceInfo,
+  getMockRequestTemplate,
   getTestUtilsWebex,
 } from '../../common/testUtil';
 import {MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../../common/types';
@@ -54,6 +55,7 @@ describe('Registration Tests', () => {
   const mobiusUris = filterMobiusUris(getMobiusDiscoveryResponse(), URL);
 
   const mockResponse = {
+    ...getMockRequestTemplate(),
     uri: `${mobiusUris.primary[0]}device`,
     body: {
       userId: webex.internal.device.userId,
@@ -63,12 +65,6 @@ describe('Registration Tests', () => {
         indicator: 'calling',
       },
     },
-    headers: {
-      'cisco-device-url':
-        'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
-      'spark-user-agent': 'web-calling-sdk/1.66.0 (web-calling)',
-    },
-    service: 'mobius',
   };
 
   const failurePayload = <WebexRequestPayload>(<unknown>{

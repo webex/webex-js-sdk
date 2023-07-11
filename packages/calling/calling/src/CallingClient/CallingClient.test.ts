@@ -1,9 +1,15 @@
 import {Mutex} from 'async-mutex';
 import {LOGGER} from '../Logger/types';
-import {getMockDeviceInfo, registration, getTestUtilsWebex} from '../common/testUtil';
+import {
+  getMockDeviceInfo,
+  getTestUtilsWebex,
+  getMobiusDiscoveryResponse,
+  getMockRequestTemplate,
+} from '../common/testUtil';
 import {
   CallDirection,
   CallType,
+  MobiusServers,
   MobiusStatus,
   ServiceIndicator,
   WebexRequestPayload,
@@ -15,28 +21,9 @@ import {CallingClient, createClient} from './CallingClient';
 import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
-import {
-  CALLING_CLIENT_FILE,
-  CALLS_CLEARED_HANDLER_UTIL,
-  DEFAULT_REHOMING_INTERVAL_MAX,
-  DEFAULT_REHOMING_INTERVAL_MIN,
-  DEVICES_ENDPOINT_RESOURCE,
-  DISCOVERY_URL,
-  FAILBACK_429_RETRY_UTIL,
-  FAILBACK_UTIL,
-  KEEPALIVE_UTIL,
-  MINUTES_TO_SEC_MFACTOR,
-  NETWORK_CHANGE_DETECTION_UTIL,
-  RECONNECT_UTIL,
-  REGISTER_UTIL,
-  REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
-  SEC_TO_MSEC_MFACTOR,
-  URL_ENDPOINT,
-} from './constants';
+import {CALLING_CLIENT_FILE, URL_ENDPOINT} from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import * as regUtils from './registration/register';
-import {ICall} from './calling/types';
-import Logger from '../Logger';
 
 describe('CallingClient Tests', () => {
   // Common initializers
@@ -46,14 +33,6 @@ describe('CallingClient Tests', () => {
   const webex = getTestUtilsWebex();
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);
-
-  const originalProcessNextTick = process.nextTick;
-
-  function flushPromises() {
-    return new Promise((resolve) => {
-      originalProcessNextTick(resolve);
-    });
-  }
 
   describe('ServiceData tests', () => {
     let callingClient: ICallingClient | undefined;
@@ -270,21 +249,10 @@ describe('CallingClient Tests', () => {
     });
   });
 
-  describe.skip('Registration tests', () => {
+  describe('Registration tests', () => {
     let callingClient: ICallingClient;
 
-    beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
-    });
-
-    afterEach(() => {
-      jest.clearAllTimers();
-      jest.clearAllMocks();
-      callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-      callingClient.removeAllListeners(EVENT_KEYS.REGISTERED);
-      callManager.removeAllListeners();
-      jest.useRealTimers();
-    });
+    const warnSpy = jest.spyOn(log, 'warn');
 
     const mockRegistrationBody = getMockDeviceInfo();
 
@@ -298,134 +266,166 @@ describe('CallingClient Tests', () => {
       body: mockIPReturnBody,
     });
 
-    it('verify successful Registration cases', async () => {
-      const registrationPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockRegistrationBody,
-      });
+    const regionBody = {
+      attribution:
+        'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
+      clientAddress: '72.163.220.6',
+      clientRegion: 'AP-SOUTHEAST',
+      countryCode: 'IN',
+      disclaimer:
+        'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
+      regionCode: 'AP-SOUTHEAST',
+      timezone: 'Asia/Kolkata',
+    };
 
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
+    const regionPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: regionBody,
+    });
 
-      const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${mockRegistrationBody.device.deviceId}`;
-      const uri = mockRegistrationBody.device.uri.replace(stringToReplace, '');
+    const discoveryBody: MobiusServers = getMobiusDiscoveryResponse();
+    const primaryUrl = `${discoveryBody.primary.uris[0]}/calling/web/`;
+    const discoveryPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: discoveryBody,
+    });
 
-      callingClient['primaryMobiusUris'] = [uri];
-      webex.request.mockReturnValue(registrationPayload);
-      registration.createDevice.mockResolvedValue(registrationPayload);
+    const registrationPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockRegistrationBody,
+    });
 
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      callingClient.register(true);
-      await utils.waitForMsecs(100);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
-      expect(callingClient.getDeviceId()).toBe('beb3c025-8c6a-3c44-8f3d-9b7d65363ac1');
-      expect(callingClient.getMobiusUrl()).toBe(
-        'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/'
-      );
+    const mockBody = {
+      userId: webex.internal.device.userId,
+      clientDeviceUri: webex.internal.device.url,
+      serviceData: {
+        domain: '',
+        indicator: 'calling',
+      },
+    };
+
+    beforeEach(() => {
+      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      callingClient.removeAllListeners(EVENT_KEYS.ERROR);
+      callingClient.removeAllListeners(EVENT_KEYS.REGISTERED);
+      callManager.removeAllListeners();
+      jest.useRealTimers();
+    });
+
+    it('verify successful Registration cases and keepalive', async () => {
+      webex.request
+        .mockResolvedValueOnce(ipPayload)
+        .mockResolvedValueOnce(regionPayload)
+        .mockResolvedValueOnce(discoveryPayload)
+        .mockReturnValue(registrationPayload);
+
+      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      await callingClient.register();
+
+      expect(webex.request).toBeCalledTimes(4);
       expect(handleErrorSpy).not.toHaveBeenCalled();
+      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(callingClient.getActiveMobiusUrl()).toEqual(primaryUrl);
+
+      /** trigger sendKeepAlive and verify whether keepalive request is sent or not */
+
+      jest.useFakeTimers();
+      webex.request.mockClear();
+      const body = getMockDeviceInfo();
+
+      /* specify keepalive interval as 30 seconds and advance timers by 30 */
+      callingClient.sendKeepAlive({...body, keepaliveInterval: 30});
+
+      jest.advanceTimersByTime(30 * 1000);
+      await Promise.resolve();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        uri: `${body.device.uri}/status`,
+        method: 'POST',
+      });
     });
 
     it('verify successful Registration cases when region discovery fails', async () => {
-      const logSpy = jest.spyOn(log, 'warn');
-      const registrationPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockRegistrationBody,
+      const failurePayload = {
+        statusCode: 500,
+      };
+
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(registrationPayload);
+
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      await callingClient.register();
+
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+        file: CALLING_CLIENT_FILE,
+        method: 'getMobiusServers',
       });
 
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
+      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
 
-      webex.request.mockReturnValueOnce(ipPayload).mockReturnValue(registrationPayload);
-      registration.createDevice.mockResolvedValue(registrationPayload);
+      const uri = `${webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`;
 
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      callingClient.register(false);
+      expect(callingClient.getActiveMobiusUrl()).toBe(uri);
+      expect(webex.request).toBeCalledTimes(2);
 
-      await utils.waitForMsecs(20);
-
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
-      expect(handleErrorSpy).not.toHaveBeenCalled();
-      const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${mockRegistrationBody.device.deviceId}`;
-
-      const uri = mockRegistrationBody.device.uri.replace(stringToReplace, '');
-
-      expect(callingClient.getMobiusUrl()).toBe(uri);
-      expect(webex.request).toBeCalledWith({
-        addAuthHeader: false,
-        headers: {'spark-user-agent': null},
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
         method: 'GET',
-        uri: `${DISCOVERY_URL}/${mockIPReturnBody.ipv4}`,
+        ...getMockRequestTemplate(),
+        uri: `${uri}myip`,
       });
-      expect(logSpy).toBeCalledTimes(1);
-      expect(logSpy).toBeCalledWith(
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        method: 'POST',
+        ...getMockRequestTemplate(),
+        uri: `${uri}device`,
+        body: mockBody,
+      });
+
+      expect(warnSpy).toBeCalledWith(
         'Error in finding Mobius Servers. Will use the default URL.',
         ''
       );
     });
 
     it('verify failure Registration cases all requests fail ', async () => {
-      const logSpy = jest.spyOn(log, 'warn');
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
       webex.request.mockImplementation(() => {
         throw new Error();
       });
 
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      callingClient.register(false);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      callingClient.register();
       await utils.waitForMsecs(20);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
       expect(handleErrorSpy).toHaveBeenCalled();
-      expect(logSpy).toBeCalledWith(
+      expect(warnSpy).toBeCalledWith(
         'Error in finding Mobius Servers. Will use the default URL.',
         ''
       );
     });
 
     it('verify successful Registration cases when region discovery succeeds but region based Mobius Url fails', async () => {
-      const logSpy = jest.spyOn(log, 'warn');
-      const registrationPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockRegistrationBody,
-      });
-
-      const regionBody = {
-        attribution:
-          'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-        clientAddress: '72.163.220.6',
-        clientRegion: 'AP-SOUTHEAST',
-        countryCode: 'IN',
-        disclaimer:
-          'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-        regionCode: 'AP-SOUTHEAST',
-        timezone: 'Asia/Kolkata',
-      };
-
-      const regionPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: regionBody,
-      });
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-
-      jest
-        .spyOn(webex, 'request')
+      webex.request
         .mockResolvedValueOnce(ipPayload)
         .mockResolvedValueOnce(regionPayload)
         .mockRejectedValueOnce({statusCode: 404})
         .mockResolvedValue(registrationPayload);
 
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      await callingClient.register(false);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      await callingClient.register();
       await utils.waitForMsecs(50);
 
       expect(handleErrorSpy).toHaveBeenCalled();
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
 
-      const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${mockRegistrationBody.device.deviceId}`;
-
-      const uri = mockRegistrationBody.device.uri.replace(stringToReplace, '');
-
-      expect(callingClient.getMobiusUrl()).toBe(uri);
-      expect(logSpy).toBeCalledWith(
+      const uri = `${webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`;
+      expect(callingClient.getActiveMobiusUrl()).toEqual(uri);
+      expect(warnSpy).toBeCalledWith(
         'Error in finding Mobius Servers. Will use the default URL.',
         ''
       );
@@ -437,313 +437,23 @@ describe('CallingClient Tests', () => {
         body: mockRegistrationBody,
       });
 
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-      webex.request.mockRejectedValue(failurePayload);
-      const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${mockRegistrationBody.device.deviceId}`;
-      const uri = mockRegistrationBody.device.uri.replace(stringToReplace, '');
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
 
-      callingClient['primaryMobiusUris'] = [uri];
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      callingClient.register(true);
+      webex.request
+        .mockResolvedValueOnce(ipPayload)
+        .mockResolvedValueOnce(regionPayload)
+        .mockResolvedValueOnce(discoveryPayload)
+        .mockRejectedValue(failurePayload);
+
+      await callingClient.register();
       await utils.waitForMsecs(100);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
       expect(handleErrorSpy).toHaveBeenCalled();
-    });
-
-    it('verify failure Registration case with 403-101: Restore success', async () => {
-      const restoreSpy = jest.spyOn(callingClient, 'restorePreviousRegistration');
-      const deRegSpy = jest.spyOn(callingClient, 'deregister');
-      const registerSpy = jest.spyOn(callingClient as any, REGISTER_UTIL);
-      const successPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockRegistrationBody,
-      });
-      const mobiusUri = 'https://mobius.webex.com/api/v1/calling/web/';
-      const deviceId = '30d84f70-eb44-3ef0-8e59-28d0b8c7cad7';
-
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 403,
-        headers: {
-          trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
-        },
-        body: {
-          userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-          errorCode: 101,
-          devices: [
-            {
-              deviceId,
-              uri: `${mobiusUri}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
-              status: 'active',
-              lastSeen: '2022-04-07T18:00:40Z',
-              addresses: ['sip:sipAddress@webex.com'],
-            },
-          ],
-        },
-      });
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-      jest
-        .spyOn(callingClient['registration'], 'createDevice')
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValueOnce(successPayload);
-
-      callingClient['primaryMobiusUris'] = [mobiusUri];
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      let unregistered = false;
-
-      callingClient.on(EVENT_KEYS.UNREGISTERED, () => {
-        unregistered = true;
-      });
-      await callingClient.register(true);
-      expect(unregistered).toBe(false);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
-      expect(handleErrorSpy).toHaveBeenCalled();
-      expect(callingClient.getMobiusUrl()).toBe(mobiusUri);
-      expect(deRegSpy).toBeCalledOnceWith();
-      expect(restoreSpy).toBeCalledOnceWith(REGISTER_UTIL);
-      expect(registerSpy).toBeCalledTimes(2);
-    });
-
-    it('verify unreachable Primary with reachable Backup Mobius', async () => {
-      jest.useFakeTimers();
-      const catalogBody = {
-        primary: {
-          region: 'ap-southeast-2',
-          uris: ['https://mobius.asydm-m-1.prod.infra.webex.com/api/v1'],
-        },
-        backup: {
-          region: 'us-east-1',
-          uris: ['https://mobius.aiadgen-a-1.prod.infra.webex.com/api/v1'],
-        },
-      };
-
-      const regionBody = {
-        attribution:
-          'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-        clientAddress: '72.163.220.6',
-        clientRegion: 'AP-SOUTHEAST',
-        countryCode: 'IN',
-        disclaimer:
-          'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-        regionCode: 'AP-SOUTHEAST',
-        timezone: 'Asia/Kolkata',
-      };
-
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 500,
-        body: mockRegistrationBody,
-      });
-
-      const catalogPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: catalogBody,
-      });
-
-      const successPayload = {
-        statusCode: 200,
-        body: mockRegistrationBody,
-      };
-
-      const regionPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: regionBody,
-      });
-
-      jest
-        .spyOn(webex, 'request')
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(catalogPayload);
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-      callingClient['deviceInfo'] = {};
-
-      jest
-        .spyOn(callingClient['registration'], 'createDevice')
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValueOnce(successPayload);
-
-      await callingClient.register(false);
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-
-      const activeUrl = callingClient.getMobiusUrl();
-      const backupUrl = `${catalogBody.backup.uris[0]}${URL_ENDPOINT}`;
-
-      expect(handleErrorSpy).toBeCalledTimes(2);
-      /* Active Url must match with the backup url as per the test */
-      expect(activeUrl).toStrictEqual(backupUrl);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
-    });
-
-    it('verify unreachable Primary and Backup Mobius', async () => {
-      jest.useFakeTimers();
-      /* Adding same url twice to validate duplicate entries get removed in final mobius uri array. */
-      const catalogBody = {
-        primary: {
-          region: 'ap-southeast-2',
-          uris: [
-            'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1',
-            'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1',
-          ],
-        },
-        backup: {
-          region: 'us-east-1',
-          uris: [
-            'https://mobius.aiadgen-a-1.prod.infra.webex.com/api/v1',
-            'https://mobius.aiadgen-a-1.prod.infra.webex.com/api/v1',
-          ],
-        },
-      };
-
-      const regionBody = {
-        attribution:
-          'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-        clientAddress: '72.163.220.6',
-        clientRegion: 'AP-SOUTHEAST',
-        countryCode: 'IN',
-        disclaimer:
-          'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-        regionCode: 'AP-SOUTHEAST',
-        timezone: 'Asia/Kolkata',
-      };
-
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 500,
-        body: mockRegistrationBody,
-      });
-
-      const catalogPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: catalogBody,
-      });
-
-      const regionPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: regionBody,
-      });
-
-      jest
-        .spyOn(webex, 'request')
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(catalogPayload);
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-      callingClient['deviceInfo'] = {};
-
-      jest.spyOn(callingClient['registration'], 'createDevice').mockRejectedValue(failurePayload);
-
-      await callingClient.register(false);
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-
-      /*
-       * 2 calls for primary -> initial and after timer expiry.
-       * 2 calls for each backup entry -> 2 * 2 = 4.
-       * So a total of 6 calls to handleErrors.
-       */
-      expect(handleErrorSpy).toBeCalledTimes(6);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      expect(emitFinalFailureSpy).toBeCalledOnceWith(
-        callingClient,
-        'startFailoverTimer',
-        'CallingClient'
-      );
-      /* Validate duplicate entries are removed, primary should have 1 and backup should have 1 + 1(default uri) */
-      expect(callingClient['primaryMobiusUris'].length).toBe(1);
-      expect(callingClient['backupMobiusUris'].length).toBe(2);
-    });
-
-    it('verify registration failure with only unreachable default url in server list', async () => {
-      jest.useFakeTimers();
-
-      const catalogBody = {
-        primary: {},
-        backup: {},
-      };
-
-      const regionBody = {
-        attribution:
-          'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-        clientAddress: '72.163.220.6',
-        clientRegion: 'AP-SOUTHEAST',
-        countryCode: 'IN',
-        disclaimer:
-          'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-        regionCode: 'AP-SOUTHEAST',
-        timezone: 'Asia/Kolkata',
-      };
-
-      const catalogPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: catalogBody,
-      });
-
-      const regionPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: regionBody,
-      });
-
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 500,
-        body: '',
-      });
-
-      jest
-        .spyOn(webex, 'request')
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(catalogPayload);
-
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-
-      jest
-        .spyOn(callingClient['registration'], 'createDevice')
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload);
-
-      callingClient['primaryMobiusUris'] = [];
-      callingClient['backupMobiusUris'] = [];
-      await callingClient.register(false);
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      expect(handleErrorSpy).toHaveBeenCalledTimes(2);
-      expect(emitFinalFailureSpy).toBeCalledOnceWith(
-        callingClient,
-        'startFailoverTimer',
-        'CallingClient'
-      );
     });
 
     it('Verify successful registration after initializing callingClient through a config', async () => {
-      const logSpy = jest.spyOn(log, 'info');
-
-      const catalogBody = {
-        primary: {
-          region: 'ap-southeast-2',
-          uris: ['https://mobius.asydm-m-1.prod.infra.webex.com/api/v1'],
-        },
-        backup: {
-          region: 'us-east-1',
-          uris: ['https://mobius.aiadgen-a-1.prod.infra.webex.com/api/v1'],
-        },
-      };
-
-      const registrationPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 500,
-        body: mockRegistrationBody,
-      });
-
-      const catalogPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: catalogBody,
-      });
+      const infoSpy = jest.spyOn(log, 'info');
+      webex.request.mockResolvedValueOnce(discoveryPayload).mockReturnValue(registrationPayload);
 
       callingClient = new CallingClient(webex, {
         discovery: {
@@ -755,19 +465,12 @@ describe('CallingClient Tests', () => {
         },
       });
 
-      callingClient['isRegistered'] = MobiusStatus.DEFAULT;
-      webex.request.mockResolvedValue(catalogPayload);
-      registration.createDevice.mockResolvedValue(registrationPayload);
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      await callingClient.register();
+      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
 
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.DEFAULT);
-      callingClient.register(false);
-      await utils.waitForMsecs(50);
-      expect(callingClient['isRegistered']).toBe(MobiusStatus.ACTIVE);
-
-      const uri = `${catalogBody.primary.uris[0]}${URL_ENDPOINT}`;
-
-      expect(callingClient.getMobiusUrl()).toBe(uri);
-      expect(logSpy).toHaveBeenCalledWith('Updating region and country from the SDK config', {
+      expect(callingClient.getActiveMobiusUrl()).toBe(primaryUrl);
+      expect(infoSpy).toHaveBeenCalledWith('Updating region and country from the SDK config', {
         file: 'CallingClient',
         method: 'getMobiusServers',
       });

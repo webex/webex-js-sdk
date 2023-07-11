@@ -1,14 +1,10 @@
 /* eslint-disable no-underscore-dangle */
 import {CallingPartyInfo, CALLING_BACKEND, MessageInfo} from '../Voicemail/types';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from '../CallingClient/metrics/types';
-import {LOGGER} from '../Logger/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
-import {CallingClient} from '../CallingClient/CallingClient';
+
 import {
-  mockCallingClient,
   getTestUtilsWebex,
-  getMockDeviceInfo,
   getSampleScimResponse,
   getSamplePeopleListResponse,
   getSampleRawAndParsedMediaStats,
@@ -25,16 +21,13 @@ import {
 } from './types';
 import log from '../Logger';
 import {
-  CALLING_CLIENT_FILE,
   CALL_FILE,
-  DEVICES_ENDPOINT_RESOURCE,
   DUMMY_METRICS,
   UTILS_FILE,
   IDENTITY_ENDPOINT_RESOURCE,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   REGISTER_UTIL,
-  KEEPALIVE_UTIL,
 } from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
@@ -71,10 +64,6 @@ const mockRestoreCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 
-const callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
-const fakeCallingClient = mockCallingClient as unknown as typeof callingClient;
-
-fakeCallingClient.sendMetric = mockSubmitRegistrationMetric;
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
 
 describe('Mobius service discovery tests', () => {
@@ -318,7 +307,7 @@ describe('Registration Tests', () => {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
     }
     if (codeObj.restoreCbExpected) {
-      expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj);
+      expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj.method);
     } else {
       expect(mockRestoreCb).not.toHaveBeenCalled();
     }

@@ -580,7 +580,7 @@ export class Registration implements IRegistrationClient {
   }
 
   public async triggerRegistration() {
-    if (this.primaryMobiusUris.length > 0 && this.backupMobiusUris.length > 0) {
+    if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
         this.triggerRegistration.name,
         this.primaryMobiusUris

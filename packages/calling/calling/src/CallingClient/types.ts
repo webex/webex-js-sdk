@@ -49,8 +49,8 @@ export interface ICallingClient extends Eventing<CallingClientEventTypes> {
   getRegistrationStatus: () => MobiusStatus;
   getLoggingLevel: () => LOGGER;
   getDeviceId: () => MobiusDeviceId | undefined;
-  getMobiusUrl: () => string;
+  getActiveMobiusUrl: () => string;
+  setActiveMobiusUrl: (uri: string) => void;
   makeCall: (dest: CallDetails) => ICall | undefined;
-  setMobiusUrl: (uri: string) => void;
   getCall: (correlationId: CorrelationId) => ICall;
 }
