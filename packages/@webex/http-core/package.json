@@ -1,6 +1,6 @@
 {
   "name": "@webex/http-core",
-  "version": "2.55.1",
+  "version": "2.56.0",
   "description": "Core HTTP library for the Cisco Webex",
   "license": "MIT",
   "main": "dist/index.js",

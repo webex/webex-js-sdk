@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.56.0](https://github.com/webex/webex-js-sdk/compare/v2.55.1...v2.56.0) (2023-07-11)
+
+
+### Features
+
+* **plugin-dss:** add a new function to search places ([#2934](https://github.com/webex/webex-js-sdk/issues/2934)) ([5cd8bdb](https://github.com/webex/webex-js-sdk/commit/5cd8bdbb39413c2c8b4ddbc20bb2dec86fa546d1))
+
 ### [2.55.1](https://github.com/webex/webex-js-sdk/compare/v2.55.0...v2.55.1) (2023-06-30)
 
 
