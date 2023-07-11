@@ -84,7 +84,7 @@ describe('increment', () => {
       patch: 3,
       release: 4,
       since: 'example-reference',
-      tag: 'example-tag',
+      tag: 'example/of/example-tag',
     };
 
     beforeEach(() => {
@@ -104,6 +104,9 @@ describe('increment', () => {
 
       spies.process = {
         cwd: spyOn(process, 'cwd').and.returnValue(rootDir),
+        stdout: {
+          write: spyOn(process.stdout, 'write').and.callFake(() => undefined),
+        },
       };
     });
 
@@ -149,6 +152,13 @@ describe('increment', () => {
           expect(results[1].name).toBe(targetPackages[1]);
         });
     });
+
+    it('should write the list of packages updated and their corresponding new versions', () => increment.handler({ ...options })
+      .then(() => {
+        const generatedString = options.packages.map((pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`).join('\n');
+
+        expect(spies.process.stdout.write).toHaveBeenCalledOnceWith(generatedString);
+      }));
 
     it('should return all packages when packages is not provided', () => increment.handler({ ...options, packages: undefined })
       .then((results) => {

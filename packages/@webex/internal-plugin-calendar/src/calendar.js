@@ -378,15 +378,17 @@ const Calendar = WebexPlugin.extend({
   /**
    * Create calendar event
    * @param {object} [data] meeting payload data
+   * @param {object} [query] the query parameters for specific usage
    * @returns {Promise} Resolves with creating calendar event response
    * */
-  createCalendarEvent(data) {
+  createCalendarEvent(data, query) {
     return EncryptHelper.encryptCalendarEventRequest(this, data).then(() =>
       this.request({
         method: 'POST',
         service: 'calendar',
         body: data,
         resource: 'calendarEvents/sync',
+        qs: query || {},
       })
     );
   },
@@ -428,9 +430,9 @@ const Calendar = WebexPlugin.extend({
   /**
    * @typedef QuerySchedulerDataOptions
    * @param {string} [siteName] it is site full url, must have. Example: ccctest.dmz.webex.com
-   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for. It should be base64 encoded.
+   * @param {string} [id] it is seriesOrOccurrenceId. If present, the series/occurrence meeting ID to fetch data for.
    *                      Example: 040000008200E00074C5B7101A82E008000000004A99F11A0841D9010000000000000000100000009EE499D4A71C1A46B51494C70EC7BFE5
-   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for. It should be base64 encoded.
+   * @param {string} [clientMeetingId] If present, the client meeting UUID to fetch data for.
    *                      Example: 7f318aa9-887c-6e94-802a-8dc8e6eb1a0a
    * @param {string} [scheduleTemplateId] it template id.
    * @param {string} [sessionTypeId] it session type id.
@@ -460,29 +462,28 @@ const Calendar = WebexPlugin.extend({
   /**
    * Get free busy status from calendar service
    * @param {Object} [data] the command parameters for fetching free busy status.
+   * @param {object} [query] the query parameters for specific usage
    * @returns {Promise} Resolves with a decrypted response
    * */
-  getFreeBusy(data) {
-    return new Promise((resolve, reject) => {
-      EncryptHelper.encryptFreeBusyRequest(this, data)
-        .then(() => {
-          this.request({
-            method: 'POST',
-            service: 'calendar',
-            body: data,
-            resource: 'freebusy',
-          })
-            .then(() => {
-              this.rpcEventRequests[data.requestId] = {resolve, reject};
-            })
-            .catch((error) => {
-              reject(error);
-            });
-        })
-        .catch((error) => {
-          reject(error);
+  getFreeBusy(data, query) {
+    return EncryptHelper.encryptFreeBusyRequest(this, data)
+      .then(() => {
+        return this.request({
+          method: 'POST',
+          service: 'calendar',
+          body: data,
+          resource: 'freebusy',
+          qs: query || {},
         });
-    });
+      })
+      .then(() => {
+        return new Promise((resolve, reject) => {
+          this.rpcEventRequests[data.requestId] = {resolve, reject};
+        });
+      })
+      .catch((error) => {
+        throw error;
+      });
   },
 });
 

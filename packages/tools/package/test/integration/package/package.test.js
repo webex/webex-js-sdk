@@ -39,6 +39,24 @@ describe('Package', () => {
       });
     });
 
+    describe('version', () => {
+      const version = '1.2.3-example-tag.4';
+
+      beforeEach(() => {
+        pack.setVersion(Package.parseVersionStringToObject(version));
+      });
+
+      it('should reflect the provided package version as a string', () => {
+        expect(pack.version).toBe(version);
+      });
+
+      it('should be immutable', () => {
+        pack.version = 'example-package-version';
+
+        expect(pack.version).toBe(version);
+      });
+    });
+
     describe('constructor()', () => {
       it('should assign the data object', () => {
         expect(pack.data).toBeDefined();
@@ -181,13 +199,6 @@ describe('Package', () => {
         };
       });
 
-      it('should not increment the version if the provided version does not exist', () => {
-        pack.incrementVersion();
-
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(jasmine.objectContaining({ ...versionObject }));
-      });
-
       it('should increment only the major version if the major version is provided', () => {
         pack.incrementVersion({ major: exampleVersion });
 
@@ -244,6 +255,37 @@ describe('Package', () => {
               patch: versionObject.patch,
               release: exampleVersion + versionObject.release,
               tag: versionObject.tag,
+            }),
+          );
+      });
+
+      it('should increment the release version if the tag does not match the stable tag', () => {
+        pack.incrementVersion({ tag: versionObject.tag });
+
+        expect(spies.pack.setVersion)
+          .toHaveBeenCalledOnceWith(
+            jasmine.objectContaining({
+              major: versionObject.major,
+              minor: versionObject.minor,
+              patch: versionObject.patch,
+              release: versionObject.release + 1,
+              tag: versionObject.tag,
+            }),
+          );
+      });
+
+      it('should increment the patch version if no version object is provided', () => {
+        pack.data.version.tag = Package.CONSTANTS.STABLE_TAG;
+        pack.incrementVersion();
+
+        expect(spies.pack.setVersion)
+          .toHaveBeenCalledOnceWith(
+            jasmine.objectContaining({
+              major: versionObject.major,
+              minor: versionObject.minor,
+              patch: versionObject.patch + 1,
+              release: versionObject.release,
+              tag: pack.data.version.tag,
             }),
           );
       });

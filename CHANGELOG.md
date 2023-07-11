@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.55.1](https://github.com/webex/webex-js-sdk/compare/v2.55.0...v2.55.1) (2023-06-30)
+
+
+### Bug Fixes
+
+* **meetings:** update package with import paths ([#2898](https://github.com/webex/webex-js-sdk/issues/2898)) ([7a02ae6](https://github.com/webex/webex-js-sdk/commit/7a02ae68d2f22bcfd78efd92fe0372ef4223cee1))
+
+## [2.55.0](https://github.com/webex/webex-js-sdk/compare/v2.54.3...v2.55.0) (2023-06-27)
+
+
+### Features
+
+* **automation:** github actions deploy foundation ([#2896](https://github.com/webex/webex-js-sdk/issues/2896)) ([7e5939d](https://github.com/webex/webex-js-sdk/commit/7e5939d9c2b27ee881707ae8c068b012fd977fdc))
+
+### [2.54.3](https://github.com/webex/webex-js-sdk/compare/v2.54.2...v2.54.3) (2023-06-26)
+
+
+### Bug Fixes
+
+* move runtime-corejs2 to dependency in package webex ([#2904](https://github.com/webex/webex-js-sdk/issues/2904)) ([7941803](https://github.com/webex/webex-js-sdk/commit/79418037e0fa4ebecfb24a19c0fa345d3607f48b))
+
+### [2.54.2](https://github.com/webex/webex-js-sdk/compare/v2.54.1...v2.54.2) (2023-06-15)
+
+
+### Bug Fixes
+
+* move runtime-corejs2 to dependency from devDependency ([#2880](https://github.com/webex/webex-js-sdk/issues/2880)) ([3d27e47](https://github.com/webex/webex-js-sdk/commit/3d27e4756c89a21d6b4db262f3068135c4cae813))
+
+### [2.54.1](https://github.com/webex/webex-js-sdk/compare/v2.54.0...v2.54.1) (2023-06-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** peerconnection detached only after sending last mqa ([#2867](https://github.com/webex/webex-js-sdk/issues/2867)) ([3ee1377](https://github.com/webex/webex-js-sdk/commit/3ee1377c56ece9bd9502a5032a1194125077b5bc))
+
+## [2.54.0](https://github.com/webex/webex-js-sdk/compare/v2.53.1...v2.54.0) (2023-05-31)
+
+
+### Features
+
+* **internal-plugin-calendar:** support query parameter for most cls apis and code refactor ([#2835](https://github.com/webex/webex-js-sdk/issues/2835)) ([7b32c04](https://github.com/webex/webex-js-sdk/commit/7b32c04d751816eb838e3d85ae59f294c256d82b))
+
 ### [2.53.1](https://github.com/webex/webex-js-sdk/compare/v2.53.0...v2.53.1) (2023-05-19)
 
 

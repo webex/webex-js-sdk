@@ -59,6 +59,10 @@ class Package {
     return this.data.name;
   }
 
+  public get version(): string {
+    return Package.parseVersionObjectToString(this.data.version);
+  }
+
   /**
    * Apply the modifications of this Package instance to the package definition
    * files.
@@ -129,6 +133,10 @@ class Package {
       processedVersion.release = 0;
     } else if (version.release) {
       processedVersion.release += version.release;
+    } else if (processedVersion.tag !== CONSTANTS.STABLE_TAG) {
+      processedVersion.release += 1;
+    } else {
+      processedVersion.patch += 1;
     }
 
     return this.setVersion(processedVersion);

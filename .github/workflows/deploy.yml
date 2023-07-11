@@ -1,0 +1,189 @@
+name: Deploy CD
+run-name: ${{ github.actor }} is running Deploy CD
+
+on:
+  push:
+    branches: # White-list of deployable tags and branches.
+      - latest
+
+env:
+  rid: ${{ github.run_id }}-${{ github.run_number }}
+
+jobs:
+  initialize:
+    name: Initialize Project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        if: steps.validate-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+
+  build:
+    name: Build Packages
+    needs: initialize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build
+        run: yarn workspaces foreach --parallel --verbose run build:src
+
+      - name: Cache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+
+  generate-package-matrix:
+    name: Determine Changed Packages
+    needs: build
+    runs-on: ubuntu-latest
+
+    outputs:
+      node-changed: ${{ steps.generate-package-matrix-changed.outputs.node-changed }} # Used for execution.
+      node-recursive: ${{ steps.generate-package-matrix-recursive.outputs.node-recursive }} # Used for execution.
+      yarn-changed: ${{ steps.generate-package-matrix-changed.outputs.yarn-changed }} # Used for workspaces.
+      yarn-recursive: ${{ steps.generate-package-matrix-recursive.outputs.yarn-recursive }} # Used for workspaces.
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Update Main Branch
+        run: git fetch origin ${{ github.event.base_ref }} --unshallow
+
+        # Used for running node scripts against all changed packages since the last push to the target branch.
+      - id: generate-package-matrix-node-changed
+        name: Generate Package Matrix
+        run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+
+        # Used for running node scripts against all changed packages, and their dependents, since the last push to the target branch.
+      - id: generate-package-matrix-node-recursive
+        name: Generate Package Matrix
+        run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+
+        # Used for running yarn tools against all changed packages since the last push to the target branch.
+      - id: generate-package-matrix-yarn-changed
+        name: Generate Package Matrix
+        run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+
+        # Used for running yarn tools against all changed packages, and their dependents, since the last push to the target branch.
+      - id: generate-package-matrix-yarn-recursive
+        name: Generate Package Matrix
+        run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+
+      - name: Display Package Matrix
+        run: |
+          echo "changed packages for node - ${{ steps.generate-package-matrix-node-changed.outputs.node-changed}}"
+          echo "changed packages and dependents for node - ${{ steps.generate-package-matrix-node-recursive.outputs.node-recursive }}"
+          echo "changed packages for yarn - ${{ steps.generate-package-matrix-yarn-changed.outputs.yarn-changed}}"
+          echo "changed packages and dependents for yarn - ${{ steps.generate-package-matrix-yarn-recursive.outputs.yarn-recursive }}"
+
+
+  publish-npm:
+    name: Publish - NPM
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Increment Package Versions
+        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag {{ github.event.base_ref }}
+
+      - name: Deploy Packages - TODO
+        run: echo "TODO - NPM Deploy Packages"
+
+  publish-documentation:
+    name: Publish - Documentation
+    needs: publish-npm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: TODO - Documentation Deploy Steps
+        run: echo "TODO - Documentation Deploy Steps"
