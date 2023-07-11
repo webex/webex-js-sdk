@@ -284,6 +284,7 @@ function makeWebex(options) {
     llm: {},
     voicea: {},
     newMetrics: {
+      submitInternalEvent: sinon.stub(),
       submitMQE: sinon.stub(),
       submitClientEvent: sinon.stub(),
       callDiagnosticLatencies: {

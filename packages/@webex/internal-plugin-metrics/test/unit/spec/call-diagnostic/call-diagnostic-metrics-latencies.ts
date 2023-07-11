@@ -59,8 +59,8 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getMeetingInfoReqResp correctly', () => {
-      cdl.saveTimestamp('client.meetinginfo.request', 10);
-      cdl.saveTimestamp('client.meetinginfo.response', 20);
+      cdl.saveTimestamp('internal.client.meetinginfo.request', 10);
+      cdl.saveTimestamp('internal.client.meetinginfo.response', 20);
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
     });
 

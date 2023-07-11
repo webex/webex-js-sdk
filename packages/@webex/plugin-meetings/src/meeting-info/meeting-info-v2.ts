@@ -336,16 +336,29 @@ export default class MeetingInfoV2 {
       requestOptions.resource = 'meetingInfo';
     }
 
+    if (meetingId) {
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.client.meetinginfo.request',
+      });
+    }
+
     return this.webex
       .request(requestOptions)
       .then((response) => {
+        if (meetingId) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+        }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
         if (meetingId) {
-          // @ts-ignore
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.meetinginfo.response',
             payload: {
