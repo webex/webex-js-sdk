@@ -30,6 +30,7 @@ import {
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
   CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
+  CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
   NEW_LOCUS_ERROR_CLIENT_CODE,
   SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
@@ -226,11 +227,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       if (!meeting) {
-        // TODO: add behavioral metrics to see if this actually happens in production.
         console.warn(
           'Attempt to send MQE but no meeting was found...',
           `event: ${name}, meetingId: ${meetingId}`
         );
+        // @ts-ignore
+        this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
+          fields: {
+            meetingId,
+            name,
+          },
+        });
 
         return;
       }
@@ -346,11 +353,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       if (!meeting) {
-        // TODO: add behavioral metrics to see if this actually happens in production.
         console.warn(
           'Attempt to send client event but no meeting was found...',
           `event: ${name}, meetingId: ${meetingId}`
         );
+        // @ts-ignore
+        this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
+          fields: {
+            meetingId,
+            name,
+          },
+        });
 
         return;
       }

@@ -451,3 +451,5 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     fatal: false,
   },
 };
+
+export const CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND = 'js_sdk_call_diagnostic_event_failed_to_send';
