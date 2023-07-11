@@ -4761,6 +4761,7 @@ export default class Meeting extends StatelessWebexPlugin {
           name: 'client.ice.end',
           payload: {
             canProceed: false,
+            icePhase: 'IN_MEETING',
             errors: [
               // @ts-ignore
               this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
@@ -5256,6 +5257,23 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() =>
         this.mediaProperties.waitForMediaConnectionConnected().catch(() => {
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [
+                // @ts-ignore
+                this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                  CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                ),
+              ],
+            },
+            options: {
+              meetingId: this.id,
+            },
+          });
           throw new Error(
             `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
           );
@@ -5273,6 +5291,13 @@ export default class Meeting extends StatelessWebexPlugin {
           locus_id: this.locusUrl.split('/').pop(),
           connectionType,
           isMultistream: this.isMultistream,
+        });
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'media-engine.ready',
+          options: {
+            meetingId: this.id,
+          },
         });
       })
       .catch((error) => {
