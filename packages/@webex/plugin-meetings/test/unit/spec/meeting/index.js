@@ -2717,6 +2717,7 @@ describe('plugin-meetings', () => {
 
           meeting.joinedWith = {state: "NOT_JOINED"};
           assert.equal(meeting.isJoined(), false);
+
           meeting.joinedWith = {state: "JOINED"};
           assert.equal(meeting.isJoined(), true);
         });
