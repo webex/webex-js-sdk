@@ -12,7 +12,6 @@ import type {
   LookupOptions,
   LookupByEmailOptions,
   SearchPlaceOptions,
-  SearchPlaceOptions,
 } from './types';
 
 import {
