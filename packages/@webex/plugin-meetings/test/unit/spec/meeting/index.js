@@ -1196,6 +1196,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject if waitForMediaConnectionConnected() rejects', async () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({});
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1208,6 +1209,20 @@ describe('plugin-meetings', () => {
             .catch(() => {
               errorThrown = true;
             });
+
+          assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
+
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [{}],
+            },
+            options: {                   
+              meetingId: meeting.id,
+            },
+          });
 
           assert.isTrue(errorThrown);
         });
@@ -1224,6 +1239,14 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             isMultistream: false
+          });
+
+          assert.called(webex.internal.newMetrics.submitClientEvent);
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'media-engine.ready',
+            options: {                   
+              meetingId: meeting.id,
+            },
           });
         });
 
@@ -4030,6 +4053,29 @@ describe('plugin-meetings', () => {
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
             type: 'remoteShare',
             stream: {id: 'stream'},
+          });
+        });
+
+        describe('submitClientEvent on connectionFailed', () => {
+          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
+            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({})
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Failed',
+            });
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              payload: {
+                canProceed: false,
+                icePhase: 'IN_MEETING',
+                errors: [{}],
+              },
+              options: {                   
+                meetingId: meeting.id,
+              },
+            });
           });
         });
 
