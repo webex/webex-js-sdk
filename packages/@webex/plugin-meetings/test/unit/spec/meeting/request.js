@@ -267,7 +267,7 @@ describe('plugin-meetings', () => {
 
       });
 
-      it('adds deviceCapabilities to request when si host are supported', async () => {
+      it('adds deviceCapabilities to request when si host is supported', async () => {
         await meetingsRequest.joinMeeting({
           siHostSupported: true
         });
@@ -276,7 +276,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.deviceCapabilities, ['HOST_CONTROL_SI_SUPPORTED']);
       });
 
-      it('adds deviceCapabilities to request when si interpreter are supported', async () => {
+      it('adds deviceCapabilities to request when si interpreter is supported', async () => {
         await meetingsRequest.joinMeeting({
           siInterpreterSupported: true
         });
