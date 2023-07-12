@@ -5190,17 +5190,22 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
-    // create the actual media connection
-    const mc = Media.createMediaConnection(this.isMultistream, this.getMediaConnectionDebugId(), {
-      mediaProperties: this.mediaProperties,
-      remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
-      // @ts-ignore - config coming from registerPlugin
-      enableRtx: this.config.enableRtx,
-      // @ts-ignore - config coming from registerPlugin
-      enableExtmap: this.config.enableExtmap,
-      turnServerInfo,
-      bundlePolicy,
-    });
+    const mc = Media.createMediaConnection(
+      this.isMultistream,
+      this.getMediaConnectionDebugId(),
+      // @ts-ignore
+      this.webex,
+      {
+        mediaProperties: this.mediaProperties,
+        remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        // @ts-ignore - config coming from registerPlugin
+        enableRtx: this.config.enableRtx,
+        // @ts-ignore - config coming from registerPlugin
+        enableExtmap: this.config.enableExtmap,
+        turnServerInfo,
+        bundlePolicy,
+      }
+    );
 
     this.mediaProperties.setMediaPeerConnection(mc);
     this.setupMediaConnectionListeners();

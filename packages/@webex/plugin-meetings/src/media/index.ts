@@ -15,6 +15,7 @@ import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
 import BrowserDetection from '../common/browser-detection';
+import RtcMetrics from '../rtcMetrics';
 
 const {isBrowser} = BrowserDetection();
 
@@ -102,6 +103,7 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
  *
  * @param {boolean} isMultistream
  * @param {string} debugId string useful for debugging (will appear in media connection logs)
+ * @param {object} webex main `webex` object.
  * @param {Object} options
  * @param {Object} [options.mediaProperties] contains mediaDirection and local tracks:
  *                                 audioTrack, videoTrack, shareVideoTrack, and shareAudioTrack
@@ -115,6 +117,7 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
 Media.createMediaConnection = (
   isMultistream: boolean,
   debugId: string,
+  webex: object,
   options: {
     mediaProperties: {
       mediaDirection?: {
@@ -173,7 +176,14 @@ Media.createMediaConnection = (
       config.bundlePolicy = bundlePolicy;
     }
 
-    return new MultistreamRoapMediaConnection(config, debugId);
+    const metrics = new RtcMetrics(webex, debugId);
+
+    return new MultistreamRoapMediaConnection(
+      config,
+      debugId,
+      (data) => metrics.addMetrics(data),
+      () => metrics.closeMetrics()
+    );
   }
 
   if (!mediaProperties) {
