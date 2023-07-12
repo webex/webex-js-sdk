@@ -334,7 +334,7 @@ const Breakouts = WebexPlugin.extend({
       url: params.url,
       [BREAKOUTS.SESSION_STATES.ACTIVE]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
-      [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
+      [BREAKOUTS.SESSION_STATES.ASSIGNED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
       [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
     });

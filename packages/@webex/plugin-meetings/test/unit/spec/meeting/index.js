@@ -2741,6 +2741,19 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe("#isJoined", () => {
+        it("should returns isJoined correctly", () => {
+          meeting.joinedWith = undefined;
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          assert.equal(meeting.isJoined(), false);
+
+          meeting.joinedWith = {state: "JOINED"};
+          assert.equal(meeting.isJoined(), true);
+        });
+      });
+
       describe('#fetchMeetingInfo', () => {
         const FAKE_DESTINATION = 'something@somecompany.com';
         const FAKE_TYPE = _SIP_URI_;
@@ -4494,8 +4507,16 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('should not trigger ASK_RETURN_TO_MAIN before joined', () => {
+          TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "NOT_JOINED"};
+          meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
+          assert.notCalled(TriggerProxy.trigger);
+        });
+
         it('listens to the ask return to main event from breakouts and triggers the ask return to main event from meeting', () => {
           TriggerProxy.trigger.reset();
+          meeting.joinedWith = {state: "JOINED"};
           meeting.breakouts.trigger('ASK_RETURN_TO_MAIN');
           assert.calledWith(
             TriggerProxy.trigger,
@@ -5610,18 +5631,19 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
 
             TriggerProxy.trigger.reset();
-            const annotationInfo = {version: '1', policy: 'Approval'};
+            const annotationInfo= {version: '1', policy: 'Approval'}
+            const expectAnnotationInfo = {annotationInfo,meetingId:meeting.id };
+            meeting.webex.meetings ={}
             meeting.triggerAnnotationInfoEvent({annotation:annotationInfo},{});
-
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfo
+              expectAnnotationInfo
             );
 
             TriggerProxy.trigger.reset();
@@ -5629,21 +5651,22 @@ describe('plugin-meetings', () => {
             assert.notCalled(TriggerProxy.trigger);
 
             TriggerProxy.trigger.reset();
-            const annotationInfoUpdated = {version: '1', policy: 'AnnotationNotAllowed'};
-            meeting.triggerAnnotationInfoEvent({annotation:annotationInfoUpdated},{annotation:annotationInfo});
+            const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'}
+            const expectAnnotationInfoUpdated = { annotationInfo: annotationInfoUpdate, meetingId:meeting.id };
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfoUpdate},{annotation:annotationInfo});
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfoUpdated
+              expectAnnotationInfoUpdated
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdated});
+            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdate});
             assert.notCalled(TriggerProxy.trigger);
 
           });

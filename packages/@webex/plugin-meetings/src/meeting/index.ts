@@ -161,7 +161,7 @@ export type AddMediaOptions = {
 
 export const MEDIA_UPDATE_TYPE = {
   TRANSCODED_MEDIA_CONNECTION: 'TRANSCODED_MEDIA_CONNECTION',
-  LAMBDA: 'LAMBDA',
+  SHARE_FLOOR_REQUEST: 'SHARE_FLOOR_REQUEST',
   UPDATE_MEDIA: 'UPDATE_MEDIA',
 };
 
@@ -1215,6 +1215,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * returns meeting is joined
+   * @private
+   * @memberof Meeting
+   * @returns {Boolean}
+   */
+  private isJoined() {
+    return this.joinedWith?.state === 'JOINED';
+  }
+
+  /**
    * Fetches meeting information.
    * @param {Object} options
    * @param {String} [options.password] optional
@@ -1503,14 +1513,16 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN, () => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpBreakoutsListener',
-        },
-        EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
-      );
+      if (this.isJoined()) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpBreakoutsListener',
+          },
+          EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN
+        );
+      }
     });
 
     this.breakouts.on(BREAKOUTS.EVENTS.LEAVE_BREAKOUT, () => {
@@ -2218,13 +2230,17 @@ export default class Meeting extends StatelessWebexPlugin {
       !isEqual(contentShare?.annotation, previousContentShare?.annotation)
     ) {
       Trigger.trigger(
-        this,
+        // @ts-ignore
+        this.webex.meetings,
         {
           file: 'meeting/index',
           function: 'triggerAnnotationInfoEvent',
         },
         EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
-        contentShare.annotation
+        {
+          annotationInfo: contentShare?.annotation,
+          meetingId: this.id,
+        }
       );
     }
   }
@@ -4179,7 +4195,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     const {url, info: {datachannelUrl} = {}} = this.locusInfo;
 
-    const isJoined = this.joinedWith && this.joinedWith.state === 'JOINED';
+    const isJoined = this.isJoined();
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -5199,11 +5215,7 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() => {
         if (localTracks?.screenShare?.video) {
-          this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
-            lambda: async () => {
-              return this.requestScreenShareFloor();
-            },
-          });
+          this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
         }
       })
       .then(() => this.mediaProperties.getCurrentConnectionType())
@@ -5299,12 +5311,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private enqueueMediaUpdate(mediaUpdateType: string, options: any): Promise<void> {
-    if (mediaUpdateType === MEDIA_UPDATE_TYPE.LAMBDA && typeof options?.lambda !== 'function') {
-      return Promise.reject(
-        new Error('lambda must be specified when enqueuing MEDIA_UPDATE_TYPE.LAMBDA')
-      );
-    }
+  private enqueueMediaUpdate(mediaUpdateType: string, options: any = {}): Promise<void> {
     const canUpdateMediaNow = this.canUpdateMedia();
 
     return new Promise((resolve, reject) => {
@@ -5368,8 +5375,8 @@ export default class Meeting extends StatelessWebexPlugin {
         case MEDIA_UPDATE_TYPE.TRANSCODED_MEDIA_CONNECTION:
           mediaUpdate = this.updateTranscodedMediaConnection();
           break;
-        case MEDIA_UPDATE_TYPE.LAMBDA:
-          mediaUpdate = options.lambda();
+        case MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST:
+          mediaUpdate = this.requestScreenShareFloor();
           break;
         case MEDIA_UPDATE_TYPE.UPDATE_MEDIA:
           mediaUpdate = this.updateMedia(options);
@@ -6644,7 +6651,7 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.info(`${LOG_HEADER} starting`);
 
     if (!this.canUpdateMedia()) {
-      return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.TRANSCODED_MEDIA_CONNECTION, {});
+      return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.TRANSCODED_MEDIA_CONNECTION);
     }
 
     return this.mediaProperties.webrtcMediaConnection
@@ -6773,11 +6780,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
-      await this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.LAMBDA, {
-        lambda: async () => {
-          return this.requestScreenShareFloor();
-        },
-      });
+      await this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
     }
   }
 
