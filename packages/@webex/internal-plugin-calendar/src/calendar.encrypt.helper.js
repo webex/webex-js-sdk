@@ -72,12 +72,16 @@ const EncryptHelper = {
     });
   },
   /**
-   * Encrypt free-busy request payload
+   * Encrypt free-busy request payload, if request payload only includes the sensitive data, like email, need to encrypt these reqeust parameters, and playload includes encrypt url.
+   * Otherwise, don't encrypt playload and without encrypt url,Due to calendar serivce will vaild both encrypt url and sensitive that are both present. if not, will return 400 bad reqeust to caller.
    * @param {object} [ctx] context
    * @param {object} [data] free busy payload data
    * @returns {Promise} Resolves with encrypted request payload
    * */
   encryptFreeBusyRequest: (ctx, data) => {
+    if (!data.emails || !Array.isArray(data.emails)) {
+      return Promise.resolve();
+    }
     if (ctx.encryptionKeyUrl) {
       return _encryptFreeBusyPayload(data, ctx);
     }
