@@ -21,9 +21,6 @@ describe('internal-plugin-metrics', () => {
     const fakeMeeting = {
       id: '1',
       correlationId: 'correlationId',
-      userId: 'userId',
-      deviceUrl: 'deviceUrl',
-      orgId: 'orgId',
       environment: 'meeting_evn',
       locusUrl: 'locus/url',
       locusInfo: {
@@ -32,19 +29,13 @@ describe('internal-plugin-metrics', () => {
         },
       },
       getCurUserType: () => 'host',
-      getCurLoginType: () => 'login-ci',
-      config: {
-        metrics: {
-          clientType: 'TEAMS_CLIENT',
-          subClientType: 'WEB_APP',
-        },
-      },
     };
 
     let webex;
 
     beforeEach(() => {
       webex = {
+        canAuthorize: true,
         version: 'webex-version',
         internal: {
           services: {
@@ -52,9 +43,20 @@ describe('internal-plugin-metrics', () => {
           },
           metrics: {
             submitClientMetrics: sinon.stub()
+          },
+          device: {
+            userId: 'userId',
+            url: 'deviceUrl',
+            orgId: 'orgId',
           }
         },
         meetings: {
+          config: {
+            metrics: {
+              clientType: 'TEAMS_CLIENT',
+              subClientType: 'WEB_APP',
+            },
+          },
           metrics: {
             clientName: 'Cantina',
           },
@@ -66,6 +68,9 @@ describe('internal-plugin-metrics', () => {
             countryCode: 'UK',
           },
         },
+        credentials: {
+          isUnverifiedGuest: false
+        }
       };
 
       sinon.createSandbox();
@@ -78,64 +83,105 @@ describe('internal-plugin-metrics', () => {
       sinon.restore();
     });
 
-    it('should build origin correctly', () => {
-      sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+    describe("#getOrigin", () => {
+      it('should build origin correctly', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
-      //@ts-ignore
-      const res = cd.getOrigin(
-        {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
-        fakeMeeting.id
-      );
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
 
-      assert.deepEqual(res, {
-        clientInfo: {
-          browser: getBrowserName(),
-          browserVersion: getBrowserVersion(),
-          clientType: 'TEAMS_CLIENT',
-          clientVersion: 'webex-js-sdk/webex-version',
-          localNetworkPrefix: '1.1.1.1',
-          os: getOSNameInternal(),
-          osVersion: getOSVersion(),
-          subClientType: 'WEB_APP',
-        },
-        environment: 'meeting_evn',
-        name: 'endpoint',
-        networkType: 'unknown',
-        userAgent: 'webex-js-sdk/test-webex-version client=Cantina; (os=linux/5)',
-      });
-    });
-
-    it('should build identifiers correctly', () => {
-      const res = cd.getIdentifiers({
-        mediaConnections: [
-          {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
-        ],
-        meeting: fakeMeeting,
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent: 'webex-js-sdk/test-webex-version client=Cantina; (os=linux/5)',
+        });
       });
 
-      assert.deepEqual(res, {
-        correlationId: 'correlationId',
-        deviceId: 'deviceUrl',
-        locusId: 'url',
-        locusStartTime: 'lastActive',
-        locusUrl: 'locus/url',
-        mediaAgentAlias: 'mediaAgentAlias',
-        mediaAgentGroupId: 'mediaAgentGroupId',
-        orgId: 'orgId',
-        userId: 'userId',
-      });
-    });
+      it('should build origin correctly with no meeting', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
-    it('should throw Error if correlationId is missing', () => {
-      assert.throws(() =>
-        cd.getIdentifiers({
+        //@ts-ignore
+        const res = cd.getOrigin();
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent: 'webex-js-sdk/test-webex-version client=Cantina; (os=linux/5)',
+        });
+      });
+    })
+
+    describe("#getIdentifiers", () => {
+      it('should build identifiers correctly', () => {
+        const res = cd.getIdentifiers({
           mediaConnections: [
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
           ],
-          meeting: {...fakeMeeting, correlationId: undefined},
-        })
-      );
-    });
+          meeting: fakeMeeting,
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given correlationId', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId'
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should throw Error if correlationId is missing', () => {
+        assert.throws(() =>
+          cd.getIdentifiers({
+            mediaConnections: [
+              {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+            ],
+            meeting: {...fakeMeeting, correlationId: undefined},
+          })
+        );
+      });
+    })
 
     it('should prepare diagnostic event successfully', () => {
       const options = {meetingId: fakeMeeting.id};
@@ -175,7 +221,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#submitClientEvent', () => {
-      it('should submit client event successfully', () => {
+      it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -240,6 +286,75 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should submit client event successfully with correlationId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const options = {
+         correlationId: 'correlationId'
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(getIdentifiersSpy, {
+          correlationId: 'correlationId',
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -374,10 +489,9 @@ describe('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
-
       })
 
-      it('should throw if meetingId not provided', () => {
+      it('should throw if meetingId nor correlationId not provided', () => {
         assert.throws(() =>
           cd.submitClientEvent({
             name: 'client.alert.displayed',
@@ -386,7 +500,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('should send behavioral event if meeting is undefined', () => {
+      it('should send behavioral event if meetingId provided but meeting is undefined', () => {
         webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
         assert.calledWith(
@@ -583,5 +697,16 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(res, undefined);
       });
     });
+
+    describe('#getCurLoginType', () => {
+      it('returns login-ci if not unverified guest', () => {
+        webex.credentials.isUnverifiedGuest = false;
+        assert.deepEqual(cd.getCurLoginType(), 'login-ci');
+      });
+      it('returns unverified guest', () => {
+        webex.credentials.isUnverifiedGuest = true;
+        assert.deepEqual(cd.getCurLoginType(), 'unverified-guest');
+      })
+    })
   });
 });

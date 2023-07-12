@@ -6329,20 +6329,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   *
-   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
-   */
-  getCurLoginType() {
-    // @ts-ignore
-    if (this.webex.canAuthorize) {
-      // @ts-ignore
-      return this.webex.credentials.isUnverifiedGuest ? 'unverified-guest' : 'login-ci';
-    }
-
-    return null;
-  }
-
-  /**
    * End the current meeting for all
    * @returns {Promise}
    * @public

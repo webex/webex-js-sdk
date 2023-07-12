@@ -47,6 +47,7 @@ type GetOriginOptions = {
 type GetIdentifiersOptions = {
   meeting?: any;
   mediaConnections?: any[];
+  correlationId?: string;
 };
 
 /**
@@ -69,24 +70,32 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns the login type of the current user
+   * @returns one of 'login-ci','unverified-guest'
+   */
+  getCurLoginType() {
+    // @ts-ignore
+    if (this.webex.canAuthorize) {
+      // @ts-ignore
+      return this.webex.credentials.isUnverifiedGuest ? 'unverified-guest' : 'login-ci';
+    }
+
+    return null;
+  }
+
+  /**
    * Get origin object for Call Diagnostic Event payload.
    * @param options
    * @param meetingId
    * @returns
    */
   getOrigin(options: GetOriginOptions, meetingId?: string) {
-    let defaultClientType: Event['origin']['clientInfo']['clientType'];
-    let defaultSubClientType: Event['origin']['clientInfo']['subClientType'];
-    let environment: Event['origin']['environment'];
-
-    if (meetingId) {
+    const defaultClientType: Event['origin']['clientInfo']['clientType'] =
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
-
-      defaultClientType = meeting.config?.metrics?.clientType;
-      defaultSubClientType = meeting.config?.metrics?.subClientType;
-      environment = meeting.environment;
-    }
+      this.webex.meetings.config?.metrics?.clientType;
+    const defaultSubClientType: Event['origin']['clientInfo']['subClientType'] =
+      // @ts-ignore
+      this.webex.meetings.config?.metrics?.subClientType;
 
     if (
       (defaultClientType && defaultSubClientType) ||
@@ -94,7 +103,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     ) {
       const origin: Event['origin'] = {
         name: 'endpoint',
-        networkType: options.networkType || 'unknown',
+        networkType: options?.networkType || 'unknown',
         userAgent: userAgentToString({
           // @ts-ignore
           clientName: this.webex.meetings?.metrics?.clientName,
@@ -102,20 +111,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           webexVersion: this.webex.version,
         }),
         clientInfo: {
-          clientType: defaultClientType || options.clientType,
+          clientType: options?.clientType || defaultClientType,
           // @ts-ignore
           clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
           localNetworkPrefix:
             // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
           osVersion: getOSVersion() || 'unknown',
-          subClientType: defaultSubClientType || options.subClientType,
+          subClientType: options?.subClientType || defaultSubClientType,
           os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
         },
-        environment,
       };
+
+      if (meetingId) {
+        // @ts-ignore
+        const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+        if (meeting?.environment) {
+          origin.environment = meeting.environment;
+        }
+      }
 
       return origin;
     }
@@ -129,14 +145,23 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param options
    */
   getIdentifiers(options: GetIdentifiersOptions) {
-    const {meeting, mediaConnections} = options;
+    const {meeting, mediaConnections, correlationId} = options;
     const identifiers: Event['event']['identifiers'] = {correlationId: 'unknown'};
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
-      identifiers.userId = meeting.userId;
-      identifiers.deviceId = meeting.deviceUrl;
-      identifiers.orgId = meeting.orgId;
+    }
+
+    if (correlationId) {
+      identifiers.correlationId = correlationId;
+    }
+    // @ts-ignore
+    if (this.webex.internal) {
+      // @ts-ignore
+      const {device} = this.webex.internal;
+      identifiers.userId = device.userId;
+      identifiers.deviceId = device.url;
+      identifiers.orgId = device.orgId;
       // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
     }
@@ -329,6 +354,106 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Create client event object for in meeting events
+   * @param event - event key
+   * @param options - payload
+   * @returns object
+   */
+  private createClientEventObjectInMeeting({
+    name,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    options: SubmitClientEventOptions;
+  }) {
+    const {meetingId, mediaConnections, rawError} = options;
+
+    // @ts-ignore
+    const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+    if (!meeting) {
+      console.warn(
+        'Attempt to send client event but no meeting was found...',
+        `event: ${name}, meetingId: ${meetingId}`
+      );
+      // @ts-ignore
+      this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
+        fields: {
+          meetingId,
+          name,
+        },
+      });
+
+      return undefined;
+    }
+
+    // grab identifiers
+    const identifiers = this.getIdentifiers({
+      meeting,
+      mediaConnections: meeting?.mediaConnections || mediaConnections,
+    });
+
+    // check if we need to generate errors
+    const errors: ClientEvent['payload']['errors'] = [];
+
+    if (rawError) {
+      const generatedError = this.generateClientEventErrorPayload(rawError);
+      if (generatedError) {
+        errors.push(generatedError);
+      }
+    }
+
+    // create client event object
+    const clientEventObject: ClientEvent['payload'] = {
+      name,
+      canProceed: true,
+      identifiers,
+      errors,
+      eventData: {
+        webClientDomain: window.location.hostname,
+      },
+      userType: meeting.getCurUserType(),
+      loginType: this.getCurLoginType(),
+    };
+
+    return clientEventObject;
+  }
+
+  /**
+   * Create client event object for pre meeting events
+   * @param event - event key
+   * @param options - payload
+   * @returns object
+   */
+  private createClientEventObjectPreMeeting({
+    name,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    options: SubmitClientEventOptions;
+  }) {
+    const {correlationId} = options;
+
+    // grab identifiers
+    const identifiers = this.getIdentifiers({
+      correlationId,
+    });
+
+    // create client event object
+    const clientEventObject: ClientEvent['payload'] = {
+      name,
+      canProceed: true,
+      identifiers,
+      eventData: {
+        webClientDomain: window.location.hostname,
+      },
+      loginType: this.getCurLoginType(),
+    };
+
+    return clientEventObject;
+  }
+
+  /**
    * Submit Client Event CA event.
    * @param event - event key
    * @param payload - additional payload to be merged with default payload
@@ -345,68 +470,25 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
-    const {meetingId, mediaConnections, rawError} = options;
+    const {meetingId, correlationId} = options;
+    let clientEventObject: ClientEvent['payload'];
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
-
-      if (!meeting) {
-        console.warn(
-          'Attempt to send client event but no meeting was found...',
-          `event: ${name}, meetingId: ${meetingId}`
-        );
-        // @ts-ignore
-        this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
-          fields: {
-            meetingId,
-            name,
-          },
-        });
-
-        return;
-      }
-
-      // grab identifiers
-      const identifiers = this.getIdentifiers({
-        meeting,
-        mediaConnections: meeting?.mediaConnections || mediaConnections,
-      });
-
-      // check if we need to generate errors
-      const errors: ClientEvent['payload']['errors'] = [];
-
-      if (rawError) {
-        const generatedError = this.generateClientEventErrorPayload(rawError);
-        if (generatedError) {
-          errors.push(generatedError);
-        }
-      }
-
-      // create client event object
-      let clientEventObject: ClientEvent['payload'] = {
-        name,
-        canProceed: true,
-        identifiers,
-        errors,
-        eventData: {
-          webClientDomain: window.location.hostname,
-        },
-        userType: meeting.getCurUserType(),
-        loginType: meeting.getCurLoginType(),
-      };
-
-      // merge any new properties, or override existing ones
-      clientEventObject = merge(clientEventObject, payload);
-
-      // append client event data to the call diagnostic event
-      const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
-      this.submitToCallDiagnostics(diagnosticEvent);
-    } else {
+      clientEventObject = this.createClientEventObjectInMeeting({name, options});
+    } else if (correlationId) {
       // any pre join events or events that are outside the meeting.
+      clientEventObject = this.createClientEventObjectPreMeeting({name, options});
+    } else {
       throw new Error('Not implemented');
     }
+
+    // merge any new properties, or override existing ones
+    clientEventObject = merge(clientEventObject, payload);
+
+    // append client event data to the call diagnostic event
+    const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+    this.submitToCallDiagnostics(diagnosticEvent);
   }
 
   /**

@@ -11,6 +11,7 @@ export type SubmitClientEventOptions = {
   mediaConnections?: any[];
   rawError?: any;
   showToUser?: boolean;
+  correlationId?: string;
 };
 
 export type SubmitMQEOptions = {
@@ -86,3 +87,55 @@ export type MediaQualityEventVideoSetupDelayPayload =
 export type SubmitMQEPayload = RecursivePartial<MediaQualityEvent['payload']> & {
   intervals: MediaQualityEvent['payload']['intervals'];
 };
+
+export type SubmitInternalEvent = ({
+  name,
+  payload,
+  options,
+}: {
+  name: InternalEvent['name'];
+  payload?: RecursivePartial<InternalEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitBehavioralEvent = ({
+  name,
+  payload,
+  options,
+}: {
+  name: BehavioralEvent['name'];
+  payload?: RecursivePartial<BehavioralEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitClientEvent = ({
+  name,
+  payload,
+  options,
+}: {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options: SubmitClientEventOptions;
+}) => void;
+
+export type SubmitOperationalEvent = ({
+  name,
+  payload,
+  options,
+}: {
+  name: OperationalEvent['name'];
+  payload?: RecursivePartial<OperationalEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitMQE = ({
+  name,
+  payload,
+  options,
+}: {
+  name: MediaQualityEvent['name'];
+  payload: RecursivePartial<MediaQualityEvent['payload']> & {
+    intervals: MediaQualityEvent['payload']['intervals'];
+  };
+  options: any;
+}) => void;
