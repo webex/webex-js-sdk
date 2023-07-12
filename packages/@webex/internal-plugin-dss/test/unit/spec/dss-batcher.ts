@@ -29,6 +29,7 @@ describe('plugin-dss', () => {
         entitiesNotFoundPath: 'fakeEntitiesNotFoundPath',
         requestKey: 'fakeRequestKey',
         parent: webex.internal.dss,
+        timeout: 1000,
       });
       webex.internal.dss.batchers.fakeResource = batcher;
     });
@@ -47,9 +48,10 @@ describe('plugin-dss', () => {
             foundPath: 'fakeEntitiesFoundPath',
             notFoundPath: 'fakeEntitiesNotFoundPath',
             resource: 'fakeResource',
+            timeout: 1000,
             params: {
               lookupValues: ['id1'],
-            },
+            }
           },
         ]);
         expect(result).to.equal('some return value');

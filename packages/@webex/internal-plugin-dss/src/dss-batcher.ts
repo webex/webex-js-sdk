@@ -42,6 +42,12 @@ const DssBatcher = Batcher.extend({
       setOnce: true,
       allowNull: false,
     },
+    timeout: {
+      type: 'number',
+      required: true,
+      setOnce: true,
+      allowNull: false,
+    },
   },
 
   /**
@@ -49,12 +55,13 @@ const DssBatcher = Batcher.extend({
    * @param {Object} payload
    * @returns {Promise<Array>}
    */
-  submitHttpRequest(payload) {
+  submitHttpRequest(payload: unknown) {
     return this.parent._request({
       dataPath: this.dataPath,
       foundPath: this.entitiesFoundPath,
       notFoundPath: this.entitiesNotFoundPath,
       resource: this.resource,
+      timeout: this.timeout,
       params: {
         lookupValues: payload,
       },

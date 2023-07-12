@@ -1,7 +1,8 @@
 import {Exception} from '@webex/common';
 import {RequestOptions} from './types';
 
-interface DssTimeoutErrorParams extends Pick<RequestOptions, 'resource' | 'params' | 'timeout'> {
+interface DssTimeoutErrorParams
+  extends Required<Pick<RequestOptions, 'resource' | 'params' | 'timeout'>> {
   requestId: string;
 }
 
@@ -26,8 +27,8 @@ export class DssTimeoutError extends Exception {
    */
   parse(details: DssTimeoutErrorParams) {
     return (
-      `The KMS did not respond within ${details.timeout} ms.` +
-      `\n Request Id ${details.requestId}` +
+      `The DSS did not respond within ${details.timeout} ms.` +
+      `\n Request Id: ${details.requestId}` +
       `\n Resource: ${details.resource}` +
       `\n Params: ${JSON.stringify(details.params)}`
     );

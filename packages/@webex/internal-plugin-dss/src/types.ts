@@ -48,3 +48,8 @@ export interface SearchOptions extends Pick<RequestOptions, 'timeout'> {
   resultSize: number;
   queryString: string;
 }
+
+export interface BatcherOptions extends Pick<RequestOptions, 'timeout'> {
+  resource: string;
+  lookupValue: string;
+}

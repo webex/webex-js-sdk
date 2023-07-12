@@ -124,12 +124,7 @@ describe('plugin-dss', () => {
       return {data};
     };
 
-    const testMakeRequest = async ({
-      method,
-      resource,
-      params,
-      bodyParams
-    }) => {
+    const testMakeRequest = async ({method, resource, params, bodyParams}) => {
       webex.request = sinon.stub();
 
       await webex.internal.dss.register();
@@ -154,11 +149,10 @@ describe('plugin-dss', () => {
       return {requestId, promise};
     };
 
-    const testMakeBatchedRequests = async ({
-      requests,
-      calls,
-    }) => {
-      requests.forEach((request, index) => { uuidStub.onCall(index).returns(request.id); });
+    const testMakeBatchedRequests = async ({requests, calls}) => {
+      requests.forEach((request, index) => {
+        uuidStub.onCall(index).returns(request.id);
+      });
       webex.request = sinon.stub();
 
       await webex.internal.dss.register();
@@ -205,7 +199,7 @@ describe('plugin-dss', () => {
             dataPath: 'lookupResult.entities',
             foundPath: 'lookupResult.entitiesFound',
             resource: '/lookup/orgid/userOrgId/identity/test id/detail',
-            timeout: undefined
+            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -220,7 +214,10 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData(requestId, 0, true, 'lookupResult', {entities: ['data0'], entitiesFound: ['test id']})
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: ['data0'],
+            entitiesFound: ['test id'],
+          })
         );
         const result = await promise;
 
@@ -243,17 +240,59 @@ describe('plugin-dss', () => {
         expect(result).to.be.null;
       });
 
-      it("fails with timeout when mercury does not respond", async () => {
-        const { promise } = await testMakeRequest({
+      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+        const {promise} = await testMakeRequest({
           method: 'lookupDetail',
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
-          params: { id: 'test id', timeout: 1000 },
+          params: {id: 'test id'},
           bodyParams: {},
         });
 
-        clock.tick(1000)
+        clock.tick(webex.config.dss.requestTimeout);
 
-        return assert.isRejected(promise);
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 1000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
+            '\n Params: undefined'
+        );
+      });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'lookupDetail',
+          resource: '/lookup/orgid/userOrgId/identity/test id/detail',
+          params: {id: 'test id', timeout: 500},
+          bodyParams: {},
+        });
+
+        clock.tick(500);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 500 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
+            '\n Params: undefined'
+        );
+      });
+
+      it('does not fail with timeout when mercury response in time', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupDetail',
+          resource: '/lookup/orgid/userOrgId/identity/test id/detail',
+          params: {id: 'test id', timeout: 500},
+          bodyParams: {},
+        });
+
+        clock.tick(499);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {entitiesNotFound: ['test id']})
+        );
+
+        return assert.isFulfilled(promise);
       });
     });
 
@@ -277,7 +316,7 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
-            timeout: undefined
+            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -306,7 +345,7 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
-            timeout: undefined
+            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -321,7 +360,10 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData(requestId, 0, true, 'lookupResult', {entities: ['data0'], entitiesFound: ['id1']})
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: ['data0'],
+            entitiesFound: ['id1'],
+          })
         );
         const result = await promise;
 
@@ -346,16 +388,17 @@ describe('plugin-dss', () => {
 
       it('calls _batchedLookup correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._batchedLookup = sinon.stub().returns(
-          Promise.resolve('some return value')
-        );
+        webex.internal.dss._batchedLookup = sinon
+          .stub()
+          .returns(Promise.resolve('some return value'));
 
-        const result = await webex.internal.dss.lookup({id: 'id1'});
+        const result = await webex.internal.dss.lookup({id: 'id1', timeout: 500});
 
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/identities',
             lookupValue: 'id1',
+            timeout: 500,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -363,19 +406,21 @@ describe('plugin-dss', () => {
 
       it('calls _batchedLookup correctly with entityProviderType', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._batchedLookup = sinon.stub().returns(
-          Promise.resolve('some return value'),
-        );
+        webex.internal.dss._batchedLookup = sinon
+          .stub()
+          .returns(Promise.resolve('some return value'));
 
         const result = await webex.internal.dss.lookup({
           id: 'id1',
           entityProviderType: 'CI_USER',
+          timeout: 500,
         });
 
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
             lookupValue: 'id1',
+            timeout: 500,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -388,18 +433,21 @@ describe('plugin-dss', () => {
               id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1']},
-            }
+            },
           ],
           calls: [
             {
               method: 'lookup',
               params: {id: 'id1', shouldBatch: true},
-            }
+            },
           ],
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult', {entities: ['data0'], entitiesFound: ['id1']})
+          createData('randomid1', 0, true, 'lookupResult', {
+            entities: ['data0'],
+            entitiesFound: ['id1'],
+          })
         );
         const result = await promises[0];
 
@@ -413,13 +461,13 @@ describe('plugin-dss', () => {
               id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1']},
-            }
+            },
           ],
           calls: [
             {
               method: 'lookup',
               params: {id: 'id1', shouldBatch: true},
-            }
+            },
           ],
         });
 
@@ -439,7 +487,7 @@ describe('plugin-dss', () => {
               id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1', 'id2']},
-            }
+            },
           ],
           calls: [
             {
@@ -454,7 +502,10 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult', {entities: ['data1', 'data2'], entitiesFound: ['id1', 'id2']})
+          createData('randomid1', 0, true, 'lookupResult', {
+            entities: ['data1', 'data2'],
+            entitiesFound: ['id1', 'id2'],
+          })
         );
         const result1 = await promises[0];
 
@@ -471,7 +522,7 @@ describe('plugin-dss', () => {
               id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1', 'id2']},
-            }
+            },
           ],
           calls: [
             {
@@ -486,7 +537,11 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult', {entities: ['data2'], entitiesFound: ['id2'], entitiesNotFound: ['id1']})
+          createData('randomid1', 0, true, 'lookupResult', {
+            entities: ['data2'],
+            entitiesFound: ['id2'],
+            entitiesNotFound: ['id1'],
+          })
         );
         const result1 = await promises[0];
 
@@ -509,7 +564,7 @@ describe('plugin-dss', () => {
               id: 'randomid2',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id2']},
-            }
+            },
           ],
           calls: [
             {
@@ -524,10 +579,16 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult', {entities: ['data1'], entitiesFound: ['id1']})
+          createData('randomid1', 0, true, 'lookupResult', {
+            entities: ['data1'],
+            entitiesFound: ['id1'],
+          })
         );
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid2', 0, true, 'lookupResult', {entities: ['data2'], entitiesFound: ['id2']})
+          createData('randomid2', 0, true, 'lookupResult', {
+            entities: ['data2'],
+            entitiesFound: ['id2'],
+          })
         );
         const result1 = await promises[0];
 
@@ -549,7 +610,7 @@ describe('plugin-dss', () => {
               id: 'randomid2',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id2']},
-            }
+            },
           ],
           calls: [
             {
@@ -567,7 +628,10 @@ describe('plugin-dss', () => {
           createData('randomid1', 0, true, 'lookupResult', {entitiesNotFound: ['id1']})
         );
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid2', 0, true, 'lookupResult', {entities: ['data2'], entitiesFound: ['id2']})
+          createData('randomid2', 0, true, 'lookupResult', {
+            entities: ['data2'],
+            entitiesFound: ['id2'],
+          })
         );
         const result1 = await promises[0];
 
@@ -577,17 +641,59 @@ describe('plugin-dss', () => {
         expect(result2).to.equal('data2');
       });
 
-      it('fails with timeout when mercury does not respond', async () => {
-        const {requestId, promise} = await testMakeRequest({
+      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+        const {promise} = await testMakeRequest({
           method: 'lookup',
           resource: '/lookup/orgid/userOrgId/identities',
-          params: {id: 'id1', shouldBatch: false, timeout: 1000},
+          params: {id: 'id1', shouldBatch: false},
           bodyParams: {lookupValues: ['id1']},
         });
 
-        clock.tick(1000)
+        clock.tick(webex.config.dss.requestTimeout);
 
-        return assert.isRejected(promise);
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 1000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identities' +
+            '\n Params: {"lookupValues":["id1"]}'
+        );
+      });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {id: 'id1', shouldBatch: false, timeout: 500},
+          bodyParams: {lookupValues: ['id1']},
+        });
+
+        clock.tick(500);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 500 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identities' +
+            '\n Params: {"lookupValues":["id1"]}'
+        );
+      });
+
+      it('does not fail with timeout when mercury response in time', async () => {
+        const {promise, requestId} = await testMakeRequest({
+          method: 'lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {id: 'id1', shouldBatch: false, timeout: 500},
+          bodyParams: {lookupValues: ['id1']},
+        });
+
+        clock.tick(499);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {entitiesNotFound: ['test id']})
+        );
+
+        return assert.isFulfilled(promise);
       });
     });
 
@@ -603,7 +709,7 @@ describe('plugin-dss', () => {
 
         const result = await webex.internal.dss.lookupByEmail({
           email: 'email1',
-          timeout: undefined
+          timeout: undefined,
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -614,7 +720,7 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['email1'],
             },
-            timeout: undefined
+            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -629,7 +735,10 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData(requestId, 0, true, 'lookupResult', {entities: ['data0'], entitiesFound: ['email1']})
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: ['data0'],
+            entitiesFound: ['email1'],
+          })
         );
         const result = await promise;
 
@@ -652,17 +761,59 @@ describe('plugin-dss', () => {
         expect(result).to.be.null;
       });
 
-      it('fails with timeout when mercury does not respond', async () => {
-        const {requestId, promise} = await testMakeRequest({
+      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+        const {promise} = await testMakeRequest({
           method: 'lookupByEmail',
           resource: '/lookup/orgid/userOrgId/emails',
-          params: {email: 'email1', timeout: 1000},
+          params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
         });
 
-        clock.tick(1000)
+        clock.tick(webex.config.dss.requestTimeout);
 
-        return assert.isRejected(promise);
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 1000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/emails' +
+            '\n Params: {"lookupValues":["email1"]}'
+        );
+      });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'lookupByEmail',
+          resource: '/lookup/orgid/userOrgId/emails',
+          params: {email: 'email1', timeout: 500},
+          bodyParams: {lookupValues: ['email1']},
+        });
+
+        clock.tick(500);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 500 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/emails' +
+            '\n Params: {"lookupValues":["email1"]}'
+        );
+      });
+
+      it('does not fail with timeout when mercury response in time', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByEmail',
+          resource: '/lookup/orgid/userOrgId/emails',
+          params: {email: 'email1', timeout: 500},
+          bodyParams: {lookupValues: ['email1']},
+        });
+
+        clock.tick(499);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {}) // entitiesNotFound isn't returned for email
+        );
+
+        return assert.isFulfilled(promise);
       });
     });
 
@@ -677,7 +828,7 @@ describe('plugin-dss', () => {
           requestedTypes: ['PERSON', 'ROBOT'],
           resultSize: 100,
           queryString: 'query',
-          timeout: undefined
+          timeout: undefined,
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -689,7 +840,7 @@ describe('plugin-dss', () => {
               resultSize: 100,
               requestedTypes: ['PERSON', 'ROBOT'],
             },
-            timeout: undefined
+            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -711,23 +862,28 @@ describe('plugin-dss', () => {
           },
         });
 
-        mercuryCallbacks['event:directory.search'](createData(requestId, 1, false, 'directoryEntities', ['data1']));
-        mercuryCallbacks['event:directory.search'](createData(requestId, 2, true, 'directoryEntities', ['data2']));
-        mercuryCallbacks['event:directory.search'](createData(requestId, 0, false, 'directoryEntities', ['data0']));
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 1, false, 'directoryEntities', ['data1'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 2, true, 'directoryEntities', ['data2'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 0, false, 'directoryEntities', ['data0'])
+        );
         const result = await promise;
 
         expect(result).to.deep.equal(['data0', 'data1', 'data2']);
       });
 
-      it('fails with timeout when mercury does not respond', async () => {
-        const {requestId, promise} = await testMakeRequest({
+      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+        const {promise} = await testMakeRequest({
           method: 'search',
           resource: '/search/orgid/userOrgId/entities',
           params: {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
-            timeout: 1000
           },
           bodyParams: {
             requestedTypes: ['PERSON', 'ROBOT'],
@@ -736,9 +892,75 @@ describe('plugin-dss', () => {
           },
         });
 
-        clock.tick(1000)
+        clock.tick(webex.config.dss.requestTimeout);
 
-        return assert.isRejected(promise);
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 1000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /search/orgid/userOrgId/entities' +
+            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
+        );
+      });
+
+      it('fails with timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'search',
+          resource: '/search/orgid/userOrgId/entities',
+          params: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+            timeout: 500,
+          },
+          bodyParams: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+          },
+        });
+
+        clock.tick(500);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 500 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /search/orgid/userOrgId/entities' +
+            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
+        );
+      });
+
+      it('does not fail with timeout when mercury response in time', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'search',
+          resource: '/search/orgid/userOrgId/entities',
+          params: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+            timeout: 500,
+          },
+          bodyParams: {
+            requestedTypes: ['PERSON', 'ROBOT'],
+            resultSize: 100,
+            queryString: 'query',
+          },
+        });
+
+        clock.tick(499);
+
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 1, false, 'directoryEntities', ['data1'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 2, true, 'directoryEntities', ['data2'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 0, false, 'directoryEntities', ['data0'])
+        );
+
+        return assert.isFulfilled(promise);
       });
 
       it('fails with timeout when request only partially resolved', async () => {
@@ -749,7 +971,7 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
-            timeout: 1000
+            timeout: 500,
           },
           bodyParams: {
             requestedTypes: ['PERSON', 'ROBOT'],
@@ -758,12 +980,22 @@ describe('plugin-dss', () => {
           },
         });
 
-        mercuryCallbacks['event:directory.search'](createData(requestId, 2, true, 'directoryEntities', ['data2']));
-        mercuryCallbacks['event:directory.search'](createData(requestId, 0, false, 'directoryEntities', ['data0']));
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 2, true, 'directoryEntities', ['data2'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 0, false, 'directoryEntities', ['data0'])
+        );
 
-        clock.tick(1000)
+        clock.tick(500);
 
-        return assert.isRejected(promise);
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 500 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /search/orgid/userOrgId/entities' +
+            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
+        );
       });
     });
 
@@ -818,7 +1050,7 @@ describe('plugin-dss', () => {
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},
           dataPath: 'a.b.c',
-          foundPath: 'someFoundPath'
+          foundPath: 'someFoundPath',
         });
 
         expect(webex.request.getCall(0).args).to.deep.equal([
@@ -921,7 +1153,7 @@ describe('plugin-dss', () => {
           batcherWait: 50,
           batcherMaxCalls: 50,
           batcherMaxWait: 150,
-          requestTimeout: 6000
+          requestTimeout: 1000,
         });
       };
 
@@ -929,14 +1161,14 @@ describe('plugin-dss', () => {
         const resource = '/lookup/orgid/userOrgId/identities';
         const response = 'response1';
 
-        Batcher.prototype.request = sinon.stub()
-          .returns(Promise.resolve(response));
+        Batcher.prototype.request = sinon.stub().returns(Promise.resolve(response));
 
         expect(webex.internal.dss.batchers).to.deep.equal({});
 
         const result = await webex.internal.dss._batchedLookup({
           resource,
           lookupValue: 'id1',
+          timeout: 500,
         });
 
         const batcher = webex.internal.dss.batchers[resource];
@@ -955,8 +1187,10 @@ describe('plugin-dss', () => {
         const response1 = 'response1';
         const response2 = 'response2';
 
-        Batcher.prototype.request = sinon.stub()
-          .onFirstCall().returns(Promise.resolve(response1))
+        Batcher.prototype.request = sinon
+          .stub()
+          .onFirstCall()
+          .returns(Promise.resolve(response1))
           .onSecondCall()
           .returns(Promise.resolve(response2));
 
@@ -988,8 +1222,10 @@ describe('plugin-dss', () => {
         const response1 = 'response1';
         const response2 = 'response2';
 
-        Batcher.prototype.request = sinon.stub()
-          .onFirstCall().returns(Promise.resolve(response1))
+        Batcher.prototype.request = sinon
+          .stub()
+          .onFirstCall()
+          .returns(Promise.resolve(response1))
           .onSecondCall()
           .returns(Promise.resolve(response2));
 
