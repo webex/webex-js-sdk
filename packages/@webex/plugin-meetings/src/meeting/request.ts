@@ -26,7 +26,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
-  SI,
+  INTERPRETATION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
@@ -183,11 +183,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     }
 
     if (siHostSupported) {
-      deviceCapabilities.push(SI.HOST_CONTROL_SI_SUPPORTED);
+      deviceCapabilities.push(INTERPRETATION.HOST_CONTROL_SI_SUPPORTED);
     }
 
     if (siInterpreterSupported) {
-      deviceCapabilities.push(SI.INTERPRETER_CONTROL_SI_SUPPORTED);
+      deviceCapabilities.push(INTERPRETATION.INTERPRETER_CONTROL_SI_SUPPORTED);
     }
 
     if (locale) {

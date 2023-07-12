@@ -495,12 +495,12 @@ This option provides toggles that Locus service needs, and those toggles will co
 ###### Simultaneous Interpretation
 ```
   if (siHostSupported) {
-      deviceCapabilities.push(SI.HOST_CONTROL_SI_SUPPORTED);
+      deviceCapabilities.push(INTERPRETATION.HOST_CONTROL_SI_SUPPORTED);
     }
 ```
 ```
   if (siInterpreterSupported) {
-    deviceCapabilities.push(SI.INTERPRETER_CONTROL_SI_SUPPORTED);
+    deviceCapabilities.push(INTERPRETATION.INTERPRETER_CONTROL_SI_SUPPORTED);
   }
 ```
 ###### Audio Disclaimer
