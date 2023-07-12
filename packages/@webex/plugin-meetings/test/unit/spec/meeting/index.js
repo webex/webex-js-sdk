@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import 'jsdom-global/register';
+import jwt from 'jsonwebtoken';
 import {cloneDeep, forEach, isEqual} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
@@ -4922,6 +4923,56 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.sipUri, test1);
         });
       });
+
+      describe('#setSelfUserPolicies', () => {
+        it('sets correctly when policy data is present in token', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {permission: {userPolicies: {a: true}}};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, {a: true});
+        });
+
+        it('handles missing permission data', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+
+        it('handles missing policy data', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {permission: {}};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+
+        it('handles missing token', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          meeting.setSelfUserPolicies();
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+      });
+
       describe('#unsetRemoteTracks', () => {
         it('should unset the remote tracks and return null', () => {
           meeting.mediaProperties.unsetRemoteTracks = sinon.stub().returns(true);
@@ -4957,6 +5008,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
         });
       });
+
       describe('#parseMeetingInfo', () => {
         const checkParseMeetingInfo = (expectedInfoToParse) => {
           assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);
@@ -4966,6 +5018,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
+          assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
         };
 
         it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
@@ -4977,7 +5030,8 @@ describe('plugin-meetings', () => {
               locusUrl: url1,
               meetingJoinUrl: url2,
               meetingNumber: '12345',
-              permissionToken: 'abc',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -4992,7 +5046,9 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc',
+            selfUserPolicies: {a: true},
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
