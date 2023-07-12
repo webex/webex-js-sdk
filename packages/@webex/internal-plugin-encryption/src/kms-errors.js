@@ -50,6 +50,14 @@ export class KmsError extends Exception {
       message += `\nKMS_REQUEST_ID: ${body.requestId}`;
     }
 
+    if (body.statusCode) {
+      message += `\nKMS_STATUS_CODE: ${body.statusCode}`;
+    }
+
+    if (body.errorCode) {
+      message += `\nKMS_ErrorCode: ${body.errorCode}`;
+    }
+
     return message;
   }
 }
