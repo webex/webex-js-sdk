@@ -708,6 +708,7 @@ export default class LocusInfo extends EventsScope {
           hasViewTheParticipantListChanged,
           hasRaiseHandChanged,
           hasVideoChanged,
+          hasInterpretationChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -841,6 +842,20 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED,
           {
             breakout,
+          }
+        );
+      }
+
+      if (hasInterpretationChanged) {
+        const {interpretation} = current;
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_INTERPRETATION_UPDATED,
+          {
+            interpretation,
           }
         );
       }
@@ -1202,6 +1217,20 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED,
           {breakoutSessions: parsedSelves.current.breakoutSessions}
+        );
+      }
+
+      if (parsedSelves.updates.interpretationChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          {
+            interpretation: parsedSelves.current.interpretation,
+            selfParticipantId: parsedSelves.current.selfId,
+          }
         );
       }
 

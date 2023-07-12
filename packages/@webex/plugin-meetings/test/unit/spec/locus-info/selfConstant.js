@@ -147,6 +147,16 @@ export const self = {
         readOnly: true,
       },
     },
+    interpretation: {
+      originalLanguage: 'en',
+      sourceLanguage: 'en',
+      targetLanguage: 'cn',
+      order: 0,
+      isActive: true,
+      meta: {
+        lastModified: '2023-07-11T01:57:31.040Z',
+      }
+    },
     localRecord: {
       recording: false,
     },

@@ -431,4 +431,30 @@ describe('plugin-meetings', () => {
       assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), false);
     });
   });
+
+  describe('interpretationChanged', () => {
+    it('should return false if new self is null', () => {
+      const parsedSelf = SelfUtils.parse(self);
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, null), false);
+    });
+
+    it('should return true if interpretation info has changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.interpretation.sourceLanguage = 'ja';
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), true);
+    });
+
+    it('should return false if interpretation info  has not changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.interpretation.sourceLanguage = 'en';
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), false);
+    });
+  });
 });

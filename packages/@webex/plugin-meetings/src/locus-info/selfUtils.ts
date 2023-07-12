@@ -65,6 +65,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       isSharingBlocked: SelfUtils.isSharingBlocked(self),
       breakoutSessions: SelfUtils.getBreakoutSessions(self),
       breakout: SelfUtils.getBreakout(self),
+      interpretation: SelfUtils.getInterpretation(self),
     };
   }
 
@@ -73,6 +74,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
 
 SelfUtils.getBreakoutSessions = (self) => self?.controls?.breakout?.sessions;
 SelfUtils.getBreakout = (self) => self?.controls?.breakout;
+SelfUtils.getInterpretation = (self) => self?.controls?.interpretation;
 
 SelfUtils.getLayout = (self) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
@@ -125,6 +127,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
   updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
   updates.breakoutsChanged = SelfUtils.breakoutsChanged(previous, current);
+  updates.interpretationChanged = SelfUtils.interpretationChanged(previous, current);
 
   return {
     previous,
@@ -152,6 +155,9 @@ SelfUtils.layoutChanged = (previous: any, current: any) =>
 
 SelfUtils.breakoutsChanged = (previous, current) =>
   !isEqual(previous?.breakoutSessions, current?.breakoutSessions) && !!current?.breakout;
+
+SelfUtils.interpretationChanged = (previous, current) =>
+  !isEqual(previous?.interpretation, current?.interpretation) && !!current?.interpretation;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
