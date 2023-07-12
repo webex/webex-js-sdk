@@ -2715,6 +2715,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
+        this.recordingController.setUserPolicy(this.selfUserPolicies);
         this.controlsOptionsManager.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {

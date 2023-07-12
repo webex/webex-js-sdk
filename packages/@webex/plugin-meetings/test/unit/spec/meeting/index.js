@@ -5269,6 +5269,9 @@ describe('plugin-meetings', () => {
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
 
+          const setUserPolicySpy = sinon.spy(meeting.recordingController, 'setUserPolicy');
+          meeting.selfUserPolicies = {a: true};
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5379,6 +5382,8 @@ describe('plugin-meetings', () => {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
             displayHints: payload.info.userDisplayHints,
           });
+
+          assert.calledWith(setUserPolicySpy, {a: true});
 
           assert.calledWith(
             TriggerProxy.trigger,
