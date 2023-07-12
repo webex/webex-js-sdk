@@ -5661,18 +5661,19 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
 
             TriggerProxy.trigger.reset();
-            const annotationInfo = {version: '1', policy: 'Approval'};
+            const annotationInfo= {version: '1', policy: 'Approval'}
+            const expectAnnotationInfo = {annotationInfo,meetingId:meeting.id };
+            meeting.webex.meetings ={}
             meeting.triggerAnnotationInfoEvent({annotation:annotationInfo},{});
-
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfo
+              expectAnnotationInfo
             );
 
             TriggerProxy.trigger.reset();
@@ -5680,21 +5681,22 @@ describe('plugin-meetings', () => {
             assert.notCalled(TriggerProxy.trigger);
 
             TriggerProxy.trigger.reset();
-            const annotationInfoUpdated = {version: '1', policy: 'AnnotationNotAllowed'};
-            meeting.triggerAnnotationInfoEvent({annotation:annotationInfoUpdated},{annotation:annotationInfo});
+            const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'}
+            const expectAnnotationInfoUpdated = { annotationInfo: annotationInfoUpdate, meetingId:meeting.id };
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfoUpdate},{annotation:annotationInfo});
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfoUpdated
+              expectAnnotationInfoUpdated
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdated});
+            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdate});
             assert.notCalled(TriggerProxy.trigger);
 
           });

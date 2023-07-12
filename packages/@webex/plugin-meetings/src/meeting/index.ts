@@ -2275,13 +2275,17 @@ export default class Meeting extends StatelessWebexPlugin {
       !isEqual(contentShare?.annotation, previousContentShare?.annotation)
     ) {
       Trigger.trigger(
-        this,
+        // @ts-ignore
+        this.webex.meetings,
         {
           file: 'meeting/index',
           function: 'triggerAnnotationInfoEvent',
         },
         EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
-        contentShare.annotation
+        {
+          annotationInfo: contentShare?.annotation,
+          meetingId: this.id,
+        }
       );
     }
   }
