@@ -28,7 +28,8 @@ export type InternalEvent = {
     | 'internal.client.interstitial-window.launched'
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
-    | 'internal.client.meeting.interstitial-window.showed';
+    | 'internal.client.meeting.interstitial-window.showed'
+    | 'internal.client.pageJMT.received';
   payload?: never;
   options?: never;
 };
@@ -41,7 +42,7 @@ export interface ClientEvent {
 
 export interface BehavioralEvent {
   // TODO: not implemented
-  name: 'host.meeting.participant.admitted' | 'client.pageJMT.received' | 'sdk.media-flow.started';
+  name: 'host.meeting.participant.admitted' | 'sdk.media-flow.started';
   payload?: never;
   options?: never;
 }

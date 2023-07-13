@@ -65,13 +65,13 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getShowInterstitialTime correctly', () => {
-      cdl.saveTimestamp('client.interstitial-window.launched', 10);
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 20);
+      cdl.saveTimestamp('internal.client.interstitial-window.launched', 10);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 20);
       assert.deepEqual(cdl.getShowInterstitialTime(), 10);
     });
 
     it('calculates getCallInitJoinReq correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 10);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
       cdl.saveTimestamp('client.locus.join.request', 20);
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
     });
@@ -114,36 +114,36 @@ describe("internal-plugin-metrics", () => {
 
     it('calculates getStayLobbyTime correctly', () => {
       cdl.saveTimestamp('client.locus.join.response', 10);
-      cdl.saveTimestamp('host.meeting.participant.admitted', 20);
+      cdl.saveTimestamp('internal.host.meeting.participant.admitted', 20);
       assert.deepEqual(cdl.getStayLobbyTime(), 10);
     });
 
     it('calculates getPageJMT correctly', () => {
-      cdl.saveTimestamp('client.pageJMT.received', 10);
+      cdl.saveTimestamp('internal.client.pageJMT.received', 10);
       assert.deepEqual(cdl.getPageJMT(), 10);
     });
 
     it('calculates getClickToInterstitial correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 10);
-      cdl.saveTimestamp('client.meeting.interstitial-window.showed', 20);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 20);
       assert.deepEqual(cdl.getClickToInterstitial(), 10);
     });
 
     it('calculates getInterstitialToJoinOK correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 10);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
       cdl.saveTimestamp('client.locus.join.response', 20);
       assert.deepEqual(cdl.getInterstitialToJoinOK(), 10);
     });
 
     it('calculates getInterstitialToMediaOK correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 10);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
       cdl.saveTimestamp('sdk.media-flow.started', 20);
       assert.deepEqual(cdl.getInterstitialToMediaOK(), 10);
     });
 
     it('calculates getTotalJMT correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 10);
-      cdl.saveTimestamp('client.meeting.interstitial-window.showed', 20);
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 20);
       cdl.saveTimestamp('client.locus.join.response', 40);
       assert.deepEqual(cdl.getTotalJMT(), 40);
     });
@@ -157,8 +157,8 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getClientJMT correctly', () => {
-      cdl.saveTimestamp('client.meeting.click.joinbutton', 5);
-      cdl.saveTimestamp('client.meeting.interstitial-window.showed', 7)
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 5);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 7)
       cdl.saveTimestamp('client.locus.join.request', 10);
       cdl.saveTimestamp('client.locus.join.response', 20);
       cdl.saveTimestamp('client.ice.start', 30);

@@ -169,7 +169,7 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getPageJMT() {
-    return this.latencyTimestamps.get('client.pageJMT.received') || undefined;
+    return this.latencyTimestamps.get('internal.client.pageJMT.received') || undefined;
   }
 
   /**
