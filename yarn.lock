@@ -4164,9 +4164,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:1.38.6":
-  version: 1.38.6
-  resolution: "@webex/internal-media-core@npm:1.38.6"
+"@webex/internal-media-core@npm:1.39.1":
+  version: 1.39.1
+  resolution: "@webex/internal-media-core@npm:1.39.1"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/json-multistream": "npm:2.0.1"
@@ -4178,7 +4178,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: f1d743f32a2b76378772825107c50aebfad8e2c05bf832b4cdab1626bac84da6d1196260e81ae836bf5d19751f998841a8012a3aee5c880ecb57c1344addac83
+  checksum: 1a0678a0610b66a505c6e85aba90da3c249972c99b5bdb377f95d02bc40a0d6a8f4c2aebe170f119d64d62d1ddf817ae6f118a57ad5c1c819c6615d3b4c7c804
   languageName: node
   linkType: hard
 
@@ -4645,7 +4645,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:1.38.6"
+    "@webex/internal-media-core": "npm:1.39.1"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/web-media-effects": "npm:^2.8.0"
@@ -4781,7 +4781,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:1.38.6"
+    "@webex/internal-media-core": "npm:1.39.1"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"

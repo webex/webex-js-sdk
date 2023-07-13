@@ -239,7 +239,10 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private async stopLocalShareTrack(reason: string) {
-    await this.meeting.unpublishTracks([this.meeting.mediaProperties.shareTrack]); // todo screen share audio SPARK-399690
+    await this.meeting.unpublishTracks([
+      this.meeting.mediaProperties.shareVideoTrack,
+      this.meeting.mediaProperties.shareAudioTrack,
+    ]);
     Trigger.trigger(
       this.meeting,
       {

@@ -6,9 +6,11 @@ import {
   LocalMicrophoneTrackEvents,
   LocalCameraTrackEvents,
   LocalDisplayTrack,
+  LocalSystemAudioTrack,
   createCameraTrack,
   createMicrophoneTrack,
   createDisplayTrack,
+  createDisplayTrackWithAudio,
 } from '../../../src/webrtc-core';
 import * as wcmetracks from '@webex/internal-media-core';
 
@@ -128,6 +130,15 @@ describe('media-helpers', () => {
         const result = createDisplayTrack();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayTrack);
+      });
+    });
+    
+    describe('createDisplayTrackWithAudio', () => {
+      it('checks createDisplayTrackWithAudio', async () => {
+        const spy = sinon.stub(wcmetracks, 'createDisplayTrackWithAudio').returns('something');
+        const result = createDisplayTrackWithAudio();
+        assert.equal(result, 'something');
+        assert.calledOnceWithExactly(spy, LocalDisplayTrack, LocalSystemAudioTrack);
       });
     });
   });

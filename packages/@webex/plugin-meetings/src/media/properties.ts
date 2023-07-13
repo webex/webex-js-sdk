@@ -1,6 +1,11 @@
 import {ConnectionState, Event} from '@webex/internal-media-core';
 
-import {LocalCameraTrack, LocalMicrophoneTrack, LocalDisplayTrack} from '@webex/media-helpers';
+import {
+  LocalCameraTrack,
+  LocalMicrophoneTrack,
+  LocalDisplayTrack,
+  LocalSystemAudioTrack,
+} from '@webex/media-helpers';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -26,7 +31,8 @@ export default class MediaProperties {
   remoteQualityLevel: any;
   remoteShare: any;
   remoteVideoTrack: any;
-  shareTrack?: LocalDisplayTrack;
+  shareVideoTrack?: LocalDisplayTrack;
+  shareAudioTrack?: LocalSystemAudioTrack;
   videoDeviceId: any;
   videoTrack?: LocalCameraTrack;
   namespace = MEETINGS;
@@ -47,7 +53,8 @@ export default class MediaProperties {
     };
     this.videoTrack = null;
     this.audioTrack = null;
-    this.shareTrack = null;
+    this.shareVideoTrack = null;
+    this.shareAudioTrack = null;
     this.remoteShare = undefined;
     this.remoteAudioTrack = undefined;
     this.remoteVideoTrack = undefined;
@@ -84,8 +91,12 @@ export default class MediaProperties {
     this.audioTrack = audioTrack;
   }
 
-  setLocalShareTrack(shareTrack?: LocalDisplayTrack) {
-    this.shareTrack = shareTrack;
+  setLocalShareVideoTrack(shareVideoTrack?: LocalDisplayTrack) {
+    this.shareVideoTrack = shareVideoTrack;
+  }
+
+  setLocalShareAudioTrack(shareAudioTrack?: LocalSystemAudioTrack) {
+    this.shareAudioTrack = shareAudioTrack;
   }
 
   setRemoteQualityLevel(remoteQualityLevel) {
