@@ -20,8 +20,8 @@ siLanguage.unsubscribe();
 The following are methods available to the host of a meeting.
 
 ```javascript
-//get the whole list of interpretation languages. only host is allowed to call it
-interpretation.getInterpretationLanguages();
+//get the support list of interpretation languages. only host is allowed to call it
+interpretation.getSupportLanguages();
 
 //get the interpreters list of the meeting
 interpretation.getInterpreters();
