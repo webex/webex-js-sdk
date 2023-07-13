@@ -23,6 +23,7 @@ describe("internal-plugin-metrics", () => {
       webex.emit('ready');
 
       webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
     });
@@ -64,6 +65,24 @@ describe("internal-plugin-metrics", () => {
           networkType: 'wifi'
         }
       })
+    });
+
+    it('submits Internal Event successfully', () => {
+      webex.internal.newMetrics.submitInternalEvent({
+        name: 'client.mediaquality.event',
+      });
+
+      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, 'client.mediaquality.event')
+      assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps)
+    });
+
+    it('submits Internal Event successfully for clearing the join latencies', () => {
+      webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.reset.join.latencies',
+      });
+
+      assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp)
+      assert.calledOnce(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps)
     });
   })
 })

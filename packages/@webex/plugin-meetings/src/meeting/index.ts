@@ -5610,6 +5610,9 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+    /// @ts-ignore
+    this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
+
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.leave',
