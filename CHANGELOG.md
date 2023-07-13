@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.57.0](https://github.com/webex/webex-js-sdk/compare/v2.56.0...v2.57.0) (2023-07-13)
+
+
+### Features
+
+* **internal-plugin-encryption:** support for uploading master key  f… ([#2945](https://github.com/webex/webex-js-sdk/issues/2945)) ([075131c](https://github.com/webex/webex-js-sdk/commit/075131c94fb1981ea0bdcbd3ff93bc08ea266927))
+
 ## [2.56.0](https://github.com/webex/webex-js-sdk/compare/v2.55.1...v2.56.0) (2023-07-11)
 
 
