@@ -6014,7 +6014,7 @@ describe('plugin-meetings', () => {
             resourceUrl,
             isAccepting,
             otherBeneficiaryId,
-            annotation,
+            annotationInfo,
             url,
             shareInstanceId
           ) => {
@@ -6042,7 +6042,7 @@ describe('plugin-meetings', () => {
             if (isGranting) {
               if (isContent) {
                 activeSharingId.content = beneficiaryId;
-                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED,annotation);
+                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED);
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
                   eventTrigger.member = null;
@@ -6096,7 +6096,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId, annotationInfo},
                     });
                   }
                 }
