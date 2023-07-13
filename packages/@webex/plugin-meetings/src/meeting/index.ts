@@ -5294,7 +5294,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
-          name: 'media-engine.ready',
+          name: 'client.media-engine.ready',
           options: {
             meetingId: this.id,
           },

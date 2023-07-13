@@ -411,6 +411,8 @@ describe('internal-plugin-metrics', () => {
               fatal: true,
               name: 'other',
               shownToUser: false,
+              serviceErrorCode: 2409005,
+              errorCode: 4029
             }],
             loginType: 'login-ci',
             name: 'client.alert.displayed',
@@ -641,18 +643,20 @@ describe('internal-plugin-metrics', () => {
     });
     describe('#getErrorPayloadForClientErrorCode', () => {
       it('it should grab the payload for client error code correctly', () => {
-        const res = cd.getErrorPayloadForClientErrorCode(4008);
+        const res = cd.getErrorPayloadForClientErrorCode({clientErrorCode: 4008, serviceErrorCode: 10000});
         assert.deepEqual(res, {
           category: 'signaling',
           errorDescription: 'NewLocusError',
           fatal: true,
           name: 'other',
           shownToUser: false,
+          errorCode: 4008,
+          serviceErrorCode: 10000,
         });
       });
 
       it('it should return undefined if trying to get payload for client error code that doesnt exist', () => {
-        const res = cd.getErrorPayloadForClientErrorCode(123456);
+        const res = cd.getErrorPayloadForClientErrorCode({clientErrorCode: 123456, serviceErrorCode: 100000});
         assert.deepEqual(res, undefined);
       });
     });
@@ -666,6 +670,8 @@ describe('internal-plugin-metrics', () => {
           fatal: true,
           name: 'other',
           shownToUser: false,
+          errorCode: 4029,
+          serviceErrorCode: 2409005
         });
       });
 
@@ -677,6 +683,8 @@ describe('internal-plugin-metrics', () => {
           fatal: true,
           name: 'other',
           shownToUser: false,
+          serviceErrorCode: 2400000,
+          errorCode: 4008,
         });
       });
 
@@ -689,6 +697,8 @@ describe('internal-plugin-metrics', () => {
           fatal: true,
           name: 'other',
           shownToUser: false,
+          serviceErrorCode: 9400000,
+          errorCode: 4100,
         });
       });
 

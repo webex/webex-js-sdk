@@ -26,6 +26,7 @@ import {
   SubmitMQEOptions,
   SubmitMQEPayload,
   ClientEventError,
+  ClientEventPayload,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
@@ -71,7 +72,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Returns the login type of the current user
-   * @returns one of 'login-ci','unverified-guest'
+   * @returns one of 'login-ci','unverified-guest', null
    */
   getCurLoginType() {
     // @ts-ignore
@@ -90,10 +91,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns
    */
   getOrigin(options: GetOriginOptions, meetingId?: string) {
-    const defaultClientType: Event['origin']['clientInfo']['clientType'] =
+    const defaultClientType: ClientType =
       // @ts-ignore
       this.webex.meetings.config?.metrics?.clientType;
-    const defaultSubClientType: Event['origin']['clientInfo']['subClientType'] =
+    const defaultSubClientType: SubClientType =
       // @ts-ignore
       this.webex.meetings.config?.metrics?.subClientType;
 
@@ -231,16 +232,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Submit Media Quality Event
-   * @param args
+   * @param args - submit params
+   * @param arg.name - event key
+   * @param arg.payload - additional payload to be merge with the default payload
+   * @param arg.options - options
    */
   submitMQE({
     name,
-    // additional payload to be merged with default payload
     payload,
     options,
   }: {
     name: MediaQualityEvent['name'];
-    // additional payload to be merged with default payload
     payload: SubmitMQEPayload;
     options: SubmitMQEOptions;
   }) {
@@ -307,10 +309,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Return Client Event payload by client error code
-   * @param clientErrorCode
+   * @param arg - get error arg
+   * @param arg.clientErrorCode
+   * @param arg.serviceErrorCode
    * @returns
    */
-  public getErrorPayloadForClientErrorCode(clientErrorCode: number): ClientEventError {
+  public getErrorPayloadForClientErrorCode({
+    clientErrorCode,
+    serviceErrorCode,
+  }: {
+    clientErrorCode: number;
+    serviceErrorCode: any;
+  }): ClientEventError {
     let error: ClientEventError;
 
     if (clientErrorCode) {
@@ -319,6 +329,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       if (partialParsedError) {
         error = merge(
           {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
+          {errorCode: clientErrorCode},
+          {serviceErrorCode},
           partialParsedError
         );
 
@@ -334,20 +346,26 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
-    const errorCode = rawError?.body?.errorCode || rawError?.body?.code;
-    if (errorCode) {
-      const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[errorCode];
+    const serviceErrorCode = rawError?.body?.errorCode || rawError?.body?.code;
+    if (serviceErrorCode) {
+      const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
       if (clientErrorCode) {
-        return this.getErrorPayloadForClientErrorCode(clientErrorCode);
+        return this.getErrorPayloadForClientErrorCode({clientErrorCode, serviceErrorCode});
       }
 
       // by default, if it is locus error, return nre locus err
-      if (isLocusServiceErrorCode(errorCode)) {
-        return this.getErrorPayloadForClientErrorCode(NEW_LOCUS_ERROR_CLIENT_CODE);
+      if (isLocusServiceErrorCode(serviceErrorCode)) {
+        return this.getErrorPayloadForClientErrorCode({
+          clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
+          serviceErrorCode,
+        });
       }
 
       // otherwise return meeting info
-      return this.getErrorPayloadForClientErrorCode(MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE);
+      return this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+        serviceErrorCode,
+      });
     }
 
     return undefined;
@@ -355,8 +373,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Create client event object for in meeting events
-   * @param event - event key
-   * @param options - payload
+   * @param arg - create args
+   * @param arg.event - event key
+   * @param arg.options - options
    * @returns object
    */
   private createClientEventObjectInMeeting({
@@ -421,8 +440,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Create client event object for pre meeting events
-   * @param event - event key
-   * @param options - payload
+   * @param arg - create args
+   * @param arg.event - event key
+   * @param arg.options - payload
    * @returns object
    */
   private createClientEventObjectPreMeeting({
@@ -455,9 +475,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Submit Client Event CA event.
-   * @param event - event key
-   * @param payload - additional payload to be merged with default payload
-   * @param options - payload
+   * @param arg - submit params
+   * @param arg.event - event key
+   * @param arg.payload - additional payload to be merged with default payload
+   * @param arg.options - payload
    * @throws
    */
   public submitClientEvent({
@@ -466,8 +487,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options,
   }: {
     name: ClientEvent['name'];
-    // additional payload to be merged with default payload
-    payload?: RecursivePartial<ClientEvent['payload']>;
+    payload?: ClientEventPayload;
     options: SubmitClientEventOptions;
   }) {
     const {meetingId, correlationId} = options;

@@ -78,7 +78,7 @@ export default class CallDiagnosticLatencies {
   public getShowInterstitialTime() {
     return this.getDiffBetweenTimestamps(
       'internal.client.interstitial-window.launched',
-      'internal.client.meeting.click.joinbutton'
+      'internal.client.interstitial-window.click.joinbutton'
     );
   }
 
@@ -243,9 +243,10 @@ export default class CallDiagnosticLatencies {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
+    const stayLobbyTime = this.getStayLobbyTime() || 0;
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      return clickToInterstitial + interstitialToJoinOk + joinConfJMT - stayLobbyTime;
     }
 
     return undefined;

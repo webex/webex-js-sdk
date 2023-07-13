@@ -66,7 +66,7 @@ describe("internal-plugin-metrics", () => {
 
     it('calculates getShowInterstitialTime correctly', () => {
       cdl.saveTimestamp('internal.client.interstitial-window.launched', 10);
-      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 20);
+      cdl.saveTimestamp('internal.client.interstitial-window.click.joinbutton', 20);
       assert.deepEqual(cdl.getShowInterstitialTime(), 10);
     });
 

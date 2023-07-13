@@ -1243,8 +1243,8 @@ describe('plugin-meetings', () => {
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-            name: 'media-engine.ready',
-            options: {                   
+            name: 'client.media-engine.ready',
+            options: {
               meetingId: meeting.id,
             },
           });
