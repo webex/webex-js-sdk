@@ -45,7 +45,7 @@ The following are methods available to the interpreters of a meeting.
 //Change direction of interpretation for an interpreter participant
 interpretation.changeDirection();
 
-//Handover between interpreters, will implement them later
-interpretation.handover(participantId)
+//Handoff between interpreters, will implement them later
+interpretation.handoff(participantId)
 
 ```
