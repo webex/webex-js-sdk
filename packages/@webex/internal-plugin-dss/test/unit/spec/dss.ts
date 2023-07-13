@@ -12,14 +12,24 @@ import sinon from 'sinon';
 import {set} from 'lodash';
 import uuid from 'uuid';
 import config from '@webex/internal-plugin-dss/src/config';
+import {DssTimeoutError} from '../../../src/dss-errors';
 
 chai.use(chaiAsPromised);
 describe('plugin-dss', () => {
+  let clock;
+
+  beforeEach(() => {
+    clock = sinon.useFakeTimers();
+  });
+
+  afterEach(() => {
+    clock.restore();
+  });
+
   describe('DSS', () => {
     let webex;
     let uuidStub;
     let mercuryCallbacks;
-    let clock;
 
     beforeEach(() => {
       webex = MockWebex({
@@ -45,13 +55,10 @@ describe('plugin-dss', () => {
         }),
         off: sinon.spy(),
       };
-
-      clock = sinon.useFakeTimers();
     });
 
     afterEach(() => {
       uuidStub.restore();
-      clock.restore();
     });
 
     describe('#register()', () => {
@@ -1181,7 +1188,7 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response);
       });
 
-      it('calls batcher.request on new batcher for lookup with new reource', async () => {
+      it('calls batcher.request on new batcher for lookup with new resource', async () => {
         const resource1 = '/lookup/orgid/userOrgId/identities';
         const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
         const response1 = 'response1';
@@ -1251,6 +1258,78 @@ describe('plugin-dss', () => {
 
         expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
         expect(result).to.equal(response2);
+      });
+
+      it('fails when mercury does not response but only the affected request, not all if them ', async () => {
+        const resource1 = '/lookup/orgid/userOrgId/identities';
+        const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
+
+        Batcher.prototype.request = sinon
+          .stub()
+          .onCall(0)
+          .returns(Promise.resolve())
+          .onCall(1)
+          .returns(
+            Promise.reject(
+              new DssTimeoutError({
+                requestId: '2',
+                timeout: 1000,
+                resource: resource1,
+                params: undefined,
+              })
+            )
+          )
+          .onCall(2)
+          .returns(Promise.resolve())
+          .onCall(3)
+          .returns(
+            Promise.reject(
+              new DssTimeoutError({
+                requestId: '4',
+                timeout: 1000,
+                resource: resource2,
+                params: undefined,
+              })
+            )
+          );
+
+        const result1 = webex.internal.dss._batchedLookup({
+          resource: resource1,
+          lookupValue: 'id1',
+        });
+        const result2 = webex.internal.dss._batchedLookup({
+          resource: resource1,
+          lookupValue: 'id2',
+        });
+        const result3 = webex.internal.dss._batchedLookup({
+          resource: resource2,
+          lookupValue: 'id3',
+        });
+        const result4 = webex.internal.dss._batchedLookup({
+          resource: resource2,
+          lookupValue: 'id4',
+        });
+
+        clock.tick(1000);
+
+        return Promise.all([
+          assert.isFulfilled(result1),
+          assert.isRejected(
+            result2,
+            'The DSS did not respond within 1000 ms.' +
+              '\n Request Id: 2' +
+              '\n Resource: /lookup/orgid/userOrgId/identities' +
+              '\n Params: undefined'
+          ),
+          assert.isFulfilled(result3),
+          assert.isRejected(
+            result4,
+            'The DSS did not respond within 1000 ms.' +
+              '\n Request Id: 4' +
+              '\n Resource: /lookup/orgid/userOrgId/entityprovidertype/CI_USER' +
+              '\n Params: undefined'
+          ),
+        ]);
       });
     });
   });
