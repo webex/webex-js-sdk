@@ -3,7 +3,7 @@ import SILanguage from '@webex/plugin-meetings/src/interpretation/siLanguage';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import MockWebex from '@webex/test-helper-mock-webex';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('SILanguage', () => {
     let webex;
     let siLanguage;

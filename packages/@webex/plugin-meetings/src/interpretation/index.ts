@@ -49,7 +49,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   initialize() {
     this.listenTo(this, 'change:shouldQuerySupportLanguages', () => {
       if (this.canManageInterpreters && !this.supportLanguages) {
-        this.queryInterpretationLanguages();
+        this.querySupportLanguages();
       }
     });
   },
@@ -100,7 +100,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * query interpretation languages
    * @returns {Promise}
    */
-  queryInterpretationLanguages() {
+  querySupportLanguages() {
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.locusUrl}/languages/interpretation`,
@@ -110,10 +110,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
         this.trigger(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
       })
       .catch((error) => {
-        LoggerProxy.logger.error(
-          'Meeting:interpretation#queryInterpretationLanguages failed',
-          error
-        );
+        LoggerProxy.logger.error('Meeting:interpretation#querySupportLanguages failed', error);
         throw error;
       });
   },

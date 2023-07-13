@@ -23,12 +23,12 @@ describe('plugin-meetings', () => {
       it('creates SimultaneousInterpretation as expected', () => {
         assert.equal(interpretation.namespace, 'Meetings');
       });
-      it('call queryInterpretationLanguages correctly when meet the conditions', () => {
-        interpretation.queryInterpretationLanguages = sinon.stub();
+      it('call querySupportLanguages correctly when meet the conditions', () => {
+        interpretation.querySupportLanguages = sinon.stub();
         interpretation.set({
           canManageInterpreters: true,
         });
-        assert.called(interpretation.queryInterpretationLanguages);
+        assert.called(interpretation.querySupportLanguages);
       });
     });
 
@@ -101,7 +101,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#queryInterpretationLanguages', () => {
+    describe('#querySupportLanguages', () => {
       it('makes the request as expected', async () => {
         const mockedReturnBody = {
           siLanguages: [{
@@ -119,7 +119,7 @@ describe('plugin-meetings', () => {
           })
         );
 
-        await interpretation.queryInterpretationLanguages();
+        await interpretation.querySupportLanguages();
         assert.calledOnceWithExactly(webex.request, {
           method: 'GET',
           uri: 'locusUrl/languages/interpretation',
@@ -132,11 +132,11 @@ describe('plugin-meetings', () => {
         webex.request.returns(Promise.reject(mockError));
         LoggerProxy.logger.error = sinon.stub();
 
-        await assert.isRejected(interpretation.queryInterpretationLanguages(), mockError, 'something wrong');
+        await assert.isRejected(interpretation.querySupportLanguages(), mockError, 'something wrong');
 
         assert.calledOnceWithExactly(
           LoggerProxy.logger.error,
-          'Meeting:interpretation#queryInterpretationLanguages failed',
+          'Meeting:interpretation#querySupportLanguages failed',
           mockError
         );
       });
