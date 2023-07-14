@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.163](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.162...v3.0.0-beta.163) (2023-07-14)
+
+
+### Features
+
+* **ca-metrics-refactor:** add new implementation ([#2948](https://github.com/webex/webex-js-sdk/issues/2948)) ([6374853](https://github.com/webex/webex-js-sdk/commit/6374853f575595392d02a777db3ef96642b86c14))
+
 ## [3.0.0-beta.162](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.161...v3.0.0-beta.162) (2023-07-14)
 
 
