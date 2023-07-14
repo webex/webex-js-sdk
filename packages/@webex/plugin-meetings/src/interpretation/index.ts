@@ -58,7 +58,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * Calls this to clean up listeners
    * @returns {void}
    */
-  cleanUp() {},
+  cleanUp() {
+    this.stopListening();
+  },
   /**
    * Update the current locus url of the meeting
    * @param {string} locusUrl // locus url

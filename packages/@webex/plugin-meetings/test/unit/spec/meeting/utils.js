@@ -37,6 +37,7 @@ describe('plugin-meetings', () => {
       meeting.updateLLMConnection = sinon.stub();
       meeting.breakouts = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
+      meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
@@ -56,6 +57,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
+        assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
       });
     });
 

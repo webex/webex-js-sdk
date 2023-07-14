@@ -32,6 +32,16 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cleanUp', () => {
+      it('stops listening', () => {
+        interpretation.stopListening = sinon.stub();
+
+        interpretation.cleanUp();
+
+        assert.calledOnceWithExactly(interpretation.stopListening);
+      });
+    });
+
     describe('#locusUrlUpdate', () => {
       it('sets the locus url', () => {
         interpretation.locusUrlUpdate('newUrl');
