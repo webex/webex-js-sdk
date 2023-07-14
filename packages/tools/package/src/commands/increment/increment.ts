@@ -58,6 +58,7 @@ const increment: CommandsCommand<Options> = {
         ? options.packages.includes(pack.name)
         : true)))
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
+      .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
         const incrementBy: Partial<PackageVersion> = {
           major: options.major ? parseInt(options.major, 10) : undefined,
