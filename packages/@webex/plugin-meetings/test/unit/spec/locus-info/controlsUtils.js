@@ -249,6 +249,26 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasBreakoutChanged, false);
       });
 
+      it('returns hasInterpretationChanged = true when it has changed', () => {
+        const newControls = {
+          interpretation: 'interpretation',
+        };
+
+        const {updates} = ControlsUtils.getControls({interpretation: 'old one'}, newControls);
+
+        assert.equal(updates.hasInterpretationChanged, true);
+      });
+
+      it('returns hasInterpretationChanged = false when it has not changed', () => {
+        const newControls = {
+          interpretation: 'interpretation',
+        };
+
+        const {updates} = ControlsUtils.getControls({interpretation: 'interpretation'}, newControls);
+
+        assert.equal(updates.hasInterpretationChanged, false);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);
