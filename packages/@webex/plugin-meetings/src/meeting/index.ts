@@ -3368,7 +3368,6 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Stores the reference to a new screen share video track, sets up the required event listeners
    * on it, cleans up previous track, etc.
-   * It also sends the floor grant/release request.
    *
    * @param {LocalDisplayTrack | undefined} localDisplayTrack local camera track
    * @returns {Promise<void>}
@@ -3387,7 +3386,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.underlyingLocalTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = !!localDisplayTrack;
+    this.mediaProperties.mediaDirection.sendShare =
+      !!this.mediaProperties.shareVideoTrack || !!this.mediaProperties.shareAudioTrack;
 
     if (!this.isMultistream || !localDisplayTrack) {
       // for multistream WCME automatically un-publishes the old track when we publish a new one
@@ -3399,7 +3399,6 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Stores the reference to a new screen share audio track, sets up the required event listeners
    * on it, cleans up previous track, etc.
-   * It also sends the floor grant/release request.
    *
    * @param {LocalSystemAudioTrack | undefined} localSystemAudioTrack local system audio track
    * @returns {Promise<void>}
@@ -3418,7 +3417,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.underlyingLocalTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = !!localSystemAudioTrack;
+    this.mediaProperties.mediaDirection.sendShare =
+      !!this.mediaProperties.shareVideoTrack || !!this.mediaProperties.shareAudioTrack;
 
     if (!this.isMultistream || !localSystemAudioTrack) {
       await this.unpublishTrack(oldTrack);
@@ -6392,21 +6392,16 @@ export default class Meeting extends StatelessWebexPlugin {
    * Functionality for when a share audio is ended.
    * @private
    * @memberof Meeting
-   * @param {MediaStream} localShare
    * @returns {undefined}
    */
   private handleShareAudioTrackEnded = async () => {
-    if (this.wirelessShare) {
-      this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
-    } else {
-      try {
-        await this.unpublishTracks([this.mediaProperties.shareAudioTrack]);
-      } catch (error) {
-        LoggerProxy.logger.log(
-          'Meeting:index#handleShareAudioTrackEnded --> Error stopping share: ',
-          error
-        );
-      }
+    try {
+      await this.unpublishTracks([this.mediaProperties.shareAudioTrack]);
+    } catch (error) {
+      LoggerProxy.logger.log(
+        'Meeting:index#handleShareAudioTrackEnded --> Error stopping share: ',
+        error
+      );
     }
     this.triggerStoppedSharing();
   };
@@ -6415,27 +6410,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * Functionality for when a share video is ended.
    * @private
    * @memberof Meeting
-   * @param {MediaStream} localShare
    * @returns {undefined}
    */
   private handleShareVideoTrackEnded = async () => {
-    if (this.wirelessShare) {
-      this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
-    } else {
-      try {
-        await this.unpublishTracks([this.mediaProperties.shareVideoTrack]);
-      } catch (error) {
-        LoggerProxy.logger.log(
-          'Meeting:index#handleShareVideoTrackEnded --> Error stopping share: ',
-          error
-        );
-      }
+    try {
+      await this.unpublishTracks([this.mediaProperties.shareVideoTrack]);
+    } catch (error) {
+      LoggerProxy.logger.log(
+        'Meeting:index#handleShareVideoTrackEnded --> Error stopping share: ',
+        error
+      );
     }
     this.triggerStoppedSharing();
   };
 
+  /**
+   * Emits meeting:stoppedSharingLocal
+   * @private
+   * @returns {undefined}
+   * @memberof Meeting
+   */
   private triggerStoppedSharing = () => {
     if (!this.mediaProperties.shareAudioTrack && !this.mediaProperties.shareVideoTrack) {
+      if (this.wirelessShare) {
+        this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
+      }
       Trigger.trigger(
         this,
         {
@@ -6872,13 +6871,13 @@ export default class Meeting extends StatelessWebexPlugin {
     if (tracks.screenShare?.video) {
       await this.setLocalShareVideoTrack(tracks.screenShare?.video);
 
-      floorRequestNeeded = true;
+      floorRequestNeeded = !this.isSharing;
     }
 
     if (this.isMultistream && tracks.screenShare?.audio) {
       await this.setLocalShareAudioTrack(tracks.screenShare.audio);
 
-      floorRequestNeeded = true;
+      floorRequestNeeded = !this.isSharing;
     }
 
     if (tracks.microphone) {

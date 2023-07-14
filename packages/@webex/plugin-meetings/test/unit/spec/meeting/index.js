@@ -3773,6 +3773,12 @@ describe('plugin-meetings', () => {
             
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareAudioPublished(audioShareTrack);
+          });
+          
+          it('does not request screen share floor when publishing share track if already sharing', async () => {
+            meeting.isSharing = true;
+            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            assert.notCalled(meeting.requestScreenShareFloor);
           })
 
           it('updates MuteState instance and publishes the track for main audio', async () => {
@@ -3844,7 +3850,8 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.mediaDirection.sendVideo, 'fake value');
           };
 
-          const checkScreenShareVideoUnpublished = () => {
+          // share direction will remain true if only one of the two share tracks are unpublished
+          const checkScreenShareVideoUnpublished = (shareDirection = true) => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
               videoShareTrack
@@ -3853,10 +3860,11 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
             assert.equal(meeting.mediaProperties.shareVideoTrack, null);
-            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
           };
-          
-          const checkScreenShareAudioUnpublished = () => {
+
+          // share direction will remain true if only one of the two share tracks are unpublished
+          const checkScreenShareAudioUnpublished = (shareDirection = true) => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
               audioShareTrack
@@ -3865,7 +3873,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
             assert.equal(meeting.mediaProperties.shareAudioTrack, null);
-            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
           };
 
           it('fails if there is no media connection', async () => {
@@ -3881,8 +3889,8 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack.callCount, 4);
             checkAudioUnpublished();
             checkVideoUnpublished();
-            checkScreenShareVideoUnpublished();
-            checkScreenShareAudioUnpublished();
+            checkScreenShareVideoUnpublished(false);
+            checkScreenShareAudioUnpublished(false);
           });
 
           it('un-publishes the audio track correctly', async () => {
@@ -3913,10 +3921,11 @@ describe('plugin-meetings', () => {
             checkScreenShareAudioUnpublished();
           });
           
-          it('releases share floor when both screen share audio tracks are undefined', async () => {
+          it('releases share floor and sets send direction to false when both screen share tracks are undefined', async () => {
             await meeting.unpublishTracks([videoShareTrack, audioShareTrack]);
             
             assert.calledOnce(meeting.releaseScreenShareFloor);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
           });
           
           it('does not release share floor when audio is released and video still exists', async () => {

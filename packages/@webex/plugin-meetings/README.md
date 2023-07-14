@@ -1000,12 +1000,6 @@ meeting.on('media:ready', (media) => {
   if (media.type === 'remoteShare') {
     document.getElementById('sharevideo').srcObject = media.stream;
   }
-  if (media.type === 'localShareVideo') {
-    document.getElementById('localsharevideo').srcObject = media.stream;
-  }
-  if (media.type === 'localShareAudio') {
-    document.getElementById('localshareaudio').srcObject = media.stream;
-  }
 });
 ```
 
@@ -1025,12 +1019,6 @@ meeting.on('media:stopped', (media) => {
   }
   if (media.type === 'remoteAudio') {
     document.getElementById('remoteaudio').srcObject = null;
-  }
-  if (media.type === 'localShareVideo') {
-    document.getElementById('localsharevideo').srcObject = null;
-  }
-  if (media.type === 'localShareAudio') {
-    document.getElementById('localshareaudio').srcObject = null;
   }
   if (media.type === 'remoteShare') {
     document.getElementById('sharevideo').srcObject = null;
