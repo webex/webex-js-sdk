@@ -3776,7 +3776,10 @@ describe('plugin-meetings', () => {
           });
           
           it('does not request screen share floor when publishing share track if already sharing', async () => {
-            meeting.isSharing = true;
+            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            assert.calledOnce(meeting.requestScreenShareFloor);
+            
+            meeting.requestScreenShareFloor.reset();
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
             assert.notCalled(meeting.requestScreenShareFloor);
           })

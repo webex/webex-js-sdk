@@ -161,6 +161,15 @@ export default class MediaProperties {
   }
 
   /**
+   * returns if we have at least one local share track
+   * used to know whether share should continue or not
+   * @returns {Boolean}
+   */
+  hasLocalShareTrack() {
+    return this.shareAudioTrack !== undefined || this.shareVideoTrack !== undefined;
+  }
+
+  /**
    * Waits for the webrtc media connection to be connected.
    *
    * @returns {Promise<void>}
