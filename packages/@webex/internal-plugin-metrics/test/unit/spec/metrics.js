@@ -105,7 +105,6 @@ describe('plugin-metrics', () => {
       sinon.spy(webex, 'request');
       sinon.spy(metrics, 'postPreLoginMetric');
       sinon.spy(metrics, 'aliasUser');
-      sinon.spy(metrics, 'submitCallDiagnosticEvents');
     });
 
     describe('#submit()', () => {
@@ -134,7 +133,7 @@ describe('plugin-metrics', () => {
       });
     });
 
-    describe.only('#getClientMetricsPayload()', () => {
+    describe('#getClientMetricsPayload()', () => {
       it('returns the expected payload', () => {
         webex.credentials.supertoken = new Token(
           {
@@ -179,7 +178,7 @@ describe('plugin-metrics', () => {
           metricName: 'test',
           tags: {
             browser: '',
-            domain: 'non-browser',
+            domain: 'whatever',
             os: 'other',
             success: true,
           },
@@ -330,99 +329,6 @@ describe('plugin-metrics', () => {
 
           assert.match(params, {alias: true});
         }));
-    });
-
-    describe('#submitCallDiagnosticEvents()', () => {
-      it('submits a call diagnostic event', () => {
-        const promise = metrics.submitCallDiagnosticEvents(mockCallDiagnosticEvent);
-
-        return promiseTick(50)
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => promise)
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const req = webex.request.args[0][0];
-            const metric = req.body.metrics[0];
-
-            assert.property(metric.eventPayload, 'origin');
-            assert.property(metric.eventPayload, 'originTime');
-            assert.property(metric.eventPayload.origin, 'buildType');
-            assert.property(metric.eventPayload.origin, 'networkType');
-            assert.property(metric.eventPayload.originTime, 'sent');
-            assert.equal(metric.eventPayload.origin.buildType, 'test');
-          });
-      });
-
-      it('submits a call diagnostic event with buildType set in the payload', () => {
-        const promise = metrics.submitCallDiagnosticEvents({
-          ...mockCallDiagnosticEvent,
-          origin: {
-            buildType: 'prod',
-          },
-        });
-
-        return promiseTick(50)
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => promise)
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const req = webex.request.args[0][0];
-            const metric = req.body.metrics[0];
-
-            assert.property(metric.eventPayload, 'origin');
-            assert.property(metric.eventPayload, 'originTime');
-            assert.property(metric.eventPayload.origin, 'buildType');
-            assert.property(metric.eventPayload.origin, 'networkType');
-            assert.property(metric.eventPayload.originTime, 'sent');
-            assert.equal(metric.eventPayload.origin.buildType, 'prod');
-          });
-      });
-
-      xit('submits a call diagnostic event with a test domain', () => {
-        global.window.location.hostname = 'test.webex.com';
-
-        const promise = metrics.submitCallDiagnosticEvents(mockCallDiagnosticEvent);
-
-        return promiseTick(50)
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => promise)
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const req = webex.request.args[0][0];
-            const metric = req.body.metrics[0];
-
-            assert.property(metric.eventPayload, 'origin');
-            assert.property(metric.eventPayload, 'originTime');
-            assert.property(metric.eventPayload.origin, 'buildType');
-            assert.property(metric.eventPayload.origin, 'networkType');
-            assert.property(metric.eventPayload.originTime, 'sent');
-            assert.equal(metric.eventPayload.origin.buildType, 'test');
-          });
-      });
-
-      // Skip because it's current unable to overwrite NODE_ENV
-      // However doing `NODE_ENV=test npm run test ...` will get this test case to pass
-      xit('submits a call diagnostic event with a NODE_ENV=production', () => {
-        process.env.NODE_ENV = 'production';
-
-        const promise = metrics.submitCallDiagnosticEvents(mockCallDiagnosticEvent);
-
-        return promiseTick(50)
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => promise)
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const req = webex.request.args[0][0];
-            const metric = req.body.metrics[0];
-
-            assert.property(metric.eventPayload, 'origin');
-            assert.property(metric.eventPayload, 'originTime');
-            assert.property(metric.eventPayload.origin, 'buildType');
-            assert.property(metric.eventPayload.origin, 'networkType');
-            assert.property(metric.eventPayload.originTime, 'sent');
-            assert.equal(metric.eventPayload.origin.buildType, 'prod');
-          });
-      });
     });
   });
 });

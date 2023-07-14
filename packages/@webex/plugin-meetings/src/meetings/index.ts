@@ -2,6 +2,7 @@
 
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
@@ -11,7 +12,6 @@ import * as mediaHelpersModule from '@webex/media-helpers';
 import 'webrtc-adapter';
 
 import Metrics from '../metrics';
-import {trigger, eventType} from '../metrics/config';
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -492,10 +492,15 @@ export default class Meetings extends WebexPlugin {
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
           if (this.getMeetingByType(_ID_, meeting.id)) {
-            Metrics.postEvent({
-              event: eventType.REMOTE_STARTED,
-              meeting,
-              data: {trigger: trigger.MERCURY_EVENT},
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.call.remote-started',
+              payload: {
+                trigger: 'mercury-event',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
             });
             Trigger.trigger(
               this,
@@ -648,7 +653,7 @@ export default class Meetings extends WebexPlugin {
 
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
-      Metrics.initialSetup(this.meetingCollection, this.webex);
+      Metrics.initialSetup(this.webex);
     });
   }
 

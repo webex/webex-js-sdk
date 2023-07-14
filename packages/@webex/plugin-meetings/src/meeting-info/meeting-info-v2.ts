@@ -6,7 +6,6 @@ import {
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import Metrics from '../metrics';
-import {eventType} from '../metrics/config';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
@@ -19,7 +18,6 @@ const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
-
 /**
  * Error to indicate that wbxappapi requires a password
  */
@@ -338,22 +336,39 @@ export default class MeetingInfoV2 {
       requestOptions.resource = 'meetingInfo';
     }
 
+    if (meetingId) {
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.client.meetinginfo.request',
+      });
+    }
+
     return this.webex
       .request(requestOptions)
       .then((response) => {
+        if (meetingId) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+        }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
         if (meetingId) {
-          const parsedError = Metrics.parseWebexApiError(err, true);
-          Metrics.postEvent({
-            event: eventType.MEETING_INFO_RESPONSE,
-            meetingId,
-            data: {
-              errors: parsedError ? [parsedError] : undefined,
-              meetingLookupUrl: err?.url,
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: err?.url,
+              },
+            },
+            options: {
+              meetingId,
+              rawError: err,
             },
           });
         }
