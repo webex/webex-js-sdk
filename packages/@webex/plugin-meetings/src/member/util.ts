@@ -200,6 +200,20 @@ MemberUtil.isBreakoutsSupported = (participant) => {
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
+MemberUtil.isInterpretationSupported = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'Interpretation support could not be processed, participant is undefined.'
+    );
+  }
+
+  return !participant.doesNotSupportSiInterpreter;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
 MemberUtil.isLiveAnnotationSupported = (participant) => {
   if (!participant) {
     throw new ParameterError(

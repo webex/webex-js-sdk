@@ -87,6 +87,7 @@ import {
   VIDEO,
   HTTP_VERBS,
   SELF_ROLES,
+  INTERPRETATION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -111,6 +112,7 @@ import {
   RelayEvent,
 } from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
+import SimultaneousInterpretation from '../interpretation';
 import Annotation from '../annotation';
 
 import InMeetingActions from './in-meeting-actions';
@@ -436,6 +438,7 @@ export default class Meeting extends StatelessWebexPlugin {
   attrs: any;
   audio: any;
   breakouts: any;
+  simultaneousInterpretation: any;
   annotation: any;
   conversationUrl: string;
   correlationId: string;
@@ -625,6 +628,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore
     this.breakouts = new Breakouts({meetingId: this.id}, {parent: this.webex});
+    /**
+     * @instance
+     * @type {SimultaneousInterpretation}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore
+    this.simultaneousInterpretation = new SimultaneousInterpretation({}, {parent: this.webex});
     /**
      * @instance
      * @type {Annotation}
@@ -1482,6 +1493,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoAssignHostListener();
     this.setUpLocusInfoMediaInactiveListener();
     this.setUpBreakoutsListener();
+    this.setUpInterpretationListener();
   }
 
   /**
@@ -1569,6 +1581,25 @@ export default class Meeting extends StatelessWebexPlugin {
           function: 'setUpBreakoutsListener',
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE
+      );
+    });
+  }
+
+  /**
+   * Set up the listeners for interpretation
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private setUpInterpretationListener() {
+    this.simultaneousInterpretation.on(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE, () => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpInterpretationListener',
+        },
+        EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
       );
     });
   }
@@ -1921,6 +1952,21 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(
+      LOCUSINFO.EVENTS.CONTROLS_MEETING_INTERPRETATION_UPDATED,
+      ({interpretation}) => {
+        this.simultaneousInterpretation.updateInterpretation(interpretation);
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener',
+          },
+          EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+        );
+      }
+    );
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN, ({mainLocusUrl}) => {
       this.meetingRequest.getLocusStatusByUrl(mainLocusUrl).catch((error) => {
         // clear main session cache when attendee join into breakout and forbidden to get locus from main locus url,
@@ -2019,13 +2065,17 @@ export default class Meeting extends StatelessWebexPlugin {
       !isEqual(contentShare?.annotation, previousContentShare?.annotation)
     ) {
       Trigger.trigger(
-        this,
+        // @ts-ignore
+        this.webex.meetings,
         {
           file: 'meeting/index',
           function: 'triggerAnnotationInfoEvent',
         },
         EVENT_TRIGGERS.MEETING_UPDATE_ANNOTATION_INFO,
-        contentShare.annotation
+        {
+          annotationInfo: contentShare?.annotation,
+          meetingId: this.id,
+        }
       );
     }
   }
@@ -2290,6 +2340,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_URL, (payload) => {
       this.members.locusUrlUpdate(payload);
       this.breakouts.locusUrlUpdate(payload);
+      this.simultaneousInterpretation.locusUrlUpdate(payload);
       this.annotation.locusUrlUpdate(payload);
       this.locusUrl = payload;
       this.locusId = this.locusUrl?.split('/').pop();
@@ -2757,12 +2808,26 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
+      this.simultaneousInterpretation.updateSelfInterpretation(payload);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
       const isModeratorOrCohost =
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
         payload.newRoles?.includes(SELF_ROLES.COHOST);
       this.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
-
+      this.simultaneousInterpretation.updateCanManageInterpreters(
+        payload.newRoles?.includes(SELF_ROLES.MODERATOR)
+      );
       Trigger.trigger(
         this,
         {

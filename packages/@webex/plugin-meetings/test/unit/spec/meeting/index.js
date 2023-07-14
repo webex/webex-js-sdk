@@ -68,6 +68,7 @@ import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistrea
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
+import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -314,6 +315,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.destination, testDestination);
           assert.equal(meeting.destinationType, _MEETING_ID_);
           assert.instanceOf(meeting.breakouts, Breakouts);
+          assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
         });
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
@@ -4508,8 +4510,9 @@ describe('plugin-meetings', () => {
         });
 
         it('listens to the self roles changed event', () => {
-          const payload = {oldRoles: [], newRoles: ['COHOST']};
+          const payload = {oldRoles: [], newRoles: ['COHOST', 'MODERATOR']};
           meeting.breakouts.updateCanManageBreakouts = sinon.stub();
+          meeting.simultaneousInterpretation.updateCanManageInterpreters = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4518,12 +4521,33 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledOnceWithExactly(meeting.breakouts.updateCanManageBreakouts, true);
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateCanManageInterpreters, true);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
             EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
             {payload}
+          );
+        });
+
+        it('listens to the interpretation changed event', () => {
+          meeting.simultaneousInterpretation.updateSelfInterpretation = sinon.stub();
+
+          const payload = 'payload';
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_MEETING_INTERPRETATION_CHANGED',
+            payload
+          );
+
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateSelfInterpretation, payload);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
       });
@@ -4807,6 +4831,27 @@ describe('plugin-meetings', () => {
 
           assert.notCalled(meeting.locusInfo.clearMainSessionLocusCache);
         });
+
+        it('listens to the locus interpretation update event', () => {
+          const interpretation = {
+            siLanguages: [{languageCode: 20, languageName: 'en'}],
+          };
+
+          meeting.simultaneousInterpretation.updateInterpretation = sinon.stub();
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_MEETING_INTERPRETATION_UPDATED',
+            {interpretation}
+          );
+
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateInterpretation, interpretation);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+          );
+        });
       });
 
       describe('#setUpLocusUrlListener', () => {
@@ -4819,6 +4864,7 @@ describe('plugin-meetings', () => {
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
+          meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4831,6 +4877,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
@@ -4960,6 +5007,20 @@ describe('plugin-meetings', () => {
             }
           );
           done();
+        });
+      });
+
+      describe('#setUpInterpretationListener', () => {
+        it('listens to the support languages update event from interpretation and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.simultaneousInterpretation.trigger('SUPPORT_LANGUAGES_UPDATE');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpInterpretationListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
+          );
         });
       });
     });
@@ -5693,18 +5754,19 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
 
             TriggerProxy.trigger.reset();
-            const annotationInfo = {version: '1', policy: 'Approval'};
+            const annotationInfo= {version: '1', policy: 'Approval'}
+            const expectAnnotationInfo = {annotationInfo,meetingId:meeting.id };
+            meeting.webex.meetings ={}
             meeting.triggerAnnotationInfoEvent({annotation:annotationInfo},{});
-
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfo
+              expectAnnotationInfo
             );
 
             TriggerProxy.trigger.reset();
@@ -5712,21 +5774,22 @@ describe('plugin-meetings', () => {
             assert.notCalled(TriggerProxy.trigger);
 
             TriggerProxy.trigger.reset();
-            const annotationInfoUpdated = {version: '1', policy: 'AnnotationNotAllowed'};
-            meeting.triggerAnnotationInfoEvent({annotation:annotationInfoUpdated},{annotation:annotationInfo});
+            const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'}
+            const expectAnnotationInfoUpdated = { annotationInfo: annotationInfoUpdate, meetingId:meeting.id };
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfoUpdate},{annotation:annotationInfo});
             assert.calledWith(
               TriggerProxy.trigger,
-              meeting,
+              {},
               {
                 file: 'meeting/index',
                 function: 'triggerAnnotationInfoEvent',
               },
               'meeting:updateAnnotationInfo',
-              annotationInfoUpdated
+              expectAnnotationInfoUpdated
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdated});
+            meeting.triggerAnnotationInfoEvent(null,{annotation:annotationInfoUpdate});
             assert.notCalled(TriggerProxy.trigger);
 
           });

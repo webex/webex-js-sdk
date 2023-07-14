@@ -401,6 +401,26 @@ describe('plugin-meetings', () => {
         tmpStub.restore();
       });
 
+      it('should update the interpretation state', () => {
+        locusInfo.emitScoped = sinon.stub();
+        newControls.interpretation = {siLanguages: [{languageCode: 20, languageName: 'en'}]};
+        let selfInfo = {};
+
+        locusInfo.updateControls(newControls, selfInfo);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_INTERPRETATION_UPDATED,
+          {
+            interpretation: newControls.interpretation,
+          }
+        );
+      });
+
       it('should update the transcript state', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
@@ -1237,6 +1257,50 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.SELF_ROLES_CHANGED,
           {oldRoles: ['PRESENTER'], newRoles: ['PRESENTER']}
+        );
+      });
+
+      it('should trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.interpretation.targetLanguage = 'it';
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          {
+            interpretation: sampleNewSelf.controls.interpretation,
+            selfParticipantId: self.id,
+          }
+        );
+      });
+
+      it('should not trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info not changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.interpretation.targetLanguage = 'cn'; // same with previous one
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          {
+            interpretation: sampleNewSelf.controls.interpretation,
+            selfParticipantId: self.id,
+          }
         );
       });
     });

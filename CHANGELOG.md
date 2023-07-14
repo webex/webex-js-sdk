@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.161](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.160...v3.0.0-beta.161) (2023-07-14)
+
+## [3.0.0-beta.160](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.159...v3.0.0-beta.160) (2023-07-11)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** Annotation info with meetingid  ([#2935](https://github.com/webex/webex-js-sdk/issues/2935)) ([efbb7a4](https://github.com/webex/webex-js-sdk/commit/efbb7a490f5e30cb8ceba8430687a5698a4ea223))
+
 ## [3.0.0-beta.159](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.158...v3.0.0-beta.159) (2023-07-07)
 
 

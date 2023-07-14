@@ -39,6 +39,7 @@ describe('plugin-meetings', () => {
       meeting.breakouts = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
+      meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
@@ -59,6 +60,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
+        assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
       });
     });
 
