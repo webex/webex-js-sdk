@@ -11,6 +11,7 @@ export type SubmitClientEventOptions = {
   mediaConnections?: any[];
   rawError?: any;
   showToUser?: boolean;
+  correlationId?: string;
 };
 
 export type SubmitMQEOptions = {
@@ -20,7 +21,16 @@ export type SubmitMQEOptions = {
 };
 
 export type InternalEvent = {
-  name: 'internal.client.meetinginfo.request' | 'internal.client.meetinginfo.response';
+  name:
+    | 'internal.client.meetinginfo.request'
+    | 'internal.client.meetinginfo.response'
+    | 'internal.reset.join.latencies'
+    | 'internal.client.interstitial-window.launched'
+    | 'internal.client.meeting.click.joinbutton'
+    | 'internal.host.meeting.participant.admitted'
+    | 'internal.client.meeting.interstitial-window.showed'
+    | 'internal.client.pageJMT.received'
+    | 'internal.client.interstitial-window.click.joinbutton';
   payload?: never;
   options?: never;
 };
@@ -33,7 +43,7 @@ export interface ClientEvent {
 
 export interface BehavioralEvent {
   // TODO: not implemented
-  name: 'host.meeting.participant.admitted' | 'client.pageJMT.received' | 'sdk.media-flow.started';
+  name: 'host.meeting.participant.admitted' | 'sdk.media-flow.started';
   payload?: never;
   options?: never;
 }
@@ -78,6 +88,8 @@ export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientTy
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = RawEvent['origin']['networkType'];
 
+export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
+
 export type MediaQualityEventAudioSetupDelayPayload =
   MediaQualityEvent['payload']['audioSetupDelay'];
 export type MediaQualityEventVideoSetupDelayPayload =
@@ -86,3 +98,35 @@ export type MediaQualityEventVideoSetupDelayPayload =
 export type SubmitMQEPayload = RecursivePartial<MediaQualityEvent['payload']> & {
   intervals: MediaQualityEvent['payload']['intervals'];
 };
+
+export type SubmitInternalEvent = (args: {
+  name: InternalEvent['name'];
+  payload?: RecursivePartial<InternalEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitBehavioralEvent = (args: {
+  name: BehavioralEvent['name'];
+  payload?: RecursivePartial<BehavioralEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitClientEvent = (args: {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options: SubmitClientEventOptions;
+}) => void;
+
+export type SubmitOperationalEvent = (args: {
+  name: OperationalEvent['name'];
+  payload?: RecursivePartial<OperationalEvent['payload']>;
+  options: any;
+}) => void;
+
+export type SubmitMQE = (args: {
+  name: MediaQualityEvent['name'];
+  payload: RecursivePartial<MediaQualityEvent['payload']> & {
+    intervals: MediaQualityEvent['payload']['intervals'];
+  };
+  options: any;
+}) => void;

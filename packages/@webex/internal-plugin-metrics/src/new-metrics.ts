@@ -70,7 +70,11 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<InternalEvent['payload']>;
     options: any;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp(name);
+    if (name === 'internal.reset.join.latencies') {
+      this.callDiagnosticLatencies.clearTimestamps();
+    } else {
+      this.callDiagnosticLatencies.saveTimestamp(name);
+    }
   }
 
   /**

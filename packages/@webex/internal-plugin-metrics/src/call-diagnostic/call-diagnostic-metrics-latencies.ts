@@ -77,8 +77,8 @@ export default class CallDiagnosticLatencies {
    */
   public getShowInterstitialTime() {
     return this.getDiffBetweenTimestamps(
-      'client.interstitial-window.launched',
-      'client.meeting.click.joinbutton'
+      'internal.client.interstitial-window.launched',
+      'internal.client.interstitial-window.click.joinbutton'
     );
   }
 
@@ -88,7 +88,7 @@ export default class CallDiagnosticLatencies {
    */
   public getCallInitJoinReq() {
     return this.getDiffBetweenTimestamps(
-      'client.meeting.click.joinbutton',
+      'internal.client.meeting.click.joinbutton',
       'client.locus.join.request'
     );
   }
@@ -160,7 +160,7 @@ export default class CallDiagnosticLatencies {
   public getStayLobbyTime() {
     return this.getDiffBetweenTimestamps(
       'client.locus.join.response',
-      'host.meeting.participant.admitted'
+      'internal.host.meeting.participant.admitted'
     );
   }
 
@@ -169,7 +169,7 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getPageJMT() {
-    return this.latencyTimestamps.get('client.pageJMT.received') || undefined;
+    return this.latencyTimestamps.get('internal.client.pageJMT.received') || undefined;
   }
 
   /**
@@ -178,8 +178,8 @@ export default class CallDiagnosticLatencies {
    */
   public getClickToInterstitial() {
     return this.getDiffBetweenTimestamps(
-      'client.meeting.click.joinbutton',
-      'client.meeting.interstitial-window.showed'
+      'internal.client.meeting.click.joinbutton',
+      'internal.client.meeting.interstitial-window.showed'
     );
   }
 
@@ -189,7 +189,7 @@ export default class CallDiagnosticLatencies {
    */
   public getInterstitialToJoinOK() {
     return this.getDiffBetweenTimestamps(
-      'client.meeting.click.joinbutton',
+      'internal.client.meeting.click.joinbutton',
       'client.locus.join.response'
     );
   }
@@ -200,7 +200,7 @@ export default class CallDiagnosticLatencies {
    */
   public getInterstitialToMediaOK() {
     return this.getDiffBetweenTimestamps(
-      'client.meeting.click.joinbutton',
+      'internal.client.meeting.click.joinbutton',
       'sdk.media-flow.started'
     );
   }
@@ -243,9 +243,10 @@ export default class CallDiagnosticLatencies {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
+    const stayLobbyTime = this.getStayLobbyTime() || 0;
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      return clickToInterstitial + interstitialToJoinOk + joinConfJMT - stayLobbyTime;
     }
 
     return undefined;

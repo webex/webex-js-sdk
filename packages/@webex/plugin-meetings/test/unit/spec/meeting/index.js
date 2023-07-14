@@ -1243,8 +1243,8 @@ describe('plugin-meetings', () => {
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-            name: 'media-engine.ready',
-            options: {                   
+            name: 'client.media-engine.ready',
+            options: {
               meetingId: meeting.id,
             },
           });
@@ -2158,6 +2158,15 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.unsetRemoteTracks);
           assert.calledOnce(meeting.unsetPeerConnections);
         });
+
+        it('should reset call diagnostic latencies correctly', async () => {
+          const leave = meeting.leave();
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {name: 'internal.reset.join.latencies'});
+        });
+
         describe('after audio/video is defined', () => {
           let handleClientRequest;
 

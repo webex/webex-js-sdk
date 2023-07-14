@@ -5294,7 +5294,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
-          name: 'media-engine.ready',
+          name: 'client.media-engine.ready',
           options: {
             meetingId: this.id,
           },
@@ -5610,6 +5610,9 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public leave(options: {resourceId?: string; reason?: any} = {} as any) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+    /// @ts-ignore
+    this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
+
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.leave',
@@ -6323,20 +6326,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (roles.includes(SELF_ROLES.ATTENDEE)) {
         return 'attendee';
       }
-    }
-
-    return null;
-  }
-
-  /**
-   *
-   * @returns {string} one of 'login-ci','unverified-guest', returns the login type of the current user
-   */
-  getCurLoginType() {
-    // @ts-ignore
-    if (this.webex.canAuthorize) {
-      // @ts-ignore
-      return this.webex.credentials.isUnverifiedGuest ? 'unverified-guest' : 'login-ci';
     }
 
     return null;
