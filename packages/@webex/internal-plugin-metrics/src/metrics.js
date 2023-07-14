@@ -10,7 +10,6 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
-import CallDiagnosticEventsBatcher from './call-diagnostic-events-batcher';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -38,7 +37,6 @@ const Metrics = WebexPlugin.extend({
   children: {
     batcher: Batcher,
     clientMetricsBatcher: ClientMetricsBatcher,
-    callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher,
   },
 
   namespace: 'Metrics',
@@ -162,15 +160,6 @@ const Metrics = WebexPlugin.extend({
         body: payload,
       })
     );
-  },
-
-  submitCallDiagnosticEvents(payload) {
-    const event = {
-      type: 'diagnostic-event',
-      eventPayload: payload,
-    };
-
-    return this.callDiagnosticEventsBatcher.request(event);
   },
 });
 
