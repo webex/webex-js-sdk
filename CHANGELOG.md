@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.57.1](https://github.com/webex/webex-js-sdk/compare/v2.57.0...v2.57.1) (2023-07-14)
+
+
+### Bug Fixes
+
+* **plugin-calendar:** enhance getFreeBusy function ([#2940](https://github.com/webex/webex-js-sdk/issues/2940)) ([a99635a](https://github.com/webex/webex-js-sdk/commit/a99635a0078dc9c75fa989cff0a4486d6acccfad))
+
 ## [2.57.0](https://github.com/webex/webex-js-sdk/compare/v2.56.0...v2.57.0) (2023-07-13)
 
 
