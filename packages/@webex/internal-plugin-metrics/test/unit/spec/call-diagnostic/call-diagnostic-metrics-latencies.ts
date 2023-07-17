@@ -189,5 +189,11 @@ describe("internal-plugin-metrics", () => {
       cdl.saveTimestamp('client.media.tx.start', 7);
       assert.deepEqual(cdl.getVideoJoinRespTxStart(), 2);
     });
+
+    it('calculates getInterstitialToMediaOKJMT correctly', () => {
+      cdl.saveTimestamp('internal.client.interstitial-window.click.joinbutton', 5);
+      cdl.saveTimestamp('client.media-engine.ready', 7);
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 2);
+    });
   })
 })

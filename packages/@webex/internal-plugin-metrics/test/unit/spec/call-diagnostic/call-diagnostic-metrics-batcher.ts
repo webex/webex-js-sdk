@@ -185,6 +185,8 @@ describe('plugin-metrics', () => {
             name: 'client.media-engine.ready',
             joinTimes: {
               totalMediaJMT: 30,
+              interstitialToMediaOKJMT: 10,
+              callInitMediaEngineReady: 10,
             },
           });
           assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
