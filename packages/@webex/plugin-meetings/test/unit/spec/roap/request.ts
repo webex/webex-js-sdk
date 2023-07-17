@@ -3,7 +3,6 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
-import Metrics from '@webex/plugin-meetings/src/metrics';
 import {REACHABILITY} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings/roap', () => {
@@ -31,6 +30,9 @@ describe('plugin-meetings/roap', () => {
       device: {
         url: 'url',
       },
+      newMetrics: {
+        submitClientEvent: sinon.stub()
+      },
     };
 
     // @ts-ignore
@@ -50,8 +52,6 @@ describe('plugin-meetings/roap', () => {
         },
       })
     );
-
-    Metrics.postEvent = sinon.stub().returns();
 
     await webex.boundedStorage.put(
       REACHABILITY.namespace,
@@ -108,7 +108,7 @@ describe('plugin-meetings/roap', () => {
 
   describe('sendRoap', () => {
     it('includes joinCookie in the request correctly', async () => {
-      const locusMediaRequest = { send: sinon.stub().resolves({body: {locus: {}}})};
+      const locusMediaRequest = {send: sinon.stub().resolves({body: {locus: {}}})};
 
       await roapRequest.sendRoap({
         locusSelfUrl: locusUrl,
@@ -116,7 +116,22 @@ describe('plugin-meetings/roap', () => {
         roapMessage: {
           seq: 'seq',
         },
+        meetingId: 'meeting-id',
         locusMediaRequest,
+      });
+
+      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.locus.media.request',
+        options: {
+          meetingId: 'meeting-id',
+        },
+      });
+
+      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.locus.media.response',
+        options: {
+          meetingId: 'meeting-id',
+        },
       });
 
       const requestParams = locusMediaRequest.send.getCall(0).args[0];
@@ -130,8 +145,31 @@ describe('plugin-meetings/roap', () => {
         roapMessage: {
           seq: 'seq',
         },
-        reachability: {clusterId:{udp:"test"}},
+        reachability: {clusterId: {udp: 'test'}},
       });
+    });
+
+    it('sends correct client event when fails', async () => {
+      const locusMediaRequest = {send: sinon.stub().rejects({code: 300, message: 'error'})};
+      try {
+        await roapRequest.sendRoap({
+          locusSelfUrl: locusUrl,
+          mediaId: 'mediaId',
+          roapMessage: {
+            seq: 'seq',
+          },
+          meetingId: 'meeting-id',
+          locusMediaRequest,
+        });
+      } catch (err) {
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.locus.media.response',
+          options: {
+            meetingId: 'meeting-id',
+            rawError: {code: 300, message: 'error'},
+          },
+        });
+      }
     });
   });
 
