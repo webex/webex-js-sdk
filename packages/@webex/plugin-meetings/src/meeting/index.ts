@@ -491,7 +491,6 @@ export default class Meeting extends StatelessWebexPlugin {
   inMeetingActions: InMeetingActions;
   isLocalShareLive: boolean;
   isRoapInProgress: boolean;
-  isSharing: boolean;
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
@@ -971,16 +970,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.inMeetingActions = new InMeetingActions();
-    /**
-     * This is deprecated, please use shareStatus instead.
-     * @instance
-     * @type {Boolean}
-     * @readonly
-     * @public
-     * @memberof Meeting
-     * @deprecated after v1.118.13
-     */
-    this.isSharing = false;
     /**
      * @instance
      * @type {string}
@@ -4562,7 +4551,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // Clean up the camera , microphone track and re initiate it
 
       try {
-        if (this.isSharing) {
+        if (this.screenShareFloorState === ScreenShareFloorStatus.GRANTED) {
           await this.releaseScreenShareFloor();
         }
         const mediaSettings = {
@@ -5441,6 +5430,7 @@ export default class Meeting extends StatelessWebexPlugin {
       )
       .then(() => {
         if (localTracks?.screenShare?.video) {
+          this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
           this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
         }
       })
@@ -5888,7 +5878,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.meetingRequest
         .changeMeetingFloor(body)
         .then(() => {
-          this.isSharing = false;
           this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
           return Promise.resolve();
@@ -6007,7 +5996,6 @@ export default class Meeting extends StatelessWebexPlugin {
             annotationInfo: this.annotationInfo,
           })
           .then(() => {
-            this.isSharing = true;
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
 
             return Promise.resolve();
@@ -6041,6 +6029,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private requestScreenShareFloorIfPending() {
     if (this.floorGrantPending && this.state === MEETING_STATE.STATES.JOINED) {
+      this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
       this.requestScreenShareFloor().then(() => {
         this.floorGrantPending = false;
       });
@@ -6068,7 +6057,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (content.floor?.beneficiary.id !== this.selfId) {
         // remote participant started sharing and caused our sharing to stop, we don't want to send any floor action request in that case
-        this.isSharing = false;
         this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
         return Promise.resolve();
@@ -6095,13 +6083,11 @@ export default class Meeting extends StatelessWebexPlugin {
           return Promise.reject(error);
         })
         .finally(() => {
-          this.isSharing = false;
           this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
         });
     }
 
     // according to Locus there is no content, so we don't need to release the floor (it's probably already been released)
-    this.isSharing = false;
     this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
     return Promise.resolve();
@@ -6413,7 +6399,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleShareAudioTrackEnded = async () => {
-    if (this.wirelessShare && !this.mediaProperties.hasLocalShareTrack()) {
+    // current share audio track has ended, but there might be an active
+    // share video track. we only leave from wireless share if share has
+    // completely ended, which means no share audio or vidoe tracks active
+    if (this.wirelessShare && !this.mediaProperties.shareVideoTrack) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
       try {
@@ -6435,7 +6424,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleShareVideoTrackEnded = async () => {
-    if (this.wirelessShare && !this.mediaProperties.hasLocalShareTrack()) {
+    // current share video track has ended, but there might be an active
+    // share audio track. we only leave from wireless share if share has
+    // completely ended, which means no share audio or vidoe tracks active
+    if (this.wirelessShare && !this.mediaProperties.shareAudioTrack) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
       try {
@@ -6608,7 +6600,7 @@ export default class Meeting extends StatelessWebexPlugin {
   clearMeetingData = () => {
     this.audio = null;
     this.video = null;
-    this.isSharing = false;
+    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
       this.shareStatus = SHARE_STATUS.NO_SHARE;
     }

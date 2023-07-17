@@ -166,7 +166,7 @@ export default class MediaProperties {
    * @returns {Boolean}
    */
   hasLocalShareTrack() {
-    return this.shareAudioTrack !== undefined || this.shareVideoTrack !== undefined;
+    return !!(this.shareAudioTrack || this.shareVideoTrack);
   }
 
   /**
