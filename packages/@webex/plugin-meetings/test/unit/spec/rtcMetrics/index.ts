@@ -13,7 +13,7 @@ describe('RtcMetrics', () => {
   beforeEach(() => {
     clock = sinon.useFakeTimers();
     webex = new MockWebex();
-    metrics = new RtcMetrics(webex, 'mock-correlation-id');
+    metrics = new RtcMetrics(webex, 'mock-meeting-id');
   });
 
   it('should send metrics requests', () => {
