@@ -14,18 +14,20 @@ export default class RtcMetrics {
 
   webex: any;
 
-  correlationId: string;
+  meetingId: string;
 
   /**
    * Initialize the interval.
    *
    * @param {object} webex - The main `webex` object.
-   * @param {string} correlationId - Correlation id used for debugging.
+   * @param {string} meetingId - The meeting id.
    */
-  constructor(webex, correlationId) {
-    this.intervalId = setInterval(this.checkMetrics.bind(this), 60 * 1000);
-    this.correlationId = correlationId;
+  constructor(webex, meetingId) {
+    // `window` is used to prevent typescript from returning a NodeJS.Timer.
+    this.intervalId = window.setInterval(this.checkMetrics.bind(this), 30 * 1000);
+    this.meetingId = meetingId;
     this.webex = webex;
+    setTimeout(this.checkMetrics.bind(this), 5 * 1000);
   }
 
   /**
@@ -59,6 +61,7 @@ export default class RtcMetrics {
    * @returns {void}
    */
   closeMetrics() {
+    this.checkMetrics();
     clearInterval(this.intervalId);
   }
 
@@ -78,7 +81,8 @@ export default class RtcMetrics {
         'Content-Type': 'application/json',
         // NOTE: authorization is automatic in `webex.request()`
         // Authorization: `Bearer ${this.token}`,
-        trackingId: this.correlationId,
+        userId: this.webex.internal.device.userId,
+        meetingId: this.meetingId,
         type: 'webrtcMedia',
         appId,
       },

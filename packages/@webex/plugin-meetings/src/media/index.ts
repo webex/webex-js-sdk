@@ -104,6 +104,7 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
  * @param {boolean} isMultistream
  * @param {string} debugId string useful for debugging (will appear in media connection logs)
  * @param {object} webex main `webex` object.
+ * @param {string} meetingId id for the meeting using this connection
  * @param {Object} options
  * @param {Object} [options.mediaProperties] contains mediaDirection and local tracks:
  *                                 audioTrack, videoTrack, shareVideoTrack, and shareAudioTrack
@@ -118,6 +119,7 @@ Media.createMediaConnection = (
   isMultistream: boolean,
   debugId: string,
   webex: object,
+  meetingId: string,
   options: {
     mediaProperties: {
       mediaDirection?: {
@@ -180,7 +182,7 @@ Media.createMediaConnection = (
 
     return new MultistreamRoapMediaConnection(
       config,
-      debugId,
+      meetingId,
       (data) => metrics.addMetrics(data),
       () => metrics.closeMetrics()
     );
