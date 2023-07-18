@@ -981,7 +981,7 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * @instance
      * @type {ScreenShareFloorStatus}
-     * @public
+     * @private
      * @memberof
      */
     this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
@@ -3388,8 +3388,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.underlyingLocalTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare =
-      !!this.mediaProperties.shareVideoTrack || !!this.mediaProperties.shareAudioTrack;
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
 
     if (!this.isMultistream || !localDisplayTrack) {
       // for multistream WCME automatically un-publishes the old track when we publish a new one
@@ -3419,8 +3418,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.underlyingLocalTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare =
-      !!this.mediaProperties.shareVideoTrack || !!this.mediaProperties.shareAudioTrack;
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
 
     if (!this.isMultistream || !localSystemAudioTrack) {
       await this.unpublishTrack(oldTrack);
@@ -3570,6 +3568,18 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setCorrelationId(id: string) {
     this.correlationId = id;
+  }
+
+  /**
+   * Enqueue request for screenshare floor and set the status to pending
+   * @returns {Promise}
+   * @private
+   * @memberof Meeting
+   */
+  private enqueueScreenShareFloorRequest() {
+    this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
+
+    return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
   }
 
   /**
@@ -5429,10 +5439,11 @@ export default class Meeting extends StatelessWebexPlugin {
         })
       )
       .then(() => {
-        if (localTracks?.screenShare?.video) {
-          this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
-          this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
+        if (this.mediaProperties.hasLocalShareTrack()) {
+          return this.enqueueScreenShareFloorRequest();
         }
+
+        return Promise.resolve();
       })
       .then(() => this.mediaProperties.getCurrentConnectionType())
       .then((connectionType) => {
@@ -5970,10 +5981,12 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.mediaDirection.sendShare
         })`
       );
+      this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
       return Promise.resolve({});
     }
     if (this.state === MEETING_STATE.STATES.JOINED) {
+      this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
       const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
       if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
@@ -6010,6 +6023,8 @@ export default class Meeting extends StatelessWebexPlugin {
               stack: error.stack,
             });
 
+            this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
+
             return Promise.reject(error);
           });
       }
@@ -6029,7 +6044,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private requestScreenShareFloorIfPending() {
     if (this.floorGrantPending && this.state === MEETING_STATE.STATES.JOINED) {
-      this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
       this.requestScreenShareFloor().then(() => {
         this.floorGrantPending = false;
       });
@@ -6401,7 +6415,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private handleShareAudioTrackEnded = async () => {
     // current share audio track has ended, but there might be an active
     // share video track. we only leave from wireless share if share has
-    // completely ended, which means no share audio or vidoe tracks active
+    // completely ended, which means no share audio or video tracks active
     if (this.wirelessShare && !this.mediaProperties.shareVideoTrack) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
@@ -6426,7 +6440,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private handleShareVideoTrackEnded = async () => {
     // current share video track has ended, but there might be an active
     // share audio track. we only leave from wireless share if share has
-    // completely ended, which means no share audio or vidoe tracks active
+    // completely ended, which means no share audio or video tracks active
     if (this.wirelessShare && !this.mediaProperties.shareAudioTrack) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
@@ -6908,12 +6922,10 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (floorRequestNeeded) {
-      this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
-
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
-      await this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
+      await this.enqueueScreenShareFloorRequest();
     }
   }
 

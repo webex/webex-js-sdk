@@ -161,8 +161,7 @@ export default class MediaProperties {
   }
 
   /**
-   * returns if we have at least one local share track
-   * used to know whether share should continue or not
+   * Returns if we have at least one local share track or not.
    * @returns {Boolean}
    */
   hasLocalShareTrack() {

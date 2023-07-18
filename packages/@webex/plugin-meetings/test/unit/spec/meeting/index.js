@@ -3775,8 +3775,17 @@ describe('plugin-meetings', () => {
             checkScreenShareAudioPublished(audioShareTrack);
           });
           
-          it('does not request screen share floor when publishing share track if already sharing', async () => {
+          it('does not request screen share floor when publishing video share track if already sharing audio', async () => {
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            assert.calledOnce(meeting.requestScreenShareFloor);
+            
+            meeting.requestScreenShareFloor.reset();
+            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+            assert.notCalled(meeting.requestScreenShareFloor);
+          })
+          
+          it('does not request screen share floor when publishing audio share track if already sharing video', async () => {
+            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
             assert.calledOnce(meeting.requestScreenShareFloor);
             
             meeting.requestScreenShareFloor.reset();
