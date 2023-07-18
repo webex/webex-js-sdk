@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.167](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.166...v3.0.0-beta.167) (2023-07-18)
+
+
+### Features
+
+* **ca-metrics:** fix option types on public methods ([#2957](https://github.com/webex/webex-js-sdk/issues/2957)) ([f286c5a](https://github.com/webex/webex-js-sdk/commit/f286c5af1cc89d0bbda21308b6ee093102741f2e))
+
 ## [3.0.0-beta.166](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.165...v3.0.0-beta.166) (2023-07-18)
 
 
