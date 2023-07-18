@@ -164,11 +164,18 @@ MemberUtil.isAudioMuted = (participant: any) => {
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isVideoMuted = (participant: any) => {
+MemberUtil.isVideoMuted = (participant: any): boolean => {
   if (!participant) {
     throw new ParameterError('Video could not be processed, participant is undefined.');
   }
 
+  // This seems to be the best way to determine isVideoMuted,
+  // especially when remote video muting is involved.
+  if (participant.controls?.video?.muted !== undefined) {
+    return participant.controls.video.muted;
+  }
+
+  // fall back to old way
   return MemberUtil.isMuted(participant.status, VIDEO_STATUS);
 };
 
