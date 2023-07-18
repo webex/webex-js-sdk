@@ -81,9 +81,10 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
         break;
 
-      // TODO: Figure out equivalent for WEBRTC
       case 'client.media-engine.ready':
         joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
+        joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
+        joinTimes.callInitMediaEngineReady = cdl.getInterstitialToMediaOKJMT(); // same as interstitialToMediaOKJMT
         break;
 
       case 'client.mediaquality.event':

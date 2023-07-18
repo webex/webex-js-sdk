@@ -268,6 +268,17 @@ export default class CallDiagnosticLatencies {
   }
 
   /**
+   * Interstitial To Media OK JMT
+   * @returns - latency
+   */
+  public getInterstitialToMediaOKJMT() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.interstitial-window.click.joinbutton',
+      'client.media-engine.ready'
+    );
+  }
+
+  /**
    * Audio setup delay receive
    */
   public getAudioJoinRespRxStart() {
