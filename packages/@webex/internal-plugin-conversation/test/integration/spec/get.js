@@ -154,6 +154,7 @@ describe('plugin-conversation', function () {
             scr: {
               loc: makeLocalUrl('/sample-image-small-one.png'),
             },
+            url: makeLocalUrl('/sample-image-small-one.png')
           })
           .then((f) =>
             fh.isMatchingFile(f, sampleImageSmallOnePng).then((result) => assert.isTrue(result))
