@@ -485,19 +485,29 @@ describe('plugin-meetings', () => {
       });
 
       describe('#joinWithMedia', () => {
+
         it('should have #joinWithMedia', () => {
           assert.exists(meeting.joinWithMedia);
         });
+
         describe('resolution', () => {
           it('should success and return a promise', async () => {
             meeting.join = sinon.stub().returns(Promise.resolve(test1));
             meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
-            const result = await meeting.joinWithMedia({});
-            assert.calledOnce(meeting.join);
-            assert.calledOnce(meeting.addMedia);
+
+            const joinOptions = {correlationId: '12345'};
+            const mediaOptions = {audioEnabled: test1, allowMediaInLobby: true};
+
+            const result = await meeting.joinWithMedia({
+              joinOptions,
+              mediaOptions,
+            });
+            assert.calledOnceWithExactly(meeting.join, joinOptions);
+            assert.calledOnceWithExactly(meeting.addMedia, mediaOptions);
             assert.deepEqual(result, {join: test1, media: test4});
           });
         });
+
         describe('rejection', () => {
           it('should error out and return a promise', async () => {
             meeting.join = sinon.stub().returns(Promise.reject());
@@ -822,6 +832,7 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
       describe('#addMedia', () => {
         const muteStateStub = {
           handleClientRequest: sinon.stub().returns(Promise.resolve(true)),
@@ -1107,18 +1118,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should attach the media and return promise', async () => {
-          meeting.roap.doTurnDiscovery = sinon
-            .stub()
-            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
-
-          meeting.meetingState = 'ACTIVE';
-          const media = meeting.addMedia({
-            mediaSettings: {},
-          });
-
-          assert.exists(media);
-          await media;
+        const checkWorking = () => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
@@ -1131,9 +1131,40 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
-          /* statsAnalyzer is initiated inside of addMedia so there isn't
-           * a good way to mock it without mocking the constructor
-           */
+        }
+
+        it('should attach the media and return promise', async () => {
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          meeting.meetingState = 'ACTIVE';
+          const media = meeting.addMedia({
+            mediaSettings: {},
+          });
+
+          assert.exists(media);
+          await media;
+
+          checkWorking();
+        });
+
+        it('should attach the media and return promise when in the lobby if allowMediaInLobby is set', async () => {
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.locusInfo.parsedLocus = {self: {state: 'IDLE'}};
+          meeting.isUserUnadmitted = true;
+          const media = meeting.addMedia({
+            allowMediaInLobby: true,
+          });
+
+          assert.exists(media);
+          await media;
+
+          checkWorking();
         });
 
         it('should pass the turn server info to the peer connection', async () => {

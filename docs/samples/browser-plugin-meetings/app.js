@@ -245,6 +245,7 @@ const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
+const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -474,6 +475,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
 
+  if (meetingsMediaInLobbySupportElm.checked) {
+    joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
+  }
+
   const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
@@ -675,6 +680,8 @@ function getMediaSettings() {
   toggleSourcesMediaDirection.forEach((options) => {
     settings[options.value] = options.checked;
   });
+
+  settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
 
   return settings;
 }

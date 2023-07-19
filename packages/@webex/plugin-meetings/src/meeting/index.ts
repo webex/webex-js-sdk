@@ -158,6 +158,7 @@ export type AddMediaOptions = {
   receiveShare?: boolean; // if not specified, default value true is used
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
+  allowMediaInLobby?: boolean; // allows adding media when in the lobby
 };
 
 export const MEDIA_UPDATE_TYPE = {
@@ -3723,7 +3724,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Shorthand function to join AND set up media
    * @param {Object} options - options to join with media
    * @param {JoinOptions} [options.joinOptions] - see #join()
-   * @param {MediaDirection} [options.mediaOptions] - see #addMedia()
+   * @param {AddMediaOptions} [options.mediaOptions] - see #addMedia()
    * @returns {Promise} -- {join: see join(), media: see addMedia()}
    * @public
    * @memberof Meeting
@@ -5158,11 +5159,6 @@ export default class Meeting extends StatelessWebexPlugin {
     if (MeetingUtil.isUserInLeftState(this.locusInfo)) {
       return Promise.reject(new UserNotJoinedError());
     }
-    // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
-    // @ts-ignore - isUserUnadmitted coming from SelfUtil
-    if (this.isUserUnadmitted && !this.wirelessShare) {
-      return Promise.reject(new UserInLobbyError());
-    }
 
     const {
       localTracks,
@@ -5171,7 +5167,14 @@ export default class Meeting extends StatelessWebexPlugin {
       receiveShare = true,
       remoteMediaManagerConfig,
       bundlePolicy,
+      allowMediaInLobby,
     } = options;
+
+    // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
+    // @ts-ignore - isUserUnadmitted coming from SelfUtil
+    if (this.isUserUnadmitted && !this.wirelessShare && !allowMediaInLobby) {
+      return Promise.reject(new UserInLobbyError());
+    }
 
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
