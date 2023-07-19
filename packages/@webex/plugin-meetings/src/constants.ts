@@ -904,6 +904,9 @@ export const DISPLAY_HINTS = {
   SHARE_CAMERA: 'SHARE_CAMERA',
   SHARE_DESKTOP: 'SHARE_DESKTOP',
   SHARE_CONTENT: 'SHARE_CONTENT',
+
+  // Voip (audio/video)
+  VOIP_IS_ENABLED: 'VOIP_IS_ENABLED',
 };
 
 export const SELF_ROLES = {

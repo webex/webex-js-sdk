@@ -2658,6 +2658,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             policies: this.selfUserPolicies,
           }),
+          canUseVoip: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
+            displayHints: payload.info.userDisplayHints,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
