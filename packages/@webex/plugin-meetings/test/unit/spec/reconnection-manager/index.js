@@ -3,7 +3,6 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
-import Metrics from '@webex/plugin-meetings/src/metrics';
 
 const {assert} = chai;
 
@@ -16,7 +15,6 @@ describe('plugin-meetings', () => {
     let fakeMeeting;
 
     beforeEach(() => {
-      Metrics.postEvent = sinon.stub();
       fakeMediaConnection = {
         initiateOffer: sinon.stub().resolves({}),
         reconnect: sinon.stub().resolves({}),
@@ -64,6 +62,11 @@ describe('plugin-meetings', () => {
             getMeetingByType: sinon.stub().returns(true),
             syncMeetings: sinon.stub().resolves({}),
           },
+          internal: {
+            newMetrics: {
+              submitClientEvent: sinon.stub()
+            }
+          }
         },
       };
     });
@@ -82,6 +85,23 @@ describe('plugin-meetings', () => {
           credential: 'fake_turn_password',
         },
       ]);
+
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.reconnecting',
+        options: {
+          meetingId: rm.meeting.id,
+        },
+      });
+
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.recovered',
+        payload: {
+          recoveredBy: 'new',
+        },
+        options: {
+          meetingId: rm.meeting.id,
+        },
+      });
     });
 
     it('does not clear previous requests and re-request media for non-multistream meetings', async () => {
@@ -106,6 +126,35 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
+    });
+
+
+    it('sends the correct client event when reconnection fails', async () => {
+      sinon.stub(ReconnectionManager.prototype, 'executeReconnection').rejects();
+      fakeMeeting.isMultistream = true;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      try {
+        await rm.reconnect();
+      } catch (err) {
+        assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.aborted',
+          payload: {
+            errors: [
+              {
+                category: 'expected',
+                errorCode: 2008,
+                fatal: true,
+                name: 'media-engine',
+                shownToUser: false,
+              },
+            ],
+          },
+          options: {
+            meetingId: rm.meeting.id,
+          },
+        });
+      }
     });
   });
 

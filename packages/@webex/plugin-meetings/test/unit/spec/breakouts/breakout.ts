@@ -93,10 +93,12 @@ describe('plugin-meetings', () => {
         let onBreakoutMoveResponseStub = sinon.stub(breakoutEvent, 'onBreakoutMoveResponse');
         await breakout.join();
         assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveRequest,
-          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}
+          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'},
+          webex.internal.newMetrics.submitClientEvent
         );
         assert.calledOnceWithExactly(breakoutEvent.onBreakoutMoveResponse,
-          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'}
+          {currentSession: breakout, meeting: {id: 'meeting-id'}, breakoutMoveId: 'breakoutMoveId'},
+          webex.internal.newMetrics.submitClientEvent
         );
 
         onBreakoutMoveRequestStub.restore();

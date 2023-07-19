@@ -151,6 +151,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
 
       hasBreakoutChanged: !isEqual(previous?.breakout, current?.breakout),
 
+      hasInterpretationChanged: !isEqual(previous?.interpretation, current?.interpretation),
+
       hasVideoEnabledChanged:
         newControls.video?.enabled !== undefined &&
         !isEqual(previous?.videoEnabled, current?.videoEnabled),

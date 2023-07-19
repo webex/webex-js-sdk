@@ -382,7 +382,6 @@ describe('plugin-meetings', () => {
         ],
         ({errorCode}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
-            Metrics.postEvent = sinon.stub();
             const message = 'a message';
             const meetingInfoData = 'meeting info';
 
@@ -407,34 +406,29 @@ describe('plugin-meetings', () => {
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              assert(Metrics.postEvent.calledOnce);
-              assert.calledWith(Metrics.postEvent, {
-                event: 'client.meetinginfo.response',
-                meetingId: 'meeting-id',
-                data: {
-                  errors: [
-                    {
-                      category: 'signaling',
-                      errorCode: 4100,
-                      errorData: {
-                        error: {
-                          code: errorCode,
-                          data: {
-                            meetingInfo: 'meeting info',
-                          },
-                          message: 'a message',
-                        }
-                      },
-                      errorDescription: 'MeetingInfoLookupError',
-                      fatal: true,
-                      httpCode: 403,
-                      name: 'other',
-                      serviceErrorCode: errorCode,
-                      shownToUser: true,
-                    },
-                  ],
-                  meetingLookupUrl: 'http://api-url.com',
-                }
+              assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
+              const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+              assert.deepEqual(submitInternalEventCalls[0].args[0], {
+                name: 'internal.client.meetinginfo.request',
+              });
+              assert.deepEqual(submitInternalEventCalls[1].args[0], {
+                name: 'internal.client.meetinginfo.response',
+              });
+              assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+                name: 'client.meetinginfo.response',
+                payload: {
+                  identifiers: {
+                    meetingLookupUrl: 'http://api-url.com',
+                  },
+                },
+                options: {
+                  meetingId: 'meeting-id',
+                  rawError: {
+                    statusCode: 403,
+                    body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+                    url: 'http://api-url.com',
+                  },
+                },
               });
 
               assert.instanceOf(err, MeetingInfoV2PolicyError);
@@ -452,8 +446,51 @@ describe('plugin-meetings', () => {
         }
       );
 
+      it('should send internal CA metric if meetingId is provided', async () => {
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          _MEETING_ID_,
+          null,
+          null,
+          null,
+          null,
+          extraParams,
+          {meetingId: 'meetingId'}
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'meetingInfo',
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            ...extraParams,
+          },
+        });
+        assert.deepEqual(result, requestResponse);
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+        );
+
+        const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+        assert.deepEqual(submitInternalEventCalls[0].args[0], {
+          name: 'internal.client.meetinginfo.request',
+        });
+        assert.deepEqual(submitInternalEventCalls[1].args[0], {
+          name: 'internal.client.meetinginfo.response',
+        });
+      });
+
       it('should not send CA metric if meetingId is not provided', async () => {
-        Metrics.postEvent = sinon.stub();
         const message = 'a message';
         const meetingInfoData = 'meeting info';
 
@@ -477,45 +514,8 @@ describe('plugin-meetings', () => {
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
-          assert.notCalled(Metrics.postEvent);
-        }
-      });
-
-      it('should not have errors if parsing error returns null', async () => {
-        Metrics.postEvent = sinon.stub();
-        sinon.stub(Metrics, 'parseWebexApiError').returns(null);
-        const message = 'a message';
-        const meetingInfoData = 'meeting info';
-
-        webex.request = sinon.stub().rejects({
-          statusCode: 403,
-          body: {message, code: 1000000, data: {meetingInfo: meetingInfoData}},
-          url: 'http://api-url.com',
-        });
-        try {
-          await meetingInfo.fetchMeetingInfo(
-            '1234323',
-            _MEETING_ID_,
-            'abc',
-            {
-              id: '999',
-              code: 'aabbcc11',
-            },
-            null,
-            null,
-            {},
-            {meetingId: 'meeting-id'}
-          );
-          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
-        } catch (err) {
-          assert.calledWith(Metrics.postEvent, {
-            event: 'client.meetinginfo.response',
-            meetingId: 'meeting-id',
-            data: {
-              errors: undefined,
-              meetingLookupUrl: 'http://api-url.com',
-            }
-          });
+          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
         }
       });
 

@@ -60,9 +60,7 @@ import ControlsOptionsUtil from '@webex/plugin-meetings/src/controls-options-man
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
-import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
@@ -70,6 +68,7 @@ import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistrea
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
+import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -92,8 +91,6 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {ANNOTATION_POLICY} from "../../../../src/annotation/constants";
-
-const {getBrowserName, getOSVersion} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -219,6 +216,7 @@ describe('plugin-meetings', () => {
     });
 
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
+    webex.internal.services = {get: sinon.stub().returns('locus-url')};
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
@@ -227,8 +225,7 @@ describe('plugin-meetings', () => {
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
     TriggerProxy.trigger = sinon.stub().returns(true);
-    Metrics.postEvent = sinon.stub();
-    Metrics.initialSetup(null, webex);
+    Metrics.initialSetup(webex);
     MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
       return {
         getTracks: () => tracks,
@@ -318,6 +315,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.destination, testDestination);
           assert.equal(meeting.destinationType, _MEETING_ID_);
           assert.instanceOf(meeting.breakouts, Breakouts);
+          assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
         });
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
@@ -649,9 +647,10 @@ describe('plugin-meetings', () => {
           it('should join the meeting and return promise', async () => {
             const join = meeting.join();
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.CALL_INITIATED,
-              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
             });
 
             assert.exists(join.then);
@@ -699,9 +698,10 @@ describe('plugin-meetings', () => {
 
             const join = meeting.join();
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.CALL_INITIATED,
-              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
             });
 
             assert.exists(join.then);
@@ -711,24 +711,27 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
 
-            assert.calledThrice(Metrics.postEvent)
+            assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
 
-            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
-            assert.deepEqual(Metrics.postEvent.getCall(0).args[0].data, {
-              isRoapCallEnabled: true,
-              trigger: 'user-interaction',
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
+              name: 'client.call.initiated',
+              payload: {
+                trigger: 'user-interaction',
+                isRoapCallEnabled: true,
+              },
+              options: {meetingId: meeting.id},
             });
-            assert.deepEqual(
-              Metrics.postEvent.getCall(1).args[0].event,
-              'client.meetinginfo.request'
-            );
-            assert.deepEqual(Metrics.postEvent.getCall(1).args[0].data, undefined);
-            assert.deepEqual(
-              Metrics.postEvent.getCall(2).args[0].event,
-              'client.meetinginfo.response'
-            );
-            assert.deepEqual(Metrics.postEvent.getCall(2).args[0].data, {
-              meetingLookupUrl: 'url',
+
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0], {
+              name: 'client.meetinginfo.request',
+              options: {meetingId: meeting.id},
+            });
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(2).args[0], {
+              name: 'client.meetinginfo.response',
+              payload: {
+                identifiers: {meetingLookupUrl: 'url'},
+              },
+              options: {meetingId: meeting.id},
             });
           });
 
@@ -737,9 +740,10 @@ describe('plugin-meetings', () => {
 
             const join = meeting.join();
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.CALL_INITIATED,
-              data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true},
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
             });
 
             assert.exists(join.then);
@@ -749,9 +753,9 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
 
-            assert.calledOnce(Metrics.postEvent)
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent)
 
-            assert.equal(Metrics.postEvent.getCall(0).args[0].event, 'client.call.initiated');
+            assert.equal(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].name, 'client.call.initiated');
           });
         });
         describe('failure', () => {
@@ -798,7 +802,13 @@ describe('plugin-meetings', () => {
 
           it('should post error event if failed', async () => {
             await meeting.join().catch(() => {
-              assert.calledWithMatch(Metrics.postEvent, {event: eventType.LOCUS_JOIN_RESPONSE});
+              assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name, 'client.locus.join.response');
+              assert.match(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.rawError, {
+                code: 2,
+                error: null,
+                joinOptions: {},
+                sdkMessage: 'There was an issue joining the meeting, meeting could be in a bad state.'
+              });
             });
           });
           it('should fail if password is required', async () => {
@@ -1219,6 +1229,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject if waitForMediaConnectionConnected() rejects', async () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({});
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1231,6 +1242,20 @@ describe('plugin-meetings', () => {
             .catch(() => {
               errorThrown = true;
             });
+
+          assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
+
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [{}],
+            },
+            options: {                   
+              meetingId: meeting.id,
+            },
+          });
 
           assert.isTrue(errorThrown);
         });
@@ -1247,6 +1272,14 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             isMultistream: false
+          });
+
+          assert.called(webex.internal.newMetrics.submitClientEvent);
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.media-engine.ready',
+            options: {
+              meetingId: meeting.id,
+            },
           });
         });
 
@@ -1292,9 +1325,12 @@ describe('plugin-meetings', () => {
                 type: 'audio',
               }
             );
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.SENDING_MEDIA_START,
-              data: {mediaType: 'audio'},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.tx.start',
+              payload: {mediaType: 'audio'},
+              options: {
+                meetingId: meeting.id,
+              },
             });
           });
 
@@ -1305,9 +1341,12 @@ describe('plugin-meetings', () => {
               {type: 'video'}
             );
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.SENDING_MEDIA_STOP,
-              data: {mediaType: 'video'},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.tx.stop',
+              payload: {mediaType:'video'},
+              options: {
+                meetingId: meeting.id,
+              },
             });
           });
 
@@ -1330,9 +1369,12 @@ describe('plugin-meetings', () => {
                 type: 'video',
               }
             );
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.RECEIVING_MEDIA_START,
-              data: {mediaType: 'video'},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.start',
+              payload: {mediaType: 'video'},
+              options: {
+                meetingId: meeting.id,
+              },
             });
           });
 
@@ -1343,13 +1385,16 @@ describe('plugin-meetings', () => {
               {type: 'audio'}
             );
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.RECEIVING_MEDIA_STOP,
-              data: {mediaType: 'audio'},
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.stop',
+              payload: {mediaType: 'audio'},
+              options: {
+                meetingId: meeting.id,
+              },
             });
           });
 
-          it('MEDIA_QUALITY triggers the right metrics', async () => {
+          it('calls submitMQE correctly', async () => {
             const fakeData = {intervalMetadata: {bla: 'bla'}};
 
             statsAnalyzerStub.emit(
@@ -1358,9 +1403,15 @@ describe('plugin-meetings', () => {
               {data: fakeData, networkType: 'wifi'}
             );
 
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.MEDIA_QUALITY,
-              data: {intervalData: fakeData, networkType: 'wifi'},
+            assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
+              name: 'client.mediaquality.event',
+              options: {
+                meetingId: meeting.id,
+                networkType: 'wifi',
+              },
+              payload: {
+                intervals: [fakeData]
+              }
             });
           });
         });
@@ -1466,8 +1517,6 @@ describe('plugin-meetings', () => {
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
 
           StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
-
-          Metrics.postEvent = sinon.stub();
 
           // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
           expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
@@ -2142,6 +2191,15 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.unsetRemoteTracks);
           assert.calledOnce(meeting.unsetPeerConnections);
         });
+
+        it('should reset call diagnostic latencies correctly', async () => {
+          const leave = meeting.leave();
+
+          assert.exists(leave.then);
+          await leave;
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {name: 'internal.reset.join.latencies'});
+        });
+
         describe('after audio/video is defined', () => {
           let handleClientRequest;
 
@@ -3292,9 +3350,14 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.postMetrics);
         });
 
-        it('should trigger `postMetrics`', async () => {
-          await meeting.postMetrics(eventType.LEAVE);
-          assert.calledWithMatch(Metrics.postEvent, {event: eventType.LEAVE});
+        it('should trigger `submitClientEvent`', async () => {
+          await meeting.postMetrics('client.call.leave');
+          console.log({s: webex.internal.newMetrics.submitClientEvent.getCall(0).args[0]})
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            options: {meetingId: meeting.id},
+          });
+
         });
       });
 
@@ -3381,11 +3444,11 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('should postEvent on moveTo ', async () => {
+        it('should submitClientEvent on moveTo ', async () => {
           await meeting.moveTo('resourceId');
-          assert.calledWithMatch(Metrics.postEvent, {
-            event: eventType.MEDIA_CAPABILITIES,
-            data: {
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.media.capabilities',
+            payload: {
               mediaCapabilities: {
                 rx: {
                   audio: false,
@@ -3403,8 +3466,12 @@ describe('plugin-meetings', () => {
                 },
               },
             },
+            options: {meetingId: meeting.id},
           });
-          assert.calledWithMatch(Metrics.postEvent, {event: eventType.MOVE_MEDIA});
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.move-media',
+            options: {meetingId: meeting.id}
+          });
         });
 
         it('should call `MeetingUtil.joinMeetingOptions` with resourceId', async () => {
@@ -3514,10 +3581,13 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('should postEvent on moveFrom ', async () => {
+        it('should submitClientEvent on moveFrom ', async () => {
           await meeting.moveFrom('resourceId');
 
-          assert.calledWithMatch(Metrics.postEvent, {event: eventType.MOVE_MEDIA});
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.move-media',
+            options: {meetingId: meeting.id},
+          });
         });
 
         it('should call `MeetingUtil.joinMeetingOptions` with resourceId', async () => {
@@ -4028,6 +4098,29 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('submitClientEvent on connectionFailed', () => {
+          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
+            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon.stub().returns({})
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Failed',
+            });
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              payload: {
+                canProceed: false,
+                icePhase: 'IN_MEETING',
+                errors: [{}],
+              },
+              options: {                   
+                meetingId: meeting.id,
+              },
+            });
+          });
+        });
+
         describe('should send correct metrics for ROAP_FAILURE event', () => {
           const fakeErrorMessage = 'test error';
           const fakeRootCauseName = 'root cause name';
@@ -4037,12 +4130,14 @@ describe('plugin-meetings', () => {
             meeting.setupMediaConnectionListeners();
           });
 
-          const checkMetricSent = (event) => {
-            assert.calledOnce(Metrics.postEvent);
-            assert.calledWithMatch(Metrics.postEvent, {
-              event,
-              meetingId: meeting.id,
-              data: {canProceed: false},
+          const checkMetricSent = (event, error) => {
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: event,
+              payload: {
+                canProceed: false,
+              },
+              options: {showToUser: true, rawError: error, meetingId: meeting.id},
             });
           };
 
@@ -4076,7 +4171,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[Event.ROAP_FAILURE](fakeError);
 
-            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferCreationError,
@@ -4093,7 +4188,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[Event.ROAP_FAILURE](fakeError);
 
-            checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferHandlingError,
@@ -4110,7 +4205,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[Event.ROAP_FAILURE](fakeError);
 
-            checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpAnswerHandlingError,
@@ -4125,7 +4220,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[Event.ROAP_FAILURE](fakeError);
 
-            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -4143,7 +4238,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[Event.ROAP_FAILURE](fakeError);
 
-            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -4176,10 +4271,10 @@ describe('plugin-meetings', () => {
               roapMessage: {messageType: 'OK', seq: 1},
             });
 
-            assert.calledOnce(Metrics.postEvent);
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.REMOTE_SDP_RECEIVED,
-              meetingId: meeting.id,
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              options: {meetingId: meeting.id},
             });
 
             assert.calledOnce(sendRoapOKStub);
@@ -4200,10 +4295,10 @@ describe('plugin-meetings', () => {
               },
             });
 
-            assert.calledOnce(Metrics.postEvent);
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.LOCAL_SDP_GENERATED,
-              meetingId: meeting.id,
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.local-sdp-generated',
+              options: {meetingId: meeting.id},
             });
 
             assert.calledOnce(sendRoapMediaRequestStub);
@@ -4226,10 +4321,10 @@ describe('plugin-meetings', () => {
               },
             });
 
-            assert.calledOnce(Metrics.postEvent);
-            assert.calledWithMatch(Metrics.postEvent, {
-              event: eventType.REMOTE_SDP_RECEIVED,
-              meetingId: meeting.id,
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              options: {meetingId: meeting.id},
             });
 
             assert.calledOnce(sendRoapAnswerStub);
@@ -4446,8 +4541,9 @@ describe('plugin-meetings', () => {
         });
 
         it('listens to the self roles changed event', () => {
-          const payload = {oldRoles: [], newRoles: ['COHOST']};
+          const payload = {oldRoles: [], newRoles: ['COHOST', 'MODERATOR']};
           meeting.breakouts.updateCanManageBreakouts = sinon.stub();
+          meeting.simultaneousInterpretation.updateCanManageInterpreters = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4456,12 +4552,33 @@ describe('plugin-meetings', () => {
           );
 
           assert.calledOnceWithExactly(meeting.breakouts.updateCanManageBreakouts, true);
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateCanManageInterpreters, true);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
             EVENT_TRIGGERS.MEETING_SELF_ROLES_CHANGED,
             {payload}
+          );
+        });
+
+        it('listens to the interpretation changed event', () => {
+          meeting.simultaneousInterpretation.updateSelfInterpretation = sinon.stub();
+
+          const payload = 'payload';
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'SELF_MEETING_INTERPRETATION_CHANGED',
+            payload
+          );
+
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateSelfInterpretation, payload);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
       });
@@ -4745,6 +4862,27 @@ describe('plugin-meetings', () => {
 
           assert.notCalled(meeting.locusInfo.clearMainSessionLocusCache);
         });
+
+        it('listens to the locus interpretation update event', () => {
+          const interpretation = {
+            siLanguages: [{languageCode: 20, languageName: 'en'}],
+          };
+
+          meeting.simultaneousInterpretation.updateInterpretation = sinon.stub();
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_MEETING_INTERPRETATION_UPDATED',
+            {interpretation}
+          );
+
+          assert.calledOnceWithExactly(meeting.simultaneousInterpretation.updateInterpretation, interpretation);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+          );
+        });
       });
 
       describe('#setUpLocusUrlListener', () => {
@@ -4757,6 +4895,7 @@ describe('plugin-meetings', () => {
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
+          meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -4769,6 +4908,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
@@ -4898,6 +5038,20 @@ describe('plugin-meetings', () => {
             }
           );
           done();
+        });
+      });
+
+      describe('#setUpInterpretationListener', () => {
+        it('listens to the support languages update event from interpretation and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          meeting.simultaneousInterpretation.trigger('SUPPORT_LANGUAGES_UPDATE');
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpInterpretationListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
+          );
         });
       });
     });
@@ -6764,66 +6918,6 @@ describe('plugin-meetings', () => {
 
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
-        });
-      });
-
-      describe('getAnalyzerMetricsPrePayload', () => {
-        it('should have #getAnalyzerMetricsPrePayload', () => {
-          assert.exists(meeting.getAnalyzerMetricsPrePayload);
-        });
-
-        beforeEach(() => {
-          meeting.meetingRequest.getAnalyzerMetricsPrePayload = sinon
-            .stub()
-            .returns(Promise.resolve());
-          meeting.webex.internal = {services: {get: sinon.stub().returns('Locus URL')}};
-          meeting.correlationId = 'correlation-id';
-        });
-
-        it('it should include meetingLookupUrl if provided', () => {
-          const res = meeting.getAnalyzerMetricsPrePayload({
-            meetingLookupUrl: 'https://service-url.com',
-            event: 'client.meetinginfo.response',
-          });
-
-          assert.deepEqual(res.event,  {
-            canProceed: true,
-            eventData: {
-              webClientDomain: '',
-            },
-            identifiers: {
-              correlationId: 'correlation-id',
-              deviceId: uuid3,
-              locusUrl: 'Locus URL',
-              meetingLookupUrl: 'https://service-url.com',
-              orgId: undefined,
-              userId: uuid1,
-            },
-            name: 'client.meetinginfo.response',
-          });
-
-          assert.deepEqual(res.origin, {
-            channel: undefined,
-            loginType: undefined,
-            userType: undefined,
-            clientInfo: {
-              browser: '',
-              browserVersion: '',
-              clientType: undefined,
-              clientVersion: 'webex-js-sdk/undefined',
-              localNetworkPrefix: null,
-              os: 'other',
-              osVersion: getOSVersion() || 'unknown',
-              subClientType: undefined,
-            },
-            name: 'endpoint',
-            networkType: 'unknown',
-            userAgent: 'webex-js-sdk/test-undefined client=undefined; (os=linux/5)',
-          });
-
-          assert.deepEqual(res.senderCountryCode, undefined);
-          assert.deepEqual(res.version, 1);
-
         });
       });
     });
