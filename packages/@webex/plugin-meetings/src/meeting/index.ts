@@ -6029,6 +6029,8 @@ export default class Meeting extends StatelessWebexPlugin {
           });
       }
 
+      this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
+
       return Promise.reject(new ParameterError('Cannot share without content.'));
     }
     this.floorGrantPending = true;
@@ -6059,6 +6061,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private releaseScreenShareFloor() {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
+    if (this.screenShareFloorState === ScreenShareFloorStatus.RELEASED) {
+      return Promise.resolve();
+    }
+    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     if (content) {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -6071,8 +6077,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (content.floor?.beneficiary.id !== this.selfId) {
         // remote participant started sharing and caused our sharing to stop, we don't want to send any floor action request in that case
-        this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
-
         return Promise.resolve();
       }
 
@@ -6095,15 +6099,10 @@ export default class Meeting extends StatelessWebexPlugin {
           });
 
           return Promise.reject(error);
-        })
-        .finally(() => {
-          this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
         });
     }
 
     // according to Locus there is no content, so we don't need to release the floor (it's probably already been released)
-    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
-
     return Promise.resolve();
   }
 
