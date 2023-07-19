@@ -49,6 +49,8 @@ describe('plugin-meetings', () => {
       it('send metric as expected', () => {
         const submitClientEvent = sinon.stub();
 
+        sinon.stub(submitClientEvent, 'bind').returns(webex.internal.newMetrics.submitClientEvent);
+
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
         breakoutEvent.onBreakoutMoveRequest(eventInfo, submitClientEvent);
@@ -61,6 +63,8 @@ describe('plugin-meetings', () => {
       it('send metric as expected', () => {
         const submitClientEvent = sinon.stub();
 
+        sinon.stub(submitClientEvent, 'bind').returns(webex.internal.newMetrics.submitClientEvent);
+
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
         breakoutEvent.onBreakoutMoveResponse(eventInfo, submitClientEvent);
@@ -71,6 +75,8 @@ describe('plugin-meetings', () => {
     describe('onBreakoutJoinResponse', () => {
       it('send metric as expected', () => {
         const submitClientEvent = sinon.stub();
+
+        sinon.stub(submitClientEvent, 'bind').returns(webex.internal.newMetrics.submitClientEvent);
 
         breakoutEvent.postMoveCallAnalyzer = sinon.stub();
         const eventInfo = {newSession, mockMeeting, breakoutMoveId};
