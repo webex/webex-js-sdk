@@ -392,45 +392,96 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe('MemberUtil.isVideoMuted', () => {
+  const getMuteStatus = (muted) => {
+    if (muted === undefined) {
+      return undefined;
+    }
+    return muted ? _RECEIVE_ONLY_ : _SEND_RECEIVE_;
+  };
+
+  describe.only('MemberUtil.isAudioMuted', () => {
+    it('throws error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.isAudioMuted();
+      }, 'Audio could not be processed, participant is undefined.');
+    });
+
+    // NOTE: participant.controls.audio.muted represents remote video mute
+    //       participant.status.audioStatus represents local video mute
+
+    const testResult = (remoteMuted, localMuted, expected) => {
+      const participant = {
+        controls: {audio: {muted: remoteMuted}},
+        status: {audioStatus: getMuteStatus(localMuted)},
+      };
+
+      assert.equal(MemberUtil.isAudioMuted(participant), expected);
+    };
+
+    it('returns true when remote is muted and local is not', () => {
+      testResult(true, false, true);
+    });
+
+    it('returns true when remote is not muted and local is muted', () => {
+      testResult(false, true, true);
+    });
+
+    it('returns false when both are not muted', () => {
+      testResult(false, false, false);
+    });
+
+    it('returns undefined when both are undefined', () => {
+      testResult(undefined, undefined, undefined);
+    });
+
+    it('returns defined status when the other is undefined', () => {
+      testResult(undefined, true, true);
+      testResult(undefined, false, false);
+      testResult(true, undefined, true);
+      testResult(false, undefined, false);
+    });
+  });
+
+  describe.only('MemberUtil.isVideoMuted', () => {
     it('throws error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isVideoMuted();
       }, 'Video could not be processed, participant is undefined.');
     });
 
-    it('returns true when controls is there and video muted', () => {
+    // NOTE: participant.controls.video.muted represents remote video mute
+    //       participant.status.videoStatus represents local video mute
+
+    const testResult = (remoteMuted, localMuted, expected) => {
       const participant = {
-        controls: {video: {muted: true}},
+        controls: {video: {muted: remoteMuted}},
+        status: {videoStatus: getMuteStatus(localMuted)},
       };
 
-      assert.isTrue(MemberUtil.isVideoMuted(participant));
+      assert.equal(MemberUtil.isVideoMuted(participant), expected);
+    };
+
+    it('returns true when remote is muted and local is not', () => {
+      testResult(true, false, true);
     });
 
-    it('returns false when controls is there and video is not muted', () => {
-      const participant = {
-        controls: {video: {muted: false}},
-      };
-
-      assert.isFalse(MemberUtil.isVideoMuted(participant));
+    it('returns true when remote is not muted and local is muted', () => {
+      testResult(false, true, true);
     });
 
-    it('returns null when controls and videoStatus are not there', () => {
-      const participant = {};
-
-      assert.isNull(MemberUtil.isVideoMuted(participant));
+    it('returns false when both are not muted', () => {
+      testResult(false, false, false);
     });
 
-    it('returns true when controls is not there and videoStatus RECVONLY', () => {
-      const participant = {status: {videoStatus: _RECEIVE_ONLY_}};
-
-      assert.isTrue(MemberUtil.isVideoMuted(participant));
+    it('returns undefined when both are undefined', () => {
+      testResult(undefined, undefined, undefined);
     });
 
-    it('returns false when controls is not there and videoStatus SENDRECV', () => {
-      const participant = {status: {videoStatus: _SEND_RECEIVE_}};
-
-      assert.isFalse(MemberUtil.isVideoMuted(participant));
+    it('returns defined status when the other is undefined', () => {
+      testResult(undefined, true, true);
+      testResult(undefined, false, false);
+      testResult(true, undefined, true);
+      testResult(false, undefined, false);
     });
   });
 });
