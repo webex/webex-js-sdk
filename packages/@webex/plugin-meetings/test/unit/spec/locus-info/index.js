@@ -16,6 +16,10 @@ import {
   LOCUSEVENT,
   EVENTS,
   DISPLAY_HINTS,
+  _CALL_,
+  LOCUS,
+  MEETING_STATE,
+  _MEETING_,
 } from '../../../../src/constants';
 
 import { self, selfWithInactivity } from "./selfConstant";
@@ -395,6 +399,26 @@ describe('plugin-meetings', () => {
           }
         );
         tmpStub.restore();
+      });
+
+      it('should update the interpretation state', () => {
+        locusInfo.emitScoped = sinon.stub();
+        newControls.interpretation = {siLanguages: [{languageCode: 20, languageName: 'en'}]};
+        let selfInfo = {};
+
+        locusInfo.updateControls(newControls, selfInfo);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_INTERPRETATION_UPDATED,
+          {
+            interpretation: newControls.interpretation,
+          }
+        );
       });
 
       it('should update the transcript state', () => {
@@ -1235,6 +1259,50 @@ describe('plugin-meetings', () => {
           {oldRoles: ['PRESENTER'], newRoles: ['PRESENTER']}
         );
       });
+
+      it('should trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.interpretation.targetLanguage = 'it';
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          {
+            interpretation: sampleNewSelf.controls.interpretation,
+            selfParticipantId: self.id,
+          }
+        );
+      });
+
+      it('should not trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info not changed', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const sampleNewSelf = cloneDeep(self);
+        sampleNewSelf.controls.interpretation.targetLanguage = 'cn'; // same with previous one
+
+        locusInfo.updateSelf(sampleNewSelf, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          {
+            interpretation: sampleNewSelf.controls.interpretation,
+            selfParticipantId: self.id,
+          }
+        );
+      });
     });
 
     describe('#updateMeetingInfo', () => {
@@ -1878,6 +1946,114 @@ describe('plugin-meetings', () => {
             remoteAnswered: true,
           }
         );
+      });
+    });
+
+    describe('#isMeetingActive', () => {
+      it('sends client event correctly for state = inactive', () => {
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+        };
+
+        locusInfo.fullState = {
+          state: LOCUS.STATE.INACTIVE,
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = PARTNER_LEFT', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+          self: {
+            state:  MEETING_STATE.STATES.DECLINED,
+          },
+        };
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = SELF_LEFT', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _CALL_,
+          },
+          self: {
+            state:  MEETING_STATE.STATES.LEFT,
+          },
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
+          },
+        };
+
+        locusInfo.fullState = {
+          state: LOCUS.STATE.INACTIVE,
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
+      });
+
+      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
+          },
+        };
+
+        locusInfo.fullState = {
+          removed: true
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.remote-ended',
+          options: {
+            meetingId: locusInfo.meetingId,
+          },
+        });
       });
     });
   });

@@ -71,7 +71,7 @@ describe('plugin-meetings', () => {
   describe('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
-      uuid1 = uuid.v4();
+         uuid1 = uuid.v4();
       url1 = `https://example.com/${uuid.v4()}`;
       uri1 = `test-${uuid.v4()}@example.com`;
       test1 = `test-${uuid.v4()}`;
@@ -834,6 +834,7 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
             webex.meetings.create = sinon.stub().returns(
               Promise.resolve({
+                id: 'meeting-id',
                 locusInfo: {
                   ...locusInfo,
                   initialSetup,
@@ -915,6 +916,39 @@ describe('plugin-meetings', () => {
               },
             });
           });
+
+          it('sends client event correctly on finally', async () => {
+            webex.meetings.getMeetingByType = sinon.stub().returns(true);
+
+            await webex.meetings.handleLocusEvent({
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
+                  },
+                },
+                info: {
+                  webExMeetingId,
+                },
+              },
+              eventType: 'locus.difference',
+              locusUrl: url1,
+            });
+
+            await testUtils.flushPromises();
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.remote-started',
+              payload: {
+                trigger: 'mercury-event',
+              },
+              options: {
+                meetingId: 'meeting-id',
+              },
+            });
+          });
+
           it('should setup the meeting by a not difference event', async () => {
             await webex.meetings.handleLocusEvent({
               locus: {
@@ -2057,60 +2091,6 @@ describe('plugin-meetings', () => {
           }
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {locus: breakoutLocus, locusUrl: breakoutLocus.url});
-      });
-    });
-
-    describe('#getAnalyzerMetricsPrePayload', () => {
-      it('userType & userLogin & environment testing for CA data', async () => {
-        const FAKE_LOCUS_MEETING = {
-          conversationUrl: 'locusConvURL',
-          url: 'locusUrl',
-          info: {
-            webExMeetingId: 'locusMeetingId',
-            sipUri: 'locusSipUri',
-            owner: 'locusOwner',
-          },
-          meeting: {
-            startTime: "",
-          },
-          fullState: {
-            active: false,
-          },
-        };
-
-        const meeting = await webex.meetings.createMeeting(
-          FAKE_LOCUS_MEETING,
-          'test type',
-          true
-        );
-        meeting.roles = ['MODERATOR','COHOST','ATTENDEE'];
-        meeting.guest = true;
-        const options = {
-          event: 'event',
-          trackingId: 'trackingId',
-          locus: {},
-          mediaConnections: null,
-          errors: {}
-        };
-        webex.internal.services.get = sinon.stub();
-        webex.canAuthorize = true;
-        webex.credentials = {isUnverifiedGuest: true};
-        meeting.getAnalyzerMetricsPrePayload(options);
-        assert.equal(options.userType, 'host');
-        assert.equal(options.loginType, 'unverified-guest');
-        meeting.roles = ['COHOST','ATTENDEE'];
-        meeting.guest = false;
-        webex.canAuthorize = true;
-        webex.credentials = {isUnverifiedGuest: false};
-        meeting.getAnalyzerMetricsPrePayload(options);
-        assert.equal(options.userType, 'cohost');
-        assert.equal(options.loginType, 'login-ci');
-        meeting.roles = ['ATTENDEE'];
-        meeting.getAnalyzerMetricsPrePayload(options);
-        assert.equal(options.userType, 'attendee');
-        meeting.environment = "prod";
-        meeting.getAnalyzerMetricsPrePayload(options);
-        assert.equal(options.environment, 'prod');
       });
     });
   });

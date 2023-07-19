@@ -70,10 +70,22 @@ export default class MeetingInfo {
    * @private
    * @memberof MeetingInfo
    */
-  private requestFetchInfo(options: object) {
+  private requestFetchInfo(options: any) {
+    const {meetingId} = options;
+    if (meetingId) {
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.client.meetinginfo.request',
+      });
+    }
+
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
       .then((info) => {
+        if (meetingId) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+        }
         if (info && info.body) {
           this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
         }
@@ -84,6 +96,21 @@ export default class MeetingInfo {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.client.meetinginfo.response',
+        });
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.meetinginfo.response',
+          payload: {
+            identifiers: {
+              meetingLookupUrl: error?.url,
+            },
+          },
+          options: {
+            meetingId,
+            rawError: error,
+          },
+        });
 
         return Promise.reject(error);
       });
@@ -105,6 +132,7 @@ export default class MeetingInfo {
     });
   }
 
+  // eslint-disable-next-line valid-jsdoc
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
@@ -113,21 +141,39 @@ export default class MeetingInfo {
    * @public
    * @memberof MeetingInfo
    */
-  public fetchMeetingInfo(destination: string, type: string = null) {
+  public fetchMeetingInfo(
+    destination: string,
+    type: string = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    password: string = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    captchaInfo: {
+      code: string;
+      id: string;
+    } = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    installedOrgID = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    locusId = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    extraParams: object = {},
+    options: {meetingId?: string} = {}
+  ) {
     if (type === _PERSONAL_ROOM_ && !destination) {
       destination = this.webex.internal.device.userId;
     }
 
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
-      (options) =>
+      (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo(options).catch((error) => {
+        this.requestFetchInfo({...infoOptions, meetingId: options.meetingId}).catch((error) => {
           // if it failed the first time as meeting link
-          if (options.type === _MEETING_LINK_) {
+          if (infoOptions.type === _MEETING_LINK_) {
             // convert the meeting link to sip URI and retry
-            return this.requestFetchInfo(
-              this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_)
-            );
+            return this.requestFetchInfo({
+              ...this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_),
+              meetingId: options.meetingId,
+            });
           }
 
           return Promise.reject(error);

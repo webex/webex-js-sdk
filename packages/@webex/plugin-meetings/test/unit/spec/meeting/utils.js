@@ -5,14 +5,17 @@ import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
 import {SELF_POLICY} from '@webex/plugin-meetings/src/constants';
+import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
+import MockWebex from '@webex/test-helper-mock-webex';
 
 describe('plugin-meetings', () => {
+  let webex;
   describe('Meeting utils function', () => {
     const sandbox = sinon.createSandbox();
     const meeting = {};
 
     beforeEach(() => {
-      Metrics.postEvent = sinon.stub();
+      webex = new MockWebex({});
       const logger = {
         info: sandbox.stub(),
         log: sandbox.stub(),
@@ -37,10 +40,13 @@ describe('plugin-meetings', () => {
       meeting.updateLLMConnection = sinon.stub();
       meeting.breakouts = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
+      meeting.getWebexObject = sinon.stub().returns(webex);
+      meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
       sandbox.restore();
+      sinon.restore();
     });
 
     describe('#cleanup', () => {
@@ -56,6 +62,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
+        assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
       });
     });
 
@@ -173,14 +180,14 @@ describe('plugin-meetings', () => {
       it('should call onDeltaLocus with the new delta locus', () => {
         const meeting = {
           locusInfo: {
-            onDeltaLocus: sinon.stub(),
-          }
-        }
+            onDeltaLocus: sinon.stub()
+          },
+        };
 
         const originalResponse = {
           body: {
             locus: 'locus'
-          }
+          },
         };
 
         const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
@@ -294,6 +301,7 @@ describe('plugin-meetings', () => {
     describe('remoteUpdateAudioVideo', () => {
       it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
         const meeting = {
+          id: 'meeting-id',
           mediaId: '12345',
           selfUrl: 'self url',
           locusInfo: {
@@ -302,6 +310,7 @@ describe('plugin-meetings', () => {
           locusMediaRequest: {
             send: sinon.stub().resolves({body: {}, headers: {}}),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
@@ -316,6 +325,16 @@ describe('plugin-meetings', () => {
           sequence: {},
           type: 'LocalMute',
         });
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.locus.media.request',
+          options: {meetingId: meeting.id},
+        });
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.locus.media.response',
+          options: {meetingId: meeting.id},
+        });
       });
     });
 
@@ -325,8 +344,16 @@ describe('plugin-meetings', () => {
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
           meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+            joinMeeting: sinon.stub().returns(
+              Promise.resolve({
+                body: {mediaConnections: 'mediaConnections'},
+                headers: {
+                  trackingid: 'trackingId',
+                },
+              })
+            ),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -337,6 +364,25 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, true);
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.locus.join.request',
+          options: {meetingId: meeting.id},
+        });
+
+        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.locus.join.response',
+          payload: {
+            trigger: 'loci-update',
+            identifiers: {
+              trackingId: 'trackingId',
+            },
+          },
+          options: {
+            meetingId: meeting.id,
+            mediaConnections: 'mediaConnections',
+          },
+        });
       });
 
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
@@ -344,6 +390,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -362,6 +409,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -380,6 +428,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -403,6 +452,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -422,6 +472,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -440,6 +491,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
+          getWebexObject: sinon.stub().returns(webex)
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -452,6 +504,44 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.meetingNumber, 'meetingNumber');
       });
     });
+
+    describe('joinMeetingOptions', () => {
+      it('sends client events correctly', async () => {
+        MeetingUtil.joinMeeting = sinon.stub().rejects({});
+        MeetingUtil.isPinOrGuest = sinon.stub().returns(true);
+        const meeting = {
+          id: 'meeting-id',
+          mediaId: '12345',
+          selfUrl: 'self url',
+          locusInfo: {
+            sequence: {},
+          },
+          locusMediaRequest: {
+            send: sinon.stub().resolves({body: {}, headers: {}}),
+          },
+          getWebexObject: sinon.stub().returns(webex)
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {pin: true});
+
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.pin.collected',
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        } catch (err) {
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.pin.prompt',
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        }
+      });
+
+    })
 
     describe('getUserDisplayHintsFromLocusInfo', () => {
       it('returns display hints', () => {

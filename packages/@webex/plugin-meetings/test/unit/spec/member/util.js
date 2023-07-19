@@ -398,4 +398,28 @@ describe('plugin-meetings', () => {
       assert.isFalse(MemberUtil.isLiveAnnotationSupported(participant));
     });
   });
+
+  describe('MemberUtil.isInterpretationSupported', () => {
+    it('throws error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.isInterpretationSupported();
+      }, 'Interpretation support could not be processed, participant is undefined.');
+    });
+
+    it('returns true when hand SiInterpreter are supported', () => {
+      const participant = {
+        doesNotSupportSiInterpreter: false
+      };
+
+      assert.isTrue(MemberUtil.isInterpretationSupported(participant));
+    });
+
+    it('returns false when hand SiInterpreter are not supported', () => {
+      const participant = {
+        doesNotSupportSiInterpreter: true
+      };
+
+      assert.isFalse(MemberUtil.isInterpretationSupported(participant));
+    });
+  });
 });
