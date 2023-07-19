@@ -68,7 +68,7 @@ class Metrics extends WebexPlugin {
   }: {
     name: InternalEvent['name'];
     payload?: RecursivePartial<InternalEvent['payload']>;
-    options: any;
+    options?: any;
   }) {
     if (name === 'internal.reset.join.latencies') {
       this.callDiagnosticLatencies.clearTimestamps();
@@ -88,7 +88,7 @@ class Metrics extends WebexPlugin {
   }: {
     name: BehavioralEvent['name'];
     payload?: RecursivePartial<BehavioralEvent['payload']>;
-    options: any;
+    options?: any;
   }) {
     this.callDiagnosticLatencies.saveTimestamp(name);
     throw new Error('Not implemented.');
@@ -105,7 +105,7 @@ class Metrics extends WebexPlugin {
   }: {
     name: OperationalEvent['name'];
     payload?: RecursivePartial<OperationalEvent['payload']>;
-    options: any;
+    options?: any;
   }) {
     throw new Error('Not implemented.');
   }

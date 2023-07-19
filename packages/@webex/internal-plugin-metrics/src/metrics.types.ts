@@ -86,29 +86,31 @@ export type MetricEventNames =
 
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
-export type NetworkType = RawEvent['origin']['networkType'];
+export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
 
-export type MediaQualityEventAudioSetupDelayPayload =
-  MediaQualityEvent['payload']['audioSetupDelay'];
-export type MediaQualityEventVideoSetupDelayPayload =
-  MediaQualityEvent['payload']['videoSetupDelay'];
+export type MediaQualityEventAudioSetupDelayPayload = NonNullable<
+  MediaQualityEvent['payload']
+>['audioSetupDelay'];
+export type MediaQualityEventVideoSetupDelayPayload = NonNullable<
+  MediaQualityEvent['payload']
+>['videoSetupDelay'];
 
 export type SubmitMQEPayload = RecursivePartial<MediaQualityEvent['payload']> & {
-  intervals: MediaQualityEvent['payload']['intervals'];
+  intervals: NonNullable<MediaQualityEvent['payload']>['intervals'];
 };
 
 export type SubmitInternalEvent = (args: {
   name: InternalEvent['name'];
   payload?: RecursivePartial<InternalEvent['payload']>;
-  options: any;
+  options?: any;
 }) => void;
 
 export type SubmitBehavioralEvent = (args: {
   name: BehavioralEvent['name'];
   payload?: RecursivePartial<BehavioralEvent['payload']>;
-  options: any;
+  options?: any;
 }) => void;
 
 export type SubmitClientEvent = (args: {
@@ -120,13 +122,11 @@ export type SubmitClientEvent = (args: {
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['name'];
   payload?: RecursivePartial<OperationalEvent['payload']>;
-  options: any;
+  options?: any;
 }) => void;
 
 export type SubmitMQE = (args: {
   name: MediaQualityEvent['name'];
-  payload: RecursivePartial<MediaQualityEvent['payload']> & {
-    intervals: MediaQualityEvent['payload']['intervals'];
-  };
+  payload: SubmitMQEPayload;
   options: any;
 }) => void;
