@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.169](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.168...v3.0.0-beta.169) (2023-07-19)
+
+
+### Features
+
+* **ca-metrics:** add bind to passed in func ([#2959](https://github.com/webex/webex-js-sdk/issues/2959)) ([dd2dd4e](https://github.com/webex/webex-js-sdk/commit/dd2dd4e44122dcf4fa49a7c5db452f53b553cdb8))
+
 ## [3.0.0-beta.168](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.167...v3.0.0-beta.168) (2023-07-19)
 
 
