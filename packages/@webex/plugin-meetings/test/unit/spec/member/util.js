@@ -399,7 +399,7 @@ describe('plugin-meetings', () => {
     return muted ? _RECEIVE_ONLY_ : _SEND_RECEIVE_;
   };
 
-  describe.only('MemberUtil.isAudioMuted', () => {
+  describe('MemberUtil.isAudioMuted', () => {
     it('throws error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isAudioMuted();
@@ -442,7 +442,7 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe.only('MemberUtil.isVideoMuted', () => {
+  describe('MemberUtil.isVideoMuted', () => {
     it('throws error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isVideoMuted();
