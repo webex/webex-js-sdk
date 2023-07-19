@@ -22,6 +22,9 @@ export {
   createMicrophoneTrack,
   createCameraTrack,
   createDisplayTrack,
+  FacingMode,
+  DisplaySurface,
+  PresetCameraConstraints,
 } from '@webex/media-helpers';
 
 export default Meetings;
