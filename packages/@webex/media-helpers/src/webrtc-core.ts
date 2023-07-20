@@ -5,8 +5,10 @@ import {
   AudioDeviceConstraints,
   createCameraTrack as wcmeCreateCameraTrack,
   createDisplayTrack as wcmeCreateDisplayTrack,
+  createDisplayTrackWithAudio as wcmeCreateDisplayTrackWithAudio,
   createMicrophoneTrack as wcmeCreateMicrophoneTrack,
   LocalDisplayTrack,
+  LocalSystemAudioTrack,
   LocalMicrophoneTrack as WcmeLocalMicrophoneTrack,
   LocalCameraTrack as WcmeLocalCameraTrack,
   VideoDeviceConstraints,
@@ -16,6 +18,7 @@ export {
   getDevices,
   LocalTrack,
   LocalDisplayTrack,
+  LocalSystemAudioTrack,
   LocalTrackEvents,
   type TrackMuteEvent,
 } from '@webex/internal-media-core';
@@ -118,3 +121,6 @@ export const createCameraTrack = (constraints?: VideoDeviceConstraints) =>
   wcmeCreateCameraTrack(LocalCameraTrack, constraints);
 
 export const createDisplayTrack = () => wcmeCreateDisplayTrack(LocalDisplayTrack);
+
+export const createDisplayTrackWithAudio = () =>
+  wcmeCreateDisplayTrackWithAudio(LocalDisplayTrack, LocalSystemAudioTrack);
