@@ -6028,10 +6028,13 @@ export default class Meeting extends StatelessWebexPlugin {
             return Promise.reject(error);
           });
       }
+      if (!content) {
+        this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
-      this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
+        return Promise.reject(new ParameterError('Cannot share without content.'));
+      }
 
-      return Promise.reject(new ParameterError('Cannot share without content.'));
+      return Promise.resolve();
     }
     this.floorGrantPending = true;
 
