@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.58.0](https://github.com/webex/webex-js-sdk/compare/v2.57.1...v2.58.0) (2023-07-20)
+
+
+### Features
+
+* extract media status on members from nested participant ([#2953](https://github.com/webex/webex-js-sdk/issues/2953)) ([9194180](https://github.com/webex/webex-js-sdk/commit/9194180a7e67935b86dd3ab4d8b87637a774143f))
+
 ### [2.57.1](https://github.com/webex/webex-js-sdk/compare/v2.57.0...v2.57.1) (2023-07-14)
 
 
