@@ -804,6 +804,28 @@ export const MEETING_END_REASON = {
   MEDIA_RELEASED: 'MEDIA_RELEASED',
 };
 
+export enum SELF_POLICY {
+  ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
+  SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
+  SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_CHAT = 'supportChat',
+  SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
+  SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',
+  SUPPORT_WHITEBOARD = 'supportWhiteboard',
+  SUPPORT_FILE_TRANSFER = 'supportFileTransfer',
+  SUPPORT_APP_SHARE = 'supportAppShare',
+  SUPPORT_CAMERA_SHARE = 'supportCameraShare',
+  SUPPORT_FILE_SHARE = 'supportFileShare',
+  SUPPORT_ANNOTATION = 'supportAnnotation',
+  SUPPORT_BROADCAST_MESSAGE = 'supportBroadcastMessage',
+  SUPPORT_VIDEO = 'supportVideo',
+  SUPPORT_HQV = 'supportHQV',
+  SUPPORT_HDV = 'supportHDV',
+  SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
+  SUPPORT_VOIP = 'supportVoIP',
+}
+
 export const DISPLAY_HINTS = {
   ADD_GUEST: 'ADD_GUEST',
   ROSTER_WAITING_TO_JOIN: 'ROSTER_WAITING_TO_JOIN',

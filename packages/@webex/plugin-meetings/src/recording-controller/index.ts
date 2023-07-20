@@ -1,5 +1,5 @@
 import PermissionError from '../common/errors/permission';
-import {CONTROLS, HTTP_VERBS} from '../constants';
+import {CONTROLS, HTTP_VERBS, SELF_POLICY} from '../constants';
 import MeetingRequest from '../meeting/request';
 import RecordingAction from './enums';
 import Util from './util';
@@ -27,6 +27,14 @@ export default class RecordingController {
    * @memberof RecordingInfo
    */
   private displayHints: Array<string> = [];
+
+  /**
+   * @instance
+   * @type {Object}
+   * @private
+   * @memberof RecordingInfo
+   */
+  private selfUserPolicies: Record<SELF_POLICY, boolean>;
 
   /**
    * @instance
@@ -124,6 +132,16 @@ export default class RecordingController {
    */
   public setDisplayHints(hints: Array<string>) {
     this.displayHints = hints;
+  }
+
+  /**
+   * @param {Object} selfUserPolicies
+   * @returns {void}
+   * @public
+   * @memberof RecordingController
+   */
+  public setUserPolicy(selfUserPolicies: Record<SELF_POLICY, boolean>) {
+    this.selfUserPolicies = selfUserPolicies;
   }
 
   /**
@@ -264,7 +282,7 @@ export default class RecordingController {
     );
 
     // assumes action is proper cased (i.e., Example)
-    if (Util?.[`canUser${action}`](this.displayHints)) {
+    if (Util?.[`canUser${action}`](this.displayHints, this.selfUserPolicies)) {
       if (this.serviceUrl) {
         return this.recordingService(action);
       }
