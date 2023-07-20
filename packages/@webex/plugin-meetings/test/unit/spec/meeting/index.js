@@ -5173,6 +5173,7 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
         });
         it('should call changeMeetingFloor()', async () => {
+          meeting.screenShareFloorState = 'GRANTED';
           const share = meeting.releaseScreenShareFloor();
 
           assert.exists(share.then);
