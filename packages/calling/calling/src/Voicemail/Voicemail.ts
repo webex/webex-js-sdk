@@ -18,6 +18,7 @@ import {DisplayInformation, SORT} from '../common/types';
 import {VoicemailEventTypes} from '../Events/types';
 import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
+import {VOICEMAIL_FILE} from './constants';
 /**
  *
  */
@@ -43,7 +44,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
     this.webex = this.sdkConnector.getWebex();
     this.callingBackend = getCallingBackEnd(this.webex);
     this.initializeBackendConnector();
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, VOICEMAIL_FILE);
   }
 
   /**

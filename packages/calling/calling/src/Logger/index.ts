@@ -70,7 +70,7 @@ const format = (context: IMetaContext, level: string): string => {
  *
  * @param level - Log Level.
  */
-const setLogger = (level: string) => {
+const setLogger = (level: string, module: string) => {
   switch (level) {
     case LOGGER.WARN: {
       currentLogLevel = LOGGING_LEVEL.warn;
@@ -93,7 +93,7 @@ const setLogger = (level: string) => {
     }
   }
 
-  const message = `Logger initialized for SDK version: ${VERSION} with level: ${currentLogLevel}`;
+  const message = `Logger initialized for module: ${module} with level: ${currentLogLevel}`;
 
   writeToConsole(
     `${format({file: 'logger.ts', method: 'setLogger'}, '')}  - ${LOG_PREFIX.MESSAGE}:${message}`,

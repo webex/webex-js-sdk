@@ -222,7 +222,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
 
     this.mutex = new Mutex();
-    log.setLogger(logLevel);
+    log.setLogger(logLevel, CALLING_CLIENT_FILE);
     /* Better to run the timer once rather than after every registration */
     this.detectNetworkChange();
     this.incomingCallListener();

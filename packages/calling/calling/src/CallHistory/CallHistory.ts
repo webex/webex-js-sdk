@@ -51,7 +51,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.webex = this.sdkConnector.getWebex();
     this.janusUrl = this.webex.internal.services._serviceUrls.janus;
     this.registerSessionsListener();
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, CALL_HISTORY_FILE);
   }
 
   /**

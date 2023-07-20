@@ -59,7 +59,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
     this.orgId = this.webex.internal.device.orgId;
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, UCM_VOICEMAIL_FILE);
   }
 
   /**

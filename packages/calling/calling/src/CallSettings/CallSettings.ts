@@ -65,7 +65,7 @@ export class CallSettings implements ICallSettings {
     this.webex = this.sdkConnector.getWebex();
     /* eslint no-underscore-dangle: 0 */
     this.hydraEndpoint = this.webex.internal.services._serviceUrls.hydra;
-    log.setLogger(logger.level);
+    log.setLogger(logger.level, CALL_SETTINGS_FILE);
     this.userId = this.webex.internal.device.userId;
     this.personId = inferIdFromUuid(this.webex.internal.device.userId, DecodeType.PEOPLE);
     this.orgId = inferIdFromUuid(this.webex.internal.device.orgId, DecodeType.ORGANIZATION);
