@@ -1815,6 +1815,7 @@ export default class Meeting extends StatelessWebexPlugin {
             dialOut: {
               status: this.dialOutDeviceStatus,
               attendeeId: dialOutPstnDevice?.attendeeId,
+              reason: dialOutPstnDevice?.reason,
             },
           }
         );

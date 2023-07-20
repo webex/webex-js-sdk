@@ -572,6 +572,88 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isReactionsSupported(), true);
         });
       });
+
+      describe('#pstnUpdate', () => {
+
+        beforeEach(()=> {
+          meeting.locusInfo.self = {state: 'IDLE'};
+          meeting.dialOutUrl = "dialout:///8167d5ec-40c8-49b8-b49a-8717dbaa7d3a";
+        })
+
+        it('checks event MEETING_SELF_PHONE_AUDIO_UPDATE can return reason', () => {
+          const fakePayload = {
+            newSelf: {
+              pstnDevices: [{
+                attendeeId: 'test-id',
+                url: "dialout:///8167d5ec-40c8-49b8-b49a-8717dbaa7d3a",
+                deviceType: "PROVISIONAL",
+                state: 'LEFT',
+                reason: 'FAILURE'
+              }]
+            }
+          };
+
+          meeting.pstnUpdate(fakePayload);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_SELF_PHONE_AUDIO_UPDATE,
+            {
+              dialIn: {
+                status: '',
+                attendeeId: undefined,
+              },
+              dialOut: {
+                status: 'LEFT',
+                attendeeId: 'test-id',
+                reason: 'FAILURE',
+              },
+            }
+          );
+        });
+
+        it('checks event MEETING_SELF_PHONE_AUDIO_UPDATE can return undefined reason', () => {
+          const fakePayload = {
+            newSelf: {
+              pstnDevices: [{
+                attendeeId: 'test-id',
+                url: "dialout:///8167d5ec-40c8-49b8-b49a-8717dbaa7d3a",
+                deviceType: "PROVISIONAL",
+                state: 'LEFT',
+              }]
+            }
+          };
+
+          meeting.pstnUpdate(fakePayload);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_SELF_PHONE_AUDIO_UPDATE,
+            {
+              dialIn: {
+                status: '',
+                attendeeId: undefined,
+              },
+              dialOut: {
+                status: 'LEFT',
+                attendeeId: 'test-id',
+                reason: undefined,
+              },
+            }
+          );
+        });
+      });
+
       describe('#processRelayEvent', () => {
         it('should process a Reaction event type', () => {
           meeting.isReactionsSupported = sinon.stub().returns(true);
