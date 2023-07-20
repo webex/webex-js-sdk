@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.171](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.170...v3.0.0-beta.171) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** add screenshare audio ([#2938](https://github.com/webex/webex-js-sdk/issues/2938)) ([f825042](https://github.com/webex/webex-js-sdk/commit/f82504232b85d4c29dbe72ecb2cff304ee6a47f7))
+
 ## [3.0.0-beta.170](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.169...v3.0.0-beta.170) (2023-07-20)
 
 
