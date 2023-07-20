@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.170](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.169...v3.0.0-beta.170) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** extract user policy from permission token ([#2942](https://github.com/webex/webex-js-sdk/issues/2942)) ([55fee4d](https://github.com/webex/webex-js-sdk/commit/55fee4dd2723c739f6c361eb9526465da560dda3))
+
+
+### Bug Fixes
+
+* **conversation:** use file.url instead of file.scr.loc for download ([#2925](https://github.com/webex/webex-js-sdk/issues/2925)) ([47fa794](https://github.com/webex/webex-js-sdk/commit/47fa794bdc6aed052957dc34a292af3cbe49f59c))
+
 ## [3.0.0-beta.169](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.168...v3.0.0-beta.169) (2023-07-19)
 
 
