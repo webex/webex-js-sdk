@@ -1166,8 +1166,6 @@ export const MEDIA_DEVICES = {
   CAMERA: 'camera',
 };
 
-export const METRICS_JOIN_TIMES_MAX_DURATION = 1200000;
-
 export const PSTN_STATUS = {
   JOINED: 'JOINED', // we have provisioned a pstn device, which can be used to connect
   CONNECTED: 'CONNECTED', // user is connected to audio with pstn device

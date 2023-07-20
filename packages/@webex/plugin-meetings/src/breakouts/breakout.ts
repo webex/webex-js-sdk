@@ -65,7 +65,11 @@ const Breakout = WebexPlugin.extend({
     const deviceUrl = this.webex.internal.device.url;
     const {meetingId} = this.collection.parent;
     const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
-    breakoutEvent.onBreakoutMoveRequest({currentSession: this, meeting, breakoutMoveId});
+    breakoutEvent.onBreakoutMoveRequest(
+      {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+    );
     const result = await this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
@@ -76,7 +80,11 @@ const Breakout = WebexPlugin.extend({
         sessionId: this.sessionId,
       },
     });
-    breakoutEvent.onBreakoutMoveResponse({currentSession: this, meeting, breakoutMoveId});
+    breakoutEvent.onBreakoutMoveResponse(
+      {currentSession: this, meeting, breakoutMoveId},
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+    );
 
     return result;
   },
