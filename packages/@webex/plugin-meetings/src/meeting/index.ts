@@ -1,5 +1,6 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, defer, isEmpty} from 'lodash';
+import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
@@ -508,6 +509,7 @@ export default class Meeting extends StatelessWebexPlugin {
   controlsOptionsManager: ControlsOptionsManager;
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
+  selfUserPolicies: any;
   shareStatus: string;
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
@@ -2426,10 +2428,22 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           canSetMuted: ControlsOptionsUtil.canSetMuted(payload.info.userDisplayHints),
           canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(payload.info.userDisplayHints),
-          canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
-          canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
-          canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
-          canResumeRecording: RecordingUtil.canUserResume(payload.info.userDisplayHints),
+          canStartRecording: RecordingUtil.canUserStart(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canStopRecording: RecordingUtil.canUserStop(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canPauseRecording: RecordingUtil.canUserPause(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canResumeRecording: RecordingUtil.canUserResume(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
           canRaiseHand: MeetingUtil.canUserRaiseHand(payload.info.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(payload.info.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(
@@ -2564,6 +2578,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
+        this.recordingController.setUserPolicy(this.selfUserPolicies);
         this.controlsOptionsManager.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {
@@ -3128,9 +3143,19 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
+      this.setSelfUserPolicies(this.permissionToken);
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
+  }
+
+  /**
+   * Sets the self user policies based on the contents of the permission token
+   * @param {String} permissionToken
+   * @returns {void}
+   */
+  setSelfUserPolicies(permissionToken: string) {
+    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
   }
 
   /**

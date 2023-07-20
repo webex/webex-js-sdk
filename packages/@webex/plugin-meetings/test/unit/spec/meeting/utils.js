@@ -3,6 +3,8 @@ import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import Metrics from '@webex/plugin-meetings/src/metrics/index';
+import {SELF_POLICY} from '@webex/plugin-meetings/src/constants';
 import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 
@@ -267,6 +269,33 @@ describe('plugin-meetings', () => {
 
       });
 
+    });
+
+    describe('selfSupportsFeature', () => {
+      it('returns true if there are no user policies', () => {
+        assert.equal(
+          MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_ANNOTATION, undefined),
+          true
+        );
+      });
+
+      it('returns true if policy is true', () => {
+        assert.equal(
+          MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_ANNOTATION, {
+            [SELF_POLICY.SUPPORT_ANNOTATION]: true
+          }),
+          true
+        );
+      });
+
+      it('returns false if policy is false', () => {
+        assert.equal(
+          MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_ANNOTATION, {
+            [SELF_POLICY.SUPPORT_ANNOTATION]: false,
+          }),
+          false
+        );
+      });
     });
 
     describe('remoteUpdateAudioVideo', () => {
