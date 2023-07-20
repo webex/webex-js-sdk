@@ -68,7 +68,7 @@ const Breakout = WebexPlugin.extend({
     breakoutEvent.onBreakoutMoveRequest(
       {currentSession: this, meeting, breakoutMoveId},
       // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
     );
     const result = await this.request({
       method: HTTP_VERBS.POST,
@@ -83,7 +83,7 @@ const Breakout = WebexPlugin.extend({
     breakoutEvent.onBreakoutMoveResponse(
       {currentSession: this, meeting, breakoutMoveId},
       // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
     );
 
     return result;

@@ -425,9 +425,7 @@ const Conversation = WebexPlugin.extend({
     let promise;
 
     if (isEncrypted) {
-      promise = this.webex.internal.encryption.download(item.scr, item.options);
-    } else if (item.scr && item.scr.loc) {
-      promise = this._downloadUnencryptedFile(item.scr.loc, options);
+      promise = this.webex.internal.encryption.download(item.url, item.scr, item.options);
     } else {
       promise = this._downloadUnencryptedFile(item.url, options);
     }
