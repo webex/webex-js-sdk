@@ -1588,6 +1588,21 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
       );
     });
+
+    this.simultaneousInterpretation.on(
+      INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED,
+      (payload) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpInterpretationListener',
+          },
+          EVENT_TRIGGERS.MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED,
+          payload
+        );
+      }
+    );
   }
 
   /**
@@ -2549,6 +2564,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
+      this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
     });
   }
 
@@ -3313,6 +3329,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
+    this.simultaneousInterpretation.updateHostSIEnabled(
+      !!webexMeetingInfo?.meetingSiteSetting?.enableHostInterpreterControlSI
+    );
   }
 
   /**
