@@ -68,6 +68,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
         joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();
         joinTimes.totalJmt = cdl.getTotalJMT();
+        joinTimes.clientJmt = cdl.getClientJMT();
         break;
 
       case 'client.ice.end':
@@ -84,7 +85,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
       case 'client.media-engine.ready':
         joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
         joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
-        joinTimes.callInitMediaEngineReady = cdl.getInterstitialToMediaOKJMT(); // same as interstitialToMediaOKJMT
+        joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
+        joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
         break;
 
       case 'client.mediaquality.event':

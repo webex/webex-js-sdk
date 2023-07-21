@@ -35,6 +35,26 @@ export default class CallDiagnosticLatencies {
    * @returns
    */
   public saveTimestamp(key: MetricEventNames, value: number = new Date().getTime()) {
+    // for some events we're only interested in the first timestamp not last
+    // as these events can happen multiple times
+    if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {
+      this.saveFirstTimestampOnly(key, value);
+    } else {
+      this.latencyTimestamps.set(key, value);
+    }
+  }
+
+  /**
+   * Store only the first timestamp value for the given key
+   * @param key - key
+   * @param  value -value
+   * @throws
+   * @returns
+   */
+  saveFirstTimestampOnly(key: MetricEventNames, value: number = new Date().getTime()) {
+    if (this.latencyTimestamps.has(key)) {
+      return;
+    }
     this.latencyTimestamps.set(key, value);
   }
 
@@ -189,8 +209,19 @@ export default class CallDiagnosticLatencies {
    */
   public getInterstitialToJoinOK() {
     return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
+      'internal.client.interstitial-window.click.joinbutton',
       'client.locus.join.response'
+    );
+  }
+
+  /**
+   * Call Init To MediaEngineReady
+   * @returns - latency
+   */
+  public getCallInitMediaEngineReady() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.interstitial-window.click.joinbutton',
+      'client.media-engine.ready'
     );
   }
 
@@ -198,11 +229,24 @@ export default class CallDiagnosticLatencies {
    * Interstitial To Media Ok
    * @returns - latency
    */
-  public getInterstitialToMediaOK() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'sdk.media-flow.started'
+  public getInterstitialToMediaOKJMT() {
+    const interstitialJoinClickTimestamp = this.latencyTimestamps.get(
+      'internal.client.interstitial-window.click.joinbutton'
     );
+
+    // get the first timestamp
+    const mediaFlowStartedTimestamp = Math.min(
+      this.latencyTimestamps.get('client.media.rx.start'),
+      this.latencyTimestamps.get('client.media.tx.start')
+    );
+
+    const lobbyTime = this.getStayLobbyTime() || 0;
+
+    if (interstitialJoinClickTimestamp && mediaFlowStartedTimestamp) {
+      return mediaFlowStartedTimestamp - interstitialJoinClickTimestamp - lobbyTime;
+    }
+
+    return undefined;
   }
 
   /**
@@ -261,21 +305,10 @@ export default class CallDiagnosticLatencies {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (interstitialToJoinOk && joinConfJMT) {
-      return interstitialToJoinOk + joinConfJMT;
+      return interstitialToJoinOk - joinConfJMT;
     }
 
     return undefined;
-  }
-
-  /**
-   * Interstitial To Media OK JMT
-   * @returns - latency
-   */
-  public getInterstitialToMediaOKJMT() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.click.joinbutton',
-      'client.media-engine.ready'
-    );
   }
 
   /**
