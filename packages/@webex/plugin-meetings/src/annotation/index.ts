@@ -281,21 +281,6 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   };
 
   /**
-   * Change annotation options
-   * @param {remoteShareUrl} remoteShareUrl
-   * @param {annotationInfo} annotationInfo
-   * @returns {Promise}
-   */
-  public changeAnnotationOptions(remoteShareUrl, annotationInfo) {
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.PATCH,
-      url: remoteShareUrl,
-      body: annotationInfo,
-    });
-  }
-
-  /**
    * private encrypted the strokes data
    * @param {string} encryptedContent
    * @param {StrokeData} strokeData
