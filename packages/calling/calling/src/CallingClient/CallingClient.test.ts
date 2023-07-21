@@ -28,8 +28,7 @@ import * as regUtils from './registration/register';
 describe('CallingClient Tests', () => {
   // Common initializers
 
-  const handleErrorSpy = jest.spyOn(utils, 'handleErrors');
-  const emitFinalFailureSpy = jest.spyOn(utils, 'emitFinalFailure');
+  const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
   const webex = getTestUtilsWebex();
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);

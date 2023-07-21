@@ -3,12 +3,12 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {filterMobiusUris, handleErrors} from '../common/Utils';
+import {filterMobiusUris, handleRegistrationErrors} from '../common/Utils';
 import {ERROR_TYPE} from '../Errors/types';
 import {LogContext, LOGGER} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {IRegistrationClient} from './registration/types';
+import {IRegistration} from './registration/types';
 import {Eventing} from '../Events/impl';
 import {
   EVENT_KEYS,
@@ -66,7 +66,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private mutex: Mutex;
 
-  private registration: IRegistrationClient;
+  private registration: IRegistration;
 
   private callManager: ICallManager;
 
@@ -104,27 +104,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.webex,
       serviceData,
       this.mutex,
-      (event: EVENT_KEYS, deviceInfo?: IDeviceInfo, clientError?: CallingClientError) => {
-        switch (event) {
-          case EVENT_KEYS.REGISTERED:
-            if (deviceInfo) {
-              this.emit(event, deviceInfo);
-            }
-            break;
-          case EVENT_KEYS.UNREGISTERED:
-          case EVENT_KEYS.RECONNECTED:
-          case EVENT_KEYS.RECONNECTING:
-            this.emit(event);
-            break;
-          case EVENT_KEYS.ERROR:
-            if (clientError) {
-              this.emit(event, clientError);
-            }
-            break;
-          default:
-            break;
-        }
-      },
+      this.callingClientEmitter,
       logLevel
     );
     this.callManager = getCallManager(this.webex, serviceData.indicator);
@@ -143,9 +123,31 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.registerCallsClearedListener();
   }
 
-  public getRegistration(): IRegistrationClient {
-    return this.registration;
-  }
+  private callingClientEmitter = (
+    event: EVENT_KEYS,
+    deviceInfo?: IDeviceInfo,
+    clientError?: CallingClientError
+  ) => {
+    switch (event) {
+      case EVENT_KEYS.REGISTERED:
+        if (deviceInfo) {
+          this.emit(event, deviceInfo);
+        }
+        break;
+      case EVENT_KEYS.UNREGISTERED:
+      case EVENT_KEYS.RECONNECTED:
+      case EVENT_KEYS.RECONNECTING:
+        this.emit(event);
+        break;
+      case EVENT_KEYS.ERROR:
+        if (clientError) {
+          this.emit(event, clientError);
+        }
+        break;
+      default:
+        break;
+    }
+  };
 
   /**
    *  Returns active url.
@@ -256,7 +258,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
     } catch (err: unknown) {
-      handleErrors(
+      handleRegistrationErrors(
         err as WebexRequestPayload,
         (clientError) => {
           this.registration.sendMetric(
@@ -340,8 +342,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         );
         this.primaryMobiusUris = mobiusUris.primary;
         this.backupMobiusUris = mobiusUris.backup;
+        log.info(
+          `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
+          '' as LogContext
+        );
       } catch (err: unknown) {
-        handleErrors(
+        handleRegistrationErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.registration.sendMetric(

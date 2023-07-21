@@ -11,7 +11,7 @@ export type restoreRegistrationCallBack = (
   caller: string
 ) => Promise<boolean>;
 
-export interface IRegistrationClient {
+export interface IRegistration {
   setMobiusServers: (primaryMobiusUris: string[], backupMobiusUris: string[]) => void;
   triggerRegistration: () => Promise<void>;
   isDeviceRegistered: () => boolean;

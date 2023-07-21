@@ -40,7 +40,7 @@ import {
 import {EVENT_KEYS} from '../Events/types';
 import {
   handleCallErrors,
-  handleErrors,
+  handleRegistrationErrors,
   parseMediaQualityStatistics,
   getSortedVoicemailList,
   resolveContact,
@@ -89,6 +89,8 @@ describe('Mobius service discovery tests', () => {
 
     filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
     expect(filteredUris.primary.length).toBe(1);
+    expect(filteredUris.primary[0]).toBe(defaultMobiusUrl + callingContext);
+
     expect(filteredUris.backup.length).toBe(0);
   });
 });
@@ -302,7 +304,7 @@ describe('Registration Tests', () => {
       MobiusStatus.ACTIVE
     );
 
-    handleErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
+    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
     }

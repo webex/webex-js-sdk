@@ -3,7 +3,7 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
-import {restoreRegistrationCallBack} from 'CallingClient/registration/types';
+import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -245,7 +245,7 @@ export function emitFinalFailure(
 }
 
 /**
- * Handle various Error flows here. Decide whether to emit event or retry.
+ * Handle various Registration related Error flows here. Decide whether to emit event or retry.
  * @param err - Error body.
  * @param emitterCb - CallingClientErrorEmitter
  * @param loggerContext - Logging context that has method and file name
@@ -260,7 +260,7 @@ export function emitFinalFailure(
  * be scheduled to attempt registration again.
  *
  */
-export async function handleErrors(
+export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: CallingClientErrorEmitterCallback,
   loggerContext: LogContext,

@@ -35,6 +35,7 @@ export type CallingClientEmitterCallback = (
   deviceInfo?: IDeviceInfo,
   clientError?: CallingClientError
 ) => void;
+
 export type CallingClientErrorEmitterCallback = (
   err: CallingClientError,
   finalError?: boolean

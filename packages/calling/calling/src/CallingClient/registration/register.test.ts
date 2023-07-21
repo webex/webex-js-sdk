@@ -14,7 +14,7 @@ import {LOGGER} from '../../Logger/types';
 import {URL, mockDeleteResponse, mockPostResponse} from './registerFixtures';
 import {filterMobiusUris} from '../../common';
 import {EVENT_KEYS} from '../../Events/types';
-import {IRegistrationClient} from './types';
+import {IRegistration} from './types';
 import {createClientError} from '../../Errors/catalog/CallingDeviceError';
 import {ERROR_TYPE} from '../../Errors/types';
 import {
@@ -40,7 +40,7 @@ const MockServiceData = {
 };
 const logSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
-const handleErrorSpy = jest.spyOn(utils, 'handleErrors');
+const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
 describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
@@ -82,7 +82,7 @@ describe('Registration Tests', () => {
     body: mockPostResponse,
   });
 
-  let reg: IRegistrationClient;
+  let reg: IRegistration;
   let restartSpy;
   let failbackRetry429Spy;
   let restoreSpy;
@@ -98,6 +98,7 @@ describe('Registration Tests', () => {
     restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
     postRegistrationSpy = jest.spyOn(reg as any, 'postRegistration');
   });
+
   afterEach(() => {
     webex.request = jest.fn();
     jest.clearAllTimers();
@@ -980,34 +981,3 @@ describe('Registration Tests', () => {
     });
   });
 });
-
-/**
- * 
-it('create device', async () => {
-  webex.request.mockReturnValueOnce({
-    body: mockPostResponse,
-  });
-  const response = await reg.postRegistration(URL);
-  
-  expect(response.body).toStrictEqual(mockPostResponse);
-});
-
-it('post keepalive ', async () => {
-  webex.request.mockReturnValueOnce({
-    body: mockDeleteResponse,
-  });
-  const keepAliveUrl = `${MockKeepAliveResponse.device.uri}/status`;
-  
-  const response = await reg.postKeepAlive(keepAliveUrl);
-  
-  expect(response.body).toStrictEqual(MockKeepAliveResponse);
-});
-
-it('delete device', async () => {
-  
-  global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
-  const response = await reg.deleteRegistration(URL, DEVICE_ID, CLIENT_DEVICE_URL);
-  
-  expect(response).toStrictEqual(mockDeleteResponse);
-});
-*/

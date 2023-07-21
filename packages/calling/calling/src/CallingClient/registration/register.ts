@@ -2,7 +2,7 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {ERROR_CODE} from '../../Errors/types';
-import {emitFinalFailure, handleErrors} from '../../common';
+import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../metrics/types';
 import {getMetricManager} from '../metrics';
@@ -13,7 +13,7 @@ import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {IRegistrationClient} from './types';
+import {IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -49,7 +49,7 @@ import {
 /**
  *
  */
-export class Registration implements IRegistrationClient {
+export class Registration implements IRegistration {
   private sdkConnector: ISDKConnector;
 
   private webex: WebexSDK;
@@ -78,8 +78,11 @@ export class Registration implements IRegistrationClient {
   private reconnectPending = false;
 
   /**
-   * @param webex  -.
-   * @param serviceData -.
+   * @param webex - A webex instance.
+   * @param serviceData - indicates whether the backend service is calling or contactcentre
+   * @param mutex - mutex which is used to run any registration scenario exclusively
+   * @param callingClientEmitter - CallingClient emitter for registration related events
+   * @param logLevel - log level option for registration module
    */
   constructor(
     webex: WebexSDK,
@@ -97,7 +100,7 @@ export class Registration implements IRegistrationClient {
     this.userId = this.webex.internal.device.userId;
     this.registrationStatus = MobiusStatus.DEFAULT;
     this.failback429RetryAttempts = 0;
-    log.setLogger(logLevel);
+    log.setLogger(logLevel, REGISTRATION_FILE);
     this.rehomingIntervalMin = DEFAULT_REHOMING_INTERVAL_MIN;
     this.rehomingIntervalMax = DEFAULT_REHOMING_INTERVAL_MAX;
     this.mutex = mutex;
@@ -164,9 +167,9 @@ export class Registration implements IRegistrationClient {
   }
 
   /**
-   * Implementation of create device.
+   * Implementation of POST request for device registration.
    *
-   * @param url -.
+   * @param url - backend service url for registration
    */
   private async postRegistration(url: string) {
     const deviceInfo = {
@@ -249,9 +252,8 @@ export class Registration implements IRegistrationClient {
 
   /**
    * Schedules registration retry with primary mobius servers at a random
-   * interval calculated based on the  the number of times registration
-   * retry is already done
-   * After the total time since the beginning of retry attempt exceeds the
+   * interval calculated based on the number of times registration retry is already done
+   * Once the time taken since the beginning of retry attempt exceeds the
    * retry threshold, it switches over to backup mobius servers.
    *
    * @param attempt - Number of times registration has been attempted already.
@@ -333,7 +335,7 @@ export class Registration implements IRegistrationClient {
   /**
    * Returns true if device is registered with a backup mobius.
    */
-  private failbackRequired(): boolean {
+  private isFailbackRequired(): boolean {
     return this.isDeviceRegistered() && this.primaryMobiusUris.indexOf(this.activeMobiusUrl) === -1;
   }
 
@@ -353,7 +355,7 @@ export class Registration implements IRegistrationClient {
    * is registered with a backup mobius.
    */
   private initiateFailback() {
-    if (this.failbackRequired()) {
+    if (this.isFailbackRequired()) {
       if (!this.failbackTimer) {
         this.failback429RetryAttempts = 0;
         const intervalInMinutes = this.getFailbackInterval();
@@ -388,7 +390,7 @@ export class Registration implements IRegistrationClient {
    */
   private async executeFailback() {
     await this.mutex.runExclusive(async () => {
-      if (this.failbackRequired()) {
+      if (this.isFailbackRequired()) {
         if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
           log.info(`Attempting failback to primary.`, {
             file: REGISTRATION_FILE,
@@ -552,6 +554,11 @@ export class Registration implements IRegistrationClient {
     return retry;
   }
 
+  /**
+   * Callback function for restoring registration in case of failure during initial registration
+   * due to device registration already exists.
+   *
+   */
   private restoreRegistrationCallBack() {
     return async (restoreData: IDeviceInfo, caller: string) => {
       const logContext = {file: REGISTRATION_FILE, method: caller};
@@ -560,10 +567,10 @@ export class Registration implements IRegistrationClient {
         const restore = this.getExistingDevice(restoreData);
 
         if (restore) {
-          this.registerRetry = true;
+          this.setRegRetry(true);
           await this.deregister();
           const finalError = await this.restorePreviousRegistration(caller);
-          this.registerRetry = false;
+          this.setRegRetry(false);
           if (this.isDeviceRegistered()) {
             log.info('Registration restored successfully.', logContext);
           }
@@ -579,6 +586,10 @@ export class Registration implements IRegistrationClient {
     };
   }
 
+  /**
+   * Triggers the registration with the given list of Mobius servers
+   * Registration is attempted with primary and backup until it succeeds or the list is exhausted
+   */
   public async triggerRegistration() {
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
@@ -651,7 +662,7 @@ export class Registration implements IRegistrationClient {
         const body = err as WebexRequestPayload;
 
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
-        abort = await handleErrors(
+        abort = await handleRegistrationErrors(
           body,
           (clientError, finalError) => {
             if (finalError) {
@@ -698,15 +709,14 @@ export class Registration implements IRegistrationClient {
   }
 
   /**
-   * 
-  This method sets up a timer to periodically send keep-alive requests to maintain a connection. 
-  It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
-  * @param keepAliveRetryCount 
-  * @param url 
-  * @param logContext 
-  * @param interval 
-  * @returns 
-  */
+   * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
+   * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
+   * @param keepAliveRetryCount
+   * @param url
+   * @param logContext
+   * @param interval
+   * @returns
+   */
   public startKeepaliveTimer(url: string, interval: number) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
@@ -733,7 +743,7 @@ export class Registration implements IRegistrationClient {
               logContext
             );
 
-            const abort = await handleErrors(
+            const abort = await handleRegistrationErrors(
               error,
               (clientError, finalError) => {
                 if (finalError) {
@@ -822,10 +832,10 @@ export class Registration implements IRegistrationClient {
   }
 
   /**
-   * .
+   * Sets the received value in instance variable
+   * registerRetry for registration retry cases.
    *
-   * @param value - Sets the received value in instance variable
-   *                registerRetry for registration retry cases.
+   * @param value - for registerRetry
    */
   private setRegRetry(value: boolean) {
     this.registerRetry = value;
@@ -892,8 +902,11 @@ export class Registration implements IRegistrationClient {
 }
 
 /**
- * @param webex -.
- * @param serviceData -.
+ * @param webex - A webex instance.
+ * @param serviceData - indicates whether the backend service is calling or contactcentre
+ * @param mutex - mutex which is used to run any registration scenario exclusively
+ * @param callingClientEmitter - CallingClient emitter for registration related events
+ * @param logLevel - log level option for registration module
  */
 export const createRegistration = (
   webex: WebexSDK,
@@ -901,5 +914,4 @@ export const createRegistration = (
   mutex: Mutex,
   callingClientemitter: CallingClientEmitterCallback,
   logLevel: LOGGER
-): IRegistrationClient =>
-  new Registration(webex, serviceData, mutex, callingClientemitter, logLevel);
+): IRegistration => new Registration(webex, serviceData, mutex, callingClientemitter, logLevel);
