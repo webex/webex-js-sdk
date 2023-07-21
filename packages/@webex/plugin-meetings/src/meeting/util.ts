@@ -10,6 +10,7 @@ import {
   PASSWORD_STATUS,
   DISPLAY_HINTS,
   FULL_STATE,
+  SELF_POLICY,
 } from '../constants';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
@@ -556,6 +557,14 @@ const MeetingUtil = {
     };
 
     return locusDeltaRequest;
+  },
+
+  selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
+    if (!userPolicies) {
+      return true;
+    }
+
+    return userPolicies[feature];
   },
 };
 

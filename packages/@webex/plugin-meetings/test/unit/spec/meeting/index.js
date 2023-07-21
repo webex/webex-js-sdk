@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import 'jsdom-global/register';
+import jwt from 'jsonwebtoken';
 import {cloneDeep, forEach, isEqual} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
@@ -1706,6 +1707,7 @@ describe('plugin-meetings', () => {
               audio: undefined,
               video: undefined,
               screenShareVideo: undefined,
+              screenShareAudio: undefined,
             },
             direction: {
               audio: 'sendrecv',
@@ -1734,6 +1736,7 @@ describe('plugin-meetings', () => {
               audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
+              screenShareAudio: undefined,
             },
             direction: {
               audio: 'sendrecv',
@@ -1764,6 +1767,7 @@ describe('plugin-meetings', () => {
               audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
+              screenShareAudio: undefined,
             },
             direction: {
               audio: 'sendrecv',
@@ -1792,6 +1796,7 @@ describe('plugin-meetings', () => {
               audio: fakeMicrophoneTrack,
               video: undefined,
               screenShareVideo: undefined,
+              screenShareAudio: undefined,
             },
             direction: {
               audio: 'inactive',
@@ -1820,6 +1825,7 @@ describe('plugin-meetings', () => {
               audio: undefined,
               video: undefined,
               screenShareVideo: undefined,
+              screenShareAudio: undefined,
             },
             direction: {
               audio: 'inactive',
@@ -2269,7 +2275,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
           meeting.locusInfo.self = {url: url1};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
-          meeting.mediaProperties.shareTrack = {}
+          meeting.mediaProperties.shareVideoTrack = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
         });
@@ -2336,7 +2342,7 @@ describe('plugin-meetings', () => {
           meeting.video = { enable: sinon.stub()};
           meeting.mediaProperties.audioTrack = createFakeLocalTrack();
           meeting.mediaProperties.videoTrack = createFakeLocalTrack();
-          meeting.mediaProperties.shareTrack = createFakeLocalTrack();
+          meeting.mediaProperties.shareVideoTrack = createFakeLocalTrack();
           meeting.mediaProperties.mediaDirection = {
             sendAudio: true,
             sendVideo: true,
@@ -2407,7 +2413,7 @@ describe('plugin-meetings', () => {
               localTracks: {
                 audio: meeting.mediaProperties.audioTrack.underlyingTrack,
                 video: meeting.mediaProperties.videoTrack.underlyingTrack,
-                screenShareVideo: meeting.mediaProperties.shareTrack.underlyingTrack,
+                screenShareVideo: meeting.mediaProperties.shareVideoTrack.underlyingTrack,
               },
               direction: {
                 audio: 'inactive',
@@ -3623,6 +3629,7 @@ describe('plugin-meetings', () => {
       describe('Local tracks publishing', () => {
         let audioTrack;
         let videoTrack;
+        let audioShareTrack;
         let videoShareTrack;
         let createMuteStateStub;
         let LocalDisplayTrackConstructorStub;
@@ -3645,6 +3652,12 @@ describe('plugin-meetings', () => {
             on: sinon.stub(),
             off: sinon.stub(),
           };
+          audioShareTrack = {
+            id: 'share track',
+            on: sinon.stub(),
+            off: sinon.stub(),
+            getSettings: sinon.stub(),
+          }
           videoShareTrack = {
             id: 'share track',
             on: sinon.stub(),
@@ -3733,7 +3746,18 @@ describe('plugin-meetings', () => {
               meeting.mediaProperties.webrtcMediaConnection.publishTrack,
               track
             );
-            assert.equal(meeting.mediaProperties.shareTrack, track);
+            assert.equal(meeting.mediaProperties.shareVideoTrack, track);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+          };
+          
+          const checkScreenShareAudioPublished = (track) => {
+            assert.calledOnce(meeting.requestScreenShareFloor);
+
+            assert.calledWith(
+              meeting.mediaProperties.webrtcMediaConnection.publishTrack,
+              track
+            );
+            assert.equal(meeting.mediaProperties.shareAudioTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
 
@@ -3743,6 +3767,31 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
+          
+          it('requests screen share floor and publishes the screen share audio track', async () => {
+            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            
+            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
+            checkScreenShareAudioPublished(audioShareTrack);
+          });
+          
+          it('does not request screen share floor when publishing video share track if already sharing audio', async () => {
+            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            assert.calledOnce(meeting.requestScreenShareFloor);
+            
+            meeting.requestScreenShareFloor.reset();
+            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+            assert.notCalled(meeting.requestScreenShareFloor);
+          })
+          
+          it('does not request screen share floor when publishing audio share track if already sharing video', async () => {
+            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+            assert.calledOnce(meeting.requestScreenShareFloor);
+            
+            meeting.requestScreenShareFloor.reset();
+            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            assert.notCalled(meeting.requestScreenShareFloor);
+          })
 
           it('updates MuteState instance and publishes the track for main audio', async () => {
             await meeting.publishTracks({microphone: audioTrack});
@@ -3764,13 +3813,15 @@ describe('plugin-meetings', () => {
               camera: videoTrack,
               screenShare: {
                 video: videoShareTrack,
+                audio: audioShareTrack,
               },
             });
 
-            assert.calledThrice(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
+            assert.callCount(meeting.mediaProperties.webrtcMediaConnection.publishTrack, 4);
             checkAudioPublished(audioTrack);
             checkVideoPublished(videoTrack);
             checkScreenShareVideoPublished(videoShareTrack);
+            checkScreenShareAudioPublished(audioShareTrack);
           });
         });
         it('creates instance and publishes with annotation info', async () => {
@@ -3787,7 +3838,7 @@ describe('plugin-meetings', () => {
             await meeting.publishTracks({
               microphone: audioTrack,
               camera: videoTrack,
-              screenShare: {video: videoShareTrack},
+              screenShare: {video: videoShareTrack, audio: audioShareTrack},
             });
           });
 
@@ -3811,7 +3862,8 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.mediaDirection.sendVideo, 'fake value');
           };
 
-          const checkScreenShareVideoUnpublished = () => {
+          // share direction will remain true if only one of the two share tracks are unpublished
+          const checkScreenShareVideoUnpublished = (shareDirection = true) => {
             assert.calledWith(
               meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
               videoShareTrack
@@ -3819,24 +3871,38 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.equal(meeting.mediaProperties.shareTrack, null);
-            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
+            assert.equal(meeting.mediaProperties.shareVideoTrack, null);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+          };
+
+          // share direction will remain true if only one of the two share tracks are unpublished
+          const checkScreenShareAudioUnpublished = (shareDirection = true) => {
+            assert.calledWith(
+              meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
+              audioShareTrack
+            );
+
+            assert.calledOnce(meeting.requestScreenShareFloor);
+
+            assert.equal(meeting.mediaProperties.shareAudioTrack, null);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
           };
 
           it('fails if there is no media connection', async () => {
             meeting.mediaProperties.webrtcMediaConnection = undefined;
             await assert.isRejected(
-              meeting.unpublishTracks([audioTrack, videoTrack, videoShareTrack])
+              meeting.unpublishTracks([audioTrack, videoTrack, videoShareTrack, audioShareTrack])
             );
           });
 
-          it('un-publishes the tracks correctly (all 3 together)', async () => {
-            await meeting.unpublishTracks([audioTrack, videoTrack, videoShareTrack]);
+          it('un-publishes the tracks correctly (all 4 together)', async () => {
+            await meeting.unpublishTracks([audioTrack, videoTrack, videoShareTrack, audioShareTrack]);
 
-            assert.calledThrice(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
+            assert.equal(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack.callCount, 4);
             checkAudioUnpublished();
             checkVideoUnpublished();
-            checkScreenShareVideoUnpublished();
+            checkScreenShareVideoUnpublished(false);
+            checkScreenShareAudioUnpublished(false);
           });
 
           it('un-publishes the audio track correctly', async () => {
@@ -3858,6 +3924,30 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkScreenShareVideoUnpublished();
+          });
+          
+          it('un-publishes the screen share audio track correctly', async () => {
+            await meeting.unpublishTracks([audioShareTrack]);
+            
+            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
+            checkScreenShareAudioUnpublished();
+          });
+          
+          it('releases share floor and sets send direction to false when both screen share tracks are undefined', async () => {
+            await meeting.unpublishTracks([videoShareTrack, audioShareTrack]);
+            
+            assert.calledOnce(meeting.releaseScreenShareFloor);
+            assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
+          });
+          
+          it('does not release share floor when audio is released and video still exists', async () => {
+            await meeting.unpublishTracks([audioShareTrack]);
+            assert.notCalled(meeting.releaseScreenShareFloor);
+          });
+          
+          it('does not release share floor when video is released and audio still exists', async () => {
+            await meeting.unpublishTracks([videoShareTrack]);
+            assert.notCalled(meeting.releaseScreenShareFloor);
           });
         });
       });
@@ -3911,7 +4001,8 @@ describe('plugin-meetings', () => {
         sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
         sandbox.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
         sandbox.stub(meeting.mediaProperties, 'videoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'shareTrack').value(fakeMediaTrack());
+        sandbox.stub(meeting.mediaProperties, 'shareVideoTrack').value(fakeMediaTrack());
+        sandbox.stub(meeting.mediaProperties, 'shareAudioTrack').value(fakeMediaTrack());
         sandbox.stub(meeting.mediaProperties, 'remoteAudioTrack').value(fakeMediaTrack());
         sandbox.stub(meeting.mediaProperties, 'remoteVideoTrack').value(fakeMediaTrack());
         sandbox.stub(meeting.mediaProperties, 'remoteShare').value(fakeMediaTrack());
@@ -5082,6 +5173,7 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
         });
         it('should call changeMeetingFloor()', async () => {
+          meeting.screenShareFloorState = 'GRANTED';
           const share = meeting.releaseScreenShareFloor();
 
           assert.exists(share.then);
@@ -5107,6 +5199,56 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.sipUri, test1);
         });
       });
+
+      describe('#setSelfUserPolicies', () => {
+        it('sets correctly when policy data is present in token', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {permission: {userPolicies: {a: true}}};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, {a: true});
+        });
+
+        it('handles missing permission data', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+
+        it('handles missing policy data', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          const dummyToken = 'some data';
+          const policyData = {permission: {}};
+
+          sinon.stub(jwt, 'decode').returns(policyData);
+
+          meeting.setSelfUserPolicies(dummyToken);
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+
+        it('handles missing token', () => {
+          assert.notOk(meeting.selfUserPolicies);
+
+          meeting.setSelfUserPolicies();
+
+          assert.deepEqual(meeting.selfUserPolicies, undefined);
+        });
+      });
+
       describe('#unsetRemoteTracks', () => {
         it('should unset the remote tracks and return null', () => {
           meeting.mediaProperties.unsetRemoteTracks = sinon.stub().returns(true);
@@ -5142,6 +5284,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
         });
       });
+
       describe('#parseMeetingInfo', () => {
         const checkParseMeetingInfo = (expectedInfoToParse) => {
           assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);
@@ -5151,6 +5294,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
+          assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
         };
 
         it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
@@ -5162,7 +5306,8 @@ describe('plugin-meetings', () => {
               locusUrl: url1,
               meetingJoinUrl: url2,
               meetingNumber: '12345',
-              permissionToken: 'abc',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -5177,7 +5322,9 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc',
+            selfUserPolicies: {a: true},
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -5398,6 +5545,9 @@ describe('plugin-meetings', () => {
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
 
+          const setUserPolicySpy = sinon.spy(meeting.recordingController, 'setUserPolicy');
+          meeting.selfUserPolicies = {a: true};
+
           meeting.setUpLocusInfoMeetingInfoListener();
 
           assert.calledThrice(locusInfoOnSpy);
@@ -5508,6 +5658,8 @@ describe('plugin-meetings', () => {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
             displayHints: payload.info.userDisplayHints,
           });
+
+          assert.calledWith(setUserPolicySpy, {a: true});
 
           assert.calledWith(
             TriggerProxy.trigger,

@@ -657,7 +657,7 @@ skipInNode(describe)('plugin-meetings', () => {
         await startedSharingRemote;
         await bobReceivesMembersUpdate;
 
-        assert.equal(alice.meeting.isSharing, true);
+        assert.equal(alice.meeting.screenShareFloorState, 'floor_request_granted');
         assert.equal(alice.meeting.shareStatus, 'local_share_active');
         assert.equal(bob.meeting.shareStatus, 'remote_share_active');
         console.log(
@@ -699,7 +699,7 @@ skipInNode(describe)('plugin-meetings', () => {
         localTracks.alice.screenShare.video.stop();
         localTracks.alice.screenShare.video = undefined;
 
-        assert.equal(bob.meeting.isSharing, true);
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_request_granted');
         assert.equal(bob.meeting.shareStatus, 'local_share_active');
         assert.equal(alice.meeting.shareStatus, 'remote_share_active');
 
@@ -720,7 +720,7 @@ skipInNode(describe)('plugin-meetings', () => {
         localTracks.bob.screenShare.video.stop();
         localTracks.bob.screenShare.video = undefined;
 
-        assert.equal(bob.meeting.isSharing, false);
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
         assert.equal(bob.meeting.shareStatus, 'no_share');
         assert.equal(alice.meeting.shareStatus, 'no_share');
 
@@ -750,7 +750,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(alice.meeting.isSharing, false);
+          assert.equal(alice.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
@@ -778,7 +778,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
@@ -795,7 +795,7 @@ skipInNode(describe)('plugin-meetings', () => {
             {scope: alice.meeting, event: 'meeting:stoppedSharingWhiteboard'},
           ]),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(bob.meeting.shareStatus, 'no_share');
           assert.equal(alice.meeting.shareStatus, 'no_share');
         }));
@@ -823,7 +823,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(alice.meeting.isSharing, false);
+          assert.equal(alice.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
@@ -854,7 +854,7 @@ skipInNode(describe)('plugin-meetings', () => {
         await startedSharingRemote;
         await aliceReceivesMembersUpdate;
 
-        assert.equal(bob.meeting.isSharing, true);
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_request_granted');
         assert.equal(bob.meeting.shareStatus, 'local_share_active');
         assert.equal(alice.meeting.shareStatus, 'remote_share_active');
 
@@ -884,7 +884,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));

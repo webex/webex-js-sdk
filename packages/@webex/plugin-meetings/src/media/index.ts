@@ -4,7 +4,12 @@
 /* globals navigator */
 
 import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
-import {LocalCameraTrack, LocalDisplayTrack, LocalMicrophoneTrack} from '@webex/media-helpers';
+import {
+  LocalCameraTrack,
+  LocalDisplayTrack,
+  LocalSystemAudioTrack,
+  LocalMicrophoneTrack,
+} from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
@@ -99,7 +104,7 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
  * @param {string} debugId string useful for debugging (will appear in media connection logs)
  * @param {Object} options
  * @param {Object} [options.mediaProperties] contains mediaDirection and local tracks:
- *                                 audioTrack, videoTrack and shareTrack
+ *                                 audioTrack, videoTrack, shareVideoTrack, and shareAudioTrack
  * @param {string} [options.remoteQualityLevel] LOW|MEDIUM|HIGH applicable only to non-multistream connections
  * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
  * @param {boolean} [options.enableExtmap] applicable only to non-multistream connections
@@ -122,7 +127,8 @@ Media.createMediaConnection = (
       };
       audioTrack?: LocalMicrophoneTrack;
       videoTrack?: LocalCameraTrack;
-      shareTrack?: LocalDisplayTrack;
+      shareVideoTrack?: LocalDisplayTrack;
+      shareAudioTrack?: LocalSystemAudioTrack;
     };
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
@@ -174,7 +180,7 @@ Media.createMediaConnection = (
     throw new Error('mediaProperties have to be provided for non-multistream media connections');
   }
 
-  const {mediaDirection, audioTrack, videoTrack, shareTrack} = mediaProperties;
+  const {mediaDirection, audioTrack, videoTrack, shareVideoTrack} = mediaProperties;
 
   return new RoapMediaConnection(
     {
@@ -198,7 +204,7 @@ Media.createMediaConnection = (
       localTracks: {
         audio: audioTrack?.underlyingTrack,
         video: videoTrack?.underlyingTrack,
-        screenShareVideo: shareTrack?.underlyingTrack,
+        screenShareVideo: shareVideoTrack?.underlyingTrack,
       },
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),

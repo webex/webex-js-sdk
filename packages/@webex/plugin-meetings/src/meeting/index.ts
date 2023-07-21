@@ -1,5 +1,6 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, defer, isEmpty} from 'lodash';
+import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
@@ -18,6 +19,7 @@ import {
   LocalTrack,
   LocalCameraTrack,
   LocalDisplayTrack,
+  LocalSystemAudioTrack,
   LocalMicrophoneTrack,
   LocalTrackEvents,
   TrackMuteEvent,
@@ -144,7 +146,7 @@ export type LocalTracks = {
   microphone?: LocalMicrophoneTrack;
   camera?: LocalCameraTrack;
   screenShare?: {
-    audio?: LocalTrack; // todo: for now screen share audio is not supported (will be done in SPARK-399690)
+    audio?: LocalSystemAudioTrack;
     video?: LocalDisplayTrack;
   };
   annotationInfo?: AnnotationInfo;
@@ -165,6 +167,12 @@ export const MEDIA_UPDATE_TYPE = {
   SHARE_FLOOR_REQUEST: 'SHARE_FLOOR_REQUEST',
   UPDATE_MEDIA: 'UPDATE_MEDIA',
 };
+
+export enum ScreenShareFloorStatus {
+  PENDING = 'floor_request_pending',
+  GRANTED = 'floor_request_granted',
+  RELEASED = 'floor_released',
+}
 
 /**
  * MediaDirection
@@ -483,7 +491,6 @@ export default class Meeting extends StatelessWebexPlugin {
   inMeetingActions: InMeetingActions;
   isLocalShareLive: boolean;
   isRoapInProgress: boolean;
-  isSharing: boolean;
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
@@ -508,7 +515,9 @@ export default class Meeting extends StatelessWebexPlugin {
   controlsOptionsManager: ControlsOptionsManager;
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
+  selfUserPolicies: any;
   shareStatus: string;
+  screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
   updateMediaConnections: (mediaConnections: any[]) => void;
@@ -962,16 +971,6 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.inMeetingActions = new InMeetingActions();
     /**
-     * This is deprecated, please use shareStatus instead.
-     * @instance
-     * @type {Boolean}
-     * @readonly
-     * @public
-     * @memberof Meeting
-     * @deprecated after v1.118.13
-     */
-    this.isSharing = false;
-    /**
      * @instance
      * @type {string}
      * @readonly
@@ -979,7 +978,13 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.shareStatus = SHARE_STATUS.NO_SHARE;
-
+    /**
+     * @instance
+     * @type {ScreenShareFloorStatus}
+     * @private
+     * @memberof
+     */
+    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     /**
      * @instance
      * @type {Array}
@@ -2222,7 +2227,10 @@ export default class Meeting extends StatelessWebexPlugin {
                 this.mediaProperties.mediaDirection?.sendShare &&
                 oldShareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE
               ) {
-                await this.unpublishTracks([this.mediaProperties.shareTrack]); // todo screen share audio (SPARK-399690)
+                await this.unpublishTracks([
+                  this.mediaProperties.shareVideoTrack,
+                  this.mediaProperties.shareAudioTrack,
+                ]);
               }
             } finally {
               sendStartedSharingRemote();
@@ -2426,10 +2434,22 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           canSetMuted: ControlsOptionsUtil.canSetMuted(payload.info.userDisplayHints),
           canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(payload.info.userDisplayHints),
-          canStartRecording: RecordingUtil.canUserStart(payload.info.userDisplayHints),
-          canStopRecording: RecordingUtil.canUserStop(payload.info.userDisplayHints),
-          canPauseRecording: RecordingUtil.canUserPause(payload.info.userDisplayHints),
-          canResumeRecording: RecordingUtil.canUserResume(payload.info.userDisplayHints),
+          canStartRecording: RecordingUtil.canUserStart(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canStopRecording: RecordingUtil.canUserStop(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canPauseRecording: RecordingUtil.canUserPause(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canResumeRecording: RecordingUtil.canUserResume(
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
+          ),
           canRaiseHand: MeetingUtil.canUserRaiseHand(payload.info.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(payload.info.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(
@@ -2564,6 +2584,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
+        this.recordingController.setUserPolicy(this.selfUserPolicies);
         this.controlsOptionsManager.setDisplayHints(payload.info.userDisplayHints);
 
         if (changed) {
@@ -2887,8 +2908,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // TODO: Handle sharing and wireless sharing when meeting end
       if (this.wirelessShare) {
-        if (this.mediaProperties.shareTrack) {
-          await this.setLocalShareTrack(undefined);
+        if (this.mediaProperties.shareVideoTrack) {
+          await this.setLocalShareVideoTrack(undefined);
+        }
+        if (this.mediaProperties.shareAudioTrack) {
+          await this.setLocalShareAudioTrack(undefined);
         }
       }
       // when multiple WEB deviceType join with same user
@@ -3128,9 +3152,19 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
+      this.setSelfUserPolicies(this.permissionToken);
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
+  }
+
+  /**
+   * Sets the self user policies based on the contents of the permission token
+   * @param {String} permissionToken
+   * @returns {void}
+   */
+  setSelfUserPolicies(permissionToken: string) {
+    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
   }
 
   /**
@@ -3334,34 +3368,62 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Stores the reference to a new screen share track, sets up the required event listeners
+   * Stores the reference to a new screen share video track, sets up the required event listeners
    * on it, cleans up previous track, etc.
-   * It also sends the floor grant/release request.
    *
    * @param {LocalDisplayTrack | undefined} localDisplayTrack local camera track
    * @returns {Promise<void>}
    */
-  private async setLocalShareTrack(localDisplayTrack?: LocalDisplayTrack) {
-    const oldTrack = this.mediaProperties.shareTrack;
+  private async setLocalShareVideoTrack(localDisplayTrack?: LocalDisplayTrack) {
+    const oldTrack = this.mediaProperties.shareVideoTrack;
 
-    oldTrack?.off(LocalTrackEvents.Ended, this.handleShareTrackEnded);
+    oldTrack?.off(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
     oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
 
-    this.mediaProperties.setLocalShareTrack(localDisplayTrack);
+    this.mediaProperties.setLocalShareVideoTrack(localDisplayTrack);
 
-    localDisplayTrack?.on(LocalTrackEvents.Ended, this.handleShareTrackEnded);
+    localDisplayTrack?.on(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
     localDisplayTrack?.on(
       LocalTrackEvents.UnderlyingTrackChange,
       this.underlyingLocalTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = !!localDisplayTrack;
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
 
     if (!this.isMultistream || !localDisplayTrack) {
       // for multistream WCME automatically un-publishes the old track when we publish a new one
       await this.unpublishTrack(oldTrack);
     }
-    await this.publishTrack(this.mediaProperties.shareTrack);
+    await this.publishTrack(this.mediaProperties.shareVideoTrack);
+  }
+
+  /**
+   * Stores the reference to a new screen share audio track, sets up the required event listeners
+   * on it, cleans up previous track, etc.
+   *
+   * @param {LocalSystemAudioTrack | undefined} localSystemAudioTrack local system audio track
+   * @returns {Promise<void>}
+   */
+  private async setLocalShareAudioTrack(localSystemAudioTrack?: LocalSystemAudioTrack) {
+    const oldTrack = this.mediaProperties.shareAudioTrack;
+
+    oldTrack?.off(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
+    oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+
+    this.mediaProperties.setLocalShareAudioTrack(localSystemAudioTrack);
+
+    localSystemAudioTrack?.on(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
+    localSystemAudioTrack?.on(
+      LocalTrackEvents.UnderlyingTrackChange,
+      this.underlyingLocalTrackChangeHandler
+    );
+
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
+
+    if (!this.isMultistream || !localSystemAudioTrack) {
+      await this.unpublishTrack(oldTrack);
+    }
+    await this.publishTrack(this.mediaProperties.shareAudioTrack);
   }
 
   /**
@@ -3372,7 +3434,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   public cleanupLocalTracks() {
-    const {audioTrack, videoTrack, shareTrack} = this.mediaProperties;
+    const {audioTrack, videoTrack, shareVideoTrack, shareAudioTrack} = this.mediaProperties;
 
     audioTrack?.off(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
     audioTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
@@ -3380,12 +3442,22 @@ export default class Meeting extends StatelessWebexPlugin {
     videoTrack?.off(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
     videoTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
 
-    shareTrack?.off(LocalTrackEvents.Ended, this.handleShareTrackEnded);
-    shareTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    shareVideoTrack?.off(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
+    shareVideoTrack?.off(
+      LocalTrackEvents.UnderlyingTrackChange,
+      this.underlyingLocalTrackChangeHandler
+    );
+
+    shareAudioTrack?.off(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
+    shareAudioTrack?.off(
+      LocalTrackEvents.UnderlyingTrackChange,
+      this.underlyingLocalTrackChangeHandler
+    );
 
     this.mediaProperties.setLocalAudioTrack(undefined);
     this.mediaProperties.setLocalVideoTrack(undefined);
-    this.mediaProperties.setLocalShareTrack(undefined);
+    this.mediaProperties.setLocalShareVideoTrack(undefined);
+    this.mediaProperties.setLocalShareAudioTrack(undefined);
 
     this.mediaProperties.mediaDirection.sendAudio = false;
     this.mediaProperties.mediaDirection.sendVideo = false;
@@ -3395,7 +3467,8 @@ export default class Meeting extends StatelessWebexPlugin {
     // (we have to do it for transcoded meetings anyway, so we might as well do for multistream too)
     audioTrack?.setPublished(false);
     videoTrack?.setPublished(false);
-    shareTrack?.setPublished(false);
+    shareVideoTrack?.setPublished(false);
+    shareAudioTrack?.setPublished(false);
   }
 
   /**
@@ -3495,6 +3568,18 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setCorrelationId(id: string) {
     this.correlationId = id;
+  }
+
+  /**
+   * Enqueue request for screenshare floor and set the status to pending
+   * @returns {Promise}
+   * @private
+   * @memberof Meeting
+   */
+  private enqueueScreenShareFloorRequest() {
+    this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
+
+    return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
   }
 
   /**
@@ -4476,7 +4561,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // Clean up the camera , microphone track and re initiate it
 
       try {
-        if (this.isSharing) {
+        if (this.screenShareFloorState === ScreenShareFloorStatus.GRANTED) {
           await this.releaseScreenShareFloor();
         }
         const mediaSettings = {
@@ -5081,8 +5166,11 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.mediaProperties.videoTrack) {
       await this.publishTrack(this.mediaProperties.videoTrack);
     }
-    if (this.mediaProperties.shareTrack) {
-      await this.publishTrack(this.mediaProperties.shareTrack);
+    if (this.mediaProperties.shareVideoTrack) {
+      await this.publishTrack(this.mediaProperties.shareVideoTrack);
+    }
+    if (this.isMultistream && this.mediaProperties.shareAudioTrack) {
+      await this.publishTrack(this.mediaProperties.shareAudioTrack);
     }
 
     return mc;
@@ -5218,7 +5306,10 @@ export default class Meeting extends StatelessWebexPlugin {
       promises.push(this.setLocalVideoTrack(localTracks.camera));
     }
     if (localTracks?.screenShare?.video) {
-      promises.push(this.setLocalShareTrack(localTracks.screenShare.video));
+      promises.push(this.setLocalShareVideoTrack(localTracks.screenShare.video));
+    }
+    if (this.isMultistream && localTracks?.screenShare?.audio) {
+      promises.push(this.setLocalShareAudioTrack(localTracks.screenShare.audio));
     }
 
     return Promise.all(promises)
@@ -5348,9 +5439,11 @@ export default class Meeting extends StatelessWebexPlugin {
         })
       )
       .then(() => {
-        if (localTracks?.screenShare?.video) {
-          this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
+        if (this.mediaProperties.hasLocalShareTrack()) {
+          return this.enqueueScreenShareFloorRequest();
         }
+
+        return Promise.resolve();
       })
       .then(() => this.mediaProperties.getCurrentConnectionType())
       .then((connectionType) => {
@@ -5796,7 +5889,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.meetingRequest
         .changeMeetingFloor(body)
         .then(() => {
-          this.isSharing = false;
+          this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
           return Promise.resolve();
         })
@@ -5877,16 +5970,23 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private requestScreenShareFloor() {
-    if (!this.mediaProperties.shareTrack || !this.mediaProperties.mediaDirection.sendShare) {
+    if (
+      !this.mediaProperties.hasLocalShareTrack() ||
+      !this.mediaProperties.mediaDirection.sendShare
+    ) {
       LoggerProxy.logger.log(
-        `Meeting:index#requestScreenShareFloor --> NOT requesting floor, because we don't have the share track anymore (shareTrack=${
-          this.mediaProperties.shareTrack ? 'yes' : 'no'
-        }, sendShare=${this.mediaProperties.mediaDirection.sendShare})`
+        `Meeting:index#requestScreenShareFloor --> NOT requesting floor, because we don't have the share track anymore (shareVideoTrack=${
+          this.mediaProperties.shareVideoTrack ? 'yes' : 'no'
+        }, shareAudioTrack=${this.mediaProperties.shareAudioTrack ? 'yes' : 'no'}, sendShare=${
+          this.mediaProperties.mediaDirection.sendShare
+        })`
       );
+      this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
       return Promise.resolve({});
     }
     if (this.state === MEETING_STATE.STATES.JOINED) {
+      this.screenShareFloorState = ScreenShareFloorStatus.PENDING;
       const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
       if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
@@ -5909,7 +6009,7 @@ export default class Meeting extends StatelessWebexPlugin {
             annotationInfo: this.annotationInfo,
           })
           .then(() => {
-            this.isSharing = true;
+            this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
 
             return Promise.resolve();
           })
@@ -5923,11 +6023,18 @@ export default class Meeting extends StatelessWebexPlugin {
               stack: error.stack,
             });
 
+            this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
+
             return Promise.reject(error);
           });
       }
+      if (!content) {
+        this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
-      return Promise.reject(new ParameterError('Cannot share without content.'));
+        return Promise.reject(new ParameterError('Cannot share without content.'));
+      }
+
+      return Promise.resolve();
     }
     this.floorGrantPending = true;
 
@@ -5957,6 +6064,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private releaseScreenShareFloor() {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
+    if (this.screenShareFloorState === ScreenShareFloorStatus.RELEASED) {
+      return Promise.resolve();
+    }
+    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     if (content) {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -5969,8 +6080,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (content.floor?.beneficiary.id !== this.selfId) {
         // remote participant started sharing and caused our sharing to stop, we don't want to send any floor action request in that case
-        this.isSharing = false;
-
         return Promise.resolve();
       }
 
@@ -5993,15 +6102,10 @@ export default class Meeting extends StatelessWebexPlugin {
           });
 
           return Promise.reject(error);
-        })
-        .finally(() => {
-          this.isSharing = false;
         });
     }
 
     // according to Locus there is no content, so we don't need to release the floor (it's probably already been released)
-    this.isSharing = false;
-
     return Promise.resolve();
   }
 
@@ -6305,37 +6409,75 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Functionality for when a share is ended.
+   * Functionality for when a share audio is ended.
    * @private
    * @memberof Meeting
-   * @param {MediaStream} localShare
    * @returns {undefined}
    */
-  private handleShareTrackEnded = async () => {
-    if (this.wirelessShare) {
+  private handleShareAudioTrackEnded = async () => {
+    // current share audio track has ended, but there might be an active
+    // share video track. we only leave from wireless share if share has
+    // completely ended, which means no share audio or video tracks active
+    if (this.wirelessShare && !this.mediaProperties.shareVideoTrack) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
       try {
-        await this.unpublishTracks([this.mediaProperties.shareTrack]); // todo: screen share audio (SPARK-399690)
+        await this.unpublishTracks([this.mediaProperties.shareAudioTrack]);
       } catch (error) {
         LoggerProxy.logger.log(
-          'Meeting:index#handleShareTrackEnded --> Error stopping share: ',
+          'Meeting:index#handleShareAudioTrackEnded --> Error stopping share: ',
           error
         );
       }
     }
+    this.triggerStoppedSharing();
+  };
 
-    Trigger.trigger(
-      this,
-      {
-        file: 'meeting/index',
-        function: 'handleShareTrackEnded',
-      },
-      EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-      {
-        reason: SHARE_STOPPED_REASON.TRACK_ENDED,
+  /**
+   * Functionality for when a share video is ended.
+   * @private
+   * @memberof Meeting
+   * @returns {undefined}
+   */
+  private handleShareVideoTrackEnded = async () => {
+    // current share video track has ended, but there might be an active
+    // share audio track. we only leave from wireless share if share has
+    // completely ended, which means no share audio or video tracks active
+    if (this.wirelessShare && !this.mediaProperties.shareAudioTrack) {
+      this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
+    } else {
+      try {
+        await this.unpublishTracks([this.mediaProperties.shareVideoTrack]);
+      } catch (error) {
+        LoggerProxy.logger.log(
+          'Meeting:index#handleShareVideoTrackEnded --> Error stopping share: ',
+          error
+        );
       }
-    );
+    }
+    this.triggerStoppedSharing();
+  };
+
+  /**
+   * Emits meeting:stoppedSharingLocal
+   * @private
+   * @returns {undefined}
+   * @memberof Meeting
+   */
+  private triggerStoppedSharing = () => {
+    if (!this.mediaProperties.hasLocalShareTrack()) {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'handleShareTrackEnded',
+        },
+        EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+        {
+          reason: SHARE_STOPPED_REASON.TRACK_ENDED,
+        }
+      );
+    }
   };
 
   /**
@@ -6474,7 +6616,7 @@ export default class Meeting extends StatelessWebexPlugin {
   clearMeetingData = () => {
     this.audio = null;
     this.video = null;
-    this.isSharing = false;
+    this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     if (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
       this.shareStatus = SHARE_STATUS.NO_SHARE;
     }
@@ -6658,7 +6800,7 @@ export default class Meeting extends StatelessWebexPlugin {
         localTracks: {
           audio: this.mediaProperties.audioTrack?.underlyingTrack || null,
           video: this.mediaProperties.videoTrack?.underlyingTrack || null,
-          screenShareVideo: this.mediaProperties.shareTrack?.underlyingTrack || null,
+          screenShareVideo: this.mediaProperties.shareVideoTrack?.underlyingTrack || null,
         },
         direction: {
           audio: Media.getDirection(
@@ -6758,9 +6900,15 @@ export default class Meeting extends StatelessWebexPlugin {
     let floorRequestNeeded = false;
 
     if (tracks.screenShare?.video) {
-      await this.setLocalShareTrack(tracks.screenShare?.video);
+      await this.setLocalShareVideoTrack(tracks.screenShare?.video);
 
-      floorRequestNeeded = true;
+      floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
+    }
+
+    if (this.isMultistream && tracks.screenShare?.audio) {
+      await this.setLocalShareAudioTrack(tracks.screenShare.audio);
+
+      floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }
 
     if (tracks.microphone) {
@@ -6779,7 +6927,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
-      await this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
+      await this.enqueueScreenShareFloorRequest();
     }
   }
 
@@ -6795,13 +6943,12 @@ export default class Meeting extends StatelessWebexPlugin {
     const promises = [];
 
     for (const track of tracks.filter((t) => !!t)) {
-      if (track === this.mediaProperties.shareTrack) {
-        try {
-          this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
-        } catch (e) {
-          // nothing to do here, error is logged already inside releaseScreenShareFloor()
-        }
-        promises.push(this.setLocalShareTrack(undefined));
+      if (track === this.mediaProperties.shareVideoTrack) {
+        promises.push(this.setLocalShareVideoTrack(undefined));
+      }
+
+      if (track === this.mediaProperties.shareAudioTrack) {
+        promises.push(this.setLocalShareAudioTrack(undefined));
       }
 
       if (track === this.mediaProperties.audioTrack) {
@@ -6818,5 +6965,16 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     await Promise.all(promises);
+
+    // we're allowing for the SDK to support just audio share as well
+    // so a share could be active with only video, only audio, or both
+    // we're only releasing the floor if both tracks have ended
+    if (!this.mediaProperties.hasLocalShareTrack()) {
+      try {
+        this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+      } catch (e) {
+        // nothing to do here, error is logged already inside releaseScreenShareFloor()
+      }
+    }
   }
 }

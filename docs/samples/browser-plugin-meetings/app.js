@@ -634,7 +634,8 @@ const meetingStreamsLocalVideo = document.querySelector('#local-video');
 const meetingStreamsLocalAudio = document.querySelector('#local-audio');
 const meetingStreamsRemoteVideo = document.querySelector('#remote-video');
 const meetingStreamsRemoteAudio = document.querySelector('#remote-audio');
-const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
+const meetingStreamsLocalShareVideo = document.querySelector('#local-screenshare-video');
+const meetingStreamsLocalShareAudio = document.querySelector('#local-screenshare-audio');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
 const layoutWidthInp = document.querySelector('#layout-width');
 const layoutHeightInp = document.querySelector('#layout-height');
@@ -690,7 +691,8 @@ function getMediaSettings() {
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
   meetingStreamsLocalAudio,
-  meetingStreamsLocalShare,
+  meetingStreamsLocalShareVideo,
+  meetingStreamsLocalShareAudio,
   meetingStreamsRemoteVideo,
   meetingStreamsRemoteShare,
   meetingStreamsRemoteAudio
@@ -943,7 +945,7 @@ const localMedia = {
   cameraTrack: undefined,
   screenShare: {
     video: undefined,
-    audio: undefined, // SPARK-399690
+    audio: undefined,
   },
   videoConstraints: {
     [localVideoQuality["360p"]]: { width: 640, height: 360 },
@@ -1192,26 +1194,53 @@ async function startScreenShare() {
   // Using async/await to make code more readable
   console.log('MeetingControls#startScreenShare()');
   try {
-    const localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
+    let localShareVideoTrack, localShareAudioTrack;
+    if (isMultistream) {
+      [localShareVideoTrack, localShareAudioTrack] = await webex.meetings.mediaHelpers.createDisplayTrackWithAudio();
+    } else {
+      localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
+    }
 
-    localMedia.screenShare.video = localShareVideoTrack;
-    localMedia.screenShare.video.on('published-state-update', ({isPublished}) => {
-      if (!isPublished) {
-        console.log('MeetingControls#startScreenShare() :: local share video track unpublished, stopping it');
+    if (localShareVideoTrack) {
+      localMedia.screenShare.video = localShareVideoTrack;
+      localMedia.screenShare.video.on('published-state-update', ({isPublished}) => {
+        if (!isPublished) {
+          console.log('MeetingControls#startScreenShare() :: local share video track unpublished, stopping it');
 
-        localMedia.screenShare.video.stop();
-        localMedia.screenShare.video = undefined;
+          localMedia.screenShare.video.stop();
+          localMedia.screenShare.video = undefined;
 
-        meetingStreamsLocalShare.srcObject = null;
-      }
-    });
+          meetingStreamsLocalShareVideo.srcObject = null;
+        }
+      });
 
-    meetingStreamsLocalShare.srcObject = localShareVideoTrack.underlyingStream;
+      meetingStreamsLocalShareVideo.srcObject = localShareVideoTrack.underlyingStream;
 
-    console.log('MeetingControls#startScreenShare() :: publishing share video track');
+      console.log('MeetingControls#startScreenShare() :: publishing share video track');
+    }
+    
+    if (localShareAudioTrack) {
+      localMedia.screenShare.audio = localShareAudioTrack;
+      localMedia.screenShare.audio.on('published-state-update', ({isPublished}) => {
+        if (!isPublished) {
+          console.log('MeetingControls#startScreenShare() :: local share audio track unpublished, stopping it');
+
+          localMedia.screenShare.audio.stop();
+          localMedia.screenShare.audio = undefined;
+
+          meetingStreamsLocalShareAudio.srcObject = null;
+        }
+      })
+      
+      meetingStreamsLocalShareAudio.srcObject = localShareAudioTrack.underlyingStream;
+
+      console.log('MeetingControls#startScreenShare() :: publishing share audio track');
+    }
+    
     await meeting.publishTracks({
       screenShare: {
         video: localShareVideoTrack,
+        audio: localShareAudioTrack,
       }
     });
 
