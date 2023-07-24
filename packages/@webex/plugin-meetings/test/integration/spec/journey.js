@@ -57,6 +57,7 @@ const waitForPublished = (track, expectedPublished, description) => {
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('journey', () => {
+    integrationTestUtils.logTestsStartingAndEnding();
     before(() =>
       webexTestUsers
         .generateTestUsers({

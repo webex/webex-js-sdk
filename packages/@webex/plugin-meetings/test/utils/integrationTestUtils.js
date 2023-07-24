@@ -1,6 +1,16 @@
 import {assert} from '@webex/test-helper-chai';
 import {Defer} from '@webex/common';
 
+const logTestsStartingAndEnding = () => {
+  beforeEach(function() {
+    console.log(`==== TEST STARTING: '${this.currentTest?.title}'`);
+  });
+
+  afterEach(function() {
+    console.log(`==== TEST FINISHED: '${this.currentTest?.title}' test result:${this.currentTest?.state}`);
+  });
+}
+
 const addMedia = async (user, options = {}) => {
 
   const {microphone, camera} = options;
@@ -42,5 +52,6 @@ const addMedia = async (user, options = {}) => {
 };
 
 export default {
-  addMedia
+  addMedia,
+  logTestsStartingAndEnding
 };

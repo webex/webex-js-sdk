@@ -33,6 +33,8 @@ skipInNode(describe)('plugin-meetings', () => {
   // `addMedia()` fails on FF, this needs to be debuged and fixed in a later change
   if (!isBrowser('firefox')) {
     describe('converged-space-meeting', () => {
+      integrationTestUtils.logTestsStartingAndEnding();
+
       let shouldSkip = false;
       let users, alice, bob, chris;
       let meeting = null;

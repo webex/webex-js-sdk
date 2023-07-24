@@ -32,6 +32,8 @@ const localTracks = {
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
+    integrationTestUtils.logTestsStartingAndEnding();
+
     let space = null;
 
     before(() =>
@@ -65,7 +67,7 @@ skipInNode(describe)('plugin-meetings', () => {
         .then((conversation) => {
           assert.lengthOf(conversation.participants.items, 3);
           assert.lengthOf(conversation.activities.items, 1);
-          console.log('CONVERSATION', conversation);
+          console.log('CONVERSATION url:', conversation.url);
           space = conversation;
         })
         .then(async () => {
@@ -280,9 +282,13 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     it('check for meeting cleanup', () => {
-      console.log('Alice ', alice.webex.meetings.getAllMeetings());
-      console.log('Bob ', bob.webex.meetings.getAllMeetings());
-      console.log('Chris ', chris.webex.meetings.getAllMeetings());
+      const dumpMeetings = (debugText, user) => {
+        console.log(`${debugText}: ${JSON.stringify(Object.keys(user.webex.meetings.getAllMeetings()))}`);
+      }
+
+      dumpMeetings('Alice', alice);
+      dumpMeetings('Bob', bob);
+      dumpMeetings('Chris', chris);
       assert.notExists(
         alice.webex.meetings.getMeetingByType('correlationId', alice.meeting.correlationId),
         'alice meeting exists'

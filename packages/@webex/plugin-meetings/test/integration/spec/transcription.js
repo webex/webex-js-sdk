@@ -1,8 +1,11 @@
 import Transcription from '@webex/plugin-meetings/dist/transcription';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import integrationTestUtils from '../../utils/integrationTestUtils';
 
 describe('transcription index', () => {
+  integrationTestUtils.logTestsStartingAndEnding();
+
   let webSocketUrl, members, sessionId, token, transcription;
 
   beforeEach(() => {
