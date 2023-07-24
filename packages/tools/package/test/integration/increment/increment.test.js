@@ -94,6 +94,7 @@ describe('increment', () => {
 
       spies.package = {
         inspect: spyOn(Package.prototype, 'inspect').and.callFake(function func() { return Promise.resolve(this); }),
+        syncVersion: spyOn(Package.prototype, 'syncVersion').and.callFake(function func() { return Promise.resolve(this); }),
         incrementVersion: spyOn(Package.prototype, 'incrementVersion').and.callFake(function func() { return this; }),
         apply: spyOn(Package.prototype, 'apply').and.callFake(function func() { return Promise.resolve(this); }),
       };
@@ -125,6 +126,16 @@ describe('increment', () => {
           });
         });
     });
+
+    it('should call "package.inspect()" for each located package', () => increment.handler(options)
+      .then(() => {
+        expect(spies.package.inspect).toHaveBeenCalledTimes(listResolve.length);
+      }));
+
+    it('should call "package.syncVersion()" for each located package', () => increment.handler(options)
+      .then(() => {
+        expect(spies.package.syncVersion).toHaveBeenCalledTimes(listResolve.length);
+      }));
 
     it('should not increment any packages when the version details provided are undefined', () => increment.handler({})
       .then((results) => {
