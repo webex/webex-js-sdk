@@ -202,6 +202,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.listenTo(this.webex.internal.mercury, 'event:locus.approval_request', (event) => {
       if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
+        const receiverId = receivers?.[0]?.participantId;
         const isReceiver = !!receivers?.find((r) => r.participantId === this.selfParticipantId);
         const senderId = initiator?.participantId;
         const isSender = senderId === this.selfParticipantId;
@@ -213,6 +214,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           isReceiver,
           isSender,
           senderId,
+          receiverId,
           url,
         });
       }

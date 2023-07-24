@@ -347,6 +347,7 @@ describe('plugin-meetings', () => {
         interpretation.set('selfParticipantId', 'p123');
 
         let called = false;
+        const triggerSpy = sinon.spy(interpretation, 'trigger');
 
         interpretation.listenTo(interpretation, 'HANDOFF_REQUESTS_ARRIVED', () => {
           called = true;
@@ -367,6 +368,14 @@ describe('plugin-meetings', () => {
         });
 
         assert.isTrue(called);
+        assert.calledWithExactly(triggerSpy, 'HANDOFF_REQUESTS_ARRIVED', {
+          actionType: 'OFFERED',
+          isReceiver: true,
+          isSender: true,
+          senderId: 'p123',
+          receiverId: 'p123',
+          url: 'testUrl',
+        });
       });
 
       it('not triggers handoff update event when the approval is not related with self', () => {
