@@ -119,7 +119,9 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
+    log.info(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
     this.activeMobiusUrl = url;
+    this.callManager.updateActiveMobius(url);
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
@@ -474,6 +476,10 @@ export class Registration implements IRegistration {
     }
   }
 
+  public getDeviceInfo(): IDeviceInfo {
+    return this.deviceInfo;
+  }
+
   /**
    * .
    *
@@ -485,11 +491,11 @@ export class Registration implements IRegistration {
     return this.registrationStatus === MobiusStatus.ACTIVE;
   }
 
-  public getRegistrationStatus(): MobiusStatus {
+  public getStatus(): MobiusStatus {
     return this.registrationStatus;
   }
 
-  public setRegistrationStatus(value: MobiusStatus) {
+  public setStatus(value: MobiusStatus) {
     this.registrationStatus = value;
   }
 
@@ -760,7 +766,7 @@ export class Registration implements IRegistration {
             );
 
             if (abort || keepAliveRetryCount >= 5) {
-              this.setRegistrationStatus(MobiusStatus.DEFAULT);
+              this.setStatus(MobiusStatus.DEFAULT);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
               this.emitter(EVENT_KEYS.UNREGISTERED);
@@ -804,7 +810,7 @@ export class Registration implements IRegistration {
     }
 
     this.clearKeepaliveTimer();
-    this.setRegistrationStatus(MobiusStatus.DEFAULT);
+    this.setStatus(MobiusStatus.DEFAULT);
   }
 
   /**
@@ -861,8 +867,7 @@ export class Registration implements IRegistration {
       const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${restoreData.devices[0].deviceId}`;
 
       const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
-
-      this.activeMobiusUrl = uri;
+      this.setActiveMobiusUrl(uri);
       this.registrationStatus = MobiusStatus.ACTIVE;
 
       return true;

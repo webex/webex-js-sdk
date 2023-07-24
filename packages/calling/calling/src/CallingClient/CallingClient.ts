@@ -114,7 +114,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
 
-    this.registration.setRegistrationStatus(MobiusStatus.DEFAULT);
+    this.registration.setStatus(MobiusStatus.DEFAULT);
     this.registerSessionsListener();
 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
@@ -453,7 +453,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   public async register() {
     await this.mutex.runExclusive(async () => {
-      this.registration.setRegistrationStatus(MobiusStatus.DEFAULT);
+      this.registration.setStatus(MobiusStatus.DEFAULT);
       this.emit(EVENT_KEYS.CONNECTING);
       await this.getMobiusServers();
       this.registration.setMobiusServers(this.primaryMobiusUris, this.backupMobiusUris);
@@ -491,12 +491,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   /**
    *
    */
-  public getRegistrationStatus = (): MobiusStatus => this.registration.getRegistrationStatus();
+  public getRegistrationStatus = (): MobiusStatus => this.registration.getStatus();
 
   /**
    *
    */
-  public getDeviceId = (): MobiusDeviceId | undefined => this.deviceInfo.device?.deviceId;
+  public getDeviceId = (): MobiusDeviceId | undefined =>
+    this.registration.getDeviceInfo().device?.deviceId;
 
   /**
    * @param callId -.
@@ -525,7 +526,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         call = this.callManager.createCall(
           formattedDest,
           CallDirection.OUTBOUND,
-          this.deviceInfo.device?.deviceId as string
+          this.registration.getDeviceInfo().device?.deviceId as string
         );
         log.log(`New call created, callId: ${call.getCallId()}`, {});
       } else {

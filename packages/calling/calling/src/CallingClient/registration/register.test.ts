@@ -118,7 +118,7 @@ describe('Registration Tests', () => {
       method: 'POST',
     });
 
-    expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+    expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
     expect(callingClientEmitter).toHaveBeenCalledTimes(2);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.REGISTERED, mockPostResponse);
@@ -144,7 +144,7 @@ describe('Registration Tests', () => {
       MobiusStatus.DEFAULT
     );
 
-    expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+    expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
     expect(callingClientEmitter).toHaveBeenCalledTimes(2);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.ERROR, undefined, error);
@@ -167,7 +167,7 @@ describe('Registration Tests', () => {
 
     global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-    expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+    expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
     await reg.triggerRegistration();
     expect(webex.request).toBeCalledTimes(2);
     expect(webex.request).toBeCalledWith({
@@ -183,7 +183,7 @@ describe('Registration Tests', () => {
     expect(logSpy).toHaveBeenCalledWith('Registration restoration in progress.', expect.anything());
     expect(logSpy).toHaveBeenCalledWith('Registration restored successfully.', expect.anything());
 
-    expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+    expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
     expect(callingClientEmitter).toHaveBeenCalledTimes(3);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
     expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.REGISTERED, mockPostResponse);
@@ -198,7 +198,7 @@ describe('Registration Tests', () => {
         .mockRejectedValueOnce(failurePayload)
         .mockResolvedValueOnce(successPayload);
 
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
       await reg.triggerRegistration();
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
@@ -214,7 +214,7 @@ describe('Registration Tests', () => {
         method: 'POST',
         uri: `${mobiusUris.backup[0]}device`,
       });
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
       /* Active Url must match with the backup url as per the test */
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
     });
@@ -224,7 +224,7 @@ describe('Registration Tests', () => {
       // try the primary twice and register successfully with backup servers
       webex.request.mockRejectedValue(failurePayload);
 
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
       await reg.triggerRegistration();
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
@@ -253,7 +253,7 @@ describe('Registration Tests', () => {
         method: 'POST',
         uri: `${mobiusUris.backup[1]}device`,
       });
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
     });
   });
 
@@ -279,7 +279,7 @@ describe('Registration Tests', () => {
 
       /* Active Url must match with the backup url as per the test */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
     });
 
     afterEach(() => {
@@ -306,7 +306,7 @@ describe('Registration Tests', () => {
 
       expect(failbackRetry429Spy).toBeCalledOnceWith();
       expect(reg.failback429RetryAttempts).toBe(0);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
       expect(restartSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
       expect(reg.failbackTimer).toBe(undefined);
@@ -327,7 +327,7 @@ describe('Registration Tests', () => {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(restartSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
@@ -353,7 +353,7 @@ describe('Registration Tests', () => {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(restartSpy).not.toBeCalled();
       expect(reg.failbackTimer).toBe(undefined);
@@ -376,7 +376,7 @@ describe('Registration Tests', () => {
       });
       /* Active Url should still match backup url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(restartSpy).not.toBeCalled();
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
@@ -399,7 +399,7 @@ describe('Registration Tests', () => {
 
       /* Active Url must now match with the primary url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.primary[0]);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(reg.failbackTimer).toBe(undefined);
       expect(restoreSpy).not.toBeCalled();
       expect(reg.rehomingIntervalMin).toBe(mockPostResponse.rehomingIntervalMin);
@@ -436,7 +436,7 @@ describe('Registration Tests', () => {
 
       /* Active Url must now match with the primary url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.primary[0]);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(reg.failbackTimer).toBe(undefined);
 
       expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
@@ -465,7 +465,7 @@ describe('Registration Tests', () => {
 
       /* Active Url should still match backup url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(restoreSpy).not.toBeCalled();
       expect(restartSpy).not.toBeCalled();
 
@@ -491,7 +491,7 @@ describe('Registration Tests', () => {
       postRegistrationSpy.mockResolvedValueOnce(successPayload);
       jest.useFakeTimers();
       await reg.triggerRegistration();
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
     });
 
     afterEach(() => {
@@ -549,7 +549,7 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
       });
 
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(reg.keepaliveTimer).toBe(timer);
       expect(callingClientEmitter).toHaveBeenNthCalledWith(1, EVENT_KEYS.RECONNECTING);
       expect(callingClientEmitter).toHaveBeenNthCalledWith(2, EVENT_KEYS.RECONNECTED);
@@ -572,7 +572,7 @@ describe('Registration Tests', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
 
       const timer = reg.keepaliveTimer;
 
@@ -584,7 +584,7 @@ describe('Registration Tests', () => {
       // sendKeepAlive tries to retry 5 times before accepting failure
       // later 2 attempts to register with primary server
       expect(handleErrorSpy).toBeCalledTimes(7);
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
@@ -631,7 +631,7 @@ describe('Registration Tests', () => {
       /* successful registration */
       // webex.request.mockResolvedValue(successPayload);
 
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
 
       const url = 'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1';
 
@@ -645,7 +645,7 @@ describe('Registration Tests', () => {
 
       expect(clearIntervalSpy).toBeCalledOnceWith(timer);
       expect(handleErrorSpy).toBeCalledTimes(5);
-      expect(reg.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restartRegSpy).not.toBeCalled();
@@ -672,7 +672,7 @@ describe('Registration Tests', () => {
         .mockRejectedValueOnce(failurePayload)
         .mockResolvedValue(successPayload);
 
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
 
       const timer = reg.keepaliveTimer;
 
@@ -681,7 +681,7 @@ describe('Registration Tests', () => {
       await flushPromises();
 
       expect(webex.request).toBeCalledTimes(3);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(handleErrorSpy).toBeCalledTimes(2);
       expect(clearIntervalSpy).not.toHaveBeenCalled();
       expect(reg.keepaliveTimer).toBe(timer);
@@ -700,14 +700,14 @@ describe('Registration Tests', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
 
       /* send one keepalive */
       jest.advanceTimersByTime(mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
       expect(clearIntervalSpy).toBeCalledTimes(1);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(reconnectSpy).not.toBeCalled();
       expect(restoreSpy).not.toBeCalled();
       expect(restartRegSpy).not.toBeCalled();
@@ -771,7 +771,7 @@ describe('Registration Tests', () => {
       expect(handleErrorSpy).toBeCalledTimes(5);
       expect(reg.keepaliveTimer).toStrictEqual(undefined);
       expect(reg.failbackTimer).toStrictEqual(undefined);
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(callingClientEmitter).toHaveBeenLastCalledWith(EVENT_KEYS.UNREGISTERED);
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).not.toBeCalled();
@@ -789,7 +789,7 @@ describe('Registration Tests', () => {
       await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
 
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       expect(reconnectSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
       expect(restoreSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
       expect(restartRegSpy).not.toBeCalled();
@@ -808,7 +808,7 @@ describe('Registration Tests', () => {
       postRegistrationSpy.mockResolvedValueOnce(successPayload);
       jest.useFakeTimers();
       await reg.triggerRegistration();
-      expect(reg.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
       reg[NETWORK_CHANGE_DETECTION_UTIL]();
     });
 

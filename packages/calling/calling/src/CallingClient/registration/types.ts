@@ -15,9 +15,9 @@ export interface IRegistration {
   setMobiusServers: (primaryMobiusUris: string[], backupMobiusUris: string[]) => void;
   triggerRegistration: () => Promise<void>;
   isDeviceRegistered: () => boolean;
-  setRegistrationStatus: (value: MobiusStatus) => void;
-  getRegistrationStatus: () => MobiusStatus;
-
+  setStatus: (value: MobiusStatus) => void;
+  getStatus: () => MobiusStatus;
+  getDeviceInfo: () => IDeviceInfo;
   startKeepaliveTimer: (url: string, interval: number) => void;
   clearKeepaliveTimer: () => void;
   deregister: () => void;
