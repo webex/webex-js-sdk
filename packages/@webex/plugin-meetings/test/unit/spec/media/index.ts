@@ -17,6 +17,14 @@ describe('createMediaConnection', () => {
     id: 'video track',
     underlyingTrack: 'underlying video track',
   };
+  const fakeShareVideoTrack = {
+    id: 'share video track',
+    underlyingTrack: 'underlying share video track',
+  };
+  const fakeShareAudioTrack = {
+    id: 'share audio track',
+    underlyingTrack: 'underlying share audio track',
+  };
 
   afterEach(() => {
     sinon.restore();
@@ -44,7 +52,8 @@ describe('createMediaConnection', () => {
         },
         audioTrack: fakeAudioTrack,
         videoTrack: fakeVideoTrack,
-        shareTrack: null,
+        shareVideoTrack: null,
+        shareAudioTrack: null,
       },
       remoteQualityLevel: 'HIGH',
       enableRtx: ENABLE_RTX,
@@ -257,7 +266,8 @@ describe('createMediaConnection', () => {
         },
         audioTrack: fakeAudioTrack,
         videoTrack: null,
-        shareTrack: fakeVideoTrack,
+        shareVideoTrack: fakeShareVideoTrack,
+        shareAudioTrack: fakeShareAudioTrack,
       },
       remoteQualityLevel: 'HIGH',
       enableRtx: ENABLE_RTX,
@@ -288,7 +298,7 @@ describe('createMediaConnection', () => {
         localTracks: {
           audio: fakeAudioTrack.underlyingTrack,
           video: undefined,
-          screenShareVideo: fakeVideoTrack.underlyingTrack,
+          screenShareVideo: fakeShareVideoTrack.underlyingTrack,
         },
         direction: {
           audio: 'sendrecv',

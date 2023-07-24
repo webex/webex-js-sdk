@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.174](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.173...v3.0.0-beta.174) (2023-07-21)
+
+
+### Features
+
+* **internal-plugin-metrics:** fix latency bugs ([#2970](https://github.com/webex/webex-js-sdk/issues/2970)) ([a8fc5b2](https://github.com/webex/webex-js-sdk/commit/a8fc5b2564f173ea0dc94b22d0c5f7d1e61a841f))
+
+## [3.0.0-beta.173](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.172...v3.0.0-beta.173) (2023-07-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** dialout left reason ([#2963](https://github.com/webex/webex-js-sdk/issues/2963)) ([63fa3b8](https://github.com/webex/webex-js-sdk/commit/63fa3b83300d4bde6d6033a77f6e653a08ab7d1f))
+
+## [3.0.0-beta.172](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.171...v3.0.0-beta.172) (2023-07-21)
+
+
+### Features
+
+* extract media status on members from nested participant ([#2965](https://github.com/webex/webex-js-sdk/issues/2965)) ([6688c84](https://github.com/webex/webex-js-sdk/commit/6688c846b9b469553dc7a51d1c929148ddde9240))
+
+## [3.0.0-beta.171](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.170...v3.0.0-beta.171) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** add screenshare audio ([#2938](https://github.com/webex/webex-js-sdk/issues/2938)) ([f825042](https://github.com/webex/webex-js-sdk/commit/f82504232b85d4c29dbe72ecb2cff304ee6a47f7))
+
+## [3.0.0-beta.170](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.169...v3.0.0-beta.170) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** extract user policy from permission token ([#2942](https://github.com/webex/webex-js-sdk/issues/2942)) ([55fee4d](https://github.com/webex/webex-js-sdk/commit/55fee4dd2723c739f6c361eb9526465da560dda3))
+
+
+### Bug Fixes
+
+* **conversation:** use file.url instead of file.scr.loc for download ([#2925](https://github.com/webex/webex-js-sdk/issues/2925)) ([47fa794](https://github.com/webex/webex-js-sdk/commit/47fa794bdc6aed052957dc34a292af3cbe49f59c))
+
 ## [3.0.0-beta.169](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.168...v3.0.0-beta.169) (2023-07-19)
 
 
