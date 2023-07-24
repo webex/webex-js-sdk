@@ -16,20 +16,11 @@ import {DssTimeoutError} from '../../../src/dss-errors';
 
 chai.use(chaiAsPromised);
 describe('plugin-dss', () => {
-  let clock;
-
-  beforeEach(() => {
-    clock = sinon.useFakeTimers();
-  });
-
-  afterEach(() => {
-    clock.restore();
-  });
-
   describe('DSS', () => {
     let webex;
     let uuidStub;
     let mercuryCallbacks;
+    let clock;
 
     beforeEach(() => {
       webex = MockWebex({
@@ -55,10 +46,13 @@ describe('plugin-dss', () => {
         }),
         off: sinon.spy(),
       };
+
+      clock = sinon.useFakeTimers();
     });
 
     afterEach(() => {
       uuidStub.restore();
+      clock.restore();
     });
 
     describe('#register()', () => {
@@ -255,7 +249,7 @@ describe('plugin-dss', () => {
           bodyParams: {},
         });
 
-        clock.tick(webex.config.dss.requestTimeout);
+        await clock.tickAsync(1000);
 
         return assert.isRejected(
           promise,
@@ -274,7 +268,7 @@ describe('plugin-dss', () => {
           bodyParams: {},
         });
 
-        clock.tick(500);
+        await clock.tickAsync(500);
 
         return assert.isRejected(
           promise,
@@ -293,7 +287,7 @@ describe('plugin-dss', () => {
           bodyParams: {},
         });
 
-        clock.tick(499);
+        await clock.tickAsync(499);
 
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult', {entitiesNotFound: ['test id']})
@@ -656,7 +650,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['id1']},
         });
 
-        clock.tick(webex.config.dss.requestTimeout);
+        await clock.tickAsync(1000);
 
         return assert.isRejected(
           promise,
@@ -675,7 +669,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['id1']},
         });
 
-        clock.tick(500);
+        await clock.tickAsync(500);
 
         return assert.isRejected(
           promise,
@@ -694,7 +688,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['id1']},
         });
 
-        clock.tick(499);
+        await clock.tickAsync(499);
 
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult', {entitiesNotFound: ['test id']})
@@ -776,7 +770,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['email1']},
         });
 
-        clock.tick(webex.config.dss.requestTimeout);
+        await clock.tickAsync(1000);
 
         return assert.isRejected(
           promise,
@@ -795,7 +789,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['email1']},
         });
 
-        clock.tick(500);
+        await clock.tickAsync(500);
 
         return assert.isRejected(
           promise,
@@ -814,7 +808,7 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['email1']},
         });
 
-        clock.tick(499);
+        await clock.tickAsync(499);
 
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult', {}) // entitiesNotFound isn't returned for email
@@ -899,7 +893,7 @@ describe('plugin-dss', () => {
           },
         });
 
-        clock.tick(webex.config.dss.requestTimeout);
+        await clock.tickAsync(1000);
 
         return assert.isRejected(
           promise,
@@ -927,7 +921,7 @@ describe('plugin-dss', () => {
           },
         });
 
-        clock.tick(500);
+        await clock.tickAsync(500);
 
         return assert.isRejected(
           promise,
@@ -955,7 +949,7 @@ describe('plugin-dss', () => {
           },
         });
 
-        clock.tick(499);
+        await clock.tickAsync(499);
 
         mercuryCallbacks['event:directory.search'](
           createData(requestId, 1, false, 'directoryEntities', ['data1'])
@@ -994,7 +988,7 @@ describe('plugin-dss', () => {
           createData(requestId, 0, false, 'directoryEntities', ['data0'])
         );
 
-        clock.tick(500);
+        await clock.tickAsync(500);
 
         return assert.isRejected(
           promise,
@@ -1260,7 +1254,7 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response2);
       });
 
-      it('fails when mercury does not response but only the affected request, not all if them ', async () => {
+      it('fails when mercury does not response but only the affected request', async () => {
         const resource1 = '/lookup/orgid/userOrgId/identities';
         const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
 
@@ -1310,7 +1304,7 @@ describe('plugin-dss', () => {
           lookupValue: 'id4',
         });
 
-        clock.tick(1000);
+        await clock.tickAsync(1000);
 
         return Promise.all([
           assert.isFulfilled(result1),

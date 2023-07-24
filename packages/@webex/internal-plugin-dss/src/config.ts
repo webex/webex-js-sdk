@@ -5,7 +5,7 @@
 export default {
   dss: {
     /**
-     * Timeout before DSS request fails.
+     * Timeout before DSS request fails, in milliseconds.
      * @type {Number}
      */
     requestTimeout: 1000,
