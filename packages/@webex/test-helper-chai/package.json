@@ -1,6 +1,5 @@
 {
   "name": "@webex/test-helper-chai",
-  "version": "2.59.0",
   "description": "chai extended with webex specific assertions",
   "license": "MIT",
   "main": "dist/index.js",

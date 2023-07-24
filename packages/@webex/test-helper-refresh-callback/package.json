@@ -1,6 +1,5 @@
 {
   "name": "@webex/test-helper-refresh-callback",
-  "version": "2.59.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
