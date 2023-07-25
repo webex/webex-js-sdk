@@ -6096,7 +6096,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId,annotationInfo:undefined},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId , annotationInfo:undefined},
                     });
                   }
                 }
