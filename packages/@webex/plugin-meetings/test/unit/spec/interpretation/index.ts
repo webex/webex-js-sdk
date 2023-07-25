@@ -12,6 +12,7 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       // @ts-ignore
       webex = new MockWebex({});
+      webex.internal.mercury.on = sinon.stub();
       interpretation = new SimultaneousInterpretation({}, {parent: webex});
       interpretation.locusUrl = 'locusUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
@@ -50,6 +51,14 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#approvalUrlUpdate', () => {
+      it('sets the approval url', () => {
+        interpretation.approvalUrlUpdate('newUrl');
+
+        assert.equal(interpretation.approvalUrl, 'newUrl');
+      });
+    });
+
     describe('#updateCanManageInterpreters', () => {
       it('update canManageInterpreters', () => {
         interpretation.updateCanManageInterpreters(true);
@@ -62,6 +71,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateHostSIEnabled', () => {
+      it('update hostSI feature is on or off', () => {
+        interpretation.updateHostSIEnabled(true);
+
+        assert.equal(interpretation.hostSIEnabled, true);
+
+        interpretation.updateHostSIEnabled(false);
+
+        assert.equal(interpretation.hostSIEnabled, false);
+      });
+    });
+
     describe('#updateInterpretation', () => {
       const checkSILanguage = (siLanguage, expectResult) => {
         return siLanguage?.languageCode === expectResult.languageCode && siLanguage?.languageName === expectResult.languageName
@@ -69,15 +90,6 @@ describe('plugin-meetings', () => {
       it('update interpretation correctly', () => {
         interpretation.updateInterpretation({siLanguages: [{languageName: 'en', languageCode: 1}]});
         checkSILanguage(interpretation.siLanguages.en, {languageName: 'en', languageCode: 1});
-        assert.equal(interpretation.siEnabled, true);
-      });
-
-      it('check siEnable as false if input param interpretation is null/undefined', () => {
-        interpretation.updateInterpretation(null);
-        assert.equal(interpretation.siEnabled, false);
-
-        interpretation.updateInterpretation(undefined);
-        assert.equal(interpretation.siEnabled, false);
       });
     });
 
@@ -322,6 +334,235 @@ describe('plugin-meetings', () => {
 
         await interpretation.changeDirection().catch((error) => {
           assert.equal(error.toString(), 'Error: Missing self participant id');
+        });
+      });
+    });
+
+    describe('#listenToHandoffRequests', () => {
+      it('triggers handoff update event when the approval is related with self', () => {
+        const call = webex.internal.mercury.on.getCall(0);
+        const callback = call.args[1];
+
+        assert.equal(call.args[0], 'event:locus.approval_request');
+        interpretation.set('selfParticipantId', 'p123');
+
+        let called = false;
+        const triggerSpy = sinon.spy(interpretation, 'trigger');
+
+        interpretation.listenTo(interpretation, 'HANDOFF_REQUESTS_ARRIVED', () => {
+          called = true;
+        });
+
+        callback({
+          data: {
+            approval: {
+              actionType: 'OFFERED',
+              resourceType: 'SiHandover',
+              receivers: [{
+                participantId: 'p123',
+              }],
+              initiator: {participantId: 'p123'},
+              url: 'testUrl',
+            },
+          }
+        });
+
+        assert.isTrue(called);
+        assert.calledWithExactly(triggerSpy, 'HANDOFF_REQUESTS_ARRIVED', {
+          actionType: 'OFFERED',
+          isReceiver: true,
+          isSender: true,
+          senderId: 'p123',
+          receiverId: 'p123',
+          url: 'testUrl',
+        });
+      });
+
+      it('not triggers handoff update event when the approval is not related with self', () => {
+        const call = webex.internal.mercury.on.getCall(0);
+        const callback = call.args[1];
+
+        interpretation.set('selfParticipantId', 'p123');
+
+        let called = false;
+
+        interpretation.listenTo(interpretation, 'HANDOFF_REQUESTS_ARRIVED', () => {
+          called = true;
+        });
+
+        callback({
+          data: {
+            approval: {
+              actionType: 'OFFERED',
+              resourceType: 'SiHandover',
+              receivers: [{
+                participantId: 'p444',
+              }],
+              initiator: {participantId: 'p444'},
+              url: 'testUrl',
+            },
+          }
+        });
+
+        assert.isFalse(called);
+      });
+    });
+
+    describe('#handoffInterpreter', () => {
+      it('makes the request as expected', async () => {
+        interpretation.approvalUrlUpdate('approvalUrl');
+        await interpretation.handoffInterpreter('participant2');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'approvalUrl',
+          body: {
+            actionType: 'OFFERED',
+            resourceType: 'SiHandover',
+            receivers: [
+              {
+                participantId: 'participant2',
+              },
+            ],
+          },
+        });
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+        interpretation.approvalUrlUpdate('approvalUrl');
+
+        await assert.isRejected(interpretation.handoffInterpreter('p2'), mockError, 'something wrong');
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#handoffInterpreter failed',
+          mockError
+        );
+      });
+
+      it('rejects error when no target participant id', async () => {
+        LoggerProxy.logger.error = sinon.stub();
+
+        await interpretation.handoffInterpreter().catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing target participant id');
+        });
+      });
+
+      it('rejects error when no approval url', async () => {
+        LoggerProxy.logger.error = sinon.stub();
+
+        await interpretation.handoffInterpreter('p2').catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing approval url');
+        });
+      });
+    });
+
+    describe('#requestHandoff', () => {
+      it('makes the request as expected', async () => {
+        interpretation.approvalUrlUpdate('approvalUrl');
+        await interpretation.requestHandoff();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'approvalUrl',
+          body: {
+            actionType: 'REQUESTED',
+            resourceType: 'SiHandover',
+          },
+        });
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+        interpretation.approvalUrlUpdate('approvalUrl');
+
+        await assert.isRejected(interpretation.requestHandoff(), mockError, 'something wrong');
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#requestHandoff failed',
+          mockError
+        );
+      });
+
+      it('rejects error when no approval url', async () => {
+        LoggerProxy.logger.error = sinon.stub();
+
+        await interpretation.requestHandoff().catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing approval url');
+        });
+      });
+    });
+
+    describe('#acceptRequest', () => {
+      it('makes the request as expected', async () => {
+        await interpretation.acceptRequest('testUrl');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'testUrl',
+          body: {
+            actionType: 'ACCEPTED',
+          },
+        });
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+
+        await assert.isRejected(interpretation.acceptRequest('testUrl'), mockError, 'something wrong');
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#acceptRequest failed',
+          mockError
+        );
+      });
+
+      it('rejects error when no url passed', async () => {
+        LoggerProxy.logger.error = sinon.stub();
+
+        await interpretation.acceptRequest().catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing the url to accept');
+        });
+      });
+    });
+
+    describe('#declineRequest', () => {
+      it('makes the request as expected', async () => {
+        await interpretation.declineRequest('testUrl');
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PUT',
+          uri: 'testUrl',
+          body: {
+            actionType: 'DECLINED',
+          },
+        });
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+
+        await assert.isRejected(interpretation.declineRequest('testUrl'), mockError, 'something wrong');
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#declineRequest failed',
+          mockError
+        );
+      });
+
+      it('rejects error when no url passed', async () => {
+        LoggerProxy.logger.error = sinon.stub();
+
+        await interpretation.declineRequest().catch((error) => {
+          assert.equal(error.toString(), 'Error: Missing the url to decline');
         });
       });
     });

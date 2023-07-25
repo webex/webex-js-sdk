@@ -319,6 +319,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE: 'meeting:breakouts:preAssignmentsUpdate',
   MEETING_INTERPRETATION_UPDATE: 'meeting:interpretation:update',
   MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE: 'meeting:interpretation:supportLanguagesUpdate',
+  MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED: 'meeting:interpretation:handoffRequestsArrived',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
@@ -597,7 +598,15 @@ export const BREAKOUTS = {
 export const INTERPRETATION = {
   EVENTS: {
     SUPPORT_LANGUAGES_UPDATE: 'SUPPORT_LANGUAGES_UPDATE',
+    HANDOFF_REQUESTS_ARRIVED: 'HANDOFF_REQUESTS_ARRIVED',
   },
+  ACTION_TYPE: {
+    OFFERED: 'OFFERED',
+    ACCEPTED: 'ACCEPTED',
+    REQUESTED: 'REQUESTED',
+    DECLINED: 'DECLINED',
+  },
+  RESOURCE_TYPE: 'SiHandover',
 };
 
 export const LOCUSINFO = {

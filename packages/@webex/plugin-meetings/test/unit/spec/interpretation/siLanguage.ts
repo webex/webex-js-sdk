@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import SILanguage from '@webex/plugin-meetings/src/interpretation/siLanguage';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import MockWebex from '@webex/test-helper-mock-webex';
+import sinon from 'sinon';
 
 describe('plugin-meetings', () => {
   describe('SILanguage', () => {
@@ -11,6 +12,7 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       // @ts-ignore
       webex = new MockWebex({});
+      webex.internal.mercury.on = sinon.stub();
       interpretation = new SimultaneousInterpretation({}, {parent: webex});
       siLanguage = new SILanguage({}, {parent: interpretation});
     });
