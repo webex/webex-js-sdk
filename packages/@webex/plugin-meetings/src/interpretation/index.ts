@@ -203,9 +203,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
         const receiverId = receivers?.[0]?.participantId;
-        const isReceiver = !!receivers?.find((r) => r.participantId === this.selfParticipantId);
+        const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
         const senderId = initiator?.participantId;
-        const isSender = senderId === this.selfParticipantId;
+        const isSender = !!senderId && senderId === this.selfParticipantId;
         if (!isReceiver && !isSender) {
           return;
         }
