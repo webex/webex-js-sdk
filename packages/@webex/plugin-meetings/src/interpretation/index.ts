@@ -18,6 +18,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
 
   props: {
     locusUrl: 'string', // appears current meeting's locus url
+    approvalUrl: 'string', // appears current meeting's approval url for handoff between interpreters
     originalLanguage: 'string', // appears current meeting's original language
     sourceLanguage: 'string', // appears self interpreter's source language
     targetLanguage: 'string', // appears self interpreter's target language
@@ -27,18 +28,18 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     selfParticipantId: 'string', // appears the self participant id
     canManageInterpreters: 'boolean', // appears the ability to manage interpreters
     supportLanguages: 'array', // appears the support languages
-    siEnabled: 'boolean', // appears the meeting enabled SI
+    hostSIEnabled: 'boolean', // appears the meeting host feature of SI enabled
   },
   derived: {
     shouldQuerySupportLanguages: {
       cache: false,
-      deps: ['canManageInterpreters', 'siEnabled'],
+      deps: ['canManageInterpreters', 'hostSIEnabled'],
       /**
        * Returns should query support languages or not
        * @returns {boolean}
        */
       fn() {
-        return !!(this.canManageInterpreters && this.siEnabled);
+        return !!(this.canManageInterpreters && this.hostSIEnabled);
       },
     },
   },
@@ -52,6 +53,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
         this.querySupportLanguages();
       }
     });
+    this.listenToHandoffRequests();
   },
 
   /**
@@ -70,6 +72,14 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.set('locusUrl', locusUrl);
   },
   /**
+   * Update the approval url for handoff
+   * @param {string} approvalUrl // approval url
+   * @returns {void}
+   */
+  approvalUrlUpdate(approvalUrl) {
+    this.set('approvalUrl', approvalUrl);
+  },
+  /**
    * Update whether self has capability to manage interpreters (only host can manage it)
    * @param {boolean} canManageInterpreters
    * @returns {void}
@@ -78,12 +88,19 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.set('canManageInterpreters', canManageInterpreters);
   },
   /**
+   * Update whether the meeting's host si is enabled or not
+   * @param {boolean} hostSIEnabled
+   * @returns {void}
+   */
+  updateHostSIEnabled(hostSIEnabled) {
+    this.set('hostSIEnabled', hostSIEnabled);
+  },
+  /**
    * Update the interpretation languages channels which user can choose to subscribe
    * @param {Object} interpretation
    * @returns {void}
    */
   updateInterpretation(interpretation) {
-    this.set('siEnabled', !!interpretation);
     this.siLanguages.set(interpretation?.siLanguages || []);
   },
   /**
@@ -174,6 +191,125 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       },
     }).catch((error) => {
       LoggerProxy.logger.error('Meeting:interpretation#changeDirection failed', error);
+      throw error;
+    });
+  },
+  /**
+   * Sets up a listener for handoff requests from mercury
+   * @returns {void}
+   */
+  listenToHandoffRequests() {
+    this.listenTo(this.webex.internal.mercury, 'event:locus.approval_request', (event) => {
+      if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
+        const {receivers, initiator, actionType, url} = event.data.approval;
+        const receiverId = receivers?.[0]?.participantId;
+        const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
+        const senderId = initiator?.participantId;
+        const isSender = !!senderId && senderId === this.selfParticipantId;
+        if (!isReceiver && !isSender) {
+          return;
+        }
+        this.trigger(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
+          actionType,
+          isReceiver,
+          isSender,
+          senderId,
+          receiverId,
+          url,
+        });
+      }
+    });
+  },
+  /**
+   * handoff the active interpreter role to another interpreter in same group, only the interpreter is allowed to call this api
+   * @param {string} participantId the participant id you want to hand off
+   * @returns {Promise}
+   */
+  handoffInterpreter(participantId) {
+    if (!participantId) {
+      return Promise.reject(new Error('Missing target participant id'));
+    }
+    if (!this.approvalUrl) {
+      return Promise.reject(new Error('Missing approval url'));
+    }
+
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: this.approvalUrl,
+      body: {
+        actionType: INTERPRETATION.ACTION_TYPE.OFFERED,
+        resourceType: INTERPRETATION.RESOURCE_TYPE,
+        receivers: [
+          {
+            participantId,
+          },
+        ],
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:interpretation#handoffInterpreter failed', error);
+      throw error;
+    });
+  },
+  /**
+   * the in-active interpreter request to hand off the active role to self
+   * @returns {Promise}
+   */
+  requestHandoff() {
+    if (!this.approvalUrl) {
+      return Promise.reject(new Error('Missing approval url'));
+    }
+
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: this.approvalUrl,
+      body: {
+        actionType: INTERPRETATION.ACTION_TYPE.REQUESTED,
+        resourceType: INTERPRETATION.RESOURCE_TYPE,
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:interpretation#requestHandoff failed', error);
+      throw error;
+    });
+  },
+  /**
+   * accept the request of handoff
+   * @param {String} url the url get from last approval event
+   * @returns {Promise}
+   */
+  acceptRequest(url) {
+    if (!url) {
+      return Promise.reject(new Error('Missing the url to accept'));
+    }
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: url,
+      body: {
+        actionType: INTERPRETATION.ACTION_TYPE.ACCEPTED,
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:interpretation#acceptRequest failed', error);
+      throw error;
+    });
+  },
+  /**
+   * decline the request of handoff
+   * @param {String} url the url get from last approval event
+   * @returns {Promise}
+   */
+  declineRequest(url) {
+    if (!url) {
+      return Promise.reject(new Error('Missing the url to decline'));
+    }
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: url,
+      body: {
+        actionType: INTERPRETATION.ACTION_TYPE.DECLINED,
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:interpretation#declineRequest failed', error);
       throw error;
     });
   },

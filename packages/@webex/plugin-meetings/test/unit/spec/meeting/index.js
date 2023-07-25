@@ -1335,7 +1335,7 @@ describe('plugin-meetings', () => {
               icePhase: 'JOIN_MEETING_FINAL',
               errors: [{}],
             },
-            options: {                   
+            options: {
               meetingId: meeting.id,
             },
           });
@@ -4287,7 +4287,7 @@ describe('plugin-meetings', () => {
                 icePhase: 'IN_MEETING',
                 errors: [{}],
               },
-              options: {                   
+              options: {
                 meetingId: meeting.id,
               },
             });
@@ -5108,6 +5108,9 @@ describe('plugin-meetings', () => {
           meeting.annotation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
           };
+          meeting.simultaneousInterpretation = {
+            approvalUrlUpdate: sinon.stub().returns(undefined),
+          };
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -5121,6 +5124,10 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(
             meeting.annotation.approvalUrlUpdate,
+            newLocusServices.services.approval.url,
+          );
+          assert.calledWith(
+            meeting.simultaneousInterpretation.approvalUrlUpdate,
             newLocusServices.services.approval.url,
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
@@ -5224,6 +5231,20 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setUpInterpretationListener'},
             EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
+          );
+        });
+
+        it('listens to the handoff request event from interpretation and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          const payload = {};
+          meeting.simultaneousInterpretation.trigger('HANDOFF_REQUESTS_ARRIVED', payload);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpInterpretationListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED,
+            payload
           );
         });
       });
@@ -5507,6 +5528,26 @@ describe('plugin-meetings', () => {
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
+        });
+        it('should set hostSIEnabled correctly depend on the toggle statue in site setting', () => {
+          const updateHostSIEnabledSpy = sinon.spy(meeting.simultaneousInterpretation, 'updateHostSIEnabled');
+          const mockToggleOnData = {
+            body: {
+              meetingSiteSetting: {
+                enableHostInterpreterControlSI: true,
+              }
+            }
+          };
+          meeting.parseMeetingInfo(mockToggleOnData);
+          assert.calledWith(updateHostSIEnabledSpy, true);
+
+          const mockToggleOffData = {
+            body: {
+              meetingSiteSetting: {}
+            }
+          };
+          meeting.parseMeetingInfo(mockToggleOffData);
+          assert.calledWith(updateHostSIEnabledSpy, false);
         });
       });
 
