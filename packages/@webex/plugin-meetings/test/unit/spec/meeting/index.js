@@ -5996,7 +5996,7 @@ describe('plugin-meetings', () => {
               'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
-          const generateContent = (beneficiaryId = null, disposition = null) => ({
+          const generateContent = (beneficiaryId = null, disposition = null,annotation = undefined) => ({
             beneficiaryId,
             disposition,
           });
