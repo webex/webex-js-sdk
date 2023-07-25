@@ -566,6 +566,38 @@ const MeetingUtil = {
 
     return userPolicies[feature];
   },
+
+  parseInterpretationInfo: (meeting, meetingInfo) => {
+    if (!meeting || !meetingInfo) {
+      return;
+    }
+    const siInfo = meetingInfo.simultaneousInterpretation;
+    meeting.simultaneousInterpretation.updateMeetingSIEnabled(
+      !!meetingInfo.turnOnSimultaneousInterpretation,
+      !!siInfo?.currentSIInterpreter
+    );
+    const hostSIEnabled = !!(
+      meetingInfo.turnOnSimultaneousInterpretation &&
+      meetingInfo?.meetingSiteSetting?.enableHostInterpreterControlSI
+    );
+    meeting.simultaneousInterpretation.updateHostSIEnabled(hostSIEnabled);
+
+    function renameKey(obj, oldKey, newKey) {
+      if (oldKey in obj) {
+        obj[newKey] = obj[oldKey];
+        delete obj[oldKey];
+      }
+    }
+    if (siInfo) {
+      for (const language of siInfo.siLanguages) {
+        renameKey(language, 'languageCode', 'languageName');
+        renameKey(language, 'languageGroupId', 'languageCode');
+      }
+      if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
+        meeting.simultaneousInterpretation.updateInterpretation(siInfo.siLanguages);
+      }
+    }
+  },
 };
 
 export default MeetingUtil;

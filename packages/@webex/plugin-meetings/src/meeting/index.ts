@@ -3173,9 +3173,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
-    this.simultaneousInterpretation.updateHostSIEnabled(
-      !!webexMeetingInfo?.meetingSiteSetting?.enableHostInterpreterControlSI
-    );
+    MeetingUtil.parseInterpretationInfo(this, webexMeetingInfo);
   }
 
   /**

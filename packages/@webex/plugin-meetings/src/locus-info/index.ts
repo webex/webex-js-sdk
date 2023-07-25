@@ -865,6 +865,7 @@ export default class LocusInfo extends EventsScope {
       }
 
       if (hasInterpretationChanged) {
+        console.error('hasInterpretationChanged');
         const {interpretation} = current;
         this.emitScoped(
           {
