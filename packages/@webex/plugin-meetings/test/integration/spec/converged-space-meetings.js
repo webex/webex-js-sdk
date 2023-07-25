@@ -36,7 +36,7 @@ skipInNode(describe)('plugin-meetings', () => {
       integrationTestUtils.logTestsStartingAndEnding();
 
       let shouldSkip = false;
-      let users, alice, bob, chris;
+      let alice, bob, chris;
       let meeting = null;
       let space = null;
       let mediaReadyListener = null;
@@ -44,17 +44,12 @@ skipInNode(describe)('plugin-meetings', () => {
       before('setup users', async () => {
         const userSet = await webexTestUsers.generateTestUsers({
           count: 3,
+          names: ['alice', 'bob', 'chris'],
           whistler: process.env.WHISTLER || process.env.JENKINS,
           config
         });
 
-        users = userSet;
-        alice = users[0];
-        bob = users[1];
-        chris = users[2];
-        alice.name = 'alice';
-        bob.name = 'bob';
-        chris.name = 'chris';
+        ({alice, bob, chris} = userSet);
 
         const aliceSync = testUtils.syncAndEndMeeting(alice);
         const bobSync = testUtils.syncAndEndMeeting(bob);

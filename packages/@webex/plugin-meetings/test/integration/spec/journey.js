@@ -17,7 +17,7 @@ const webexTestUsers = require('../../utils/webex-test-users');
 
 const {isBrowser} = BrowserDetection();
 
-let userSet, alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
+let alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
 
 const localTracks = {
   alice: {
@@ -62,16 +62,12 @@ skipInNode(describe)('plugin-meetings', () => {
       webexTestUsers
         .generateTestUsers({
           count: 3,
+          names: ['alice', 'bob', 'chris'],
           whistler: process.env.WHISTLER || process.env.JENKINS,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
-          alice.name = 'alice';
-          bob.name = 'bob';
-          chris.name = 'chris';
+          ({alice, bob, chris} = users);
+
           alice.webex.meetings.name = 'alice';
           bob.webex.meetings.name = 'bob';
           chris.webex.meetings.name = 'chris';

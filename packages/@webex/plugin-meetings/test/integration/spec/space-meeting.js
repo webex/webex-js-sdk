@@ -13,7 +13,7 @@ require('dotenv').config();
 
 const webexTestUsers = require('../../utils/webex-test-users');
 
-let userSet, alice, bob, chris, guest;
+let alice, bob, chris, guest;
 
 const localTracks = {
   alice: {
@@ -40,18 +40,11 @@ skipInNode(describe)('plugin-meetings', () => {
       webexTestUsers
         .generateTestUsers({
           count: 4,
+          names: ['alice', 'bob', 'chris', 'guest'],
           whistler: process.env.WHISTLER || process.env.JENKINS,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
-          guest = userSet[3];
-          alice.name = 'alice';
-          bob.name = 'bob';
-          chris.name = 'chris';
-          guest.name = 'guest';
+          ({alice, bob, chris, guest} = users);
         })
         .then(() =>
           Promise.all([testUtils.syncAndEndMeeting(alice), testUtils.syncAndEndMeeting(bob)])
@@ -312,10 +305,7 @@ skipInNode(describe)('plugin-meetings', () => {
           whistler: true,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
+          ({alice, bob, chris} = users);
         })
         .then(() => testUtils.syncAndEndMeeting(alice))
         .then(() => CMR.reserve(alice.webex, false))
@@ -387,12 +377,7 @@ skipInNode(describe)('plugin-meetings', () => {
           whistler: true,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
-          alice.name = 'alice';
-          bob.name = 'bob';
+          ({alice, bob, chris} = users);
         })
         .then(() => testUtils.syncAndEndMeeting(alice))
         .then(() => CMR.reserve(alice.webex, true))
