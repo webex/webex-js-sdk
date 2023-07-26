@@ -45,7 +45,16 @@ The following are methods available to the interpreters of a meeting.
 //Change direction of interpretation for an interpreter participant
 interpretation.changeDirection();
 
-//Handoff between interpreters, will implement them later
-interpretation.handoff(participantId)
+//Handoff between interpreters, input paramerter participantId is the target to handoff
+interpretation.handoffInterpreter(participantId);
+
+//in-active interpreter request to handoff to self
+interpretation.requestHandoff();
+
+//accept the request of handoff, input paramter url is from last approval event which generate by server side
+interpretation.acceptRequest(url);
+
+//decline the request of handoff, input paramter url is from last approval event which generate by server side
+interpretation.declineRequest(url);
 
 ```

@@ -295,7 +295,11 @@ export enum ScreenShareFloorStatus {
  * @instance
  * @type {Object}
  * @property {Boolean} memberId id of the meeting member that started screen share
+ * @property {String}  url of this content share
+ * @property {String}  shareInstanceId of this content share
+ * @property {Object}  annotation Info of this content share
  * @memberof Meeting
+ *
  */
 
 /**
@@ -1608,6 +1612,21 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
       );
     });
+
+    this.simultaneousInterpretation.on(
+      INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED,
+      (payload) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpInterpretationListener',
+          },
+          EVENT_TRIGGERS.MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED,
+          payload
+        );
+      }
+    );
   }
 
   /**
@@ -2218,6 +2237,7 @@ export default class Meeting extends StatelessWebexPlugin {
                   memberId: contentShare.beneficiaryId,
                   url: contentShare.url,
                   shareInstanceId: contentShare.shareInstanceId,
+                  annotationInfo: contentShare.annotation,
                 }
               );
             };
@@ -2306,6 +2326,7 @@ export default class Meeting extends StatelessWebexPlugin {
             memberId: contentShare.beneficiaryId,
             url: contentShare.url,
             shareInstanceId: contentShare.shareInstanceId,
+            annotationInfo: contentShare.annotation,
           }
         );
         this.members.locusMediaSharesUpdate(payload);
@@ -2374,6 +2395,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.recordingController.setSessionId(this.locusInfo?.fullState?.sessionId);
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
+      this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
     });
   }
 
@@ -3157,6 +3179,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
+    this.simultaneousInterpretation.updateHostSIEnabled(
+      !!webexMeetingInfo?.meetingSiteSetting?.enableHostInterpreterControlSI
+    );
   }
 
   /**

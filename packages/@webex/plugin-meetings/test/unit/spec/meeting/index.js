@@ -1335,7 +1335,7 @@ describe('plugin-meetings', () => {
               icePhase: 'JOIN_MEETING_FINAL',
               errors: [{}],
             },
-            options: {                   
+            options: {
               meetingId: meeting.id,
             },
           });
@@ -3831,7 +3831,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.shareVideoTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
-          
+
           const checkScreenShareAudioPublished = (track) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
@@ -3849,27 +3849,27 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
-          
+
           it('requests screen share floor and publishes the screen share audio track', async () => {
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
-            
+
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareAudioPublished(audioShareTrack);
           });
-          
+
           it('does not request screen share floor when publishing video share track if already sharing audio', async () => {
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
             assert.calledOnce(meeting.requestScreenShareFloor);
-            
+
             meeting.requestScreenShareFloor.reset();
             await meeting.publishTracks({screenShare: {video: videoShareTrack}});
             assert.notCalled(meeting.requestScreenShareFloor);
           })
-          
+
           it('does not request screen share floor when publishing audio share track if already sharing video', async () => {
             await meeting.publishTracks({screenShare: {video: videoShareTrack}});
             assert.calledOnce(meeting.requestScreenShareFloor);
-            
+
             meeting.requestScreenShareFloor.reset();
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
             assert.notCalled(meeting.requestScreenShareFloor);
@@ -4007,26 +4007,26 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkScreenShareVideoUnpublished();
           });
-          
+
           it('un-publishes the screen share audio track correctly', async () => {
             await meeting.unpublishTracks([audioShareTrack]);
-            
+
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkScreenShareAudioUnpublished();
           });
-          
+
           it('releases share floor and sets send direction to false when both screen share tracks are undefined', async () => {
             await meeting.unpublishTracks([videoShareTrack, audioShareTrack]);
-            
+
             assert.calledOnce(meeting.releaseScreenShareFloor);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
           });
-          
+
           it('does not release share floor when audio is released and video still exists', async () => {
             await meeting.unpublishTracks([audioShareTrack]);
             assert.notCalled(meeting.releaseScreenShareFloor);
           });
-          
+
           it('does not release share floor when video is released and audio still exists', async () => {
             await meeting.unpublishTracks([videoShareTrack]);
             assert.notCalled(meeting.releaseScreenShareFloor);
@@ -4287,7 +4287,7 @@ describe('plugin-meetings', () => {
                 icePhase: 'IN_MEETING',
                 errors: [{}],
               },
-              options: {                   
+              options: {
                 meetingId: meeting.id,
               },
             });
@@ -5108,6 +5108,9 @@ describe('plugin-meetings', () => {
           meeting.annotation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
           };
+          meeting.simultaneousInterpretation = {
+            approvalUrlUpdate: sinon.stub().returns(undefined),
+          };
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -5121,6 +5124,10 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(
             meeting.annotation.approvalUrlUpdate,
+            newLocusServices.services.approval.url,
+          );
+          assert.calledWith(
+            meeting.simultaneousInterpretation.approvalUrlUpdate,
             newLocusServices.services.approval.url,
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
@@ -5224,6 +5231,20 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setUpInterpretationListener'},
             EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
+          );
+        });
+
+        it('listens to the handoff request event from interpretation and triggers the update event', () => {
+          TriggerProxy.trigger.reset();
+          const payload = {};
+          meeting.simultaneousInterpretation.trigger('HANDOFF_REQUESTS_ARRIVED', payload);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setUpInterpretationListener'},
+            EVENT_TRIGGERS.MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED,
+            payload
           );
         });
       });
@@ -5507,6 +5528,26 @@ describe('plugin-meetings', () => {
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
+        });
+        it('should set hostSIEnabled correctly depend on the toggle statue in site setting', () => {
+          const updateHostSIEnabledSpy = sinon.spy(meeting.simultaneousInterpretation, 'updateHostSIEnabled');
+          const mockToggleOnData = {
+            body: {
+              meetingSiteSetting: {
+                enableHostInterpreterControlSI: true,
+              }
+            }
+          };
+          meeting.parseMeetingInfo(mockToggleOnData);
+          assert.calledWith(updateHostSIEnabledSpy, true);
+
+          const mockToggleOffData = {
+            body: {
+              meetingSiteSetting: {}
+            }
+          };
+          meeting.parseMeetingInfo(mockToggleOffData);
+          assert.calledWith(updateHostSIEnabledSpy, false);
         });
       });
 
@@ -6178,7 +6219,7 @@ describe('plugin-meetings', () => {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId},
+                      eventPayload: {memberId: beneficiaryId, url, shareInstanceId , annotationInfo:undefined},
                     });
                   }
                 }
