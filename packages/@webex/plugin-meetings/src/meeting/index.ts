@@ -295,7 +295,7 @@ export enum ScreenShareFloorStatus {
  * @instance
  * @type {Object}
  * @property {Boolean} memberId id of the meeting member that started screen share
- * @property {String}  url of the content share url
+ * @property {String}  url of this content share
  * @property {String}  shareInstanceId of this content share
  * @property {Object}  annotation Info of this content share
  * @memberof Meeting
