@@ -25,6 +25,13 @@ describe("internal-plugin-metrics", () => {
       assert.deepEqual(cdl.latencyTimestamps.get('client.alert.displayed'), now.getTime())
     });
 
+    it('should save latency correctly', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('client.alert.displayed', 10);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('client.alert.displayed'), 10)
+    });
+
     it('should save only first timestamp correctly', () => {
       assert.deepEqual(cdl.latencyTimestamps.size, 0);
       cdl.saveFirstTimestampOnly('client.alert.displayed', 10);
@@ -49,7 +56,6 @@ describe("internal-plugin-metrics", () => {
       cdl.saveTimestamp('client.alert.displayed', 1234);
       assert.deepEqual(cdl.latencyTimestamps.get('client.alert.displayed'), 1234);
       assert.deepEqual(cdl.latencyTimestamps.size, 1);
-
     })
 
     it('should clear all timestamps correctly', () => {
@@ -91,6 +97,12 @@ describe("internal-plugin-metrics", () => {
       cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
       cdl.saveTimestamp('client.locus.join.request', 20);
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
+    });
+
+    it('calculates getCallInitJoinReq correctly without click join button event', () => {
+      cdl.saveLatency('internal.call.init.join.req.latency', 12);
+      cdl.saveTimestamp('client.locus.join.request', 20);
+      assert.deepEqual(cdl.getCallInitJoinReq(), 12);
     });
 
     it('calculates getJoinReqResp correctly', () => {
@@ -136,7 +148,7 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getPageJMT correctly', () => {
-      cdl.saveTimestamp('internal.client.pageJMT.received', 10);
+      cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.getPageJMT(), 10);
     });
 
@@ -144,6 +156,12 @@ describe("internal-plugin-metrics", () => {
       cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 10);
       cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 20);
       assert.deepEqual(cdl.getClickToInterstitial(), 10);
+    });
+
+    it('calculates getClickToInterstitial without join button timestamp', () => {
+      cdl.saveLatency('internal.click.to.interstitial.latency', 5);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 20);
+      assert.deepEqual(cdl.getClickToInterstitial(), 5);
     });
 
     it('calculates getInterstitialToJoinOK correctly', () => {
