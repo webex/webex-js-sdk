@@ -190,7 +190,6 @@ function register() {
       toggleUnifiedMeetings.removeAttribute('disabled');
       unregisterElm.disabled = false;
       unregisterElm.classList.add('btn--red');
-      meetingsResolutionCheckInterval();
     })
     .catch((error) => {
       console.warn('Authentication#register() :: error registering', error);
@@ -556,6 +555,7 @@ function leaveMeeting(meetingId) {
       enableMultistreamControls(false);
       breakoutHostOperation.innerHTML = '';
       breakoutTable.innerHTML = '';
+      clearVideoResolutionCheckInterval(remoteVideoResElm, remoteVideoResolutionInterval);
     });
 }
 
@@ -960,6 +960,15 @@ function handleTrackUnpublished(track, mediaElement, debugString) {
     if (!isPublished) {
       console.log(`MeetingControls#getUserMedia() :: ${debugString} track unpublished, stopping it`);
       track.stop();
+
+      if(mediaElement.id === "local-video") {
+        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+        meetingStreamsLocalVideo.srcObject= null;
+      }
+
+      if(mediaElement.id === "local-audio") {
+        meetingStreamsLocalAudio.srcObject = null;
+      }
     }
   });
 }
@@ -1009,6 +1018,8 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
     meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
   }
 
+  localVideoResolutionCheckInterval();
+  
   console.log('MeetingControls#getUserMedia() :: got following local tracks:', localMedia.microphoneTrack, localMedia.cameraTrack);
   return;
 }
@@ -1313,12 +1324,9 @@ function clearMediaDeviceList() {
 }
 
 function getLocalMediaSettings() {
-  const meeting = getCurrentMeeting();
-
-  if (meeting && meeting.mediaProperties.videoTrack) {
-    const videoSettings = meeting.mediaProperties.videoTrack?.getSettings();
+  if (localMedia.cameraTrack) {
+    const videoSettings = localMedia.cameraTrack.getSettings();
     const {frameRate, height} = videoSettings;
-
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
 }
@@ -1329,26 +1337,43 @@ function getRemoteMediaSettings() {
   if (meeting && meeting.mediaProperties.remoteVideoTrack) {
     const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
     const {frameRate, height} = videoSettings;
-
     remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
 }
 
-let resolutionInterval;
+let localVideoResolutionInterval;
+let remoteVideoResolutionInterval;
 const INTERVAL_TIME = 3000;
 
-function meetingsResolutionCheckInterval() {
-  resolutionInterval = setInterval(() => {
+function localVideoResolutionCheckInterval() {
+  if (localVideoResolutionInterval) {
+    clearInterval(localVideoResolutionInterval);
+  }
+
+  localVideoResolutionInterval = setInterval(() => {
     getLocalMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function remoteVideoResolutionCheckInterval() {
+  if (remoteVideoResolutionInterval) {
+    clearInterval(remoteVideoResolutionInterval);
+  }
+
+  remoteVideoResolutionInterval = setInterval(() => {
     getRemoteMediaSettings();
   }, INTERVAL_TIME);
 }
 
-function clearMeetingsResolutionCheckInterval() {
-  localVideoResElm.innerText = '';
-  remoteVideoResElm.innerText = '';
-
-  clearInterval(resolutionInterval);
+function clearVideoResolutionCheckInterval(element, intervalId) {
+  element.innerText = '';
+  clearInterval(intervalId);
+  if (element.id === "local-video-resolution") {
+    localVideoResolutionInterval = null;
+  }
+  else {
+    remoteVideoResolutionInterval = null;
+  }
 }
 
 // Meeting Streams --------------------------------------------------
@@ -2157,6 +2182,8 @@ function addMedia() {
   else {
     console.log('MeetingStreams#addMedia() :: registering for media:ready and media:stopped events');
 
+    remoteVideoResolutionCheckInterval();
+
     // Wait for media in order to show video/share
     meeting.on('media:ready', (media) => {
       // eslint-disable-next-line default-case
@@ -2176,8 +2203,6 @@ function addMedia() {
 
     // remove stream if media stopped
     meeting.on('media:stopped', (media) => {
-      clearMeetingsResolutionCheckInterval();
-
       // eslint-disable-next-line default-case
       switch (media.type) {
         case 'remoteVideo':
