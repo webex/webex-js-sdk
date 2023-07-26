@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Checkout Project
         uses: actions/checkout@v3
-      
+
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
@@ -174,10 +174,10 @@ jobs:
         run: yarn
 
       - name: Increment Package Versions
-        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag {{ github.event.base_ref }}
+        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${{ github.event.base_ref }}
 
-      - name: Deploy Packages - TODO
-        run: echo "TODO - NPM Deploy Packages"
+      - name: Deploy Packages - [DRY RUN]
+        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --dry-run --tag ${{ github.event.base_ref }}
 
   publish-documentation:
     name: Publish - Documentation
