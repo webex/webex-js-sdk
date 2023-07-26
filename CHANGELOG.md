@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.177](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.176...v3.0.0-beta.177) (2023-07-26)
+
+
+### Bug Fixes
+
+* **samples:** video resolution issue fix ([#2969](https://github.com/webex/webex-js-sdk/issues/2969)) ([8b0fd39](https://github.com/webex/webex-js-sdk/commit/8b0fd392c9b8406fb93948806c265602ead658ff))
+
 ## [3.0.0-beta.176](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.175...v3.0.0-beta.176) (2023-07-26)
 
 
