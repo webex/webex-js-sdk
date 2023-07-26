@@ -12,7 +12,7 @@ import {MetricEventNames} from '../metrics.types';
  */
 export default class CallDiagnosticLatencies {
   latencyTimestamps: Map<MetricEventNames, number>;
-  precomputedLatencies: Map<any, number>;
+  precomputedLatencies: Map<string, number>;
 
   /**
    * @constructor
@@ -32,7 +32,7 @@ export default class CallDiagnosticLatencies {
   /**
    * Store timestamp value
    * @param key - key
-   * @param  value -value
+   * @param value -value
    * @throws
    * @returns
    */
@@ -49,11 +49,11 @@ export default class CallDiagnosticLatencies {
   /**
    * Store precomputed latency value
    * @param key - key
-   * @param  value -value
+   * @param value -value
    * @throws
    * @returns
    */
-  public saveLatency(key: any, value: number) {
+  public saveLatency(key: string, value: number) {
     this.precomputedLatencies.set(key, value);
   }
 
