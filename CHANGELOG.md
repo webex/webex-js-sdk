@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.178](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.177...v3.0.0-beta.178) (2023-07-26)
+
+
+### Features
+
+* **ca-metrics:** fix latency bugs ([#2976](https://github.com/webex/webex-js-sdk/issues/2976)) ([9085e2d](https://github.com/webex/webex-js-sdk/commit/9085e2dd24c40ec1ef943ce56d3e2ed4ac94f7cc))
+
 ## [3.0.0-beta.177](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.176...v3.0.0-beta.177) (2023-07-26)
 
 
