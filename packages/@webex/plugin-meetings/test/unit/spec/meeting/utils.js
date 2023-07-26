@@ -740,5 +740,67 @@ describe('plugin-meetings', () => {
         assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled([]), true);
       });
     });
+
+
+    describe('parseInterpretationInfo', () => {
+      let meetingInfo = {};
+
+      it('should update simultaneous interpretation settings for the meeting', () => {
+        // Mock input data
+        meetingInfo.turnOnSimultaneousInterpretation = true;
+        meetingInfo.meetingSiteSetting = {
+          enableHostInterpreterControlSI: true,
+        };
+        meetingInfo.simultaneousInterpretation = {
+          currentSIInterpreter: 'John Doe',
+          siLanguages: [
+            { languageCode: 'en', languageGroupId: 1 },
+            { languageCode: 'es', languageGroupId: 2 },
+          ],
+        };
+
+        meeting.simultaneousInterpretation = {
+          updateMeetingSIEnabled: sinon.stub(),
+          updateHostSIEnabled: sinon.stub(),
+          updateInterpretation: sinon.stub(),
+          siLanguages: [],
+        };
+
+        // Call the function
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+
+        // Assertions for updateMeetingSIEnabled function
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled,
+          true,
+          true
+        );
+
+        // Assertions for updateHostSIEnabled function
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
+
+        // Assertions for updateInterpretation function
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
+          { languageName: 'en', languageCode: 1 },
+          { languageName: 'es', languageCode: 2 },
+        ]);
+      });
+
+      it('should not update simultaneous interpretation settings for invalid input', () => {
+        meeting.simultaneousInterpretation = {
+          updateMeetingSIEnabled: sinon.stub(),
+          updateHostSIEnabled: sinon.stub(),
+          updateInterpretation: sinon.stub(),
+          siLanguages: [],
+        };
+
+        // Call the function with invalid inputs
+        MeetingUtil.parseInterpretationInfo(null, null);
+
+        // Ensure that the update functions are not called
+        assert.notCalled(meeting.simultaneousInterpretation.updateMeetingSIEnabled);
+        assert.notCalled(meeting.simultaneousInterpretation.updateHostSIEnabled);
+        assert.notCalled(meeting.simultaneousInterpretation.updateInterpretation);
+      });
+    });
   });
 });
