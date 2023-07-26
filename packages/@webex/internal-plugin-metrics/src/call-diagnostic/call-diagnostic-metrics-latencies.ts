@@ -128,7 +128,7 @@ export default class CallDiagnosticLatencies {
     }
 
     // for cross launch and guest flows
-    return this.precomputedLatencies.get('internal.call.init.join.req.latency') || undefined;
+    return this.precomputedLatencies.get('internal.call.init.join.req') || undefined;
   }
 
   /**
@@ -224,7 +224,7 @@ export default class CallDiagnosticLatencies {
     }
 
     // for cross launch and guest flows
-    return this.precomputedLatencies.get('internal.click.to.interstitial.latency') || undefined;
+    return this.precomputedLatencies.get('internal.click.to.interstitial') || undefined;
   }
 
   /**

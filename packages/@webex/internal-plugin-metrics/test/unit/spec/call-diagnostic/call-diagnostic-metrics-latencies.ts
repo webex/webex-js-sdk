@@ -100,7 +100,7 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getCallInitJoinReq correctly without click join button event', () => {
-      cdl.saveLatency('internal.call.init.join.req.latency', 12);
+      cdl.saveLatency('internal.call.init.join.req', 12);
       cdl.saveTimestamp('client.locus.join.request', 20);
       assert.deepEqual(cdl.getCallInitJoinReq(), 12);
     });
@@ -159,7 +159,7 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getClickToInterstitial without join button timestamp', () => {
-      cdl.saveLatency('internal.click.to.interstitial.latency', 5);
+      cdl.saveLatency('internal.click.to.interstitial', 5);
       cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 20);
       assert.deepEqual(cdl.getClickToInterstitial(), 5);
     });
