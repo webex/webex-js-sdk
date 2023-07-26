@@ -1,6 +1,5 @@
 {
   "name": "@webex/xunit-with-logs",
-  "version": "2.59.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
