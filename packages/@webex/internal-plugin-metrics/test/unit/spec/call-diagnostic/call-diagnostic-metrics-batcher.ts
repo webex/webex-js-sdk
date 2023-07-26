@@ -64,6 +64,7 @@ describe('plugin-metrics', () => {
 
         it('appends the correct join times to the request for client.interstitial-window.launched', async () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
           await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -107,6 +108,8 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon.stub().returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
           webex.internal.newMetrics.callDiagnosticLatencies.getClientJMT = sinon.stub().returns(5);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon.stub().returns(10);
           await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
@@ -176,6 +179,7 @@ describe('plugin-metrics', () => {
         it('appends the correct join times to the request for client.media-engine.ready', async () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
           webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToMediaOKJMT = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
           await webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media-engine.ready'}}
