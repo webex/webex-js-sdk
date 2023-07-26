@@ -149,7 +149,6 @@ export type LocalTracks = {
     audio?: LocalSystemAudioTrack;
     video?: LocalDisplayTrack;
   };
-  annotationInfo?: AnnotationInfo;
 };
 
 export type AddMediaOptions = {
@@ -5319,8 +5318,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
 
-    this.annotationInfo = localTracks?.annotationInfo;
-
     const promises = [];
 
     // setup all the references to local tracks in this.mediaProperties before creating media connection
@@ -6910,8 +6907,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async publishTracks(tracks: LocalTracks): Promise<void> {
     this.checkMediaConnection();
-
-    this.annotationInfo = tracks.annotationInfo;
 
     if (
       !tracks.microphone &&

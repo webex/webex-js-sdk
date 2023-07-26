@@ -7,7 +7,7 @@ import {
   createDisplayTrack as wcmeCreateDisplayTrack,
   createDisplayTrackWithAudio as wcmeCreateDisplayTrackWithAudio,
   createMicrophoneTrack as wcmeCreateMicrophoneTrack,
-  LocalDisplayTrack,
+  LocalDisplayTrack as WcmeLocalDisplayTrack,
   LocalSystemAudioTrack,
   LocalMicrophoneTrack as WcmeLocalMicrophoneTrack,
   LocalCameraTrack as WcmeLocalCameraTrack,
@@ -17,7 +17,6 @@ import {
 export {
   getDevices,
   LocalTrack,
-  LocalDisplayTrack,
   LocalSystemAudioTrack,
   LocalTrackEvents,
   type TrackMuteEvent,
@@ -73,6 +72,18 @@ export class LocalMicrophoneTrack extends WcmeLocalMicrophoneTrack {
       this.setMuted(muted);
       this.emit(LocalMicrophoneTrackEvents.ServerMuted, {muted, reason});
     }
+  }
+}
+
+export class LocalDisplayTrack extends WcmeLocalDisplayTrack {
+  private annotationInfo = null;
+
+  getAnnotationInfo() {
+    return this.annotationInfo;
+  }
+
+  setAnnotationInfo(annotationInfo: string) {
+    this.annotationInfo = annotationInfo;
   }
 }
 

@@ -131,8 +131,24 @@ describe('media-helpers', () => {
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayTrack);
       });
+
+      it('checks createDisplayTrack getAnnotationInfo and setAnnotationInfo', () => {
+        const fakeStream = {
+          getTracks: sinon.stub().returns([
+            {
+              label: 'fake track',
+              id: 'fake track id',
+              enabled: true,
+            },
+          ]),
+        };
+        const localDisplayTrack = new LocalDisplayTrack(fakeStream);
+        localDisplayTrack.setAnnotationInfo("annotation Info")
+        assert.equal(localDisplayTrack.getAnnotationInfo(), 'annotation Info');
+
+      });
     });
-    
+
     describe('createDisplayTrackWithAudio', () => {
       it('checks createDisplayTrackWithAudio', async () => {
         const spy = sinon.stub(wcmetracks, 'createDisplayTrackWithAudio').returns('something');
