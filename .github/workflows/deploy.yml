@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is running Deploy CD
 
 on:
   push:
-    branches: # White-list of deployable tags and branches.
+    branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
 
 env:
@@ -80,10 +80,10 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      node-changed: ${{ steps.generate-package-matrix-changed.outputs.node-changed }} # Used for execution.
-      node-recursive: ${{ steps.generate-package-matrix-recursive.outputs.node-recursive }} # Used for execution.
-      yarn-changed: ${{ steps.generate-package-matrix-changed.outputs.yarn-changed }} # Used for workspaces.
-      yarn-recursive: ${{ steps.generate-package-matrix-recursive.outputs.yarn-recursive }} # Used for workspaces.
+      node-changed: ${{ steps.generate-package-matrix-node-changed.outputs.node-changed }} # Used for execution.
+      node-recursive: ${{ steps.generate-package-matrix-node-recursive.outputs.node-recursive }} # Used for execution.
+      yarn-changed: ${{ steps.generate-package-matrix-yarn-changed.outputs.yarn-changed }} # Used for workspaces.
+      yarn-recursive: ${{ steps.generate-package-matrix-yarn-recursive.outputs.yarn-recursive }} # Used for workspaces.
 
     steps:
       - name: Checkout Project
@@ -112,7 +112,7 @@ jobs:
         run: yarn
 
       - name: Update Main Branch
-        run: git fetch origin ${{ github.event.base_ref }} --unshallow
+        run: git fetch origin ${GITHUB_REF##*/} --unshallow
 
         # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
@@ -174,10 +174,10 @@ jobs:
         run: yarn
 
       - name: Increment Package Versions
-        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${{ github.event.base_ref }}
+        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
 
       - name: Deploy Packages - [DRY RUN]
-        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --dry-run --tag ${{ github.event.base_ref }}
+        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --dry-run --tag ${GITHUB_REF##*/}
 
   publish-documentation:
     name: Publish - Documentation
