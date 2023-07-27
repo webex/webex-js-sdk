@@ -173,6 +173,11 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
+      - name: Display Notice
+        run: |
+          echo "packages to increment: ${{ needs.generate-package-matrix.outputs.node-recursive }}"
+          echo "tag to increment: ${GITHUB_REF##*/}"
+
       - name: Increment Package Versions
         run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
 
