@@ -190,7 +190,6 @@ function register() {
       toggleUnifiedMeetings.removeAttribute('disabled');
       unregisterElm.disabled = false;
       unregisterElm.classList.add('btn--red');
-      meetingsResolutionCheckInterval();
     })
     .catch((error) => {
       console.warn('Authentication#register() :: error registering', error);
@@ -245,6 +244,7 @@ const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
+const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -474,6 +474,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
 
+  if (meetingsMediaInLobbySupportElm.checked) {
+    joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
+  }
+
   const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
@@ -551,6 +555,7 @@ function leaveMeeting(meetingId) {
       enableMultistreamControls(false);
       breakoutHostOperation.innerHTML = '';
       breakoutTable.innerHTML = '';
+      clearVideoResolutionCheckInterval(remoteVideoResElm, remoteVideoResolutionInterval);
     });
 }
 
@@ -629,7 +634,8 @@ const meetingStreamsLocalVideo = document.querySelector('#local-video');
 const meetingStreamsLocalAudio = document.querySelector('#local-audio');
 const meetingStreamsRemoteVideo = document.querySelector('#remote-video');
 const meetingStreamsRemoteAudio = document.querySelector('#remote-audio');
-const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
+const meetingStreamsLocalShareVideo = document.querySelector('#local-screenshare-video');
+const meetingStreamsLocalShareAudio = document.querySelector('#local-screenshare-audio');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
 const layoutWidthInp = document.querySelector('#layout-width');
 const layoutHeightInp = document.querySelector('#layout-height');
@@ -676,6 +682,8 @@ function getMediaSettings() {
     settings[options.value] = options.checked;
   });
 
+  settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
+
   return settings;
 }
 
@@ -683,7 +691,8 @@ function getMediaSettings() {
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
   meetingStreamsLocalAudio,
-  meetingStreamsLocalShare,
+  meetingStreamsLocalShareVideo,
+  meetingStreamsLocalShareAudio,
   meetingStreamsRemoteVideo,
   meetingStreamsRemoteShare,
   meetingStreamsRemoteAudio
@@ -936,7 +945,7 @@ const localMedia = {
   cameraTrack: undefined,
   screenShare: {
     video: undefined,
-    audio: undefined, // SPARK-399690
+    audio: undefined,
   },
   videoConstraints: {
     [localVideoQuality["360p"]]: { width: 640, height: 360 },
@@ -951,6 +960,15 @@ function handleTrackUnpublished(track, mediaElement, debugString) {
     if (!isPublished) {
       console.log(`MeetingControls#getUserMedia() :: ${debugString} track unpublished, stopping it`);
       track.stop();
+
+      if(mediaElement.id === "local-video") {
+        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+        meetingStreamsLocalVideo.srcObject= null;
+      }
+
+      if(mediaElement.id === "local-audio") {
+        meetingStreamsLocalAudio.srcObject = null;
+      }
     }
   });
 }
@@ -1000,6 +1018,8 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
     meetingStreamsLocalVideo.srcObject = localMedia.cameraTrack.underlyingStream;
   }
 
+  localVideoResolutionCheckInterval();
+  
   console.log('MeetingControls#getUserMedia() :: got following local tracks:', localMedia.microphoneTrack, localMedia.cameraTrack);
   return;
 }
@@ -1185,26 +1205,53 @@ async function startScreenShare() {
   // Using async/await to make code more readable
   console.log('MeetingControls#startScreenShare()');
   try {
-    const localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
+    let localShareVideoTrack, localShareAudioTrack;
+    if (isMultistream) {
+      [localShareVideoTrack, localShareAudioTrack] = await webex.meetings.mediaHelpers.createDisplayTrackWithAudio();
+    } else {
+      localShareVideoTrack = await webex.meetings.mediaHelpers.createDisplayTrack();
+    }
 
-    localMedia.screenShare.video = localShareVideoTrack;
-    localMedia.screenShare.video.on('published-state-update', ({isPublished}) => {
-      if (!isPublished) {
-        console.log('MeetingControls#startScreenShare() :: local share video track unpublished, stopping it');
+    if (localShareVideoTrack) {
+      localMedia.screenShare.video = localShareVideoTrack;
+      localMedia.screenShare.video.on('published-state-update', ({isPublished}) => {
+        if (!isPublished) {
+          console.log('MeetingControls#startScreenShare() :: local share video track unpublished, stopping it');
 
-        localMedia.screenShare.video.stop();
-        localMedia.screenShare.video = undefined;
+          localMedia.screenShare.video.stop();
+          localMedia.screenShare.video = undefined;
 
-        meetingStreamsLocalShare.srcObject = null;
-      }
-    });
+          meetingStreamsLocalShareVideo.srcObject = null;
+        }
+      });
 
-    meetingStreamsLocalShare.srcObject = localShareVideoTrack.underlyingStream;
+      meetingStreamsLocalShareVideo.srcObject = localShareVideoTrack.underlyingStream;
 
-    console.log('MeetingControls#startScreenShare() :: publishing share video track');
+      console.log('MeetingControls#startScreenShare() :: publishing share video track');
+    }
+    
+    if (localShareAudioTrack) {
+      localMedia.screenShare.audio = localShareAudioTrack;
+      localMedia.screenShare.audio.on('published-state-update', ({isPublished}) => {
+        if (!isPublished) {
+          console.log('MeetingControls#startScreenShare() :: local share audio track unpublished, stopping it');
+
+          localMedia.screenShare.audio.stop();
+          localMedia.screenShare.audio = undefined;
+
+          meetingStreamsLocalShareAudio.srcObject = null;
+        }
+      })
+      
+      meetingStreamsLocalShareAudio.srcObject = localShareAudioTrack.underlyingStream;
+
+      console.log('MeetingControls#startScreenShare() :: publishing share audio track');
+    }
+    
     await meeting.publishTracks({
       screenShare: {
         video: localShareVideoTrack,
+        audio: localShareAudioTrack,
       }
     });
 
@@ -1277,12 +1324,9 @@ function clearMediaDeviceList() {
 }
 
 function getLocalMediaSettings() {
-  const meeting = getCurrentMeeting();
-
-  if (meeting && meeting.mediaProperties.videoTrack) {
-    const videoSettings = meeting.mediaProperties.videoTrack?.getSettings();
+  if (localMedia.cameraTrack) {
+    const videoSettings = localMedia.cameraTrack.getSettings();
     const {frameRate, height} = videoSettings;
-
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
 }
@@ -1293,26 +1337,43 @@ function getRemoteMediaSettings() {
   if (meeting && meeting.mediaProperties.remoteVideoTrack) {
     const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
     const {frameRate, height} = videoSettings;
-
     remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
 }
 
-let resolutionInterval;
+let localVideoResolutionInterval;
+let remoteVideoResolutionInterval;
 const INTERVAL_TIME = 3000;
 
-function meetingsResolutionCheckInterval() {
-  resolutionInterval = setInterval(() => {
+function localVideoResolutionCheckInterval() {
+  if (localVideoResolutionInterval) {
+    clearInterval(localVideoResolutionInterval);
+  }
+
+  localVideoResolutionInterval = setInterval(() => {
     getLocalMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function remoteVideoResolutionCheckInterval() {
+  if (remoteVideoResolutionInterval) {
+    clearInterval(remoteVideoResolutionInterval);
+  }
+
+  remoteVideoResolutionInterval = setInterval(() => {
     getRemoteMediaSettings();
   }, INTERVAL_TIME);
 }
 
-function clearMeetingsResolutionCheckInterval() {
-  localVideoResElm.innerText = '';
-  remoteVideoResElm.innerText = '';
-
-  clearInterval(resolutionInterval);
+function clearVideoResolutionCheckInterval(element, intervalId) {
+  element.innerText = '';
+  clearInterval(intervalId);
+  if (element.id === "local-video-resolution") {
+    localVideoResolutionInterval = null;
+  }
+  else {
+    remoteVideoResolutionInterval = null;
+  }
 }
 
 // Meeting Streams --------------------------------------------------
@@ -2121,6 +2182,8 @@ function addMedia() {
   else {
     console.log('MeetingStreams#addMedia() :: registering for media:ready and media:stopped events');
 
+    remoteVideoResolutionCheckInterval();
+
     // Wait for media in order to show video/share
     meeting.on('media:ready', (media) => {
       // eslint-disable-next-line default-case
@@ -2140,8 +2203,6 @@ function addMedia() {
 
     // remove stream if media stopped
     meeting.on('media:stopped', (media) => {
-      clearMeetingsResolutionCheckInterval();
-
       // eslint-disable-next-line default-case
       switch (media.type) {
         case 'remoteVideo':

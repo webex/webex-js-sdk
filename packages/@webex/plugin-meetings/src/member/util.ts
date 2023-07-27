@@ -1,4 +1,10 @@
-import {IExternalRoles, ParticipantWithRoles, ServerRoles, ServerRoleShape} from './types';
+import {
+  IExternalRoles,
+  ParticipantWithRoles,
+  ServerRoles,
+  ServerRoleShape,
+  IMediaStatus,
+} from './types';
 import {
   _USER_,
   _RESOURCE_ROOM_,
@@ -344,6 +350,22 @@ MemberUtil.extractId = (participant: any) => {
   }
 
   return null;
+};
+
+/**
+ * extracts the media status from nested participant object
+ * @param {Object} participant the locus participant
+ * @returns {Object}
+ */
+MemberUtil.extractMediaStatus = (participant: any): IMediaStatus => {
+  if (!participant) {
+    throw new ParameterError('Media status could not be extracted, participant is undefined.');
+  }
+
+  return {
+    audio: participant.status.audioStatus,
+    video: participant.status.videoStatus,
+  };
 };
 
 /**

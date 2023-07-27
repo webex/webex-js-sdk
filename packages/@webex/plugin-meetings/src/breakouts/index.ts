@@ -356,7 +356,7 @@ const Breakouts = WebexPlugin.extend({
           breakoutMoveId: params.breakoutMoveId,
         },
         // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent
+        this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
       );
     }
   },

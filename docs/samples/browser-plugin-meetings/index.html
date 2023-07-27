@@ -303,6 +303,8 @@
                 <label for="meetings-join-moderator">Join as Moderator</label>
                 <input id="meetings-join-breakout-enabled" type="checkbox">
                 <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
+                <input id="meetings-media-in-lobby-enabled" type="checkbox">
+                <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
                 <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
               </div>
 
@@ -566,8 +568,12 @@
 
             <div>
               <fieldset>
-                <legend>Local Screenshare</legend>
-                <video id="local-screenshare" autoplay playsinline></video>
+                <legend>Local Screenshare Video</legend>
+                <video id="local-screenshare-video" autoplay playsinline></video>
+              </fieldset>
+              <fieldset>
+                <legend>Local Screenshare Audio</legend>
+                <audio id="local-screenshare-audio" controls autoplay></audio>
               </fieldset>
               <div class="btn-group">
                 <button id="ts-start-screenshare" type="button" onclick="startScreenShare()"

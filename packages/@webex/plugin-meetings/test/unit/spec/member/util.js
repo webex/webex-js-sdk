@@ -485,3 +485,34 @@ describe('plugin-meetings', () => {
     });
   });
 });
+
+describe('extractMediaStatus', () => {
+  it('throws error when there is no participant', () => {
+    assert.throws(() => {
+      MemberUtil.extractMediaStatus()
+    }, 'Media status could not be extracted, participant is undefined.');
+  });
+
+  it('returns undefined media status when participant audio/video status is not present', () => {
+    const participant = {
+      status: {}
+    };
+    
+    const mediaStatus = MemberUtil.extractMediaStatus(participant)
+
+    assert.deepEqual(mediaStatus, {audio: undefined, video: undefined});
+  });
+
+  it('returns correct media status when participant audio/video status is present', () => {
+    const participant = {
+      status: {
+        audioStatus: 'RECVONLY',
+        videoStatus: 'SENDRECV'
+      }
+    };
+    
+    const mediaStatus = MemberUtil.extractMediaStatus(participant)
+
+    assert.deepEqual(mediaStatus, {audio: 'RECVONLY', video: 'SENDRECV'});
+  });
+});

@@ -12,12 +12,14 @@ import {MetricEventNames} from '../metrics.types';
  */
 export default class CallDiagnosticLatencies {
   latencyTimestamps: Map<MetricEventNames, number>;
+  precomputedLatencies: Map<string, number>;
 
   /**
    * @constructor
    */
   constructor() {
     this.latencyTimestamps = new Map();
+    this.precomputedLatencies = new Map();
   }
 
   /**
@@ -30,11 +32,42 @@ export default class CallDiagnosticLatencies {
   /**
    * Store timestamp value
    * @param key - key
-   * @param  value -value
+   * @param value -value
    * @throws
    * @returns
    */
   public saveTimestamp(key: MetricEventNames, value: number = new Date().getTime()) {
+    // for some events we're only interested in the first timestamp not last
+    // as these events can happen multiple times
+    if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {
+      this.saveFirstTimestampOnly(key, value);
+    } else {
+      this.latencyTimestamps.set(key, value);
+    }
+  }
+
+  /**
+   * Store precomputed latency value
+   * @param key - key
+   * @param value -value
+   * @throws
+   * @returns
+   */
+  public saveLatency(key: string, value: number) {
+    this.precomputedLatencies.set(key, value);
+  }
+
+  /**
+   * Store only the first timestamp value for the given key
+   * @param key - key
+   * @param  value -value
+   * @throws
+   * @returns
+   */
+  saveFirstTimestampOnly(key: MetricEventNames, value: number = new Date().getTime()) {
+    if (this.latencyTimestamps.has(key)) {
+      return;
+    }
     this.latencyTimestamps.set(key, value);
   }
 
@@ -87,10 +120,15 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getCallInitJoinReq() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'client.locus.join.request'
-    );
+    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+      return this.getDiffBetweenTimestamps(
+        'internal.client.meeting.click.joinbutton',
+        'client.locus.join.request'
+      );
+    }
+
+    // for cross launch and guest flows
+    return this.precomputedLatencies.get('internal.call.init.join.req') || undefined;
   }
 
   /**
@@ -169,7 +207,7 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getPageJMT() {
-    return this.latencyTimestamps.get('internal.client.pageJMT.received') || undefined;
+    return this.precomputedLatencies.get('internal.client.pageJMT') || undefined;
   }
 
   /**
@@ -177,10 +215,16 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getClickToInterstitial() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'internal.client.meeting.interstitial-window.showed'
-    );
+    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
+    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+      return this.getDiffBetweenTimestamps(
+        'internal.client.meeting.click.joinbutton',
+        'internal.client.meeting.interstitial-window.showed'
+      );
+    }
+
+    // for cross launch and guest flows
+    return this.precomputedLatencies.get('internal.click.to.interstitial') || undefined;
   }
 
   /**
@@ -189,8 +233,19 @@ export default class CallDiagnosticLatencies {
    */
   public getInterstitialToJoinOK() {
     return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
+      'internal.client.interstitial-window.click.joinbutton',
       'client.locus.join.response'
+    );
+  }
+
+  /**
+   * Call Init To MediaEngineReady
+   * @returns - latency
+   */
+  public getCallInitMediaEngineReady() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.interstitial-window.click.joinbutton',
+      'client.media-engine.ready'
     );
   }
 
@@ -198,11 +253,24 @@ export default class CallDiagnosticLatencies {
    * Interstitial To Media Ok
    * @returns - latency
    */
-  public getInterstitialToMediaOK() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'sdk.media-flow.started'
+  public getInterstitialToMediaOKJMT() {
+    const interstitialJoinClickTimestamp = this.latencyTimestamps.get(
+      'internal.client.interstitial-window.click.joinbutton'
     );
+
+    // get the first timestamp
+    const mediaFlowStartedTimestamp = Math.min(
+      this.latencyTimestamps.get('client.media.rx.start'),
+      this.latencyTimestamps.get('client.media.tx.start')
+    );
+
+    const lobbyTime = this.getStayLobbyTime() || 0;
+
+    if (interstitialJoinClickTimestamp && mediaFlowStartedTimestamp) {
+      return mediaFlowStartedTimestamp - interstitialJoinClickTimestamp - lobbyTime;
+    }
+
+    return undefined;
   }
 
   /**
@@ -261,21 +329,10 @@ export default class CallDiagnosticLatencies {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (interstitialToJoinOk && joinConfJMT) {
-      return interstitialToJoinOk + joinConfJMT;
+      return interstitialToJoinOk - joinConfJMT;
     }
 
     return undefined;
-  }
-
-  /**
-   * Interstitial To Media OK JMT
-   * @returns - latency
-   */
-  public getInterstitialToMediaOKJMT() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.click.joinbutton',
-      'client.media-engine.ready'
-    );
   }
 
   /**

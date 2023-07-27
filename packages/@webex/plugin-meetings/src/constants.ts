@@ -319,6 +319,7 @@ export const EVENT_TRIGGERS = {
   MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE: 'meeting:breakouts:preAssignmentsUpdate',
   MEETING_INTERPRETATION_UPDATE: 'meeting:interpretation:update',
   MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE: 'meeting:interpretation:supportLanguagesUpdate',
+  MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED: 'meeting:interpretation:handoffRequestsArrived',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
@@ -597,7 +598,15 @@ export const BREAKOUTS = {
 export const INTERPRETATION = {
   EVENTS: {
     SUPPORT_LANGUAGES_UPDATE: 'SUPPORT_LANGUAGES_UPDATE',
+    HANDOFF_REQUESTS_ARRIVED: 'HANDOFF_REQUESTS_ARRIVED',
   },
+  ACTION_TYPE: {
+    OFFERED: 'OFFERED',
+    ACCEPTED: 'ACCEPTED',
+    REQUESTED: 'REQUESTED',
+    DECLINED: 'DECLINED',
+  },
+  RESOURCE_TYPE: 'SiHandover',
 };
 
 export const LOCUSINFO = {
@@ -803,6 +812,28 @@ export const MEETING_END_REASON = {
   INACTIVE: 'INACTIVE',
   MEDIA_RELEASED: 'MEDIA_RELEASED',
 };
+
+export enum SELF_POLICY {
+  ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
+  SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
+  SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_CHAT = 'supportChat',
+  SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
+  SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',
+  SUPPORT_WHITEBOARD = 'supportWhiteboard',
+  SUPPORT_FILE_TRANSFER = 'supportFileTransfer',
+  SUPPORT_APP_SHARE = 'supportAppShare',
+  SUPPORT_CAMERA_SHARE = 'supportCameraShare',
+  SUPPORT_FILE_SHARE = 'supportFileShare',
+  SUPPORT_ANNOTATION = 'supportAnnotation',
+  SUPPORT_BROADCAST_MESSAGE = 'supportBroadcastMessage',
+  SUPPORT_VIDEO = 'supportVideo',
+  SUPPORT_HQV = 'supportHQV',
+  SUPPORT_HDV = 'supportHDV',
+  SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
+  SUPPORT_VOIP = 'supportVoIP',
+}
 
 export const DISPLAY_HINTS = {
   ADD_GUEST: 'ADD_GUEST',

@@ -29,7 +29,6 @@ export type InternalEvent = {
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
     | 'internal.client.meeting.interstitial-window.showed'
-    | 'internal.client.pageJMT.received'
     | 'internal.client.interstitial-window.click.joinbutton';
   payload?: never;
   options?: never;

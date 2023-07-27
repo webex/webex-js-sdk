@@ -2,6 +2,7 @@ export {
   getDevices,
   LocalTrack,
   LocalDisplayTrack,
+  LocalSystemAudioTrack,
   LocalTrackEvents,
   type TrackMuteEvent,
   type ServerMuteReason,
@@ -12,6 +13,7 @@ export {
   createMicrophoneTrack,
   createCameraTrack,
   createDisplayTrack,
+  createDisplayTrackWithAudio,
 } from './webrtc-core';
 
 export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';
