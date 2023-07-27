@@ -311,10 +311,9 @@ export default class CallDiagnosticLatencies {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
-    const stayLobbyTime = this.getStayLobbyTime() || 0;
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitial + interstitialToJoinOk + joinConfJMT - stayLobbyTime;
+      return clickToInterstitial + interstitialToJoinOk + joinConfJMT;
     }
 
     return undefined;

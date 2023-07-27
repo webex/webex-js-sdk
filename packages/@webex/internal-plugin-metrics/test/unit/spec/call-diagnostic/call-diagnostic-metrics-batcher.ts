@@ -191,7 +191,7 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.media-engine.ready',
             joinTimes: {
-              totalMediaJMT: 30,
+              totalMediaJMT: 40,
               interstitialToMediaOKJMT: 10,
               callInitMediaEngineReady: 10,
               stayLobbyTime: 10,

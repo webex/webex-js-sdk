@@ -184,6 +184,17 @@ describe("internal-plugin-metrics", () => {
       assert.deepEqual(cdl.getTotalJMT(), 45);
     });
 
+    it('calculates getTotalMediaJMT correctly', () => {
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 5);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 8);
+      cdl.saveTimestamp('internal.client.interstitial-window.click.joinbutton', 10);
+      cdl.saveTimestamp('client.locus.join.request', 12);
+      cdl.saveTimestamp('client.locus.join.response', 20);
+      cdl.saveTimestamp('client.ice.start', 30);
+      cdl.saveTimestamp('client.ice.end', 40);
+      assert.deepEqual(cdl.getTotalMediaJMT(), 31);
+    })
+
     it('calculates getJoinConfJMT correctly', () => {
       cdl.saveTimestamp('client.locus.join.request', 10);
       cdl.saveTimestamp('client.locus.join.response', 20);
