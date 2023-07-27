@@ -5529,7 +5529,7 @@ describe('plugin-meetings', () => {
 
           checkParseMeetingInfo(expectedInfoToParse);
         });
-        it('should set hostSIEnabled correctly depend on the toggle statue in site setting', () => {
+        it('should parse interpretation info correctly', () => {
           const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
           const mockToggleOnData = {
             body: {

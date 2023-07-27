@@ -746,19 +746,6 @@ describe('plugin-meetings', () => {
       let meetingInfo = {};
 
       it('should update simultaneous interpretation settings for the meeting', () => {
-        // Mock input data
-        meetingInfo.turnOnSimultaneousInterpretation = true;
-        meetingInfo.meetingSiteSetting = {
-          enableHostInterpreterControlSI: true,
-        };
-        meetingInfo.simultaneousInterpretation = {
-          currentSIInterpreter: 'John Doe',
-          siLanguages: [
-            { languageCode: 'en', languageGroupId: 1 },
-            { languageCode: 'es', languageGroupId: 2 },
-          ],
-        };
-
         meeting.simultaneousInterpretation = {
           updateMeetingSIEnabled: sinon.stub(),
           updateHostSIEnabled: sinon.stub(),
@@ -766,23 +753,41 @@ describe('plugin-meetings', () => {
           siLanguages: [],
         };
 
-        // Call the function
+        meetingInfo.turnOnSimultaneousInterpretation = true;
+        meetingInfo.meetingSiteSetting = {
+          enableHostInterpreterControlSI: true,
+        };
+        meetingInfo.simultaneousInterpretation = {
+          currentSIInterpreter: true,
+          siLanguages: [
+            { languageCode: 'en', languageGroupId: 1 },
+            { languageCode: 'es', languageGroupId: 2 },
+          ],
+        };
+
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
-
-        // Assertions for updateMeetingSIEnabled function
-        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled,
-          true,
-          true
-        );
-
-        // Assertions for updateHostSIEnabled function
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, true);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
-
-        // Assertions for updateInterpretation function
         assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
           { languageName: 'en', languageCode: 1 },
           { languageName: 'es', languageCode: 2 },
         ]);
+
+        meetingInfo.meetingSiteSetting.enableHostInterpreterControlSI = false;
+        meetingInfo.simultaneousInterpretation.currentSIInterpreter = false;
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
+          { languageName: 'en', languageCode: 1 },
+          { languageName: 'es', languageCode: 2 },
+        ]);
+
+
+        meetingInfo.turnOnSimultaneousInterpretation = false;
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, false, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
       });
 
       it('should not update simultaneous interpretation settings for invalid input', () => {

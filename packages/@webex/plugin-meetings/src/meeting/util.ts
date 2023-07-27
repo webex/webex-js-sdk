@@ -589,12 +589,13 @@ const MeetingUtil = {
       }
     }
     if (siInfo) {
-      for (const language of siInfo.siLanguages) {
+      const lanuagesInfo = cloneDeep(siInfo.siLanguages);
+      for (const language of lanuagesInfo) {
         renameKey(language, 'languageCode', 'languageName');
         renameKey(language, 'languageGroupId', 'languageCode');
       }
       if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
-        meeting.simultaneousInterpretation.updateInterpretation(siInfo.siLanguages);
+        meeting.simultaneousInterpretation.updateInterpretation(lanuagesInfo);
       }
     }
   },
