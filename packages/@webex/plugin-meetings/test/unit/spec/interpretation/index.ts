@@ -83,6 +83,25 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateMeetingSIEnabled', () => {
+      it('update meeting SI feature is on or off, and self is scheduled interpreter or not', () => {
+        interpretation.updateMeetingSIEnabled(true, false);
+
+        assert.equal(interpretation.meetingSIEnabled, true);
+        assert.equal(interpretation.selfIsInterpreter, false);
+
+        interpretation.updateMeetingSIEnabled(true, true);
+
+        assert.equal(interpretation.meetingSIEnabled, true);
+        assert.equal(interpretation.selfIsInterpreter, true);
+
+        interpretation.updateMeetingSIEnabled(false, false);
+
+        assert.equal(interpretation.meetingSIEnabled, false);
+        assert.equal(interpretation.selfIsInterpreter, false);
+      });
+    });
+
     describe('#updateInterpretation', () => {
       const checkSILanguage = (siLanguage, expectResult) => {
         return siLanguage?.languageCode === expectResult.languageCode && siLanguage?.languageName === expectResult.languageName
