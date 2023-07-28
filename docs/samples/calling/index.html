@@ -153,7 +153,7 @@
           </fieldset>
         </form>
 
-        <!-- meeting-controls / media-devices -->
+        <!-- meeting-controls / media-devices
         <fieldset id="control-devices">
           <legend>Media Devices</legend>
           <div>
@@ -198,7 +198,7 @@
               <label id="sd-audio-output-device-status"></label>
             </div>
           </div>
-        </fieldset>
+        </fieldset> -->
 
 
         <!-- calling / local-media -->
@@ -217,14 +217,6 @@
           <div class="u-mv">
             <button id="sd-stop-media-streams" type="button" onclick="cleanUpMedia()"
               class="btn-code">cleanUpMedia()</button>
-          </div>
-        </fieldset>
-
-        <!-- calling/ create -->
-        <fieldset id="create">
-          <legend>Create WebRTC Offer</legend>
-          <div class="u-mv">
-            <button onclick="createOffer()" id="create-offer" class="btn-code">createOffer()</button>
           </div>
         </fieldset>
 
@@ -287,14 +279,6 @@
             </div>
           </fieldset>
         </form>
-        <!-- Contacts section -->
-        <fieldset id="contactsection">
-          <legend>Contacts</legend>
-          <div class="u-mv">
-            <button id="Contacts" type="button" onclick="createContacts()" class="btn-code">Contacts</button>
-            <table id="contactsTable" class="styled-table"></table>
-          </div>
-        </fieldset>
         <!-- Call Settings section -->
         <fieldset id="callSettingsSelection">
           <legend>Call Settings</legend>
@@ -395,9 +379,89 @@
           </div>
         </fieldset>
       </section>
+          <h2> Contacts</h2>
+          <!-- Contacts section -->
+          <button id="getContacts" type="button" onclick="getContacts()" class="btn-code">Get contacts</button>
+          <p class="note">NOTE:Works with custom contacts only. Cloud contacts need Dss plugin</p>
 
-    </article>
-    <aside>
+          <fieldset id="getContactSection">
+            <legend>Contacts</legend>
+
+            <div class="u-mv">
+              <table>
+                <thead id="contactsHeaderId">
+                  <tr>
+                    <th>Id</th>
+                    <th>Avatar</th>
+                    <th>Display Name</th>
+                    <th>Type</th>
+                    <th>Phone</th>
+                    <th>Contact Id</th>
+                    <th>Groups</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="contactsTableId"></tbody>
+              </table>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Contact Groups</legend>
+            <div class="u-mv">
+              <table>
+                <thead id="contactGroupsHeaderId">
+                  <tr>
+                    <th>Id</th>
+                    <th>Group Name</th>
+                    <th>GroupType</th>
+                    <th>Group Id</th>
+                    <th>Members</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="contactGroupsTableId"></tbody>
+              </table>
+            </div>
+          </fieldset>
+          <form id="contacts-form">
+            <fieldset id="postContactSection">
+              <legend>Create Custom Contact</legend>
+              <div class="u-mv">
+                <input id="displayName" name="displayName" placeholder="Display name" type="string">
+                <input id="phone" name="phone" placeholder="Phone" type="string">
+                <input id="email" name="email" placeholder="email" type="email">
+                <input id="avatarURL" name="avatarURL" placeholder="avatarURL" type="string">
+                <br>
+                <button type="button" onclick="createCustomContact()" class="btn-code">Create contact</button>
+              </div>
+            </fieldset>
+          </form>
+          <form id="cloud-contact-form">
+            <fieldset id="postContactGroupSection">
+              <legend>Create Cloud contact (Directory)</legend>
+              <div class="u-mv">
+                <input id="contactId" name="contactId" placeholder="contactId/userId" type="string">
+                <input id="addedPhone" name="phone" placeholder="Phone" type="string">
+                <button type="button" onclick="createCloudContact()" class="btn-code">Create contact</button>
+              </div>
+            </fieldset>
+          </form>
+          <pre id="contact-object">Contact-Object</pre>
+          <form id="contactgroups-form">
+            <fieldset id="postContactGroupSection">
+              <legend>Create Contact groups</legend>
+              <div class="u-mv">
+                <input id="displayName" name="displayName" placeholder="Display name" type="string">
+                <select name="Contact Group Type" id="groupType">
+                  <option selected value="NORMAL">NORMAL</option>
+                  <option value="EXTERNAL">EXTERNAL</option>
+                </select>
+                <button type="button" onclick="createContactGroup()" class="btn-code">Create Contact Group</button>
+                <pre id="contactgroup-object">ContactGroup-Object</pre>
+              </div>
+            </fieldset>
+          </form>
+        </section>
       <section>
         <h2>Media Streams</h2>
         <form id="streams">
@@ -420,7 +484,7 @@
 
           </div>
       </section>
-    </aside>
+    </article>
   </main>
   <script src="init.js"></script>
   <script src="../calling.min.js"></script>

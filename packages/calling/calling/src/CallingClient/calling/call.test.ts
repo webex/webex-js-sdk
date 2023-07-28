@@ -1124,6 +1124,7 @@ describe('State Machine handler tests', () => {
       },
     };
 
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER_REQUEST');
     call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
     expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
 
@@ -1157,6 +1158,69 @@ describe('State Machine handler tests', () => {
 
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
+
+    dummyEvent.type = 'E_CALL_HOLD';
+    dummyEvent.data = {
+      seq: 3,
+      messageType: 'OFFER',
+    };
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+
+    dummyEvent.type = 'E_RECV_ROAP_OFFER';
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyEvent.type = 'E_SEND_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 3,
+      messageType: 'ANSWER',
+    };
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_ROAP_OFFER';
+    dummyEvent.data = {
+      seq: 4,
+      messageType: 'OFFER',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['waitingForOK']).toBe(true);
+    expect(mediaConnection.roapMessageReceived).not.toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyOkEvent.data = {
+      received: true,
+      message: {
+        seq: 3,
+        messageType: 'OK',
+      },
+    };
+
+    await call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenNthCalledWith(
+      6,
+      dummyOkEvent.data.message as RoapMessage
+    );
+
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyEvent.type = 'E_SEND_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 4,
+      messageType: 'ANSWER',
+    };
+
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER');
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
   });
 });
 

@@ -1,30 +1,50 @@
-/* eslint-disable no-await-in-loop */
 /* eslint-disable valid-jsdoc */
-import {STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
-import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
+/* eslint-disable no-await-in-loop */
+import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
+import {HTTP_METHODS, WebexRequestPayload, ContactDetail} from '../common/types';
 import {LoggerInterface} from '../Voicemail/types';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
 
 import log from '../Logger';
-import {CONTACTS_FILE, CONTACT_FILTER, ENCRYPT_FILTER, USERS} from './constants';
+import {
+  CONTACTS_FILE,
+  CONTACTS_SCHEMA,
+  CONTACT_FILTER,
+  DEFAULT_GROUP_NAME,
+  ENCRYPT_FILTER,
+  GROUP_FILTER,
+  USERS,
+  encryptedFields,
+} from './constants';
 import {
   Contact,
-  ContactIdGroupInfoMap,
+  ContactIdContactInfo,
   ContactList,
   ContactResponse,
   ContactType,
   IContacts,
+  ContactGroup,
+  GroupType,
 } from './types';
+
 import {serviceErrorCodeHandler} from '../common/Utils';
 
 /**
- *
+ * Client of contacts-service which stores encrypted custom contacts and org contacts.
  */
 export class ContactsClient implements IContacts {
   private sdkConnector: ISDKConnector;
 
+  private encryptionKeyUrl: string;
+
   private webex: WebexSDK;
+
+  private groups: ContactGroup[] | undefined;
+
+  private contacts: Contact[] | undefined;
+
+  private defaultGroupId: string;
 
   /**
    * @param webex - A webex instance.
@@ -39,6 +59,11 @@ export class ContactsClient implements IContacts {
 
     this.webex = this.sdkConnector.getWebex();
 
+    this.encryptionKeyUrl = '';
+    this.groups = undefined;
+    this.contacts = undefined;
+    this.defaultGroupId = '';
+
     log.setLogger(logger.level, CONTACTS_FILE);
   }
 
@@ -52,160 +77,255 @@ export class ContactsClient implements IContacts {
   }
 
   /**
-   * @param contact - Encrypted contact object.
-   * @param avatarUrlDomain - Avatar Url.
-   * @param encryptionKeyUrl - Encryption key received from KMS.
-   * @param ownerId - OwnerId.
-   * @returns Promise for decrypted contact object.
+   * Decrypt emails, phoneNumbers, sipAddresses.
+   *
+   * @param contactDetails - Array ContactDetail.
+   * @param encryptionKeyUrl - KMS encryptionKeyUrl for the contact.
+   * @returns Decrypted phoneNumbers.
    */
-  private async decryptContact(
-    contact: Contact,
-    avatarUrlDomain: string,
+  private async decryptContactDetail(
     encryptionKeyUrl: string,
-    ownerId: string
-  ): Promise<Contact> {
-    const {
-      addressInfo,
-      companyName,
-      displayName,
-      emails,
-      firstName,
-      lastName,
-      phoneNumbers,
-      sipAddresses,
-      title,
-    } = contact;
-    let decryptedCompanyName;
-    let decryptedFirstName;
-    let decryptedLastName;
-    let decryptedTitle;
+    contactDetails: ContactDetail[]
+  ): Promise<ContactDetail[]> {
+    const decryptedContactDetail = [...contactDetails];
 
-    if (addressInfo) {
-      // eslint-disable-next-line prefer-const
-      for (let [key, value] of Object.entries(addressInfo)) {
-        if (value) {
-          value = await this.webex.internal.encryption.decryptText(encryptionKeyUrl, value);
-        }
-        addressInfo[key] = value;
-      }
-    }
-
-    if (companyName) {
-      decryptedCompanyName = await this.webex.internal.encryption.decryptText(
-        encryptionKeyUrl,
-        companyName
-      );
-    }
-
-    const decryptedDisplayName = await this.webex.internal.encryption.decryptText(
-      encryptionKeyUrl,
-      displayName
+    const decryptedValues = await Promise.all(
+      decryptedContactDetail.map((detail) =>
+        this.webex.internal.encryption.decryptText(encryptionKeyUrl, detail.value)
+      )
     );
 
-    if (firstName) {
-      decryptedFirstName = await this.webex.internal.encryption.decryptText(
-        encryptionKeyUrl,
-        firstName
-      );
-    }
+    decryptedValues.forEach((decryptedValue, index) => {
+      decryptedContactDetail[index].value = decryptedValue;
+    });
 
-    if (lastName) {
-      decryptedLastName = await this.webex.internal.encryption.decryptText(
-        encryptionKeyUrl,
-        lastName
-      );
-    }
+    return decryptedContactDetail;
+  }
 
-    if (emails) {
-      for (let i = 0; i < emails.length; i += 1) {
-        const email = emails[i].value;
+  /**
+   * Encrypt emails, phoneNumbers, sipAddresses.
+   *
+   * @param contactDetails - Array ContactDetail.
+   * @param encryptionKeyUrl - KMS encryptionKeyUrl for the contact.
+   * @returns Decrypted phoneNumbers.
+   */
+  private async encryptContactDetail(
+    encryptionKeyUrl: string,
+    contactDetails: ContactDetail[]
+  ): Promise<ContactDetail[]> {
+    const encryptedContactDetail = [...contactDetails];
 
-        emails[i].value = await this.webex.internal.encryption.decryptText(encryptionKeyUrl, email);
+    const encryptedValues = await Promise.all(
+      encryptedContactDetail.map((detail) =>
+        this.webex.internal.encryption.encryptText(encryptionKeyUrl, detail.value)
+      )
+    );
+
+    encryptedValues.forEach((encryptedValue, index) => {
+      encryptedContactDetail[index].value = encryptedValue;
+    });
+
+    return encryptedContactDetail;
+  }
+
+  /**
+   * Encrypts a given contact.
+   *
+   * @param contact - Plaintext contact object.
+   * @returns Promise for encrypted contact.
+   */
+  private async encryptContact(contact: Contact): Promise<Contact> {
+    const {encryptionKeyUrl} = contact;
+    const encryptedContact: Contact = {...contact};
+
+    const encryptionPromises = encryptedFields.map(async (field) => {
+      switch (field) {
+        case 'addressInfo': {
+          const plaintextAddressInfo = encryptedContact.addressInfo;
+          let encryptedAddressInfo;
+
+          if (plaintextAddressInfo) {
+            const encryptedAddressInfoPromises = Object.entries(plaintextAddressInfo).map(
+              async ([key, value]) => [
+                key,
+                await this.webex.internal.encryption.encryptText(encryptionKeyUrl, value),
+              ]
+            );
+
+            encryptedAddressInfo = Object.fromEntries(
+              await Promise.all(encryptedAddressInfoPromises)
+            );
+          }
+
+          return [field, encryptedAddressInfo];
+        }
+        case 'emails':
+        case 'phoneNumbers':
+        case 'sipAddresses': {
+          const plainTextDetails = encryptedContact[field];
+          let encryptedDetails;
+
+          if (plainTextDetails) {
+            encryptedDetails = await this.encryptContactDetail(encryptionKeyUrl, plainTextDetails);
+          }
+
+          return [field, encryptedDetails];
+        }
+        default: {
+          let encryptedValue;
+
+          if (encryptedFields.includes(field) && encryptedContact[field]) {
+            encryptedValue = await this.webex.internal.encryption.encryptText(
+              encryptionKeyUrl,
+              encryptedContact[field]
+            );
+          }
+
+          return [field, encryptedValue];
+        }
       }
-    }
+    });
 
-    if (phoneNumbers) {
-      for (let i = 0; i < phoneNumbers.length; i += 1) {
-        const number = phoneNumbers[i].value;
+    const encryptedFieldsList = await Promise.all(encryptionPromises);
 
-        phoneNumbers[i].value = await this.webex.internal.encryption.decryptText(
-          encryptionKeyUrl,
-          number
-        );
+    encryptedFieldsList.forEach(([field, value]) => {
+      if (value !== undefined) {
+        encryptedContact[field] = value;
       }
-    }
+    });
 
-    if (sipAddresses) {
-      for (let i = 0; i < sipAddresses.length; i += 1) {
-        const sipAddress = sipAddresses[i].value;
+    return encryptedContact;
+  }
 
-        sipAddresses[i].value = await this.webex.internal.encryption.decryptText(
-          encryptionKeyUrl,
-          sipAddress
-        );
+  /**
+   * Decrypts a given contact.
+   *
+   * @param contact - Plaintext contact object.
+   * @returns Promise for encrypted contact.
+   */
+  private async decryptContact(contact: Contact): Promise<Contact> {
+    const {encryptionKeyUrl} = contact;
+    const decryptedContact: Contact = {...contact};
+
+    const decryptionPromises = encryptedFields.map(async (field) => {
+      switch (field) {
+        case 'addressInfo': {
+          const plaintextAddressInfo = decryptedContact.addressInfo;
+          let decryptedAddressInfo;
+
+          if (plaintextAddressInfo) {
+            const decryptedAddressInfoPromises = Object.entries(plaintextAddressInfo).map(
+              async ([key, value]) => [
+                key,
+                await this.webex.internal.encryption.decryptText(encryptionKeyUrl, value),
+              ]
+            );
+
+            decryptedAddressInfo = Object.fromEntries(
+              await Promise.all(decryptedAddressInfoPromises)
+            );
+          }
+
+          return [field, decryptedAddressInfo];
+        }
+        case 'emails':
+        case 'phoneNumbers':
+        case 'sipAddresses': {
+          const plainTextDetails = decryptedContact[field];
+          let decryptedDetails;
+
+          if (plainTextDetails) {
+            decryptedDetails = await this.decryptContactDetail(encryptionKeyUrl, plainTextDetails);
+          }
+
+          return [field, decryptedDetails];
+        }
+        default: {
+          let decryptedValue;
+
+          if (encryptedFields.includes(field) && decryptedContact[field]) {
+            decryptedValue = await this.webex.internal.encryption.decryptText(
+              encryptionKeyUrl,
+              decryptedContact[field]
+            );
+          }
+
+          return [field, decryptedValue];
+        }
       }
-    }
+    });
 
-    if (title) {
-      decryptedTitle = await this.webex.internal.encryption.decryptText(encryptionKeyUrl, title);
-    }
+    const decryptedFieldsList = await Promise.all(decryptionPromises);
 
-    const decryptedContact = {
-      addressInfo,
-      avatarUrlDomain,
-      companyName: decryptedCompanyName,
-      contactId: contact.contactId,
-      contactType: ContactType.CUSTOM,
-      displayName: decryptedDisplayName,
-      emails,
-      encryptionKeyUrl,
-      firstName: decryptedFirstName,
-      groups: contact.groups,
-      lastName: decryptedLastName,
-      ownerId,
-      phoneNumbers,
-      sipAddresses,
-      title: decryptedTitle,
-    };
+    decryptedFieldsList.forEach(([field, value]) => {
+      if (value !== undefined) {
+        decryptedContact[field] = value;
+      }
+    });
 
     return decryptedContact;
   }
 
   /**
    * @param contact - Contact object.
-   * @param contactGroupData - Object with contactId as key and value with group info for corresponding contact.
+   * @param contactsDataMap - Object with contactId as key and contact info for corresponding contact as value.
    * @param avatarUrlDomain - Avatar Url.
    * @param encryptionKeyUrl - Encryption key received from KMS.
    * @param ownerId - OwnerId.
    * @returns Array of contact detail fetched from DSS.
    */
-  private async fetchContactFromDSS(
-    contactGroupData: ContactIdGroupInfoMap,
-    avatarUrlDomain: string,
-    encryptionKeyUrl: string,
-    ownerId: string
-  ): Promise<Contact[]> {
+  private async fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): Promise<Contact[]> {
     const contactList = [];
-    const dssResult = await this.webex.internal.dss.lookup({ids: Object.keys(contactGroupData)});
+    const dssResult = await this.webex.internal.dss.lookup({ids: Object.keys(contactsDataMap)});
 
     for (let i = 0; i < dssResult.length; i += 1) {
       const contact = dssResult[i];
       const contactId = contact.identity;
-      const {displayName, emails, phoneNumbers, sipAddresses} = contact;
+      const {displayName, emails, phoneNumbers, sipAddresses, photos} = contact;
       const {department, firstName, identityManager, jobTitle, lastName} = contact.additionalInfo;
       const manager =
         identityManager && identityManager.displayName ? identityManager.displayName : undefined;
+      const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
+        contactsDataMap[contactId];
+      let avatarURL = '';
+
+      if (photos.length) {
+        avatarURL = photos[0].value;
+      }
+
+      const addedPhoneNumbers = contactsDataMap[contactId].phoneNumbers;
+
+      if (addedPhoneNumbers) {
+        const decryptedPhoneNumbers = await this.decryptContactDetail(
+          encryptionKeyUrl,
+          addedPhoneNumbers
+        );
+
+        decryptedPhoneNumbers.forEach((number) => phoneNumbers.push(number));
+      }
+
+      const addedSipAddresses = contactsDataMap[contactId].sipAddresses;
+
+      if (addedSipAddresses) {
+        const decryptedSipAddresses = await this.decryptContactDetail(
+          encryptionKeyUrl,
+          addedSipAddresses
+        );
+
+        decryptedSipAddresses.forEach((address) => sipAddresses.push(address));
+      }
 
       const cloudContact = {
         avatarUrlDomain,
+        avatarURL,
         contactId,
-        contactType: ContactType.CLOUD,
+        contactType,
         department,
         displayName,
         emails,
         encryptionKeyUrl,
         firstName,
-        groups: contactGroupData[contactId],
+        groups,
         lastName,
         manager,
         ownerId,
@@ -230,10 +350,7 @@ export class ContactsClient implements IContacts {
     };
 
     const contactList: Contact[] = [];
-    const contactGroupData: ContactIdGroupInfoMap = {};
-    let avatarUrlDomain = '';
-    let encryptionKeyUrl = '';
-    let ownerId = '';
+    const contactsDataMap: ContactIdContactInfo = {};
 
     try {
       const response = <WebexRequestPayload>await this.webex.request({
@@ -248,50 +365,423 @@ export class ContactsClient implements IContacts {
         throw new Error(`${response}`);
       }
 
-      const {contacts} = responseBody;
+      const {contacts, groups} = responseBody;
 
       for (let i = 0; i < contacts.length; i += 1) {
         const contact = contacts[i];
 
-        ({avatarUrlDomain, encryptionKeyUrl, ownerId} = contact);
-
         if (contact.contactType === ContactType.CUSTOM) {
-          const decryptedContact = await this.decryptContact(
-            contact,
-            avatarUrlDomain,
-            encryptionKeyUrl,
-            ownerId
-          );
+          const decryptedContact = await this.decryptContact(contact);
 
           contactList.push(decryptedContact);
-        } else if (contact.contactType === ContactType.CLOUD) {
-          const {contactId, groups} = contact;
-
-          contactGroupData[contactId] = groups;
+        } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
+          contactsDataMap[contact.contactId] = contact;
         }
       }
 
-      if (Object.keys(contactGroupData).length) {
-        const cloudContacts = await this.fetchContactFromDSS(
-          contactGroupData,
-          avatarUrlDomain,
-          encryptionKeyUrl,
-          ownerId
-        );
+      if (Object.keys(contactsDataMap).length) {
+        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
 
         contactList.push(...cloudContacts);
       }
 
+      await Promise.all(
+        groups.map(async (group, idx) => {
+          groups[idx].displayName = await this.webex.internal.encryption.decryptText(
+            group.encryptionKeyUrl,
+            group.displayName
+          );
+        })
+      );
+
+      this.groups = groups;
+      this.contacts = contactList;
       const contactResponse: ContactResponse = {
-        statusCode: response[STATUS_CODE] as number,
+        statusCode: Number(response[STATUS_CODE]),
         data: {
-          contactList,
+          contacts: contactList,
+          groups,
         },
         message: SUCCESS_MESSAGE,
       };
 
       return contactResponse;
     } catch (err: unknown) {
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Creates a new KMS Resource Object (KRO) and Content Key (CK) which is used for encryption.
+   *
+   * @returns EncryptionKeyUrl as a Promise.
+   */
+  private async createNewEncryptionKeyUrl(): Promise<string> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: this.createNewEncryptionKeyUrl.name,
+    };
+
+    let unboundedKeyUri = '';
+
+    log.info('Requesting kms for a new KRO and key', loggerContext);
+    const unboundedKeys = await this.webex.internal.encryption.kms.createUnboundKeys({count: 1});
+
+    unboundedKeyUri = unboundedKeys[0].uri;
+    this.webex.internal.encryption.kms.createResource({keyUris: [unboundedKeyUri]});
+
+    return unboundedKeyUri;
+  }
+
+  /**
+   * Fetches the encryptionKeyUrl from one of the groups. Creates a new key and default group if there is no data.
+   *
+   * @returns EncryptionKeyUrl as a Promise.
+   */
+  private async fetchEncryptionKeyUrl(): Promise<string> {
+    if (this.encryptionKeyUrl) {
+      return this.encryptionKeyUrl;
+    }
+    // istanbul ignore else
+    if (this.groups === undefined) {
+      this.getContacts();
+    }
+    // istanbul ignore else
+    if (this.groups && this.groups.length) {
+      /** Use the encryptionKeyUrl of any one of the groups */
+      return this.groups[0].encryptionKeyUrl;
+    }
+
+    this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
+    log.info(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+      file: CONTACTS_FILE,
+      method: this.fetchEncryptionKeyUrl.name,
+    });
+    const response: ContactResponse = await this.createContactGroup(
+      DEFAULT_GROUP_NAME,
+      this.encryptionKeyUrl
+    );
+
+    if (response.data.group?.groupId) {
+      this.defaultGroupId = response.data.group?.groupId;
+    }
+
+    return this.encryptionKeyUrl;
+  }
+
+  /**
+   * Fetches a default group.
+   *
+   * @returns GroupId of default group.
+   */
+  private async fetchDefaultGroup(): Promise<string> {
+    if (this.defaultGroupId) {
+      return this.defaultGroupId;
+    }
+
+    /* Check the groups list and determine the defaultGroupId */
+    if (this.groups && this.groups.length) {
+      for (let i = 0; i < this.groups.length; i += 1) {
+        if (this.groups[i].displayName === DEFAULT_GROUP_NAME) {
+          this.defaultGroupId = this.groups[i].groupId;
+
+          return this.defaultGroupId;
+        }
+      }
+    }
+
+    log.info('No default group found.', {
+      file: CONTACTS_FILE,
+      method: this.fetchDefaultGroup.name,
+    });
+
+    const response: ContactResponse = await this.createContactGroup(DEFAULT_GROUP_NAME);
+
+    const {group} = response.data;
+
+    if (group) {
+      return group.groupId;
+    }
+
+    return '';
+  }
+
+  /**
+   * Creates a personal contact group
+   * Also creates a KRO, if there aren't any groups.
+   *
+   * @param displayName - Display name for group, plaintext.
+   * @param encryptionKeyUrl - EncryptionKeyUrl for the content key to be used.
+   * @param groupType - Default is NORMAL.
+   * @returns Promises that resolve to ContactResponse.
+   */
+  public async createContactGroup(
+    displayName: string,
+    encryptionKeyUrl?: string,
+    groupType?: GroupType
+  ): Promise<ContactResponse> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: this.createContactGroup.name,
+    };
+
+    log.info(`Creating contact group ${displayName}`, loggerContext);
+
+    const encryptionKeyUrlFinal = encryptionKeyUrl || (await this.fetchEncryptionKeyUrl());
+
+    if (this.groups === undefined) {
+      await this.getContacts();
+    }
+
+    if (this.groups && this.groups.length) {
+      const isExistingGroup = this.groups.find((group) => {
+        return group.displayName === displayName;
+      });
+
+      if (isExistingGroup) {
+        log.warn(`Group name ${displayName} already exists.`, loggerContext);
+
+        return {
+          statusCode: 400 as number,
+          data: {error: 'Group displayName already exists'},
+          message: FAILURE_MESSAGE,
+        } as ContactResponse;
+      }
+    }
+
+    const encryptedDisplayName = await this.webex.internal.encryption.encryptText(
+      encryptionKeyUrlFinal,
+      displayName
+    );
+
+    const groupInfo = {
+      schemas: CONTACTS_SCHEMA,
+      displayName: encryptedDisplayName,
+      groupType: groupType || GroupType.NORMAL,
+      encryptionKeyUrl: encryptionKeyUrlFinal,
+    };
+
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        // eslint-disable-next-line no-underscore-dangle
+        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`,
+        method: HTTP_METHODS.POST,
+        body: groupInfo,
+      });
+
+      const group = response.body as ContactGroup;
+
+      group.displayName = displayName;
+      const contactResponse: ContactResponse = {
+        statusCode: Number(response[STATUS_CODE]),
+        data: {
+          group,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      this.groups?.push(group);
+
+      return contactResponse;
+    } catch (err: unknown) {
+      log.warn('Unable to create contact group.', loggerContext);
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Deletes a contact group.
+   *
+   * @param groupId - GroupId of the group to delete.
+   */
+  public async deleteContactGroup(groupId: string) {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: this.deleteContactGroup.name,
+    };
+
+    try {
+      log.info(`Deleting contact group: ${groupId}`, loggerContext);
+      const response = <WebexRequestPayload>await this.webex.request({
+        // eslint-disable-next-line no-underscore-dangle
+        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}/${groupId}`,
+        method: HTTP_METHODS.DELETE,
+      });
+      const contactResponse: ContactResponse = {
+        statusCode: Number(response[STATUS_CODE]),
+        data: {},
+        message: SUCCESS_MESSAGE,
+      };
+
+      const groupToDelete = this.groups?.findIndex((group) => group.groupId === groupId);
+
+      if (groupToDelete !== undefined && groupToDelete !== -1) {
+        this.groups?.splice(groupToDelete, 1);
+      }
+
+      if (!this.groups?.length) {
+        this.defaultGroupId = '';
+      }
+
+      return contactResponse;
+    } catch (err: unknown) {
+      log.warn(`Unable to delete contact group ${groupId}`, loggerContext);
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Creates a contact.
+   *
+   * @param contactInfo - The contact information to use when creating the contact (required).
+   * @returns - A Promise that resolves with the response of created contact.
+   */
+  public async createContact(contactInfo: Contact): Promise<ContactResponse> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: this.createContact.name,
+    };
+
+    log.info(`Request to create contact: contactType: ${contactInfo.contactType}`, loggerContext);
+
+    try {
+      const contact = {...contactInfo};
+
+      if (!contact.encryptionKeyUrl) {
+        contact.encryptionKeyUrl = await this.fetchEncryptionKeyUrl();
+      }
+
+      if (!contact.groups || contact.groups.length === 0) {
+        /** Fetch the groupId for the default group if not create  */
+        const defaultGroupId = await this.fetchDefaultGroup();
+
+        contact.groups = [defaultGroupId];
+      }
+
+      contact.schemas = CONTACTS_SCHEMA;
+      let requestBody = {};
+
+      switch (contact.contactType) {
+        case ContactType.CUSTOM: {
+          const encryptedContact = await this.encryptContact(contact);
+
+          requestBody = encryptedContact;
+          break;
+        }
+        case ContactType.CLOUD: {
+          if (!contact.contactId) {
+            return {
+              statusCode: 400 as number,
+              data: {
+                error: 'contactId is required for contactType:CLOUD.',
+              },
+              message: FAILURE_MESSAGE,
+            } as ContactResponse;
+          }
+          const encryptedContact = await this.encryptContact(contact);
+
+          requestBody = encryptedContact;
+          break;
+        }
+        default: {
+          return {
+            statusCode: 400 as number,
+            data: {
+              error: 'Unknown contactType received.',
+            },
+            message: FAILURE_MESSAGE,
+          } as ContactResponse;
+        }
+      }
+
+      const response = <WebexRequestPayload>await this.webex.request({
+        // eslint-disable-next-line no-underscore-dangle
+        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
+        method: HTTP_METHODS.POST,
+        body: requestBody,
+      });
+
+      const newContact = response.body as Contact;
+
+      contact.contactId = newContact.contactId;
+      const contactResponse: ContactResponse = {
+        statusCode: Number(response[STATUS_CODE]),
+        data: {
+          contact,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      if (contact.contactType === ContactType.CLOUD) {
+        const decryptedContacts = await this.fetchContactFromDSS(
+          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo
+        );
+
+        if (decryptedContacts.length && decryptedContacts[0]) {
+          this.contacts?.push(decryptedContacts[0]);
+        }
+      } else {
+        this.contacts?.push(contact);
+      }
+
+      return contactResponse;
+    } catch (err: unknown) {
+      log.warn('Failed to create contact.', {
+        file: CONTACTS_FILE,
+        method: this.createContact.name,
+      });
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Delete a contact.
+   *
+   * @param contactId - ContactId of the contact to delete.
+   */
+  public async deleteContact(contactId: string): Promise<ContactResponse> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: this.deleteContact.name,
+    };
+
+    try {
+      log.info(`Deleting contact : ${contactId}`, loggerContext);
+      const response = <WebexRequestPayload>await this.webex.request({
+        // eslint-disable-next-line no-underscore-dangle
+        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}/${contactId}`,
+        method: HTTP_METHODS.DELETE,
+      });
+
+      const contactResponse: ContactResponse = {
+        statusCode: Number(response[STATUS_CODE]),
+        data: {},
+        message: SUCCESS_MESSAGE,
+      };
+
+      const contactToDelete = this.contacts?.findIndex(
+        (contact) => contact.contactId === contactId
+      );
+
+      if (contactToDelete !== undefined && contactToDelete !== -1) {
+        this.contacts?.splice(contactToDelete, 1);
+      }
+
+      return contactResponse;
+    } catch (err: unknown) {
+      log.warn(`Unable to delete contact ${contactId}`, loggerContext);
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 

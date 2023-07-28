@@ -1,5 +1,11 @@
-import {DSSLookupResponse, LookupOptions} from '../Contacts/types';
-import {PeopleListResponse, WebexRequestPayload} from '../common/types';
+import {
+  DSSLookupResponse,
+  KmsKey,
+  KmsResourceObject,
+  LookupOptions,
+  PeopleListResponse,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
@@ -80,7 +86,13 @@ export interface WebexSDK {
       lookup: (options: LookupOptions) => Promise<DSSLookupResponse[]>;
     };
     encryption: {
-      decryptText: (encryptionKey: string, encryptedData: string) => Promise<string>;
+      decryptText: (encryptionKeyUrl: string, encryptedData: string) => Promise<string>;
+      encryptText: (encryptionKeyUrl: string, text: string) => Promise<string>;
+      kms: {
+        createUnboundKeys: (arg0: {count?: number}) => Promise<KmsKey[]>;
+        createResource: (arg0: {keyUris: string[]}) => Promise<KmsResourceObject>;
+        bindKey: (arg0: {kroUri: string; keyUri: string}) => Promise<KmsKey>;
+      };
     };
     presence: unknown;
     support: unknown;

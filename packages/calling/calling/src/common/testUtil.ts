@@ -55,6 +55,12 @@ export function getTestUtilsWebex() {
       },
       encryption: {
         decryptText: jest.fn(),
+        encryptText: jest.fn(),
+        kms: {
+          createUnboundKeys: jest.fn(),
+          createResource: jest.fn(),
+          bindKey: jest.fn(),
+        },
       },
       presence: jest.fn(),
       support: jest.fn(),
@@ -68,7 +74,7 @@ export function getTestUtilsWebex() {
           hydra: 'https://hydra-a.wbx2.com/v1/',
           mercuryApi: 'https://mercury-api-intb.ciscospark.com/v1',
           'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
-          contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1/',
+          contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
           directorySearch: 'https://directory-search-a.wbx2.com/direcory-search/api/v1/',
         },
         fetchClientRegionInfo: jest.fn(),
