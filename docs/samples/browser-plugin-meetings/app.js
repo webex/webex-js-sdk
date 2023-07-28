@@ -683,6 +683,7 @@ function getMediaSettings() {
   });
 
   settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
+  settings.bundlePolicy = 'max-bundle';
 
   return settings;
 }
