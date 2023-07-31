@@ -374,9 +374,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (useDefault) {
       log.warn('Error in finding Mobius Servers. Will use the default URL.', '' as LogContext);
-      this.primaryMobiusUris.push(
-        `${this.webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`
-      );
+      this.primaryMobiusUris = [
+        `${this.webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`,
+      ];
     }
   }
 
@@ -455,7 +455,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     await this.mutex.runExclusive(async () => {
       this.registration.setStatus(MobiusStatus.DEFAULT);
       this.emit(EVENT_KEYS.CONNECTING);
-      await this.getMobiusServers();
+
+      /* Don't do a discovery if we already have the servers list */
+      if (this.primaryMobiusUris.length === 0) {
+        await this.getMobiusServers();
+      }
+
       this.registration.setMobiusServers(this.primaryMobiusUris, this.backupMobiusUris);
       await this.registration.triggerRegistration();
     });
