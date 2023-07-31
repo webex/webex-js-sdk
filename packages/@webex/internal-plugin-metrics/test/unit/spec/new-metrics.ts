@@ -24,25 +24,55 @@ describe("internal-plugin-metrics", () => {
 
       webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticLatencies.setMeetingId = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
     });
 
-    it('submits Client Event successfully', () => {
-      webex.internal.newMetrics.submitClientEvent({
-        name: 'client.alert.displayed',
-        options: {
-          meetingId: '123',
-        }
+    describe('submitClientEvent', () => {
+      it('submits Client Event successfully', () => {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {
+            meetingId: '123',
+          },
+        });
+
+        assert.calledWith(
+          webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp,
+          'client.alert.displayed'
+        );
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent, {
+          name: 'client.alert.displayed',
+          payload: undefined,
+          options: {meetingId: '123'},
+        });
       });
 
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, "client.alert.displayed")
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent, {
-        name: 'client.alert.displayed',
-        payload: undefined,
-        options: { meetingId: '123' }
-      })
+      it('saves current meetingId successfully on submitClientEvent if meetingId is provided', () => {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {
+            meetingId: '123',
+          },
+        });
+
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.setMeetingId, '123');
+      });
+
+      it('doesnt save meetingId on submitClientEvent if meetingId is provided', () => {
+        webex.internal.newMetrics.callDiagnosticLatencies.meetingId = '123';
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {
+            meetingId: '123',
+          },
+        });
+
+        assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.setMeetingId);
+      });
     });
+
 
     it('submits MQE successfully', () => {
       webex.internal.newMetrics.submitMQE({

@@ -13,13 +13,17 @@ import {MetricEventNames} from '../metrics.types';
 export default class CallDiagnosticLatencies {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<string, number>;
+  webex?: any;
+  // meetingId that the current latencies are for
+  meetingId?: string;
 
   /**
    * @constructor
    */
-  constructor() {
+  constructor({webex}: {webex: any}) {
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
+    this.webex = webex;
   }
 
   /**
@@ -27,6 +31,26 @@ export default class CallDiagnosticLatencies {
    */
   public clearTimestamps() {
     this.latencyTimestamps.clear();
+  }
+
+  /**
+   * Associate current latencies with a meeting id
+   * @param meetingId
+   */
+  public setMeetingId(meetingId: string) {
+    this.meetingId = meetingId;
+  }
+
+  /**
+   * Returns the meeting object associated with current latencies
+   * @returns meeting object
+   */
+  private getMeeting() {
+    if (this.meetingId) {
+      return this.webex.meetings.meetingCollection.get(this.meetingId);
+    }
+
+    return undefined;
   }
 
   /**
@@ -311,9 +335,15 @@ export default class CallDiagnosticLatencies {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
+    const lobbyTime = this.getStayLobbyTime();
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      const totalMediaJMT = clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      if (this.getMeeting()?.allowMediaInLobby) {
+        return totalMediaJMT;
+      }
+
+      return totalMediaJMT - lobbyTime;
     }
 
     return undefined;

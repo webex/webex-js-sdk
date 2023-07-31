@@ -41,8 +41,6 @@ class Metrics extends WebexPlugin {
   constructor(...args) {
     super(...args);
 
-    this.callDiagnosticLatencies = new CallDiagnosticLatencies();
-
     this.onReady();
   }
 
@@ -54,6 +52,8 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+      // @ts-ignore
+      this.callDiagnosticLatencies = new CallDiagnosticLatencies({webex: this.webex});
     });
   }
 
@@ -160,6 +160,10 @@ class Metrics extends WebexPlugin {
     options: SubmitClientEventOptions;
   }) {
     this.callDiagnosticLatencies.saveTimestamp(name);
+    // save the meetingId so we can use the meeting object in latency calculations if needed
+    if (options?.meetingId && !this.callDiagnosticLatencies.meetingId) {
+      this.callDiagnosticLatencies.setMeetingId(options.meetingId);
+    }
     this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
   }
 }

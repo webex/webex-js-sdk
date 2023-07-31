@@ -11,7 +11,17 @@ describe("internal-plugin-metrics", () => {
     beforeEach(() => {
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
-      cdl = new CallDiagnosticLatencies();
+      cdl = new CallDiagnosticLatencies({webex: {
+        meetings:{
+          meetingCollection: {
+            get: (id: string) => {
+              if(id === 'meeting-id') {
+                return {id:'meeting-id', allowMediaInLobby: true};
+              }
+            }
+          }
+        }
+      }});
     });
 
     afterEach(() => {
@@ -185,6 +195,19 @@ describe("internal-plugin-metrics", () => {
     });
 
     it('calculates getTotalMediaJMT correctly', () => {
+      cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 5);
+      cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 8);
+      cdl.saveTimestamp('internal.client.interstitial-window.click.joinbutton', 10);
+      cdl.saveTimestamp('client.locus.join.request', 12);
+      cdl.saveTimestamp('client.locus.join.response', 20);
+      cdl.saveTimestamp('internal.host.meeting.participant.admitted', 24)
+      cdl.saveTimestamp('client.ice.start', 30);
+      cdl.saveTimestamp('client.ice.end', 40);
+      assert.deepEqual(cdl.getTotalMediaJMT(), 27);
+    })
+
+    it('calculates getTotalMediaJMT correctly with allowMediaInLobby true', () => {
+      cdl.setMeetingId('meeting-id');
       cdl.saveTimestamp('internal.client.meeting.click.joinbutton', 5);
       cdl.saveTimestamp('internal.client.meeting.interstitial-window.showed', 8);
       cdl.saveTimestamp('internal.client.interstitial-window.click.joinbutton', 10);
