@@ -1,5 +1,6 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
+import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import {MetricEventNames} from '../metrics.types';
 
@@ -10,20 +11,19 @@ import {MetricEventNames} from '../metrics.types';
  * @exports
  * @class CallDiagnosticLatencies
  */
-export default class CallDiagnosticLatencies {
+export default class CallDiagnosticLatencies extends StatelessWebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<string, number>;
-  webex?: any;
   // meetingId that the current latencies are for
   meetingId?: string;
 
   /**
    * @constructor
    */
-  constructor({webex}: {webex: any}) {
+  constructor(...args) {
+    super(...args);
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
-    this.webex = webex;
   }
 
   /**
@@ -37,7 +37,7 @@ export default class CallDiagnosticLatencies {
    * Associate current latencies with a meeting id
    * @param meetingId
    */
-  public setMeetingId(meetingId: string) {
+  private setMeetingId(meetingId: string) {
     this.meetingId = meetingId;
   }
 
@@ -47,6 +47,7 @@ export default class CallDiagnosticLatencies {
    */
   private getMeeting() {
     if (this.meetingId) {
+      // @ts-ignore
       return this.webex.meetings.meetingCollection.get(this.meetingId);
     }
 
@@ -60,7 +61,20 @@ export default class CallDiagnosticLatencies {
    * @throws
    * @returns
    */
-  public saveTimestamp(key: MetricEventNames, value: number = new Date().getTime()) {
+  public saveTimestamp({
+    key,
+    value = new Date().getTime(),
+    options = {},
+  }: {
+    key: MetricEventNames;
+    value?: number;
+    options?: {meetingId?: string};
+  }) {
+    // save the meetingId so we can use the meeting object in latency calculations if needed
+    const {meetingId} = options;
+    if (meetingId) {
+      this.setMeetingId(meetingId);
+    }
     // for some events we're only interested in the first timestamp not last
     // as these events can happen multiple times
     if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {

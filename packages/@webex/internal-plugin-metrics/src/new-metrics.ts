@@ -53,7 +53,7 @@ class Metrics extends WebexPlugin {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       // @ts-ignore
-      this.callDiagnosticLatencies = new CallDiagnosticLatencies({webex: this.webex});
+      this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
     });
   }
 
@@ -73,7 +73,7 @@ class Metrics extends WebexPlugin {
     if (name === 'internal.reset.join.latencies') {
       this.callDiagnosticLatencies.clearTimestamps();
     } else {
-      this.callDiagnosticLatencies.saveTimestamp(name);
+      this.callDiagnosticLatencies.saveTimestamp({key: name});
     }
   }
 
@@ -90,7 +90,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<BehavioralEvent['payload']>;
     options?: any;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp(name);
+    this.callDiagnosticLatencies.saveTimestamp({key: name});
     throw new Error('Not implemented.');
   }
 
@@ -125,7 +125,7 @@ class Metrics extends WebexPlugin {
     };
     options: any;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp(name);
+    this.callDiagnosticLatencies.saveTimestamp({key: name});
     this.callDiagnosticMetrics.submitMQE({name, payload, options});
   }
 
@@ -159,11 +159,10 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp(name);
-    // save the meetingId so we can use the meeting object in latency calculations if needed
-    if (options?.meetingId && !this.callDiagnosticLatencies.meetingId) {
-      this.callDiagnosticLatencies.setMeetingId(options.meetingId);
-    }
+    this.callDiagnosticLatencies.saveTimestamp({
+      key: name,
+      options: {meetingId: options?.meetingId},
+    });
     this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
   }
 }
