@@ -343,24 +343,6 @@ describe('live-annotation', () => {
         });
       });
 
-      describe('change annotation info by presenter', () => {
-        it('makes change annotation options as expected', async() => {
-          const options =  { annotationInfo:{
-              version: '1',
-              policy: 'AnnotationNotAllowed',
-          }};
-
-          const remoteShareUrl = 'remoteShareUrl';
-          const result = await annotationService.changeAnnotationOptions(remoteShareUrl,options);
-          assert.calledOnceWithExactly(webex.request, {
-              method: 'PATCH',
-              url: 'remoteShareUrl',
-              body: {annotationInfo: { version: '1', policy: 'AnnotationNotAllowed' }}
-          });
-          assert.equal(result, 'REQUEST_RETURN_VALUE')
-        });
-      });
-
 
 
       describe('close annotation', () => {

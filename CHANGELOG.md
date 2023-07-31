@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.179](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.178...v3.0.0-beta.179) (2023-07-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** changed sample app to use max-bundle ([#2983](https://github.com/webex/webex-js-sdk/issues/2983)) ([a4fe738](https://github.com/webex/webex-js-sdk/commit/a4fe738d833dcfa28f28c3668e2612fc679a8d2c))
+
+## [3.0.0-beta.178](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.177...v3.0.0-beta.178) (2023-07-26)
+
+
+### Features
+
+* **ca-metrics:** fix latency bugs ([#2976](https://github.com/webex/webex-js-sdk/issues/2976)) ([9085e2d](https://github.com/webex/webex-js-sdk/commit/9085e2dd24c40ec1ef943ce56d3e2ed4ac94f7cc))
+
+## [3.0.0-beta.177](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.176...v3.0.0-beta.177) (2023-07-26)
+
+
+### Bug Fixes
+
+* **samples:** video resolution issue fix ([#2969](https://github.com/webex/webex-js-sdk/issues/2969)) ([8b0fd39](https://github.com/webex/webex-js-sdk/commit/8b0fd392c9b8406fb93948806c265602ead658ff))
+
+## [3.0.0-beta.176](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.175...v3.0.0-beta.176) (2023-07-26)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** add annotation info for share ([#2974](https://github.com/webex/webex-js-sdk/issues/2974)) ([c73de12](https://github.com/webex/webex-js-sdk/commit/c73de1225256b958b7e8df1c438c23fdddda3a0a))
+
 ## [3.0.0-beta.175](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.174...v3.0.0-beta.175) (2023-07-25)
 
 ## [3.0.0-beta.174](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.173...v3.0.0-beta.174) (2023-07-21)
