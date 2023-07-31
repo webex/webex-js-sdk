@@ -12,12 +12,14 @@ import {MetricEventNames} from '../metrics.types';
  */
 export default class CallDiagnosticLatencies {
   latencyTimestamps: Map<MetricEventNames, number>;
+  precomputedLatencies: Map<string, number>;
 
   /**
    * @constructor
    */
   constructor() {
     this.latencyTimestamps = new Map();
+    this.precomputedLatencies = new Map();
   }
 
   /**
@@ -30,7 +32,7 @@ export default class CallDiagnosticLatencies {
   /**
    * Store timestamp value
    * @param key - key
-   * @param  value -value
+   * @param value -value
    * @throws
    * @returns
    */
@@ -42,6 +44,17 @@ export default class CallDiagnosticLatencies {
     } else {
       this.latencyTimestamps.set(key, value);
     }
+  }
+
+  /**
+   * Store precomputed latency value
+   * @param key - key
+   * @param value -value
+   * @throws
+   * @returns
+   */
+  public saveLatency(key: string, value: number) {
+    this.precomputedLatencies.set(key, value);
   }
 
   /**
@@ -107,10 +120,15 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getCallInitJoinReq() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'client.locus.join.request'
-    );
+    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+      return this.getDiffBetweenTimestamps(
+        'internal.client.meeting.click.joinbutton',
+        'client.locus.join.request'
+      );
+    }
+
+    // for cross launch and guest flows
+    return this.precomputedLatencies.get('internal.call.init.join.req') || undefined;
   }
 
   /**
@@ -189,7 +207,7 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getPageJMT() {
-    return this.latencyTimestamps.get('internal.client.pageJMT.received') || undefined;
+    return this.precomputedLatencies.get('internal.client.pageJMT') || undefined;
   }
 
   /**
@@ -197,10 +215,16 @@ export default class CallDiagnosticLatencies {
    * @returns - latency
    */
   public getClickToInterstitial() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.meeting.click.joinbutton',
-      'internal.client.meeting.interstitial-window.showed'
-    );
+    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
+    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+      return this.getDiffBetweenTimestamps(
+        'internal.client.meeting.click.joinbutton',
+        'internal.client.meeting.interstitial-window.showed'
+      );
+    }
+
+    // for cross launch and guest flows
+    return this.precomputedLatencies.get('internal.click.to.interstitial') || undefined;
   }
 
   /**
