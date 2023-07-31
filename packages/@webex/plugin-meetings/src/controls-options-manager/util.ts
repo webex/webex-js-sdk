@@ -98,7 +98,7 @@ class Utils {
    * @returns {boolean} - True if all of the actions are allowed.
    */
   public static hasPolicies(config: {requiredPolicies: Array<string>; policies: Array<string>}) {
-    const {requiredPolicies, policies} = config;
+    const {requiredPolicies, policies = {}} = config;
 
     return requiredPolicies.every((hint) => policies[hint]);
   }

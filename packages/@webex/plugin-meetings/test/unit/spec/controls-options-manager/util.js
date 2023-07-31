@@ -60,7 +60,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateAudio()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints when `muted` is true', () => {
@@ -138,7 +138,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateAudio({properties: {}}, []);
 
@@ -149,7 +149,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateRaiseHand()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints when `enabled` is true', () => {
@@ -172,7 +172,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateRaiseHand({properties: {}}, []);
 
@@ -183,7 +183,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateReactions()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints when `enabled` is true', () => {
@@ -257,7 +257,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateReactions({properties: {}}, []);
 
@@ -268,7 +268,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateShareControl()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints', () => {
@@ -282,7 +282,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateShareControl([]);
 
@@ -293,7 +293,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateVideo()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints when `enabled` is true', () => {
@@ -316,7 +316,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateVideo({properties: {}}, []);
 
@@ -327,7 +327,7 @@ describe('plugin-meetings', () => {
 
       describe('canUpdateViewTheParticipantsList()', () => {
         beforeEach(() => {
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
         });
 
         it('should call hasHints() with proper hints when `enabled` is true', () => {
@@ -350,7 +350,7 @@ describe('plugin-meetings', () => {
 
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(expected);
+          ControlsOptionsUtil.hasHints.returns(expected);
 
           const results = ControlsOptionsUtil.canUpdateViewTheParticipantsList(
             {properties: {}},
