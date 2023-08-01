@@ -90,6 +90,20 @@ class Utils {
   }
 
   /**
+   * Validate that the self policy object contains the required policies.
+   *
+   * @param {Object} config - Configuration Object.
+   * @param {Array<string>} config.requiredPolicies - Policies required for validation.
+   * @param {Array<string>} config.policies - All available policies.
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
+  public static hasPolicies(config: {requiredPolicies: Array<string>; policies: Array<string>}) {
+    const {requiredPolicies, policies = {}} = config;
+
+    return requiredPolicies.every((hint) => policies[hint]);
+  }
+
+  /**
    * Validate if an audio-scoped control is allowed to be sent to the service.
    *
    * @param {ControlConfig<AudioProperties>} control - Audio control config to validate.
