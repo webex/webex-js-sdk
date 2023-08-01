@@ -32,8 +32,7 @@
     "prepare": "husky install",
     "publish:release": "semantic-release",
     "build:docs": "typedoc --out docs/",
-    "docs": "typedoc --emit none",
-    "build:browser": "rollup --config"
+    "docs": "typedoc --emit none"
   },
   "dependencies": {
     "@types/platform": "1.3.4",
