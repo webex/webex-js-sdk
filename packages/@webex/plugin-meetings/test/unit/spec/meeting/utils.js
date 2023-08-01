@@ -744,15 +744,15 @@ describe('plugin-meetings', () => {
 
     describe('parseInterpretationInfo', () => {
       let meetingInfo = {};
-
-      it('should update simultaneous interpretation settings for the meeting', () => {
+      beforeEach(() => {
         meeting.simultaneousInterpretation = {
           updateMeetingSIEnabled: sinon.stub(),
           updateHostSIEnabled: sinon.stub(),
           updateInterpretation: sinon.stub(),
           siLanguages: [],
         };
-
+      });
+      it('should update simultaneous interpretation settings with SI and host enabled', () => {
         meetingInfo.turnOnSimultaneousInterpretation = true;
         meetingInfo.meetingSiteSetting = {
           enableHostInterpreterControlSI: true,
@@ -772,7 +772,9 @@ describe('plugin-meetings', () => {
           { languageName: 'en', languageCode: 1 },
           { languageName: 'es', languageCode: 2 },
         ]);
+      });
 
+      it('should update simultaneous interpretation settings with host SI disabled', () => {
         meetingInfo.meetingSiteSetting.enableHostInterpreterControlSI = false;
         meetingInfo.simultaneousInterpretation.currentSIInterpreter = false;
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
@@ -782,8 +784,8 @@ describe('plugin-meetings', () => {
           { languageName: 'en', languageCode: 1 },
           { languageName: 'es', languageCode: 2 },
         ]);
-
-
+      });
+      it('should update simultaneous interpretation settings with SI disabled', () => {
         meetingInfo.turnOnSimultaneousInterpretation = false;
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, false, false);
@@ -791,13 +793,6 @@ describe('plugin-meetings', () => {
       });
 
       it('should not update simultaneous interpretation settings for invalid input', () => {
-        meeting.simultaneousInterpretation = {
-          updateMeetingSIEnabled: sinon.stub(),
-          updateHostSIEnabled: sinon.stub(),
-          updateInterpretation: sinon.stub(),
-          siLanguages: [],
-        };
-
         // Call the function with invalid inputs
         MeetingUtil.parseInterpretationInfo(null, null);
 

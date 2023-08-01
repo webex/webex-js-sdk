@@ -5535,11 +5535,21 @@ describe('plugin-meetings', () => {
             body: {
               meetingSiteSetting: {
                 enableHostInterpreterControlSI: true,
+              },
+              turnOnSimultaneousInterpretation: true,
+              simultaneousInterpretation: {
+                currentSIInterpreter: false,
+                siLanguages: [
+                  {
+                    languageCode: "ar",
+                    languageGroupId: 4,
+                  },
+                ]
               }
             }
           };
           meeting.parseMeetingInfo(mockToggleOnData);
-          assert.calledOnce(parseInterpretationInfo);
+          assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
         });
       });
 
