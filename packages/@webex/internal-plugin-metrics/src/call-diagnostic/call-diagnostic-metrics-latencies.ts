@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
-import {StatelessWebexPlugin} from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 
 import {MetricEventNames} from '../metrics.types';
 
@@ -11,11 +11,11 @@ import {MetricEventNames} from '../metrics.types';
  * @exports
  * @class CallDiagnosticLatencies
  */
-export default class CallDiagnosticLatencies extends StatelessWebexPlugin {
+export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<string, number>;
   // meetingId that the current latencies are for
-  meetingId?: string;
+  private meetingId?: string;
 
   /**
    * @constructor
