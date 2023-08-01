@@ -550,6 +550,7 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   annotationInfo: AnnotationInfo;
+  allowMediaInLobby: boolean;
 
   /**
    * @param {Object} attrs
@@ -5258,6 +5259,8 @@ export default class Meeting extends StatelessWebexPlugin {
       bundlePolicy,
       allowMediaInLobby,
     } = options;
+
+    this.allowMediaInLobby = options?.allowMediaInLobby;
 
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
