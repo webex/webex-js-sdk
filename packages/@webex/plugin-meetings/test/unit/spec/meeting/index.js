@@ -26,6 +26,7 @@ import {
   LOCUSINFO,
   PC_BAIL_TIMEOUT,
   DISPLAY_HINTS,
+  SELF_POLICY,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -5656,10 +5657,99 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy.restore();
         });
 
+        forEach(
+          [
+            {
+              actionName: 'canShareFile',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_FILE],
+              requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
+            },
+            {
+              actionName: 'canShareApplication',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+            },
+            {
+              actionName: 'canShareCamera',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_CAMERA],
+              requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
+            },
+            {
+              actionName: 'canShareDesktop',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+              requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+            },
+          ],
+          ({actionName, requiredDisplayHints, requiredPolicies}) => {
+            it(`${actionName} is enabled when the conditions are met`, () => {
+              meeting.selfUserPolicies = {};
+
+              forEach(requiredPolicies, (policy) => {
+                meeting.selfUserPolicies[policy] = true;
+              });
+
+              meeting.setUpLocusInfoMeetingInfoListener();
+
+              const callback = locusInfoOnSpy.thirdCall.args[1];
+
+              const payload = {
+                info: {
+                  userDisplayHints: requiredDisplayHints,
+                },
+              };
+
+              callback(payload);
+
+              assert.isTrue(meeting.inMeetingActions.get()[actionName]);
+            });
+
+            it(`${actionName} is disabled when the required display hints are missing`, () => {
+              meeting.selfUserPolicies = {};
+
+              forEach(requiredPolicies, (policy) => {
+                meeting.selfUserPolicies[policy] = true;
+              });
+
+              meeting.setUpLocusInfoMeetingInfoListener();
+
+              const callback = locusInfoOnSpy.thirdCall.args[1];
+
+              const payload = {
+                info: {
+                  userDisplayHints: [],
+                },
+              };
+
+              callback(payload);
+
+              assert.isFalse(meeting.inMeetingActions.get()[actionName]);
+            });
+
+            it(`${actionName} is disabled when the required policies are missing`, () => {
+              meeting.selfUserPolicies = {};
+
+              meeting.setUpLocusInfoMeetingInfoListener();
+
+              const callback = locusInfoOnSpy.thirdCall.args[1];
+
+              const payload = {
+                info: {
+                  userDisplayHints: requiredDisplayHints,
+                },
+              };
+
+              callback(payload);
+
+              assert.isFalse(meeting.inMeetingActions.get()[actionName]);
+            });
+          }
+        );
+
         it('registers the correct MEETING_INFO_UPDATED event', () => {
           // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
+          ControlsOptionsUtil.hasPolicies = sinon.stub().returns(true);
 
           const setUserPolicySpy = sinon.spy(meeting.recordingController, 'setUserPolicy');
           meeting.selfUserPolicies = {a: true};
@@ -5758,17 +5848,33 @@ describe('plugin-meetings', () => {
             requiredHints: [DISPLAY_HINTS.SHARE_FILE],
             displayHints: payload.info.userDisplayHints,
           });
+          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
+            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
+            policies: {a: true},
+          });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
             displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
+            requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+            policies: {a: true},
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
             displayHints: payload.info.userDisplayHints,
           });
+          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
+            requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
+            policies: {a: true},
+          });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
             displayHints: payload.info.userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
+            requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+            policies: {a: true},
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],

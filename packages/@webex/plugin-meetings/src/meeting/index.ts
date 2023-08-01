@@ -90,6 +90,7 @@ import {
   HTTP_VERBS,
   SELF_ROLES,
   INTERPRETATION,
+  SELF_POLICY,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -2584,22 +2585,42 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
           }),
-          canShareFile: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
-            displayHints: payload.info.userDisplayHints,
-          }),
-          canShareApplication: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-            displayHints: payload.info.userDisplayHints,
-          }),
-          canShareCamera: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
-            displayHints: payload.info.userDisplayHints,
-          }),
-          canShareDesktop: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-            displayHints: payload.info.userDisplayHints,
-          }),
+          canShareFile:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+              displayHints: payload.info.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
+              policies: this.selfUserPolicies,
+            }),
+          canShareApplication:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+              displayHints: payload.info.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+              policies: this.selfUserPolicies,
+            }),
+          canShareCamera:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+              displayHints: payload.info.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
+              policies: this.selfUserPolicies,
+            }),
+          canShareDesktop:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+              displayHints: payload.info.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+              policies: this.selfUserPolicies,
+            }),
           canShareContent: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
             displayHints: payload.info.userDisplayHints,
