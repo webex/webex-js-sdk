@@ -1,8 +1,7 @@
 /* eslint-disable no-underscore-dangle */
-import {CallingPartyInfo, CALLING_BACKEND, MessageInfo} from '../Voicemail/types';
+import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
-
 import {
   getTestUtilsWebex,
   getSampleScimResponse,
@@ -18,6 +17,7 @@ import {
   ServiceIndicator,
   SORT,
   WebexRequestPayload,
+  CALLING_BACKEND,
 } from './types';
 import log from '../Logger';
 import {

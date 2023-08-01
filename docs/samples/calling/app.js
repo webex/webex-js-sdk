@@ -272,11 +272,11 @@ async function initCalling(e) {
 
       fetchLines();
       fetchDNDSetting();
-      fetchCallWaitingSetting();
       fetchCallForwardSetting();
       fetchVoicemailSetting();
-    })
-  })
+      fetchCallWaitingSetting();
+    });
+  });
 
   return false;
 }

@@ -29,6 +29,7 @@ import {
 } from '../Errors/types';
 import {
   ALLOWED_SERVICES,
+  CALLING_BACKEND,
   CorrelationId,
   DecodeType,
   DisplayInformation,
@@ -90,7 +91,6 @@ import {
 } from '../CallingClient/constants';
 import {JanusResponseEvent} from '../CallHistory/types';
 import {
-  CALLING_BACKEND,
   VoicemailResponseEvent,
   MessageInfo,
   CallingPartyInfo,
@@ -107,8 +107,6 @@ import {
   XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
   XSI_ACTION_ENDPOINT,
   INFER_ID_CONSTANT,
-} from './constants';
-import {
   BW_XSI_URL,
   ENTITLEMENT_BASIC,
   ENTITLEMENT_BROADWORKS_CONN,
@@ -116,7 +114,7 @@ import {
   NATIVE_WEBEX_TEAMS_CALLING,
   NATIVE_SIP_CALL_TO_UCM,
   BW_XSI_ENDPOINT_VERSION,
-} from '../Voicemail/constants';
+} from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import {scimResponseBody} from '../CallingClient/calling/CallerId/types';
 import SDKConnector from '../SDKConnector';

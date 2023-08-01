@@ -7,13 +7,13 @@ import {
   ENTITLEMENT_STANDARD,
   NATIVE_SIP_CALL_TO_UCM,
   NATIVE_WEBEX_TEAMS_CALLING,
-} from './constants';
-import {CALLING_BACKEND, VoicemailResponseEvent} from './types';
+} from '../common/constants';
+import {VoicemailResponseEvent} from './types';
+import {CALLING_BACKEND, SORT} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {VOICEMAIL_ACTION, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
-import {SORT} from '../common/types';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();

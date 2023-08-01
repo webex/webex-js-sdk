@@ -6,13 +6,6 @@ export interface LoggerInterface {
   level: LOGGER;
 }
 
-export enum CALLING_BACKEND {
-  WXC = 'WEBEX_CALLING',
-  BWRKS = 'BROADWORKS_CALLING',
-  UCM = 'UCM_CALLING',
-  INVALID = 'Calling backend is currently not supported',
-}
-
 export type BroadworksTokenType = {
   token: {
     bearer: string;

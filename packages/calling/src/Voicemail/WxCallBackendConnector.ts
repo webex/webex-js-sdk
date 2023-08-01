@@ -9,6 +9,8 @@ import {
   TRANSCRIPT,
   USER,
   XML_TYPE,
+  BW_XSI_ENDPOINT_VERSION,
+  WEBEX_CALLING_CONNECTOR_FILE,
 } from '../common/constants';
 import {
   serviceErrorCodeHandler,
@@ -25,20 +27,24 @@ import {
   MessageInfo,
   VoicemailResponseEvent,
   VoicemailList,
-  CALLING_BACKEND,
   CallingPartyInfo,
 } from './types';
-import log from '../Logger';
-import {DisplayInformation, HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {
-  BW_XSI_ENDPOINT_VERSION,
+  CALLING_BACKEND,
+  DisplayInformation,
+  HTTP_METHODS,
+  SORT,
+  WebexRequestPayload,
+} from '../common/types';
+import log from '../Logger';
+
+import {
   JSON_FORMAT,
   MARK_AS_READ,
   MARK_AS_UNREAD,
   MESSAGE_MEDIA_CONTENT,
   TRANSCRIPT_CONTENT,
   VOICE_MESSAGING_MESSAGES,
-  WEBEX_CALLING_VOICEMAIL_FILE,
   NO_VOICEMAIL_MSG,
   NO_VOICEMAIL_STATUS_CODE,
   RADIX_RAND,
@@ -90,7 +96,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public init() {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'init',
     };
 
@@ -115,7 +121,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   private async setXsiVoiceMessageURI() {
     let responseDetails;
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'setXsiVoiceMessageURI',
     };
 
@@ -150,7 +156,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     refresh?: boolean
   ) {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'getVoicemailList',
     };
 
@@ -224,7 +230,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'getVoicemailContent',
     };
 
@@ -271,7 +277,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getVoicemailSummary(): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'getVoicemailSummary',
     };
 
@@ -327,7 +333,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'voicemailMarkAsRead',
     };
 
@@ -361,7 +367,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'voicemailMarkAsUnread',
     };
 
@@ -395,7 +401,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'deleteVoicemail',
     };
 
@@ -429,7 +435,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: WEBEX_CALLING_VOICEMAIL_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'getVMTranscript',
     };
 

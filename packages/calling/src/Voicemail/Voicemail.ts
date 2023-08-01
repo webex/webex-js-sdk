@@ -3,18 +3,12 @@
 /* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {
-  IVoicemail,
-  CALLING_BACKEND,
-  VoicemailResponseEvent,
-  LoggerInterface,
-  CallingPartyInfo,
-} from './types';
+import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
+import {CALLING_BACKEND, DisplayInformation, SORT} from '../common/types';
 import log from '../Logger';
 import {getCallingBackEnd} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
-import {DisplayInformation, SORT} from '../common/types';
 import {VoicemailEventTypes} from '../Events/types';
 import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
