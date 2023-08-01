@@ -275,14 +275,15 @@ const KMS = WebexPlugin.extend({
    * @param {Object} options
    * @param {UUID} options.assignedOrgId the orgId
    * @param {string} options.customerMasterKey the master key
+   * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
-  uploadCustomerMasterKey({assignedOrgId, customerMasterKey}) {
+  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, awsKms = false}) {
     this.logger.info('kms: upload customer master key for byok');
 
     return this.request({
       method: 'create',
-      uri: '/cmk',
+      uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
       customerMasterKey,
       requestId: uuid.v4(),
@@ -297,14 +298,15 @@ const KMS = WebexPlugin.extend({
    * get all customer master keys for one org.
    * @param {Object} options
    * @param {UUID} options.assignedOrgId the orgId
+   * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<ActivateCmkResponse>} response of list CMKs api
    */
-  listAllCustomerMasterKey({assignedOrgId}) {
+  listAllCustomerMasterKey({assignedOrgId, awsKms = false}) {
     this.logger.info('kms: get all customer master keys for byok');
 
     return this.request({
       method: 'retrieve',
-      uri: '/cmk',
+      uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
       requestId: uuid.v4(),
     }).then((res) => {
@@ -361,14 +363,15 @@ const KMS = WebexPlugin.extend({
    * this is for test case. it will delete all CMKs, no matter what their status is. This is mainly for test purpose
    * @param {Object} options
    * @param {UUID} options.assignedOrgId the orgId
+   * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<{status, requestId}>}
    */
-  deleteAllCustomerMasterKeys({assignedOrgId}) {
+  deleteAllCustomerMasterKeys({assignedOrgId, awsKms = false}) {
     this.logger.info('kms: delete all customer master keys at the same time');
 
     return this.request({
       method: 'delete',
-      uri: '/cmk',
+      uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
       requestId: uuid.v4(),
     }).then((res) => {

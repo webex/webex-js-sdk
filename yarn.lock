@@ -32915,6 +32915,7 @@ __metadata:
   resolution: "webex@workspace:packages/webex"
   dependencies:
     "@babel/polyfill": ^7.12.1
+    "@babel/runtime-corejs2": ^7.14.8
     "@webex/calling": "workspace:^"
     "@webex/common": "workspace:^"
     "@webex/internal-plugin-calendar": "workspace:^"

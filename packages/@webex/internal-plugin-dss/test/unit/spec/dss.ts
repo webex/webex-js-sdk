@@ -356,5 +356,48 @@ describe('plugin-dss', () => {
         expect(result).to.deep.equal(['data0', 'data1', 'data2']);
       });
     });
+    describe('#searchPlaces', () => {
+      it('calls _request correctly', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+
+        const result = await webex.internal.dss.searchPlaces({
+          resultSize: 100,
+          queryString: 'query',
+          isOnlySchedulableRooms: true,
+        });
+        expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
+          {
+            dataPath: 'directoryEntities',
+            resource: '/search/orgid/userOrgId/places',
+            params: {
+              queryString: 'query',
+              resultSize: 100,
+              isOnlySchedulableRooms: true,
+            },
+          },
+        ]);
+        expect(result).to.equal('some return value');
+      });
+
+      it('works correctly', async () => {
+        await testRequest({
+          method: 'searchPlaces',
+          event: 'event:directory.search',
+          dataPath: 'directoryEntities',
+          resource: '/search/orgid/userOrgId/places',
+          params: {
+            isOnlySchedulableRooms: true,
+            resultSize: 100,
+            queryString: 'query',
+          },
+          bodyParams: {
+            isOnlySchedulableRooms: true,
+            resultSize: 100,
+            queryString: 'query',
+          },
+        });
+      });
+    });     
   });
 });

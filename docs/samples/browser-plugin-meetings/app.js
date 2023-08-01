@@ -181,7 +181,6 @@ function register() {
       toggleUnifiedMeetings.removeAttribute('disabled');
       unregisterElm.disabled = false;
       unregisterElm.classList.add('btn--red');
-      meetingsResolutionCheckInterval();
     })
     .catch((error) => {
       console.warn('Authentication#register() :: error registering', error);
@@ -529,6 +528,7 @@ function leaveMeeting(meetingId) {
       passwordCaptchaStatusElm.style.backgroundColor = 'white';
       meetingsJoinPinElm.value = '';
       meetingsJoinCaptchaElm.value = '';
+      clearVideoResolutionCheckInterval(remoteVideoResElm, remoteVideoResolutionInterval);
     });
 }
 
@@ -661,6 +661,10 @@ function cleanUpMedia(mediaElements) {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
+      
+      if(elem.id === "local-video") {
+        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+      }
     }
   });
 }
@@ -912,6 +916,8 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
         meetingStreamsLocalAudio.srcObject = new MediaStream(localStream.getAudioTracks());
       }
 
+      localVideoResolutionCheckInterval();
+      
       return {localStream};
     })
     .catch((error) => {
@@ -1261,9 +1267,11 @@ function clearMediaDeviceList() {
 }
 
 function getLocalMediaSettings() {
-  const meeting = getCurrentMeeting();
-  if(meeting && meeting.mediaProperties.videoTrack) {
-    const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+  const [localStream] = currentMediaStreams;
+  const localVideoTrack = localStream.getVideoTracks()[0];
+
+  if (localVideoTrack) {
+    const videoSettings = localVideoTrack.getSettings();
     const {frameRate, height} = videoSettings;
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
@@ -1271,28 +1279,32 @@ function getLocalMediaSettings() {
 
 function getRemoteMediaSettings() {
   const meeting = getCurrentMeeting();
-  if(meeting && meeting.mediaProperties.remoteVideoTrack){
-      const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
-      const {frameRate, height} = videoSettings;
-      remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  if (meeting && meeting.mediaProperties.remoteVideoTrack) {
+    const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
+    const {frameRate, height} = videoSettings;
+    remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
 }
 
-let resolutionInterval;
+let localVideoResolutionInterval;
+let remoteVideoResolutionInterval;
 const INTERVAL_TIME = 3000;
 
-function meetingsResolutionCheckInterval() {
-  resolutionInterval = setInterval(() => {
+function localVideoResolutionCheckInterval() {
+  localVideoResolutionInterval = setInterval(() => {
     getLocalMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function remoteVideoResolutionCheckInterval() {
+  remoteVideoResolutionInterval = setInterval(() => {
     getRemoteMediaSettings();
   }, INTERVAL_TIME);
 }
 
-function clearMeetingsResolutionCheckInterval() {
-  localVideoResElm.innerText = '';
-  remoteVideoResElm.innerText = '';
-
-  clearInterval(resolutionInterval);
+function clearVideoResolutionCheckInterval(element, intervalId) {
+  element.innerText = '';
+  clearInterval(intervalId);
 }
 
 // Meeting Streams --------------------------------------------------
@@ -1341,6 +1353,7 @@ function addMedia() {
     localStream,
     mediaSettings: getMediaSettings()
   }).then(() => {
+    remoteVideoResolutionCheckInterval();
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
     console.log('MeetingStreams#addMedia() :: Error adding media!');
@@ -1369,8 +1382,6 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
-    clearMeetingsResolutionCheckInterval();
-
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
