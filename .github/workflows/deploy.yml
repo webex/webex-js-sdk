@@ -182,7 +182,7 @@ jobs:
         run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
 
       - name: Deploy Packages - [DRY RUN]
-        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --dry-run --tag ${GITHUB_REF##*/}
+        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
 
   publish-documentation:
     name: Publish - Documentation
