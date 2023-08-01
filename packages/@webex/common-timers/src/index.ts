@@ -20,13 +20,13 @@ export function safeSetTimeout(...args: Parameters<typeof setTimeout>): number |
 }
 
 /**
- * Wrapper around setTimout which (in node) unrefs the returned timer to avoid
+ * Wrapper around setInterval which (in node) unrefs the returned timer to avoid
  * wedging the process open unexpectedly.
  * @param {Mixed} args
  * @protected
  * @returns {NodeJS.Timeout|Number}
  */
-export function safeSetInterval(...args: Parameters<typeof setInterval>) {
+export function safeSetInterval(...args: Parameters<typeof setInterval>): number | NodeJS.Timeout {
   const interval = setInterval(...args);
 
   if (interval.unref) {
