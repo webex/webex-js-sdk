@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.180](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.179...v3.0.0-beta.180) (2023-08-01)
+
+
+### Features
+
+* **ca-metrics:** do not subtract stay in lobby for mediaJMT ([#2979](https://github.com/webex/webex-js-sdk/issues/2979)) ([b3d344a](https://github.com/webex/webex-js-sdk/commit/b3d344ad0fdf3d422d794a620100ff954eb15071))
+
 ## [3.0.0-beta.179](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.178...v3.0.0-beta.179) (2023-07-28)
 
 
