@@ -37,6 +37,7 @@ const Webex = WebexCore.extend({
 Webex.init = function init(attrs = {}) {
   attrs.config = merge(
     {
+      sdkType: 'meetings',
       meetings: {
         disableHydraId: true,
       },

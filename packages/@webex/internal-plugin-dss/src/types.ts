@@ -31,3 +31,9 @@ export interface SearchOptions {
   resultSize: number;
   queryString: string;
 }
+
+export interface SearchPlaceOptions {
+  resultSize: number;
+  queryString: string;
+  isOnlySchedulableRooms: boolean;
+}

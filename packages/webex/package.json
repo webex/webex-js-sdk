@@ -1,6 +1,6 @@
 {
   "name": "webex",
-  "version": "2.54.2",
+  "version": "2.59.0",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -15,7 +15,10 @@
   ],
   "main": "dist/index.js",
   "exports": {
-    "./calling": "./dist/calling.js"
+    "./calling": "./dist/calling.js",
+    ".": "./dist/index.js",
+    "./meetings": "./dist/meetings.js",
+    "./package": "./package.json"
   },
   "devMain": "src/index.js",
   "repository": {
@@ -47,6 +50,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
     "@webex/calling": "workspace:^",
+    "@babel/runtime-corejs2": "^7.14.8",
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",

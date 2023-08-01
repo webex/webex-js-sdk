@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
+import {IMediaStatus} from './member.types';
 
 import MemberUtil from './util';
 
@@ -28,6 +29,7 @@ export default class Member {
   isSelf: any;
   isUser: any;
   isVideoMuted: any;
+  mediaStatus: IMediaStatus;
   name: any;
   participant: any;
   status: any;
@@ -220,6 +222,17 @@ export default class Member {
      * @memberof Member
      */
     this.isModeratorAssignmentProhibited = null;
+    /**
+     * @instance
+     * @type {IMediaStatus}
+     * @public
+     * @memberof Member
+     * @example {audio: MediaStatus.RECVONLY, video: MediaStatus.SENDRECV}
+     */
+    this.mediaStatus = {
+      audio: null,
+      video: null,
+    };
     // TODO: more participant types
     // such as native client, web client, is a device, what type of phone, etc
     this.processParticipant(participant);
@@ -294,6 +307,8 @@ export default class Member {
       this.isAudioMuted,
       this.type
     );
+
+    this.mediaStatus = MemberUtil.extractMediaStatus(this.participant);
   }
 
   /**

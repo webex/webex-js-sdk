@@ -32916,6 +32916,7 @@ __metadata:
   dependencies:
     "@babel/polyfill": ^7.12.1
     "@webex/calling": "workspace:^"
+    "@babel/runtime-corejs2": ^7.14.8
     "@webex/common": "workspace:^"
     "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
