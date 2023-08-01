@@ -1200,7 +1200,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        const checkWorking = () => {
+        const checkWorking = ({allowMediaInLobby} = {}) => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
@@ -1213,6 +1213,7 @@ describe('plugin-meetings', () => {
           );
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
+          assert.equal(meeting.allowMediaInLobby, allowMediaInLobby);
         }
 
         it('should attach the media and return promise', async () => {
@@ -1246,7 +1247,7 @@ describe('plugin-meetings', () => {
           assert.exists(media);
           await media;
 
-          checkWorking();
+          checkWorking({allowMediaInLobby: true});
         });
 
         it('should pass the turn server info to the peer connection', async () => {

@@ -33,15 +33,18 @@ describe("internal-plugin-metrics", () => {
         name: 'client.alert.displayed',
         options: {
           meetingId: '123',
-        }
+        },
       });
 
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, "client.alert.displayed")
+      assert.calledWith(
+        webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp,
+        {key: 'client.alert.displayed', options: {meetingId: '123'}}
+      );
       assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent, {
         name: 'client.alert.displayed',
         payload: undefined,
-        options: { meetingId: '123' }
-      })
+        options: {meetingId: '123'},
+      });
     });
 
     it('submits MQE successfully', () => {
@@ -55,7 +58,7 @@ describe("internal-plugin-metrics", () => {
         }
       });
 
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, 'client.mediaquality.event')
+      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {key: 'client.mediaquality.event'})
       assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitMQE, {
         name: 'client.mediaquality.event',
         //@ts-ignore
@@ -72,7 +75,7 @@ describe("internal-plugin-metrics", () => {
         name: 'client.mediaquality.event',
       });
 
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, 'client.mediaquality.event')
+      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {key: 'client.mediaquality.event'})
       assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps)
     });
 
