@@ -1648,10 +1648,37 @@ describe('plugin-meetings', () => {
         sandbox.stub(locusInfo, 'updateParticipants');
         sandbox.stub(locusInfo, 'isMeetingActive');
         sandbox.stub(locusInfo, 'handleOneOnOneEvent');
+        sandbox.stub(locusParser, 'isNewFullLocus').returns(true);
 
         locusInfo.onFullLocus(fakeLocus, eventType);
 
         assert.equal(fakeLocus, locusParser.workingCopy);
+      });
+
+      it('onFullLocus() does not do anything if the incoming full locus DTO is old', () => {
+        const eventType = 'fakeEvent';
+
+        locusParser.workingCopy = {};
+
+        const oldWorkingCopy = locusParser.workingCopy;
+
+        const spies = [
+          sandbox.stub(locusInfo, 'updateParticipantDeltas'),
+          sandbox.stub(locusInfo, 'updateLocusInfo'),
+          sandbox.stub(locusInfo, 'updateParticipants'),
+          sandbox.stub(locusInfo, 'isMeetingActive'),
+          sandbox.stub(locusInfo, 'handleOneOnOneEvent'),
+        ];
+
+        sandbox.stub(locusParser, 'isNewFullLocus').returns(false);
+
+        locusInfo.onFullLocus(fakeLocus, eventType);
+
+        spies.forEach((spy) => {
+          assert.notCalled(spy);
+        })
+
+        assert.equal(oldWorkingCopy, locusParser.workingCopy);
       });
 
       it('onDeltaAction applies locus delta data to meeting', () => {
