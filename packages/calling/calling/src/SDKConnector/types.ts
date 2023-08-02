@@ -86,8 +86,8 @@ export interface WebexSDK {
       lookup: (options: LookupOptions) => Promise<DSSLookupResponse[]>;
     };
     encryption: {
-      decryptText: (encryptionKeyUrl: string, encryptedData: string) => Promise<string>;
-      encryptText: (encryptionKeyUrl: string, text: string) => Promise<string>;
+      decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;
+      encryptText: (encryptionKeyUrl: string, text?: string) => Promise<string>;
       kms: {
         createUnboundKeys: (arg0: {count?: number}) => Promise<KmsKey[]>;
         createResource: (arg0: {keyUris: string[]}) => Promise<KmsResourceObject>;

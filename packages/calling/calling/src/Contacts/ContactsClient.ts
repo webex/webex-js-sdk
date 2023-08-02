@@ -138,9 +138,9 @@ export class ContactsClient implements IContacts {
     const {encryptionKeyUrl} = contact;
     const encryptedContact: Contact = {...contact};
 
-    const encryptionPromises = encryptedFields.map(async (field) => {
+    const encryptionPromises = Object.values(encryptedFields).map(async (field) => {
       switch (field) {
-        case 'addressInfo': {
+        case encryptedFields.ADDRESS_INFO: {
           const plaintextAddressInfo = encryptedContact.addressInfo;
           let encryptedAddressInfo;
 
@@ -159,9 +159,9 @@ export class ContactsClient implements IContacts {
 
           return [field, encryptedAddressInfo];
         }
-        case 'emails':
-        case 'phoneNumbers':
-        case 'sipAddresses': {
+        case encryptedFields.EMAILS:
+        case encryptedFields.PHONE_NUMBERS:
+        case encryptedFields.SIP_ADDRESSES: {
           const plainTextDetails = encryptedContact[field];
           let encryptedDetails;
 
@@ -174,7 +174,7 @@ export class ContactsClient implements IContacts {
         default: {
           let encryptedValue;
 
-          if (encryptedFields.includes(field) && encryptedContact[field]) {
+          if (Object.values(encryptedFields).includes(field) && encryptedContact[field]) {
             encryptedValue = await this.webex.internal.encryption.encryptText(
               encryptionKeyUrl,
               encryptedContact[field]
@@ -207,9 +207,9 @@ export class ContactsClient implements IContacts {
     const {encryptionKeyUrl} = contact;
     const decryptedContact: Contact = {...contact};
 
-    const decryptionPromises = encryptedFields.map(async (field) => {
+    const decryptionPromises = Object.values(encryptedFields).map(async (field) => {
       switch (field) {
-        case 'addressInfo': {
+        case encryptedFields.ADDRESS_INFO: {
           const plaintextAddressInfo = decryptedContact.addressInfo;
           let decryptedAddressInfo;
 
@@ -228,9 +228,9 @@ export class ContactsClient implements IContacts {
 
           return [field, decryptedAddressInfo];
         }
-        case 'emails':
-        case 'phoneNumbers':
-        case 'sipAddresses': {
+        case encryptedFields.EMAILS:
+        case encryptedFields.PHONE_NUMBERS:
+        case encryptedFields.SIP_ADDRESSES: {
           const plainTextDetails = decryptedContact[field];
           let decryptedDetails;
 
@@ -243,7 +243,7 @@ export class ContactsClient implements IContacts {
         default: {
           let decryptedValue;
 
-          if (encryptedFields.includes(field) && decryptedContact[field]) {
+          if (Object.values(encryptedFields).includes(field) && decryptedContact[field]) {
             decryptedValue = await this.webex.internal.encryption.decryptText(
               encryptionKeyUrl,
               decryptedContact[field]
@@ -379,11 +379,11 @@ export class ContactsClient implements IContacts {
         }
       }
 
-      if (Object.keys(contactsDataMap).length) {
-        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
+      // if (Object.keys(contactsDataMap).length) {
+      //   const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
 
-        contactList.push(...cloudContacts);
-      }
+      //   contactList.push(...cloudContacts);
+      // }
 
       await Promise.all(
         groups.map(async (group, idx) => {
