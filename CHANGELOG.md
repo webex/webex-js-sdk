@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.182](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.181...v3.0.0-beta.182) (2023-08-01)
+
+
+### Bug Fixes
+
+* ignore old full Locus DTOs ([#2986](https://github.com/webex/webex-js-sdk/issues/2986)) ([668d752](https://github.com/webex/webex-js-sdk/commit/668d752c1d4cf139e9704a6c7ee46c983e6e2a24))
+
+## [3.0.0-beta.181](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.180...v3.0.0-beta.181) (2023-08-01)
+
+
+### Features
+
+* **plugin-meetings:** user share policy ([#2985](https://github.com/webex/webex-js-sdk/issues/2985)) ([2d988ed](https://github.com/webex/webex-js-sdk/commit/2d988edd3048c4a9e6837e00e09bf8a960372471))
+
+## [3.0.0-beta.180](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.179...v3.0.0-beta.180) (2023-08-01)
+
+
+### Features
+
+* **ca-metrics:** do not subtract stay in lobby for mediaJMT ([#2979](https://github.com/webex/webex-js-sdk/issues/2979)) ([b3d344a](https://github.com/webex/webex-js-sdk/commit/b3d344ad0fdf3d422d794a620100ff954eb15071))
+
 ## [3.0.0-beta.179](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.178...v3.0.0-beta.179) (2023-07-28)
 
 

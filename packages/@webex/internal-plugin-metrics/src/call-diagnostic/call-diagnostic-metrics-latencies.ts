@@ -1,5 +1,6 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
+import {WebexPlugin} from '@webex/webex-core';
 
 import {MetricEventNames} from '../metrics.types';
 
@@ -10,14 +11,17 @@ import {MetricEventNames} from '../metrics.types';
  * @exports
  * @class CallDiagnosticLatencies
  */
-export default class CallDiagnosticLatencies {
+export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<string, number>;
+  // meetingId that the current latencies are for
+  private meetingId?: string;
 
   /**
    * @constructor
    */
-  constructor() {
+  constructor(...args) {
+    super(...args);
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
   }
@@ -30,13 +34,47 @@ export default class CallDiagnosticLatencies {
   }
 
   /**
+   * Associate current latencies with a meeting id
+   * @param meetingId
+   */
+  private setMeetingId(meetingId: string) {
+    this.meetingId = meetingId;
+  }
+
+  /**
+   * Returns the meeting object associated with current latencies
+   * @returns meeting object
+   */
+  private getMeeting() {
+    if (this.meetingId) {
+      // @ts-ignore
+      return this.webex.meetings.meetingCollection.get(this.meetingId);
+    }
+
+    return undefined;
+  }
+
+  /**
    * Store timestamp value
    * @param key - key
    * @param value -value
    * @throws
    * @returns
    */
-  public saveTimestamp(key: MetricEventNames, value: number = new Date().getTime()) {
+  public saveTimestamp({
+    key,
+    value = new Date().getTime(),
+    options = {},
+  }: {
+    key: MetricEventNames;
+    value?: number;
+    options?: {meetingId?: string};
+  }) {
+    // save the meetingId so we can use the meeting object in latency calculations if needed
+    const {meetingId} = options;
+    if (meetingId) {
+      this.setMeetingId(meetingId);
+    }
     // for some events we're only interested in the first timestamp not last
     // as these events can happen multiple times
     if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {
@@ -311,10 +349,15 @@ export default class CallDiagnosticLatencies {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
-    const stayLobbyTime = this.getStayLobbyTime() || 0;
+    const lobbyTime = this.getStayLobbyTime();
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitial + interstitialToJoinOk + joinConfJMT - stayLobbyTime;
+      const totalMediaJMT = clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      if (this.getMeeting()?.allowMediaInLobby) {
+        return totalMediaJMT;
+      }
+
+      return totalMediaJMT - lobbyTime;
     }
 
     return undefined;

@@ -267,12 +267,19 @@ export default class LocusInfo extends EventsScope {
    * @returns {object} null
    * @memberof LocusInfo
    */
-  // eslint-disable-next-line @typescript-eslint/no-shadow
   onFullLocus(locus: any, eventType?: string) {
     if (!locus) {
       LoggerProxy.logger.error(
         'Locus-info:index#onFullLocus --> object passed as argument was invalid, continuing.'
       );
+    }
+
+    if (!this.locusParser.isNewFullLocus(locus)) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#onFullLocus --> ignoring old full locus DTO, eventType=${eventType}`
+      );
+
+      return;
     }
     this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
