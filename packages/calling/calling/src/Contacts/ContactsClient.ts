@@ -379,11 +379,11 @@ export class ContactsClient implements IContacts {
         }
       }
 
-      // if (Object.keys(contactsDataMap).length) {
-      //   const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
+      if (Object.keys(contactsDataMap).length) {
+        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
 
-      //   contactList.push(...cloudContacts);
-      // }
+        contactList.push(...cloudContacts);
+      }
 
       await Promise.all(
         groups.map(async (group, idx) => {
