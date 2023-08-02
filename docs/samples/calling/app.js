@@ -251,7 +251,7 @@ function initCalling(e) {
       callingClient = window.callingClient = calling.callingClient;
 
       if (window.contacts === undefined) {
-        contacts = window.contacts = calling.contactsClient;
+        contacts = window.contacts = calling.contactClient;
       }
 
       if (window.callHistory === undefined) {
@@ -669,7 +669,7 @@ function renderContacts(contacts, groupIdDisplayNameMap) {
     const parentGroups = [];
     contact.groups.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
 
-    const phoneNumbers = contact.phoneNumbers.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
+    const phoneNumbers = contact.phoneNumbers?.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
     return acc +
      `
       <tr>
@@ -1349,7 +1349,6 @@ async function fetchVoicemailSetting() {
 }
 
 async function updateVoicemailSetting(form) {
-  const logger = {level: 'info'};
   const vmCheckbox = document.getElementById('vmCb');
   const requestBody = {
     enabled: vmCheckbox.checked,

@@ -164,3 +164,49 @@ export enum DecodeType {
   PEOPLE = 'PEOPLE',
   ORGANIZATION = 'ORGANIZATION',
 }
+
+export type ContactDetail = {
+  type?: string;
+  value: string;
+};
+
+export interface LookupOptions {
+  ids: string[];
+}
+
+export type DSSLookupResponse = {
+  additionalInfo: {
+    department: string;
+    firstName: string;
+    identityManager: {
+      managerId: string;
+      displayName: string;
+    };
+    jobTitle: string;
+    lastName: string;
+  };
+  displayName: string;
+  emails: ContactDetail[];
+  entityProviderType: string;
+  identity: string;
+  orgId: string;
+  phoneNumbers: ContactDetail[];
+  photos: ContactDetail[];
+  sipAddresses: ContactDetail[];
+  type: string;
+};
+
+export type KmsKey = {
+  uri: string;
+  userId: string;
+  createDate: string;
+  expirationDate: string;
+  bindDate?: string;
+  resourceUri?: string;
+};
+
+export type KmsResourceObject = {
+  uri: string;
+  keyUris: string[];
+  authorizationUris: string[];
+};

@@ -1603,12 +1603,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
       }
 
-      if (
-        this.remoteRoapMessage?.messageType === 'OFFER_REQUEST' ||
-        (this.remoteRoapMessage?.messageType === 'OFFER' && this.remoteRoapMessage.seq > this.seq)
-      ) {
-        this.seq = this.remoteRoapMessage.seq;
-        this.mediaConnection.roapMessageReceived(this.remoteRoapMessage);
+      if (this.remoteRoapMessage && this.remoteRoapMessage.seq > this.seq) {
+        if (this.remoteRoapMessage.messageType === 'OFFER_REQUEST') {
+          this.sendMediaStateMachineEvt({
+            type: 'E_RECV_ROAP_OFFER_REQUEST',
+            data: this.remoteRoapMessage,
+          });
+        } else if (this.remoteRoapMessage.messageType === 'OFFER') {
+          this.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: this.remoteRoapMessage});
+        }
       }
     }
   }

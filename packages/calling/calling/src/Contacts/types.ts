@@ -1,12 +1,9 @@
+import {ContactDetail} from '../common/types';
 import {ISDKConnector} from '../SDKConnector/types';
 
 export enum ContactType {
   CUSTOM = 'CUSTOM',
   CLOUD = 'CLOUD',
-}
-
-export interface LookupOptions {
-  ids: string[];
 }
 
 export type AddressType = {
@@ -17,39 +14,56 @@ export type AddressType = {
   zipCode?: string;
 };
 
-export type ContactDetail = {
-  type?: string;
-  value: string;
-};
-
 export type Contact = {
   addressInfo?: AddressType;
-  avatarUrlDomain: string;
+  avatarURL?: string;
+  avatarUrlDomain?: string;
   companyName?: string;
-  contactId: string;
+  contactId?: string;
   contactType: ContactType;
   department?: string;
-  displayName: string;
-  encryptionKeyUrl: string;
+  displayName?: string;
   emails?: ContactDetail[];
+  encryptionKeyUrl: string;
   firstName?: string;
   groups: string[];
+  kmsResourceObjectUrl?: string;
   lastName?: string;
-  ownerId: string;
   manager?: string;
+  ownerId?: string;
   phoneNumbers?: ContactDetail[];
+  primaryContactMethod?: string;
+  schemas?: string;
   sipAddresses?: ContactDetail[];
   title?: string;
 };
 
+export enum GroupType {
+  NORMAL = 'NORMAL',
+  EXTERNAL = 'EXTERNAL',
+}
+
+export type ContactGroup = {
+  displayName: string;
+  encryptionKeyUrl: string;
+  groupId: string;
+  groupType: GroupType;
+  members?: string[];
+  ownerId?: string;
+};
+
 export type ContactList = {
   contacts: Contact[];
+  groups: ContactGroup[];
 };
 
 export type ContactResponse = {
   statusCode: number;
   data: {
-    contactList?: Contact[];
+    contacts?: Contact[];
+    groups?: ContactGroup[];
+    contact?: Contact;
+    group?: ContactGroup;
     error?: string;
   };
   message: string;
@@ -58,30 +72,16 @@ export type ContactResponse = {
 export interface IContacts {
   getSDKConnector: () => ISDKConnector;
   getContacts: () => Promise<ContactResponse>;
+  createContactGroup: (
+    displayName: string,
+    encryptionKeyUrl?: string,
+    groupType?: GroupType
+  ) => Promise<ContactResponse>;
+  deleteContactGroup: (groupId: string) => Promise<ContactResponse>;
+  createContact: (contactInfo: Contact) => Promise<ContactResponse>;
+  deleteContact: (contactId: string) => Promise<ContactResponse>;
 }
 
-export type DSSLookupResponse = {
-  additionalInfo: {
-    department: string;
-    firstName: string;
-    identityManager: {
-      managerId: string;
-      displayName: string;
-    };
-    jobTitle: string;
-    lastName: string;
-  };
-  displayName: string;
-  emails: ContactDetail[];
-  entityProviderType: string;
-  identity: string;
-  orgId: string;
-  phoneNumbers: ContactDetail[];
-  photos: ContactDetail[];
-  sipAddresses: ContactDetail[];
-  type: string;
-};
-
-export type ContactIdGroupInfoMap = {
-  [Key: string]: string[];
+export type ContactIdContactInfo = {
+  [Key: string]: Contact;
 };
