@@ -5523,25 +5523,27 @@ describe('plugin-meetings', () => {
 
           checkParseMeetingInfo(expectedInfoToParse);
         });
-        it('should set hostSIEnabled correctly depend on the toggle statue in site setting', () => {
-          const updateHostSIEnabledSpy = sinon.spy(meeting.simultaneousInterpretation, 'updateHostSIEnabled');
+        it('should parse interpretation info correctly', () => {
+          const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
           const mockToggleOnData = {
             body: {
               meetingSiteSetting: {
                 enableHostInterpreterControlSI: true,
+              },
+              turnOnSimultaneousInterpretation: true,
+              simultaneousInterpretation: {
+                currentSIInterpreter: false,
+                siLanguages: [
+                  {
+                    languageCode: "ar",
+                    languageGroupId: 4,
+                  },
+                ]
               }
             }
           };
           meeting.parseMeetingInfo(mockToggleOnData);
-          assert.calledWith(updateHostSIEnabledSpy, true);
-
-          const mockToggleOffData = {
-            body: {
-              meetingSiteSetting: {}
-            }
-          };
-          meeting.parseMeetingInfo(mockToggleOffData);
-          assert.calledWith(updateHostSIEnabledSpy, false);
+          assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
         });
       });
 
