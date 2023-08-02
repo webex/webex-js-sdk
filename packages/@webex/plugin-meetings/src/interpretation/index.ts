@@ -28,7 +28,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     selfParticipantId: 'string', // appears the self participant id
     canManageInterpreters: 'boolean', // appears the ability to manage interpreters
     supportLanguages: 'array', // appears the support languages
-    hostSIEnabled: 'boolean', // appears the meeting host feature of SI enabled
+    meetingSIEnabled: 'boolean', // appears the meeting support SI feature
+    hostSIEnabled: 'boolean', // appears the meeting host/interpreter feature of SI enabled
+    selfIsInterpreter: 'boolean', // current user is interpreter or not
   },
   derived: {
     shouldQuerySupportLanguages: {
@@ -95,6 +97,18 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   updateHostSIEnabled(hostSIEnabled) {
     this.set('hostSIEnabled', hostSIEnabled);
   },
+
+  /**
+   * Update whether the meeting support SI feature or not from meeting info
+   * @param {boolean} meetingSIEnabled
+   * @param {boolean} selfIsInterpreter
+   * @returns {void}
+   */
+  updateMeetingSIEnabled(meetingSIEnabled: boolean, selfIsInterpreter): void {
+    this.set('meetingSIEnabled', meetingSIEnabled);
+    this.set('selfIsInterpreter', selfIsInterpreter);
+  },
+
   /**
    * Update the interpretation languages channels which user can choose to subscribe
    * @param {Object} interpretation

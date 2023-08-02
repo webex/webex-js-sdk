@@ -236,6 +236,49 @@ export default class Parser {
   }
 
   /**
+   * Compares Locus sequences - it should be called only for full Locus DTOs, not deltas
+   *
+   * @param {Types~Locus} current Current working copy
+   * @param {Types~Locus} incomingFullDto New Full Locus DTO
+   * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
+   */
+  static compareFullDtoSequence(current, incomingFullDto) {
+    if (Parser.isSequenceEmpty(current) || Parser.isSequenceEmpty(incomingFullDto)) {
+      return Parser.loci.USE_INCOMING;
+    }
+
+    // the sequence.entries list will always contain at least 1 entry
+    // https://sqbu-github.cisco.com/WebExSquared/cloud-apps/wiki/Locus-Sequence-Comparison-Algorithm
+
+    return incomingFullDto.sequence.entries.slice(-1)[0] > current.sequence.entries.slice(-1)[0]
+      ? Parser.loci.USE_INCOMING
+      : Parser.loci.USE_CURRENT;
+  }
+
+  /**
+   * Returns true if the incoming full locus DTO is newer than the current working copy
+   *
+   * @param {Types~Locus} incomingFullDto New Full Locus DTO
+   * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
+   */
+  isNewFullLocus(incomingFullDto) {
+    if (!Parser.isLoci(incomingFullDto)) {
+      LoggerProxy.logger.info('Locus-info:parser#isNewFullLocus --> Ignoring non-locus object.');
+
+      return false;
+    }
+
+    if (!this.workingCopy) {
+      // we don't have a working copy yet, so any full locus is better than nothing
+      return true;
+    }
+
+    const comparisonResult = Parser.compareFullDtoSequence(this.workingCopy, incomingFullDto);
+
+    return comparisonResult === Parser.loci.USE_INCOMING;
+  }
+
+  /**
    * Compares Locus sequences
    * @param {Types~Locus} current Current working copy
    * @param {Types~Locus} incoming New Locus delta

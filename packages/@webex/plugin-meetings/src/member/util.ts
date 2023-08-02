@@ -363,8 +363,8 @@ MemberUtil.extractMediaStatus = (participant: any): IMediaStatus => {
   }
 
   return {
-    audio: participant.status.audioStatus,
-    video: participant.status.videoStatus,
+    audio: participant.status?.audioStatus,
+    video: participant.status?.videoStatus,
   };
 };
 
