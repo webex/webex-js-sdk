@@ -39,6 +39,24 @@ describe('Package', () => {
       });
     });
 
+    describe('version', () => {
+      const version = '1.2.3-example-tag.4';
+
+      beforeEach(() => {
+        pack.setVersion(Package.parseVersionStringToObject(version));
+      });
+
+      it('should reflect the provided package version as a string', () => {
+        expect(pack.version).toBe(version);
+      });
+
+      it('should be immutable', () => {
+        pack.version = 'example-package-version';
+
+        expect(pack.version).toBe(version);
+      });
+    });
+
     describe('constructor()', () => {
       it('should assign the data object', () => {
         expect(pack.data).toBeDefined();
@@ -181,13 +199,6 @@ describe('Package', () => {
         };
       });
 
-      it('should not increment the version if the provided version does not exist', () => {
-        pack.incrementVersion();
-
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(jasmine.objectContaining({ ...versionObject }));
-      });
-
       it('should increment only the major version if the major version is provided', () => {
         pack.incrementVersion({ major: exampleVersion });
 
@@ -247,23 +258,55 @@ describe('Package', () => {
             }),
           );
       });
+
+      it('should increment the release version if the tag does not match the stable tag', () => {
+        pack.incrementVersion({ tag: versionObject.tag });
+
+        expect(spies.pack.setVersion)
+          .toHaveBeenCalledOnceWith(
+            jasmine.objectContaining({
+              major: versionObject.major,
+              minor: versionObject.minor,
+              patch: versionObject.patch,
+              release: versionObject.release + 1,
+              tag: versionObject.tag,
+            }),
+          );
+      });
+
+      it('should increment the patch version if no version object is provided', () => {
+        pack.data.version.tag = Package.CONSTANTS.STABLE_TAG;
+        pack.incrementVersion();
+
+        expect(spies.pack.setVersion)
+          .toHaveBeenCalledOnceWith(
+            jasmine.objectContaining({
+              major: versionObject.major,
+              minor: versionObject.minor,
+              patch: versionObject.patch + 1,
+              release: versionObject.release,
+              tag: pack.data.version.tag,
+            }),
+          );
+      });
     });
 
     describe('inspect()', () => {
       const exampleVersion = 'example-version';
-      const viewResults = {
-        'example-tag': '1.2.3-example-tag.4',
-        [Package.CONSTANTS.STABLE_TAG]: '4.5.6',
+      const exampleTag = 'example-tag';
+      const inspectResults = {
+        version: '4.5.6',
+        'dist-tags': {
+          [exampleTag]: '1.2.3-example-tag.4',
+          [Package.CONSTANTS.STABLE_TAG]: '4.5.6',
+        },
       };
 
       const spies = {};
 
       beforeEach(() => {
-        spies.yarn = {
-          view: spyOn(Yarn, 'view').and.resolveTo(viewResults),
-        };
-
         spies.Package = {
+          inspect: spyOn(Package, 'inspect').and.resolveTo(inspectResults),
           parseVersionStringToObject: spyOn(Package, 'parseVersionStringToObject').and.returnValue(exampleVersion),
         };
       });
@@ -273,22 +316,21 @@ describe('Package', () => {
           expect(results).toBe(pack);
         }));
 
-      it('should call "Yarn.view()" with the local package name with dist tags enabled', () => pack.inspect()
+      it('should call "Package.inspect()" with the local package name', () => pack.inspect()
         .then(() => {
-          expect(spies.yarn.view).toHaveBeenCalledOnceWith(jasmine.objectContaining({
+          expect(spies.Package.inspect).toHaveBeenCalledOnceWith(jasmine.objectContaining({
             package: pack.name,
-            distTags: true,
           }));
         }));
 
-      it('should assign the results of "Package.parseVersionStringToObject()" to its version', () => pack.inspect()
+      it('should assign the results of "Package.parseVersionStringToObject()" to its version if found', () => pack.inspect()
         .then(() => {
           expect(pack.data.version).toBe(exampleVersion);
         }));
 
       it('should call "Package.parseVersionStringToObject()" with the found tag version if found', () => pack.inspect()
         .then(() => {
-          expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledOnceWith(viewResults['example-tag']);
+          expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledOnceWith(inspectResults['dist-tags'][exampleTag]);
         }));
 
       it('should call "Package.parseVersionStringToObject()" with the new tag version if the provided tag version was not found', () => {
@@ -298,20 +340,7 @@ describe('Package', () => {
         return pack.inspect()
           .then(() => {
             expect(spies.Package.parseVersionStringToObject)
-              .toHaveBeenCalledOnceWith(`${viewResults[Package.CONSTANTS.STABLE_TAG]}-${expectedTag}.0`);
-          });
-      });
-
-      it('should call "package.parseVersionStringToObject()" with a new version when no stable tag is avaiblle', () => {
-        const expectedTag = 'unknown-tag';
-        pack.data.version.tag = expectedTag;
-
-        spies.yarn.view.and.resolveTo({});
-
-        return pack.inspect()
-          .then(() => {
-            expect(spies.Package.parseVersionStringToObject)
-              .toHaveBeenCalledOnceWith(`0.0.0-${expectedTag}.0`);
+              .toHaveBeenCalledOnceWith(`${inspectResults.version}-${expectedTag}.0`);
           });
       });
     });
@@ -422,15 +451,159 @@ describe('Package', () => {
         expect(pack.data.version.tag).toBe(versionObject.tag);
       });
     });
+
+    describe('syncVersion()', () => {
+      const spies = {};
+      let version;
+      let stableVersion;
+
+      beforeEach(() => {
+        version = {
+          major: 1,
+          minor: 2,
+          patch: 3,
+          release: 4,
+          tag: pack.version.tag,
+        };
+
+        stableVersion = {
+          major: 4,
+          minor: 5,
+          patch: 6,
+          release: 0,
+          tag: Package.CONSTANTS.STABLE_TAG,
+        };
+
+        spies.Package = {
+          parseVersionStringToObject: spyOn(Package, 'parseVersionStringToObject').and.returnValue(stableVersion),
+        };
+      });
+
+      it('should return itself if the current Package tag is stable', () => {
+        version.tag = Package.CONSTANTS.STABLE_TAG;
+
+        pack.setVersion(version);
+
+        const results = pack.syncVersion();
+
+        expect(results).toBe(pack);
+        expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(0);
+      });
+
+      it('should call "Package.parseVersionStringToObject()" with the latest version tag info', () => {
+        pack.syncVersion();
+
+        expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledOnceWith(pack.data.packageInfo['dist-tags'].latest);
+      });
+
+      it('should update the major version if it is different', () => {
+        pack.setVersion(version);
+        pack.syncVersion();
+
+        expect(pack.data.version.major).toBe(stableVersion.major);
+      });
+
+      it('should update the minor version if it is different', () => {
+        pack.setVersion(version);
+        pack.syncVersion();
+
+        expect(pack.data.version.minor).toBe(stableVersion.minor);
+      });
+
+      it('should update the patch version if it is different', () => {
+        pack.setVersion(version);
+        pack.syncVersion();
+
+        expect(pack.data.version.patch).toBe(stableVersion.patch);
+      });
+
+      it('should reset the release version if the major semantic version value has changed', () => {
+        pack.setVersion({ ...stableVersion, major: 123, tag: version.tag });
+        pack.syncVersion();
+
+        expect(pack.data.version.release).toBe(0);
+      });
+
+      it('should reset the release version if the minor semantic version value has changed', () => {
+        pack.setVersion({ ...stableVersion, minor: 123, tag: version.tag });
+        pack.syncVersion();
+
+        expect(pack.data.version.release).toBe(0);
+      });
+
+      it('should reset the release version if the patch semantic version value has changed', () => {
+        pack.setVersion({ ...stableVersion, patch: 123, tag: version.tag });
+        pack.syncVersion();
+
+        expect(pack.data.version.release).toBe(0);
+      });
+
+      it('should not reset the release version if the semantic version value has not changed', () => {
+        const release = 123;
+
+        pack.setVersion({ ...stableVersion, release, tag: version.tag });
+        pack.syncVersion();
+
+        expect(pack.data.version.release).toBe(release);
+      });
+    });
   });
 
   describe('static', () => {
     describe('CONSTANTS', () => {
       it('should return all keys from constants', () => {
         expect(Object.keys(Package.CONSTANTS)).toEqual([
+          'DEFAULT_VERSION',
           'PACKAGE_DEFINITION_FILE',
           'STABLE_TAG',
         ]);
+      });
+    });
+
+    describe('inspect()', () => {
+      const packageName = 'example-package';
+      const viewResults = {
+        version: '4.5.6',
+        'dist-tags': {
+          'example-tag': '1.2.3-example-tag.4',
+          [Package.CONSTANTS.STABLE_TAG]: '4.5.6',
+        },
+      };
+
+      const spies = {};
+
+      beforeEach(() => {
+        spies.yarn = {
+          view: spyOn(Yarn, 'view').and.resolveTo(viewResults),
+        };
+      });
+
+      it('should call "Yarn.view()" with the appropriate options', () => Package.inspect({ package: packageName })
+        .then(() => {
+          expect(spies.yarn.view).toHaveBeenCalledOnceWith({
+            distTags: true,
+            package: packageName,
+            version: true,
+          });
+        }));
+
+      it('should return the resolve of "Yarn.view()', () => Package.inspect({ package: packageName })
+        .then((results) => {
+          expect(results).toBe(viewResults);
+        }));
+
+      it('should return a "PackageInfo" Object when "Yarn.view()" rejects', () => {
+        spies.yarn.view.and.rejectWith(new Error());
+
+        return Package.inspect({ package: packageName })
+          .then((results) => {
+            expect(results).toEqual({
+              version: Package.CONSTANTS.DEFAULT_VERSION,
+              'dist-tags': {
+                [Package.CONSTANTS.STABLE_TAG]: Package.CONSTANTS.DEFAULT_VERSION,
+              },
+            });
+          });
       });
     });
 

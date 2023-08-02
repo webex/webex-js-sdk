@@ -64,8 +64,7 @@ class Yarn {
       .join(' ');
 
     return Executor.execute(`${CONSTANTS.COMMANDS.VIEW} ${params}`)
-      .then((results) => JSON.parse(results))
-      .catch(() => ({}));
+      .then((results) => JSON.parse(results));
   }
 
   /**

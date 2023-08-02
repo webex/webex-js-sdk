@@ -1,111 +1,983 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+import {Mutex} from 'async-mutex';
 import {createRegistration} from './register';
-import {getTestUtilsWebex} from '../../common/testUtil';
-import {ServiceIndicator} from '../../common/types';
+import {
+  getMobiusDiscoveryResponse,
+  getMockDeviceInfo,
+  getMockRequestTemplate,
+  getTestUtilsWebex,
+} from '../../common/testUtil';
+import {MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../../common/types';
+import * as utils from '../../common/Utils';
+import log from '../../Logger';
+import {LOGGER} from '../../Logger/types';
+import {URL, mockDeleteResponse, mockPostResponse} from './registerFixtures';
+import {filterMobiusUris} from '../../common';
+import {EVENT_KEYS} from '../../Events/types';
+import {IRegistration} from './types';
+import {createClientError} from '../../Errors/catalog/CallingDeviceError';
+import {ERROR_TYPE} from '../../Errors/types';
+import {
+  CALLS_CLEARED_HANDLER_UTIL,
+  DEFAULT_REHOMING_INTERVAL_MAX,
+  DEFAULT_REHOMING_INTERVAL_MIN,
+  FAILBACK_429_RETRY_UTIL,
+  FAILBACK_UTIL,
+  KEEPALIVE_UTIL,
+  MINUTES_TO_SEC_MFACTOR,
+  NETWORK_CHANGE_DETECTION_UTIL,
+  NETWORK_FLAP_TIMEOUT,
+  REGISTRATION_FILE,
+  REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
+  SEC_TO_MSEC_MFACTOR,
+} from '../constants';
+import {ICall} from '../calling/types';
 
 const webex = getTestUtilsWebex();
+const MockServiceData = {
+  indicator: ServiceIndicator.CALLING,
+  domain: '',
+};
+const logSpy = jest.spyOn(log, 'info');
+const warnSpy = jest.spyOn(log, 'warn');
+const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
 describe('Registration Tests', () => {
-  const DEVICE_ID = '9381a370-b26b-3c5b-8901-4e8dab405dcc';
-  const URL = 'https://wdm-intb.ciscospark.com/wdm/api/v1/';
-  const CLIENT_DEVICE_URL = 'https://clientDeviceUrl';
+  const originalProcessNextTick = process.nextTick;
+  function flushPromises() {
+    return new Promise((resolve) => {
+      originalProcessNextTick(resolve);
+    });
+  }
 
-  const MockCreateResponse = {
-    userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-    device: {
-      deviceId: 'beb3c025-8c6a-3c44-8f3d-9b7d65363ac1',
-      uri: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/devices/beb3c025-8c6a-3c44-8f3d-9b7d65363ac1',
-      status: 'active',
-      lastSeen: '2022-04-05T05:08:46Z',
-      addresses: ['sip:pbs9p4cbr9_G6JJNI5DD5NP@64941297.int10.bcld.webex.com'],
-      clientDeviceUri: CLIENT_DEVICE_URL,
-    },
-    keepaliveInterval: 30,
-    rehomingIntervalMin: 60,
-    rehomingIntervalMax: 120,
-  };
-  const MockDeleteResponse = {
-    userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-    device: {
-      deviceId: DEVICE_ID,
-      uri: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/devices/9381a370-b26b-3c5b-8901-4e8dab405dcc',
-      status: 'active',
-      lastSeen: '2022-04-05T05:16:37Z',
-      addresses: ['sip:pbs9p4cbr9_G6JJNI5DD5NP@64941297.int10.bcld.webex.com'],
-      clientDeviceUri: CLIENT_DEVICE_URL,
+  const callingClientEmitter = jest.fn();
+
+  const mobiusUris = filterMobiusUris(getMobiusDiscoveryResponse(), URL);
+
+  const mockResponse = {
+    ...getMockRequestTemplate(),
+    uri: `${mobiusUris.primary[0]}device`,
+    body: {
+      userId: webex.internal.device.userId,
+      clientDeviceUri: webex.internal.device.url,
+      serviceData: {
+        domain: '',
+        indicator: 'calling',
+      },
     },
   };
 
-  const MockServiceData = {
-    indicator: ServiceIndicator.CALLING,
-    domain: '',
-  };
-  const MockKeepAliveResponse = MockDeleteResponse;
+  const failurePayload = <WebexRequestPayload>(<unknown>{
+    statusCode: 500,
+    body: mockPostResponse,
+  });
 
-  const reg = createRegistration(webex, MockServiceData);
+  const failurePayload429 = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+  });
+
+  const successPayload = <WebexRequestPayload>(<unknown>{
+    statusCode: 200,
+    body: mockPostResponse,
+  });
+
+  let reg: IRegistration;
+  let restartSpy;
+  let failbackRetry429Spy;
+  let restoreSpy;
+  let postRegistrationSpy;
+
+  beforeEach(() => {
+    const mutex = new Mutex();
+    reg = createRegistration(webex, MockServiceData, mutex, callingClientEmitter, LOGGER.INFO);
+    reg.setMobiusServers(mobiusUris.primary, mobiusUris.backup);
+    jest.clearAllMocks();
+    restartSpy = jest.spyOn(reg as any, 'restartRegistration');
+    failbackRetry429Spy = jest.spyOn(reg as any, FAILBACK_429_RETRY_UTIL);
+    restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+    postRegistrationSpy = jest.spyOn(reg as any, 'postRegistration');
+  });
 
   afterEach(() => {
     webex.request = jest.fn();
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+    jest.useRealTimers();
   });
-  it('create device', async () => {
+
+  it('verify successful registration', async () => {
     webex.request.mockReturnValueOnce({
-      body: {
-        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-        device: {
-          deviceId: 'beb3c025-8c6a-3c44-8f3d-9b7d65363ac1',
-          uri: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/devices/beb3c025-8c6a-3c44-8f3d-9b7d65363ac1',
-          status: 'active',
-          lastSeen: '2022-04-05T05:08:46Z',
-          addresses: ['sip:pbs9p4cbr9_G6JJNI5DD5NP@64941297.int10.bcld.webex.com'],
-          clientDeviceUri: CLIENT_DEVICE_URL,
-        },
-        keepaliveInterval: 30,
-        rehomingIntervalMin: 60,
-        rehomingIntervalMax: 120,
-      },
+      body: mockPostResponse,
     });
-    const response = await reg.createDevice(URL);
 
-    expect(response.body).toStrictEqual(MockCreateResponse);
+    await reg.triggerRegistration();
+
+    expect(webex.request).toBeCalledOnceWith({
+      ...mockResponse,
+      method: 'POST',
+    });
+
+    expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+    expect(callingClientEmitter).toHaveBeenCalledTimes(2);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.REGISTERED, mockPostResponse);
   });
 
-  it('post keepalive ', async () => {
-    webex.request.mockReturnValueOnce({
-      body: {
-        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-        device: {
-          deviceId: DEVICE_ID,
-          uri: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/devices/9381a370-b26b-3c5b-8901-4e8dab405dcc',
-          status: 'active',
-          lastSeen: '2022-04-05T05:16:37Z',
-          addresses: ['sip:pbs9p4cbr9_G6JJNI5DD5NP@64941297.int10.bcld.webex.com'],
-          clientDeviceUri: CLIENT_DEVICE_URL,
-        },
-      },
+  it('verify failure registration', async () => {
+    webex.request.mockRejectedValue({
+      body: mockPostResponse,
+      statusCode: 401,
     });
-    const keepAliveUrl = `${MockKeepAliveResponse.device.uri}/status`;
 
-    const response = await reg.postKeepAlive(keepAliveUrl);
+    await reg.triggerRegistration();
 
-    expect(response.body).toStrictEqual(MockKeepAliveResponse);
+    expect(webex.request).toBeCalledOnceWith({
+      ...mockResponse,
+      method: 'POST',
+    });
+
+    const error = createClientError(
+      'User is unauthorized due to an expired token. Sign out, then sign back in.',
+      {},
+      ERROR_TYPE.TOKEN_ERROR,
+      MobiusStatus.DEFAULT
+    );
+
+    expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+    expect(callingClientEmitter).toHaveBeenCalledTimes(2);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.ERROR, undefined, error);
   });
 
-  it('delete device', async () => {
-    const mockResponseBody = JSON.stringify({
-      userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
-      device: {
-        deviceId: DEVICE_ID,
-        uri: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1/calling/web/devices/9381a370-b26b-3c5b-8901-4e8dab405dcc',
-        status: 'active',
-        lastSeen: '2022-04-05T05:16:37Z',
-        addresses: ['sip:pbs9p4cbr9_G6JJNI5DD5NP@64941297.int10.bcld.webex.com'],
-        clientDeviceUri: CLIENT_DEVICE_URL,
-      },
+  it('verify failure registration 403-101', async () => {
+    webex.request
+      .mockRejectedValueOnce({
+        body: {
+          userId: mockPostResponse.userId,
+          errorCode: 101,
+          devices: [mockPostResponse.device],
+        },
+        statusCode: 403,
+      })
+      .mockResolvedValueOnce({
+        statusCode: 200,
+        body: mockPostResponse,
+      });
+
+    global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
+
+    expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+    await reg.triggerRegistration();
+    expect(webex.request).toBeCalledTimes(2);
+    expect(webex.request).toBeCalledWith({
+      ...mockResponse,
+      method: 'POST',
+    });
+    expect(global.fetch).toBeCalledOnceWith(mockPostResponse.device.uri, {
+      method: 'DELETE',
+      headers: expect.anything(),
     });
 
-    global.fetch = jest.fn(() => Promise.resolve({json: () => mockResponseBody})) as jest.Mock;
+    expect(warnSpy).toHaveBeenCalledWith('User device limit exceeded', expect.anything());
+    expect(logSpy).toHaveBeenCalledWith('Registration restoration in progress.', expect.anything());
+    expect(logSpy).toHaveBeenCalledWith('Registration restored successfully.', expect.anything());
 
-    const response = await reg.deleteDevice(URL, DEVICE_ID, CLIENT_DEVICE_URL);
+    expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+    expect(callingClientEmitter).toHaveBeenCalledTimes(3);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.CONNECTING);
+    expect(callingClientEmitter).toBeCalledWith(EVENT_KEYS.REGISTERED, mockPostResponse);
+  });
 
-    expect(response).toStrictEqual(mockResponseBody);
+  describe('Registration failover tests', () => {
+    it('verify unreachable primary with reachable backup servers', async () => {
+      jest.useFakeTimers();
+      // try the primary twice and register successfully with backup servers
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(successPayload);
+
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+      await reg.triggerRegistration();
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+      /* Active Url must match with the backup url as per the test */
+      expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+    });
+
+    it('verify unreachable primary and backup servers', async () => {
+      jest.useFakeTimers();
+      // try the primary twice and register successfully with backup servers
+      webex.request.mockRejectedValue(failurePayload);
+
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+      await reg.triggerRegistration();
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      /*
+       * 2 calls for primary -> initial and after timer expiry.
+       * 2 calls for each backup entry -> 2 * 2 = 4.
+       * So a total of 6 calls to webex.request and handleErrors
+       */
+      expect(webex.request).toBeCalledTimes(6);
+      expect(handleErrorSpy).toBeCalledTimes(6);
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[1]}device`,
+      });
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+    });
+  });
+
+  describe('Registration failback tests', () => {
+    beforeEach(async () => {
+      /* keep keepalive as active so that it wont interfere with the failback tests */
+      jest.spyOn(reg, 'postKeepAlive').mockResolvedValue(successPayload);
+      jest.useFakeTimers();
+      postRegistrationSpy
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      reg.rehomingIntervalMin = DEFAULT_REHOMING_INTERVAL_MIN;
+      reg.rehomingIntervalMax = DEFAULT_REHOMING_INTERVAL_MAX;
+
+      /* These 2 calls to handleErrorSpy are for primary after which it fails over to backup */
+      expect(handleErrorSpy).toBeCalledTimes(2);
+
+      /* Active Url must match with the backup url as per the test */
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+    });
+
+    it('verify 429 error with failback to primary after initial registration with backup: Restore failure', async () => {
+      // delete should be successful
+      global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
+
+      postRegistrationSpy.mockRejectedValue(failurePayload429);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+
+      expect(failbackRetry429Spy).toBeCalledOnceWith();
+      expect(reg.failback429RetryAttempts).toBe(0);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
+      expect(reg.failbackTimer).toBe(undefined);
+      expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
+      expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+
+    it('verify unsuccessful failback to primary after initial registration with backup: Restore failure', async () => {
+      postRegistrationSpy.mockRejectedValue(failurePayload);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
+      expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+
+    it('verify unsuccessful failback to primary after initial registration with backup: Restore failure with final error', async () => {
+      const finalErrorPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 401,
+        body: mockPostResponse,
+      });
+      postRegistrationSpy.mockClear();
+      postRegistrationSpy
+        .mockRejectedValue(finalErrorPayload)
+        .mockRejectedValueOnce(failurePayload);
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.failbackTimer).toBe(undefined);
+      expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
+      expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+
+    it('verify unsuccessful failback to primary after initial registration with backup: Restore success', async () => {
+      postRegistrationSpy.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+      /* Active Url should still match backup url */
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
+      expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+
+    it('verify successful failback to primary after initial registration with backup', async () => {
+      postRegistrationSpy.mockResolvedValue(successPayload);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+
+      /* Active Url must now match with the primary url */
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.primary[0]);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.failbackTimer).toBe(undefined);
+      expect(restoreSpy).not.toBeCalled();
+      expect(reg.rehomingIntervalMin).toBe(mockPostResponse.rehomingIntervalMin);
+      expect(reg.rehomingIntervalMax).toBe(mockPostResponse.rehomingIntervalMax);
+    });
+
+    it('verify rehoming to primary due to network flap before failback timer fires', async () => {
+      postRegistrationSpy.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+
+      reg[NETWORK_CHANGE_DETECTION_UTIL]();
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(2500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: REGISTRATION_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+
+      jest.advanceTimersByTime(2500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).toHaveBeenCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      /* Active Url must now match with the primary url */
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.primary[0]);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.failbackTimer).toBe(undefined);
+
+      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
+
+      expect(reg.rehomingIntervalMin).toBe(mockPostResponse.rehomingIntervalMin);
+      expect(reg.rehomingIntervalMax).toBe(mockPostResponse.rehomingIntervalMax);
+    });
+
+    it('verify unsuccessful failback attempt due to active call', async () => {
+      /** create a new call */
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      postRegistrationSpy.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(logSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
+        method: 'executeFailback',
+        file: REGISTRATION_FILE,
+      });
+
+      /* Active Url should still match backup url */
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(restoreSpy).not.toBeCalled();
+      expect(restartSpy).not.toBeCalled();
+
+      expect(logSpy).toHaveBeenCalledWith(
+        'Active calls present, deferring failback to next cycle.',
+        {file: REGISTRATION_FILE, method: FAILBACK_UTIL}
+      );
+      expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
+      expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+  });
+
+  // Keep-alive related test cases
+  describe('Keep-alive Tests', () => {
+    const logObj = {
+      file: REGISTRATION_FILE,
+      method: 'startKeepaliveTimer',
+    };
+
+    const mockKeepAliveBody = {device: mockPostResponse.device};
+
+    beforeEach(async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      jest.useFakeTimers();
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+
+      if (reg.keepaliveTimer) {
+        clearInterval(reg.keepaliveTimer);
+        reg.keepaliveTimer = undefined;
+      }
+      reg.reconnectPending = false;
+      const calls = Object.values(reg.callManager.getActiveCalls()) as ICall[];
+
+      calls.forEach((call) => {
+        call.end();
+      });
+    });
+
+    it('verify successful keep-alive cases', async () => {
+      const keepAlivePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      });
+
+      webex.request.mockReturnValue(keepAlivePayload);
+
+      const funcSpy = jest.spyOn(reg, 'postKeepAlive');
+
+      jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      expect(funcSpy).toBeCalledTimes(2); // should be called 2 times: first try and after the interval.
+      expect(logSpy).toHaveBeenLastCalledWith('Sent Keepalive, status: 200', logObj);
+    });
+
+    it('verify failure keep-alive cases: Retry Success', async () => {
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+      const successPayload = {
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      };
+
+      const timer = reg.keepaliveTimer;
+
+      callingClientEmitter.mockClear();
+      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+
+      jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+        method: 'startKeepaliveTimer',
+        file: REGISTRATION_FILE,
+      });
+
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reg.keepaliveTimer).toBe(timer);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(1, EVENT_KEYS.RECONNECTING);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(2, EVENT_KEYS.RECONNECTED);
+      expect(callingClientEmitter).toBeCalledTimes(2);
+    });
+
+    it('verify failure keep-alive cases: Restore failure', async () => {
+      const restoreSpy = jest.spyOn(reg as any, 'restorePreviousRegistration');
+      const restartRegSpy = jest.spyOn(reg as any, 'restartRegistration');
+      const reconnectSpy = jest.spyOn(reg as any, 'reconnectOnFailure');
+
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      callingClientEmitter.mockClear();
+
+      webex.request.mockRejectedValue(failurePayload);
+
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      const timer = reg.keepaliveTimer;
+
+      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
+
+      // sendKeepAlive tries to retry 5 times before accepting failure
+      // later 2 attempts to register with primary server
+      expect(handleErrorSpy).toBeCalledTimes(7);
+      expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(reg.reconnectPending).toStrictEqual(false);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+
+      expect(webex.request).toBeCalledTimes(7);
+      expect(reg.keepaliveTimer).toBe(undefined);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(1, EVENT_KEYS.RECONNECTING);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(4, EVENT_KEYS.RECONNECTING);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(5, EVENT_KEYS.UNREGISTERED);
+
+      /** there will be 2 registration attemots */
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(6, EVENT_KEYS.CONNECTING);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(7, EVENT_KEYS.UNREGISTERED);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(8, EVENT_KEYS.CONNECTING);
+      expect(callingClientEmitter).toHaveBeenNthCalledWith(9, EVENT_KEYS.UNREGISTERED);
+      expect(callingClientEmitter).toBeCalledTimes(9);
+    });
+
+    it('verify failure keep-alive cases: Restore Success', async () => {
+      const restoreSpy = jest.spyOn(reg as any, 'restorePreviousRegistration');
+      const restartRegSpy = jest.spyOn(reg as any, 'restartRegistration');
+      const reconnectSpy = jest.spyOn(reg as any, 'reconnectOnFailure');
+
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValue(successPayload);
+
+      /* successful registration */
+      // webex.request.mockResolvedValue(successPayload);
+
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      const url = 'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1';
+
+      /* set active Url and expect the registration to restore to this url */
+      reg.setActiveMobiusUrl(url);
+
+      const timer = reg.keepaliveTimer;
+
+      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
+      expect(handleErrorSpy).toBeCalledTimes(5);
+      expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restartRegSpy).not.toBeCalled();
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
+      expect(reg.reconnectPending).toStrictEqual(false);
+      expect(reg.keepaliveTimer).toBeTruthy();
+      expect(reg.keepaliveTimer).not.toBe(timer);
+    });
+
+    it('verify failure followed by recovery of keepalive', async () => {
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValue(successPayload);
+
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+
+      const timer = reg.keepaliveTimer;
+
+      // sendKeepAlive tries to retry 3 times and receiving success on third time
+      jest.advanceTimersByTime(3 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toBeCalledTimes(3);
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(handleErrorSpy).toBeCalledTimes(2);
+      expect(clearIntervalSpy).not.toHaveBeenCalled();
+      expect(reg.keepaliveTimer).toBe(timer);
+    });
+
+    it('verify final error for keep-alive', async () => {
+      const restoreSpy = jest.spyOn(reg as any, 'restorePreviousRegistration');
+      const restartRegSpy = jest.spyOn(reg as any, 'restartRegistration');
+      const reconnectSpy = jest.spyOn(reg as any, 'reconnectOnFailure');
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 404,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      webex.request.mockRejectedValue(failurePayload);
+
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+
+      /* send one keepalive */
+      jest.advanceTimersByTime(mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(clearIntervalSpy).toBeCalledTimes(1);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(reconnectSpy).not.toBeCalled();
+      expect(restoreSpy).not.toBeCalled();
+      expect(restartRegSpy).not.toBeCalled();
+      expect(reg.reconnectPending).toStrictEqual(false);
+      expect(webex.request).toBeCalledOnceWith({
+        headers: mockResponse.headers,
+        uri: `${mockKeepAliveBody.device.uri}/status`,
+        method: 'POST',
+        service: mockResponse.service,
+      });
+      expect(reg.keepaliveTimer).toBe(undefined);
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+        file: REGISTRATION_FILE,
+        method: KEEPALIVE_UTIL,
+      });
+    });
+
+    it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
+      const restoreSpy = jest.spyOn(reg as any, 'restorePreviousRegistration');
+      const restartRegSpy = jest.spyOn(reg as any, 'restartRegistration');
+      const reconnectSpy = jest.spyOn(reg as any, 'reconnectOnFailure');
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValue(successPayload);
+
+      // jest.spyOn(callingClient['registration'], 'createDevice').mockResolvedValue(successPayload);
+
+      const url = 'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1';
+
+      reg.setActiveMobiusUrl(url);
+
+      expect(reg.reconnectPending).toStrictEqual(false);
+
+      const timer = reg.keepaliveTimer;
+
+      /* add a call to the callManager */
+      const call = reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      /* send one keepalive */
+      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
+      expect(handleErrorSpy).toBeCalledTimes(5);
+      expect(reg.keepaliveTimer).toStrictEqual(undefined);
+      expect(reg.failbackTimer).toStrictEqual(undefined);
+      expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(callingClientEmitter).toHaveBeenLastCalledWith(EVENT_KEYS.UNREGISTERED);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restoreSpy).not.toBeCalled();
+      expect(restartRegSpy).not.toBeCalled();
+      expect(reg.reconnectPending).toStrictEqual(true);
+      expect(logSpy).toHaveBeenCalledWith(
+        'Active call(s) present, deferred reconnect till call cleanup.',
+        {file: REGISTRATION_FILE, method: expect.any(String)}
+      );
+
+      reconnectSpy.mockClear();
+
+      /* simulate call disconnect and Calling client will trigger reconnect upon receiving disconnect event from CallManager */
+      reg.callManager.callCollection = {};
+      await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(reconnectSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
+      expect(restartRegSpy).not.toBeCalled();
+      expect(reg.reconnectPending).toStrictEqual(false);
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
+      expect(reg.keepaliveTimer).toBeTruthy();
+      expect(reg.keepaliveTimer).not.toBe(timer);
+    });
+  });
+
+  describe('Network activity detection tests', () => {
+    /* Mocking clearInterval because fakeTimers can't clear real timers */
+    jest.spyOn(global, 'clearInterval').mockReturnValue();
+
+    beforeEach(async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      jest.useFakeTimers();
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
+      reg[NETWORK_CHANGE_DETECTION_UTIL]();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+    });
+
+    it('Simulate a network flap with no active calls and re-verify registration: Restore Success', async () => {
+      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      const deRegSpy = jest.spyOn(reg, 'deregister');
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: REGISTRATION_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      expect(callingClientEmitter).toHaveBeenLastCalledWith(EVENT_KEYS.UNREGISTERED);
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).toHaveBeenCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      expect(deRegSpy).toBeCalledOnceWith();
+      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
+    });
+
+    it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
+      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      const deRegSpy = jest.spyOn(reg, 'deregister');
+      const restartRegisterSpy = jest.spyOn(reg as any, 'restartRegistration');
+      const registerSpy = jest.spyOn(reg as any, 'attemptRegistrationWithServers');
+
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 500,
+        body: '',
+      });
+
+      const mockRegistrationBody = getMockDeviceInfo();
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockRegistrationBody,
+      });
+
+      /* Mocking clearInterval because fakeTimers can't clear real timers */
+      jest.spyOn(global, 'clearInterval').mockReturnValue();
+
+      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValueOnce(successPayload);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(2500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: REGISTRATION_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(2500);
+
+      await flushPromises();
+      /* We should be detecting the network recovery */
+      expect(logSpy).toHaveBeenCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      expect(deRegSpy).toBeCalledOnceWith();
+      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toBeCalledOnceWith('handleConnectionRestoration');
+      expect(webex.request).toHaveBeenCalledTimes(2);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [
+        reg.getActiveMobiusUrl(),
+      ]);
+      expect(registerSpy).toHaveBeenLastCalledWith(
+        'handleConnectionRestoration',
+        mobiusUris.primary
+      );
+    });
+
+    it('Simulate a network flap before initial registration is done', async () => {
+      /* de-register since the beforeEach section would have done a registration */
+      reg.deregister();
+      reg.setActiveMobiusUrl(undefined);
+
+      jest.clearAllMocks();
+      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      const registerSpy = jest.spyOn(reg as any, 'attemptRegistrationWithServers');
+
+      /* Mocking clearInterval because fakeTimers can't clear real timers */
+      jest.spyOn(global, 'clearInterval').mockReturnValue();
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(2500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: REGISTRATION_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(2500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).toHaveBeenCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      /*
+       * When initial registration is not done, network flap
+       * will not trigger de-registration/registration
+       */
+      expect(webex.request).not.toBeCalled();
+      expect(restoreSpy).not.toBeCalled();
+      expect(registerSpy).not.toBeCalled();
+    });
+
+    it('Simulate a network flap with 1 active call', async () => {
+      const registerSpy = jest.spyOn(reg as any, 'attemptRegistrationWithServers');
+
+      /** create a new call */
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(2500);
+      await flushPromises();
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(2500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).not.toHaveBeenCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      expect(registerSpy).not.toHaveBeenCalledWith(true);
+      expect(registerSpy).toHaveBeenCalledTimes(0);
+    });
   });
 });

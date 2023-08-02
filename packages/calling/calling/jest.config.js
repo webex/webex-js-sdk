@@ -29,11 +29,6 @@ module.exports = {
       functions: 30,
       statements: 40,
     },
-    'src/Hooks': {
-      lines: 50,
-      functions: 0,
-      statements: 50,
-    },
     'src/SDKConnector': {
       lines: 60,
       functions: 60,

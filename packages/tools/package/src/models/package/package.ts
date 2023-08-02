@@ -8,6 +8,8 @@ import type {
   Config,
   Data,
   Definition,
+  InspectOptions,
+  PackageInfo,
   Version,
 } from './package.types';
 
@@ -42,6 +44,12 @@ class Package {
     this.data = {
       location: config.location,
       name: config.name,
+      packageInfo: {
+        version: Package.CONSTANTS.DEFAULT_VERSION,
+        'dist-tags': {
+          [Package.CONSTANTS.STABLE_TAG]: Package.CONSTANTS.DEFAULT_VERSION,
+        },
+      },
       version: {
         major: 0,
         minor: 0,
@@ -57,6 +65,10 @@ class Package {
    */
   public get name(): string {
     return this.data.name;
+  }
+
+  public get version(): string {
+    return Package.parseVersionObjectToString(this.data.version);
   }
 
   /**
@@ -129,13 +141,17 @@ class Package {
       processedVersion.release = 0;
     } else if (version.release) {
       processedVersion.release += version.release;
+    } else if (processedVersion.tag !== CONSTANTS.STABLE_TAG) {
+      processedVersion.release += 1;
+    } else {
+      processedVersion.patch += 1;
     }
 
     return this.setVersion(processedVersion);
   }
 
   /**
-   * Inspect the remote data for this Package instance.
+   * Inspect the registry data for this Package instance.
    *
    * @remarks
    * This uses the Yarn class to communicate with the target NPM registry for
@@ -144,12 +160,21 @@ class Package {
    * @returns - Promise resolving with this Package instance.
    */
   public inspect(): Promise<this> {
-    return Yarn.view({ package: this.data.name, distTags: true })
-      .then((tags) => {
-        const version = tags[this.data.version.tag]
-          || `${tags[CONSTANTS.STABLE_TAG] || '0.0.0'}-${this.data.version.tag}.0`;
+    const { tag } = this.data.version;
 
-        this.data.version = Package.parseVersionStringToObject(version);
+    return Package.inspect({ package: this.data.name })
+      .then((packageInfo) => {
+        this.data.packageInfo = packageInfo;
+
+        const tagVersion = packageInfo['dist-tags'][tag];
+
+        if (tagVersion) {
+          this.data.version = Package.parseVersionStringToObject(tagVersion);
+
+          return this;
+        }
+
+        this.data.version = Package.parseVersionStringToObject(`${packageInfo.version}-${tag}.0`);
 
         return this;
       });
@@ -174,10 +199,68 @@ class Package {
   }
 
   /**
+   * Synchronize this package tag with the current stable package tag version.
+   *
+   * @remarks
+   * This method will skip any modifications if the current version tag is
+   * stable.
+   *
+   * @returns - This Package instance.
+   */
+  public syncVersion(): this {
+    const { version } = this.data;
+
+    if (version.tag === Package.CONSTANTS.STABLE_TAG) {
+      return this;
+    }
+
+    const stable = Package.parseVersionStringToObject(this.data.packageInfo['dist-tags'].latest);
+
+    let hasVersionChanged = false;
+
+    if (version.major !== stable.major) {
+      version.major = stable.major;
+      hasVersionChanged = true;
+    }
+
+    if (version.minor !== stable.minor) {
+      version.minor = stable.minor;
+      hasVersionChanged = true;
+    }
+
+    if (version.patch !== stable.patch) {
+      version.patch = stable.patch;
+      hasVersionChanged = true;
+    }
+
+    if (hasVersionChanged) {
+      version.release = 0;
+    }
+
+    return this;
+  }
+
+  /**
    * Constants associated with the Package class.
    */
   public static get CONSTANTS() {
     return CONSTANTS;
+  }
+
+  /**
+   * Inspect the registry data for the provided package name.
+   *
+   * @param options - Inspect Options.
+   * @returns - Package Info for the provided package.
+   */
+  public static inspect(options: InspectOptions): Promise<PackageInfo> {
+    return Yarn.view({ distTags: true, package: options.package, version: true })
+      .catch(() => ({
+        version: Package.CONSTANTS.DEFAULT_VERSION,
+        'dist-tags': {
+          [Package.CONSTANTS.STABLE_TAG]: Package.CONSTANTS.DEFAULT_VERSION,
+        },
+      }));
   }
 
   /**

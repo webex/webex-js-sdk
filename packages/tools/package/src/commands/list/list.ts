@@ -47,9 +47,19 @@ const list: CommandsCommand<Options> = {
   })
     .then((packageDetails) => packageDetails.map(({ name }: YarnListPackage) => name))
     .then((packageNames: Array<string>) => {
-      const output = packageNames.length === 1
-        ? packageNames[0]
-        : `{${packageNames.map((packageName) => packageName).join(',')}}`;
+      let output: string;
+
+      switch (options.mode) {
+        case CONSTANTS.MODES.NODE:
+          output = packageNames.join(' ');
+          break;
+
+        case CONSTANTS.MODES.YARN:
+        default:
+          output = packageNames.length === 1
+            ? packageNames[0]
+            : `{${packageNames.join(',')}}`;
+      }
 
       process.stdout.write(output);
     }),

@@ -72,7 +72,13 @@ const Webex = WebexCore.extend({
  * @returns {Webex}
  */
 Webex.init = function init(attrs = {}) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
+  attrs.config = merge(
+    {
+      sdkType: 'webex',
+    },
+    config,
+    attrs.config
+  ); // eslint-disable-line no-param-reassign
 
   return new Webex(attrs);
 };

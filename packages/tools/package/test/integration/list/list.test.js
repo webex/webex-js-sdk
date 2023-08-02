@@ -67,17 +67,17 @@ describe('list', () => {
         }));
       }));
 
-    it('should call "process.stdout.write()" with the package list items as a string array when more than 1 is found', () => list.handler(options)
+    it('should call "process.stdout.write()" with the package list items as a string array when more than 1 is found when mode is "yarn"', () => list.handler({ ...options, mode: 'yarn' })
       .then(() => {
         const expected = `{${listResolve.map(({ name }) => name).join(',')}}`;
 
         expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
       }));
 
-    it('should call "process.stdout.write()" with a single package name when the found packages is 1', () => {
+    it('should call "process.stdout.write()" with a single package name when the found packages is 1 when mode is "yarn"', () => {
       spies.Yarn.list.and.resolveTo([listResolve[0]]);
 
-      return list.handler(options)
+      return list.handler({ ...options, mode: 'yarn' })
         .then(() => {
           const expected = listResolve[0].name;
 
@@ -85,12 +85,41 @@ describe('list', () => {
         });
     });
 
-    it('should call "process.stdout.write()" with "{}" when the found packages is 0', () => {
+    it('should call "process.stdout.write()" with "{}" when the found packages is 0 when mode is "yarn"', () => {
       spies.Yarn.list.and.resolveTo([]);
 
-      return list.handler(options)
+      return list.handler({ ...options, mode: 'yarn' })
         .then(() => {
           const expected = '{}';
+
+          expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
+        });
+    });
+
+    it('should call "process.stdout.write()" with the package list items as a string array when more than 1 is found when mode is "node"', () => list.handler({ ...options, mode: 'node' })
+      .then(() => {
+        const expected = `${listResolve.map(({ name }) => name).join(' ')}`;
+
+        expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
+      }));
+
+    it('should call "process.stdout.write()" with a single package name when the found packages is 1 when mode is "node"', () => {
+      spies.Yarn.list.and.resolveTo([listResolve[0]]);
+
+      return list.handler({ ...options, mode: 'node' })
+        .then(() => {
+          const expected = listResolve[0].name;
+
+          expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
+        });
+    });
+
+    it('should call "process.stdout.write()" with an empty string when the found packages is 0 when mode is "node"', () => {
+      spies.Yarn.list.and.resolveTo([]);
+
+      return list.handler({ ...options, mode: 'node' })
+        .then(() => {
+          const expected = '';
 
           expect(spies.stdout.write).toHaveBeenCalledOnceWith(expected);
         });

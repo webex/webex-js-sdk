@@ -262,15 +262,6 @@ describe('Yarn', () => {
           expect(calledWith.includes('--json')).toBeTrue();
         }));
 
-      it('should not catch', () => {
-        spies.Executor.execute.and.rejectWith(new Error());
-
-        return Yarn.view()
-          .then(() => {
-            expect(true).toBeTrue();
-          });
-      });
-
       it('should attempt to parse the results of the "Executor.execute()" method', () => Yarn.view({})
         .then(() => {
           expect(spies.JSON.parse).toHaveBeenCalledOnceWith(executorExecuteResolve);

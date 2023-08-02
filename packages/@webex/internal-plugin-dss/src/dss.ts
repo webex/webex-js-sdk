@@ -11,6 +11,7 @@ import type {
   LookupDetailOptions,
   LookupOptions,
   LookupByEmailOptions,
+  SearchPlaceOptions,
 } from './types';
 
 import {
@@ -255,6 +256,31 @@ const DSS = WebexPlugin.extend({
         resultSize,
         requestedTypes,
       },
+    });
+  },
+
+  /**
+   * Search for information about places
+   * @param {Object} options
+   * @param {string} options.queryString A query string that will be transformed into a Directory search filter query. It is used to search the following fields: placeName, displayName.
+   * @param {number} options.resultSize The maximum number of results returned from each provider
+   * @returns {Promise} Resolves with an array of entities found
+   */
+  searchPlaces(options: SearchPlaceOptions) {
+    const {resultSize, queryString, isOnlySchedulableRooms} = options;
+
+    return this._request({
+      dataPath: 'directoryEntities',
+      resource: `/search/orgid/${this.webex.internal.device.orgId}/places`,
+      params: {
+        queryString,
+        resultSize,
+        isOnlySchedulableRooms,
+      },
+    }).catch((error) => {
+      this.logger.error(`DSS->search place#ERROR, search place failure, ${error.message}`);
+
+      return Promise.reject(error);
     });
   },
 });
