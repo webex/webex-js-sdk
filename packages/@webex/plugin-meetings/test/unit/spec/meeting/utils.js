@@ -740,5 +740,67 @@ describe('plugin-meetings', () => {
         assert.deepEqual(MeetingUtil.isBreakoutPreassignmentsEnabled([]), true);
       });
     });
+
+
+    describe('parseInterpretationInfo', () => {
+      let meetingInfo = {};
+      beforeEach(() => {
+        meeting.simultaneousInterpretation = {
+          updateMeetingSIEnabled: sinon.stub(),
+          updateHostSIEnabled: sinon.stub(),
+          updateInterpretation: sinon.stub(),
+          siLanguages: [],
+        };
+      });
+      it('should update simultaneous interpretation settings with SI and host enabled', () => {
+        meetingInfo.turnOnSimultaneousInterpretation = true;
+        meetingInfo.meetingSiteSetting = {
+          enableHostInterpreterControlSI: true,
+        };
+        meetingInfo.simultaneousInterpretation = {
+          currentSIInterpreter: true,
+          siLanguages: [
+            { languageCode: 'en', languageGroupId: 1 },
+            { languageCode: 'es', languageGroupId: 2 },
+          ],
+        };
+
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, true);
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
+          { languageName: 'en', languageCode: 1 },
+          { languageName: 'es', languageCode: 2 },
+        ]);
+      });
+
+      it('should update simultaneous interpretation settings with host SI disabled', () => {
+        meetingInfo.meetingSiteSetting.enableHostInterpreterControlSI = false;
+        meetingInfo.simultaneousInterpretation.currentSIInterpreter = false;
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
+          { languageName: 'en', languageCode: 1 },
+          { languageName: 'es', languageCode: 2 },
+        ]);
+      });
+      it('should update simultaneous interpretation settings with SI disabled', () => {
+        meetingInfo.turnOnSimultaneousInterpretation = false;
+        MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
+        assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, false, false);
+        assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
+      });
+
+      it('should not update simultaneous interpretation settings for invalid input', () => {
+        // Call the function with invalid inputs
+        MeetingUtil.parseInterpretationInfo(null, null);
+
+        // Ensure that the update functions are not called
+        assert.notCalled(meeting.simultaneousInterpretation.updateMeetingSIEnabled);
+        assert.notCalled(meeting.simultaneousInterpretation.updateHostSIEnabled);
+        assert.notCalled(meeting.simultaneousInterpretation.updateInterpretation);
+      });
+    });
   });
 });
