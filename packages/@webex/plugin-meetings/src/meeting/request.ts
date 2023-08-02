@@ -383,40 +383,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Syns the missed delta event
-   * @param {Object} options
-   * @param {boolean} options.desync flag to get partial or whole locus object
-   * @param {String} options.syncUrl sync url to get ht elatest locus delta
-   * @returns {Promise}
-   */
-  syncMeeting(options: {desync: boolean; syncUrl: string}) {
-    /* eslint-disable no-else-return */
-    const {desync} = options;
-    let {syncUrl} = options;
-
-    /* istanbul ignore else */
-    if (desync) {
-      // check for existing URL parameters
-      syncUrl = syncUrl
-        .concat(syncUrl.split('?')[1] ? '&' : '?')
-        .concat(`${LOCUS.SYNCDEBUG}=${desync}`);
-    }
-
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.GET,
-      uri: syncUrl,
-    }) // TODO: Handle if delta sync failed . Get the full locus object
-      .catch((err) => {
-        LoggerProxy.logger.error(
-          `Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`
-        );
-
-        return err;
-      });
-  }
-
-  /**
    * Request to get the complete locus object
    * @param {Object} options
    * @param {boolean} options.desync flag to get partial or whole locus object

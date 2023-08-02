@@ -99,7 +99,6 @@ export default class LocusInfo extends EventsScope {
         break;
       case USE_CURRENT:
         meeting.locusDesync = false;
-        meeting.needToGetFullLocus = false;
         break;
       case DESYNC:
         meeting.meetingRequest
