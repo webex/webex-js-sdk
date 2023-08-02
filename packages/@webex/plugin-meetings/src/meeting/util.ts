@@ -11,6 +11,7 @@ import {
   DISPLAY_HINTS,
   FULL_STATE,
   SELF_POLICY,
+  EVENT_TRIGGERS,
 } from '../constants';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
@@ -18,6 +19,7 @@ import ParameterError from '../common/errors/parameter';
 import PermissionError from '../common/errors/permission';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
+import Trigger from '../common/events/trigger-proxy';
 
 const MeetingUtil = {
   parseLocusJoin: (response) => {
@@ -565,6 +567,47 @@ const MeetingUtil = {
     }
 
     return userPolicies[feature];
+  },
+
+  parseInterpretationInfo: (meeting, meetingInfo) => {
+    if (!meeting || !meetingInfo) {
+      return;
+    }
+    const siInfo = meetingInfo.simultaneousInterpretation;
+    meeting.simultaneousInterpretation.updateMeetingSIEnabled(
+      !!meetingInfo.turnOnSimultaneousInterpretation,
+      !!siInfo?.currentSIInterpreter
+    );
+    const hostSIEnabled = !!(
+      meetingInfo.turnOnSimultaneousInterpretation &&
+      meetingInfo?.meetingSiteSetting?.enableHostInterpreterControlSI
+    );
+    meeting.simultaneousInterpretation.updateHostSIEnabled(hostSIEnabled);
+
+    function renameKey(obj, oldKey, newKey) {
+      if (oldKey in obj) {
+        obj[newKey] = obj[oldKey];
+        delete obj[oldKey];
+      }
+    }
+    if (siInfo) {
+      const lanuagesInfo = cloneDeep(siInfo.siLanguages);
+      for (const language of lanuagesInfo) {
+        renameKey(language, 'languageCode', 'languageName');
+        renameKey(language, 'languageGroupId', 'languageCode');
+      }
+      if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
+        meeting.simultaneousInterpretation.updateInterpretation(lanuagesInfo);
+      }
+    }
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/util',
+        function: 'parseInterpretationInfo',
+      },
+      EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+    );
   },
 };
 

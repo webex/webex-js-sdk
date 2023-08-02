@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.183](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.182...v3.0.0-beta.183) (2023-08-02)
+
+
+### Features
+
+* **SI:** get site feature toggle and scheduled interpretation from meeting info ([#2978](https://github.com/webex/webex-js-sdk/issues/2978)) ([0725309](https://github.com/webex/webex-js-sdk/commit/0725309bfc360c3ba63497726ffe24340c78a2f1))
+
 ## [3.0.0-beta.182](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.181...v3.0.0-beta.182) (2023-08-01)
 
 
