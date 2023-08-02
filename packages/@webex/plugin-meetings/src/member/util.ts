@@ -21,6 +21,8 @@ import {
   _SEND_RECEIVE_,
   _RECEIVE_ONLY_,
   _CALL_,
+  VIDEO,
+  AUDIO,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -152,30 +154,20 @@ MemberUtil.isAudioMuted = (participant: any) => {
   if (!participant) {
     throw new ParameterError('Audio could not be processed, participant is undefined.');
   }
-  const mutedStatus = MemberUtil.isMuted(participant.status, AUDIO_STATUS);
 
-  if (participant.controls && participant.controls.audio) {
-    if (participant.controls.audio.muted) {
-      return true;
-    }
-    if (mutedStatus) {
-      return true;
-    }
-  }
-
-  return false;
+  return MemberUtil.isMuted(participant, AUDIO_STATUS, AUDIO);
 };
 
 /**
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isVideoMuted = (participant: any) => {
+MemberUtil.isVideoMuted = (participant: any): boolean => {
   if (!participant) {
     throw new ParameterError('Video could not be processed, participant is undefined.');
   }
 
-  return MemberUtil.isMuted(participant.status, VIDEO_STATUS);
+  return MemberUtil.isMuted(participant, VIDEO_STATUS, VIDEO);
 };
 
 /**
@@ -232,21 +224,28 @@ MemberUtil.isLiveAnnotationSupported = (participant) => {
 
 /**
  * utility method for audio/video muted status
- * @param {String} status
- * @param {String} accessor
- * @returns {Boolean}
+ * @param {any} participant
+ * @param {String} statusAccessor
+ * @param {String} controlsAccessor
+ * @returns {Boolean | undefined}
  */
-MemberUtil.isMuted = (status: string, accessor: string) => {
-  if (status) {
-    if (status[accessor] === _RECEIVE_ONLY_) {
-      return true;
-    }
-    if (status[accessor] === _SEND_RECEIVE_) {
-      return false;
-    }
+MemberUtil.isMuted = (participant: any, statusAccessor: string, controlsAccessor: string) => {
+  // check remote mute
+  const remoteMute = participant?.controls?.[controlsAccessor]?.muted;
+  if (remoteMute === true) {
+    return true;
   }
 
-  return null;
+  // check local mute
+  const localStatus = participant?.status?.[statusAccessor];
+  if (localStatus === _RECEIVE_ONLY_) {
+    return true;
+  }
+  if (localStatus === _SEND_RECEIVE_) {
+    return false;
+  }
+
+  return remoteMute;
 };
 
 /**
