@@ -226,7 +226,7 @@ describe('plugin-meetings', () => {
     membersSpy = sinon.spy(MembersImport, 'default');
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
-    TriggerProxy.trigger = sinon.stub().returns(true);
+    sinon.stub(TriggerProxy, 'trigger').returns(true);
     Metrics.initialSetup(webex);
     MediaUtil.createMediaStream = sinon.stub().callsFake((tracks) => {
       return {
