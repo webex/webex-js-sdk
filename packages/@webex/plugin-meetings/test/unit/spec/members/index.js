@@ -232,7 +232,7 @@ describe('plugin-meetings', () => {
       it('should send clear event if clear members', () => {
         const members = createMembers({url: url1});
         members.membersCollection.setAll(fakeMembersCollection);
-        Trigger.trigger = sinon.stub();
+        sinon.stub(Trigger, 'trigger');
         members.clearMembers();
         assert.deepEqual(members.membersCollection.members, {});
         assert.calledWith(
@@ -250,7 +250,6 @@ describe('plugin-meetings', () => {
     describe('#locusParticipantsUpdate', () => {
       it('should send member update event with session info', () => {
         const members = createMembers({url: url1});
-        Trigger.trigger = sinon.stub();
         const fakePayload = {
           participants: {
             forEach: sinon.stub(),

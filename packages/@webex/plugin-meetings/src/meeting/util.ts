@@ -601,7 +601,7 @@ const MeetingUtil = {
       }
     }
     Trigger.trigger(
-      this,
+      meeting,
       {
         file: 'meeting/util',
         function: 'parseInterpretationInfo',

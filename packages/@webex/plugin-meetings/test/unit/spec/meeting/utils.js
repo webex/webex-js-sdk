@@ -21,6 +21,7 @@ describe('plugin-meetings', () => {
         log: sandbox.stub(),
         error: sandbox.stub(),
         warn: sandbox.stub(),
+        debug: sandbox.stub(),
       };
 
       LoggerConfig.set({
@@ -42,6 +43,7 @@ describe('plugin-meetings', () => {
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
+      meeting.trigger = sinon.stub();
     });
 
     afterEach(() => {
