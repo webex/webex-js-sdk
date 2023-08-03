@@ -278,7 +278,7 @@ export class MuteState {
         this.state.server.localMute = this.type === AUDIO ? audioMuted : videoMuted;
 
         if (locus) {
-          meeting.locusInfo.onDeltaLocus(locus);
+          meeting.locusInfo.handleLocusDelta(locus, meeting);
         }
 
         return locus;
