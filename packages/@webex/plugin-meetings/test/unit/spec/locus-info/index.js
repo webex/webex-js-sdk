@@ -1547,6 +1547,7 @@ describe('plugin-meetings', () => {
           meeting: true,
           participants: true,
           url: 'newLocusUrl',
+          syncUrl: 'newSyncUrl',
         };
       });
 
@@ -1707,11 +1708,75 @@ describe('plugin-meetings', () => {
         assert.calledWith(meeting.locusInfo.onDeltaLocus, fakeLocus);
       });
 
-      it('applyLocusDeltaData gets full locus on DESYNC action', () => {
+      it('applyLocusDeltaData gets delta locus on DESYNC action if we have a syncUrl', () => {
+        const {DESYNC} = LocusDeltaParser.loci;
+        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const meeting = {
+          meetingRequest: {
+            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
+          },
+          locusInfo: {
+            onDeltaLocus: sandbox.stub(),
+          },
+          locusUrl: 'oldLocusUrl',
+        };
+
+        locusInfo.locusParser.workingCopy = {
+          syncUrl: 'oldSyncUrl',
+        };
+
+        // Since we have a promise inside a function we want to test that's not returned,
+        // we will wait and stub it's last function to resolve this waiting promise.
+        // Also ensures .onDeltaLocus() is called before .resume()
+        return new Promise((resolve) => {
+          locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
+          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+        }).then(() => {
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
+
+          assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, fakeDeltaLocus);
+          assert.calledOnce(locusInfo.locusParser.resume);
+        });
+      });
+
+      it('applyLocusDeltaData gets delta locus on DESYNC action if we have a syncUrl (empty response body)', () => {
         const {DESYNC} = LocusDeltaParser.loci;
         const meeting = {
           meetingRequest: {
-            getFullLocus: sandbox.stub().resolves(true),
+            getLocusDTO: sandbox.stub().resolves({body: {}}),
+          },
+          locusInfo: {
+            onDeltaLocus: sandbox.stub(),
+            onFullLocus: sandbox.stub(),
+          },
+          locusUrl: 'oldLocusUrl',
+        };
+
+        locusInfo.locusParser.workingCopy = {
+          syncUrl: 'oldSyncUrl',
+        };
+
+        // Since we have a promise inside a function we want to test that's not returned,
+        // we will wait and stub it's last function to resolve this waiting promise.
+        // Also ensures .onDeltaLocus() is called before .resume()
+        return new Promise((resolve) => {
+          locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
+          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+        }).then(() => {
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
+
+          assert.notCalled(meeting.locusInfo.onDeltaLocus);
+          assert.notCalled(meeting.locusInfo.onFullLocus);
+          assert.calledOnce(locusInfo.locusParser.resume);
+        });
+      });
+
+      it('applyLocusDeltaData gets full locus on DESYNC action if we do not have a syncUrl', () => {
+        const {DESYNC} = LocusDeltaParser.loci;
+        const fakeFullLocusDto = {id: 'fake full locus dto'};
+        const meeting = {
+          meetingRequest: {
+            getLocusDTO: sandbox.stub().resolves({body: fakeFullLocusDto}),
           },
           locusInfo: {
             onFullLocus: sandbox.stub(),
@@ -1719,27 +1784,7 @@ describe('plugin-meetings', () => {
           locusUrl: 'oldLocusUrl',
         };
 
-        locusInfo.locusParser.resume = sandbox.stub();
-        locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
-
-        assert.calledOnceWithExactly(meeting.meetingRequest.getFullLocus,
-          {
-            desync: true,
-            locusUrl: 'newLocusUrl',
-          }
-          );
-      });
-
-      it('getFullLocus handles DESYNC action correctly', () => {
-        const {DESYNC} = LocusDeltaParser.loci;
-        const meeting = {
-          meetingRequest: {
-            getFullLocus: sandbox.stub().resolves({body: true}),
-          },
-          locusInfo,
-        };
-
-        locusInfo.onFullLocus = sandbox.stub();
+        locusInfo.locusParser.workingCopy = {}; // no syncUrl
 
         // Since we have a promise inside a function we want to test that's not returned,
         // we will wait and stub it's last function to resolve this waiting promise.
@@ -1748,7 +1793,9 @@ describe('plugin-meetings', () => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
-          assert.calledOnce(meeting.locusInfo.onFullLocus);
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldLocusUrl' });
+
+          assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
       });

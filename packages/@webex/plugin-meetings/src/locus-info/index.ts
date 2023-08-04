@@ -1,4 +1,4 @@
-import {isEqual, assignWith, cloneDeep} from 'lodash';
+import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -84,6 +84,50 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
+   *
+   * @param {Meeting} meeting
+   * @returns {undefined}
+   */
+  private doLocusSync(meeting: any) {
+    let isDelta;
+    let url;
+
+    if (this.locusParser.workingCopy.syncUrl) {
+      url = this.locusParser.workingCopy.syncUrl;
+      isDelta = true;
+    } else {
+      url = meeting.locusUrl;
+      isDelta = false;
+    }
+
+    LoggerProxy.logger.info(
+      `Locus-info:index#doLocusSync --> doing Locus sync (getting ${
+        isDelta ? 'delta' : 'full'
+      } DTO)`
+    );
+
+    // return value ignored on purpose
+    meeting.meetingRequest.getLocusDTO({url}).then((res) => {
+      if (isDelta) {
+        if (!isEmpty(res.body)) {
+          meeting.locusInfo.onDeltaLocus(res.body);
+        } else {
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> received empty body from syncUrl, so we already have latest Locus DTO'
+          );
+        }
+      } else {
+        meeting.locusInfo.onFullLocus(res.body);
+      }
+
+      // Notify parser to resume processing delta events.
+      // Any deltas in the queue that have now been superseded by this sync will simply be ignored
+      this.locusParser.resume();
+    });
+  }
+
+  /**
    * Apply locus delta data to meeting
    * @param {string} action Locus delta action
    * @param {Locus} locus
@@ -98,20 +142,10 @@ export default class LocusInfo extends EventsScope {
         meeting.locusInfo.onDeltaLocus(locus);
         break;
       case USE_CURRENT:
-        meeting.locusDesync = false;
+        // do nothing
         break;
       case DESYNC:
-        meeting.meetingRequest
-          .getFullLocus({
-            desync: true,
-            locusUrl: locus.url ? locus.url : meeting.locusUrl,
-          })
-          .then((res) => {
-            meeting.locusInfo.onFullLocus(res.body);
-            // Notify parser to resume processing delta events
-            // now that we have full locus from DESYNC.
-            this.locusParser.resume();
-          });
+        this.doLocusSync(meeting);
         break;
       default:
         LoggerProxy.logger.info(

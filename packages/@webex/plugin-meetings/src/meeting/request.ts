@@ -18,7 +18,6 @@ import {
   HTTP_VERBS,
   LEAVE,
   LOCI,
-  LOCUS,
   PARTICIPANT,
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
@@ -383,28 +382,22 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Request to get the complete locus object
+   * Sends a requests to get the latest locus DTO, it might be a full Locus or a delta, depending on the url provided
    * @param {Object} options
-   * @param {boolean} options.desync flag to get partial or whole locus object
    * @param {String} options.locusUrl sync url to get ht elatest locus delta
    * @returns {Promise}
    */
-  getFullLocus(options: {desync: boolean; locusUrl: string}) {
-    let {locusUrl} = options;
-    const {desync} = options;
+  getLocusDTO(options: {url: string}) {
+    const {url} = options;
 
-    if (locusUrl) {
-      if (desync) {
-        locusUrl += `?${LOCUS.SYNCDEBUG}=${desync}`;
-      }
-
+    if (url) {
       // @ts-ignore
       return this.request({
         method: HTTP_VERBS.GET,
-        uri: locusUrl,
+        uri: url,
       }).catch((err) => {
         LoggerProxy.logger.error(
-          `Meeting:request#getFullLocus --> Error getting full locus, error ${err}`
+          `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
         );
 
         return err;
