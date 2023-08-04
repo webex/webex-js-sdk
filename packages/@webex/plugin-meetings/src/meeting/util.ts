@@ -529,7 +529,7 @@ const MeetingUtil = {
     const locus = response?.body?.locus;
 
     if (locus) {
-      meeting.locusInfo.onDeltaLocus(locus);
+      meeting.locusInfo.handleLocusDelta(locus, meeting);
     }
 
     return response;

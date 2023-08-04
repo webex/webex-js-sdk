@@ -27,7 +27,7 @@ export default class Parser {
     ERROR: 'ERROR',
   };
 
-  queue: any;
+  queue: SimpleQueue;
   workingCopy: any;
 
   /**
