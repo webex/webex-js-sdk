@@ -11,7 +11,15 @@ describe('common/queue', () => {
   };
 
   beforeEach(() => {
-    fifo = new SimpleQueue();
+    fifo = new SimpleQueue((left, right) => {
+      if (left.text > right.text) {
+        return 1;
+      }
+      if (left.text < right.text) {
+        return -1;
+      }
+      return 0;
+    });
   });
 
   afterEach(() => {
