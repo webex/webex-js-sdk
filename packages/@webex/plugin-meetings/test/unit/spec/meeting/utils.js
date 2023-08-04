@@ -179,10 +179,10 @@ describe('plugin-meetings', () => {
     });
 
     describe('updateLocusWithDelta', () => {
-      it('should call onDeltaLocus with the new delta locus', () => {
+      it('should call handleLocusDelta with the new delta locus', () => {
         const meeting = {
           locusInfo: {
-            onDeltaLocus: sinon.stub()
+            handleLocusDelta: sinon.stub()
           },
         };
 
@@ -195,13 +195,13 @@ describe('plugin-meetings', () => {
         const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, 'locus');
+        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, 'locus', meeting);
       });
 
       it('should handle locus being missing from the response', () => {
         const meeting = {
           locusInfo: {
-            onDeltaLocus: sinon.stub(),
+            handleLocusDelta: sinon.stub(),
           },
         };
 
@@ -212,7 +212,7 @@ describe('plugin-meetings', () => {
         const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.notCalled(meeting.locusInfo.onDeltaLocus);
+        assert.notCalled(meeting.locusInfo.handleLocusDelta);
       });
 
       it('should work with an undefined meeting', () => {
