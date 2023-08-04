@@ -57,7 +57,7 @@ describe('plugin-meetings', () => {
       verboseEvents: true,
       enable: false,
     });
-    TriggerProxy.trigger = sinon.stub().returns(true);
+    sinon.stub(TriggerProxy, 'trigger').returns(true);
   });
 
   let webex;
