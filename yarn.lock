@@ -12060,6 +12060,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eslint-plugin-inclusive-language@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "eslint-plugin-inclusive-language@npm:2.2.0"
+  dependencies:
+    humps: ^2.0.1
+  checksum: 23094560b750cb8200382ac12faba00dda9cd882d42fe9f40777986699cc29a077bc6dfef0519c23f26753993d016fb8c206e0501e30de4858473f753e11a94b
+  languageName: node
+  linkType: hard
+
 "eslint-plugin-jasmine@npm:^4.1.3":
   version: 4.1.3
   resolution: "eslint-plugin-jasmine@npm:4.1.3"
@@ -14809,6 +14818,13 @@ __metadata:
   dependencies:
     decamelize: ^1.0.0
   checksum: 23e44cc8e65805acbd1118b04e7f0471054454bd9fac6590275e7af609213329beb4b2bbee2212d76af65c7c11d8132767c77e975184ea4b3fca93cadebb5476
+  languageName: node
+  linkType: hard
+
+"humps@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "humps@npm:2.0.1"
+  checksum: 7d5a674cfca2f34c04562f6fd0d129b4c43a5caf85fcc1c9eacf5d0729554c9375db362c4232519b37369c94dd2560d85f96ad4091a8fbf4af4e625ab5214a30
   languageName: node
   linkType: hard
 
@@ -25902,6 +25918,7 @@ __metadata:
     eslint-import-resolver-typescript: ^2.4.0
     eslint-plugin-chai-friendly: ^0.7.2
     eslint-plugin-import: ^2.26.0
+    eslint-plugin-inclusive-language: ^2.2.0
     eslint-plugin-jasmine: ^4.1.3
     eslint-plugin-jest: ^26.1.1
     eslint-plugin-jsdoc: ^40.0.0
