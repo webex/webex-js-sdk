@@ -37,3 +37,4 @@ export const BW_XSI_ENDPOINT_VERSION = 'v2.0';
 export const BW_XSI_URL = 'broadworksXsiActionsUrl';
 export const WEBEX_CALLING_CONNECTOR_FILE = 'WxCallBackendConnector';
 export const UCM_CONNECTOR_FILE = 'UcmBackendConnector';
+export const VOICEMAIL = 'VOICEMAIL';

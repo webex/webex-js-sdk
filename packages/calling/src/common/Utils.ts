@@ -758,7 +758,19 @@ export async function serviceErrorCodeHandler(
 
       return errorDetails;
     }
+    case ERROR_CODE.NOT_IMPLEMENTED: {
+      log.warn(`501 Not Implemented error occurred`, loggerContext);
 
+      const errorDetails = {
+        statusCode: 501,
+        data: {
+          error: 'Method is not implemented at the backend',
+        },
+        message: failureMessage,
+      };
+
+      return errorDetails;
+    }
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal server error occurred`, loggerContext);
 

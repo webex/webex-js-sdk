@@ -14,6 +14,7 @@ import {CALLING_BACKEND} from '../common/types';
 
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {CALL_SETTINGS_FILE} from './constants';
+import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
  * Call Settings class which implements the public ICallSettings interface
@@ -29,7 +30,7 @@ export class CallSettings implements ICallSettings {
 
   private backendConnector!: ICallSettings;
 
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.sdkConnector = SDKConnector;
 
     if (!this.sdkConnector.getWebex()) {
@@ -38,13 +39,13 @@ export class CallSettings implements ICallSettings {
 
     log.setLogger(logger.level, CALL_SETTINGS_FILE);
     this.webex = this.sdkConnector.getWebex();
-    this.initializeBackendConnector(logger);
+    this.initializeBackendConnector(logger, useProdWebexApis);
   }
 
   /**
    * Setup and initialize the Call Settings backend connector class object.
    */
-  private initializeBackendConnector(logger: LoggerInterface) {
+  private initializeBackendConnector(logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.callingBackend = getCallingBackEnd(this.webex);
     log.info(`Initializing Connector for ${this.callingBackend} backend`, {
       file: CALL_SETTINGS_FILE,
@@ -53,18 +54,16 @@ export class CallSettings implements ICallSettings {
 
     switch (this.callingBackend) {
       case CALLING_BACKEND.BWRKS:
-      case CALLING_BACKEND.WXC: {
+      case CALLING_BACKEND.WXC:
         this.backendConnector = new WxCallBackendConnector(this.webex, logger);
         break;
-      }
-      /**
-       *  Case CALLING_BACKEND.UCM:
-       * TODO: this.backendConnector = new UcmBackendConnector(this.webex, this.logger);.
-       */
 
-      default: {
+      case CALLING_BACKEND.UCM:
+        this.backendConnector = new UcmBackendConnector(this.webex, logger, useProdWebexApis);
+        break;
+
+      default:
         throw new Error('Calling backend is not identified, exiting....');
-      }
     }
   }
 
@@ -133,5 +132,8 @@ export class CallSettings implements ICallSettings {
 
 /**
  */
-export const createCallSettingsClient = (webex: WebexSDK, logger: LoggerInterface): ICallSettings =>
-  new CallSettings(webex, logger);
+export const createCallSettingsClient = (
+  webex: WebexSDK,
+  logger: LoggerInterface,
+  useProdWebexApis?: boolean
+): ICallSettings => new CallSettings(webex, logger, useProdWebexApis);

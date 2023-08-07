@@ -12,6 +12,7 @@ import {CALLING_BACKEND} from '../common/types';
 
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {createCallSettingsClient} from './CallSettings';
+import {UcmBackendConnector} from './UcmBackendConnector';
 
 describe('CallSettings Client tests', () => {
   const webex = getTestUtilsWebex();
@@ -30,13 +31,12 @@ describe('CallSettings Client tests', () => {
       entitlement: string;
       valid: boolean;
     }[] = [
-      // TODO: for next PR
-      // {
-      //   name: 'verify valid ucm CallSettings client',
-      //   callingBehavior: NATIVE_SIP_CALL_TO_UCM,
-      //   entitlement: 'none',
-      //   valid: true,
-      // },
+      {
+        name: 'verify valid ucm CallSettings client',
+        callingBehavior: NATIVE_SIP_CALL_TO_UCM,
+        entitlement: 'none',
+        valid: true,
+      },
       {
         name: 'verify valid wxc CallSettings client with basic entitlement',
         callingBehavior: NATIVE_WEBEX_TEAMS_CALLING,
@@ -86,9 +86,8 @@ describe('CallSettings Client tests', () => {
 
         switch (data.callingBehavior) {
           case NATIVE_SIP_CALL_TO_UCM:
-            // TODO: for next PR
-            // expect(callSettingsClient['callingBackend']).toStrictEqual(CALLING_BACKEND.UCM);
-            // expect(callSettingsClient['backendConnector']).toBeInstanceOf(UcmBackendConnector);
+            expect(callSettingsClient['callingBackend']).toStrictEqual(CALLING_BACKEND.UCM);
+            expect(callSettingsClient['backendConnector']).toBeInstanceOf(UcmBackendConnector);
             break;
           case NATIVE_WEBEX_TEAMS_CALLING:
             if (data.entitlement === ENTITLEMENT_BROADWORKS_CONN) {

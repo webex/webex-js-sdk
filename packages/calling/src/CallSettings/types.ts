@@ -102,3 +102,16 @@ export interface ICallSettings {
 }
 
 export type IWxCallBackendConnector = ICallSettings;
+export type IUcmBackendConnector = ICallSettings;
+
+export type CallForwardingAlwaysSettingsUCM = {
+  dn: string;
+  destination?: string;
+  destinationVoicemailEnabled: boolean;
+};
+
+export type CallForwardingSettingsUCM = {
+  callForwarding: {
+    always: CallForwardingAlwaysSettingsUCM[];
+  };
+};
