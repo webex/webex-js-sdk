@@ -4,7 +4,6 @@ export interface RequestOptions {
   foundPath?: string;
   notFoundPath?: string;
   params?: Record<string, unknown>;
-  timeout?: number;
 }
 
 export interface RequestResult {
@@ -13,7 +12,7 @@ export interface RequestResult {
   resultArray: any[];
 }
 
-export interface LookupDetailOptions extends Pick<RequestOptions, 'timeout'> {
+export interface LookupDetailOptions {
   id: string;
 }
 
@@ -24,13 +23,13 @@ export enum EntityProviderType {
   CSDM = 'CSDM',
 }
 
-export interface LookupOptions extends Pick<RequestOptions, 'timeout'> {
+export interface LookupOptions {
   id: string;
   entityProviderType?: EntityProviderType;
   shouldBatch?: boolean;
 }
 
-export interface LookupByEmailOptions extends Pick<RequestOptions, 'timeout'> {
+export interface LookupByEmailOptions {
   email: string;
 }
 
@@ -43,13 +42,13 @@ export enum SearchType {
   ROBOT = 'ROBOT',
 }
 
-export interface SearchOptions extends Pick<RequestOptions, 'timeout'> {
+export interface SearchOptions {
   requestedTypes: SearchType[];
   resultSize: number;
   queryString: string;
 }
 
-export interface BatcherOptions extends Pick<RequestOptions, 'timeout'> {
+export interface BatcherOptions {
   resource: string;
   lookupValue: string;
 }

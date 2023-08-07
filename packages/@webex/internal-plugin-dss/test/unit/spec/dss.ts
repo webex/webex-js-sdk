@@ -200,7 +200,6 @@ describe('plugin-dss', () => {
             dataPath: 'lookupResult.entities',
             foundPath: 'lookupResult.entitiesFound',
             resource: '/lookup/orgid/userOrgId/identity/test id/detail',
-            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -241,7 +240,7 @@ describe('plugin-dss', () => {
         expect(result).to.be.null;
       });
 
-      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+      it('fails with default timeout when mercury does not respond', async () => {
         const {promise} = await testMakeRequest({
           method: 'lookupDetail',
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
@@ -249,30 +248,11 @@ describe('plugin-dss', () => {
           bodyParams: {},
         });
 
-        await clock.tickAsync(1000);
+        await clock.tickAsync(6000);
 
         return assert.isRejected(
           promise,
-          'The DSS did not respond within 1000 ms.' +
-            '\n Request Id: randomid' +
-            '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
-            '\n Params: undefined'
-        );
-      });
-
-      it('fails with timeout when mercury does not respond', async () => {
-        const {promise} = await testMakeRequest({
-          method: 'lookupDetail',
-          resource: '/lookup/orgid/userOrgId/identity/test id/detail',
-          params: {id: 'test id', timeout: 500},
-          bodyParams: {},
-        });
-
-        await clock.tickAsync(500);
-
-        return assert.isRejected(
-          promise,
-          'The DSS did not respond within 500 ms.' +
+          'The DSS did not respond within 6000 ms.' +
             '\n Request Id: randomid' +
             '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
             '\n Params: undefined'
@@ -283,7 +263,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupDetail',
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
-          params: {id: 'test id', timeout: 500},
+          params: {id: 'test id'},
           bodyParams: {},
         });
 
@@ -317,7 +297,6 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
-            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -346,7 +325,6 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['id1'],
             },
-            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -393,13 +371,12 @@ describe('plugin-dss', () => {
           .stub()
           .returns(Promise.resolve('some return value'));
 
-        const result = await webex.internal.dss.lookup({id: 'id1', timeout: 500});
+        const result = await webex.internal.dss.lookup({id: 'id1'});
 
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/identities',
             lookupValue: 'id1',
-            timeout: 500,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -414,14 +391,12 @@ describe('plugin-dss', () => {
         const result = await webex.internal.dss.lookup({
           id: 'id1',
           entityProviderType: 'CI_USER',
-          timeout: 500,
         });
 
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
             lookupValue: 'id1',
-            timeout: 500,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -642,7 +617,7 @@ describe('plugin-dss', () => {
         expect(result2).to.equal('data2');
       });
 
-      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+      it('fails with default timeout when mercury does not respond', async () => {
         const {promise} = await testMakeRequest({
           method: 'lookup',
           resource: '/lookup/orgid/userOrgId/identities',
@@ -650,30 +625,11 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['id1']},
         });
 
-        await clock.tickAsync(1000);
+        await clock.tickAsync(6000);
 
         return assert.isRejected(
           promise,
-          'The DSS did not respond within 1000 ms.' +
-            '\n Request Id: randomid' +
-            '\n Resource: /lookup/orgid/userOrgId/identities' +
-            '\n Params: {"lookupValues":["id1"]}'
-        );
-      });
-
-      it('fails with timeout when mercury does not respond', async () => {
-        const {promise} = await testMakeRequest({
-          method: 'lookup',
-          resource: '/lookup/orgid/userOrgId/identities',
-          params: {id: 'id1', shouldBatch: false, timeout: 500},
-          bodyParams: {lookupValues: ['id1']},
-        });
-
-        await clock.tickAsync(500);
-
-        return assert.isRejected(
-          promise,
-          'The DSS did not respond within 500 ms.' +
+          'The DSS did not respond within 6000 ms.' +
             '\n Request Id: randomid' +
             '\n Resource: /lookup/orgid/userOrgId/identities' +
             '\n Params: {"lookupValues":["id1"]}'
@@ -684,7 +640,7 @@ describe('plugin-dss', () => {
         const {promise, requestId} = await testMakeRequest({
           method: 'lookup',
           resource: '/lookup/orgid/userOrgId/identities',
-          params: {id: 'id1', shouldBatch: false, timeout: 500},
+          params: {id: 'id1', shouldBatch: false},
           bodyParams: {lookupValues: ['id1']},
         });
 
@@ -710,7 +666,6 @@ describe('plugin-dss', () => {
 
         const result = await webex.internal.dss.lookupByEmail({
           email: 'email1',
-          timeout: undefined,
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -721,7 +676,6 @@ describe('plugin-dss', () => {
             params: {
               lookupValues: ['email1'],
             },
-            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -762,7 +716,7 @@ describe('plugin-dss', () => {
         expect(result).to.be.null;
       });
 
-      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+      it('fails with default timeout when mercury does not respond', async () => {
         const {promise} = await testMakeRequest({
           method: 'lookupByEmail',
           resource: '/lookup/orgid/userOrgId/emails',
@@ -770,30 +724,11 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['email1']},
         });
 
-        await clock.tickAsync(1000);
+        await clock.tickAsync(6000);
 
         return assert.isRejected(
           promise,
-          'The DSS did not respond within 1000 ms.' +
-            '\n Request Id: randomid' +
-            '\n Resource: /lookup/orgid/userOrgId/emails' +
-            '\n Params: {"lookupValues":["email1"]}'
-        );
-      });
-
-      it('fails with timeout when mercury does not respond', async () => {
-        const {promise} = await testMakeRequest({
-          method: 'lookupByEmail',
-          resource: '/lookup/orgid/userOrgId/emails',
-          params: {email: 'email1', timeout: 500},
-          bodyParams: {lookupValues: ['email1']},
-        });
-
-        await clock.tickAsync(500);
-
-        return assert.isRejected(
-          promise,
-          'The DSS did not respond within 500 ms.' +
+          'The DSS did not respond within 6000 ms.' +
             '\n Request Id: randomid' +
             '\n Resource: /lookup/orgid/userOrgId/emails' +
             '\n Params: {"lookupValues":["email1"]}'
@@ -804,11 +739,11 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByEmail',
           resource: '/lookup/orgid/userOrgId/emails',
-          params: {email: 'email1', timeout: 500},
+          params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
         });
 
-        await clock.tickAsync(499);
+        await clock.tickAsync(5999);
 
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult', {}) // entitiesNotFound isn't returned for email
@@ -829,7 +764,6 @@ describe('plugin-dss', () => {
           requestedTypes: ['PERSON', 'ROBOT'],
           resultSize: 100,
           queryString: 'query',
-          timeout: undefined,
         });
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -841,7 +775,6 @@ describe('plugin-dss', () => {
               resultSize: 100,
               requestedTypes: ['PERSON', 'ROBOT'],
             },
-            timeout: undefined,
           },
         ]);
         expect(result).to.equal('some return value');
@@ -877,7 +810,7 @@ describe('plugin-dss', () => {
         expect(result).to.deep.equal(['data0', 'data1', 'data2']);
       });
 
-      it('fails with default timeout when mercury does not respond and the timeout option is not set', async () => {
+      it('fails with default timeout when mercury does not respond', async () => {
         const {promise} = await testMakeRequest({
           method: 'search',
           resource: '/search/orgid/userOrgId/entities',
@@ -893,39 +826,11 @@ describe('plugin-dss', () => {
           },
         });
 
-        await clock.tickAsync(1000);
+        await clock.tickAsync(6000);
 
         return assert.isRejected(
           promise,
-          'The DSS did not respond within 1000 ms.' +
-            '\n Request Id: randomid' +
-            '\n Resource: /search/orgid/userOrgId/entities' +
-            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
-        );
-      });
-
-      it('fails with timeout when mercury does not respond', async () => {
-        const {promise} = await testMakeRequest({
-          method: 'search',
-          resource: '/search/orgid/userOrgId/entities',
-          params: {
-            requestedTypes: ['PERSON', 'ROBOT'],
-            resultSize: 100,
-            queryString: 'query',
-            timeout: 500,
-          },
-          bodyParams: {
-            requestedTypes: ['PERSON', 'ROBOT'],
-            resultSize: 100,
-            queryString: 'query',
-          },
-        });
-
-        await clock.tickAsync(500);
-
-        return assert.isRejected(
-          promise,
-          'The DSS did not respond within 500 ms.' +
+          'The DSS did not respond within 6000 ms.' +
             '\n Request Id: randomid' +
             '\n Resource: /search/orgid/userOrgId/entities' +
             '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
@@ -940,7 +845,6 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
-            timeout: 500,
           },
           bodyParams: {
             requestedTypes: ['PERSON', 'ROBOT'],
@@ -949,7 +853,7 @@ describe('plugin-dss', () => {
           },
         });
 
-        await clock.tickAsync(499);
+        await clock.tickAsync(5999);
 
         mercuryCallbacks['event:directory.search'](
           createData(requestId, 1, false, 'directoryEntities', ['data1'])
@@ -972,7 +876,6 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
-            timeout: 500,
           },
           bodyParams: {
             requestedTypes: ['PERSON', 'ROBOT'],
@@ -988,11 +891,11 @@ describe('plugin-dss', () => {
           createData(requestId, 0, false, 'directoryEntities', ['data0'])
         );
 
-        await clock.tickAsync(500);
+        await clock.tickAsync(6000);
 
         return assert.isRejected(
           promise,
-          'The DSS did not respond within 500 ms.' +
+          'The DSS did not respond within 6000 ms.' +
             '\n Request Id: randomid' +
             '\n Resource: /search/orgid/userOrgId/entities' +
             '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
@@ -1154,7 +1057,7 @@ describe('plugin-dss', () => {
           batcherWait: 50,
           batcherMaxCalls: 50,
           batcherMaxWait: 150,
-          requestTimeout: 1000,
+          requestTimeout: 6000,
         });
       };
 
@@ -1169,7 +1072,6 @@ describe('plugin-dss', () => {
         const result = await webex.internal.dss._batchedLookup({
           resource,
           lookupValue: 'id1',
-          timeout: 500,
         });
 
         const batcher = webex.internal.dss.batchers[resource];
@@ -1267,7 +1169,7 @@ describe('plugin-dss', () => {
             Promise.reject(
               new DssTimeoutError({
                 requestId: '2',
-                timeout: 1000,
+                timeout: 6000,
                 resource: resource1,
                 params: undefined,
               })
@@ -1280,7 +1182,7 @@ describe('plugin-dss', () => {
             Promise.reject(
               new DssTimeoutError({
                 requestId: '4',
-                timeout: 1000,
+                timeout: 6000,
                 resource: resource2,
                 params: undefined,
               })
@@ -1304,13 +1206,13 @@ describe('plugin-dss', () => {
           lookupValue: 'id4',
         });
 
-        await clock.tickAsync(1000);
+        await clock.tickAsync(6000);
 
         return Promise.all([
           assert.isFulfilled(result1),
           assert.isRejected(
             result2,
-            'The DSS did not respond within 1000 ms.' +
+            'The DSS did not respond within 6000 ms.' +
               '\n Request Id: 2' +
               '\n Resource: /lookup/orgid/userOrgId/identities' +
               '\n Params: undefined'
@@ -1318,7 +1220,7 @@ describe('plugin-dss', () => {
           assert.isFulfilled(result3),
           assert.isRejected(
             result4,
-            'The DSS did not respond within 1000 ms.' +
+            'The DSS did not respond within 6000 ms.' +
               '\n Request Id: 4' +
               '\n Resource: /lookup/orgid/userOrgId/entityprovidertype/CI_USER' +
               '\n Params: undefined'

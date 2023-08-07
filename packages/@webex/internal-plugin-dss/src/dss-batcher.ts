@@ -42,12 +42,6 @@ const DssBatcher = Batcher.extend({
       setOnce: true,
       allowNull: false,
     },
-    timeout: {
-      type: 'number',
-      required: true,
-      setOnce: true,
-      allowNull: false,
-    },
   },
 
   /**
@@ -61,7 +55,6 @@ const DssBatcher = Batcher.extend({
       foundPath: this.entitiesFoundPath,
       notFoundPath: this.entitiesNotFoundPath,
       resource: this.resource,
-      timeout: this.timeout,
       params: {
         lookupValues: payload,
       },

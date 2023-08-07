@@ -1,9 +1,9 @@
 import {Exception} from '@webex/common';
 import {RequestOptions} from './types';
 
-interface DssTimeoutErrorParams
-  extends Required<Pick<RequestOptions, 'resource' | 'params' | 'timeout'>> {
+interface DssTimeoutErrorParams extends Required<Pick<RequestOptions, 'resource' | 'params'>> {
   requestId: string;
+  timeout: number;
 }
 
 /**
