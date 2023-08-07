@@ -92,6 +92,7 @@ import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type'
 import InMeetingActions from './in-meeting-actions';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
+import Member from '../member';
 
 const {isBrowser} = BrowserDetection();
 
@@ -3759,6 +3760,14 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#receiveTranscription -->
         opened LLM web socket connection successfully.`
       );
+
+      Object.values(this.members.membersCollection.members).forEach((member: Member) => {
+        if (!member.isHost && member.status === 'IN_MEETING') {
+          LoggerProxy.logger.error(
+            `Meeting:index#receiveTranscription --> Transcription cannot be started until host enables it`
+          );
+        }
+      });
 
       // retrieve and pass the payload
       this.transcription.subscribe((payload) => {
