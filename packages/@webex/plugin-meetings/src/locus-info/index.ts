@@ -108,23 +108,26 @@ export default class LocusInfo extends EventsScope {
     );
 
     // return value ignored on purpose
-    meeting.meetingRequest.getLocusDTO({url}).then((res) => {
-      if (isDelta) {
-        if (!isEmpty(res.body)) {
-          meeting.locusInfo.onDeltaLocus(res.body);
+    meeting.meetingRequest
+      .getLocusDTO({url})
+      .then((res) => {
+        if (isDelta) {
+          if (!isEmpty(res.body)) {
+            meeting.locusInfo.handleLocusDelta(res.body, meeting);
+          } else {
+            LoggerProxy.logger.info(
+              'Locus-info:index#doLocusSync --> received empty body from syncUrl, so we already have latest Locus DTO'
+            );
+          }
         } else {
-          LoggerProxy.logger.info(
-            'Locus-info:index#doLocusSync --> received empty body from syncUrl, so we already have latest Locus DTO'
-          );
+          meeting.locusInfo.onFullLocus(res.body);
         }
-      } else {
-        meeting.locusInfo.onFullLocus(res.body);
-      }
-
-      // Notify parser to resume processing delta events.
-      // Any deltas in the queue that have now been superseded by this sync will simply be ignored
-      this.locusParser.resume();
-    });
+      })
+      .finally(() => {
+        // Notify parser to resume processing delta events.
+        // Any deltas in the queue that have now been superseded by this sync will simply be ignored
+        this.locusParser.resume();
+      });
   }
 
   /**
@@ -135,13 +138,14 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    */
   applyLocusDeltaData(action: string, locus: any, meeting: any) {
-    const {DESYNC, USE_CURRENT, USE_INCOMING} = LocusDeltaParser.loci;
+    const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT} = LocusDeltaParser.loci;
 
     switch (action) {
       case USE_INCOMING:
         meeting.locusInfo.onDeltaLocus(locus);
         break;
       case USE_CURRENT:
+      case WAIT:
         // do nothing
         break;
       case DESYNC:
@@ -314,6 +318,7 @@ export default class LocusInfo extends EventsScope {
 
       return;
     }
+
     this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;

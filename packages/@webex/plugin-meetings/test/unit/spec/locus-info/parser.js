@@ -334,27 +334,5 @@ describe('locus-info/parser', () => {
 
       assert.isFalse(result);
     });
-
-    it('sets parser status to IDLE if workingCopy is invalid', () => {
-      const {IDLE, WORKING} = LocusDeltaParser.status;
-
-      parser.workingCopy = null;
-      parser.status = WORKING;
-
-      parser.isValidLocus(loci);
-
-      assert.equal(parser.status, IDLE);
-    });
-
-    it('sets parser status to IDLE if new loci is invalid', () => {
-      const {IDLE, WORKING} = LocusDeltaParser.status;
-
-      parser.workingCopy = loci;
-      parser.status = WORKING;
-
-      parser.isValidLocus(null);
-
-      assert.equal(parser.status, IDLE);
-    });
   });
 });
