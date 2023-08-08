@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.187](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.186...v3.0.0-beta.187) (2023-08-08)
+
+
+### Bug Fixes
+
+* handle out-of-order Locus delta DTOs ([#2994](https://github.com/webex/webex-js-sdk/issues/2994)) ([114f5ca](https://github.com/webex/webex-js-sdk/commit/114f5ca47b4e1f05c0975d63684f1a95a10b8c79))
+
 ## [3.0.0-beta.186](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.185...v3.0.0-beta.186) (2023-08-04)
 
 
