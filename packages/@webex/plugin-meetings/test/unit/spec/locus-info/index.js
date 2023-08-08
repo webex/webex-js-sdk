@@ -3,6 +3,7 @@ import sinon from 'sinon';
 import {cloneDeep} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
+import testUtils from '../../../utils/testUtils';
 import Meetings from '@webex/plugin-meetings';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
@@ -1716,7 +1717,7 @@ describe('plugin-meetings', () => {
             getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
           },
           locusInfo: {
-            onDeltaLocus: sandbox.stub(),
+            handleLocusDelta: sandbox.stub(),
           },
           locusUrl: 'oldLocusUrl',
         };
@@ -1727,14 +1728,14 @@ describe('plugin-meetings', () => {
 
         // Since we have a promise inside a function we want to test that's not returned,
         // we will wait and stub it's last function to resolve this waiting promise.
-        // Also ensures .onDeltaLocus() is called before .resume()
+        // Also ensures .handleLocusDelta() is called before .resume()
         return new Promise((resolve) => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
           assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
 
-          assert.calledOnceWithExactly(meeting.locusInfo.onDeltaLocus, fakeDeltaLocus);
+          assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, fakeDeltaLocus, meeting);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
       });
@@ -1746,7 +1747,7 @@ describe('plugin-meetings', () => {
             getLocusDTO: sandbox.stub().resolves({body: {}}),
           },
           locusInfo: {
-            onDeltaLocus: sandbox.stub(),
+            handleLocusDelta: sandbox.stub(),
             onFullLocus: sandbox.stub(),
           },
           locusUrl: 'oldLocusUrl',
@@ -1758,14 +1759,13 @@ describe('plugin-meetings', () => {
 
         // Since we have a promise inside a function we want to test that's not returned,
         // we will wait and stub it's last function to resolve this waiting promise.
-        // Also ensures .onDeltaLocus() is called before .resume()
         return new Promise((resolve) => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
           assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
 
-          assert.notCalled(meeting.locusInfo.onDeltaLocus);
+          assert.notCalled(meeting.locusInfo.handleLocusDelta);
           assert.notCalled(meeting.locusInfo.onFullLocus);
           assert.calledOnce(locusInfo.locusParser.resume);
         });
@@ -2128,6 +2128,296 @@ describe('plugin-meetings', () => {
             meetingId: locusInfo.meetingId,
           },
         });
+      });
+    });
+
+    // semi-integration tests that use real LocusInfo with real Parser
+    // and test various scenarios related to handling out-of-order Locus delta events 
+    describe('handling of out-of-order Locus delta events', () => {
+      let clock;
+
+      const generateDeltaEvent = (base, sequence) => {
+        return {
+          baseSequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [base]
+          },
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [sequence]
+          },
+          syncUrl: `fake sync url for sequence ${sequence}`,
+          self: {
+            person: {
+              id: 'test person id'
+            }
+          },
+        }
+      };
+
+      // a list of example delta events, sorted by time and each event is based on the previous one
+      const deltaEvents = [
+        generateDeltaEvent(10, 20), // 0
+        generateDeltaEvent(20, 30), // 1
+        generateDeltaEvent(30, 40), // 2
+        generateDeltaEvent(40, 50), // 3
+        generateDeltaEvent(50, 60), // 4
+        generateDeltaEvent(60, 70), // 5
+        generateDeltaEvent(70, 80), // 6
+        generateDeltaEvent(80, 90), // 7
+        generateDeltaEvent(90, 100), // 8
+      ];
+
+      let updateLocusInfoStub; // we use this stub to verify that an event has been fully processed
+      let syncRequestStub;
+
+      beforeEach(() => {
+        clock = sinon.useFakeTimers();
+
+        sinon.stub(locusInfo, 'updateParticipantDeltas');
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive'),
+        sinon.stub(locusInfo, 'handleOneOnOneEvent'),
+
+        updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo');
+        syncRequestStub = sinon.stub().resolves({body: {}});
+
+        mockMeeting.locusInfo = locusInfo;
+        mockMeeting.locusUrl = 'fake locus url';
+        mockMeeting.meetingRequest = {
+          getLocusDTO: syncRequestStub,
+        };
+
+        locusInfo.onFullLocus({
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [10]
+          },
+          self: {
+            person: {
+              id: 'test person id'
+            }
+          },
+        });
+
+        updateLocusInfoStub.resetHistory();
+      });
+
+      afterEach(() => {
+        clock.restore();
+      });
+
+      it('queues out-of-order deltas until it receives a correct delta', () => {
+        // send some out-of-order deltas
+        locusInfo.handleLocusDelta(deltaEvents[1], mockMeeting);
+        locusInfo.handleLocusDelta(deltaEvents[4], mockMeeting);
+
+        // they should be queued and not processed
+        assert.notCalled(updateLocusInfoStub); 
+
+        // now one of the missing ones, but not the one SDK is really waiting for
+        locusInfo.handleLocusDelta(deltaEvents[2], mockMeeting);
+
+        // still nothing should be processed
+        assert.notCalled(updateLocusInfoStub);
+
+        // now send the one SDK is waiting for
+        locusInfo.handleLocusDelta(deltaEvents[0], mockMeeting);
+
+        // so deltaEvents with indexes 1,2,3 can be processed, but 5 still not, because 4 is missing
+        assert.callCount(updateLocusInfoStub, 3);        
+        assert.calledWith(updateLocusInfoStub.getCall(0), deltaEvents[0]);
+        assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[1]);
+        assert.calledWith(updateLocusInfoStub.getCall(2), deltaEvents[2]);
+
+        updateLocusInfoStub.resetHistory();
+        
+        // now send deltaEvents[4]
+        locusInfo.handleLocusDelta(deltaEvents[3], mockMeeting);
+
+        // and verify deltaEvents[4] and deltaEvents[5] have been processed
+        assert.callCount(updateLocusInfoStub, 2);
+        assert.calledWith(updateLocusInfoStub.getCall(0), deltaEvents[3]);
+        assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[4]);
+      });
+
+      it('handles out-of-order deltas correctly even if all arrive in reverse order', () => {
+        // send a bunch deltas in reverse order
+        for(let i = 4; i >= 0; i--) {
+          locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
+        }
+
+        // they should be queued and then processed in correct order
+        assert.callCount(updateLocusInfoStub, 5);        
+        assert.calledWith(updateLocusInfoStub.getCall(0), deltaEvents[0]);
+        assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[1]);
+        assert.calledWith(updateLocusInfoStub.getCall(2), deltaEvents[2]);
+        assert.calledWith(updateLocusInfoStub.getCall(3), deltaEvents[3]);
+        assert.calledWith(updateLocusInfoStub.getCall(4), deltaEvents[4]);
+      });
+
+      it('sends a sync request using syncUrl if it receives at least 1 delta event and processes later deltas after sync correctly', async () => {
+        // the test first sends an initial "good" delta
+        const initialDeltaIdx = 0;
+        const initialDelta = deltaEvents[initialDeltaIdx];
+
+        // then it sends a bunch of out-of-order deltas (at least 6 to trigger a sync), last one being lastOooDelta
+        const firstOooDeltaIdx = 2;
+        const lastOooDeltaIdx = 7;
+        const lastOooDelta = deltaEvents[lastOooDeltaIdx];
+
+        // and finally, after the sync it sends another "good" delta
+        const goodDeltaAfterSync = deltaEvents[8];
+
+        const deltaLocusFromSyncResponse = {
+          baseSequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [initialDelta.sequence.entries[0]]
+          },
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [lastOooDelta.sequence.entries[0]]
+          },
+          syncUrl: `fake sync url for sequence ${lastOooDelta.sequence.entries[0]}`,
+          self: {
+            person: {
+              id: 'test person id'
+            }
+          },
+        };
+        
+        syncRequestStub.resolves({
+          body: deltaLocusFromSyncResponse
+        });
+        
+        // send one correct delta so that SDK has the syncUrl
+        locusInfo.handleLocusDelta(initialDelta, mockMeeting);
+
+        updateLocusInfoStub.resetHistory();
+        
+        // send 6 out-of-order deltas to trigger a sync (we're skipping deltaEvents[1])
+        for(let i = firstOooDeltaIdx; i <= lastOooDeltaIdx; i++) {
+          locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
+        }
+
+        await testUtils.flushPromises();
+
+        // check that sync was done using the correct syncUrl
+        assert.calledOnceWithExactly(syncRequestStub, {url: initialDelta.syncUrl});
+        assert.calledOnceWithExactly(updateLocusInfoStub, deltaLocusFromSyncResponse);
+
+        updateLocusInfoStub.resetHistory();
+
+        // now send another delta - a good one, it should be processed as normal
+        locusInfo.handleLocusDelta(goodDeltaAfterSync, mockMeeting);
+
+        assert.calledOnceWithExactly(updateLocusInfoStub, goodDeltaAfterSync);
+      });
+
+      it('does a sync if blocked on out-of-order deltas for too long', async () => {
+        // stub random so that the timer fires after 12500 ms
+        sinon.stub(Math, 'random').returns(0.5);
+
+        const oooDelta = deltaEvents[3];
+        
+        // setup the stubs so that the sync request receives a full DTO with the sequence equal to the out-of-order delta we simulate
+        const fullLocus = {
+          sequence: oooDelta.sequence
+        };
+        syncRequestStub.resolves({
+          body: fullLocus
+        });
+
+        // send an out-of-order delta
+        locusInfo.handleLocusDelta(oooDelta, mockMeeting);
+
+        await clock.tickAsync(12499);
+        await testUtils.flushPromises();
+        assert.notCalled(syncRequestStub);
+        assert.notCalled(updateLocusInfoStub);
+
+        await clock.tickAsync(1);
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(syncRequestStub, {url: mockMeeting.locusUrl});
+        assert.calledOnceWithExactly(updateLocusInfoStub, fullLocus);
+      });
+
+      it('does a sync if out-of-order deltas queue becomes too big', async () => {        
+        // setup the stubs so that the sync request receives a full DTO with the sequence equal to the out-of-order delta we simulate
+        const fullLocus = {
+          sequence: deltaEvents[6].sequence
+        };
+        syncRequestStub.resolves({
+          body: fullLocus
+        });
+
+        // send 5 deltas, starting from deltaEvents[1] so that SDK is blocked waiting for deltaEvents[0]
+        for(let i = 0; i < 5; i++) {
+          locusInfo.handleLocusDelta(deltaEvents[i + 1], mockMeeting);
+        }
+
+        // nothing should happen, SDK should still be waiting for deltaEvents[0]
+        assert.notCalled(syncRequestStub);
+        assert.notCalled(updateLocusInfoStub);
+
+        // now send one more out-of-order delta to trigger a sync request
+        locusInfo.handleLocusDelta(deltaEvents[6], mockMeeting);
+
+        await testUtils.flushPromises();
+
+        // check sync was done
+        assert.calledOnceWithExactly(syncRequestStub, {url: mockMeeting.locusUrl});
+        assert.calledOnceWithExactly(updateLocusInfoStub, fullLocus);
+      });
+
+      it('processes delta events that are not included in sync response', async () => {
+        // this test sends a bunch of out-of-order deltas, this triggers a sync
+        // but the full locus response doesn't include the last 2 deltas received, so 
+        // we check that these 2 deltas are also processed after sync response
+        const fullLocusFromSyncResponse = {
+          baseSequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [deltaEvents[0].sequence.entries[0]]
+          },
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+            entries: [deltaEvents[5].sequence.entries[0]]
+          },
+          syncUrl: `fake sync url for sequence ${deltaEvents[5].sequence.entries[0]}`,
+          self: {
+            person: {
+              id: 'test person id'
+            }
+          },
+        };
+        
+        syncRequestStub.resolves({
+          body: fullLocusFromSyncResponse
+        });
+        
+        // send at least 6 out-of-order deltas to trigger a sync (we're skipping deltaEvents[0])
+        for(let i = 1; i <= 7; i++) {
+          locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
+        }
+
+        await testUtils.flushPromises();
+
+        // check that sync was done
+        assert.calledOnceWithExactly(syncRequestStub, {url: mockMeeting.locusUrl});
+        
+        // and that remaining deltas from the queue that were not included in full Locus were also processed
+        assert.callCount(updateLocusInfoStub, 3);
+        assert.calledWith(updateLocusInfoStub.getCall(0), fullLocusFromSyncResponse);
+        assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[6]);
+        assert.calledWith(updateLocusInfoStub.getCall(2), deltaEvents[7]);
       });
     });
   });
