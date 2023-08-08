@@ -7,7 +7,7 @@ interface DssTimeoutErrorParams extends Required<Pick<RequestOptions, 'resource'
 }
 
 /**
- * Thrown when an expected DSS response is not received in a timely manner.
+ * Thrown when an expected DSS respond is not received in a timely manner.
  */
 export class DssTimeoutError extends Exception {
   /**

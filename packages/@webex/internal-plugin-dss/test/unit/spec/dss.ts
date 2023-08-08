@@ -150,7 +150,7 @@ describe('plugin-dss', () => {
       return {requestId, promise};
     };
 
-    const testMakeBatchedRequests = async ({requests, calls}) => {
+    const testMakeBatchedRequests = async ({requests, calls, delay}) => {
       requests.forEach((request, index) => {
         uuidStub.onCall(index).returns(request.id);
       });
@@ -162,23 +162,27 @@ describe('plugin-dss', () => {
 
       await clock.tickAsync(49);
       expect(webex.request.notCalled).to.be.true;
-      await clock.tickAsync(1);
-      expect(webex.request.called).to.be.true;
+      await clock.tickAsync(delay || 1);
 
-      requests.forEach((request, index) => {
-        expect(webex.request.getCall(index).args).to.deep.equal([
-          {
-            service: 'directorySearch',
-            body: {
-              requestId: request.id,
-              ...request.bodyParams,
+      if (delay > webex.config.dss.requestTimeout) {
+        expect(webex.request.called).to.be.false;
+      } else {
+        expect(webex.request.called).to.be.true;
+        requests.forEach((request, index) => {
+          expect(webex.request.getCall(index).args).to.deep.equal([
+            {
+              service: 'directorySearch',
+              body: {
+                requestId: request.id,
+                ...request.bodyParams,
+              },
+              contentType: 'application/json',
+              method: 'POST',
+              resource: request.resource,
             },
-            contentType: 'application/json',
-            method: 'POST',
-            resource: request.resource,
-          },
-        ]);
-      });
+          ]);
+        });
+      }
 
       return {promises};
     };
@@ -404,6 +408,7 @@ describe('plugin-dss', () => {
 
       it('Single batched lookup is made after 50 ms and works', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -432,6 +437,7 @@ describe('plugin-dss', () => {
 
       it('Single batched lookup fails correctly if lookup fails', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -458,6 +464,7 @@ describe('plugin-dss', () => {
 
       it('Batch of 2 lookups is made after 50 ms and works', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -493,6 +500,7 @@ describe('plugin-dss', () => {
 
       it('Batch of 2 lookups is made after 50 ms and one fails correctly', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -530,6 +538,7 @@ describe('plugin-dss', () => {
 
       it('Two unrelated lookups are made after 50 ms and work', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -576,6 +585,7 @@ describe('plugin-dss', () => {
 
       it('Two unrelated lookups are made after 50 ms and one fails correctly', async () => {
         const {promises} = await testMakeBatchedRequests({
+          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -1157,69 +1167,62 @@ describe('plugin-dss', () => {
       });
 
       it('fails when mercury does not response but only the affected request', async () => {
-        const resource1 = '/lookup/orgid/userOrgId/identities';
-        const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
-
-        Batcher.prototype.request = sinon
-          .stub()
-          .onCall(0)
-          .returns(Promise.resolve())
-          .onCall(1)
-          .returns(
-            Promise.reject(
-              new DssTimeoutError({
-                requestId: '2',
-                timeout: 6000,
-                resource: resource1,
-                params: undefined,
-              })
-            )
-          )
-          .onCall(2)
-          .returns(Promise.resolve())
-          .onCall(3)
-          .returns(
-            Promise.reject(
-              new DssTimeoutError({
-                requestId: '4',
-                timeout: 6000,
-                resource: resource2,
-                params: undefined,
-              })
-            )
-          );
-
-        const result1 = webex.internal.dss._batchedLookup({
-          resource: resource1,
-          lookupValue: 'id1',
+        const {promises} = await testMakeBatchedRequests({
+          delay: 6001,
+          requests: [
+            {
+              id: 'randomid1',
+              resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
+              bodyParams: {lookupValues: ['id1']},
+            },
+            {
+              id: 'randomid2',
+              resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
+              bodyParams: {lookupValues: ['id2']},
+            },
+            {
+              id: 'randomid2',
+              resource: '/lookup/orgid/userOrgId/identities',
+              bodyParams: {lookupValues: ['id3']},
+            },
+            {
+              id: 'randomid2',
+              resource: '/lookup/orgid/userOrgId/identities',
+              bodyParams: {lookupValues: ['id4']},
+            },
+          ],
+          calls: [
+            {
+              method: 'lookup',
+              params: {id: 'id1', entityProviderType: 'CI_USER', shouldBatch: true},
+            },
+            {
+              method: 'lookup',
+              params: {id: 'id2', shouldBatch: true},
+            },
+            {
+              method: 'lookup',
+              params: {id: 'id1', entityProviderType: 'CI_USER', shouldBatch: true},
+            },
+            {
+              method: 'lookup',
+              params: {id: 'id2', shouldBatch: true},
+            },
+          ],
         });
-        const result2 = webex.internal.dss._batchedLookup({
-          resource: resource1,
-          lookupValue: 'id2',
-        });
-        const result3 = webex.internal.dss._batchedLookup({
-          resource: resource2,
-          lookupValue: 'id3',
-        });
-        const result4 = webex.internal.dss._batchedLookup({
-          resource: resource2,
-          lookupValue: 'id4',
-        });
-
-        await clock.tickAsync(6000);
 
         return Promise.all([
-          assert.isFulfilled(result1),
+          assert.isFulfilled(promises[0]),
           assert.isRejected(
-            result2,
+            promises[1],
             'The DSS did not respond within 6000 ms.' +
               '\n Request Id: 2' +
               '\n Resource: /lookup/orgid/userOrgId/identities' +
               '\n Params: undefined'
           ),
-          assert.isFulfilled(result3),
+          assert.isFulfilled(promises[2]),
           assert.isRejected(
-            result4,
+            promises[3],
             'The DSS did not respond within 6000 ms.' +
               '\n Request Id: 4' +
               '\n Resource: /lookup/orgid/userOrgId/entityprovidertype/CI_USER' +
