@@ -14,7 +14,14 @@ module.exports = {
     PACKAGE_VERSION: false,
     WebSocket: false,
   },
-  plugins: ['import', 'eslint-plugin-tsdoc', 'jest', 'prettier', 'chai-friendly'],
+  plugins: [
+    'import',
+    'eslint-plugin-tsdoc',
+    'jest',
+    'prettier',
+    'chai-friendly',
+    'inclusive-language',
+  ],
   extends: [
     'eslint:recommended',
     './eslintrules/index.js',
@@ -258,6 +265,7 @@ module.exports = {
     'import/no-cycle': 1, // TODO: Fix this in a later PR
     'class-methods-use-this': 1, // TODO: Fix this in a later PR
     'import/no-extraneous-dependencies': 1, // TODO: Fix this in a later PR
+    'inclusive-language/use-inclusive-words': 'error',
   },
 
   settings: {

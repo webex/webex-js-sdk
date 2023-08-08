@@ -88,9 +88,9 @@ module.exports = {
     // https://eslint.org/docs/rules/function-paren-newline
     'function-paren-newline': ['error', 'consistent'],
 
-    // Blacklist certain identifiers to prevent them being used
-    // https://eslint.org/docs/rules/id-blacklist
-    'id-blacklist': 'off',
+    // Disallow specified identifiers
+    // https://eslint.org/docs/rules/id-denylist
+    'id-denylist': 'off',
 
     // this option enforces minimum and maximum identifier lengths
     // (variable names, property names etc.)
