@@ -18,7 +18,6 @@ import {
   HTTP_VERBS,
   LEAVE,
   LOCI,
-  LOCUS,
   PARTICIPANT,
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
@@ -383,62 +382,22 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Syns the missed delta event
+   * Sends a requests to get the latest locus DTO, it might be a full Locus or a delta, depending on the url provided
    * @param {Object} options
-   * @param {boolean} options.desync flag to get partial or whole locus object
-   * @param {String} options.syncUrl sync url to get ht elatest locus delta
-   * @returns {Promise}
-   */
-  syncMeeting(options: {desync: boolean; syncUrl: string}) {
-    /* eslint-disable no-else-return */
-    const {desync} = options;
-    let {syncUrl} = options;
-
-    /* istanbul ignore else */
-    if (desync) {
-      // check for existing URL parameters
-      syncUrl = syncUrl
-        .concat(syncUrl.split('?')[1] ? '&' : '?')
-        .concat(`${LOCUS.SYNCDEBUG}=${desync}`);
-    }
-
-    // @ts-ignore
-    return this.request({
-      method: HTTP_VERBS.GET,
-      uri: syncUrl,
-    }) // TODO: Handle if delta sync failed . Get the full locus object
-      .catch((err) => {
-        LoggerProxy.logger.error(
-          `Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`
-        );
-
-        return err;
-      });
-  }
-
-  /**
-   * Request to get the complete locus object
-   * @param {Object} options
-   * @param {boolean} options.desync flag to get partial or whole locus object
    * @param {String} options.locusUrl sync url to get ht elatest locus delta
    * @returns {Promise}
    */
-  getFullLocus(options: {desync: boolean; locusUrl: string}) {
-    let {locusUrl} = options;
-    const {desync} = options;
+  getLocusDTO(options: {url: string}) {
+    const {url} = options;
 
-    if (locusUrl) {
-      if (desync) {
-        locusUrl += `?${LOCUS.SYNCDEBUG}=${desync}`;
-      }
-
+    if (url) {
       // @ts-ignore
       return this.request({
         method: HTTP_VERBS.GET,
-        uri: locusUrl,
+        uri: url,
       }).catch((err) => {
         LoggerProxy.logger.error(
-          `Meeting:request#getFullLocus --> Error getting full locus, error ${err}`
+          `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
         );
 
         return err;
