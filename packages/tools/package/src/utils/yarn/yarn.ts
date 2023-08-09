@@ -28,6 +28,7 @@ class Yarn {
    * @returns - Promise resolving in the results of the `yarn list` execution.
    */
   public static list(config: ListConfig = {}): Promise<any> {
+    console.log('sreenara');
     const mergedConfig = { ...CONSTANTS.LIST_CONFIG, ...config };
 
     const params = [

@@ -1,6 +1,7 @@
 import increment from './increment';
 import list from './list';
 import scripts from './scripts';
+import sync from './sync';
 
 export type {
   IncrementOptions,
@@ -15,8 +16,13 @@ export type {
   ScriptsOptions,
 } from './scripts';
 
+export type {
+  SyncOptions,
+} from './sync';
+
 export {
   increment,
   list,
   scripts,
+  sync,
 };
