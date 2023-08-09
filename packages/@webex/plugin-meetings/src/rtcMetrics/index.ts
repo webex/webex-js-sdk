@@ -1,4 +1,5 @@
-const TEMP_METRICS_URL = 'https://sj1-utsa.webex.com/metric/v2';
+import uuid from 'uuid';
+
 const appId = 'FFB51ED5-4319-4C55-8303-B1F2FCCDE231';
 
 /**
@@ -16,6 +17,8 @@ export default class RtcMetrics {
 
   meetingId: string;
 
+  correlationId: string;
+
   /**
    * Initialize the interval.
    *
@@ -27,6 +30,7 @@ export default class RtcMetrics {
     this.intervalId = window.setInterval(this.checkMetrics.bind(this), 30 * 1000);
     this.meetingId = meetingId;
     this.webex = webex;
+    this.correlationId = uuid.v4();
     setTimeout(this.checkMetrics.bind(this), 5 * 1000);
   }
 
@@ -73,20 +77,19 @@ export default class RtcMetrics {
   private sendMetrics() {
     this.webex.request({
       method: 'POST',
-      // TODO: use service instead of uri when added to u2c catalog
-      // service: 'unifiedTelemetry',
-      // resource: 'metric/v2',
-      uri: TEMP_METRICS_URL,
+      service: 'unifiedTelemetry',
+      resource: 'metric/v2',
       headers: {
         'Content-Type': 'application/json',
-        // NOTE: authorization is automatic in `webex.request()`
-        // Authorization: `Bearer ${this.token}`,
-        userId: this.webex.internal.device.userId,
-        meetingId: this.meetingId,
         type: 'webrtcMedia',
         appId,
       },
       body: {
+        type: 'webrtc',
+        version: '1.0.0',
+        userId: this.webex.internal.device.userId,
+        meetingId: this.meetingId,
+        correlationId: this.correlationId,
         metrics: this.metricsQueue,
       },
     });

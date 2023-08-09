@@ -178,7 +178,7 @@ Media.createMediaConnection = (
       config.bundlePolicy = bundlePolicy;
     }
 
-    const metrics = new RtcMetrics(webex, debugId);
+    const metrics = new RtcMetrics(webex, meetingId);
 
     return new MultistreamRoapMediaConnection(
       config,
