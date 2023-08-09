@@ -80,7 +80,6 @@ export default class RtcMetrics {
       service: 'unifiedTelemetry',
       resource: 'metric/v2',
       headers: {
-        'Content-Type': 'application/json',
         type: 'webrtcMedia',
         appId,
       },
