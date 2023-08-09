@@ -5,6 +5,7 @@
 import {assert} from '@webex/test-helper-chai';
 import {capitalize} from 'lodash';
 import WebexCore from '@webex/webex-core';
+import sinon from 'sinon';
 
 describe('webex-core', () => {
   describe('Interceptors', () => {
@@ -113,6 +114,7 @@ describe('webex-core', () => {
             },
           },
         });
+        sinon.stub(webex.boundedStorage, 'put');
       });
 
       describe('#transform()', () => {

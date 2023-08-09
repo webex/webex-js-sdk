@@ -13,6 +13,7 @@ describe('Webex', () => {
 
   beforeEach(() => {
     webex = new WebexCore();
+    sinon.stub(webex.boundedStorage, 'put');
   });
 
   describe('#logger', () => {
@@ -60,6 +61,7 @@ describe('Webex', () => {
 
       assert.doesNotThrow(() => {
         webex = new WebexCore();
+        sinon.stub(webex.boundedStorage, 'put');
       });
       assert.isFalse(webex.canAuthorize);
       assert.property(webex, 'credentials');
@@ -107,6 +109,7 @@ describe('Webex', () => {
       .forEach(({msg, data}) => {
         it(msg, () => {
           const webex = new WebexCore(data);
+          sinon.stub(webex.boundedStorage, 'put');
 
           assert.isTrue(webex.credentials.canAuthorize);
           assert.equal(webex.credentials.supertoken.access_token, 'ST');
@@ -146,6 +149,7 @@ describe('Webex', () => {
             access_token: token,
           },
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         assert.isTrue(webex.credentials.canAuthorize);
         assert.equal(webex.credentials.supertoken.access_token, '1234');
@@ -160,6 +164,7 @@ describe('Webex', () => {
       const config = {credentials: {prop: true}};
 
       const webex = new WebexCore();
+      sinon.stub(webex.boundedStorage, 'put');
 
       assert.isUndefined(webex.config.credentials.prop);
 
@@ -189,6 +194,7 @@ describe('Webex', () => {
         },
       },
     });
+    sinon.stub(webex.boundedStorage, 'put');
 
     assert.isFalse(webex.loaded);
     assert.isFalse(webex.canAuthorize);
@@ -204,6 +210,7 @@ describe('Webex', () => {
 
   it('emits the ready event when the storage layer has loaded and all plugins signal ready', () => {
     const webex = new WebexCore();
+    sinon.stub(webex.boundedStorage, 'put');
 
     assert.isFalse(webex.ready);
 
@@ -228,6 +235,7 @@ describe('Webex', () => {
     );
 
     const webex = new WebexCore();
+    sinon.stub(webex.boundedStorage, 'put');
 
     const changeSpy = sinon.spy();
 

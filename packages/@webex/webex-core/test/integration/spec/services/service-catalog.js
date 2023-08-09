@@ -26,6 +26,7 @@ describe('webex-core', () => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
+                sinon.stub(webex.boundedStorage, 'put');
                 services = webex.internal.services;
                 catalog = services._getCatalog();
                 resolve();

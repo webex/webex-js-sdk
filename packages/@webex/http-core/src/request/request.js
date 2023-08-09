@@ -45,6 +45,10 @@ function doRequest(options) {
 
     const r = request(options, (error, response) => {
       if (error) {
+        if (options.uri.includes('limited/catalog')) {
+          /* eslint no-console: ["error", { allow: ["trace"] }] */
+          console.trace('=============');
+        }
         logger.warn(error);
       }
 
