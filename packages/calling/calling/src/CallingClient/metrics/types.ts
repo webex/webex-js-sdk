@@ -1,4 +1,5 @@
-import {CallError, CallingClientError} from '../../Errors';
+import {LineError} from '../../Errors/catalog/LineError';
+import {CallError} from '../../Errors';
 import {CallId, CorrelationId, IDeviceInfo} from '../../common/types';
 
 export enum METRIC_TYPE {
@@ -32,7 +33,7 @@ export interface IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    error: CallingClientError | undefined
+    error: LineError | undefined
   ) => void;
   submitCallMetric: (
     name: METRIC_EVENT,

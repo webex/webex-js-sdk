@@ -67,6 +67,7 @@ export const WEBEX_WEB_CLIENT = 'webex-web-client';
 export const CALLER_ID_FILE = 'CallerId';
 export const UTILS_FILE = 'utils';
 export const CALLING_CLIENT_FILE = 'CallingClient';
+export const LINE_FILE = 'line';
 export const CALL_FILE = 'call';
 export const CALL_MANAGER_FILE = 'callManager';
 export const METRIC_FILE = 'metric';

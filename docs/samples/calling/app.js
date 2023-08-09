@@ -314,9 +314,11 @@ function userSession() {
 }
 
 function createDevice() {
-  callingClient.register();
+  const lineObj = Object.values(callingClient.getLines())[0];
+  lineObj.register();
   userSession();
-  callingClient.on('callingClient:registered', (deviceInfo) => {
+  lineObj.on('registered', (deviceInfo) => {
+    console.log("registered success");
     registerElm.disabled = true;
     registrationStatusElm.innerText =
       calling.webex.internal.device.url !== ''
@@ -393,7 +395,12 @@ function holdResume() {
   call.doHoldResume();
 }
 function deleteDevice() {
-  callingClient.deregister();
+  const lineObj = Object.values(callingClient.getLines())[0];
+  lineObj.deregister();
+  lineObj.on('unregistered', () => {
+    console.log("unregistered success");
+    registrationStatusElm.innerText = 'Unregistered';
+  })
   registerElm.disabled = false;
   // unregisterElm.disabled = true;
 }

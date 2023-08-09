@@ -1,10 +1,11 @@
 /* eslint-disable valid-jsdoc */
-import {CallError, CallingClientError} from '../../Errors';
+import {CallError} from '../../Errors';
 import {METRIC_FILE, VERSION} from '../constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
 import log from '../../Logger';
+import {LineError} from '../../Errors/catalog/LineError';
 
 let metricManager: IMetricManager;
 
@@ -45,7 +46,7 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    clientError: CallingClientError | undefined
+    clientError: LineError | undefined
   ) {
     let data;
 
