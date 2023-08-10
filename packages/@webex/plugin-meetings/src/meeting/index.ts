@@ -2595,6 +2595,10 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
               policies: this.selfUserPolicies,
             }),
+          canTransferFile: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
