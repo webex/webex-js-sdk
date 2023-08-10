@@ -94,6 +94,46 @@ class Package {
   }
 
   /**
+   * Apply the modifications of this Package instance to the package definition
+   * files.
+   *
+   * @returns - Promse that resolves to this Package instance.
+   */
+  public syncDependency(deps: Record<string, string>, devDeps: boolean = false): Promise<this> {
+    // console.log('sreenara syncDependency for ', name, version);
+    const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
+
+    return Package.readDefinition({ definitionPath: packageDefinitionPath })
+      .then((definition) => {
+        // console.log('sreenara definition', definition, version);
+        const dependencies = (devDeps) ? definition.devDependencies : definition.dependencies;
+        // eslint-disable-next-line array-callback-return
+        // Object.keys(dependencies).map((key) => {
+        //   if (key === name) {
+        //     dependencies[key] = version;
+        //   }
+        // });
+        // eslint-disable-next-line array-callback-return
+        Object.entries(deps).map(([name, version]) => {
+          // eslint-disable-next-line array-callback-return
+          Object.keys(dependencies).map((key) => {
+            if (key === name) {
+              dependencies[key] = version;
+            }
+          });
+        });
+
+        console.log('sreenara definition after sync', definition);
+      })
+      .then((definition) => {
+        const data = `${JSON.stringify(definition, null, 2)}\n`;
+
+        return fs.writeFile(packageDefinitionPath, data);
+      })
+      .then(() => this);
+  }
+
+  /**
    * Determine if a provided script exists within this Package.
    *
    * @param scriptName - Name of the script to validate this Package has.

@@ -13,3 +13,8 @@ export interface Options {
   tag?: string;
 
 }
+
+export type ViewResult = {
+  dependencies: Record<string, string>,
+  devDependencies: Record<string, string>,
+};

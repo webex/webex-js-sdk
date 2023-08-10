@@ -7,7 +7,7 @@ import { Yarn } from '../../utils';
 import type { PackageConfig } from '../../models';
 
 import CONSTANTS from './sync.constants';
-import type { Options } from './sync.types';
+import type { Options, ViewResult } from './sync.types';
 
 /**
  * The sync Command configuration Object. This Command is used to synchronize
@@ -72,11 +72,29 @@ const sync: CommandsCommand<Options> = {
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
-        const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
+        // const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
 
-        process.stdout.write(output);
+        // process.stdout.write(output);
 
-        return Promise.all(packs.map((pack) => pack.apply()));
+        // return Promise.all(packs.map((pack) => pack.apply()));
+        // eslint-disable-next-line array-callback-return
+        packs.map((pack: Package) => {
+          console.log('sreenara pack details', pack);
+          Yarn.view({ package: pack.name }).then((res: ViewResult) => {
+            const { dependencies, devDependencies } = res;
+            console.log('sreenara deps', dependencies);
+
+            // for (let i = 0; i < dependencies.length(); i += 1) {
+            //     pack.syncDependency(dependencies[i].name, pack.version);
+            // }
+            // Object.keys(dependencies).map((name, version) => pack.syncDependency(name, version));
+            pack.syncDependency(dependencies);
+            pack.syncDependency(devDependencies, true);
+            // Object.entries(dependencies).map(([name, version]) => pack.syncDependency(name, version));
+          });
+        });
+
+        return Promise.all('result');
       });
   },
 };
