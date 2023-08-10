@@ -1987,6 +1987,14 @@ document.querySelectorAll('.collapsible').forEach((el) => {
     const sectionContentElement = parentElement.querySelector('.section-content');
 
     sectionContentElement.classList.toggle('collapsed');
+
+    const headerIconElement = parentElement.querySelector('.collapsible-icon');
+
+    if (headerIconElement.innerHTML === "─") {
+      headerIconElement.innerHTML = "+";
+    } else {
+      headerIconElement.innerHTML = "─";
+    }
   });
 });
 
