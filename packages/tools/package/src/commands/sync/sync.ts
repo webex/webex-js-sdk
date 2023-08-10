@@ -48,18 +48,6 @@ const sync: CommandsCommand<Options> = {
 
     const tag = options.tag?.split('/').pop();
 
-    // options.packages.map((name: string) => {
-    //     Yarn.view()
-    // })
-
-    console.log('sreenara reached here', tag);
-    // const packList = options.packages || Yarn.list().then((packageList: string[]) => {
-    //   console.log('sreenara list resolved', packageList);
-    // });
-    // return packList.map((packName: string) => {
-    //   Yarn.view({ package: packName });
-    // });
-
     return Yarn.list()
       .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
         location: path.join(rootDir, location),
@@ -72,29 +60,15 @@ const sync: CommandsCommand<Options> = {
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
-        // const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
-
-        // process.stdout.write(output);
-
-        // return Promise.all(packs.map((pack) => pack.apply()));
         // eslint-disable-next-line array-callback-return
         packs.map((pack: Package) => {
-          console.log('sreenara pack details', pack);
           Yarn.view({ package: pack.name }).then((res: ViewResult) => {
             const { dependencies, devDependencies } = res;
-            console.log('sreenara deps', dependencies);
-
-            // for (let i = 0; i < dependencies.length(); i += 1) {
-            //     pack.syncDependency(dependencies[i].name, pack.version);
-            // }
-            // Object.keys(dependencies).map((name, version) => pack.syncDependency(name, version));
-            pack.syncDependency(dependencies);
-            pack.syncDependency(devDependencies, true);
-            // Object.entries(dependencies).map(([name, version]) => pack.syncDependency(name, version));
+            pack.syncDependency(dependencies).then(() => pack.syncDependency(devDependencies, true));
           });
         });
 
-        return Promise.all('result');
+        return Promise.all('');
       });
   },
 };

@@ -171,15 +171,6 @@ const Flag = WebexCore.WebexPlugin.extend({
 
     return this.webex.request(params).then((res) => res.body);
   },
-
-  /**
-   * Test function
-   * @param {Object} options
-   * @returns {Promise<Object>} Resolves with the flag removal
-   */
-  testFlag(options) {
-    return this.webex.request(options);
-  },
 });
 
 export default Flag;

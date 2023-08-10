@@ -100,19 +100,12 @@ class Package {
    * @returns - Promse that resolves to this Package instance.
    */
   public syncDependency(deps: Record<string, string>, devDeps: boolean = false): Promise<this> {
-    // console.log('sreenara syncDependency for ', name, version);
     const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
 
     return Package.readDefinition({ definitionPath: packageDefinitionPath })
       .then((definition) => {
-        // console.log('sreenara definition', definition, version);
         const dependencies = (devDeps) ? definition.devDependencies : definition.dependencies;
-        // eslint-disable-next-line array-callback-return
-        // Object.keys(dependencies).map((key) => {
-        //   if (key === name) {
-        //     dependencies[key] = version;
-        //   }
-        // });
+
         // eslint-disable-next-line array-callback-return
         Object.entries(deps).map(([name, version]) => {
           // eslint-disable-next-line array-callback-return
@@ -123,7 +116,7 @@ class Package {
           });
         });
 
-        console.log('sreenara definition after sync', definition);
+        return definition;
       })
       .then((definition) => {
         const data = `${JSON.stringify(definition, null, 2)}\n`;
