@@ -60,12 +60,13 @@ const sync: CommandsCommand<Options> = {
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
-        // eslint-disable-next-line array-callback-return
         packs.map((pack: Package) => {
           Yarn.view({ package: pack.name }).then((res: ViewResult) => {
             const { dependencies, devDependencies } = res;
             pack.syncDependency(dependencies).then(() => pack.syncDependency(devDependencies, true));
           });
+
+          return pack;
         });
 
         return Promise.all('');

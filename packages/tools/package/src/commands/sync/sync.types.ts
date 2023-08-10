@@ -10,7 +10,7 @@ export interface Options {
   /**
    * Tag to synchronize the version on.
    */
-  tag?: string;
+  tag: string;
 
 }
 

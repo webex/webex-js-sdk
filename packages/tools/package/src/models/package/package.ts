@@ -106,14 +106,15 @@ class Package {
       .then((definition) => {
         const dependencies = (devDeps) ? definition.devDependencies : definition.dependencies;
 
-        // eslint-disable-next-line array-callback-return
         Object.entries(deps).map(([name, version]) => {
-          // eslint-disable-next-line array-callback-return
           Object.keys(dependencies).map((key) => {
             if (key === name) {
               dependencies[key] = version;
             }
+
+            return dependencies;
           });
+          return deps;
         });
 
         return definition;
