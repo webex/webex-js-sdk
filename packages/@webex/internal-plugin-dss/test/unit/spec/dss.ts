@@ -17,6 +17,7 @@ import {DssTimeoutError} from '../../../src/dss-errors';
 chai.use(chaiAsPromised);
 describe('plugin-dss', () => {
   describe('DSS', () => {
+    const originalBatcherRequest = Batcher.prototype.request;
     let webex;
     let uuidStub;
     let mercuryCallbacks;
@@ -53,6 +54,7 @@ describe('plugin-dss', () => {
     afterEach(() => {
       uuidStub.restore();
       clock.restore();
+      Batcher.prototype.request = originalBatcherRequest;
     });
 
     describe('#register()', () => {
@@ -150,7 +152,7 @@ describe('plugin-dss', () => {
       return {requestId, promise};
     };
 
-    const testMakeBatchedRequests = async ({requests, calls, delay}) => {
+    const testMakeBatchedRequests = async ({requests, calls}) => {
       requests.forEach((request, index) => {
         uuidStub.onCall(index).returns(request.id);
       });
@@ -162,27 +164,23 @@ describe('plugin-dss', () => {
 
       await clock.tickAsync(49);
       expect(webex.request.notCalled).to.be.true;
-      await clock.tickAsync(delay || 1);
+      await clock.tickAsync(1);
+      expect(webex.request.called).to.be.true;
 
-      if (delay > webex.config.dss.requestTimeout) {
-        expect(webex.request.called).to.be.false;
-      } else {
-        expect(webex.request.called).to.be.true;
-        requests.forEach((request, index) => {
-          expect(webex.request.getCall(index).args).to.deep.equal([
-            {
-              service: 'directorySearch',
-              body: {
-                requestId: request.id,
-                ...request.bodyParams,
-              },
-              contentType: 'application/json',
-              method: 'POST',
-              resource: request.resource,
+      requests.forEach((request, index) => {
+        expect(webex.request.getCall(index).args).to.deep.equal([
+          {
+            service: 'directorySearch',
+            body: {
+              requestId: request.id,
+              ...request.bodyParams,
             },
-          ]);
-        });
-      }
+            contentType: 'application/json',
+            method: 'POST',
+            resource: request.resource,
+          },
+        ]);
+      });
 
       return {promises};
     };
@@ -408,7 +406,6 @@ describe('plugin-dss', () => {
 
       it('Single batched lookup is made after 50 ms and works', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -437,7 +434,6 @@ describe('plugin-dss', () => {
 
       it('Single batched lookup fails correctly if lookup fails', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -464,7 +460,6 @@ describe('plugin-dss', () => {
 
       it('Batch of 2 lookups is made after 50 ms and works', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -500,7 +495,6 @@ describe('plugin-dss', () => {
 
       it('Batch of 2 lookups is made after 50 ms and one fails correctly', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -538,7 +532,6 @@ describe('plugin-dss', () => {
 
       it('Two unrelated lookups are made after 50 ms and work', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -585,7 +578,6 @@ describe('plugin-dss', () => {
 
       it('Two unrelated lookups are made after 50 ms and one fails correctly', async () => {
         const {promises} = await testMakeBatchedRequests({
-          delay: 0,
           requests: [
             {
               id: 'randomid1',
@@ -1166,35 +1158,23 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response2);
       });
 
-      it('fails when mercury does not response but only the affected request', async () => {
-        const {promises} = await testMakeBatchedRequests({
-          delay: 6001,
-          requests: [
-            {
-              id: 'randomid1',
-              resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
-              bodyParams: {lookupValues: ['id1']},
-            },
-            {
-              id: 'randomid2',
-              resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
-              bodyParams: {lookupValues: ['id2']},
-            },
-            {
-              id: 'randomid2',
-              resource: '/lookup/orgid/userOrgId/identities',
-              bodyParams: {lookupValues: ['id3']},
-            },
-            {
-              id: 'randomid2',
-              resource: '/lookup/orgid/userOrgId/identities',
-              bodyParams: {lookupValues: ['id4']},
-            },
-          ],
+      it('fails when mercury does not response but only the affected batch', async () => {
+        const requests = [
+          {
+            id: 'req-id-1',
+            resource: '/lookup/orgid/userOrgId/identities',
+            bodyParams: {lookupValues: ['id1', 'id2', 'id3']},
+          },
+        ];
+
+        const {
+          promises: [p1, p2, p3],
+        } = await testMakeBatchedRequests({
+          requests,
           calls: [
             {
               method: 'lookup',
-              params: {id: 'id1', entityProviderType: 'CI_USER', shouldBatch: true},
+              params: {id: 'id1', shouldBatch: true},
             },
             {
               method: 'lookup',
@@ -1202,32 +1182,52 @@ describe('plugin-dss', () => {
             },
             {
               method: 'lookup',
-              params: {id: 'id1', entityProviderType: 'CI_USER', shouldBatch: true},
-            },
-            {
-              method: 'lookup',
-              params: {id: 'id2', shouldBatch: true},
+              params: {id: 'id3', shouldBatch: true},
             },
           ],
         });
 
+        // only 1 response
+        mercuryCallbacks['event:directory.lookup'](
+          createData('id 1', 0, true, 'lookupResult', {entitiesNotFound: ['id1', 'id13']})
+        );
+
+        // Timeout
+        await clock.tickAsync(6000);
+
+        // Next batch
+        uuidStub.onCall(requests.length).returns('req-id-2');
+        const p4 = webex.internal.dss.lookup({id: 'id4', shouldBatch: true});
+
+        await clock.tickAsync(50);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData('req-id-2', 0, true, 'lookupResult', {entitiesNotFound: ['id4']})
+        );
+
         return Promise.all([
-          assert.isFulfilled(promises[0]),
           assert.isRejected(
-            promises[1],
+            p1,
             'The DSS did not respond within 6000 ms.' +
-              '\n Request Id: 2' +
+              '\n Request Id: req-id-1' +
               '\n Resource: /lookup/orgid/userOrgId/identities' +
-              '\n Params: undefined'
+              '\n Params: {"lookupValues":["id1","id2","id3"]}'
           ),
-          assert.isFulfilled(promises[2]),
           assert.isRejected(
-            promises[3],
+            p2,
             'The DSS did not respond within 6000 ms.' +
-              '\n Request Id: 4' +
-              '\n Resource: /lookup/orgid/userOrgId/entityprovidertype/CI_USER' +
-              '\n Params: undefined'
+              '\n Request Id: req-id-1' +
+              '\n Resource: /lookup/orgid/userOrgId/identities' +
+              '\n Params: {"lookupValues":["id1","id2","id3"]}'
           ),
+          assert.isRejected(
+            p3,
+            'The DSS did not respond within 6000 ms.' +
+              '\n Request Id: req-id-1' +
+              '\n Resource: /lookup/orgid/userOrgId/identities' +
+              '\n Params: {"lookupValues":["id1","id2","id3"]}'
+          ),
+          assert.isFulfilled(p4),
         ]);
       });
     });
