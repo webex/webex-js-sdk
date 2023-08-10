@@ -5610,7 +5610,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('#setUpLocusInfoMeetingInfoListener', () => {
+      describe('#setUpLocusInfoMeetingInfoListener', () => {
         let locusInfoOnSpy;
         let inMeetingActionsSetSpy;
         let canUserLockSpy;
