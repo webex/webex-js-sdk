@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.188](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.187...v3.0.0-beta.188) (2023-08-11)
+
+
+### Features
+
+* **plugin-meetings:** can transfer file policy check ([#2998](https://github.com/webex/webex-js-sdk/issues/2998)) ([f9a28a1](https://github.com/webex/webex-js-sdk/commit/f9a28a1f1eb597b3a200fcbba2e30f1b282a99f6))
+* **plugin-meetings:** consider policy for broadcast message ([#3001](https://github.com/webex/webex-js-sdk/issues/3001)) ([b631edd](https://github.com/webex/webex-js-sdk/commit/b631edd35f94ebae618e40a30585f1cb3ee2c79e))
+
 ## [3.0.0-beta.187](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.186...v3.0.0-beta.187) (2023-08-08)
 
 
