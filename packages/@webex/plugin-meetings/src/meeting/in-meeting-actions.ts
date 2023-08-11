@@ -70,6 +70,7 @@ interface IInMeetingActions {
   canShareCamera?: boolean;
   canShareDesktop?: boolean;
   canShareContent?: boolean;
+  canTransferFile?: boolean;
 }
 
 /**
@@ -200,6 +201,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canShareContent = null;
 
+  canTransferFile = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -266,6 +269,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareCamera: this.canShareCamera,
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
+    canTransferFile: this.canTransferFile,
   });
 
   /**
