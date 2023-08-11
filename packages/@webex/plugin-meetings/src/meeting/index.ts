@@ -1258,6 +1258,14 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns whether this meeting is a Locus CALL
+   * @returns {Boolean}
+   */
+  isCall() {
+    return this.type === 'CALL';
+  }
+
+  /**
    * Fetches meeting information.
    * @param {Object} options
    * @param {String} [options.password] optional
@@ -2601,14 +2609,15 @@ export default class Meeting extends StatelessWebexPlugin {
             policies: this.selfUserPolicies,
           }),
           canShareApplication:
-            ControlsOptionsUtil.hasHints({
+            (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               displayHints: payload.info.userDisplayHints,
             }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-              policies: this.selfUserPolicies,
-            }),
+              ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+                policies: this.selfUserPolicies,
+              })) ||
+            this.isCall(),
           canShareCamera:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
@@ -2619,18 +2628,20 @@ export default class Meeting extends StatelessWebexPlugin {
               policies: this.selfUserPolicies,
             }),
           canShareDesktop:
-            ControlsOptionsUtil.hasHints({
+            (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               displayHints: payload.info.userDisplayHints,
             }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-              policies: this.selfUserPolicies,
-            }),
-          canShareContent: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-            displayHints: payload.info.userDisplayHints,
-          }),
+              ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+                policies: this.selfUserPolicies,
+              })) ||
+            this.isCall(),
+          canShareContent:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+              displayHints: payload.info.userDisplayHints,
+            }) || this.isCall(),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);

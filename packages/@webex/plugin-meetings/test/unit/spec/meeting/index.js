@@ -411,6 +411,21 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('#isCall', () => {
+        it('returns true if it is a call', () => {
+          meeting.type = 'CALL';
+
+          assert.isTrue(meeting.isCall());
+        });
+
+        it('returns false if it is not a call', () => {
+          meeting.type = 'MEETING';
+
+          assert.isFalse(meeting.isCall());
+        });
+      });
+
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -5666,6 +5681,60 @@ describe('plugin-meetings', () => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
         });
+
+
+        forEach(
+          [
+            {
+              actionName: 'canShareApplication',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareApplication',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+            {
+              actionName: 'canShareDesktop',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareDesktop',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+            {
+              actionName: 'canShareContent',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareContent',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+          ],
+          ({actionName, callType, expectedEnabled}) => {
+            it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
+              meeting.type = callType;
+              meeting.setUpLocusInfoMeetingInfoListener();
+
+              const callback = locusInfoOnSpy.thirdCall.args[1];
+
+              const payload = {
+                info: {
+                  userDisplayHints: [],
+                },
+              };
+
+              callback(payload);
+
+              assert.equal(meeting.inMeetingActions.get()[actionName], expectedEnabled);
+            });
+          }
+        );
 
         forEach(
           [
