@@ -5694,6 +5694,11 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
             },
+            {
+              actionName: 'canTransferFile',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            },
           ],
           ({actionName, requiredDisplayHints, requiredPolicies}) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
@@ -5718,27 +5723,32 @@ describe('plugin-meetings', () => {
               assert.isTrue(meeting.inMeetingActions.get()[actionName]);
             });
 
-            it(`${actionName} is disabled when the required display hints are missing`, () => {
-              meeting.selfUserPolicies = {};
+            if (requiredDisplayHints.length !== 0) {
+              
+              it(`${actionName} is disabled when the required display hints are missing`, () => {
+                meeting.selfUserPolicies = {};
 
-              forEach(requiredPolicies, (policy) => {
-                meeting.selfUserPolicies[policy] = true;
+                forEach(requiredPolicies, (policy) => {
+                  meeting.selfUserPolicies[policy] = true;
+                });
+
+                meeting.setUpLocusInfoMeetingInfoListener();
+
+                const callback = locusInfoOnSpy.thirdCall.args[1];
+
+                const payload = {
+                  info: {
+                    userDisplayHints: [],
+                  },
+                };
+
+                callback(payload);
+
+                assert.isFalse(meeting.inMeetingActions.get()[actionName]);
               });
 
-              meeting.setUpLocusInfoMeetingInfoListener();
+            }
 
-              const callback = locusInfoOnSpy.thirdCall.args[1];
-
-              const payload = {
-                info: {
-                  userDisplayHints: [],
-                },
-              };
-
-              callback(payload);
-
-              assert.isFalse(meeting.inMeetingActions.get()[actionName]);
-            });
 
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.selfUserPolicies = {};
