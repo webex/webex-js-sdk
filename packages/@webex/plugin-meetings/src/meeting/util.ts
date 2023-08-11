@@ -371,8 +371,9 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
-  canBroadcastMessageToBreakout: (displayHints) =>
-    displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT),
+  canBroadcastMessageToBreakout: (displayHints, policies = {}) =>
+    displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT) &&
+    !!policies[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
 
   isSuppressBreakoutSupport: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.UCF_SUPPRESS_BREAKOUTS_SUPPORT),
