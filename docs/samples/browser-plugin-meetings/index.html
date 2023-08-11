@@ -56,9 +56,12 @@
     </section>
   </div>
   <div class="container">
-    <div id="docs-content" class="column">
+    <div id="docs-content" class="column column-1">
       <section id="meetingAuthentication" class="section-box">
-        <h2 class="collapsible">Meeting Management</h2>
+        <div class="collapsible">
+          <h2>Meeting Management</h2>
+          <h2 class="collapsible-icon">─</h2>
+        </div>
         <div class="section-content">
           <div>
             <select name="auth-type" id="auth-type" onchange="changeAuthType()">
@@ -98,14 +101,14 @@
                 <div>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
                   <button id="access-token-save" class="btn-code" type="submit">webex.init()</button>
-                  <p id="access-token-status" class="status-par">Not initialized</p>
+                  <span id="access-token-status" class="status-par">Not initialized</span>
                 </div>
               </form>
 
               <form id="oauth" class="hidden">
                 <div>
                   <button id="oauth-login-btn" type="submit">Login</button>
-                  <p id="oauth-status" class="status-par">Not Logged In.</p>
+                  <span id="oauth-status" class="status-par">Not logged in</span>
                 </div>
               </form>
             </fieldset>
@@ -124,7 +127,7 @@
                     class="btn-code">webex.meetings.register()</button>
                   <button id="registration-unregister" type="button" onclick="unregister()" disabled=""
                     class="btn-code">webex.meetings.unregister()</button>
-                  <p id="registration-status" class="status-par">Not Registered</p>
+                  <span id="registration-status" class="status-par">Not registered</span>
                 </div>
                 <div>
                   <p class="note">Toggles meeting between old and new versions. (Does not apply to currently running
@@ -132,8 +135,8 @@
                   </p>
                   <button disabled id="toggle-unified-meeting" type="button" onclick="toggleMeetingInfo()"
                     class="btn-code">webex.meetings._toggleUnifiedMeetings()</button>
-                  <label id="current-meeting-info">Currently using : <span
-                      id="current-meeting-info-status">_NOT_INIT_YET_</span></label>
+                  <span id="current-meeting-info">Currently using : <span
+                      id="current-meeting-info-status">_NOT_INIT_YET_</span></span>
                 </div>
               </fieldset>
             </form>
@@ -305,7 +308,7 @@
                 <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
                 <input id="meetings-media-in-lobby-enabled" type="checkbox">
                 <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
-                <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
+                <span id="password-captcha-status" class="status-par">Click verifyPassword for details</span>
               </div>
 
               <!-- meetings / media quality -->
@@ -467,7 +470,7 @@
         </div>
       </section>
     </div>
-    <div class="column">
+    <div class="column column-2">
       <!-- meetings info -->
       <section id="meeting-info-section" class="section-box hidden">
         <div style="display: flex; align-items: center;" class="collapsible">
@@ -487,7 +490,10 @@
 
       <!-- meeting streams -->
       <section class="section-box">
-        <h2 class="collapsible">Meeting Streams</h2>
+        <div class="collapsible">
+          <h2>Meeting Streams</h2>
+          <h2 class="collapsible-icon">─</h2>
+        </div>
         <div class="section-content">
           <div class="video-section">
             <div>
@@ -627,7 +633,10 @@
 
       <!-- meeting controls -->
       <section class="section-box">
-        <h2 class="collapsible">Meeting Controls</h2>
+        <div class="collapsible">
+          <h2>Meeting Controls</h2>
+          <h2 class="collapsible-icon">─</h2>
+        </div>
         <div class="section-content">
           <!-- meeting-controls / move-to-device -->
           <div>
