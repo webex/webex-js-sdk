@@ -171,7 +171,9 @@ jobs:
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
-        run: yarn package-tools sync --tag ${GITHUB_REF##*/}
+        run: | 
+          yarn
+          yarn package-tools sync --tag ${GITHUB_REF##*/}
 
       - name: Display Notice
         run: |
