@@ -7,7 +7,7 @@ import { Yarn } from '../../utils';
 import type { PackageConfig } from '../../models';
 
 import CONSTANTS from './sync.constants';
-import type { Options, ViewResult } from './sync.types';
+import type { Options } from './sync.types';
 
 /**
  * The sync Command configuration Object. This Command is used to synchronize
@@ -37,8 +37,7 @@ const sync: CommandsCommand<Options> = {
   config: CONSTANTS.CONFIG,
 
   /**
-   * Handles incrementing packages based on the provided Options from a
-   * Commands class instance.
+   * Handles synchonization of dependency versions within packages.
    *
    * @param options - Options provided from the CLI interface.
    * @returns - Promise that resolves once the process is complete.
@@ -46,7 +45,9 @@ const sync: CommandsCommand<Options> = {
   handler: (options: Options) => {
     const rootDir = process.cwd();
 
-    const tag = options.tag?.split('/').pop();
+    const tag = options.tag.split('/').pop();
+
+    console.log('sreenara ', Yarn);
 
     return Yarn.list()
       .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
@@ -60,16 +61,11 @@ const sync: CommandsCommand<Options> = {
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
-        packs.map((pack: Package) => {
-          Yarn.view({ package: pack.name }).then((res: ViewResult) => {
-            const { dependencies, devDependencies } = res;
-            pack.syncDependency(dependencies).then(() => pack.syncDependency(devDependencies, true));
-          });
+        const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
 
-          return pack;
-        });
+        process.stdout.write(output);
 
-        return Promise.all('');
+        return Promise.all(packs.map((pack) => pack.apply()));
       });
   },
 };

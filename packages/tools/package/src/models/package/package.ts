@@ -94,40 +94,6 @@ class Package {
   }
 
   /**
-   * Apply the modifications of this Package instance to the package definition
-   * files.
-   *
-   * @returns - Promse that resolves to this Package instance.
-   */
-  public syncDependency(deps: Record<string, string>, devDeps: boolean = false): Promise<this> {
-    const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
-
-    return Package.readDefinition({ definitionPath: packageDefinitionPath })
-      .then((definition) => {
-        const dependencies = (devDeps) ? definition.devDependencies : definition.dependencies;
-
-        Object.entries(deps).map(([name, version]) => {
-          Object.keys(dependencies).map((key) => {
-            if (key === name) {
-              dependencies[key] = version;
-            }
-
-            return dependencies;
-          });
-          return deps;
-        });
-
-        return definition;
-      })
-      .then((definition) => {
-        const data = `${JSON.stringify(definition, null, 2)}\n`;
-
-        return fs.writeFile(packageDefinitionPath, data);
-      })
-      .then(() => this);
-  }
-
-  /**
    * Determine if a provided script exists within this Package.
    *
    * @param scriptName - Name of the script to validate this Package has.

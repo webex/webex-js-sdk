@@ -50,7 +50,7 @@ describe('sync', () => {
 
     const options = {
       tag: 'next',
-      packages: '@scope/example-b',
+      packages: ['@scope/example-a', '@scope/example-b', '@scope/example-c'],
     };
 
     beforeEach(() => {
@@ -62,7 +62,7 @@ describe('sync', () => {
       spies.package = {
         inspect: spyOn(Package.prototype, 'inspect').and.callFake(function func() { return Promise.resolve(this); }),
         syncVersion: spyOn(Package.prototype, 'syncVersion').and.callFake(function func() { return Promise.resolve(this); }),
-        syncDependency: spyOn(Package.prototype, 'syncDependency').and.callFake(function func() { return Promise.resolve(this); }),
+        apply: spyOn(Package.prototype, 'apply').and.callFake(function func() { return Promise.resolve(this); }),
       };
 
       spies.path = {
@@ -93,25 +93,24 @@ describe('sync', () => {
 
     it('should call "package.inspect()" for each located package', () => sync.handler(options)
       .then(() => {
-        expect(spies.package.inspect).toHaveBeenCalledTimes(1);
+        expect(spies.package.inspect).toHaveBeenCalledTimes(3);
       }));
 
     it('should call "package.syncVersion()" for each located package', () => sync.handler(options)
       .then(() => {
-        expect(spies.package.syncVersion).toHaveBeenCalledTimes(1);
+        expect(spies.package.syncVersion).toHaveBeenCalledTimes(3);
       }));
 
-    it('should call "Yarn.view()"', () => sync.handler(options)
+    it('should write the list of packages updated and their corresponding new versions', () => sync.handler({ ...options })
       .then(() => {
-        expect(spies.Yarn.view).toHaveBeenCalledTimes(1);
+        const generatedString = options.packages.map((pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`).join('\n');
+
+        expect(spies.process.stdout.write).toHaveBeenCalledWith(generatedString);
       }));
 
-    it('should call "package.syncDependency()" for dependencies', () => sync.handler(options)
-      .then(() => {
-        expect(spies.package.syncDependency).toHaveBeenCalledTimes(2);
-        expect(spies.package.syncDependency).toHaveBeenCalledWith(viewResolve.dependencies);
-        expect(spies.package.syncDependency)
-          .toHaveBeenCalledWith(viewResolve.devDependencies, true);
+    it('should return all packages when packages is not provided', () => sync.handler({ ...options, packages: undefined })
+      .then((results) => {
+        expect(results.length).toBe(3);
       }));
   });
 });
