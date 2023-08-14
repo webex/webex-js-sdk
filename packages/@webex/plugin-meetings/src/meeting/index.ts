@@ -92,7 +92,6 @@ import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type'
 import InMeetingActions from './in-meeting-actions';
 import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
-import Member from '../member';
 
 const {isBrowser} = BrowserDetection();
 
@@ -3760,12 +3759,6 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#receiveTranscription -->
         opened LLM web socket connection successfully.`
       );
-
-      if (!this.inMeetingActions.isClosedCaptionActive) {
-        LoggerProxy.logger.error(
-          `Meeting:index#receiveTranscription --> Transcription cannot be started until a licensed user enables it`
-        );
-      }
 
       // retrieve and pass the payload
       this.transcription.subscribe((payload) => {
