@@ -2579,10 +2579,15 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
             displayHints: payload.info.userDisplayHints,
           }),
-          canEnableVideo: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-            displayHints: payload.info.userDisplayHints,
-          }),
+          canEnableVideo:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+              displayHints: payload.info.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+              policies: this.selfUserPolicies,
+            }),
           canDisableVideo: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,

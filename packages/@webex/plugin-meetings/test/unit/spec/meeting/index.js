@@ -5685,6 +5685,11 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
             },
             {
+              actionName: 'canEnableVideo',
+              requiredDisplayHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+            },
+            {
               actionName: 'canBroadcastMessageToBreakout',
               requiredDisplayHints: [DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT],
               requiredPolicies: [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
