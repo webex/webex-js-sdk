@@ -2505,7 +2505,8 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           canManageBreakout: MeetingUtil.canManageBreakout(payload.info.userDisplayHints),
           canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
-            payload.info.userDisplayHints
+            payload.info.userDisplayHints,
+            this.selfUserPolicies
           ),
           canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(
             payload.info.userDisplayHints
@@ -2595,6 +2596,10 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
               policies: this.selfUserPolicies,
             }),
+          canTransferFile: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
