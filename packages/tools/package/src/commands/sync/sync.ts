@@ -47,8 +47,6 @@ const sync: CommandsCommand<Options> = {
 
     const tag = options.tag.split('/').pop();
 
-    console.log('sreenara ', Yarn);
-
     return Yarn.list()
       .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
         location: path.join(rootDir, location),
