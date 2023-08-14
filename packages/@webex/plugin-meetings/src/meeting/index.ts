@@ -2613,10 +2613,12 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               displayHints: payload.info.userDisplayHints,
             }) &&
-              ControlsOptionsUtil.hasPolicies({
+              (ControlsOptionsUtil.hasPolicies({
                 requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
                 policies: this.selfUserPolicies,
-              })) ||
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
             this.isCall(),
           canShareCamera:
             ControlsOptionsUtil.hasHints({
@@ -2632,10 +2634,12 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               displayHints: payload.info.userDisplayHints,
             }) &&
-              ControlsOptionsUtil.hasPolicies({
+              (ControlsOptionsUtil.hasPolicies({
                 requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
                 policies: this.selfUserPolicies,
-              })) ||
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
             this.isCall(),
           canShareContent:
             ControlsOptionsUtil.hasHints({
