@@ -3761,13 +3761,11 @@ export default class Meeting extends StatelessWebexPlugin {
         opened LLM web socket connection successfully.`
       );
 
-      Object.values(this.members.membersCollection.members).forEach((member: Member) => {
-        if (!member.isHost && member.status === 'IN_MEETING') {
-          LoggerProxy.logger.error(
-            `Meeting:index#receiveTranscription --> Transcription cannot be started until host enables it`
-          );
-        }
-      });
+      if (!this.inMeetingActions.isClosedCaptionActive) {
+        LoggerProxy.logger.error(
+          `Meeting:index#receiveTranscription --> Transcription cannot be started until a licensed user enables it`
+        );
+      }
 
       // retrieve and pass the payload
       this.transcription.subscribe((payload) => {
