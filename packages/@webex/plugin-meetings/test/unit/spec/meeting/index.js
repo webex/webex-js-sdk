@@ -3,7 +3,7 @@
  */
 import 'jsdom-global/register';
 import jwt from 'jsonwebtoken';
-import {cloneDeep, forEach, isEqual} from 'lodash';
+import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
 import StateMachine from 'javascript-state-machine';
@@ -411,6 +411,21 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('#isLocusCall', () => {
+        it('returns true if it is a call', () => {
+          meeting.type = 'CALL';
+
+          assert.isTrue(meeting.isLocusCall());
+        });
+
+        it('returns false if it is not a call', () => {
+          meeting.type = 'MEETING';
+
+          assert.isFalse(meeting.isLocusCall());
+        });
+      });
+
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -5659,6 +5674,60 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy.restore();
         });
 
+
+        forEach(
+          [
+            {
+              actionName: 'canShareApplication',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareApplication',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+            {
+              actionName: 'canShareDesktop',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareDesktop',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+            {
+              actionName: 'canShareContent',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canShareContent',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
+          ],
+          ({actionName, callType, expectedEnabled}) => {
+            it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
+              meeting.type = callType;
+              meeting.setUpLocusInfoMeetingInfoListener();
+
+              const callback = locusInfoOnSpy.thirdCall.args[1];
+
+              const payload = {
+                info: {
+                  userDisplayHints: [],
+                },
+              };
+
+              callback(payload);
+
+              assert.equal(meeting.inMeetingActions.get()[actionName], expectedEnabled);
+            });
+          }
+        );
+
         forEach(
           [
             {
@@ -5691,10 +5760,26 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             },
+            {
+              actionName: 'canShareDesktop',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+              requiredPolicies: [],
+              enableUnifiedMeetings: false,
+            },
+            {
+              actionName: 'canShareApplication',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+              requiredPolicies: [],
+              enableUnifiedMeetings: false,
+            },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies}) => {
+          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings}) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.selfUserPolicies = {};
+
+              meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
+                ? true
+                : enableUnifiedMeetings;
 
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
@@ -5716,7 +5801,6 @@ describe('plugin-meetings', () => {
             });
 
             if (requiredDisplayHints.length !== 0) {
-              
               it(`${actionName} is disabled when the required display hints are missing`, () => {
                 meeting.selfUserPolicies = {};
 
@@ -5738,9 +5822,7 @@ describe('plugin-meetings', () => {
 
                 assert.isFalse(meeting.inMeetingActions.get()[actionName]);
               });
-
             }
-
 
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.selfUserPolicies = {};
