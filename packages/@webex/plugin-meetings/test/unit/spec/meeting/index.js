@@ -412,17 +412,17 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#isCall', () => {
+      describe('#isLocusCall', () => {
         it('returns true if it is a call', () => {
           meeting.type = 'CALL';
 
-          assert.isTrue(meeting.isCall());
+          assert.isTrue(meeting.isLocusCall());
         });
 
         it('returns false if it is not a call', () => {
           meeting.type = 'MEETING';
 
-          assert.isFalse(meeting.isCall());
+          assert.isFalse(meeting.isLocusCall());
         });
       });
 

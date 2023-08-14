@@ -1261,7 +1261,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Returns whether this meeting is a Locus CALL
    * @returns {Boolean}
    */
-  isCall() {
+  isLocusCall() {
     return this.type === 'CALL';
   }
 
@@ -2619,7 +2619,7 @@ export default class Meeting extends StatelessWebexPlugin {
               }) ||
                 // @ts-ignore
                 !this.config.experimental.enableUnifiedMeetings)) ||
-            this.isCall(),
+            this.isLocusCall(),
           canShareCamera:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
@@ -2640,12 +2640,12 @@ export default class Meeting extends StatelessWebexPlugin {
               }) ||
                 // @ts-ignore
                 !this.config.experimental.enableUnifiedMeetings)) ||
-            this.isCall(),
+            this.isLocusCall(),
           canShareContent:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
               displayHints: payload.info.userDisplayHints,
-            }) || this.isCall(),
+            }) || this.isLocusCall(),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
