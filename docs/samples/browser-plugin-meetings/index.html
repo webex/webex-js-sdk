@@ -11,52 +11,11 @@
 
 <body>
   <div class="container">
-    <section id="multistream-remote-streams" class="section-box section-wide">
-      <h2 class="collapsible">Multistream Media</h2>
-      <div class="section-content">
-        <fieldset>
-          <legend>Multistream Remote Videos</legend>
-          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-share-audio" autoplay ></audio>
-          <div id="multistream-videos-container" class="multistream-videos-container">
-          </div>
-          <div class="multistream-buttons">
-            <div class="stage-control-wrapper">
-              <span>Choose Layout:</span>
-              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
-                <option value="AllEqual">All Equal (max 9)</option>
-                <option value="OnePlusFive">One big plane + five small</option>
-                <option value="Single">Single video pane</option>
-                <option value="Stage">Stage with thumbnails</option>
-                <option value="ScreenShareView">Screen share with thumbnails</option>
-              </select>
-            </div>
-            <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
-              <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
-              <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
-            </div>
-          </div>
-          <div><button id="get-stats" onclick="getStats()">Get stats</button> or CTRL+click on a video pane to see its stats.</div>
-          <div style="display: flex">
-            <select name="remote-media-selector" id="remote-media-selector"></select>
-            <input id="size-hint-input" />
-            <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
-          </div>
-          <div class="prefer-live-video">
-            <span>Set Prefer Live Video:</span>
-            <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
-              <option value="Enable">Enable</option>
-              <option value="Disable">Disable</option>
-            </select>
-          </div>
-        </fieldset>
-      </div>
-    </section>
-  </div>
-  <div class="container">
     <div id="docs-content" class="column column-1">
+      <div class="column-title">
+        <h1>Setup</h1>
+        <button class="toggle-column" id="column-1" title="Full screen">⛶</button>
+      </div>
       <section id="meetingAuthentication" class="section-box">
         <div class="collapsible">
           <h2>Meeting Management</h2>
@@ -135,7 +94,7 @@
                   </p>
                   <button disabled id="toggle-unified-meeting" type="button" onclick="toggleMeetingInfo()"
                     class="btn-code">webex.meetings._toggleUnifiedMeetings()</button>
-                  <span id="current-meeting-info">Currently using : <span
+                  <span id="current-meeting-info" class="status-par">Currently using : <span
                       id="current-meeting-info-status">_NOT_INIT_YET_</span></span>
                 </div>
               </fieldset>
@@ -471,6 +430,10 @@
       </section>
     </div>
     <div class="column column-2">
+      <div class="column-title">
+        <h1>In meeting</h1>
+        <button class="toggle-column" id="column-2" title="Full screen">⛶</button>
+      </div>
       <!-- meetings info -->
       <section id="meeting-info-section" class="section-box hidden">
         <div style="display: flex; align-items: center;" class="collapsible">
@@ -487,7 +450,53 @@
 
         </div>
       </section>
-
+      <!-- multistream streams -->
+      <section id="multistream-remote-streams" class="section-box">
+        <div class="collapsible">
+          <h2>Meeting Media</h2>
+          <h2 class="collapsible-icon">─</h2>
+        </div>
+        <div class="section-content">
+          <fieldset>
+            <legend>Multistream Remote Videos</legend>
+            <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
+            <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
+            <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
+            <audio id="multistream-remote-share-audio" autoplay ></audio>
+            <div id="multistream-videos-container" class="multistream-videos-container">
+            </div>
+            <div class="multistream-buttons">
+              <div class="stage-control-wrapper">
+                <span>Choose Layout:</span>
+                <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+                  <option value="AllEqual">All Equal (max 9)</option>
+                  <option value="OnePlusFive">One big plane + five small</option>
+                  <option value="Single">Single video pane</option>
+                  <option value="Stage">Stage with thumbnails</option>
+                  <option value="ScreenShareView">Screen share with thumbnails</option>
+                </select>
+              </div>
+              <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
+                <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
+                <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
+              </div>
+            </div>
+            <div><button id="get-stats" onclick="getStats()">Get stats</button> or CTRL+click on a video pane to see its stats.</div>
+            <div style="display: flex">
+              <select name="remote-media-selector" id="remote-media-selector"></select>
+              <input id="size-hint-input" />
+              <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
+            </div>
+            <div class="prefer-live-video">
+              <span>Set Prefer Live Video:</span>
+              <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
+                <option value="Enable">Enable</option>
+                <option value="Disable">Disable</option>
+              </select>
+            </div>
+          </fieldset>
+        </div>
+      </section>
       <!-- meeting streams -->
       <section class="section-box">
         <div class="collapsible">

@@ -3316,6 +3316,16 @@ document.querySelectorAll('.collapsible').forEach((el) => {
   });
 });
 
+document.querySelectorAll('.toggle-column').forEach((el) => {
+  el.addEventListener('click', (event) => {
+    if(event.target.id === 'column-1') {
+      document.querySelector('.column-2').classList.toggle('hidden');
+    } else {
+      document.querySelector('.column-1').classList.toggle('hidden');
+    }
+  });
+});
+
 // Get Access Token from URL and put in access token field
 if (window.location.hash) {
   // hacky way to get access token from hash

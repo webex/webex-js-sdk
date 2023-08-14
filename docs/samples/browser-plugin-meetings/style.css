@@ -60,8 +60,12 @@ button.btn-code {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 50%;
+  width: 100%;
   overflow: scroll;
+}
+
+.column .hidden {
+  display: none;
 }
 
 .column-1 {
@@ -74,6 +78,33 @@ button.btn-code {
   margin-right: 4px;
 }
 
+.column-title{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.column-title h1 {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.column-title button {
+  background-color: #00000000;
+  font-size: 20px;
+  color: rgba(0, 0, 0, 0.95);
+
+  height:40px;
+  width: 40px;
+  margin: 0px;
+  padding: 0px;
+
+  &:hover {
+    background-color: #0000000c;
+    color: rgba(0, 0, 0, 0.95);
+  }
+}
+
 .section-box {
   background: #ffffff;
   border-radius: 1rem;
@@ -84,10 +115,6 @@ button.btn-code {
 .section-box h2 {
   display: inline-block;
   margin: 1rem 0rem;
-}
-
-.section-wide {
-  width: 100%;
 }
 
 .collapsible {
