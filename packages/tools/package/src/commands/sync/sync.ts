@@ -57,7 +57,6 @@ const sync: CommandsCommand<Options> = {
         ? options.packages.includes(pack.name)
         : true)))
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
-      .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
       .then((packs) => {
         const output = packs.map((pack) => `${pack.name} => ${pack.version}`).join('\n');
 

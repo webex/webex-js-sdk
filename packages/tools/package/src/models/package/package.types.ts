@@ -66,16 +66,6 @@ export interface Definition {
    * Scripts associated with the parsed package definition.
    */
   scripts?: Record<string, string>;
-
-  /**
-   * Dependencies of the package
-   */
-  dependencies: Record<string, string>;
-
-  /**
-   * Developer dependencies of the package
-   */
-  devDependencies: Record<string, string>;
 }
 
 /**

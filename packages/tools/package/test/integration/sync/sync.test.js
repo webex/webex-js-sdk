@@ -96,11 +96,6 @@ describe('sync', () => {
         expect(spies.package.inspect).toHaveBeenCalledTimes(3);
       }));
 
-    it('should call "package.syncVersion()" for each located package', () => sync.handler(options)
-      .then(() => {
-        expect(spies.package.syncVersion).toHaveBeenCalledTimes(3);
-      }));
-
     it('should write the list of packages updated and their corresponding new versions', () => sync.handler({ ...options })
       .then(() => {
         const generatedString = options.packages.map((pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`).join('\n');
