@@ -32,7 +32,7 @@ import {
   DecodeType,
   DisplayInformation,
   HTTP_METHODS,
-  IDeviceInfo,
+  ILineInfo,
   MobiusServers,
   MobiusStatus,
   SORT,
@@ -123,6 +123,7 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback, LineStatus} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
+import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
@@ -289,28 +290,25 @@ export function emitFinalFailure(emitterCb: LineErrorEmitterCallback, loggerCont
  */
 export async function handleRegistrationErrors(
   err: WebexRequestPayload,
-  emitterCb: LineErrorEmitterCallback,
+  emitterCb: CallingClientErrorEmitterCallback,
   loggerContext: LogContext,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
-  const clientError = createLineError('', {}, ERROR_TYPE.DEFAULT, LineStatus.INACTIVE);
+  const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
 
   const errorCode = err.statusCode as number;
   let finalError = false;
-
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
-
   switch (errorCode) {
     case ERROR_CODE.UNAUTHORIZED: {
       // Return it to the Caller
       finalError = true;
       log.warn(`401 Unauthorized`, loggerContext);
 
-      updateLineErrorContext(
+      updateErrorContext(
         loggerContext,
         ERROR_TYPE.TOKEN_ERROR,
         'User is unauthorized due to an expired token. Sign out, then sign back in.',
-        LineStatus.INACTIVE,
         clientError
       );
 
@@ -320,11 +318,10 @@ export async function handleRegistrationErrors(
 
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
-      updateLineErrorContext(
+      updateErrorContext(
         loggerContext,
         ERROR_TYPE.SERVER_ERROR,
         'An unknown error occurred while placing the request. Wait a moment and try again.',
-        LineStatus.INACTIVE,
         clientError
       );
 
@@ -334,30 +331,26 @@ export async function handleRegistrationErrors(
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
       log.warn(`503 Service Unavailable`, loggerContext);
-      updateLineErrorContext(
+      updateErrorContext(
         loggerContext,
         ERROR_TYPE.SERVICE_UNAVAILABLE,
         'An error occurred on the server while processing the request. Wait a moment and try again.',
-        LineStatus.INACTIVE,
         clientError
       );
 
       emitterCb(clientError, finalError);
       break;
     }
-
     case ERROR_CODE.FORBIDDEN: {
       log.warn(`403 Forbidden`, loggerContext);
-
-      const errorBody = <IDeviceInfo>err.body;
+      const errorBody = <ILineInfo>err.body;
 
       if (!errorBody) {
         log.warn('Error response has no body, throwing default error', loggerContext);
-        updateLineErrorContext(
+        updateErrorContext(
           loggerContext,
           ERROR_TYPE.FORBIDDEN_ERROR,
           'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
-          LineStatus.INACTIVE,
           clientError
         );
 
@@ -365,9 +358,7 @@ export async function handleRegistrationErrors(
 
         return finalError;
       }
-
       const code = errorBody.errorCode as number;
-
       log.warn(`Error code found : ${code}`, loggerContext);
       switch (code) {
         case DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED: {
@@ -383,13 +374,7 @@ export async function handleRegistrationErrors(
           const errorMessage =
             'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.';
           finalError = true;
-          updateLineErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            errorMessage,
-            LineStatus.INACTIVE,
-            clientError
-          );
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
           log.warn(errorMessage, loggerContext);
           emitterCb(clientError, true);
           break;
@@ -397,13 +382,7 @@ export async function handleRegistrationErrors(
         case DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED: {
           const errorMessage =
             'An unknown error occurred while provisioning the device. Wait a moment and try again.';
-          updateLineErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            errorMessage,
-            LineStatus.INACTIVE,
-            clientError
-          );
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
           log.warn(errorMessage, loggerContext);
           emitterCb(clientError, finalError);
           break;
@@ -411,29 +390,21 @@ export async function handleRegistrationErrors(
         default: {
           const errorMessage =
             'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.';
-          updateLineErrorContext(
-            loggerContext,
-            ERROR_TYPE.FORBIDDEN_ERROR,
-            errorMessage,
-            LineStatus.INACTIVE,
-            clientError
-          );
+          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
           log.warn(errorMessage, loggerContext);
           emitterCb(clientError, finalError);
         }
       }
       break;
     }
-
     case ERROR_CODE.DEVICE_NOT_FOUND: {
       finalError = true;
       log.warn(`404 Device Not Found`, loggerContext);
 
-      updateLineErrorContext(
+      updateErrorContext(
         loggerContext,
         ERROR_TYPE.NOT_FOUND,
         'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-        LineStatus.INACTIVE,
         clientError
       );
       emitterCb(clientError, finalError);
@@ -441,13 +412,7 @@ export async function handleRegistrationErrors(
     }
 
     default: {
-      updateLineErrorContext(
-        loggerContext,
-        ERROR_TYPE.DEFAULT,
-        'Unknown error',
-        LineStatus.INACTIVE,
-        clientError
-      );
+      updateErrorContext(loggerContext, ERROR_TYPE.DEFAULT, 'Unknown error', clientError);
       log.warn(`Unknown Error`, loggerContext);
       emitterCb(clientError, finalError);
     }
@@ -507,7 +472,7 @@ export async function handleCallErrors(
     /* follow through as both 403 and 503 can have similar error codes */
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
-      const errorBody = <IDeviceInfo>err.body;
+      const errorBody = <ILineInfo>err.body;
 
       if (!errorBody) {
         log.warn('Error response has no body, throwing default error', loggerContext);

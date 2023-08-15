@@ -20,6 +20,7 @@ let callHistory;
 let voicemail;
 let contacts;
 let callSettings;
+let line;
 
 let transferInitiated;
 const numberOfDays = 7;
@@ -269,6 +270,7 @@ function initCalling(e) {
         console.log(`Init response `, initResponse);
       }
 
+      fetchLines();
       fetchDNDSetting();
       fetchCallWaitingSetting();
       fetchCallForwardSetting();
@@ -314,15 +316,14 @@ function userSession() {
 }
 
 function createDevice() {
-  const lineObj = Object.values(callingClient.getLines())[0];
-  lineObj.register();
+  line.register();
   userSession();
-  lineObj.on('registered', (deviceInfo) => {
+  line.on('registered', (lineInfo) => {
     console.log("registered success");
     registerElm.disabled = true;
     registrationStatusElm.innerText =
       calling.webex.internal.device.url !== ''
-        ? `Registered, deviceId: ${deviceInfo.device.deviceId}`
+        ? `Registered, deviceId: ${lineInfo.device.deviceId}`
         : 'Not Registered';
     // unregisterElm.disabled = false;
   });
@@ -395,9 +396,8 @@ function holdResume() {
   call.doHoldResume();
 }
 function deleteDevice() {
-  const lineObj = Object.values(callingClient.getLines())[0];
-  lineObj.deregister();
-  lineObj.on('unregistered', () => {
+  line.deregister();
+  line.on('unregistered', () => {
     console.log("unregistered success");
     registrationStatusElm.innerText = 'Unregistered';
   })
@@ -1192,6 +1192,10 @@ function toggleButton(eleButton, disableText, enableText) {
   }
 
   return retVal;
+}
+
+function fetchLines() {
+  line = Object.values(callingClient.getLines())[0];
 }
 
 async function fetchDNDSetting() {

@@ -1,10 +1,6 @@
+import {IRegistration} from '../registration/types';
 import {LineError} from '../../Errors/catalog/LineError';
-import {IDeviceInfo, MobiusDeviceId, MobiusStatus} from '../../common/types';
-
-export interface ICallSettingResponse {
-  // will be done as part of call related jira
-  dummy: any;
-}
+import {ILineInfo, MobiusDeviceId, MobiusStatus} from '../../common/types';
 
 export interface ICallerInfo {
   // will be done as part of call related jira
@@ -13,6 +9,7 @@ export interface ICallerInfo {
 
 export enum LineStatus {
   INACTIVE = 'inactive',
+  ACTIVE = 'active',
 }
 
 export interface ICall {
@@ -29,37 +26,29 @@ export interface ICall {
 
 export interface ILine {
   userId: string;
-  lineId: string;
   clientDeviceUri: string;
-  phoneNumber: string;
-  extension: string;
+  lineId: string;
   status: LineStatus;
-  sipAddresses: string[];
-  voicemail: string;
-  lastSeen: string;
-  keepaliveInterval: number;
-  callKeepaliveInterval: number;
-  rehomingIntervalMin: number;
-  rehomingIntervalMax: number;
-  voicePortalNumber: number;
-  voicePortalExtension: number;
+  mobiusDeviceId?: string;
+  phoneNumber?: string;
+  extension?: string;
+  sipAddresses?: string[];
+  voicemail?: string;
+  lastSeen?: string;
+  keepaliveInterval?: number;
+  callKeepaliveInterval?: number;
+  rehomingIntervalMin?: number;
+  rehomingIntervalMax?: number;
+  voicePortalNumber?: number;
+  voicePortalExtension?: number;
+  registration: IRegistration;
   register: () => void;
   deregister: () => void;
-  sendKeepAlive: (deviceInfo: IDeviceInfo) => void;
-  getCallForwardSetting: () => Promise<ICallSettingResponse>;
-  getCallWaitingSetting: () => Promise<ICallSettingResponse>;
-  setCallWaitingSetting: () => Promise<ICallSettingResponse>;
-  setCallForwardSetting: () => Promise<ICallSettingResponse>;
+  sendKeepAlive: (lineInfo: ILineInfo) => void;
   getActiveMobiusUrl: () => string;
   getRegistrationStatus: () => MobiusStatus;
   getDeviceId: () => MobiusDeviceId | undefined;
-
-  // below methods will be covered in call related jira
-  /*
-    makeCall: () => ICall;
-    getCall: () => void;
-    getCallManager: () => void;
-    */
+  lineEmitter: (event: LINE_EVENTS, lineInfo?: ILineInfo, lineError?: LineError) => void;
 }
 
 export enum LINE_EVENTS {
@@ -76,13 +65,13 @@ export type LineEventTypes = {
   [LINE_EVENTS.ERROR]: (error: LineError) => void;
   [LINE_EVENTS.RECONNECTED]: () => void;
   [LINE_EVENTS.RECONNECTING]: () => void;
-  [LINE_EVENTS.REGISTERED]: (deviceInfo: IDeviceInfo) => void;
+  [LINE_EVENTS.REGISTERED]: (lineInfo: ILineInfo) => void;
   [LINE_EVENTS.UNREGISTERED]: () => void;
 };
 
 export type LineEmitterCallback = (
   event: LINE_EVENTS,
-  deviceInfo?: IDeviceInfo,
+  lineInfo?: ILineInfo,
   clientError?: LineError
 ) => void;
 

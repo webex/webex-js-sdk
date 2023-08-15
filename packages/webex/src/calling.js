@@ -51,11 +51,11 @@ class Calling extends EventEmitter {
 
         return this.webex.internal.mercury
           .connect()
-          .then(() => {
+          .then(async () => {
             this.log.info('Authentication: webex.internal.mercury.connect successful', logContext);
 
             try {
-              this.initializeClients();
+              await this.initializeClients();
             } catch (error) {
               this.log.warn(`Error occurred while initializing clients ${error}`, logContext);
             }
@@ -69,11 +69,11 @@ class Calling extends EventEmitter {
       });
   }
 
-  initializeClients() {
+  async initializeClients() {
     const {clientConfig, callingClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
-      ? WebexCalling.createClient(this.webex, callingClientConfig)
+      ? await WebexCalling.createClient(this.webex, callingClientConfig)
       : undefined;
 
     this.contactClient = clientConfig.contact

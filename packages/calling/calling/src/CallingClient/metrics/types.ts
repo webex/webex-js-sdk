@@ -1,6 +1,5 @@
-import {LineError} from '../../Errors/catalog/LineError';
-import {CallError} from '../../Errors';
-import {CallId, CorrelationId, IDeviceInfo} from '../../common/types';
+import {CallError, CallingClientError} from '../../Errors';
+import {CallId, CorrelationId, ILineInfo} from '../../common/types';
 
 export enum METRIC_TYPE {
   OPERATIONAL = 'operational',
@@ -28,12 +27,12 @@ export enum TRANSFER_METRIC {
 }
 
 export interface IMetricManager {
-  setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
+  setDeviceInfo: (lineInfo: ILineInfo) => void;
   submitRegistrationMetric: (
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    error: LineError | undefined
+    error: CallingClientError | undefined
   ) => void;
   submitCallMetric: (
     name: METRIC_EVENT,

@@ -1,11 +1,10 @@
 /* eslint-disable valid-jsdoc */
-import {CallError} from '../../Errors';
+import {CallError, CallingClientError} from '../../Errors';
 import {METRIC_FILE, VERSION} from '../constants';
-import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common/types';
+import {CallId, CorrelationId, ILineInfo, ServiceIndicator} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
 import log from '../../Logger';
-import {LineError} from '../../Errors/catalog/LineError';
 
 let metricManager: IMetricManager;
 
@@ -15,7 +14,7 @@ let metricManager: IMetricManager;
 class MetricManager implements IMetricManager {
   private webex: WebexSDK;
 
-  private deviceInfo?: IDeviceInfo;
+  private lineInfo?: ILineInfo;
 
   private serviceIndicator: ServiceIndicator;
 
@@ -30,10 +29,10 @@ class MetricManager implements IMetricManager {
   }
 
   /**
-   * @param deviceInfo - DeviceInfo object.
+   * @param lineInfo - DeviceInfo object.
    */
-  public setDeviceInfo(deviceInfo: IDeviceInfo) {
-    this.deviceInfo = deviceInfo;
+  public setDeviceInfo(lineInfo: ILineInfo) {
+    this.lineInfo = lineInfo;
   }
 
   /**
@@ -46,7 +45,7 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    clientError: LineError | undefined
+    clientError: CallingClientError | undefined
   ) {
     let data;
 
@@ -55,12 +54,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
+            device_id: this.lineInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
+            device_url: this.lineInfo?.device?.clientDeviceUri,
+            mobius_url: this.lineInfo?.device?.uri,
             calling_sdk_version: VERSION,
           },
           type,
@@ -73,12 +72,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
+              device_id: this.lineInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
+              device_url: this.lineInfo?.device?.clientDeviceUri,
+              mobius_url: this.lineInfo?.device?.uri,
               calling_sdk_version: VERSION,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
@@ -125,12 +124,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
+            device_id: this.lineInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
+            device_url: this.lineInfo?.device?.clientDeviceUri,
+            mobius_url: this.lineInfo?.device?.uri,
             calling_sdk_version: VERSION,
             call_id: callId,
             correlation_id: correlationId,
@@ -145,12 +144,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
+              device_id: this.lineInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
+              device_url: this.lineInfo?.device?.clientDeviceUri,
+              mobius_url: this.lineInfo?.device?.uri,
               calling_sdk_version: VERSION,
               call_id: callId,
               correlation_id: correlationId,
@@ -203,12 +202,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
+            device_id: this.lineInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
+            device_url: this.lineInfo?.device?.clientDeviceUri,
+            mobius_url: this.lineInfo?.device?.uri,
             calling_sdk_version: VERSION,
             call_id: callId,
             correlation_id: correlationId,
@@ -225,12 +224,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
+              device_id: this.lineInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
+              device_url: this.lineInfo?.device?.clientDeviceUri,
+              mobius_url: this.lineInfo?.device?.uri,
               calling_sdk_version: VERSION,
               call_id: callId,
               correlation_id: correlationId,

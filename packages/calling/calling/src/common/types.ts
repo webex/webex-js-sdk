@@ -92,7 +92,7 @@ export type RegionInfo = {
   clientRegion: string;
 };
 
-export interface IDeviceInfo {
+export interface ILineInfo {
   userId?: string;
   errorCode?: number;
 

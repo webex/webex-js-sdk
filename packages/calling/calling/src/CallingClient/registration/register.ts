@@ -15,7 +15,7 @@ import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
-  IDeviceInfo,
+  ILineInfo,
   MobiusStatus,
   ServiceData,
   WebexRequestPayload,
@@ -44,6 +44,9 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {CallingClientError} from '../../Errors';
+import {CallingClientEmitterCallback} from '../types';
+import {EVENT_KEYS} from '../../Events/types';
 
 /**
  *
@@ -69,8 +72,9 @@ export class Registration implements IRegistration {
   private mutex: Mutex;
   private metricManager: IMetricManager;
   private emitter: LineEmitterCallback;
+  private callingClientEmitter: CallingClientEmitterCallback;
   private callManager: ICallManager;
-  private deviceInfo: IDeviceInfo = {};
+  private lineInfo: ILineInfo = {};
   private primaryMobiusUris: string[];
   private backupMobiusUris: string[];
   private registerRetry = false;
@@ -88,6 +92,7 @@ export class Registration implements IRegistration {
     serviceData: ServiceData,
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
+    callingClientEmitter: CallingClientEmitterCallback,
     logLevel: LOGGER
   ) {
     this.sdkConnector = SDKConnector;
@@ -106,6 +111,7 @@ export class Registration implements IRegistration {
     this.callManager = getCallManager(this.webex, serviceData.indicator);
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
     this.emitter = lineEmitter;
+    this.callingClientEmitter = callingClientEmitter;
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
@@ -173,7 +179,7 @@ export class Registration implements IRegistration {
    * @param url - backend service url for registration
    */
   private async postRegistration(url: string) {
-    const deviceInfo = {
+    const lineInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
       serviceData: this.serviceData,
@@ -183,10 +189,10 @@ export class Registration implements IRegistration {
       uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
-        [CISCO_DEVICE_URL]: deviceInfo.clientDeviceUri,
+        [CISCO_DEVICE_URL]: lineInfo.clientDeviceUri,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
-      body: deviceInfo,
+      body: lineInfo,
       service: ALLOWED_SERVICES.MOBIUS,
     });
   }
@@ -462,21 +468,21 @@ export class Registration implements IRegistration {
    * if received in registration response from a primary mobius
    * server.
    *
-   * @param deviceInfo - Device info.
+   * @param lineInfo - Line info.
    */
-  private setIntervalValues(deviceInfo: IDeviceInfo) {
+  private setIntervalValues(lineInfo: ILineInfo) {
     if (this.primaryMobiusUris.indexOf(this.activeMobiusUrl) !== -1) {
-      this.rehomingIntervalMin = deviceInfo?.rehomingIntervalMin
-        ? deviceInfo.rehomingIntervalMin
+      this.rehomingIntervalMin = lineInfo?.rehomingIntervalMin
+        ? lineInfo.rehomingIntervalMin
         : DEFAULT_REHOMING_INTERVAL_MIN;
-      this.rehomingIntervalMax = deviceInfo?.rehomingIntervalMax
-        ? deviceInfo.rehomingIntervalMax
+      this.rehomingIntervalMax = lineInfo?.rehomingIntervalMax
+        ? lineInfo.rehomingIntervalMax
         : DEFAULT_REHOMING_INTERVAL_MAX;
     }
   }
 
-  public getDeviceInfo(): IDeviceInfo {
-    return this.deviceInfo;
+  public getDeviceInfo(): ILineInfo {
+    return this.lineInfo;
   }
 
   /**
@@ -565,7 +571,7 @@ export class Registration implements IRegistration {
    *
    */
   private restoreRegistrationCallBack() {
-    return async (restoreData: IDeviceInfo, caller: string) => {
+    return async (restoreData: ILineInfo, caller: string) => {
       const logContext = {file: REGISTRATION_FILE, method: caller};
       if (!this.isRegRetry()) {
         log.info('Registration restoration in progress.', logContext);
@@ -645,12 +651,12 @@ export class Registration implements IRegistration {
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
 
-        this.deviceInfo = resp.body as IDeviceInfo;
-        this.emitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
+        this.lineInfo = resp.body as ILineInfo;
+        this.emitter(LINE_EVENTS.REGISTERED, resp.body as ILineInfo);
         this.registrationStatus = MobiusStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
-        this.setIntervalValues(this.deviceInfo);
-        this.metricManager.setDeviceInfo(this.deviceInfo);
+        this.setIntervalValues(this.lineInfo);
+        this.metricManager.setDeviceInfo(this.lineInfo);
         this.metricManager.submitRegistrationMetric(
           METRIC_EVENT.REGISTRATION,
           REG_ACTION.REGISTER,
@@ -658,8 +664,8 @@ export class Registration implements IRegistration {
           undefined
         );
         this.startKeepaliveTimer(
-          this.deviceInfo.device?.uri as string,
-          this.deviceInfo.keepaliveInterval as number
+          this.lineInfo.device?.uri as string,
+          this.lineInfo.keepaliveInterval as number
         );
         this.initiateFailback();
         break;
@@ -671,7 +677,7 @@ export class Registration implements IRegistration {
           body,
           (clientError, finalError) => {
             if (finalError) {
-              this.emitter(LINE_EVENTS.ERROR, undefined, clientError);
+              this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
             } else {
               this.emitter(LINE_EVENTS.UNREGISTERED);
             }
@@ -752,7 +758,7 @@ export class Registration implements IRegistration {
               error,
               (clientError, finalError) => {
                 if (finalError) {
-                  this.emitter(LINE_EVENTS.ERROR, undefined, clientError);
+                  this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
                 }
                 this.sendMetric(
                   METRIC_EVENT.REGISTRATION,
@@ -801,8 +807,8 @@ export class Registration implements IRegistration {
     try {
       await this.deleteRegistration(
         this.activeMobiusUrl as string,
-        this.deviceInfo.device?.deviceId as string,
-        this.deviceInfo.device?.clientDeviceUri as string
+        this.lineInfo.device?.deviceId as string,
+        this.lineInfo.device?.clientDeviceUri as string
       );
     } catch (err) {
       log.warn(`Delete failed with Mobius`, {});
@@ -822,7 +828,7 @@ export class Registration implements IRegistration {
     name: METRIC_EVENT,
     action: REG_ACTION,
     metric: METRIC_TYPE,
-    error?: LineError | undefined
+    error?: CallingClientError | undefined
   ) {
     this.metricManager.submitRegistrationMetric(name, action, metric, error);
   }
@@ -847,15 +853,15 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * Restores the deviceInfo object in callingClient when receiving a 403 with error code 101.
+   * Restores the lineInfo object in callingClient when receiving a 403 with error code 101.
    *
    * @param callingClient - Instance of CallingClient.
    * @param restoreData - Data from Mobius with existing device information.
    * @returns Boolean.
    */
-  private getExistingDevice(restoreData: IDeviceInfo) {
+  private getExistingDevice(restoreData: ILineInfo) {
     if (restoreData.devices && restoreData.devices.length > 0) {
-      this.deviceInfo = {
+      this.lineInfo = {
         userId: restoreData.userId,
         device: restoreData.devices[0],
         keepaliveInterval: DEFAULT_KEEPALIVE_INTERVAL,
@@ -917,5 +923,7 @@ export const createRegistration = (
   serviceData: ServiceData,
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
+  callingClientEmitter: CallingClientEmitterCallback,
   logLevel: LOGGER
-): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel);
+): IRegistration =>
+  new Registration(webex, serviceData, mutex, lineEmitter, callingClientEmitter, logLevel);

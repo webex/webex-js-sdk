@@ -1,13 +1,13 @@
 import {METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../metrics/types';
-import {IDeviceInfo, MobiusStatus} from '../../common/types';
-import {LineError} from '../../Errors/catalog/LineError';
+import {ILineInfo, MobiusStatus} from '../../common/types';
+import {CallingClientError} from '../../Errors';
 
 export type Header = {
   [key: string]: string;
 };
 
 export type restoreRegistrationCallBack = (
-  restoreData: IDeviceInfo,
+  restoreData: ILineInfo,
   caller: string
 ) => Promise<boolean>;
 
@@ -17,7 +17,7 @@ export interface IRegistration {
   isDeviceRegistered: () => boolean;
   setStatus: (value: MobiusStatus) => void;
   getStatus: () => MobiusStatus;
-  getDeviceInfo: () => IDeviceInfo;
+  getDeviceInfo: () => ILineInfo;
   startKeepaliveTimer: (url: string, interval: number) => void;
   clearKeepaliveTimer: () => void;
   deregister: () => void;
@@ -25,7 +25,7 @@ export interface IRegistration {
     name: METRIC_EVENT,
     action: REG_ACTION,
     metric: METRIC_TYPE,
-    error?: LineError
+    error?: CallingClientError
   ) => void;
   setActiveMobiusUrl: (url: string) => void;
   getActiveMobiusUrl: () => string;
