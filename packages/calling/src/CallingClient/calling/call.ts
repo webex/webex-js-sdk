@@ -141,9 +141,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private serviceIndicator: ServiceIndicator;
 
-  private waitingForOK: boolean;
-
   private mediaNegotiationCompleted: boolean;
+
+  private receivedRoapOKSeq: number;
 
   /**
    * Getter to check if the call is muted or not.
@@ -214,7 +214,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.localRoapMessage = {} as RoapMessage;
 
     this.mobiusUrl = activeUrl;
-    this.waitingForOK = false;
+    this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
@@ -1133,7 +1133,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       this.remoteRoapMessage = message;
-    } else if (this.waitingForOK) {
+    } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote Offer Request for later handling', {
         file: CALL_FILE,
         method: this.handleIncomingRoapOfferRequest.name,
@@ -1545,8 +1545,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: 'handleRoapEstablished',
     });
 
-    this.waitingForOK = false;
     const {received, message} = event.data as {received: boolean; message: RoapMessage};
+
+    this.receivedRoapOKSeq = message.seq;
 
     if (!received) {
       log.info('Sending Media Ok to the remote End', {
@@ -1771,8 +1772,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingRoapAnswer.name,
       });
-
-      this.waitingForOK = true;
     } catch (err) {
       log.warn('MediaAnswer failed with Mobius', {
         file: CALL_FILE,
@@ -1824,7 +1823,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleIncomingRoapOffer.name,
       });
-    } else if (this.waitingForOK) {
+    } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote offer for later handling', {
         file: CALL_FILE,
         method: this.handleIncomingRoapOffer.name,
