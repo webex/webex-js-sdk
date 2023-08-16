@@ -16,7 +16,16 @@ describe('RtcMetrics', () => {
     metrics = new RtcMetrics(webex, 'mock-meeting-id');
   });
 
-  it('should send metrics requests', () => {
+  it('sendMetrics should send a webex request', () => {
+    assert.notCalled(webex.request);
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+    (metrics as any).sendMetrics();
+
+    assert.callCount(webex.request, 1);
+  });
+
+  it('should send metrics requests over time', () => {
     assert.notCalled(webex.request);
 
     metrics.addMetrics(FAKE_METRICS_ITEM);
@@ -29,5 +38,23 @@ describe('RtcMetrics', () => {
   it('should not send requests with no items in the queue', () => {
     clock.tick(60 * 1000);
     assert.notCalled(webex.request);
+  });
+
+  it('checkMetrics should send metrics if any exist in the queue', () => {
+    assert.notCalled(webex.request);
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+    (metrics as any).checkMetrics();
+
+    assert.callCount(webex.request, 1);
+  });
+
+  it('should clear out metrics on close', () => {
+    assert.notCalled(webex.request);
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+    metrics.closeMetrics();
+
+    assert.callCount(webex.request, 1);
   });
 });

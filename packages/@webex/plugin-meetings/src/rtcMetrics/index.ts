@@ -1,6 +1,5 @@
 import uuid from 'uuid';
-
-const appId = 'FFB51ED5-4319-4C55-8303-B1F2FCCDE231';
+import RTC_METRICS from './constants';
 
 /**
  * Rtc Metrics
@@ -31,6 +30,7 @@ export default class RtcMetrics {
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = uuid.v4();
+    // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
     setTimeout(this.checkMetrics.bind(this), 5 * 1000);
   }
 
@@ -81,7 +81,7 @@ export default class RtcMetrics {
       resource: 'metric/v2',
       headers: {
         type: 'webrtcMedia',
-        appId,
+        appId: RTC_METRICS.APP_ID,
       },
       body: {
         type: 'webrtc',

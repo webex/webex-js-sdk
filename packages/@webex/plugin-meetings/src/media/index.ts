@@ -178,13 +178,13 @@ Media.createMediaConnection = (
       config.bundlePolicy = bundlePolicy;
     }
 
-    const metrics = new RtcMetrics(webex, meetingId);
+    const rtcMetrics = new RtcMetrics(webex, meetingId);
 
     return new MultistreamRoapMediaConnection(
       config,
       meetingId,
-      (data) => metrics.addMetrics(data),
-      () => metrics.closeMetrics()
+      (data) => rtcMetrics.addMetrics(data),
+      () => rtcMetrics.closeMetrics()
     );
   }
 

@@ -152,46 +152,16 @@ describe('createMediaConnection', () => {
     );
   });
 
-  forEach(
-    [
-      {
-        sendAudio: true,
-        receiveAudio: true,
-        sendVideo: true,
-        receiveVideo: true,
-        enableMainAudio: true,
-        enableMainVideo: true,
-      },
-      {
-        sendAudio: true,
-        receiveAudio: false,
-        sendVideo: true,
-        receiveVideo: false,
-        enableMainAudio: true,
-        enableMainVideo: true,
-      },
-      {
-        sendAudio: false,
-        receiveAudio: true,
-        sendVideo: false,
-        receiveVideo: true,
-        enableMainAudio: true,
-        enableMainVideo: true,
-      },
-      {
-        sendAudio: false,
-        receiveAudio: false,
-        sendVideo: false,
-        receiveVideo: false,
-        enableMainAudio: false,
-        enableMainVideo: false,
-      },
-    ],
-    ({sendAudio, sendVideo, receiveAudio, receiveVideo, enableMainAudio, enableMainVideo}) => {
-      it(`sets enableMainVideo to ${enableMainVideo} and enableMainAudio to ${enableMainAudio} when sendAudio: ${sendAudio} sendVideo: ${sendVideo} receiveAudio: ${receiveAudio} receiveVideo: ${receiveVideo}`, () => {
-        const multistreamRoapMediaConnectionConstructorStub = sinon
-          .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
-          .returns(fakeRoapMediaConnection);
+  forEach([
+    {sendAudio: true, receiveAudio: true, sendVideo: true, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: true, receiveAudio: false, sendVideo: true, receiveVideo: false, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: false, receiveAudio: true, sendVideo: false, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
+    {sendAudio: false, receiveAudio: false, sendVideo: false, receiveVideo: false, enableMainAudio: false, enableMainVideo: false,},
+  ], ({sendAudio, sendVideo, receiveAudio, receiveVideo, enableMainAudio, enableMainVideo}) => {
+    it(`sets enableMainVideo to ${enableMainVideo} and enableMainAudio to ${enableMainAudio} when sendAudio: ${sendAudio} sendVideo: ${sendVideo} receiveAudio: ${receiveAudio} receiveVideo: ${receiveVideo}`, () => {
+      const multistreamRoapMediaConnectionConstructorStub = sinon
+        .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
+        .returns(fakeRoapMediaConnection);
 
         Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', {
           mediaProperties: {

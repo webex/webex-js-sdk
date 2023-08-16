@@ -4182,24 +4182,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/internal-media-core@npm:1.39.0":
-  version: 1.39.0
-  resolution: "@webex/internal-media-core@npm:1.39.0"
-  dependencies:
-    "@babel/runtime": "npm:^7.18.9"
-    "@webex/json-multistream": "npm:2.0.1"
-    "@webex/ts-sdp": "npm:1.4.1"
-    "@webex/web-client-media-engine": "npm:2.1.7"
-    detectrtc: "npm:^1.4.1"
-    events: "npm:^3.3.0"
-    typed-emitter: "npm:^2.1.0"
-    uuid: "npm:^8.3.2"
-    webrtc-adapter: "npm:^8.1.2"
-    xstate: "npm:^4.30.6"
-  checksum: 9fbfe43eea15293c9a4b20d267256e00c19d0d34788dc9fed6b1e327256177dab9a582f1e96a574fcf0f81edd1303c9cd79551e29044bdcfb66e366ec2cc8f1a
-  languageName: node
-  linkType: hard
-
 "@webex/internal-plugin-avatar@workspace:^, @webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar"
