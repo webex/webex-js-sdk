@@ -1225,6 +1225,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({turnServerInfo: undefined})
           );
           assert.calledOnce(meeting.setMercuryListener);
@@ -1295,6 +1297,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1546,6 +1550,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1765,15 +1771,15 @@ describe('plugin-meetings', () => {
             });
         };
 
-        const checkMediaConnectionCreated = ({mediaConnectionConfig, localTracks, direction, remoteQualityLevel, expectedDebugId}) => {
+        const checkMediaConnectionCreated = ({mediaConnectionConfig, localTracks, direction, remoteQualityLevel, expectedDebugId, meetingId}) => {
           if (isMultistream) {
             const {iceServers} = mediaConnectionConfig;
 
-            assert.calledOnceWithExactly(multistreamRoapMediaConnectionConstructorStub, {
+            assert.calledOnceWithMatch(multistreamRoapMediaConnectionConstructorStub, {
               iceServers,
               enableMainAudio: direction.audio !== 'inactive',
               enableMainVideo: true
-            }, expectedDebugId);
+            }, meetingId);
 
             Object.values(localTracks).forEach((track) => {
               if (track) {
@@ -1815,6 +1821,7 @@ describe('plugin-meetings', () => {
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1843,7 +1850,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1875,6 +1883,7 @@ describe('plugin-meetings', () => {
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1903,7 +1912,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1932,7 +1942,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
