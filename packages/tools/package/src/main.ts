@@ -1,6 +1,8 @@
 import { Commands } from '@webex/cli-tools';
 
-import { increment, list, scripts } from './commands';
+import {
+  increment, list, scripts, sync,
+} from './commands';
 
 /**
  * Main CLI execution workflow initializer.
@@ -13,6 +15,7 @@ const main = () => {
   commands.mount(increment);
   commands.mount(list);
   commands.mount(scripts);
+  commands.mount(sync);
 
   commands.process();
 };
