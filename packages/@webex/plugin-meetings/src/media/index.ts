@@ -5,10 +5,11 @@
 
 import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
 import {
-  LocalCameraTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalMicrophoneTrack,
+  LocalStream,
+  LocalCameraStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
@@ -18,7 +19,13 @@ import BrowserDetection from '../common/browser-detection';
 
 const {isBrowser} = BrowserDetection();
 
-type MultistreamConnectionConfig = ConstructorParameters<typeof MultistreamRoapMediaConnection>[0];
+// TODO: in internal-media-core add appropriate types in MultistreamConnectionConfig for enable main audio and video
+type MultistreamConnectionConfig = ConstructorParameters<
+  typeof MultistreamRoapMediaConnection
+>[0] & {
+  enableMainAudio: boolean;
+  enableMainVideo: boolean;
+};
 
 export type BundlePolicy = ConstructorParameters<
   typeof MultistreamRoapMediaConnection
@@ -125,10 +132,10 @@ Media.createMediaConnection = (
         sendVideo: boolean;
         sendShare: boolean;
       };
-      audioTrack?: LocalMicrophoneTrack;
-      videoTrack?: LocalCameraTrack;
-      shareVideoTrack?: LocalDisplayTrack;
-      shareAudioTrack?: LocalSystemAudioTrack;
+      audioStream?: LocalMicrophoneStream;
+      videoStream?: LocalCameraStream;
+      shareVideoStream?: LocalDisplayStream;
+      shareAudioStream?: LocalSystemAudioStream;
     };
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
@@ -180,7 +187,8 @@ Media.createMediaConnection = (
     throw new Error('mediaProperties have to be provided for non-multistream media connections');
   }
 
-  const {mediaDirection, audioTrack, videoTrack, shareVideoTrack} = mediaProperties;
+  const {mediaDirection, audioStream, videoStream, shareVideoStream, shareAudioStream} =
+    mediaProperties;
 
   return new RoapMediaConnection(
     {
@@ -201,11 +209,13 @@ Media.createMediaConnection = (
       },
     },
     {
+      // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
       localTracks: {
-        audio: audioTrack?.underlyingTrack,
-        video: videoTrack?.underlyingTrack,
-        screenShareVideo: shareVideoTrack?.underlyingTrack,
-      },
+        audio: audioStream?.outputStream.getTracks()[0],
+        video: videoStream?.outputStream.getTracks()[0],
+        screenShareVideo: shareVideoStream?.outputStream.getTracks()[0],
+        screenShareAudio: shareAudioStream?.outputStream.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core
+      } as unknown, // TODO: add type for screenShareAudio in internal-media-core
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
         video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
@@ -370,21 +380,23 @@ Media.toggleStream = () => {};
 
 /**
  * Stop input stream
- * @param {MediaTrack} track A media stream
+ * @param {LocalStream} stream A local stream
  * @returns {null}
  */
-Media.stopTracks = (track: any) => {
-  if (!track) {
+Media.stopStreams = (stream: LocalStream) => {
+  if (!stream) {
     return Promise.resolve();
   }
 
   return Promise.resolve().then(() => {
-    if (track && track.stop) {
+    if (stream && stream.stop) {
       try {
-        track.stop();
+        stream.stop();
       } catch (e) {
         LoggerProxy.logger.error(
-          `Media:index#stopTracks --> Unable to stop the track with state ${track.readyState}, error: ${e}`
+          `Media:index#stopTracks --> Unable to stop the track with state ${
+            stream.outputStream.getTracks()[0].readyState
+          }, error: ${e}`
         );
       }
     }
