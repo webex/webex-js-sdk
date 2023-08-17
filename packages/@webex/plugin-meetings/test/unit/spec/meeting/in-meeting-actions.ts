@@ -2,7 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import InMeetingActions from '@webex/plugin-meetings/src/meeting/in-meeting-actions';
 
 describe('plugin-meetings', () => {
-  describe('in-meeting-actions', () => {
+  describe.only('in-meeting-actions', () => {
     const checkValues = (actions, expected?) => {
       const expectedValues = {
         canInviteNewParticipants: null,
@@ -68,6 +68,7 @@ describe('plugin-meetings', () => {
         canShareContent: null,
         canTransferFile: null,
         canAnnotate: null,
+        canUseVoip: null,
         ...expected,
       };
 
@@ -141,6 +142,7 @@ describe('plugin-meetings', () => {
       'canShareContent',
       'canTransferFile',
       'canAnnotate',
+      'canUseVoip',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
