@@ -31,14 +31,13 @@ class Calling extends EventEmitter {
 
     if (webex) {
       this.webex = webex;
-      this.initializeClients();
     } else {
       webexConfig.config = merge({}, config, webexConfig.config);
 
       this.webex = new Webex(webexConfig);
 
       this.webex.once('ready', () => {
-        this.emit('calling:ready');
+        this.emit('ready');
       });
     }
   }
@@ -93,5 +92,20 @@ class Calling extends EventEmitter {
       : undefined;
   }
 }
+
+const createCalling = async ({webex, webexConfig, callingConfig}) => {
+  const callingInstance = new Calling({webex, webexConfig, callingConfig});
+  if (webex) {
+    await callingInstance.initializeClients();
+  }
+
+  return callingInstance;
+};
+
+Calling.init = async (attrs) => {
+  const callingInstance = await createCalling(attrs);
+
+  return callingInstance;
+};
 
 export default Calling;

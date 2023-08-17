@@ -1,13 +1,13 @@
 import {Mutex} from 'async-mutex';
 import {v4 as uuid} from 'uuid';
-import {ILineInfo, MobiusDeviceId, MobiusStatus, ServiceIndicator} from '../../common/types';
+import {IDeviceInfo, MobiusDeviceId, MobiusStatus, ServiceIndicator} from '../../common/types';
 import {ILine, LINE_EVENTS, LineEventTypes, LineStatus} from './types';
 import {LINE_FILE, KEEPALIVE_UTIL} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
-import {SdkConfig} from '../types';
+import {CallingClientConfig} from '../types';
 import {Eventing} from '../../Events/impl';
 import {LineError} from '../../Errors/catalog/LineError';
 import {LOGGER} from '../../Logger/types';
@@ -21,7 +21,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   #mutex: Mutex;
 
-  #sdkConfig: SdkConfig | undefined;
+  #sdkConfig?: CallingClientConfig;
 
   #sdkConnector: ISDKConnector;
 
@@ -33,31 +33,33 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public lineId: string;
 
-  public mobiusDeviceId: string | undefined;
+  public mobiusDeviceId?: string;
 
-  public phoneNumber: string | undefined;
+  public mobiusUri?: string;
 
-  public extension: string | undefined;
+  public phoneNumber?: string;
+
+  public extension?: string;
 
   public status: LineStatus;
 
-  public sipAddresses: string[] | undefined;
+  public sipAddresses?: string[];
 
-  public voicemail: string | undefined;
+  public voicemail?: string;
 
-  public lastSeen: string | undefined;
+  public lastSeen?: string;
 
-  public keepaliveInterval: number | undefined;
+  public keepaliveInterval?: number;
 
-  public callKeepaliveInterval: number | undefined;
+  public callKeepaliveInterval?: number;
 
-  public rehomingIntervalMin: number | undefined;
+  public rehomingIntervalMin?: number;
 
-  public rehomingIntervalMax: number | undefined;
+  public rehomingIntervalMax?: number;
 
-  public voicePortalNumber: number | undefined;
+  public voicePortalNumber?: number;
 
-  public voicePortalExtension: number | undefined;
+  public voicePortalExtension?: number;
 
   #primaryMobiusUris: string[];
 
@@ -68,40 +70,22 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     clientDeviceUri: string,
     status: LineStatus,
     mutex: Mutex,
-    config: SdkConfig | undefined,
     primaryMobiusUris: string[],
     backupMobiusUris: string[],
     callingClientEmitter: (event: EVENT_KEYS, clientError?: CallingClientError) => void,
-    mobiusDeviceId?: string,
+    config?: CallingClientConfig,
     phoneNumber?: string,
     extension?: string,
-    sipAddresses?: string[],
-    voicemail?: string,
-    lastSeen?: string,
-    keepaliveInterval?: number,
-    callKeepaliveInterval?: number,
-    rehomingIntervalMin?: number,
-    rehomingIntervalMax?: number,
-    voicePortalNumber?: number,
-    voicePortalExtension?: number
+    voicemail?: string
   ) {
     super();
+    this.lineId = uuid();
     this.userId = userId;
     this.clientDeviceUri = clientDeviceUri;
-    this.lineId = uuid();
-    this.mobiusDeviceId = mobiusDeviceId;
+    this.status = status;
     this.phoneNumber = phoneNumber;
     this.extension = extension;
-    this.status = status;
-    this.sipAddresses = sipAddresses;
     this.voicemail = voicemail;
-    this.lastSeen = lastSeen;
-    this.keepaliveInterval = keepaliveInterval;
-    this.callKeepaliveInterval = callKeepaliveInterval;
-    this.rehomingIntervalMin = rehomingIntervalMin;
-    this.rehomingIntervalMax = rehomingIntervalMax;
-    this.voicePortalNumber = voicePortalNumber;
-    this.voicePortalExtension = voicePortalExtension;
 
     this.#sdkConnector = SDKConnector;
     this.#webex = this.#sdkConnector.getWebex();
@@ -156,13 +140,13 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   /**
    * Request for the Device status.
    *
-   * @param lineInfo - Registered device Object.
+   * @param deviceInfo - Registered device Object.
    * @returns Promise.
    */
-  public async sendKeepAlive(lineInfo: ILineInfo): Promise<void> {
-    const deviceId = lineInfo.device?.deviceId as string;
-    const interval = lineInfo.keepaliveInterval as number;
-    const url = lineInfo.device?.uri as string;
+  private async sendKeepAlive(deviceInfo: IDeviceInfo): Promise<void> {
+    const deviceId = deviceInfo.device?.deviceId as string;
+    const interval = deviceInfo.keepaliveInterval as number;
+    const url = deviceInfo.device?.uri as string;
 
     const logContext = {
       file: LINE_FILE,
@@ -183,14 +167,38 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     }
   }
 
+  private normalizeLine(deviceInfo: IDeviceInfo) {
+    const {
+      device,
+      keepaliveInterval,
+      callKeepaliveInterval,
+      rehomingIntervalMin,
+      rehomingIntervalMax,
+      voicePortalNumber,
+      voicePortalExtension,
+    } = deviceInfo;
+
+    this.mobiusDeviceId = device?.deviceId;
+    this.mobiusUri = device?.uri;
+    this.lastSeen = device?.lastSeen;
+    this.sipAddresses = device?.addresses;
+    this.keepaliveInterval = keepaliveInterval;
+    this.callKeepaliveInterval = callKeepaliveInterval;
+    this.rehomingIntervalMin = rehomingIntervalMin;
+    this.rehomingIntervalMax = rehomingIntervalMax;
+    this.voicePortalNumber = voicePortalNumber;
+    this.voicePortalExtension = voicePortalExtension;
+  }
+
   /**
    * Line events emitter
    */
-  public lineEmitter = (event: LINE_EVENTS, lineInfo?: ILineInfo, lineError?: LineError) => {
+  public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => {
     switch (event) {
       case LINE_EVENTS.REGISTERED:
-        if (lineInfo) {
-          this.emit(event, lineInfo);
+        if (deviceInfo) {
+          this.normalizeLine(deviceInfo);
+          this.emit(event, this);
         }
         break;
       case LINE_EVENTS.UNREGISTERED:

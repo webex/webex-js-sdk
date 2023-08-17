@@ -5,7 +5,7 @@ import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../metrics/types';
-import {getMetricManager} from '../metrics';
+import getMetricManager from '../metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
@@ -15,7 +15,7 @@ import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
-  ILineInfo,
+  IDeviceInfo,
   MobiusStatus,
   ServiceData,
   WebexRequestPayload,
@@ -44,7 +44,6 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
-import {CallingClientError} from '../../Errors';
 import {CallingClientEmitterCallback} from '../types';
 import {EVENT_KEYS} from '../../Events/types';
 
@@ -71,10 +70,10 @@ export class Registration implements IRegistration {
   private rehomingIntervalMax: number;
   private mutex: Mutex;
   private metricManager: IMetricManager;
-  private emitter: LineEmitterCallback;
+  private lineEmitter: LineEmitterCallback;
   private callingClientEmitter: CallingClientEmitterCallback;
   private callManager: ICallManager;
-  private lineInfo: ILineInfo = {};
+  private deviceInfo: IDeviceInfo = {};
   private primaryMobiusUris: string[];
   private backupMobiusUris: string[];
   private registerRetry = false;
@@ -110,7 +109,7 @@ export class Registration implements IRegistration {
     this.mutex = mutex;
     this.callManager = getCallManager(this.webex, serviceData.indicator);
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
-    this.emitter = lineEmitter;
+    this.lineEmitter = lineEmitter;
     this.callingClientEmitter = callingClientEmitter;
 
     this.primaryMobiusUris = [];
@@ -168,7 +167,7 @@ export class Registration implements IRegistration {
       },
     });
 
-    this.emitter(LINE_EVENTS.UNREGISTERED);
+    this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
     return <WebexRequestPayload>response.json();
   }
@@ -179,7 +178,7 @@ export class Registration implements IRegistration {
    * @param url - backend service url for registration
    */
   private async postRegistration(url: string) {
-    const lineInfo = {
+    const deviceInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
       serviceData: this.serviceData,
@@ -189,10 +188,10 @@ export class Registration implements IRegistration {
       uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
-        [CISCO_DEVICE_URL]: lineInfo.clientDeviceUri,
+        [CISCO_DEVICE_URL]: deviceInfo.clientDeviceUri,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
-      body: lineInfo,
+      body: deviceInfo,
       service: ALLOWED_SERVICES.MOBIUS,
     });
   }
@@ -315,7 +314,7 @@ export class Registration implements IRegistration {
             );
             if (!abort && !this.isDeviceRegistered()) {
               emitFinalFailure((clientError: LineError) => {
-                this.emitter(LINE_EVENTS.ERROR, undefined, clientError);
+                this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
               }, loggerContext);
             }
           });
@@ -324,7 +323,7 @@ export class Registration implements IRegistration {
       }
     } else {
       emitFinalFailure((clientError: LineError) => {
-        this.emitter(LINE_EVENTS.ERROR, undefined, clientError);
+        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
       }, loggerContext);
     }
   }
@@ -434,55 +433,25 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * Register callbacks for network changes.
-   *
-   */
-  private async detectNetworkChange(flag = 'test') {
-    let retry = false;
-
-    setInterval(async () => {
-      if (
-        !this.webex.internal.mercury.connected &&
-        !retry &&
-        Object.keys(this.callManager.getActiveCalls()).length === 0
-      ) {
-        log.warn(`Network has flapped, waiting for mercury connection to be up`, {
-          file: REGISTRATION_FILE,
-          method: this.detectNetworkChange.name,
-        });
-
-        this.emitter(LINE_EVENTS.UNREGISTERED);
-        this.clearKeepaliveTimer();
-
-        retry = true;
-      }
-
-      if (retry && this.webex.internal.mercury.connected) {
-        retry = await this.handleConnectionRestoration(retry);
-      }
-    }, NETWORK_FLAP_TIMEOUT);
-  }
-
-  /**
    * Updates rehomingIntervalMin and rehomingIntervalMax values
    * if received in registration response from a primary mobius
    * server.
    *
-   * @param lineInfo - Line info.
+   * @param deviceInfo - Line info.
    */
-  private setIntervalValues(lineInfo: ILineInfo) {
+  private setIntervalValues(deviceInfo: IDeviceInfo) {
     if (this.primaryMobiusUris.indexOf(this.activeMobiusUrl) !== -1) {
-      this.rehomingIntervalMin = lineInfo?.rehomingIntervalMin
-        ? lineInfo.rehomingIntervalMin
+      this.rehomingIntervalMin = deviceInfo?.rehomingIntervalMin
+        ? deviceInfo.rehomingIntervalMin
         : DEFAULT_REHOMING_INTERVAL_MIN;
-      this.rehomingIntervalMax = lineInfo?.rehomingIntervalMax
-        ? lineInfo.rehomingIntervalMax
+      this.rehomingIntervalMax = deviceInfo?.rehomingIntervalMax
+        ? deviceInfo.rehomingIntervalMax
         : DEFAULT_REHOMING_INTERVAL_MAX;
     }
   }
 
-  public getDeviceInfo(): ILineInfo {
-    return this.lineInfo;
+  public getDeviceInfo(): IDeviceInfo {
+    return this.deviceInfo;
   }
 
   /**
@@ -571,7 +540,7 @@ export class Registration implements IRegistration {
    *
    */
   private restoreRegistrationCallBack() {
-    return async (restoreData: ILineInfo, caller: string) => {
+    return async (restoreData: IDeviceInfo, caller: string) => {
       const logContext = {file: REGISTRATION_FILE, method: caller};
       if (!this.isRegRetry()) {
         log.info('Registration restoration in progress.', logContext);
@@ -588,9 +557,9 @@ export class Registration implements IRegistration {
 
           return finalError;
         }
-        this.emitter(LINE_EVENTS.UNREGISTERED);
+        this.lineEmitter(LINE_EVENTS.UNREGISTERED);
       } else {
-        this.emitter(LINE_EVENTS.UNREGISTERED);
+        this.lineEmitter(LINE_EVENTS.UNREGISTERED);
       }
 
       return false;
@@ -643,7 +612,7 @@ export class Registration implements IRegistration {
       try {
         abort = false;
         this.registrationStatus = MobiusStatus.DEFAULT;
-        this.emitter(LINE_EVENTS.CONNECTING);
+        this.lineEmitter(LINE_EVENTS.CONNECTING);
         log.log(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
           method: this.attemptRegistrationWithServers.name,
@@ -651,12 +620,12 @@ export class Registration implements IRegistration {
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
 
-        this.lineInfo = resp.body as ILineInfo;
-        this.emitter(LINE_EVENTS.REGISTERED, resp.body as ILineInfo);
+        this.deviceInfo = resp.body as IDeviceInfo;
+        this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         this.registrationStatus = MobiusStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
-        this.setIntervalValues(this.lineInfo);
-        this.metricManager.setDeviceInfo(this.lineInfo);
+        this.setIntervalValues(this.deviceInfo);
+        this.metricManager.setDeviceInfo(this.deviceInfo);
         this.metricManager.submitRegistrationMetric(
           METRIC_EVENT.REGISTRATION,
           REG_ACTION.REGISTER,
@@ -664,8 +633,8 @@ export class Registration implements IRegistration {
           undefined
         );
         this.startKeepaliveTimer(
-          this.lineInfo.device?.uri as string,
-          this.lineInfo.keepaliveInterval as number
+          this.deviceInfo.device?.uri as string,
+          this.deviceInfo.keepaliveInterval as number
         );
         this.initiateFailback();
         break;
@@ -679,9 +648,9 @@ export class Registration implements IRegistration {
             if (finalError) {
               this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
             } else {
-              this.emitter(LINE_EVENTS.UNREGISTERED);
+              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
             }
-            this.sendMetric(
+            this.metricManager.submitRegistrationMetric(
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
@@ -742,7 +711,7 @@ export class Registration implements IRegistration {
             const res = await this.postKeepAlive(url);
             log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
             if (keepAliveRetryCount > 0) {
-              this.emitter(LINE_EVENTS.RECONNECTED);
+              this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
             keepAliveRetryCount = 0;
           } catch (err: unknown) {
@@ -760,7 +729,7 @@ export class Registration implements IRegistration {
                 if (finalError) {
                   this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
                 }
-                this.sendMetric(
+                this.metricManager.submitRegistrationMetric(
                   METRIC_EVENT.REGISTRATION,
                   REG_ACTION.KEEPALIVE_FAILURE,
                   METRIC_TYPE.BEHAVIORAL,
@@ -774,14 +743,14 @@ export class Registration implements IRegistration {
               this.setStatus(MobiusStatus.DEFAULT);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
-              this.emitter(LINE_EVENTS.UNREGISTERED);
+              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
               if (!abort) {
                 /* In case of non-final error, re-attempt registration */
                 await this.reconnectOnFailure(this.startKeepaliveTimer.name);
               }
             } else {
-              this.emitter(LINE_EVENTS.RECONNECTING);
+              this.lineEmitter(LINE_EVENTS.RECONNECTING);
             }
           }
         }
@@ -807,8 +776,8 @@ export class Registration implements IRegistration {
     try {
       await this.deleteRegistration(
         this.activeMobiusUrl as string,
-        this.lineInfo.device?.deviceId as string,
-        this.lineInfo.device?.clientDeviceUri as string
+        this.deviceInfo.device?.deviceId as string,
+        this.deviceInfo.device?.clientDeviceUri as string
       );
     } catch (err) {
       log.warn(`Delete failed with Mobius`, {});
@@ -816,21 +785,6 @@ export class Registration implements IRegistration {
 
     this.clearKeepaliveTimer();
     this.setStatus(MobiusStatus.DEFAULT);
-  }
-
-  /**
-   * @param name - Name of the metric.
-   * @param action - Action that the metric is for.
-   * @param metric - Type of metric (Operational/Behavioral).
-   * @param error - Error details if an error metric is being sent.
-   */
-  public sendMetric(
-    name: METRIC_EVENT,
-    action: REG_ACTION,
-    metric: METRIC_TYPE,
-    error?: CallingClientError | undefined
-  ) {
-    this.metricManager.submitRegistrationMetric(name, action, metric, error);
   }
 
   /**
@@ -853,15 +807,15 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * Restores the lineInfo object in callingClient when receiving a 403 with error code 101.
+   * Restores the deviceInfo object in callingClient when receiving a 403 with error code 101.
    *
    * @param callingClient - Instance of CallingClient.
    * @param restoreData - Data from Mobius with existing device information.
    * @returns Boolean.
    */
-  private getExistingDevice(restoreData: ILineInfo) {
+  private getExistingDevice(restoreData: IDeviceInfo) {
     if (restoreData.devices && restoreData.devices.length > 0) {
-      this.lineInfo = {
+      this.deviceInfo = {
         userId: restoreData.userId,
         device: restoreData.devices[0],
         keepaliveInterval: DEFAULT_KEEPALIVE_INTERVAL,

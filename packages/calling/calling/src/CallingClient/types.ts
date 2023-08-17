@@ -17,7 +17,7 @@ interface DiscoveryConfig {
   region: string;
 }
 
-export interface SdkConfig {
+export interface CallingClientConfig {
   logger?: LoggerConfig;
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;

@@ -32,7 +32,7 @@ import {
   DecodeType,
   DisplayInformation,
   HTTP_METHODS,
-  ILineInfo,
+  IDeviceInfo,
   MobiusServers,
   MobiusStatus,
   SORT,
@@ -343,7 +343,7 @@ export async function handleRegistrationErrors(
     }
     case ERROR_CODE.FORBIDDEN: {
       log.warn(`403 Forbidden`, loggerContext);
-      const errorBody = <ILineInfo>err.body;
+      const errorBody = <IDeviceInfo>err.body;
 
       if (!errorBody) {
         log.warn('Error response has no body, throwing default error', loggerContext);
@@ -472,7 +472,7 @@ export async function handleCallErrors(
     /* follow through as both 403 and 503 can have similar error codes */
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
-      const errorBody = <ILineInfo>err.body;
+      const errorBody = <IDeviceInfo>err.body;
 
       if (!errorBody) {
         log.warn('Error response has no body, throwing default error', loggerContext);

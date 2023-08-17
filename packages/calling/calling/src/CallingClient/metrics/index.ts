@@ -1,7 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import {CallError, CallingClientError} from '../../Errors';
 import {METRIC_FILE, VERSION} from '../constants';
-import {CallId, CorrelationId, ILineInfo, ServiceIndicator} from '../../common/types';
+import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
 import log from '../../Logger';
@@ -14,7 +14,7 @@ let metricManager: IMetricManager;
 class MetricManager implements IMetricManager {
   private webex: WebexSDK;
 
-  private lineInfo?: ILineInfo;
+  private deviceInfo?: IDeviceInfo;
 
   private serviceIndicator: ServiceIndicator;
 
@@ -29,10 +29,10 @@ class MetricManager implements IMetricManager {
   }
 
   /**
-   * @param lineInfo - DeviceInfo object.
+   * @param deviceInfo - DeviceInfo object.
    */
-  public setDeviceInfo(lineInfo: ILineInfo) {
-    this.lineInfo = lineInfo;
+  public setDeviceInfo(deviceInfo: IDeviceInfo) {
+    this.deviceInfo = deviceInfo;
   }
 
   /**
@@ -54,12 +54,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.lineInfo?.device?.deviceId,
+            device_id: this.deviceInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.lineInfo?.device?.clientDeviceUri,
-            mobius_url: this.lineInfo?.device?.uri,
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: VERSION,
           },
           type,
@@ -72,12 +72,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.lineInfo?.device?.deviceId,
+              device_id: this.deviceInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.lineInfo?.device?.clientDeviceUri,
-              mobius_url: this.lineInfo?.device?.uri,
+              device_url: this.deviceInfo?.device?.clientDeviceUri,
+              mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: VERSION,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
@@ -124,12 +124,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.lineInfo?.device?.deviceId,
+            device_id: this.deviceInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.lineInfo?.device?.clientDeviceUri,
-            mobius_url: this.lineInfo?.device?.uri,
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: VERSION,
             call_id: callId,
             correlation_id: correlationId,
@@ -144,12 +144,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.lineInfo?.device?.deviceId,
+              device_id: this.deviceInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.lineInfo?.device?.clientDeviceUri,
-              mobius_url: this.lineInfo?.device?.uri,
+              device_url: this.deviceInfo?.device?.clientDeviceUri,
+              mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: VERSION,
               call_id: callId,
               correlation_id: correlationId,
@@ -202,12 +202,12 @@ class MetricManager implements IMetricManager {
         data = {
           tags: {
             action: metricAction,
-            device_id: this.lineInfo?.device?.deviceId,
+            device_id: this.deviceInfo?.device?.deviceId,
             service_indicator: this.serviceIndicator,
           },
           fields: {
-            device_url: this.lineInfo?.device?.clientDeviceUri,
-            mobius_url: this.lineInfo?.device?.uri,
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: VERSION,
             call_id: callId,
             correlation_id: correlationId,
@@ -224,12 +224,12 @@ class MetricManager implements IMetricManager {
           data = {
             tags: {
               action: metricAction,
-              device_id: this.lineInfo?.device?.deviceId,
+              device_id: this.deviceInfo?.device?.deviceId,
               service_indicator: this.serviceIndicator,
             },
             fields: {
-              device_url: this.lineInfo?.device?.clientDeviceUri,
-              mobius_url: this.lineInfo?.device?.uri,
+              device_url: this.deviceInfo?.device?.clientDeviceUri,
+              mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: VERSION,
               call_id: callId,
               correlation_id: correlationId,
@@ -262,10 +262,12 @@ class MetricManager implements IMetricManager {
  * @param webex - Webex object to communicate with metrics microservice.
  * @param indicator - Service Indicator.
  */
-export const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): IMetricManager => {
+const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): IMetricManager => {
   if (!metricManager) {
     metricManager = new MetricManager(webex, indicator);
   }
 
   return metricManager;
 };
+
+export default getMetricManager;

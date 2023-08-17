@@ -92,13 +92,16 @@ export type RegionInfo = {
   clientRegion: string;
 };
 
-export interface ILineInfo {
+export interface IDeviceInfo {
   userId?: string;
   errorCode?: number;
 
   device?: DeviceType;
   devices?: DeviceType[];
   keepaliveInterval?: number;
+  callKeepaliveInterval?: number;
+  voicePortalNumber?: number;
+  voicePortalExtension?: number;
   // cSpell:disable
   rehomingIntervalMin?: number;
   rehomingIntervalMax?: number;

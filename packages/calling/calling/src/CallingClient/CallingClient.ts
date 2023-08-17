@@ -29,7 +29,7 @@ import {
   MobiusServers,
   WebexRequestPayload,
 } from '../common/types';
-import {ICallingClient, SdkConfig} from './types';
+import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
 import log from '../Logger';
 import {getCallManager} from './calling/callManager';
@@ -42,16 +42,15 @@ import {
   DISCOVERY_URL,
   GET_MOBIUS_SERVERS_UTIL,
   IP_ENDPOINT,
-  LINE_FILE,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
-  REGISTRATION_FILE,
   NETWORK_FLAP_TIMEOUT,
 } from './constants';
 import {CallingClientError} from '../Errors';
 import Line from './line';
 import {ILine, LINE_EVENTS, LineStatus} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from './metrics/types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from './metrics/types';
+import getMetricManager from './metrics';
 
 /**
  *
@@ -65,7 +64,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private callManager: ICallManager;
 
-  private sdkConfig: SdkConfig | undefined;
+  private metricManager: IMetricManager;
+
+  private sdkConfig?: CallingClientConfig;
 
   private primaryMobiusUris: string[];
 
@@ -79,7 +80,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @param webex - A webex instance.
    * @param config - Config to start the CallingClient with.
    */
-  constructor(webex: WebexSDK, config?: SdkConfig) {
+  constructor(webex: WebexSDK, config?: CallingClientConfig) {
     super();
     this.sdkConnector = SDKConnector;
 
@@ -98,6 +99,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     validateServiceData(serviceData);
 
     this.callManager = getCallManager(this.webex, serviceData.indicator);
+    this.metricManager = getMetricManager(this.webex, serviceData.indicator);
 
     this.mediaEngine = Media;
 
@@ -112,7 +114,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.registerCallsClearedListener();
   }
 
+  // async calls required to run after constructor
   public async init() {
+    await this.getMobiusServers();
     await this.createLine();
 
     /* Better to run the timer once rather than after every registration */
@@ -149,6 +153,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
   }
 
+  /**
+   * Register callbacks for network changes.
+   */
   private async detectNetworkChange() {
     let retry = false;
 
@@ -163,7 +170,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         !Object.keys(this.callManager.getActiveCalls()).length
       ) {
         log.warn(`Network has flapped, waiting for mercury connection to be up`, {
-          file: REGISTRATION_FILE,
+          file: CALLING_CLIENT_FILE,
           method: this.detectNetworkChange.name,
         });
 
@@ -212,14 +219,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
     } catch (err: unknown) {
-      // this is a temporary logic to get registration obj
-      // it will change once we have proper lineId and multiple lines as well
-      const {registration} = Object.values(this.lineDict)[0];
-
       handleRegistrationErrors(
         err as WebexRequestPayload,
         (clientError) => {
-          registration.sendMetric(
+          this.metricManager.submitRegistrationMetric(
             METRIC_EVENT.REGISTRATION_ERROR,
             REG_ACTION.REGISTER,
             METRIC_TYPE.BEHAVIORAL,
@@ -227,7 +230,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           );
           this.emit(EVENT_KEYS.ERROR, clientError);
         },
-        {method: GET_MOBIUS_SERVERS_UTIL, file: LINE_FILE}
+        {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
       );
       regionInfo.clientRegion = '';
       regionInfo.countryCode = '';
@@ -256,14 +259,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
       log.info('Updating region and country from the SDK config', {
-        file: LINE_FILE,
+        file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
     } else {
       log.info('Updating region and country through Region discovery', {
-        file: LINE_FILE,
+        file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
 
@@ -305,14 +308,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           '' as LogContext
         );
       } catch (err: unknown) {
-        // this is a temporary logic to get registration obj
-        // it will change once we have proper lineId and multiple lines as well
-        const {registration} = Object.values(this.lineDict)[0];
-
         handleRegistrationErrors(
           err as WebexRequestPayload,
           (clientError) => {
-            registration.sendMetric(
+            this.metricManager.submitRegistrationMetric(
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
@@ -320,7 +319,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             );
             this.emit(EVENT_KEYS.ERROR, clientError);
           },
-          {method: GET_MOBIUS_SERVERS_UTIL, file: LINE_FILE}
+          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
         );
 
         useDefault = true;
@@ -477,29 +476,20 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     );
   }
 
-  private async callMobiusServers(): Promise<void> {
-    /* Don't do a discovery if we already have the servers list */
-    if (!this.primaryMobiusUris.length) {
-      await this.getMobiusServers();
-    }
-  }
-
   /**
    * Creates line object inside calling client per user
    * NOTE: currently multiple lines are not supported
    */
   private async createLine(): Promise<void> {
-    await this.callMobiusServers();
-
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
       LineStatus.INACTIVE,
       this.mutex,
-      this.sdkConfig,
       this.primaryMobiusUris,
       this.backupMobiusUris,
-      this.callingClientEmitter
+      this.callingClientEmitter,
+      this.sdkConfig
     );
 
     this.lineDict[line.lineId] = line;
@@ -508,6 +498,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   /**
    * Retrieves details of all the line objects belonging to a User
    * NOTE: currently multiple lines are not supported
+   * so this API will return a single line object
    */
   public getLines(): Record<string, ILine> {
     return this.lineDict;
@@ -520,10 +511,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
  */
 export const createClient = async (
   webex: WebexSDK,
-  config?: SdkConfig
+  config?: CallingClientConfig
 ): Promise<ICallingClient> => {
-  const callingInstance = new CallingClient(webex, config);
-  await callingInstance.init();
+  const callingClientInstance = new CallingClient(webex, config);
+  await callingClientInstance.init();
 
-  return callingInstance;
+  return callingClientInstance;
 };
