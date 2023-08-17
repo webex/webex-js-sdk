@@ -2,7 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import InMeetingActions from '@webex/plugin-meetings/src/meeting/in-meeting-actions';
 
 describe('plugin-meetings', () => {
-  describe.only('in-meeting-actions', () => {
+  describe('in-meeting-actions', () => {
     const checkValues = (actions, expected?) => {
       const expectedValues = {
         canInviteNewParticipants: null,
