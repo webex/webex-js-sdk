@@ -6,7 +6,6 @@
  using webex.request.mockReturnValue() or webex.request.mockReturnValueOnce().
 */
 import {MediaConnectionConfig} from '@webex/internal-media-core/dist/types/MediaConnection';
-import {ReceiveOptions} from '@webex/internal-media-core/dist/types/MediaConnection/MediaConnection';
 import platform from 'platform';
 import {MobiusServers} from './types';
 
@@ -106,7 +105,14 @@ export const registration = {
 
 export const mediaConnection = new MediaSDKMock.RoapMediaConnection(
   {} as MediaConnectionConfig,
-  {send: {}, receive: {} as ReceiveOptions},
+  {
+    localTracks: {},
+    direction: {
+      audio: 'sendrecv',
+      video: 'sendrecv',
+      screenShareVideo: 'sendrecv',
+    },
+  },
   ''
 );
 

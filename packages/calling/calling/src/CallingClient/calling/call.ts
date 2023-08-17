@@ -1,5 +1,18 @@
 /* eslint-disable valid-jsdoc */
-import {RoapMediaConnection, Event} from '@webex/internal-media-core';
+import {
+  // RoapMediaConnection,
+  Event,
+  LocalStream,
+  MediaType,
+  MultistreamRoapMediaConnection,
+  SendSlot,
+} from '@webex/internal-media-core';
+import {
+  LocalCameraStream,
+  LocalMicrophoneStream,
+  createMicrophoneStream,
+  createCameraStream,
+} from '@webex/media-helpers';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -143,6 +156,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private waitingForOK: boolean;
 
+  private microphoneStream: LocalMicrophoneStream;
+
+  private cameraStream: LocalCameraStream;
+
+  private sendSlot: SendSlot;
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -213,6 +232,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.mobiusUrl = activeUrl;
     this.waitingForOK = false;
+    this.sendSlot = {} as SendSlot;
+    this.microphoneStream = undefined;
+    this.cameraStream = undefined;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -1859,31 +1881,50 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack - MediaStreamTrack.
    * @param settings.debugId - String.
    */
-  private initMediaConnection(settings: {localAudioTrack: MediaStreamTrack; debugId?: string}) {
-    const mediaConnection = new RoapMediaConnection(
+  private initMediaConnection(settings: {localAudioStream: LocalStream; debugId?: string}) {
+    // const mediaConnection = new RoapMediaConnection(
+    //   {
+    //     skipInactiveTransceivers: true,
+    //     iceServers: [],
+    //     sdpMunging: {
+    //       convertPort9to0: true,
+    //       addContentSlides: false,
+    //     },
+    //   },
+    //   {
+    //     localTracks: {
+    //       audio: settings.localAudioTrack,
+    //     },
+    //     direction: {
+    //       audio: 'sendrecv',
+    //       video: 'sendrecv',
+    //       screenShareVideo: 'sendrecv',
+    //     },
+    //   },
+    //   settings.debugId || `WebexCallSDK-${this.correlationId}`
+    // );
+
+    const mediaConnection = new MultistreamRoapMediaConnection(
       {
-        skipInactiveTransceivers: true,
         iceServers: [],
-        sdpMunging: {
-          convertPort9to0: true,
-          addContentSlides: false,
-        },
-      },
-      {
-        send: {
-          audio: settings.localAudioTrack,
-        },
-        receive: {
-          audio: true,
-          video: false,
-          screenShareVideo: false,
-        },
       },
       settings.debugId || `WebexCallSDK-${this.correlationId}`
     );
 
     this.mediaConnection = mediaConnection;
+
+    this.sendSlot = this.mediaConnection.createSendSlot(MediaType.AudioMain);
+
+    this.sendSlot.publishStream(settings.localAudioStream);
   }
+
+  public createCallingMicrophoneStream = (audioConstraints: any): LocalMicrophoneStream => {
+    this.microphoneStream = createMicrophoneStream(audioConstraints);
+  };
+
+  public createCallingCameraStream = (videoConstraints: any): LocalMicrophoneStream => {
+    this.cameraStream = createCameraStream(videoConstraints);
+  };
 
   /**
    *
@@ -1956,8 +1997,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async answer(settings: {localAudioTrack: MediaStreamTrack}) {
-    settings.localAudioTrack.enabled = true;
+  public async answer(settings: {localAudioStream: LocalStream}) {
+    // settings.localAudioStream.localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(settings);
@@ -1979,8 +2020,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async dial(settings: {localAudioTrack: MediaStreamTrack}) {
-    settings.localAudioTrack.enabled = true;
+  public async dial(settings: {localAudioStream: LocalStream}) {
+    // settings.localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(settings);
