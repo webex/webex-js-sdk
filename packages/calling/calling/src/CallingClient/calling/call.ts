@@ -1,18 +1,19 @@
 /* eslint-disable valid-jsdoc */
 import {
-  // RoapMediaConnection,
+  AudioDeviceConstraints,
   Event,
   LocalStream,
   MediaType,
   MultistreamRoapMediaConnection,
   SendSlot,
+  VideoDeviceConstraints,
 } from '@webex/internal-media-core';
-import {
-  LocalCameraStream,
-  LocalMicrophoneStream,
-  createMicrophoneStream,
-  createCameraStream,
-} from '@webex/media-helpers';
+// import {
+//   LocalCameraStream,
+//   LocalMicrophoneStream,
+//   createMicrophoneStream,
+//   createCameraStream,
+// } from '@webex/media-helpers';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -156,9 +157,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private waitingForOK: boolean;
 
-  private microphoneStream: LocalMicrophoneStream;
+  // private microphoneStream: LocalMicrophoneStream;
 
-  private cameraStream: LocalCameraStream;
+  // private cameraStream: LocalCameraStream;
 
   private sendSlot: SendSlot;
 
@@ -233,8 +234,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.mobiusUrl = activeUrl;
     this.waitingForOK = false;
     this.sendSlot = {} as SendSlot;
-    this.microphoneStream = undefined;
-    this.cameraStream = undefined;
+    // this.microphoneStream = undefined;
+    // this.cameraStream = undefined;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -1918,13 +1919,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.sendSlot.publishStream(settings.localAudioStream);
   }
 
-  public createCallingMicrophoneStream = (audioConstraints: any): LocalMicrophoneStream => {
-    this.microphoneStream = createMicrophoneStream(audioConstraints);
-  };
+  // public createCallingMicrophoneStream = (
+  //   audioConstraints: AudioDeviceConstraints
+  // ): LocalMicrophoneStream => {
+  //   this.microphoneStream = createMicrophoneStream(audioConstraints);
+  // };
 
-  public createCallingCameraStream = (videoConstraints: any): LocalMicrophoneStream => {
-    this.cameraStream = createCameraStream(videoConstraints);
-  };
+  // public createCallingCameraStream = (
+  //   videoConstraints: VideoDeviceConstraints
+  // ): LocalMicrophoneStream => {
+  //   this.cameraStream = createCameraStream(videoConstraints);
+  // };
 
   /**
    *
