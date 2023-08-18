@@ -5802,8 +5802,8 @@ describe('plugin-meetings', () => {
             },
             {
               actionName: 'canEnableVideo',
-              requiredDisplayHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+              requiredDisplayHints: [],
+              requiredPolicies: [],
               enableUnifiedMeetings: false,
             },
             {
