@@ -2588,14 +2588,17 @@ export default class Meeting extends StatelessWebexPlugin {
             displayHints: payload.info.userDisplayHints,
           }),
           canEnableVideo:
-            ControlsOptionsUtil.hasHints({
+            (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
               displayHints: payload.info.userDisplayHints,
             }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-              policies: this.selfUserPolicies,
-            }),
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
           canDisableVideo: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
