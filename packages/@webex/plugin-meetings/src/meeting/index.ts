@@ -1258,6 +1258,14 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns whether this meeting is a Locus CALL
+   * @returns {Boolean}
+   */
+  isLocusCall() {
+    return this.type === 'CALL';
+  }
+
+  /**
    * Fetches meeting information.
    * @param {Object} options
    * @param {String} [options.password] optional
@@ -2606,14 +2614,17 @@ export default class Meeting extends StatelessWebexPlugin {
             policies: this.selfUserPolicies,
           }),
           canShareApplication:
-            ControlsOptionsUtil.hasHints({
+            (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               displayHints: payload.info.userDisplayHints,
             }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-              policies: this.selfUserPolicies,
-            }),
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
           canShareCamera:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
@@ -2624,18 +2635,22 @@ export default class Meeting extends StatelessWebexPlugin {
               policies: this.selfUserPolicies,
             }),
           canShareDesktop:
-            ControlsOptionsUtil.hasHints({
+            (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               displayHints: payload.info.userDisplayHints,
             }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-              policies: this.selfUserPolicies,
-            }),
-          canShareContent: ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-            displayHints: payload.info.userDisplayHints,
-          }),
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
+          canShareContent:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+              displayHints: payload.info.userDisplayHints,
+            }) || this.isLocusCall(),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
@@ -5200,17 +5215,23 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
-    // create the actual media connection
-    const mc = Media.createMediaConnection(this.isMultistream, this.getMediaConnectionDebugId(), {
-      mediaProperties: this.mediaProperties,
-      remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
-      // @ts-ignore - config coming from registerPlugin
-      enableRtx: this.config.enableRtx,
-      // @ts-ignore - config coming from registerPlugin
-      enableExtmap: this.config.enableExtmap,
-      turnServerInfo,
-      bundlePolicy,
-    });
+    const mc = Media.createMediaConnection(
+      this.isMultistream,
+      this.getMediaConnectionDebugId(),
+      // @ts-ignore
+      this.webex,
+      this.id,
+      {
+        mediaProperties: this.mediaProperties,
+        remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+        // @ts-ignore - config coming from registerPlugin
+        enableRtx: this.config.enableRtx,
+        // @ts-ignore - config coming from registerPlugin
+        enableExtmap: this.config.enableExtmap,
+        turnServerInfo,
+        bundlePolicy,
+      }
+    );
 
     this.mediaProperties.setMediaPeerConnection(mc);
     this.setupMediaConnectionListeners();

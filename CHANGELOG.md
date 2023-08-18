@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.190](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.189...v3.0.0-beta.190) (2023-08-16)
+
+
+### Features
+
+* **metrics:** add webrtc metrics ([#2936](https://github.com/webex/webex-js-sdk/issues/2936)) ([2098cd1](https://github.com/webex/webex-js-sdk/commit/2098cd18afb25facf2769037044b43a3e7ca6879))
+
+## [3.0.0-beta.189](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.188...v3.0.0-beta.189) (2023-08-14)
+
+
+### Features
+
+* **meetings:** ignore policies for sharing if type is CALL ([#3002](https://github.com/webex/webex-js-sdk/issues/3002)) ([4907e6b](https://github.com/webex/webex-js-sdk/commit/4907e6b0faa48d3c53fc47b1bfcc59d1c37147ef))
+
 ## [3.0.0-beta.188](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.187...v3.0.0-beta.188) (2023-08-11)
 
 
