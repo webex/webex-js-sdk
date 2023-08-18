@@ -4101,6 +4101,12 @@ export default class Meeting extends StatelessWebexPlugin {
         opened LLM web socket connection successfully.`
       );
 
+      if (!this.inMeetingActions.isClosedCaptionActive) {
+        LoggerProxy.logger.error(
+          `Meeting:index#receiveTranscription --> Transcription cannot be started until a licensed user enables it`
+        );
+      }
+
       // retrieve and pass the payload
       this.transcription.subscribe((payload) => {
         Trigger.trigger(
