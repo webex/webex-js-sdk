@@ -1,5 +1,7 @@
 # Contributing
 
+> ## Note: The master branch is being locked, and there won't be any more releases from that branch. Kindly initiate new pull requests against the next branch instead.
+
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 
