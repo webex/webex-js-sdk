@@ -65,7 +65,7 @@ export default class LocusInfo extends EventsScope {
   mainSessionLocusCache: any;
   /**
    * Constructor
-   * @param {boolean} updateMeeting true if the meeting should be updated
+   * @param {function} updateMeeting callback to update the meeting object from an object
    * @param {object} webex
    * @param {string} meetingId
    * @returns {undefined}
@@ -1111,8 +1111,7 @@ export default class LocusInfo extends EventsScope {
           file: 'locus-info',
           function: 'updateMeetingInfo',
         },
-        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
-        {info: parsedInfo.current, self}
+        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED
       );
 
       if (parsedInfo.updates.isLocked) {
