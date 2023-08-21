@@ -129,3 +129,9 @@ export type SubmitMQE = (args: {
   payload: SubmitMQEPayload;
   options: any;
 }) => void;
+
+export type PrepareMetricFetchOptions = (args: {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options: SubmitClientEventOptions;
+}) => Promise<any>;

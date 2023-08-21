@@ -146,6 +146,36 @@ class Metrics extends WebexPlugin {
   }
 
   /**
+   * Returns a promise that will resolve to fetch options for submitting a metric.
+   * @public
+   * @param {Object} arg
+   * @param {String} arg.name - event name
+   * @param {Object} arg.payload - event payload
+   * @param {Object} arg.options - other options
+   * @returns {Promise} promise that resolves to options to be used with fetch
+   */
+  public async prepareMetricFetchOptions({
+    name,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    payload?: RecursivePartial<ClientEvent['payload']>;
+    options: SubmitClientEventOptions;
+  }) {
+    // TODO: what to do with this?
+    // this.callDiagnosticLatencies.saveTimestamp({
+    //   key: name,
+    //   options: {meetingId: options?.meetingId},
+    // });
+    return this.callDiagnosticMetrics.prepareMetricFetchOptions({
+      name,
+      payload,
+      options,
+    });
+  }
+
+  /**
    * Call Analyzer: Client Event
    * @public
    * @param args

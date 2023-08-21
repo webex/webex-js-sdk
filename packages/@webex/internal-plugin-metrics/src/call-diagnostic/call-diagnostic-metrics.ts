@@ -11,6 +11,7 @@ import {
   anonymizeIPAddress,
   clearEmptyKeysRecursively,
   isLocusServiceErrorCode,
+  prepareDiagnosticMetricItem,
   userAgentToString,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
@@ -474,14 +475,15 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Submit Client Event CA event.
+   * Prepare Client Event CA event.
    * @param arg - submit params
    * @param arg.event - event key
    * @param arg.payload - additional payload to be merged with default payload
    * @param arg.options - payload
+   * @returns {any} options to be with fetch
    * @throws
    */
-  public submitClientEvent({
+  private prepareClientEvent({
     name,
     payload,
     options,
@@ -508,6 +510,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // append client event data to the call diagnostic event
     const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+
+    return diagnosticEvent;
+  }
+
+  /**
+   * Submit Client Event CA event.
+   * @param arg - submit params
+   * @param arg.event - event key
+   * @param arg.payload - additional payload to be merged with default payload
+   * @param arg.options - payload
+   * @throws
+   */
+  public submitClientEvent({
+    name,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    payload?: ClientEventPayload;
+    options: SubmitClientEventOptions;
+  }) {
+    const diagnosticEvent = this.prepareClientEvent({name, payload, options});
     this.submitToCallDiagnostics(diagnosticEvent);
   }
 
@@ -524,5 +548,43 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
+  }
+
+  /**
+   * Prepare Client Event CA event.
+   * @param arg - submit params
+   * @param arg.event - event key
+   * @param arg.payload - additional payload to be merged with default payload
+   * @param arg.options - payload
+   * @returns {Promise<any>}
+   * @throws
+   */
+  public async prepareMetricFetchOptions({
+    name,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    payload?: ClientEventPayload;
+    options: SubmitClientEventOptions;
+  }): Promise<any> {
+    const event = this.prepareClientEvent({name, payload, options});
+
+    // build metrics-a event type
+    // @ts-ignore
+    const finalEvent = prepareDiagnosticMetricItem(this.webex, {
+      eventPayload: event,
+      type: ['diagnostic-event'],
+    });
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions({
+      method: 'POST',
+      service: 'metrics',
+      resource: 'clientmetrics',
+      body: {
+        metrics: [finalEvent],
+      },
+    });
   }
 }
