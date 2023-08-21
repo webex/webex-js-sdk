@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.192](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.191...v3.0.0-beta.192) (2023-08-21)
+
+
+### Features
+
+* **plugin-meetings:** video restrictions ([#3004](https://github.com/webex/webex-js-sdk/issues/3004)) ([a29e85f](https://github.com/webex/webex-js-sdk/commit/a29e85fcd2a683366fa80eae0e950ec1df992ee8))
+
 ## [3.0.0-beta.191](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.190...v3.0.0-beta.191) (2023-08-18)
 
 
