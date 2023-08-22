@@ -282,6 +282,74 @@ describe('plugin-meetings', () => {
 
         checkReceivedEvent({expected: {remote: {stopped: {type: 'video'}}}});
       });
+
+      const checkStats = (type) => {
+        const statsResult = {
+          height: 720,
+          width: 1280,
+          jitterBufferDelay: 288.131459,
+          jitterBufferEmittedCount: 4013,
+          trackIdentifier: '6bbf5506-6a7e-4397-951c-c05b72ab0ace',
+          avgJitterDelay: 0.07179951632195365,
+        };
+        if (type === 'inbound-rtp') {
+          statsResult.framesDecoded = 4013;
+          statsResult.framesDropped = 0;
+          statsResult.framesReceived = 4016;
+          assert.deepEqual(statsAnalyzer.statsResults.resolutions.video.recv, statsResult);
+        } else if (type === 'outbound-rtp') {
+          statsResult.framesSent = 105;
+          statsResult.hugeFramesSent = 1;
+          assert.deepEqual(statsAnalyzer.statsResults.resolutions.video.send, statsResult);
+        }
+      };
+
+      it('processes track results and populate statsResults.resolutions object when type is inbound-rtp with video', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        const statusResultInboundRTP = {
+          type: 'inbound-rtp',
+          frameHeight: 720,
+          frameWidth: 1280,
+          packetsLost: 11,
+          rttThreshold: 501,
+          jitterThreshold: 501,
+          framesDecoded: 4013,
+          framesDropped: 0,
+          framesReceived: 4016,
+          jitterBufferDelay: 288.131459,
+          jitterBufferEmittedCount: 4013,
+          trackIdentifier: '6bbf5506-6a7e-4397-951c-c05b72ab0ace',
+        };
+        await statsAnalyzer.parseGetStatsResult(statusResultInboundRTP, 'video');
+        checkStats('inbound-rtp');
+      });
+      it('processes track results and populate statsResults.resolutions object when type is outbound-rtp with video', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        const statusResultInboundRTP = {
+          type: 'outbound-rtp',
+          frameHeight: 720,
+          frameWidth: 1280,
+          packetsLost: 11,
+          framesSent: 105,
+          hugeFramesSent: 1,
+          rttThreshold: 501,
+          jitterThreshold: 501,
+          jitterBufferDelay: 288.131459,
+          jitterBufferEmittedCount: 4013,
+          trackIdentifier: '6bbf5506-6a7e-4397-951c-c05b72ab0ace',
+        };
+        await statsAnalyzer.parseGetStatsResult(statusResultInboundRTP, 'video');
+        checkStats('outbound-rtp');
+      });
+
+      it('doesnot processes track results with audio', async () => {
+        await startStatsAnalyzer({expected: {receiveAudio: true}});
+        const statusResultInboundRTP = {
+          type: 'outbound-rtp',
+        };
+        await statsAnalyzer.parseGetStatsResult(statusResultInboundRTP, 'audio');
+        assert.deepEqual(statsAnalyzer.statsResults.resolutions.audio, undefined);
+      });
     });
   });
 });
