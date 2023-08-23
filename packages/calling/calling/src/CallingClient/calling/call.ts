@@ -1,11 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {
-  Event,
-  LocalStream,
-  MediaType,
-  MultistreamRoapMediaConnection,
-  SendSlot,
-} from '@webex/internal-media-core';
+import {Event, LocalMicrophoneStream, RoapMediaConnection} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -149,12 +143,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private waitingForOK: boolean;
 
-  // private microphoneStream: LocalMicrophoneStream;
-
-  // private cameraStream: LocalCameraStream;
-
-  private sendSlot: SendSlot;
-
   /**
    * Getter to check if the call is muted or not.
    *
@@ -225,9 +213,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.mobiusUrl = activeUrl;
     this.waitingForOK = false;
-    this.sendSlot = {} as SendSlot;
-    // this.microphoneStream = {} as LocalMicrophoneStream;
-    // this.cameraStream = {} as LocalCameraStream;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -912,9 +897,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: this.handleOutgoingCallSetup.name,
     });
 
-    console.log('pkesari_event received in send call setup event: ', event);
     const message = event.data as RoapMessage;
-    console.log('pkesari_message sent in post: ', message);
 
     try {
       const response = await this.post(message);
@@ -1707,7 +1690,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     const message = event.data as RoapMessage;
 
-    console.log('pkesari_handleOutgoingRoapOffer message: ', message);
     if (!message?.sdp) {
       log.info('Initializing Offer...', {
         file: CALL_FILE,
@@ -1877,21 +1859,28 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack - MediaStreamTrack.
    * @param settings.debugId - String.
    */
-  private async initMediaConnection(settings: {localAudioStream: LocalStream; debugId?: string}) {
-    const mediaConnection = new MultistreamRoapMediaConnection(
+  private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string) {
+    const mediaConnection = new RoapMediaConnection(
       {
+        skipInactiveTransceivers: true,
         iceServers: [],
+        sdpMunging: {
+          convertPort9to0: true,
+          addContentSlides: false,
+        },
       },
-      settings.debugId || `WebexCallSDK-${this.correlationId}`
+      {
+        localTracks: {audio: localAudioTrack},
+        direction: {
+          audio: 'sendrecv',
+          video: 'inactive',
+          screenShareVideo: 'inactive',
+        },
+      },
+      debugId || `WebexCallSDK-${this.correlationId}`
     );
 
     this.mediaConnection = mediaConnection;
-
-    this.sendSlot = this.mediaConnection.createSendSlot(MediaType.AudioMain);
-    console.log('pkesari_Send slot object: ', this.sendSlot);
-
-    const publishedStream = await this.sendSlot.publishStream(settings.localAudioStream);
-    console.log('pkesari_Stream after publish: ', publishedStream, this.sendSlot);
   }
 
   /**
@@ -1965,11 +1954,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async answer(settings: {localAudioStream: LocalStream}) {
-    // settings.localAudioStream.localAudioTrack.enabled = true;
+  public async answer(localAudioStream: LocalMicrophoneStream) {
+    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+    localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
-      await this.initMediaConnection(settings);
+      this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }
@@ -1988,17 +1978,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async dial(settings: {localAudioStream: LocalStream}) {
-    console.log('pkesari_Local Audio stream received: ', settings.localAudioStream);
-    // settings.localAudioTrack.enabled = true;
+  public async dial(localAudioStream: LocalMicrophoneStream) {
+    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+    localAudioTrack.enabled = true;
+
     if (!this.mediaConnection) {
-      await this.initMediaConnection(settings);
+      this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
-      console.log('pkesari_Invoking Send Roap Offer event');
       this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER'});
     } else {
       log.warn(
@@ -2355,7 +2345,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
             event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
-            console.log('pkesari_Roap Message received from media sdk: ', event.roapMessage);
             this.sendCallStateMachineEvt({type: 'E_SEND_CALL_SETUP', data: event.roapMessage});
             break;
           }

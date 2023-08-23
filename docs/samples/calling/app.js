@@ -483,8 +483,7 @@ function createCall(e) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
-  console.log('pkesari_Local microphone stream being passed to dial API: ', localAudioStream);
-  call.dial({localAudioStream});
+  call.dial(localAudioStream);
 }
 
 function sendDTMF() {
@@ -540,7 +539,7 @@ function commitTransfer() {
       callTranferObj = null;
     });
 
-    callTranferObj.dial({localAudioTrack});
+    callTranferObj.dial(localAudioStream);
 
     transferDetailsElm.innerText = `Dialing Transfer target`;
   } else {
@@ -570,25 +569,9 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  // const {audio} = getAudioVideoInput();
-
-  // let audioTrack;
-
-  // try {
-  //   audioTrack = await callingClient.mediaEngine.Media.createAudioTrack(audio);
-  // } catch (e) {
-  //   console.error(e);
-  // }
-
-  // localAudioTrack = audioTrack.getMediaStreamTrack();
-  // localAudioElem.srcObject = localAudioStream = new MediaStream([audioTrack.getMediaStreamTrack()]);
-
-  // localAudioElem.srcObject = localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  // console.log('Local Stream fetched from navigator object: ', localAudioStream);
-
   localAudioStream  = await calling.createCallingMicrophoneStream({audio: true});
+  // localVideoStream  = await calling.createCallingCameraStream({video: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
-  console.log('pkesari_Local Stream create using createMicrophoneStream: ', localAudioStream);
 }
 
 // Listen for submit on create meeting
@@ -668,7 +651,7 @@ function answer() {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 
-    call.answer({localAudioStream});
+    call.answer(localAudioStream);
   }
 }
 
