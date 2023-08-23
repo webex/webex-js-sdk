@@ -5,10 +5,7 @@ import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../metrics/types';
-import {getMetricManager} from '../metrics';
-import {CallingClientEmitterCallback} from '../types';
-import {EVENT_KEYS} from '../../Events/types';
-import {CallingClientError} from '../../Errors';
+import getMetricManager from '../metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
@@ -45,6 +42,10 @@ import {
   NETWORK_FLAP_TIMEOUT,
   DEFAULT_KEEPALIVE_INTERVAL,
 } from '../constants';
+import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
+import {LineError} from '../../Errors/catalog/LineError';
+import {CallingClientEmitterCallback} from '../types';
+import {EVENT_KEYS} from '../../Events/types';
 
 /**
  *
@@ -69,7 +70,8 @@ export class Registration implements IRegistration {
   private rehomingIntervalMax: number;
   private mutex: Mutex;
   private metricManager: IMetricManager;
-  private emitter: CallingClientEmitterCallback;
+  private lineEmitter: LineEmitterCallback;
+  private callingClientEmitter: CallingClientEmitterCallback;
   private callManager: ICallManager;
   private deviceInfo: IDeviceInfo = {};
   private primaryMobiusUris: string[];
@@ -81,13 +83,14 @@ export class Registration implements IRegistration {
    * @param webex - A webex instance.
    * @param serviceData - indicates whether the backend service is calling or contactcentre
    * @param mutex - mutex which is used to run any registration scenario exclusively
-   * @param callingClientEmitter - CallingClient emitter for registration related events
+   * @param lineEmitter - Line emitter for registration related events
    * @param logLevel - log level option for registration module
    */
   constructor(
     webex: WebexSDK,
     serviceData: ServiceData,
     mutex: Mutex,
+    lineEmitter: LineEmitterCallback,
     callingClientEmitter: CallingClientEmitterCallback,
     logLevel: LOGGER
   ) {
@@ -106,12 +109,11 @@ export class Registration implements IRegistration {
     this.mutex = mutex;
     this.callManager = getCallManager(this.webex, serviceData.indicator);
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
-    this.emitter = callingClientEmitter;
+    this.lineEmitter = lineEmitter;
+    this.callingClientEmitter = callingClientEmitter;
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
-    /* Better to run the timer once rather than after every registration */
-    this.detectNetworkChange('class');
   }
 
   public getActiveMobiusUrl(): string {
@@ -164,6 +166,8 @@ export class Registration implements IRegistration {
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
     });
+
+    this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
     return <WebexRequestPayload>response.json();
   }
@@ -309,8 +313,8 @@ export class Registration implements IRegistration {
               this.backupMobiusUris
             );
             if (!abort && !this.isDeviceRegistered()) {
-              emitFinalFailure((clientError: CallingClientError) => {
-                this.emitter(EVENT_KEYS.ERROR, undefined, clientError);
+              emitFinalFailure((clientError: LineError) => {
+                this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
               }, loggerContext);
             }
           });
@@ -318,8 +322,8 @@ export class Registration implements IRegistration {
         log.log(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
-      emitFinalFailure((clientError: CallingClientError) => {
-        this.emitter(EVENT_KEYS.ERROR, undefined, clientError);
+      emitFinalFailure((clientError: LineError) => {
+        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
       }, loggerContext);
     }
   }
@@ -429,41 +433,11 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * Register callbacks for network changes.
-   *
-   */
-  private async detectNetworkChange(flag = 'test') {
-    let retry = false;
-
-    setInterval(async () => {
-      if (
-        !this.webex.internal.mercury.connected &&
-        !retry &&
-        Object.keys(this.callManager.getActiveCalls()).length === 0
-      ) {
-        log.warn(`Network has flapped, waiting for mercury connection to be up`, {
-          file: REGISTRATION_FILE,
-          method: this.detectNetworkChange.name,
-        });
-
-        this.emitter(EVENT_KEYS.UNREGISTERED);
-        this.clearKeepaliveTimer();
-
-        retry = true;
-      }
-
-      if (retry && this.webex.internal.mercury.connected) {
-        retry = await this.handleConnectionRestoration(retry);
-      }
-    }, NETWORK_FLAP_TIMEOUT);
-  }
-
-  /**
    * Updates rehomingIntervalMin and rehomingIntervalMax values
    * if received in registration response from a primary mobius
    * server.
    *
-   * @param deviceInfo - Device info.
+   * @param deviceInfo - Line info.
    */
   private setIntervalValues(deviceInfo: IDeviceInfo) {
     if (this.primaryMobiusUris.indexOf(this.activeMobiusUrl) !== -1) {
@@ -519,7 +493,7 @@ export class Registration implements IRegistration {
     }
   }
 
-  private async handleConnectionRestoration(retry: boolean): Promise<boolean> {
+  public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
@@ -583,9 +557,9 @@ export class Registration implements IRegistration {
 
           return finalError;
         }
-        this.emitter(EVENT_KEYS.UNREGISTERED);
+        this.lineEmitter(LINE_EVENTS.UNREGISTERED);
       } else {
-        this.emitter(EVENT_KEYS.UNREGISTERED);
+        this.lineEmitter(LINE_EVENTS.UNREGISTERED);
       }
 
       return false;
@@ -638,7 +612,7 @@ export class Registration implements IRegistration {
       try {
         abort = false;
         this.registrationStatus = MobiusStatus.DEFAULT;
-        this.emitter(EVENT_KEYS.CONNECTING);
+        this.lineEmitter(LINE_EVENTS.CONNECTING);
         log.log(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
           method: this.attemptRegistrationWithServers.name,
@@ -647,7 +621,7 @@ export class Registration implements IRegistration {
         const resp = await this.postRegistration(url);
 
         this.deviceInfo = resp.body as IDeviceInfo;
-        this.emitter(EVENT_KEYS.REGISTERED, resp.body as IDeviceInfo);
+        this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         this.registrationStatus = MobiusStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
@@ -672,11 +646,11 @@ export class Registration implements IRegistration {
           body,
           (clientError, finalError) => {
             if (finalError) {
-              this.emitter(EVENT_KEYS.ERROR, undefined, clientError);
+              this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
             } else {
-              this.emitter(EVENT_KEYS.UNREGISTERED);
+              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
             }
-            this.sendMetric(
+            this.metricManager.submitRegistrationMetric(
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
@@ -737,7 +711,7 @@ export class Registration implements IRegistration {
             const res = await this.postKeepAlive(url);
             log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
             if (keepAliveRetryCount > 0) {
-              this.emitter(EVENT_KEYS.RECONNECTED);
+              this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
             keepAliveRetryCount = 0;
           } catch (err: unknown) {
@@ -753,9 +727,9 @@ export class Registration implements IRegistration {
               error,
               (clientError, finalError) => {
                 if (finalError) {
-                  this.emitter(EVENT_KEYS.ERROR, undefined, clientError);
+                  this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
                 }
-                this.sendMetric(
+                this.metricManager.submitRegistrationMetric(
                   METRIC_EVENT.REGISTRATION,
                   REG_ACTION.KEEPALIVE_FAILURE,
                   METRIC_TYPE.BEHAVIORAL,
@@ -769,14 +743,14 @@ export class Registration implements IRegistration {
               this.setStatus(MobiusStatus.DEFAULT);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
-              this.emitter(EVENT_KEYS.UNREGISTERED);
+              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
               if (!abort) {
                 /* In case of non-final error, re-attempt registration */
                 await this.reconnectOnFailure(this.startKeepaliveTimer.name);
               }
             } else {
-              this.emitter(EVENT_KEYS.RECONNECTING);
+              this.lineEmitter(LINE_EVENTS.RECONNECTING);
             }
           }
         }
@@ -811,21 +785,6 @@ export class Registration implements IRegistration {
 
     this.clearKeepaliveTimer();
     this.setStatus(MobiusStatus.DEFAULT);
-  }
-
-  /**
-   * @param name - Name of the metric.
-   * @param action - Action that the metric is for.
-   * @param metric - Type of metric (Operational/Behavioral).
-   * @param error - Error details if an error metric is being sent.
-   */
-  public sendMetric(
-    name: METRIC_EVENT,
-    action: REG_ACTION,
-    metric: METRIC_TYPE,
-    error?: CallingClientError | undefined
-  ) {
-    this.metricManager.submitRegistrationMetric(name, action, metric, error);
   }
 
   /**
@@ -910,13 +869,15 @@ export class Registration implements IRegistration {
  * @param webex - A webex instance.
  * @param serviceData - indicates whether the backend service is calling or contactcentre
  * @param mutex - mutex which is used to run any registration scenario exclusively
- * @param callingClientEmitter - CallingClient emitter for registration related events
+ * @param lineEmitter - Line emitter for registration related events
  * @param logLevel - log level option for registration module
  */
 export const createRegistration = (
   webex: WebexSDK,
   serviceData: ServiceData,
   mutex: Mutex,
-  callingClientemitter: CallingClientEmitterCallback,
+  lineEmitter: LineEmitterCallback,
+  callingClientEmitter: CallingClientEmitterCallback,
   logLevel: LOGGER
-): IRegistration => new Registration(webex, serviceData, mutex, callingClientemitter, logLevel);
+): IRegistration =>
+  new Registration(webex, serviceData, mutex, lineEmitter, callingClientEmitter, logLevel);

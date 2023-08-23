@@ -1,19 +1,12 @@
 import * as Media from '@webex/internal-media-core';
-import {CallingClientError} from '../Errors';
 import {LOGGER} from '../Logger/types';
 import {ISDKConnector} from '../SDKConnector/types';
 
 import {Eventing} from '../Events/impl';
 import {CallingClientEventTypes, EVENT_KEYS} from '../Events/types';
-import {
-  CallDetails,
-  CorrelationId,
-  IDeviceInfo,
-  MobiusDeviceId,
-  MobiusStatus,
-  ServiceData,
-} from '../common/types';
+import {CallDetails, CorrelationId, ServiceData} from '../common/types';
 import {ICall} from './calling/types';
+import {CallingClientError} from '../Errors';
 
 export interface LoggerConfig {
   level: LOGGER;
@@ -32,7 +25,6 @@ export interface CallingClientConfig {
 
 export type CallingClientEmitterCallback = (
   event: EVENT_KEYS,
-  deviceInfo?: IDeviceInfo,
   clientError?: CallingClientError
 ) => void;
 
@@ -44,14 +36,7 @@ export type CallingClientErrorEmitterCallback = (
 export interface ICallingClient extends Eventing<CallingClientEventTypes> {
   mediaEngine: typeof Media;
   getSDKConnector: () => ISDKConnector;
-  register: () => void;
-  sendKeepAlive: (_deviceInfo: IDeviceInfo) => Promise<void>;
-  deregister: () => void;
-  getRegistrationStatus: () => MobiusStatus;
   getLoggingLevel: () => LOGGER;
-  getDeviceId: () => MobiusDeviceId | undefined;
-  getActiveMobiusUrl: () => string;
-  setActiveMobiusUrl: (uri: string) => void;
   makeCall: (dest: CallDetails) => ICall | undefined;
   getCall: (correlationId: CorrelationId) => ICall;
 }

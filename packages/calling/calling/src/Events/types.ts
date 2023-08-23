@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // TODO: remove once we define the payloads
 import type {ICall} from '../CallingClient/calling/types';
-import {CallId, DisplayInformation, IDeviceInfo} from '../common/types';
+import {CallId, DisplayInformation} from '../common/types';
 import {CallError, CallingClientError} from '../Errors';
 
 /** External Eventing Start */
@@ -9,7 +9,6 @@ export enum EVENT_KEYS {
   CALL_ERROR = 'call:error',
   CALLER_ID = 'call:caller_id',
   CONNECT = 'call:connect',
-  CONNECTING = 'callingClient: connecting',
   DISCONNECT = 'call:disconnect',
   ERROR = 'callingClient:error',
   ESTABLISHED = 'call:established',
@@ -18,14 +17,10 @@ export enum EVENT_KEYS {
   INCOMING_CALL = 'callingClient:incoming_call',
   OUTGOING_CALL = 'callingClient:outgoing_call',
   PROGRESS = 'call:progress',
-  RECONNECTED = 'callingClient:reconnected',
-  RECONNECTING = 'callingClient:reconnecting',
-  REGISTERED = 'callingClient:registered',
   REMOTE_MEDIA = 'call:remote_media',
   RESUME_ERROR = 'call:resume_error',
   RESUMED = 'call:resumed',
   TRANSFER_ERROR = 'call:transfer_error',
-  UNREGISTERED = 'callingClient:unregistered',
   USER_SESSION_INFO = 'callingClient:user_recent_sessions',
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
@@ -191,15 +186,10 @@ export type VoicemailEventTypes = {
 };
 
 export type CallingClientEventTypes = {
-  [EVENT_KEYS.CONNECTING]: () => void;
   [EVENT_KEYS.ERROR]: (error: CallingClientError) => void;
   [EVENT_KEYS.USER_SESSION_INFO]: (event: CallSessionEvent) => void;
-  [EVENT_KEYS.REGISTERED]: (deviceInfo: IDeviceInfo) => void;
-  [EVENT_KEYS.UNREGISTERED]: () => void;
   [EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
   [EVENT_KEYS.OUTGOING_CALL]: (callId: string) => void;
-  [EVENT_KEYS.RECONNECTED]: () => void;
-  [EVENT_KEYS.RECONNECTING]: () => void;
   [EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
 };
 

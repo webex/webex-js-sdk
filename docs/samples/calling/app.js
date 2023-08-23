@@ -20,6 +20,7 @@ let callHistory;
 let voicemail;
 let contacts;
 let callSettings;
+let line;
 
 let transferInitiated;
 const numberOfDays = 7;
@@ -138,7 +139,7 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
-function initCalling(e) {
+async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
 
@@ -226,9 +227,9 @@ function initCalling(e) {
     logger:loggerConfig
   }
 
-  calling = new Calling({webexConfig, callingConfig});
+  calling = await Calling.init({webexConfig, callingConfig});
 
-  calling.on('calling:ready', () => {
+  calling.on('ready', () => {
     console.log('Authentication :: Calling Ready');
     registerElm.disabled = false;
     callHistoryElm.disabled = false;
@@ -269,6 +270,7 @@ function initCalling(e) {
         console.log(`Init response `, initResponse);
       }
 
+      fetchLines();
       fetchDNDSetting();
       fetchCallWaitingSetting();
       fetchCallForwardSetting();
@@ -314,13 +316,14 @@ function userSession() {
 }
 
 function createDevice() {
-  callingClient.register();
+  line.register();
   userSession();
-  callingClient.on('callingClient:registered', (deviceInfo) => {
+  line.on('registered', (deviceInfo) => {
+    console.log("registered success");
     registerElm.disabled = true;
     registrationStatusElm.innerText =
       calling.webex.internal.device.url !== ''
-        ? `Registered, deviceId: ${deviceInfo.device.deviceId}`
+        ? `Registered, deviceId: ${deviceInfo.mobiusDeviceId}`
         : 'Not Registered';
     // unregisterElm.disabled = false;
   });
@@ -393,7 +396,11 @@ function holdResume() {
   call.doHoldResume();
 }
 function deleteDevice() {
-  callingClient.deregister();
+  line.deregister();
+  line.on('unregistered', () => {
+    console.log("unregistered success");
+    registrationStatusElm.innerText = 'Unregistered';
+  })
   registerElm.disabled = false;
   // unregisterElm.disabled = true;
 }
@@ -1185,6 +1192,10 @@ function toggleButton(eleButton, disableText, enableText) {
   }
 
   return retVal;
+}
+
+function fetchLines() {
+  line = Object.values(callingClient.getLines())[0];
 }
 
 async function fetchDNDSetting() {

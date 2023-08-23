@@ -262,10 +262,12 @@ class MetricManager implements IMetricManager {
  * @param webex - Webex object to communicate with metrics microservice.
  * @param indicator - Service Indicator.
  */
-export const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): IMetricManager => {
+const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): IMetricManager => {
   if (!metricManager) {
     metricManager = new MetricManager(webex, indicator);
   }
 
   return metricManager;
 };
+
+export default getMetricManager;

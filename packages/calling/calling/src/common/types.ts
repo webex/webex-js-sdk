@@ -99,6 +99,9 @@ export interface IDeviceInfo {
   device?: DeviceType;
   devices?: DeviceType[];
   keepaliveInterval?: number;
+  callKeepaliveInterval?: number;
+  voicePortalNumber?: number;
+  voicePortalExtension?: number;
   // cSpell:disable
   rehomingIntervalMin?: number;
   rehomingIntervalMax?: number;
