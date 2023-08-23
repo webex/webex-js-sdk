@@ -13,6 +13,7 @@ import {
   LocalCameraStream as WcmeLocalCameraStream,
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
+import {TypedEvent} from '@webex/ts-events';
 
 export {
   getDevices,
@@ -20,7 +21,8 @@ export {
   LocalDisplayStream,
   LocalSystemAudioStream,
   LocalStreamEventNames,
-  type StreamEventNames,
+  StreamEventNames,
+  RemoteStream,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
@@ -40,6 +42,10 @@ export enum LocalCameraStreamEventNames {
 
 export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   private unmuteAllowed = true;
+
+  [LocalMicrophoneStreamEventNames.ServerMuted] = new TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >();
 
   /**
    * @internal
@@ -78,6 +84,10 @@ export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
 
 export class LocalCameraStream extends WcmeLocalCameraStream {
   private unmuteAllowed = true;
+
+  [LocalCameraStreamEventNames.ServerMuted] = new TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >();
 
   /**
    * @internal

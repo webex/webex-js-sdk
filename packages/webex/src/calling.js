@@ -1,5 +1,6 @@
 import WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
+import {createMicrophoneStream, createCameraStream} from '@webex/media-helpers';
 
 /* eslint-disable require-jsdoc */
 require('@webex/internal-plugin-device');
@@ -92,6 +93,18 @@ class Calling extends EventEmitter {
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
   }
+
+  createCallingMicrophoneStream = (audioConstraints) => {
+    const microphoneStream = createMicrophoneStream(audioConstraints);
+
+    return microphoneStream;
+  };
+
+  createCallingCameraStream = (videoConstraints) => {
+    const cameraStream = createCameraStream(videoConstraints);
+
+    return cameraStream;
+  };
 }
 
 export default Calling;

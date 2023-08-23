@@ -2,7 +2,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
-
 /* global Calling */
 
 /* eslint-disable require-jsdoc */
@@ -87,6 +86,7 @@ let localVideoTrack;
 let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
+let localAudioStream;
 
 const devicesById = {};
 const img = new Image();
@@ -483,7 +483,8 @@ function createCall(e) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
-  call.dial({localAudioTrack});
+  console.log('pkesari_Local microphone stream being passed to dial API: ', localAudioStream);
+  call.dial({localAudioStream});
 }
 
 function sendDTMF() {
@@ -569,18 +570,25 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  const {audio} = getAudioVideoInput();
+  // const {audio} = getAudioVideoInput();
 
-  let audioTrack;
+  // let audioTrack;
 
-  try {
-    audioTrack = await callingClient.mediaEngine.Media.createAudioTrack(audio);
-  } catch (e) {
-    console.error(e);
-  }
+  // try {
+  //   audioTrack = await callingClient.mediaEngine.Media.createAudioTrack(audio);
+  // } catch (e) {
+  //   console.error(e);
+  // }
 
-  localAudioTrack = audioTrack.getMediaStreamTrack();
-  localAudioElem.srcObject = new MediaStream([audioTrack.getMediaStreamTrack()]);
+  // localAudioTrack = audioTrack.getMediaStreamTrack();
+  // localAudioElem.srcObject = localAudioStream = new MediaStream([audioTrack.getMediaStreamTrack()]);
+
+  // localAudioElem.srcObject = localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  // console.log('Local Stream fetched from navigator object: ', localAudioStream);
+
+  localAudioStream  = await calling.createCallingMicrophoneStream({audio: true});
+  localAudioElem.srcObject = localAudioStream.outputStream;
+  console.log('pkesari_Local Stream create using createMicrophoneStream: ', localAudioStream);
 }
 
 // Listen for submit on create meeting
@@ -660,7 +668,7 @@ function answer() {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 
-    call.answer({localAudioTrack});
+    call.answer({localAudioStream});
   }
 }
 

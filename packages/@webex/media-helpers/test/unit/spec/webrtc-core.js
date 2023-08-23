@@ -44,30 +44,30 @@ describe('media-helpers', () => {
             },
           ]),
         };
-        const Stream = new className(fakeStream);
+        const stream = new className(fakeStream);
 
         afterEach(() => {
           sinon.restore();
         });
 
         it('by default allows unmuting', async () => {
-          assert.equal(Stream.isUnmuteAllowed(), true);
-          await Stream.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), true);
+          await stream.setMuted(false);
         });
 
         it('rejects setMute(false) if unmute is not allowed', async () => {
-          Stream.setUnmuteAllowed(false);
+          stream.setUnmuteAllowed(false);
 
-          assert.equal(Stream.isUnmuteAllowed(), false);
-          const fn = () => Stream.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), false);
+          const fn = () => stream.setMuted(false);
           expect(fn).to.throw(/Unmute is not allowed/);
         });
 
         it('resolves setMute(false) if unmute is allowed', async () => {
-          Stream.setUnmuteAllowed(true);
+          stream.setUnmuteAllowed(true);
 
-          assert.equal(Stream.isUnmuteAllowed(), true);
-          await Stream.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), true);
+          await stream.setMuted(false);
         });
 
         describe('#setServerMuted', () => {
@@ -76,16 +76,16 @@ describe('media-helpers', () => {
           });
 
           const checkSetServerMuted = async (startMute, setMute, expectedCalled) => {
-            await Stream.setMuted(startMute);
+            await stream.setMuted(startMute);
 
-            assert.equal(Stream.muted, startMute);
+            assert.equal(stream.muted, startMute);
 
             const handler = sinon.fake();
-            Stream.on(event.ServerMuted, handler);
+            stream.on(event.ServerMuted, handler);
 
-            await Stream.setServerMuted(setMute, 'remotelyMuted');
+            await stream.setServerMuted(setMute, 'remotelyMuted');
 
-            assert.equal(Stream.muted, setMute);
+            assert.equal(stream.muted, setMute);
             if (expectedCalled) {
               assert.calledOnceWithExactly(handler, {muted: setMute, reason: 'remotelyMuted'});
             } else {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {LocalStream} from '@webex/internal-media-core';
+import {LocalStream, LocalMicrophoneStream} from '@webex/internal-media-core';
 import {CallError} from '../../Errors/catalog/CallError';
 import {CallDetails, CallDirection, CallId, DisplayInformation} from '../../common/types';
 import {Eventing} from '../../Events/impl';
@@ -210,7 +210,7 @@ export interface ICall extends Eventing<CallEventTypes> {
   getCallerInfo: () => DisplayInformation;
   startCallerIdResolution: (callerInfo: CallerIdInfo) => void;
   handleMidCallEvent: (event: MidCallEvent) => void;
-  dial: (settings: {localAudioStream: LocalStream}) => void;
+  dial: (settings: {localAudioStream: any}) => void;
   sendDTMF: (tone: string) => void;
   answer: (settings: {localAudioStream: LocalStream}) => void;
   completeTransfer: (

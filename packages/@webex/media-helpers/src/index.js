@@ -5,7 +5,7 @@ export {
   LocalSystemAudioStream,
   LocalStreamEventNames,
   StreamEventNames,
-  type ServerMuteReason,
+  ServerMuteReason,
   LocalMicrophoneStreamEventNames,
   LocalCameraStreamEventNames,
   LocalMicrophoneStream,
@@ -15,11 +15,5 @@ export {
   createDisplayStream,
   createDisplayStreamWithAudio,
 } from './webrtc-core';
-
-export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';
-export type {
-  NoiseReductionEffectOptions,
-  VirtualBackgroundEffectOptions,
-} from '@webex/web-media-effects';
 
 export {FacingMode, DisplaySurface, PresetCameraConstraints} from './constants';
