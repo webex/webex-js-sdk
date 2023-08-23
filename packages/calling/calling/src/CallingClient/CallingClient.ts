@@ -242,7 +242,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   /**
    * Local method for finding the mobius servers.
    */
-  public async getMobiusServers() {
+  private async getMobiusServers() {
     /* Following operations are performed in a synchronous way ->
     
         1. Get RegionInfo
@@ -489,7 +489,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris,
       this.backupMobiusUris,
       this.callingClientEmitter,
-      this.sdkConfig
+      this.getLoggingLevel(),
+      this.sdkConfig?.serviceData
     );
 
     this.lineDict[line.lineId] = line;

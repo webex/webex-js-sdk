@@ -21,8 +21,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   #mutex: Mutex;
 
-  #sdkConfig?: CallingClientConfig;
-
   #sdkConnector: ISDKConnector;
 
   public registration: IRegistration;
@@ -35,7 +33,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public mobiusDeviceId?: string;
 
-  public mobiusUri?: string;
+  private mobiusUri?: string;
 
   public phoneNumber?: string;
 
@@ -73,7 +71,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     primaryMobiusUris: string[],
     backupMobiusUris: string[],
     callingClientEmitter: (event: EVENT_KEYS, clientError?: CallingClientError) => void,
-    config?: CallingClientConfig,
+    logLevel: LOGGER,
+    serviceDataConfig?: CallingClientConfig['serviceData'],
     phoneNumber?: string,
     extension?: string,
     voicemail?: string
@@ -94,12 +93,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
 
-    this.#sdkConfig = config;
-    const serviceData = this.#sdkConfig?.serviceData?.indicator
-      ? this.#sdkConfig.serviceData
+    const serviceData = serviceDataConfig?.indicator
+      ? serviceDataConfig
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
-    const logLevel = this.#sdkConfig?.logger?.level ? this.#sdkConfig.logger.level : LOGGER.ERROR;
     validateServiceData(serviceData);
 
     this.registration = createRegistration(
@@ -117,8 +114,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   /**
    * Wrapper to for device registration.
-   *
-   * @param retry - Retry in case of errors.
    */
   public async register() {
     await this.#mutex.runExclusive(async () => {
@@ -139,9 +134,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   /**
    * Request for the Device status.
-   *
-   * @param deviceInfo - Registered device Object.
-   * @returns Promise.
    */
   private async sendKeepAlive(deviceInfo: IDeviceInfo): Promise<void> {
     const deviceId = deviceInfo.device?.deviceId as string;
@@ -167,6 +159,9 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     }
   }
 
+  /**
+   * To normalize line class with Mobius response
+   */
   private normalizeLine(deviceInfo: IDeviceInfo) {
     const {
       device,
@@ -217,9 +212,14 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   };
 
   /**
-   *  Returns active url.
-   *
-   * @returns Url - Active url of Mobius.
+   * To get the current log Level.
+   */
+  public getLoggingLevel(): LOGGER {
+    return log.getLogLevel();
+  }
+
+  /**
+   *  To get active url of Mobius.
    */
   public getActiveMobiusUrl(): string {
     return this.registration.getActiveMobiusUrl();

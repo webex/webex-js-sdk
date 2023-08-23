@@ -22,7 +22,6 @@ export interface ILine {
   lineId: string;
   status: LineStatus;
   mobiusDeviceId?: string;
-  mobiusUri?: string;
   phoneNumber?: string;
   extension?: string;
   sipAddresses?: string[];
@@ -48,7 +47,7 @@ export type LineEventTypes = {
   [LINE_EVENTS.ERROR]: (error: LineError) => void;
   [LINE_EVENTS.RECONNECTED]: () => void;
   [LINE_EVENTS.RECONNECTING]: () => void;
-  [LINE_EVENTS.REGISTERED]: (deviceInfo: IDeviceInfo) => void;
+  [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
   [LINE_EVENTS.UNREGISTERED]: () => void;
 };
 
