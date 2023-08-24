@@ -109,7 +109,9 @@ describe('plugin-board', () => {
       it('uploads image to webex files', () =>
         participants[0].webex.internal.board
           ._uploadImage(board, fixture)
-          .then((scr) => participants[1].webex.internal.encryption.download(scr))
+          .then((scr) => {
+            participants[0].webex.logger.debug('@@@@', scr)
+            return participants[1].webex.internal.encryption.download(scr.loc, scr)})
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -142,7 +144,7 @@ describe('plugin-board', () => {
               res.image.scr
             );
           })
-          .then((decryptedScr) => participants[2].webex.internal.encryption.download(decryptedScr))
+          .then((decryptedScr) => participants[2].webex.internal.encryption.download(decryptedScr.loc, decryptedScr))
           .then((file) =>
             fh.isMatchingFile(file, fixture).then((result) => assert.deepEqual(result, true))
           );
@@ -190,7 +192,7 @@ describe('plugin-board', () => {
 
       it('matches file file downloaded', () =>
         participants[0].webex.internal.encryption
-          .download(testScr)
+          .download(testScr.loc, testScr)
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -199,7 +201,7 @@ describe('plugin-board', () => {
 
       it('allows others to download image', () =>
         participants[2].webex.internal.encryption
-          .download(testScr)
+          .download(testScr.loc, testScr)
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -245,7 +247,7 @@ describe('plugin-board', () => {
             })
             .then(() =>
               participants[0].webex.internal.encryption
-                .download(testScr)
+                .download(testScr.loc, testScr)
                 .then((downloadedFile) => fh.isMatchingFile(downloadedFile, fixture))
                 .then((res) => assert.isTrue(res))
             );
