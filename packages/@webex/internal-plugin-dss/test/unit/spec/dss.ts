@@ -12,7 +12,6 @@ import sinon from 'sinon';
 import {set} from 'lodash';
 import uuid from 'uuid';
 import config from '@webex/internal-plugin-dss/src/config';
-import {DssTimeoutError} from '../../../src/dss-errors';
 
 chai.use(chaiAsPromised);
 describe('plugin-dss', () => {
@@ -1158,7 +1157,8 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response2);
       });
 
-      it('fails when mercury does not response but only the affected batch', async () => {
+      it('fails fails when mercury does not respond, later batches can still pass ok', async () => {
+        // Batch 1
         const {
           promises: [p1, p2, p3],
         } = await testMakeBatchedRequests({
@@ -1185,15 +1185,7 @@ describe('plugin-dss', () => {
           ],
         });
 
-        // only 1 response
-        mercuryCallbacks['event:directory.lookup'](
-          createData('id 1', 0, true, 'lookupResult', {entitiesNotFound: ['id1', 'id13']})
-        );
-
-        // Timeout
-        await clock.tickAsync(6000);
-
-        // Next batch
+        // Batch 2
         const {
           promises: [p4],
         } = await testMakeBatchedRequests({
@@ -1212,9 +1204,21 @@ describe('plugin-dss', () => {
           ],
         });
 
+        // Batch 1 - only 1 response out of 3
+        mercuryCallbacks['event:directory.lookup'](
+          createData('req-id-1', 0, false, 'lookupResult', {
+            entitiesFound: ['id1', 'id3'],
+            entities: ['data1', 'data3'],
+          })
+        );
+
+        // Batch 2 - response
         mercuryCallbacks['event:directory.lookup'](
           createData('randomid', 0, true, 'lookupResult', {entitiesNotFound: ['id4']})
         );
+
+        // Timeout
+        await clock.tickAsync(6000);
 
         return Promise.all([
           assert.isRejected(
