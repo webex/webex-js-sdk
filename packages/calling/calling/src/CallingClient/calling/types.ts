@@ -206,7 +206,7 @@ export interface ICall extends Eventing<CallEventTypes> {
   isConnected: () => boolean;
   isHeld: () => boolean;
   doHoldResume: () => void;
-  mute: (localAudioTrack: MediaStreamTrack) => void;
+  mute: (localAudioStream: LocalMicrophoneStream) => void;
   getCallerInfo: () => DisplayInformation;
   startCallerIdResolution: (callerInfo: CallerIdInfo) => void;
   handleMidCallEvent: (event: MidCallEvent) => void;

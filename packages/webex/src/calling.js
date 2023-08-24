@@ -94,7 +94,7 @@ class Calling extends EventEmitter {
       : undefined;
   }
 
-  createCallingMicrophoneStream = (audioConstraints) => {
+  createCallingMicrophoneStream = async (audioConstraints) => {
     const microphoneStream = createMicrophoneStream(audioConstraints);
 
     return microphoneStream;

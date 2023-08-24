@@ -81,8 +81,6 @@ const contactGroupObj = document.querySelector('#contactgroup-object');
 
 let base64;
 let audio64;
-let localAudioTrack;
-let localVideoTrack;
 let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
@@ -370,7 +368,7 @@ function muteUnmute() {
 
   if (elem.value === 'Mute') elem.value = 'Unmute';
   else elem.value = 'Mute';
-  call.mute(localAudioTrack);
+  call.mute(localAudioStream);
 }
 
 function holdResume() {
@@ -570,8 +568,18 @@ function initiateTransfer() {
 
 async function getMediaStreams() {
   localAudioStream  = await calling.createCallingMicrophoneStream({audio: true});
-  // localVideoStream  = await calling.createCallingCameraStream({video: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
+
+  // const effect = new NoiseReductionEffect({
+  //   authToken: tokenElm.value,
+  //   mode: 'WORKLET',
+  // });
+
+  // console.log('pkesari_effect:', effect);
+
+  // await localAudioStream.addEffect('background-noise-removal', effect);
+
+  // await effect.enable();
 }
 
 // Listen for submit on create meeting

@@ -8,6 +8,7 @@ export const CONTACTS_SCHEMA = 'urn:cisco:codev:identity:contact:core:1.0';
 
 export enum encryptedFields {
   ADDRESS_INFO = 'addressInfo',
+  AVATAR_URL = 'avatarURL',
   COMPANY = 'companyName',
   DISPLAY_NAME = 'displayName',
   EMAILS = 'emails',
