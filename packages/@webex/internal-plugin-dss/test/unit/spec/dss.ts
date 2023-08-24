@@ -1159,18 +1159,16 @@ describe('plugin-dss', () => {
       });
 
       it('fails when mercury does not response but only the affected batch', async () => {
-        const requests = [
-          {
-            id: 'req-id-1',
-            resource: '/lookup/orgid/userOrgId/identities',
-            bodyParams: {lookupValues: ['id1', 'id2', 'id3']},
-          },
-        ];
-
         const {
           promises: [p1, p2, p3],
         } = await testMakeBatchedRequests({
-          requests,
+          requests: [
+            {
+              id: 'req-id-1',
+              resource: '/lookup/orgid/userOrgId/identities',
+              bodyParams: {lookupValues: ['id1', 'id2', 'id3']},
+            },
+          ],
           calls: [
             {
               method: 'lookup',
@@ -1196,13 +1194,26 @@ describe('plugin-dss', () => {
         await clock.tickAsync(6000);
 
         // Next batch
-        uuidStub.onCall(requests.length).returns('req-id-2');
-        const p4 = webex.internal.dss.lookup({id: 'id4', shouldBatch: true});
-
-        await clock.tickAsync(50);
+        const {
+          promises: [p4],
+        } = await testMakeBatchedRequests({
+          requests: [
+            {
+              id: 'randomid',
+              resource: '/lookup/orgid/userOrgId/identities',
+              bodyParams: {lookupValues: ['id4']},
+            },
+          ],
+          calls: [
+            {
+              method: 'lookup',
+              params: {id: 'id4', shouldBatch: true},
+            },
+          ],
+        });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('req-id-2', 0, true, 'lookupResult', {entitiesNotFound: ['id4']})
+          createData('randomid', 0, true, 'lookupResult', {entitiesNotFound: ['id4']})
         );
 
         return Promise.all([
