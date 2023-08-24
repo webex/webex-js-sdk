@@ -1,10 +1,7 @@
 # Contributing
 
-<div style="display: inline-block; padding: 4px 8px; background-color: yellow; font-size: 1.5rem; margin-bottom: 1rem; border-radius: 8px">
-  <p style="margin: 0">
-    The <strong>master</strong> branch is being locked, and there won't be any more releases from that branch. Kindly initiate new pull requests against the <strong>next</strong> branch instead.
-  </p>
-</div>
+> ## Note: The master branch is being locked, and there won't be any more releases from that branch. Kindly initiate new pull requests against the next branch instead.
+
 
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
