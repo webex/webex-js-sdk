@@ -1204,7 +1204,7 @@ describe('plugin-dss', () => {
           ],
         });
 
-        // Batch 1 - only 1 response out of 3
+        // Batch 1 - only 1 mercury response out of 2 received
         mercuryCallbacks['event:directory.lookup'](
           createData('req-id-1', 0, false, 'lookupResult', {
             entitiesFound: ['id1', 'id3'],
