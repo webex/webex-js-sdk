@@ -1,5 +1,7 @@
 # Contributing
 
+> some text
+
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 

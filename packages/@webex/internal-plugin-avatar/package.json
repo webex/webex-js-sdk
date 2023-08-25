@@ -46,7 +46,7 @@
   "scripts": {
     "build": "yarn build:src",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
-    "deploy:npm": "echo yarn npm publish",
+    "deploy:npm": "npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
