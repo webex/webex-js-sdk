@@ -7,7 +7,7 @@ import Logger from './Logger';
 
 export {createMicrophoneStream} from '@webex/media-helpers';
 
-export default {
+export {
   createClient,
   createCallHistoryClient,
   createVoicemailClient,

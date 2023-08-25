@@ -94,6 +94,8 @@ class Calling extends EventEmitter {
       : undefined;
   }
 
+  static createMicrophoneStream = WebexCalling.createMicrophoneStream;
+
   // createCallingMicrophoneStream = async (audioConstraints) => {
   //   const microphoneStream = createMicrophoneStream(audioConstraints);
 

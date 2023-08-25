@@ -43,7 +43,6 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       library: {
         name: 'Calling',
         type: 'umd',
-        export: 'default',
       },
     },
   },
