@@ -13,8 +13,21 @@
   "engines": {
     "node": ">=16"
   },
+  "scripts": {
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
+    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
+    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha"
+  },
   "dependencies": {
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
     "@webex/internal-media-core": "^2.0.0",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "^2.8.0"
   },

@@ -7267,6 +7267,7 @@ __metadata:
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.1.30
     "@webex/internal-media-core": 2.0.0
+    "@webex/media-helpers": "workspace:^"
     async-mutex: 0.4.0
     buffer: 6.0.3
     chai: 4.3.4
@@ -8595,7 +8596,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
+    "@webex/babel-config-legacy": "workspace:^"
+    "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-media-core": ^2.0.0
+    "@webex/jest-config-legacy": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": ^1.1.0
@@ -33135,7 +33140,6 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-presence": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
-    "@webex/media-helpers": "workspace:^"
     "@webex/plugin-attachment-actions": "workspace:^"
     "@webex/plugin-authorization": "workspace:^"
     "@webex/plugin-device-manager": "workspace:^"

@@ -567,7 +567,9 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  localAudioStream  = await calling.createCallingMicrophoneStream({audio: true});
+  console.log('pkesari_Calling object', calling);
+  localAudioStream  = await createMicrophoneStream({audio: true});
+  console.log('pkesari_local audio stream: ', localAudioStream);
   localAudioElem.srcObject = localAudioStream.outputStream;
 
   // const effect = new NoiseReductionEffect({

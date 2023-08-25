@@ -1,6 +1,5 @@
 import WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
-import {createMicrophoneStream, createCameraStream} from '@webex/media-helpers';
 
 /* eslint-disable require-jsdoc */
 require('@webex/internal-plugin-device');
@@ -29,6 +28,7 @@ class Calling extends EventEmitter {
     this.callingConfig = callingConfig;
     this.log = WebexCalling.Logger;
     this.log.setLogger(callingConfig.logger.level, CALLING_FILE);
+    console.log('pkesari_Webex Calling: ', WebexCalling);
 
     if (webex) {
       this.webex = webex;
@@ -94,17 +94,17 @@ class Calling extends EventEmitter {
       : undefined;
   }
 
-  createCallingMicrophoneStream = async (audioConstraints) => {
-    const microphoneStream = createMicrophoneStream(audioConstraints);
+  // createCallingMicrophoneStream = async (audioConstraints) => {
+  //   const microphoneStream = createMicrophoneStream(audioConstraints);
 
-    return microphoneStream;
-  };
+  //   return microphoneStream;
+  // };
 
-  createCallingCameraStream = (videoConstraints) => {
-    const cameraStream = createCameraStream(videoConstraints);
+  // createCallingCameraStream = (videoConstraints) => {
+  //   const cameraStream = createCameraStream(videoConstraints);
 
-    return cameraStream;
-  };
+  //   return cameraStream;
+  // };
 }
 
 export default Calling;

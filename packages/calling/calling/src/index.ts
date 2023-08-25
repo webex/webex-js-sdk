@@ -5,6 +5,8 @@ import {createCallHistoryClient} from './CallHistory/CallHistory';
 import {createVoicemailClient} from './Voicemail/Voicemail';
 import Logger from './Logger';
 
+export {createMicrophoneStream} from '@webex/media-helpers';
+
 export default {
   createClient,
   createCallHistoryClient,
