@@ -35,11 +35,11 @@ describe('plugin-meetings', () => {
       });
       LoggerProxy.set(logger);
 
-      meeting.cleanupLocalTracks = sinon.stub().returns(Promise.resolve());
-      meeting.closeRemoteTracks = sinon.stub().returns(Promise.resolve());
+      meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
+      meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
 
-      meeting.unsetRemoteTracks = sinon.stub();
+      meeting.unsetRemoteStreams = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
@@ -59,11 +59,11 @@ describe('plugin-meetings', () => {
     describe('#cleanup', () => {
       it('do clean up on meeting object', async () => {
         await MeetingUtil.cleanUp(meeting);
-        assert.calledOnce(meeting.cleanupLocalTracks);
-        assert.calledOnce(meeting.closeRemoteTracks);
+        assert.calledOnce(meeting.cleanupLocalStreams);
+        assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
 
-        assert.calledOnce(meeting.unsetRemoteTracks);
+        assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
@@ -78,10 +78,8 @@ describe('plugin-meetings', () => {
         deviceId: 'device-1',
       });
 
-      const mockTrack = {
-        underlyingTrack: {
-          getSettings: fakeDevice,
-        },
+      const mockStream = {
+        getSettings: fakeDevice,
       };
 
       it('#log - should log [info, warn, error, log] to console', () => {
@@ -99,27 +97,27 @@ describe('plugin-meetings', () => {
       });
 
       describe('#handleAudioLogging', () => {
-        it('should not log if called without track', () => {
+        it('should not log if called without stream', () => {
           MeetingUtil.handleAudioLogging();
           assert(!LoggerProxy.logger.log.called, 'log not called');
         });
 
-        it('should log audioTrack settings', () => {
+        it('should log audioStream settings', () => {
           assert(MeetingUtil.handleAudioLogging, 'method is defined');
-          MeetingUtil.handleAudioLogging(mockTrack);
+          MeetingUtil.handleAudioLogging(mockStream);
           assert(LoggerProxy.logger.log.called, 'log called');
         });
       });
 
       describe('#handleVideoLogging', () => {
-        it('should not log if called without track', () => {
+        it('should not log if called without stream', () => {
           MeetingUtil.handleVideoLogging(null);
           assert(!LoggerProxy.logger.log.called, 'log not called');
         });
 
-        it('should log videoTrack settings', () => {
+        it('should log videoStream settings', () => {
           assert(MeetingUtil.handleVideoLogging, 'method is defined');
-          MeetingUtil.handleVideoLogging(mockTrack);
+          MeetingUtil.handleVideoLogging(mockStream);
           assert(LoggerProxy.logger.log.called, 'log called');
         });
       });

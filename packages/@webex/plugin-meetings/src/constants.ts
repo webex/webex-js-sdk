@@ -370,6 +370,7 @@ export const EVENT_TYPES = {
   REMOTE_AUDIO: 'remoteAudio',
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
+  REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
 };
 
