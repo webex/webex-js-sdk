@@ -180,6 +180,9 @@ class Metrics extends WebexPlugin {
    * We must use fetch instead of request because fetch has a keepalive option that
    * allows the request it to outlive the page.
    *
+   * Note: the timings values will be wrong, but setMetricTimingsAndFetch() will
+   * properly adjust them before submitting.
+   *
    * @public
    * @param {Object} arg
    * @param {String} arg.name - event name
