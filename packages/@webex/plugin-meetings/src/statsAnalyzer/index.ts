@@ -357,9 +357,6 @@ export class StatsAnalyzer extends EventsScope {
       case 'inbound-rtp':
         this.processInboundRTPResult(getStatsResult, type);
         break;
-      case 'track':
-        this.processTrackResult(getStatsResult, type);
-        break;
       case 'remote-inbound-rtp':
       case 'remote-outbound-rtp':
         // @ts-ignore
@@ -874,6 +871,7 @@ export class StatsAnalyzer extends EventsScope {
   private processOutboundRTPResult(result: any, mediaType: any) {
     const sendrecvType = STATS.SEND_DIRECTION;
 
+    this.processTrackResult(result, mediaType, sendrecvType);
     if (result.bytesSent) {
       let kilobytes = 0;
 
@@ -955,6 +953,7 @@ export class StatsAnalyzer extends EventsScope {
   private processInboundRTPResult(result: any, mediaType: any) {
     const sendrecvType = STATS.RECEIVE_DIRECTION;
 
+    this.processTrackResult(result, mediaType, sendrecvType);
     if (result.bytesReceived) {
       let kilobytes = 0;
       const receiveSlot = this.receiveSlotCallback(result.ssrc);
@@ -1171,21 +1170,29 @@ export class StatsAnalyzer extends EventsScope {
    * @private
    * @param {*} result
    * @param {*} mediaType
+   * @param {*} sendrecvType
    * @returns {void}
    * @memberof StatsAnalyzer
    */
-  private processTrackResult(result: any, mediaType: any) {
-    if (!result || result.type !== 'track') {
+  private processTrackResult(result: any, mediaType: any, sendrecvType: any) {
+    if (!result || mediaType.includes('audio')) {
       return;
     }
-
-    const sendrecvType =
-      result.remoteSource === true ? STATS.RECEIVE_DIRECTION : STATS.SEND_DIRECTION;
+    if (result.type !== 'inbound-rtp' && result.type !== 'outbound-rtp') {
+      return;
+    }
+    if (result.frameWidth && result.frameHeight) {
+      this.statsResults.resolutions[mediaType][sendrecvType].width = result.frameWidth;
+      this.statsResults.resolutions[mediaType][sendrecvType].height = result.frameHeight;
+    }
 
     if (sendrecvType === STATS.RECEIVE_DIRECTION) {
       this.statsResults.resolutions[mediaType][sendrecvType].framesReceived = result.framesReceived;
       this.statsResults.resolutions[mediaType][sendrecvType].framesDecoded = result.framesDecoded;
       this.statsResults.resolutions[mediaType][sendrecvType].framesDropped = result.framesDropped;
+    } else if (sendrecvType === STATS.SEND_DIRECTION) {
+      this.statsResults.resolutions[mediaType][sendrecvType].framesSent = result.framesSent;
+      this.statsResults.resolutions[mediaType][sendrecvType].hugeFramesSent = result.hugeFramesSent;
     }
 
     if (result.trackIdentifier && !mediaType.includes('audio')) {

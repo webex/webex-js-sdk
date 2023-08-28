@@ -27,7 +27,28 @@ const STATS_DEFAULT = {
       networkType: [],
     },
   },
-  resolutions: {},
+  resolutions: {
+    video: {
+      send: {
+        width: 0,
+        height: 0,
+      },
+      recv: {
+        width: 0,
+        height: 0,
+      },
+    },
+    share: {
+      send: {
+        width: 0,
+        height: 0,
+      },
+      recv: {
+        width: 0,
+        height: 0,
+      },
+    },
+  },
   internal: {
     remote: {},
     candidates: {},
