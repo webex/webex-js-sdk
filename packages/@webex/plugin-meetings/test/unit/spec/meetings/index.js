@@ -1650,6 +1650,22 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('triggers correct event when LOCUS_INFO_UPDATE_URL emitted', async () => {
+        await meeting.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_URL, 'newLocusUrl');
+
+        assert.calledOnce(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener',
+          },
+          EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+          {'locusUrl': 'newLocusUrl'}
+        );
+      });
+
       const checkSelfTrigger = async (inEvent, outEvent) => {
         await meeting.locusInfo.emitScoped({}, inEvent, {foo: 'bar'});
 
