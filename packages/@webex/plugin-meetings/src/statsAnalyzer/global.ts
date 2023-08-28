@@ -76,16 +76,6 @@ const STATS_DEFAULT = {
     },
   },
   resolutions: {
-    audio: {
-      send: {
-        width: 0,
-        height: 0,
-      },
-      recv: {
-        width: 0,
-        height: 0,
-      },
-    },
     video: {
       send: {
         width: 0,
