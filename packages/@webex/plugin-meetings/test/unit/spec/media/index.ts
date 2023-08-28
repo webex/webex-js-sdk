@@ -9,23 +9,37 @@ describe('createMediaConnection', () => {
   const fakeRoapMediaConnection = {
     id: 'roap media connection',
   };
-  const fakeAudioTrack = {
-    id: 'audio track',
-    underlyingTrack: 'underlying audio track',
+  const fakeTrack = {
+    id: 'any fake track'
+  }
+  const fakeAudioStream = {
+    outputStream:{
+      getTracks(){
+        return [fakeTrack]
+      }
+    }
   };
-  const fakeVideoTrack = {
-    id: 'video track',
-    underlyingTrack: 'underlying video track',
+  const fakeVideoStream = {
+    outputStream:{
+      getTracks(){
+        return [fakeTrack]
+      }
+    }
   };
-  const fakeShareVideoTrack = {
-    id: 'share video track',
-    underlyingTrack: 'underlying share video track',
+  const fakeShareVideoStream = {
+    outputStream:{
+      getTracks(){
+        return [fakeTrack]
+      }
+    }
   };
-  const fakeShareAudioTrack = {
-    id: 'share audio track',
-    underlyingTrack: 'underlying share audio track',
+  const fakeShareAudioStream = {
+    outputStream:{
+      getTracks(){
+        return [fakeTrack]
+      }
+    }
   };
-
   afterEach(() => {
     sinon.restore();
   });
@@ -50,8 +64,8 @@ describe('createMediaConnection', () => {
           receiveVideo: true,
           receiveShare: true,
         },
-        audioTrack: fakeAudioTrack,
-        videoTrack: fakeVideoTrack,
+        audioStream: fakeAudioStream,
+        videoStream: fakeVideoStream,
         shareVideoTrack: null,
         shareAudioTrack: null,
       },
@@ -92,9 +106,10 @@ describe('createMediaConnection', () => {
       },
       {
         localTracks: {
-          audio: fakeAudioTrack.underlyingTrack,
-          video: fakeVideoTrack.underlyingTrack,
+          audio: fakeTrack,
+          video: fakeTrack,
           screenShareVideo: undefined,
+          screenShareAudio: undefined,
         },
         direction: {
           audio: 'inactive',
@@ -264,10 +279,10 @@ describe('createMediaConnection', () => {
           receiveVideo: true,
           receiveShare: true,
         },
-        audioTrack: fakeAudioTrack,
-        videoTrack: null,
-        shareVideoTrack: fakeShareVideoTrack,
-        shareAudioTrack: fakeShareAudioTrack,
+        audioStream: fakeAudioStream,
+        videoStream: null,
+        shareVideoStream: fakeShareVideoStream,
+        shareAudioStream: fakeShareAudioStream,
       },
       remoteQualityLevel: 'HIGH',
       enableRtx: ENABLE_RTX,
@@ -296,9 +311,10 @@ describe('createMediaConnection', () => {
       },
       {
         localTracks: {
-          audio: fakeAudioTrack.underlyingTrack,
+          audio: fakeTrack,
           video: undefined,
-          screenShareVideo: fakeShareVideoTrack.underlyingTrack,
+          screenShareVideo: fakeTrack,
+          screenShareAudio: fakeTrack,
         },
         direction: {
           audio: 'sendrecv',

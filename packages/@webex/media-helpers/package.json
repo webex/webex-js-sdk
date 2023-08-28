@@ -14,7 +14,8 @@
     "node": ">=16"
   },
   "dependencies": {
-    "@webex/internal-media-core": "1.39.1",
+    "@webex/internal-media-core": "^2.0.0",
+    "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "^2.8.0"
   },
   "browserify": {
