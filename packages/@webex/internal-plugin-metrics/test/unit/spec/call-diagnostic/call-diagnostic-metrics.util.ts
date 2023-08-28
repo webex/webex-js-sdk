@@ -1,9 +1,11 @@
 import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
 import {
   clearEmptyKeysRecursively,
   getBuildType,
   isLocusServiceErrorCode,
   prepareDiagnosticMetricItem,
+  setMetricTimings,
 } from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 
@@ -137,7 +139,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     [
-      ['client.call.leave', {}],
+      ['client.exit.app', {}],
       [
         'client.interstitial-window.launched',
         {
@@ -219,6 +221,116 @@ describe('internal-plugin-metrics', () => {
       it(`returns expected result for ${eventName}`, () => {
         check(eventName as string, expectedEvent);
       });
+    });
+  });
+
+  describe('setMetricTimings', async () => {
+    let webex: any;
+
+    const check = (options: any, expectedOptions: any) => {
+      const newOptions = setMetricTimings(options);
+
+      assert.deepEqual(newOptions, expectedOptions);
+    };
+
+    it(`returns expected options`, () => {
+      const now = new Date();
+      sinon.useFakeTimers(now.getTime());
+
+      const options = {
+        body: {
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  send: 666,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      const expectedOptions = {
+        body: {
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: now.toISOString(),
+                  send: now.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      check(options, expectedOptions);
+      sinon.restore();
+    });
+
+    it(`returns expected options for multiple metrics`, () => {
+      const now = new Date();
+      sinon.useFakeTimers(now.getTime());
+
+      const options = {
+        body: {
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  send: 666,
+                },
+              },
+            },
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 777,
+                  send: 888,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      const expectedOptions = {
+        body: {
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: now.toISOString(),
+                  send: now.toISOString(),
+                },
+              },
+            },
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: now.toISOString(),
+                  send: now.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      check(options, expectedOptions);
+      sinon.restore();
+    });
+
+    it(`does not throw when data missing`, () => {
+      const options = {};
+
+      const expectedOptions = {};
+
+      check(options, expectedOptions);
     });
   });
 });

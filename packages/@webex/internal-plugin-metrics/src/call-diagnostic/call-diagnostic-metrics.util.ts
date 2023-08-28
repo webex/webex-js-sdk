@@ -207,3 +207,27 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   return item;
 };
+
+/**
+ * Sets the originTime value(s) before the request/fetch.
+ * This function is only useful if you are about to submit a metrics
+ * request using pre-built fetch options;
+ *
+ * @param {any} options
+ * @returns {any} the updated options object
+ */
+export const setMetricTimings = (options) => {
+  if (options.body?.metrics) {
+    const now = new Date().toISOString();
+    options.body.metrics.forEach((metric) => {
+      if (metric.eventPayload) {
+        metric.eventPayload.originTime = {
+          triggered: now,
+          send: now,
+        };
+      }
+    });
+  }
+
+  return options;
+};

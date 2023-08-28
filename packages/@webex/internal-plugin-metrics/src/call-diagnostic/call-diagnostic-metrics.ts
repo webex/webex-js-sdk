@@ -552,15 +552,15 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Prepare Client Event CA event.
+   * Builds a request options object to later be passed to fetch().
    * @param arg - submit params
    * @param arg.event - event key
    * @param arg.payload - additional payload to be merged with default payload
-   * @param arg.options - payload
+   * @param arg.options - client event options
    * @returns {Promise<any>}
    * @throws
    */
-  public async prepareMetricFetchOptions({
+  public async buildClientEventFetchRequestOptions({
     name,
     payload,
     options,

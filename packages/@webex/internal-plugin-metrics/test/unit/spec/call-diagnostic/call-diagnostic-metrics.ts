@@ -744,15 +744,15 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe('#prepareMetricFetchOptions', () => {
+    describe('#buildClientEventFetchRequestOptions', () => {
       it('returns expected options', async () => {
         const options = {
           meetingId: fakeMeeting.id,
         };
 
         const triggered = new Date();
-        const fetchOptions = await cd.prepareMetricFetchOptions({
-          name: 'client.call.leave',
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
           payload: {trigger: 'user-interaction', canProceed: false},
           options,
         });
@@ -777,7 +777,7 @@ describe('internal-plugin-metrics', () => {
                       userId: 'userId',
                     },
                     loginType: 'login-ci',
-                    name: 'client.call.leave',
+                    name: 'client.exit.app',
                     trigger: 'user-interaction',
                     userType: 'host',
                   },

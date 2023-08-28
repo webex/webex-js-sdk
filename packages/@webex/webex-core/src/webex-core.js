@@ -10,6 +10,7 @@ import {
   HttpStatusInterceptor,
   defaults as requestDefaults,
   protoprepareFetchOptions as prepareFetchOptions,
+  setTimingsAndFetch as _setTimingsAndFetch,
 } from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
@@ -410,6 +411,8 @@ const WebexCore = AmpState.extend({
       json: true,
       interceptors: ints,
     });
+
+    this.setTimingsAndFetch = _setTimingsAndFetch;
 
     let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(
       this,

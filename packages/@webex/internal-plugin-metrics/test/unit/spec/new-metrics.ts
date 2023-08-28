@@ -26,7 +26,9 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
-      webex.internal.newMetrics.callDiagnosticMetrics.prepareMetricFetchOptions = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
+        sinon.stub();
+      webex.setTimingsAndFetch = sinon.stub();
     });
 
     it('submits Client Event successfully', () => {
@@ -93,19 +95,58 @@ describe('internal-plugin-metrics', () => {
       assert.calledOnce(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps);
     });
 
-    it('prepares metric fetch options successfully', () => {
-      webex.internal.newMetrics.prepareMetricFetchOptions({
-        name: 'client.alert.displayed',
-        options: {
-          meetingId: '123',
-        },
+    describe('#buildClientEventFetchRequestOptions', () => {
+      it('builds client event fetch options successfully', () => {
+        webex.internal.newMetrics.buildClientEventFetchRequestOptions({
+          name: 'client.alert.displayed',
+          options: {
+            meetingId: '123',
+          },
+        });
+
+        assert.calledWith(
+          webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions,
+          {
+            name: 'client.alert.displayed',
+            payload: undefined,
+            options: {meetingId: '123'},
+          }
+        );
+      });
+    });
+
+    describe.only('#setMetricTimingsAndFetch', () => {
+      beforeEach(() => {
+        global.fetch = sinon.stub();
       });
 
-      assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp);
-      assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.prepareMetricFetchOptions, {
-        name: 'client.alert.displayed',
-        payload: undefined,
-        options: {meetingId: '123'},
+      it('calls fetch with the expected options', () => {
+        const now = new Date();
+        sinon.useFakeTimers(now.getTime());
+
+        webex.internal.newMetrics.setMetricTimingsAndFetch({
+          body: {metrics: [{eventPayload: {}}]},
+        });
+
+        const expected = {
+          body: {
+            metrics: [
+              {
+                eventPayload: {
+                  originTime: {
+                    triggered: now.toISOString(),
+                    send: now.toISOString(),
+                  },
+                },
+              },
+            ],
+          },
+        };
+
+        sinon.assert.calledOnce(webex.setTimingsAndFetch);
+        sinon.assert.calledWith(webex.setTimingsAndFetch, expected);
+
+        sinon.restore();
       });
     });
   });
