@@ -8877,6 +8877,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": ^1.1.0
     "@webex/web-media-effects": ^2.11.5
+    eslint: ^8.24.0
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
