@@ -614,6 +614,15 @@ describe('CallingClient Tests', () => {
       call?.end();
     });
 
+    it('Remove hyphen from dialled number while making call', () => {
+      const call = callingClient.makeCall({address: '123-456-7890', type: CallType.URI});
+
+      expect(call).toBeTruthy();
+      expect(call ? call['direction'] : undefined).toStrictEqual(CallDirection.OUTBOUND);
+      expect(call ? call['destination']['address'] : undefined).toStrictEqual('tel:1234567890');
+      call?.end();
+    });
+
     it('attempt to create call with incorrect number format 1', (done) => {
       // There may be other listeners , which may create race
       callingClient.removeAllListeners(EVENT_KEYS.ERROR);

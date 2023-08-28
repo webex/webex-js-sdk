@@ -397,7 +397,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       const match = dest.address.match(VALID_PHONE);
 
       if (match && match[0].length === dest.address.length) {
-        const sanitizedNumber = dest.address.replace(/[^[*+]\d#]/gi, '').replace(/\s+/gi, '');
+        const sanitizedNumber = dest.address
+          .replace(/[^[*+]\d#]/gi, '')
+          .replace(/\s+/gi, '')
+          .replace(/-/gi, '');
         const formattedDest = {
           type: dest.type,
           address: `tel:${sanitizedNumber}`,
