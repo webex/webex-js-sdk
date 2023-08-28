@@ -1,4 +1,4 @@
-import WebexCalling from '@webex/calling';
+import * as WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
 
 /* eslint-disable require-jsdoc */
@@ -90,6 +90,10 @@ class Calling extends EventEmitter {
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
+  }
+
+  static get createMicrophoneStream() {
+    return WebexCalling.createMicrophoneStream;
   }
 }
 

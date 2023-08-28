@@ -35,6 +35,25 @@ const mockMediaSDK = MediaSDK as jest.Mocked<typeof MediaSDK>;
 const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 
+// class MockMediaStream {
+//   private track;
+
+//   constructor(track: any) {
+//     this.track = track;
+//   }
+// }
+
+// globalThis.MediaStream = MockMediaStream;
+
+// // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
+//   return {} as MediaStream;
+// });
+
+// // Object.defineProperty(window, 'MediaStream', {
+// //   writable: true,
+// // });
+
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
   const dest = {
@@ -87,6 +106,10 @@ describe('Call Tests', () => {
     .spyOn(Utils, 'parseMediaQualityStatistics')
     .mockReturnValue(disconnectStats);
 
+  const mockTrack = {
+    enabled: false,
+  } as MediaStreamTrack;
+
   const roapMediaConnectionConfig = {
     skipInactiveTransceivers: true,
     iceServers: [],
@@ -97,15 +120,11 @@ describe('Call Tests', () => {
   };
 
   const roapMediaConnectionOptions = {
-    send: {
-      audio: {
-        enabled: true,
-      } as MediaStreamTrack,
-    },
-    receive: {
-      audio: true,
-      video: false,
-      screenShareVideo: false,
+    localTracks: {audio: mockTrack},
+    direction: {
+      audio: 'sendrecv',
+      video: 'inactive',
+      screenShareVideo: 'inactive',
     },
   };
 
@@ -158,18 +177,24 @@ describe('Call Tests', () => {
 
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
-    const track = {} as MediaStreamTrack;
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+    };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
 
     const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
 
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
-    call.mute(track);
+    call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
-    expect(track.enabled).toEqual(false);
-    call.mute(track);
-    expect(track.enabled).toEqual(true);
+    expect(mockTrack.enabled).toEqual(false);
+    call.mute(localAudioStream);
+    expect(mockTrack.enabled).toEqual(true);
     expect(call.isMuted()).toEqual(false);
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
@@ -254,11 +279,13 @@ describe('Call Tests', () => {
   });
 
   it('dial functionality tests for coverage', async () => {
-    const settings = {
-      localAudioTrack: {
-        enabled: false,
-      } as MediaStreamTrack,
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
     };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
 
     const warnSpy = jest.spyOn(log, 'warn');
     const call = createCall(
@@ -271,9 +298,9 @@ describe('Call Tests', () => {
       defaultServiceIndicator
     );
 
-    call.dial(settings);
+    call.dial(localAudioStream);
 
-    expect(settings.localAudioTrack.enabled).toEqual(true);
+    expect(mockTrack.enabled).toEqual(true);
     expect(mockMediaSDK.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
@@ -282,7 +309,7 @@ describe('Call Tests', () => {
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
     /* Now change the state and recall to check for error */
     call['mediaStateMachine'].state.value = 'S_SEND_ROAP_OFFER';
-    call.dial(settings);
+    call.dial(localAudioStream);
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
     expect(warnSpy).toBeCalledOnceWith(
       `Call cannot be dialed because the state is already : S_SEND_ROAP_OFFER`,
@@ -291,11 +318,14 @@ describe('Call Tests', () => {
   });
 
   it('answer functionality tests for coverage', async () => {
-    const settings = {
-      localAudioTrack: {
-        enabled: false,
-      } as MediaStreamTrack,
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
     };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+
     const warnSpy = jest.spyOn(log, 'warn');
     const call = createCall(
       activeUrl,
@@ -308,8 +338,8 @@ describe('Call Tests', () => {
     );
     /** Cannot answer in idle state */
 
-    call.answer(settings);
-    expect(settings.localAudioTrack.enabled).toEqual(true);
+    call.answer(localAudioStream);
+    expect(mockTrack.enabled).toEqual(true);
     expect(mockMediaSDK.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
@@ -323,7 +353,7 @@ describe('Call Tests', () => {
 
     /* Now change the state and recall to check for correct flow */
     call['callStateMachine'].state.value = 'S_SEND_CALL_PROGRESS';
-    call.answer(settings);
+    call.answer(localAudioStream);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
   });
 });

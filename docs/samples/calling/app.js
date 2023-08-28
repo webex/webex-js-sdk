@@ -2,7 +2,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable jsdoc/require-jsdoc */
 /* eslint-env browser */
-
 /* global Calling */
 
 /* eslint-disable require-jsdoc */
@@ -83,11 +82,10 @@ const contactGroupObj = document.querySelector('#contactgroup-object');
 
 let base64;
 let audio64;
-let localAudioTrack;
-let localVideoTrack;
 let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
+let localAudioStream;
 
 const devicesById = {};
 const img = new Image();
@@ -373,7 +371,7 @@ function muteUnmute() {
 
   if (elem.value === 'Mute') elem.value = 'Unmute';
   else elem.value = 'Mute';
-  call.mute(localAudioTrack);
+  call.mute(localAudioStream);
 }
 
 function holdResume() {
@@ -490,7 +488,7 @@ function createCall(e) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
-  call.dial({localAudioTrack});
+  call.dial(localAudioStream);
 }
 
 function sendDTMF() {
@@ -546,7 +544,7 @@ function commitTransfer() {
       callTranferObj = null;
     });
 
-    callTranferObj.dial({localAudioTrack});
+    callTranferObj.dial(localAudioStream);
 
     transferDetailsElm.innerText = `Dialing Transfer target`;
   } else {
@@ -576,18 +574,8 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  const {audio} = getAudioVideoInput();
-
-  let audioTrack;
-
-  try {
-    audioTrack = await callingClient.mediaEngine.Media.createAudioTrack(audio);
-  } catch (e) {
-    console.error(e);
-  }
-
-  localAudioTrack = audioTrack.getMediaStreamTrack();
-  localAudioElem.srcObject = new MediaStream([audioTrack.getMediaStreamTrack()]);
+  localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+  localAudioElem.srcObject = localAudioStream.outputStream;
 }
 
 // Listen for submit on create meeting
@@ -667,7 +655,7 @@ function answer() {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 
-    call.answer({localAudioTrack});
+    call.answer(localAudioStream);
   }
 }
 
