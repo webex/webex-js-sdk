@@ -703,7 +703,9 @@ const htmlMediaElements = [
 
 
 function cleanUpMedia() {
+  localMedia.microphoneStream.stop();
   localMedia.microphoneStream = undefined;
+  localMedia.cameraStream.stop();
   localMedia.cameraStream = undefined;
 
   [
@@ -955,46 +957,6 @@ const localMedia = {
   }
 }
 
-function handleStreamPublishedState(meeting) {
-  meeting.on('meeting:streamPublishStateChanged', ({isPublished, mediaType, stream}) => {
-    let debugString, streamElm;
-
-    switch (mediaType) {
-      case 'VIDEO-MAIN':
-        debugString = 'local camera';
-        streamElm = meetingStreamsLocalVideo;
-        break;
-    
-      case 'VIDEO-SLIDES':
-        debugString = 'local share video';
-        streamElm = meetingStreamsLocalShareVideo;
-        break;
-    
-      case 'AUDIO-MAIN':
-        debugString = 'local microphone';
-        streamElm = meetingStreamsLocalAudio;
-        break;
-    
-      case 'AUDIO-SLIDES':
-        debugString = 'local share audio';
-        streamElm = meetingStreamsLocalShareAudio;
-        break;
-    
-      default:
-        break;
-    }
-
-    if (!isPublished) {
-      console.log(`MeetingControls#getUserMedia() :: ${debugString} stream unpublished, stopping it`);
-      stream.stop();
-      if(mediaType === 'VIDEO-MAIN') {
-        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
-      }
-      streamElm.srcObject = null;
-    }
-  });
-}
-
 async function getUserMedia(constraints = {audio: true, video: true}) {
   const meeting = getCurrentMeeting();
 
@@ -1215,24 +1177,28 @@ async function startScreenShare() {
     const [localShareVideoStream, localShareAudioStream] = await webex.meetings.mediaHelpers.createDisplayStreamWithAudio();
 
     localMedia.screenShare.video = localShareVideoStream;
-
+    let isAudioShareEnded = false,
+        isVideoShareEnded = false;
     localMedia.screenShare.video.on('stream-ended', () => {
       console.log('MeetingControls#startScreenShare() :: local share video stream ended');
 
       localMedia.screenShare.video = undefined;
-      meetingStreamsLocalShareVideo.srcObject = null;
+      isVideoShareEnded = true;
+
+      if(isAudioShareEnded && isVideoShareEnded) meetingStreamsLocalShare.srcObject = null;
     });
 
     localMedia.screenShare.audio = localShareAudioStream;
-
-    localMedia.screenShare.audio?.on('stream-ended', () => {
+    localMedia.screenShare.audio.on('stream-ended', () => {
       console.log('MeetingControls#startScreenShare() :: local share audio stream ended');
 
       localMedia.screenShare.audio = undefined;
-      meetingStreamsLocalShareAudio.srcObject = null;
+      isAudioShareEnded = true;
+
+      if(isAudioShareEnded && isVideoShareEnded) meetingStreamsLocalShare.srcObject = null;
     });
 
-    meetingStreamsLocalShareVideo.srcObject = localShareVideoStream.outputStream;
+    meetingStreamsLocalShare.srcObject = localShareVideoStream.outputStream;
 
     console.log('MeetingControls#startScreenShare() :: publishing share video & audio stream');
     await meeting.publishStreams({
@@ -1315,7 +1281,7 @@ function clearMediaDeviceList() {
 
 function getLocalMediaSettings() {
   if (localMedia.cameraStream) {
-    const videoSettings = localMedia.cameraStream.getSettings();
+    const videoSettings = localMedia.cameraStream.getTracks()[0]?.getSettings();
     const {frameRate, height} = videoSettings;
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }

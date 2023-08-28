@@ -185,7 +185,7 @@ describe('plugin-meetings', () => {
       it('should call handleLocusDelta with the new delta locus', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            onDeltaLocus: sinon.stub(),
           },
         };
 
@@ -231,6 +231,10 @@ describe('plugin-meetings', () => {
     });
 
     describe('generateLocusDeltaRequest', () => {
+      afterEach(() => {
+        WeakRef.prototype.deref.restore();
+      });
+
       it('generates the correct wrapper function', async () => {
         const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
@@ -266,21 +270,6 @@ describe('plugin-meetings', () => {
 
         result = await locusDeltaRequest(options);
         assert.equal(result, undefined);
-
-        WeakRef.prototype.deref.restore();
-      });
-
-      it('calls generateBuildLocusDeltaRequestOptions as expected', () => {
-        const generateBuildLocusDeltaRequestOptionsSpy = sinon.spy(
-          MeetingUtil,
-          'generateBuildLocusDeltaRequestOptions'
-        );
-
-        const meeting = {};
-
-        MeetingUtil.generateLocusDeltaRequest(meeting);
-
-        assert.calledOnceWithExactly(generateBuildLocusDeltaRequestOptionsSpy, meeting);
       });
     });
 

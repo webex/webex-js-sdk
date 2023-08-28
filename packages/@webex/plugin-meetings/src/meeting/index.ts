@@ -16,6 +16,7 @@ import {
   MediaContent,
   MediaType,
   RemoteTrackType,
+  SendSlot,
 } from '@webex/internal-media-core';
 
 import {
@@ -556,7 +557,7 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
-  private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
+  sendSlots = new Map<MediaType, SendSlot>();
 
   /**
    * @param {Object} attrs
@@ -3386,7 +3387,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   closeRemoteStreams() {
-    const {remoteAudioStream, remoteVideoStream, remoteShareStream, shareAudioStream} =
+    const {remoteAudioStream, remoteVideoStream, remoteShare, shareAudioStream} =
       this.mediaProperties;
 
     /**
@@ -3419,7 +3420,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // eslint-disable-next-line arrow-body-style
     const stopStream = (stream: RemoteStream, type: string) => {
-      return Media.stopStream(stream).then(() => {
+      return Media.stopStreams(stream).then(() => {
         triggerMediaStoppedEvent(type);
       });
     };
@@ -3427,7 +3428,7 @@ export default class Meeting extends StatelessWebexPlugin {
     return Promise.all([
       stopStream(remoteAudioStream, EVENT_TYPES.REMOTE_AUDIO),
       stopStream(remoteVideoStream, EVENT_TYPES.REMOTE_VIDEO),
-      stopStream(remoteShareStream, EVENT_TYPES.REMOTE_SHARE),
+      stopStream(remoteShare, EVENT_TYPES.REMOTE_SHARE),
       stopStream(shareAudioStream, EVENT_TYPES.REMOTE_SHARE_AUDIO),
     ]);
   }
@@ -3453,11 +3454,10 @@ export default class Meeting extends StatelessWebexPlugin {
     localStream?.on(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!this.isMultistream || !localStream) {
-      // for multistream WCME automatically un-publishes the old stream when we publish a new one
-      await this.unpublishStream(MediaType.AudioMain, oldStream);
+    if (!localStream) {
+      await this.unpublishStream(MediaType.AudioMain);
     }
-    await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
+    await this.publishStream(this.mediaProperties.audioStream, MediaType.AudioMain);
   }
 
   /**
@@ -3481,11 +3481,10 @@ export default class Meeting extends StatelessWebexPlugin {
     localStream?.on(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!this.isMultistream || !localStream) {
-      // for multistream WCME automatically un-publishes the old stream when we publish a new one
-      await this.unpublishStream(MediaType.VideoMain, oldStream);
+    if (!localStream) {
+      await this.unpublishStream(MediaType.VideoMain);
     }
-    await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
+    await this.publishStream(this.mediaProperties.videoStream, MediaType.VideoMain);
   }
 
   /**
@@ -3510,13 +3509,12 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localOutputTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareStream();
+    this.mediaProperties.mediaDirection.sendShare = !!localDisplayStream;
 
-    if (!this.isMultistream || !localDisplayStream) {
-      // for multistream WCME automatically un-publishes the old stream when we publish a new one
-      await this.unpublishStream(MediaType.VideoSlides, oldStream);
+    if (!localDisplayStream) {
+      await this.unpublishStream(MediaType.VideoSlides);
     }
-    await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
+    await this.publishStream(this.mediaProperties.shareVideoStream, MediaType.VideoSlides);
   }
 
   /**
@@ -3529,12 +3527,12 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareAudioStream(localSystemAudioStream?: LocalSystemAudioStream) {
     const oldStream = this.mediaProperties.shareAudioStream;
 
-    oldStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
+    oldStream?.off(LocalStreamEventNames.Ended, this.handleShareAudioStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    this.mediaProperties.setLocalShareAudioStream(localSystemAudioStream);
+    this.mediaProperties.setLocalShareAudioStream(LocalSystemAudioStream);
 
-    localSystemAudioStream?.on(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
+    localSystemAudioStream?.on(LocalStreamEventNames.Ended, this.handleShareAudioStreamEnded);
     localSystemAudioStream?.on(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
@@ -3542,39 +3540,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareStream();
 
-    if (!this.isMultistream || !localSystemAudioStream) {
-      // for multistream WCME automatically un-publishes the old stream when we publish a new one
-      await this.unpublishStream(MediaType.AudioSlides, oldStream);
+    if (!localSystemAudioStream) {
+      await this.unpublishStream(MediaType.AudioSlides);
     }
-    await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
-  }
-
-  /**
-   * Handles the local audio stream publish state change event
-   * @internal
-   * @param {Object} options parameters functionName, isPublished, mediaType and stream needed to trigger event
-   * @returns {undefined}
-   */
-  private emitPublishStateChangeEvent(options: {
-    functionName: string;
-    isPublished: boolean;
-    mediaType: MediaType;
-    stream: MediaStream;
-  }) {
-    const {functionName, isPublished, mediaType, stream} = options;
-    Trigger.trigger(
-      this,
-      {
-        file: 'meeting/index',
-        function: functionName,
-      },
-      EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
-      {
-        isPublished,
-        mediaType,
-        stream,
-      }
-    );
+    await this.publishStream(this.mediaProperties.shareAudioStream, MediaType.AudioSlides);
   }
 
   /**
@@ -3613,38 +3582,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.mediaDirection.sendVideo = false;
     this.mediaProperties.mediaDirection.sendShare = false;
 
-    if (audioStream) {
-      this.emitPublishStateChangeEvent({
-        functionName: 'cleanupLocalStreams',
-        isPublished: false,
-        mediaType: MediaType.AudioMain,
-        stream: audioStream,
-      });
-    }
-    if (videoStream) {
-      this.emitPublishStateChangeEvent({
-        functionName: 'cleanupLocalStreams',
-        isPublished: false,
-        mediaType: MediaType.VideoMain,
-        stream: videoStream,
-      });
-    }
-    if (shareVideoStream) {
-      this.emitPublishStateChangeEvent({
-        functionName: 'cleanupLocalStreams',
-        isPublished: false,
-        mediaType: MediaType.VideoSlides,
-        stream: shareVideoStream,
-      });
-    }
-    if (shareAudioStream) {
-      this.emitPublishStateChangeEvent({
-        functionName: 'cleanupLocalStreams',
-        isPublished: false,
-        mediaType: MediaType.AudioSlides,
-        stream: shareAudioStream,
-      });
-    }
+    this.unpublishStreams([audioStream, videoStream, shareAudioStream, shareVideoStream]);
   }
 
   /**
@@ -5057,7 +4995,7 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
           case RemoteTrackType.SCREENSHARE_VIDEO:
             eventType = EVENT_TYPES.REMOTE_SHARE;
-            this.mediaProperties.setRemoteShareStream(remoteStream);
+            this.mediaProperties.setRemoteShare(remoteStream);
             break;
           default: {
             LoggerProxy.logger.log(
@@ -5349,34 +5287,27 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.setMediaPeerConnection(mc);
     this.setupMediaConnectionListeners();
 
+    // create a send slot for each media type
+    // TODO: in some cases we may not want to create send slots for all media types
     if (this.isMultistream) {
-      const [audioEnabled, videoEnabled, shareEnabled] = [
-        this.mediaProperties.mediaDirection.sendAudio ||
-          this.mediaProperties.mediaDirection.receiveAudio,
-        this.mediaProperties.mediaDirection.sendVideo ||
-          this.mediaProperties.mediaDirection.receiveVideo,
-        this.mediaProperties.mediaDirection.sendShare ||
-          this.mediaProperties.mediaDirection.receiveShare,
-      ];
-
-      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
+      this.sendSlots.set(MediaType.VideoMain, mc.createSendSlot(MediaType.VideoMain));
+      this.sendSlots.set(MediaType.AudioMain, mc.createSendSlot(MediaType.AudioMain));
+      this.sendSlots.set(MediaType.VideoSlides, mc.createSendSlot(MediaType.VideoSlides));
+      this.sendSlots.set(MediaType.AudioSlides, mc.createSendSlot(MediaType.AudioSlides));
     }
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
-      await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
+      await this.publishStream(this.mediaProperties.audioStream, MediaType.AudioMain);
     }
     if (this.mediaProperties.videoStream) {
-      await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
+      await this.publishStream(this.mediaProperties.videoStream, MediaType.VideoMain);
     }
     if (this.mediaProperties.shareVideoStream) {
-      await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
+      await this.publishStream(this.mediaProperties.shareVideoStream, MediaType.VideoSlides);
     }
-    if (this.isMultistream && this.mediaProperties.shareAudioStream) {
-      await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
+    if (this.mediaProperties.shareAudioStream) {
+      await this.publishStream(this.mediaProperties.shareAudioStream, MediaType.AudioSlides);
     }
 
     return mc;
@@ -5505,6 +5436,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
+
+    this.annotationInfo = localStreams?.annotationInfo;
+
     const promises = [];
 
     // setup all the references to local streams in this.mediaProperties before creating media connection
@@ -5649,8 +5583,8 @@ export default class Meeting extends StatelessWebexPlugin {
         })
       )
       .then(() => {
-        if (this.mediaProperties.hasLocalShareStream()) {
-          return this.enqueueScreenShareFloorRequest();
+        if (localStreams?.screenShare?.video) {
+          this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE_FLOOR_REQUEST);
         }
 
         return Promise.resolve();
@@ -5839,6 +5773,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * TODO: Make changes here to activate and deactivate streams when sendslots manager is ready
    * Updates the media connection - it allows to enable/disable all audio/video/share in the meeting.
    * This does not affect the published tracks, so for example if a microphone track is published and
    * updateMedia({audioEnabled: false}) is called, the audio will not be sent or received anymore,
@@ -6236,10 +6171,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private requestScreenShareFloor() {
-    if (
-      !this.mediaProperties.hasLocalShareStream() ||
-      !this.mediaProperties.mediaDirection.sendShare
-    ) {
+    if (!this.mediaProperties.shareVideoStream || !this.mediaProperties.mediaDirection.sendShare) {
       LoggerProxy.logger.log(
         `Meeting:index#requestScreenShareFloor --> NOT requesting floor, because we don't have the share stream anymore (shareStream=${
           this.mediaProperties.shareVideoStream ? 'yes' : 'no'
@@ -6543,7 +6475,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {} as any
   ) {
     const {main, content} = renderInfo;
-    const {mediaDirection, remoteShareStream, remoteVideoStream} = this.mediaProperties;
+    const {mediaDirection, remoteShare, remoteVideoStream} = this.mediaProperties;
 
     const layoutInfo = cloneDeep(this.lastVideoLayoutInfo);
 
@@ -7061,10 +6993,12 @@ export default class Meeting extends StatelessWebexPlugin {
       .update({
         // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
         localTracks: {
-          audio: this.mediaProperties.audioStream?.outputTrack || null,
-          video: this.mediaProperties.videoStream?.outputTrack || null,
-          screenShareVideo: this.mediaProperties.shareVideoStream?.outputTrack || null,
-          screenShareAudio: this.mediaProperties.shareAudioStream?.outputTrack || null,
+          audio: this.mediaProperties.audioStream?.outputStream.getTracks()[0] || null,
+          video: this.mediaProperties.videoStream?.outputStream.getTracks()[0] || null,
+          screenShareVideo:
+            this.mediaProperties.shareVideoStream?.outputStream.getTracks()[0] || null,
+          screenShareAudio:
+            this.mediaProperties.shareAudioStream?.outputStream.getTracks()[0] || null,
         },
         direction: {
           audio: Media.getDirection(
@@ -7105,43 +7039,13 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Publishes a stream.
    *
-   * @param {MediaType} mediaType of the stream
    * @param {LocalStream} stream to publish
-   * @returns {Promise}
-   */
-  private async publishStream(mediaType: MediaType, stream?: LocalStream) {
-    if (!stream) {
-      return;
-    }
-
-    if (this.mediaProperties.webrtcMediaConnection) {
-      if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-        await this.sendSlotManager.publishStream(mediaType, stream);
-      }
-
-      this.emitPublishStateChangeEvent({
-        isPublished: true,
-        mediaType,
-        stream,
-        functionName: 'publishStream',
-      });
-    }
-  }
-
-  /**
-   * Un-publishes a stream.
-   *
    * @param {MediaType} mediaType of the stream
-   * @param {LocalStream} stream to unpublish
    * @returns {Promise}
    */
-  private async unpublishStream(mediaType: MediaType, stream?: LocalStream) {
-    if (!stream) {
-      return;
-    }
-
+  private async publishStream(stream: LocalStream, mediaType: MediaType) {
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      await this.sendSlotManager.unpublishStream(mediaType);
+      await this.sendSlots.get(mediaType).publishStream(stream);
     }
 
     this.emitPublishStateChangeEvent({
@@ -7153,6 +7057,18 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Un-publishes a stream.
+   *
+   * @param {MediaType} mediaType of the stream
+   * @returns {Promise}
+   */
+  private async unpublishStream(mediaType: MediaType) {
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      await this.sendSlots.get(mediaType).unpublishStream();
+    }
+  }
+
+  /**
    * Publishes specified local streams in the meeting
    *
    * @param {Object} streams
@@ -7160,6 +7076,9 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async publishStreams(streams: LocalStreams): Promise<void> {
     this.checkMediaConnection();
+
+    this.annotationInfo = streams.annotationInfo;
+
     if (
       !streams.microphone &&
       !streams.camera &&
@@ -7172,11 +7091,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     let floorRequestNeeded = false;
 
-    // Screenshare Audio is supported only in multi stream. So we check for screenshare audio presence only if it's a multi stream meeting
-    if (this.isMultistream && streams.screenShare?.audio) {
+    if (streams.screenShare?.audio) {
       await this.setLocalShareAudioStream(streams.screenShare.audio);
-
-      floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }
 
     if (streams.screenShare?.video) {
@@ -7215,13 +7131,22 @@ export default class Meeting extends StatelessWebexPlugin {
     this.checkMediaConnection();
 
     const promises = [];
+    let isAudioReleased = false;
 
     for (const stream of streams.filter((t) => !!t)) {
       if (stream === this.mediaProperties.shareAudioStream) {
         promises.push(this.setLocalShareAudioStream(undefined));
+        isAudioReleased = true;
       }
 
       if (stream === this.mediaProperties.shareVideoStream) {
+        if (isAudioReleased) {
+          try {
+            this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+          } catch (e) {
+            // nothing to do here, error is logged already inside releaseScreenShareFloor()
+          }
+        }
         promises.push(this.setLocalShareVideoStream(undefined));
       }
 
