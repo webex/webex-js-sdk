@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.59.2](https://github.com/webex/webex-js-sdk/compare/v2.59.1...v2.59.2) (2023-08-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** no-frames-received-sent-stats-error ([#3017](https://github.com/webex/webex-js-sdk/issues/3017)) ([8c8cb6e](https://github.com/webex/webex-js-sdk/commit/8c8cb6e188d48f1b081e3eb4c7d5447eee40a315))
+
 ### [2.59.1](https://github.com/webex/webex-js-sdk/compare/v2.59.0...v2.59.1) (2023-08-14)
 
 
