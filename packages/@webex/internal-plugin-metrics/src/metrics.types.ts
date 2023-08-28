@@ -116,7 +116,7 @@ export type SubmitClientEvent = (args: {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
   options: SubmitClientEventOptions;
-}) => void;
+}) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['name'];

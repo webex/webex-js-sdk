@@ -2654,6 +2654,10 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
               displayHints: payload.info.userDisplayHints,
             }) || this.isLocusCall(),
+          canAnnotate: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
+            policies: this.selfUserPolicies,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);
