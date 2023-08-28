@@ -1,4 +1,4 @@
-import WebexCalling from '@webex/calling';
+import * as WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
 
 /* eslint-disable require-jsdoc */
@@ -28,7 +28,6 @@ class Calling extends EventEmitter {
     this.callingConfig = callingConfig;
     this.log = WebexCalling.Logger;
     this.log.setLogger(callingConfig.logger.level, CALLING_FILE);
-    console.log('pkesari_Webex Calling: ', WebexCalling);
 
     if (webex) {
       this.webex = webex;
@@ -94,19 +93,9 @@ class Calling extends EventEmitter {
       : undefined;
   }
 
-  static createMicrophoneStream = WebexCalling.createMicrophoneStream;
-
-  // createCallingMicrophoneStream = async (audioConstraints) => {
-  //   const microphoneStream = createMicrophoneStream(audioConstraints);
-
-  //   return microphoneStream;
-  // };
-
-  // createCallingCameraStream = (videoConstraints) => {
-  //   const cameraStream = createCameraStream(videoConstraints);
-
-  //   return cameraStream;
-  // };
+  static get createMicrophoneStream() {
+    return WebexCalling.createMicrophoneStream;
+  }
 }
 
 export default Calling;

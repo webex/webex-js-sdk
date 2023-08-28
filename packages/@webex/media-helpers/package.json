@@ -29,7 +29,7 @@
     "@webex/jest-config-legacy": "workspace:^",
     "@webex/legacy-tools": "workspace:^",
     "@webex/ts-events": "^1.1.0",
-    "@webex/web-media-effects": "^2.8.0"
+    "@webex/web-media-effects": "^2.11.5"
   },
   "browserify": {
     "transform": [

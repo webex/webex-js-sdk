@@ -567,21 +567,8 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  console.log('pkesari_Calling object', calling);
-  localAudioStream  = await createMicrophoneStream({audio: true});
-  console.log('pkesari_local audio stream: ', localAudioStream);
+  localAudioStream  = await Calling.createMicrophoneStream({audio: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
-
-  // const effect = new NoiseReductionEffect({
-  //   authToken: tokenElm.value,
-  //   mode: 'WORKLET',
-  // });
-
-  // console.log('pkesari_effect:', effect);
-
-  // await localAudioStream.addEffect('background-noise-removal', effect);
-
-  // await effect.enable();
 }
 
 // Listen for submit on create meeting

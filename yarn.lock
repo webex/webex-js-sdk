@@ -8604,7 +8604,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": ^2.8.0
+    "@webex/web-media-effects": ^2.11.5
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
@@ -9749,7 +9749,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:^2.7.0, @webex/web-media-effects@npm:^2.8.0":
+"@webex/web-media-effects@npm:^2.11.5":
+  version: 2.11.5
+  resolution: "@webex/web-media-effects@npm:2.11.5"
+  dependencies:
+    "@webex/ladon-ts": ^4.2.3
+    events: ^3.3.0
+    js-logger: ^1.6.1
+    typed-emitter: ^1.4.0
+  checksum: 0fd101b146e24414a720abde3032bf4f96343bad2b516eefd843ad04fb762e1a66bf8a578e42350f80aeab3f339004e0fbb00e2ea93678a3cd3169394f0e5880
+  languageName: node
+  linkType: hard
+
+"@webex/web-media-effects@npm:^2.7.0":
   version: 2.11.3
   resolution: "@webex/web-media-effects@npm:2.11.3"
   dependencies:
