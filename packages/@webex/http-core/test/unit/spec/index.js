@@ -4,7 +4,7 @@ import sinon from 'sinon';
 import * as utils from '@webex/http-core/src/request/utils';
 import WebexTrackingIdInterceptor from '@webex/webex-core/src/interceptors/webex-tracking-id';
 import UserAgentInterceptor from '@webex/webex-core/src/interceptors/webex-user-agent';
-import {protoprepareFetchOptions} from '@webex/http-core/src/index';
+import {protoprepareFetchOptions, setTimingsAndFetch} from '@webex/http-core/src/index';
 
 describe('http-core index tests', () => {
   describe('#protoprepareFetchOptions()', () => {
@@ -29,6 +29,28 @@ describe('http-core index tests', () => {
       assert.equal(typeof options.upload, 'object');
       assert.equal(typeof options.download, 'object');
       assert.isArray(options.interceptors);
+    });
+  });
+
+  describe('#setTimingsAndFetch()', () => {
+    const now = Date.now();
+    let stubbedFetch;
+
+    beforeEach(() => {
+      global.fetch = sinon.stub();
+    });
+
+    it('calls fetch with expected options', async () => {
+      sinon.useFakeTimers(now);
+      const options = {};
+
+      const newOptions = setTimingsAndFetch(options);
+
+      sinon.assert.calledOnce(global.fetch);
+      sinon.assert.calledWith(global.fetch, {
+        $timings: {requestStart: now, networkStart: now},
+      });
+      sinon.restore();
     });
   });
 });
