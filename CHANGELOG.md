@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.196](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.195...v3.0.0-beta.196) (2023-08-29)
+
+
+### Bug Fixes
+
+* added mediaType to ReceiveSlotManager logs ([#3025](https://github.com/webex/webex-js-sdk/issues/3025)) ([57b7560](https://github.com/webex/webex-js-sdk/commit/57b7560dbf03e6a30a939c7819859fa6062d7dd3))
+
 ## [3.0.0-beta.195](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.194...v3.0.0-beta.195) (2023-08-25)
 
 
