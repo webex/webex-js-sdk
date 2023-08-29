@@ -65,6 +65,7 @@ import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
+import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -431,6 +432,36 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.members.findMemberByCsi);
             assert.calledWith(meeting.members.findMemberByCsi, 123);
             assert.equal(memberId, undefined);
+          });
+        });
+
+        describe('creates SendSlot manager instance', () => {
+          let mockSendSlotManagerCtor;
+
+          beforeEach(() => {
+            mockSendSlotManagerCtor = sinon
+              .stub(SendSlotManagerModule,'default');
+              console.log(mockSendSlotManagerCtor);
+
+            meeting = new Meeting(
+              {
+                userId: uuid1,
+                resource: uuid2,
+                deviceUrl: uuid3,
+                locus: {url: url1},
+                destination: testDestination,
+                destinationType: _MEETING_ID_,
+              },
+              {
+                parent: webex,
+              }
+            );
+
+            meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
+          });
+
+          it('calls SendSlotManager constructor', () => {
+            assert.calledOnce(mockSendSlotManagerCtor);
           });
         });
       });
