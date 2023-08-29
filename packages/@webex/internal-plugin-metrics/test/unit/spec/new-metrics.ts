@@ -115,7 +115,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.only('#setMetricTimingsAndFetch', () => {
+    describe('#setMetricTimingsAndFetch', () => {
       beforeEach(() => {
         global.fetch = sinon.stub();
       });
