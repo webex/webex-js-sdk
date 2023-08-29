@@ -71,7 +71,7 @@ export default class SendSlotManager {
     await slot.publishStream(stream);
 
     this.LoggerProxy.logger.info(
-      `SendSlotsManager->publishStream#Published stream for ${mediaType} and stream with label ${stream.label} and muted ${stream.muted}`
+      `SendSlotsManager->publishStream#Published stream for ${mediaType} and stream ${stream}`
     );
   }
 

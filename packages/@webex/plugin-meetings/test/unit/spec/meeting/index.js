@@ -443,6 +443,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             mockSendSlotManagerCtor = sinon
               .stub(SendSlotManagerModule,'default');
+              console.log(mockSendSlotManagerCtor);
 
             meeting = new Meeting(
               {

@@ -16,7 +16,6 @@ import {
   MediaContent,
   MediaType,
   RemoteTrackType,
-  SendSlot,
 } from '@webex/internal-media-core';
 
 import {
@@ -557,7 +556,7 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
-  sendSlots = new Map<MediaType, SendSlot>();
+  sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
 
   /**
    * @param {Object} attrs
@@ -5287,13 +5286,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.setMediaPeerConnection(mc);
     this.setupMediaConnectionListeners();
 
-    // create a send slot for each media type
-    // TODO: in some cases we may not want to create send slots for all media types
     if (this.isMultistream) {
-      this.sendSlots.set(MediaType.VideoMain, mc.createSendSlot(MediaType.VideoMain));
-      this.sendSlots.set(MediaType.AudioMain, mc.createSendSlot(MediaType.AudioMain));
-      this.sendSlots.set(MediaType.VideoSlides, mc.createSendSlot(MediaType.VideoSlides));
-      this.sendSlots.set(MediaType.AudioSlides, mc.createSendSlot(MediaType.AudioSlides));
+      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, false);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, false);
+      this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, false);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, false);
     }
 
     // publish the streams
@@ -5773,7 +5770,6 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
-   * TODO: Make changes here to activate and deactivate streams when sendslots manager is ready
    * Updates the media connection - it allows to enable/disable all audio/video/share in the meeting.
    * This does not affect the published tracks, so for example if a microphone track is published and
    * updateMedia({audioEnabled: false}) is called, the audio will not be sent or received anymore,
@@ -5806,12 +5802,9 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.UPDATE_MEDIA, options);
     }
 
-    if (
-      this.isMultistream &&
-      (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined)
-    ) {
+    if (this.isMultistream && receiveShare !== undefined) {
       throw new Error(
-        'toggling shareAudioEnabled or shareVideoEnabled in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
+        'toggling receiveShare in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
       );
     }
 
@@ -5833,8 +5826,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     }
 
-    if (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined) {
-      this.mediaProperties.mediaDirection.receiveShare = !!(shareAudioEnabled || shareVideoEnabled);
+    if (receiveShare !== undefined) {
+      this.mediaProperties.mediaDirection.receiveShare = receiveShare;
     }
 
     if (!this.isMultistream) {
@@ -7045,7 +7038,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async publishStream(stream: LocalStream, mediaType: MediaType) {
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      await this.sendSlots.get(mediaType).publishStream(stream);
+      await this.sendSlotManager.publishStream(mediaType, stream);
     }
 
     this.emitPublishStateChangeEvent({
@@ -7064,7 +7057,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async unpublishStream(mediaType: MediaType) {
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      await this.sendSlots.get(mediaType).unpublishStream();
+      await this.sendSlotManager.unpublishStream(mediaType);
     }
   }
 
