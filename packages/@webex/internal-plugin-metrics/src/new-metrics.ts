@@ -159,7 +159,7 @@ class Metrics extends WebexPlugin {
     name: ClientEvent['name'];
     payload?: RecursivePartial<ClientEvent['payload']>;
     options: SubmitClientEventOptions;
-  }) {
+  }): Promise<any> {
     this.callDiagnosticLatencies.saveTimestamp({
       key: name,
       options: {meetingId: options?.meetingId},

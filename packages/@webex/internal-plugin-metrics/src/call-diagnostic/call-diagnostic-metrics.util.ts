@@ -223,7 +223,7 @@ export const setMetricTimings = (options) => {
       if (metric.eventPayload) {
         metric.eventPayload.originTime = {
           triggered: now,
-          send: now,
+          sent: now,
         };
       }
     });

@@ -569,12 +569,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options: SubmitClientEventOptions;
   }): Promise<any> {
-    const event = this.prepareClientEvent({name, payload, options});
+    const clientEvent = this.prepareClientEvent({name, payload, options});
 
     // build metrics-a event type
     // @ts-ignore
     const finalEvent = prepareDiagnosticMetricItem(this.webex, {
-      eventPayload: event,
+      eventPayload: clientEvent,
       type: ['diagnostic-event'],
     });
 

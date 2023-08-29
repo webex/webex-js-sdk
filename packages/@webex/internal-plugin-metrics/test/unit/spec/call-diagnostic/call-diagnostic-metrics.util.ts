@@ -244,7 +244,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: 555,
-                  send: 666,
+                  sent: 666,
                 },
               },
             },
@@ -259,7 +259,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: now.toISOString(),
-                  send: now.toISOString(),
+                  sent: now.toISOString(),
                 },
               },
             },
@@ -282,7 +282,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: 555,
-                  send: 666,
+                  sent: 666,
                 },
               },
             },
@@ -290,7 +290,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: 777,
-                  send: 888,
+                  sent: 888,
                 },
               },
             },
@@ -305,7 +305,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: now.toISOString(),
-                  send: now.toISOString(),
+                  sent: now.toISOString(),
                 },
               },
             },
@@ -313,7 +313,7 @@ describe('internal-plugin-metrics', () => {
               eventPayload: {
                 originTime: {
                   triggered: now.toISOString(),
-                  send: now.toISOString(),
+                  sent: now.toISOString(),
                 },
               },
             },

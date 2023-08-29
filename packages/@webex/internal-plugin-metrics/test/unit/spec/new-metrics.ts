@@ -135,7 +135,7 @@ describe('internal-plugin-metrics', () => {
                 eventPayload: {
                   originTime: {
                     triggered: now.toISOString(),
-                    send: now.toISOString(),
+                    sent: now.toISOString(),
                   },
                 },
               },
