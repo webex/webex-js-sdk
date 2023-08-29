@@ -14,11 +14,13 @@ import ReachabilityRequest from './request';
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
 
+export type ICECandidateResult = {clusterId: string; elapsed?: string | null; publicIPs?: string[]};
 /**
  * @class Reachability
  * @export
  */
 export default class Reachability {
+  namespace = REACHABILITY.namespace;
   webex: object;
   reachabilityRequest: any;
   clusterLatencyResults: any;
@@ -61,24 +63,30 @@ export default class Reachability {
     this.setup();
 
     // Remove stored reachability results to ensure no stale data
-    if (window?.localStorage?.removeItem) {
-      window.localStorage.removeItem(REACHABILITY.localStorage);
-    } else {
-      LoggerProxy.logger.error(
-        'Reachability:index#gatherReachability --> Error in accessing LocalStorage.'
-      );
-
-      return {};
-    }
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageJoinCookie);
 
     // Fetch clusters and measure latency
     try {
-      const clusters = await this.reachabilityRequest.getClusters();
+      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters();
 
       // Perform Reachability Check
       const results = await this.performReachabilityCheck(clusters);
 
-      window.localStorage.setItem(REACHABILITY.localStorage, JSON.stringify(results));
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageResult,
+        JSON.stringify(results)
+      );
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageJoinCookie,
+        JSON.stringify(joinCookie)
+      );
 
       LoggerProxy.logger.log(
         'Reachability:index#gatherReachability --> Reachability checks completed'
@@ -100,9 +108,12 @@ export default class Reachability {
    * @public
    * @memberof Reachability
    */
-  isAnyClusterReachable() {
+  async isAnyClusterReachable() {
     let reachable = false;
-    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+    // @ts-ignore
+    const reachabilityData = await this.webex.boundedStorage
+      .get(this.namespace, REACHABILITY.localStorageResult)
+      .catch(() => {});
 
     if (reachabilityData) {
       try {
@@ -290,6 +301,8 @@ export default class Reachability {
           `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
           elapsed
         );
+        // order is important
+        this.addPublicIP(peerConnection, e.candidate.address);
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
@@ -307,8 +320,9 @@ export default class Reachability {
   private iceGatheringState(peerConnection: RTCPeerConnection, timeout: number) {
     const ELAPSED = 'elapsed';
 
-    return new Promise((resolve) => {
+    return new Promise<ICECandidateResult>((resolve) => {
       const peerConnectionProxy = new window.Proxy(peerConnection, {
+        // eslint-disable-next-line require-jsdoc
         get(target, property) {
           const targetMember = target[property];
 
@@ -322,7 +336,7 @@ export default class Reachability {
           // only intercept elapsed property
           if (property === ELAPSED) {
             // @ts-ignore
-            resolve({clusterId: peerConnection.key, elapsed: value});
+            resolve({clusterId: peerConnection.key, publicIPs: target.publicIPs, elapsed: value});
 
             return true;
           }
@@ -343,6 +357,8 @@ export default class Reachability {
 
         // Close any open peerConnections
         if (peerConnectionProxy.connectionState !== CLOSED) {
+          // order is important
+          this.addPublicIP(peerConnectionProxy, null);
           this.setLatencyAndClose(peerConnectionProxy, null);
         }
       }, timeout);
@@ -367,24 +383,30 @@ export default class Reachability {
 
   /**
    * Calculates time to establish connection
-   * @param {array} iceResults iceResults
+   * @param {Array<ICECandidateResult>} iceResults iceResults
    * @returns {object} reachabilityMap
-   * @private
+   * @protected
    * @memberof Reachability
    */
-  private parseIceResultsToReachabilityResults(iceResults: Array<any>) {
+  protected parseIceResultsToReachabilityResults(iceResults: Array<ICECandidateResult>) {
     const reachabilityMap = {};
 
-    iceResults.forEach(({clusterId, elapsed}) => {
-      let latencyResult;
+    iceResults.forEach(({clusterId, elapsed, publicIPs}) => {
+      const latencyResult = {};
 
-      if (elapsed === null) {
-        latencyResult = {reachable: 'false'};
+      if (!elapsed) {
+        Object.assign(latencyResult, {reachable: 'false'});
       } else {
-        latencyResult = {
+        Object.assign(latencyResult, {
           reachable: 'true',
           latencyInMilliseconds: elapsed.toString(),
-        };
+        });
+      }
+
+      if (publicIPs) {
+        Object.assign(latencyResult, {
+          clientMediaIPs: publicIPs,
+        });
       }
 
       reachabilityMap[clusterId] = {
@@ -428,6 +450,33 @@ export default class Reachability {
           resolve({});
         });
     });
+  }
+
+  /**
+   * Adds public IP (client media IPs)
+   * @param {RTCPeerConnection} peerConnection
+   * @param {string} publicIP
+   * @returns {void}
+   */
+  protected addPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+    const modifiedPeerConnection: RTCPeerConnection & {publicIPs?: string[]} = peerConnection;
+    const {CLOSED} = CONNECTION_STATE;
+
+    if (modifiedPeerConnection.connectionState === CLOSED) {
+      LoggerProxy.logger.log(
+        `Reachability:index#addPublicIP --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
+      );
+    }
+
+    if (publicIP) {
+      if (modifiedPeerConnection.publicIPs) {
+        modifiedPeerConnection.publicIPs.push(publicIP);
+      } else {
+        modifiedPeerConnection.publicIPs = [publicIP];
+      }
+    } else {
+      modifiedPeerConnection.publicIPs = null;
+    }
   }
 
   /**

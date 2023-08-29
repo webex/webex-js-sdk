@@ -8,6 +8,7 @@ const config = require('./webex-config');
 
 // Include the plugins which you feel will be used by the webex instance
 require('@webex/internal-plugin-mercury');
+require('@webex/internal-plugin-llm');
 require('@webex/internal-plugin-user');
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-conversation');
@@ -16,9 +17,11 @@ require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
-const generateTestUsers = (options) =>
-  testUser
-    .create({count: options.count})
+const generateTestUsers = (options = {}) => {
+  options.config = options.config || {};
+  options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
+
+  return testUser.create(options)
     .then(async (userSet) => {
       if (userSet.length !== options.count) {
         return Promise.reject(new Error('Test users not created'));
@@ -51,6 +54,7 @@ const generateTestUsers = (options) =>
     .catch((error) => {
       console.error('#generateTestUsers=>ERROR', error);
     });
+};
 
 const reserveCMR = (user) =>
   user.webex

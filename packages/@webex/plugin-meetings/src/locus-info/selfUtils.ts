@@ -1,5 +1,6 @@
 /* eslint-disable default-param-last */
 
+import {isEqual} from 'lodash';
 import {
   _IDLE_,
   _JOINED_,
@@ -31,9 +32,11 @@ SelfUtils.parse = (self: any, deviceId: string) => {
     const pstnDevices = self.devices.filter((device) => PSTN_DEVICE_TYPE === device.deviceType);
 
     return {
+      remoteVideoMuted: SelfUtils.getRemoteVideoMuted(self),
       remoteMuted: SelfUtils.getRemoteMuted(self),
       unmuteAllowed: SelfUtils.getUnmuteAllowed(self),
       localAudioUnmuteRequested: SelfUtils.getLocalAudioUnmuteRequested(self),
+      localAudioUnmuteRequestedTimeStamp: SelfUtils.getLocalAudioUnmuteRequestedTimeStamp(self),
       localAudioUnmuteRequired: SelfUtils.getLocalAudioUnmuteRequired(self),
       lastModified: SelfUtils.getLastModified(self),
       modifiedBy: SelfUtils.getModifiedBy(self),
@@ -60,11 +63,18 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       layout: SelfUtils.getLayout(self),
       canNotViewTheParticipantList: SelfUtils.canNotViewTheParticipantList(self),
       isSharingBlocked: SelfUtils.isSharingBlocked(self),
+      breakoutSessions: SelfUtils.getBreakoutSessions(self),
+      breakout: SelfUtils.getBreakout(self),
+      interpretation: SelfUtils.getInterpretation(self),
     };
   }
 
   return null;
 };
+
+SelfUtils.getBreakoutSessions = (self) => self?.controls?.breakout?.sessions;
+SelfUtils.getBreakout = (self) => self?.controls?.breakout;
+SelfUtils.getInterpretation = (self) => self?.controls?.interpretation;
 
 SelfUtils.getLayout = (self) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
@@ -89,6 +99,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
 
   updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(current);
   updates.isUserAdmitted = SelfUtils.isUserAdmitted(previous, current);
+  updates.isVideoMutedByOthersChanged = SelfUtils.videoMutedByOthersChanged(previous, current);
   updates.isMutedByOthersChanged = SelfUtils.mutedByOthersChanged(previous, current);
   updates.localAudioUnmuteRequestedByServer = SelfUtils.localAudioUnmuteRequestedByServer(
     previous,
@@ -99,6 +110,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
     current
   );
   updates.moderatorChanged = SelfUtils.moderatorChanged(previous, current);
+  updates.isRolesChanged = SelfUtils.isRolesChanged(previous, current);
   updates.isMediaInactiveOrReleased = SelfUtils.wasMediaInactiveOrReleased(previous, current);
   updates.isUserObserving = SelfUtils.isDeviceObserving(previous, current);
   updates.layoutChanged = SelfUtils.layoutChanged(previous, current);
@@ -114,6 +126,8 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   updates.canNotViewTheParticipantListChanged =
     previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
   updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
+  updates.breakoutsChanged = SelfUtils.breakoutsChanged(previous, current);
+  updates.interpretationChanged = SelfUtils.interpretationChanged(previous, current);
 
   return {
     previous,
@@ -134,10 +148,16 @@ SelfUtils.isJoined = (self: any) => self?.state === _JOINED_;
  *
  * @param {Self} previous - Previous self state
  * @param {Self} current - Current self state [per event]
- * @returns {boolean} - If the MEeting Layout Controls Layout has changed.
+ * @returns {boolean} - If the Meeting Layout Controls Layout has changed.
  */
 SelfUtils.layoutChanged = (previous: any, current: any) =>
   current?.layout && previous?.layout !== current?.layout;
+
+SelfUtils.breakoutsChanged = (previous, current) =>
+  !isEqual(previous?.breakoutSessions, current?.breakoutSessions) && !!current?.breakout;
+
+SelfUtils.interpretationChanged = (previous, current) =>
+  !isEqual(previous?.interpretation, current?.interpretation) && !!current?.interpretation;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
@@ -229,6 +249,19 @@ SelfUtils.getSelfIdentity = (self: any) => {
 };
 
 /**
+ * get the "remote video mute" property from the self object
+ * @param {Object} self
+ * @returns {Boolean}
+ */
+SelfUtils.getRemoteVideoMuted = (self: any) => {
+  if (!self || !self.controls || !self.controls.video) {
+    return null;
+  }
+
+  return self.controls.video.muted;
+};
+
+/**
  * get the "remote mute" property from the self object
  * @param {Object} self
  * @returns {Boolean}
@@ -242,6 +275,10 @@ SelfUtils.getRemoteMuted = (self: any) => {
 };
 
 SelfUtils.getLocalAudioUnmuteRequested = (self) => !!self?.controls?.audio?.requestedToUnmute;
+
+// requestedToUnmute timestamp
+SelfUtils.getLocalAudioUnmuteRequestedTimeStamp = (self) =>
+  Date.parse(self?.controls?.audio?.lastModifiedRequestedToUnmute) || 0;
 
 SelfUtils.getUnmuteAllowed = (self) => {
   if (!self || !self.controls || !self.controls.audio) {
@@ -313,6 +350,20 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
 };
 
 /**
+ * determine whether the roles of self is changed or not
+ * @param {Object} oldSelf
+ * @param {Object} changedSelf
+ * @returns {Boolean}
+ */
+SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
+  if (!changedSelf) {
+    // no new self means no change
+    return false;
+  }
+
+  return !isEqual(oldSelf?.roles, changedSelf?.roles);
+};
+/**
  * @param {Object} oldSelf
  * @param {Object} changedSelf
  * @returns {Boolean}
@@ -344,6 +395,25 @@ SelfUtils.isUserAdmitted = (oldSelf: object, changedSelf: object) => {
   return SelfUtils.isLocusUserUnadmitted(oldSelf) && SelfUtils.isLocusUserAdmitted(changedSelf);
 };
 
+SelfUtils.videoMutedByOthersChanged = (oldSelf, changedSelf) => {
+  if (!changedSelf) {
+    throw new ParameterError(
+      'New self must be defined to determine if self was video muted by others.'
+    );
+  }
+
+  if (!oldSelf || oldSelf.remoteVideoMuted === null) {
+    if (changedSelf.remoteVideoMuted) {
+      return true; // this happens when host disables "Allow start video"
+    }
+
+    // we don't want to be sending the 'meeting:self:videoUnmutedByOthers' notification on meeting join
+    return false;
+  }
+
+  return oldSelf.remoteVideoMuted !== changedSelf.remoteVideoMuted;
+};
+
 SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
   if (!changedSelf) {
     throw new ParameterError('New self must be defined to determine if self was muted by others.');
@@ -372,7 +442,10 @@ SelfUtils.localAudioUnmuteRequestedByServer = (oldSelf: any = {}, changedSelf: a
     );
   }
 
-  return changedSelf.localAudioUnmuteRequested && !oldSelf.localAudioUnmuteRequested;
+  return (
+    changedSelf.localAudioUnmuteRequested &&
+    changedSelf.localAudioUnmuteRequestedTimeStamp > oldSelf.localAudioUnmuteRequestedTimeStamp
+  );
 };
 
 SelfUtils.localAudioUnmuteRequiredByServer = (oldSelf: any = {}, changedSelf: any) => {
@@ -425,4 +498,14 @@ SelfUtils.getMediaStatus = (mediaSessions = []) => {
   return mediaStatus;
 };
 
+SelfUtils.getReplacedBreakoutMoveId = (self: any, deviceId: string) => {
+  if (self && Array.isArray(self.devices)) {
+    const joinedDevice = self.devices.find((device) => deviceId === device.url);
+    if (Array.isArray(joinedDevice?.replaces)) {
+      return joinedDevice.replaces[0]?.breakoutMoveId;
+    }
+  }
+
+  return null;
+};
 export default SelfUtils;

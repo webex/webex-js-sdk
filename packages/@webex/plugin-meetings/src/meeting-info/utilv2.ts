@@ -1,7 +1,9 @@
 import url from 'url';
 
-// @ts-ignore
-import {deconstructHydraId} from '@webex/common';
+import {
+  // @ts-ignore
+  deconstructHydraId,
+} from '@webex/common';
 
 import {
   _SIP_URI_,
@@ -22,6 +24,7 @@ import {
   HTTPS_PROTOCOL,
   UUID_REG,
   VALID_EMAIL_ADDRESS,
+  DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -156,13 +159,7 @@ MeetingInfoUtil.getDestinationType = async (from) => {
     };
   }
   const options: any = {};
-  let hydraId;
-
-  if (webex && webex.config && webex.config.meetings && webex.config.meetings.disableHydraId) {
-    hydraId = null;
-  } else {
-    hydraId = MeetingInfoUtil.getHydraId(destination);
-  }
+  const hydraId = MeetingInfoUtil.getHydraId(destination);
 
   if (MeetingInfoUtil.isMeetingLink(destination)) {
     LoggerProxy.logger.warn(
@@ -180,36 +177,30 @@ MeetingInfoUtil.getDestinationType = async (from) => {
   } else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
     options.type = _CONVERSATION_URL_;
     options.destination = destination;
-  } else if (hydraId && hydraId.people) {
+  } else if (hydraId.people) {
     options.type = _SIP_URI_;
 
-    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then(
-      (res) => {
-        options.destination = res;
+    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
+      options.destination = res;
 
-        // Since hydra person ids require a unique case in which they are
-        // entirely converted to a SIP URI, we need to set a flag for detecting
-        // this type of destination.
-        options.wasHydraPerson = true;
+      // Since hydra person ids require a unique case in which they are
+      // entirely converted to a SIP URI, we need to set a flag for detecting
+      // this type of destination.
+      options.wasHydraPerson = true;
 
-        return Promise.resolve(options);
-      }
-    );
-  } else if (hydraId && hydraId.room) {
+      return Promise.resolve(options);
+    });
+  } else if (hydraId.room) {
     options.type = _CONVERSATION_URL_;
     try {
       await webex.internal.services.waitForCatalog('postauth');
 
-      const serviceUrl = webex.internal.services.getServiceUrlFromClusterId(
-        {
-          cluster: hydraId.cluster,
-        },
-        webex
-      );
+      const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
+        cluster: hydraId.cluster,
+        id: hydraId.destination,
+      });
 
-      options.destination = hydraId.destination
-        ? `${serviceUrl}/conversations/${hydraId.destination}`
-        : serviceUrl;
+      options.destination = conversationUrl;
     } catch (e) {
       LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
       throw e;
@@ -230,14 +221,15 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * Helper function to build up a correct locus url depending on the value passed
  * @param {Object} options type and value to fetch meeting info
  * @param {String} options.type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
+ * @param {String} options.installedOrgID org ID of user's machine
  * @param {Object} options.destination ?? value.value
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo} = options;
+  const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} = options;
   const body: any = {
-    supportHostKey: true,
-    supportCountryList: true,
+    ...DEFAULT_MEETING_INFO_REQUEST_BODY,
+    ...extraParams,
   };
 
   switch (type) {
@@ -279,6 +271,14 @@ MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} |
   if (captchaInfo) {
     body.captchaID = captchaInfo.id;
     body.captchaVerifyCode = captchaInfo.code;
+  }
+
+  if (installedOrgID) {
+    body.installedOrgID = installedOrgID;
+  }
+
+  if (locusId) {
+    body.locusId = locusId;
   }
 
   return body;

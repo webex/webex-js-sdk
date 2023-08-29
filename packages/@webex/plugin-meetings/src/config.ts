@@ -1,5 +1,7 @@
-// @ts-ignore
-import {deviceType} from '@webex/common';
+import {
+  // @ts-ignore
+  deviceType,
+} from '@webex/common';
 
 export default {
   // TODO: this needs to be defaulted
@@ -8,13 +10,7 @@ export default {
   meetings: {
     deviceType: deviceType.WEB,
     mediaSettings: {
-      sendAudio: true,
-      sendVideo: true,
-      receiveAudio: true,
-      receiveVideo: true,
       pstn: false,
-      sendShare: false,
-      receiveShare: false,
     },
     reconnection: {
       enabled: false,
@@ -45,7 +41,7 @@ export default {
       // change to your client name else data will be muddled
       // you do not need a specific format, and you do not need to register it
       clientName: 'WEBEX_JS_SDK',
-      // TODO: for now this line has to be whitelisted, which is problematic for third party
+      // TODO: for now this line has to be allowlisted, which is problematic for third party
       clientType: 'WEBEX_SDK',
       // Stores the sub client type used when sending metrics
       subClientType: 'WEB_APP',
@@ -86,11 +82,16 @@ export default {
     enableRtx: true,
     receiveTranscription: false,
     enableExtmap: false,
+    enableAutomaticLLM: false,
+    installedOrgID: undefined,
     experimental: {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: false,
       enableAdhocMeetings: false,
       enableTurnDiscovery: true,
+    },
+    degradationPreferences: {
+      maxMacroblocksLimit: 8192,
     },
   },
 };

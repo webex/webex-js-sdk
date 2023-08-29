@@ -29,6 +29,10 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
     parsed.meetingNumber = info.meetingId;
   }
 
+  if (info.datachannelUrl) {
+    parsed.datachannelUrl = info.datachannelUrl;
+  }
+
   return parsed;
 };
 

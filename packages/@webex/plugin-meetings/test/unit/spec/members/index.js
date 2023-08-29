@@ -10,11 +10,13 @@ import chaiAsPromised from 'chai-as-promised';
 import {Credentials} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
-
-import Meetings from '@webex/plugin-meetings';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
+import Meetings from '@webex/plugin-meetings';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
+import * as MembersRequestImport from '@webex/plugin-meetings/src/members/request';
+import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -80,6 +82,8 @@ describe('plugin-meetings', () => {
   describe('members', () => {
     const sandbox = sinon.createSandbox();
     let createMembers;
+    let meeting;
+    let membersRequestSpy;
 
     beforeEach(() => {
       webex = new MockWebex({
@@ -105,11 +109,29 @@ describe('plugin-meetings', () => {
 
       url1 = `https://example.com/${uuid.v4()}`;
 
-      createMembers = (options) => new Members({locusUrl: options.url}, {parent: webex});
+      membersRequestSpy = sinon.spy(MembersRequestImport, 'default');
+
+      meeting = {
+        request: sinon.mock().returns(Promise.resolve()),
+        locusInfo: {
+          sequence: {}
+        }
+      }
+
+      createMembers = (options) => new Members({locusUrl: options.url, meeting}, {parent: webex});
     });
 
     afterEach(() => {
+      membersRequestSpy.restore();
       sandbox.restore();
+    });
+
+    describe('constructor', () => {
+      it('passes the meeting to the MembersRequest', () => {
+        createMembers({});
+
+        assert.calledOnceWithExactly(membersRequestSpy, {meeting}, {parent: webex});
+      });
     });
 
     describe('#addMembers', () => {
@@ -131,6 +153,128 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#admitMembers', () => {
+      let members;
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersRequest.admitMember = sinon.stub().returns(Promise.resolve(true));
+      });
+      it('should return error if param memberIds is not provided', async () => {
+        let error;
+        await members.admitMembers().catch((e) => {
+          error = e;
+        });
+        assert.deepEqual(error, new ParameterError('No member ids provided to admit.'));
+      });
+
+      it('should call membersRequest.admitMember as expected', async () => {
+        await members.admitMembers(['uuid']);
+        const arg1 = members.membersRequest.admitMember.getCall(0).args[0];
+        assert.equal(arg1.sessionLocusUrls, undefined);
+        assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
+        assert.deepEqual(arg1.memberIds, ['uuid']);
+
+        const sessionLocusUrls = {
+          authorizingLocusUrl: 'authorizingLocusUrl',
+          mainLocusUrl: 'mainLocusUrl',
+        };
+        await members.admitMembers(['uuid'], sessionLocusUrls);
+        const arg2 = members.membersRequest.admitMember.getCall(1).args[0];
+        assert.equal(arg2.sessionLocusUrls, sessionLocusUrls);
+        assert.equal(arg1.locusUrl.includes('https://example.com/'), true);
+        assert.deepEqual(arg1.memberIds, ['uuid']);
+      });
+    });
+
+    describe('#muteMember', () => {
+      const testMuteMember = async (mute, isAudio) => {
+        sandbox.spy(MembersUtil, 'generateMuteMemberOptions');
+
+        const locusUrl = 'locus-url';
+        const members = createMembers({url: locusUrl});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'muteMember');
+
+        const memberId = 'bob';
+
+        await members.muteMember(memberId, mute, isAudio);
+        assert.calledOnce(MembersUtil.generateMuteMemberOptions);
+        assert.calledWith(
+          MembersUtil.generateMuteMemberOptions,
+          memberId,
+          mute,
+          members.locusUrl,
+          isAudio
+        );
+
+        assert.calledOnce(membersRequest.muteMember);
+        assert.calledWith(membersRequest.muteMember, {memberId, muted: mute, locusUrl, isAudio});
+      };
+
+      it('invokes expected functions when muteMember is called for mute=true, isAudio=true', async () => {
+        testMuteMember(true, true);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=true, isAudio=false', async () => {
+        testMuteMember(true, false);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=false, isAudio=true', async () => {
+        testMuteMember(false, true);
+      });
+
+      it('invokes expected functions when muteMember is called for mute=false, isAudio=false', async () => {
+        testMuteMember(false, false);
+      });
+    });
+
+    describe('#clearMembers', () => {
+      it('should send clear event if clear members', () => {
+        const members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeMembersCollection);
+        sinon.stub(Trigger, 'trigger');
+        members.clearMembers();
+        assert.deepEqual(members.membersCollection.members, {});
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'clearMembers',
+          },
+          EVENT_TRIGGERS.MEMBERS_CLEAR,
+          {}
+        );
+      });
+    });
+    describe('#locusParticipantsUpdate', () => {
+      it('should send member update event with session info', () => {
+        const members = createMembers({url: url1});
+        const fakePayload = {
+          participants: {
+            forEach: sinon.stub(),
+          },
+          isReplace: true,
+        };
+
+        members.locusParticipantsUpdate(fakePayload);
+
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'locusParticipantsUpdate',
+          },
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: []},
+            full: {},
+            isReplace: true,
+          }
+        );
+      });
+    });
     describe('#sendDialPadKey', () => {
       it('should throw a rejection when calling sendDialPadKey with no tones', async () => {
         const members = createMembers({url: url1});
@@ -189,6 +333,97 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: false});
 
         assert.isRejected(members.cancelPhoneInvite({phoneNumber: '+18578675309'}));
+      });
+    });
+
+    describe('#assignRoles', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          generateRoleAssignmentMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateRoleAssignmentMemberOptions'
+          ),
+          assignRolesMember: sandbox.spy(members.membersRequest, 'assignRolesMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.generateRoleAssignmentMemberOptions);
+        assert.notCalled(spies.assignRolesMember);
+      };
+
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRoles,
+        expectedLocusUrl
+      ) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(
+          spies.generateRoleAssignmentMemberOptions,
+          expectedMemberId,
+          expectedRoles,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.assignRolesMember, {
+          memberId: expectedMemberId,
+          roles: expectedRoles,
+          locusUrl: expectedLocusUrl,
+        });
+        assert.strictEqual(resultPromise, spies.assignRolesMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no member id', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.assignRoles();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to assign the roles to a member.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.assignRoles(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with roles', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.assignRoles(memberId, [
+          {type: 'PRESENTER', hasRole: true},
+          {type: 'MODERATOR', hasRole: false},
+          {type: 'COHOST', hasRole: true},
+        ]);
+
+        await checkValid(
+          resultPromise,
+          spies,
+          memberId,
+          [
+            {type: 'PRESENTER', hasRole: true},
+            {type: 'MODERATOR', hasRole: false},
+            {type: 'COHOST', hasRole: true},
+          ],
+          url1
+        );
       });
     });
 
@@ -358,6 +593,252 @@ describe('plugin-meetings', () => {
         const resultPromise = members.lowerAllHands(requestingMemberId);
 
         await checkValid(resultPromise, spies, requestingMemberId, url1);
+      });
+    });
+
+    describe('#editDisplayName', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          generateEditDisplayNameMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateEditDisplayNameMemberOptions'
+          ),
+          editDisplayNameMember: sandbox.spy(members.membersRequest, 'editDisplayNameMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.generateEditDisplayNameMemberOptions);
+        assert.notCalled(spies.editDisplayNameMember);
+      };
+
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRequestingParticipantId,
+        expectedAlias,
+        expectedLocusUrl
+      ) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(
+          spies.generateEditDisplayNameMemberOptions,
+          expectedMemberId,
+          expectedRequestingParticipantId,
+          expectedAlias,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.editDisplayNameMember, {
+          memberId: expectedMemberId,
+          requestingParticipantId: expectedRequestingParticipantId,
+          alias: expectedAlias,
+          locusUrl: expectedLocusUrl,
+        });
+        assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no memberId', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to edit display name of the member.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.editDisplayName(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with respective parameters', async () => {
+        const requestingParticipantId = uuid.v4();
+        const memberId = uuid.v4();
+        const alias = 'aliasName';
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName(memberId, requestingParticipantId, alias);
+
+        await checkValid(resultPromise, spies, memberId, requestingParticipantId, alias, url1);
+      });
+    });
+
+    describe('findMemberByCsi()', () => {
+      let members;
+
+      // fake collection that contains all combinations of members data structure (with respect to CSIs)
+      const fakeCollection = {
+        oneWithoutDevices: {
+          participant: {},
+        },
+        oneWithEmptyDevices: {
+          participant: {
+            devices: [],
+          },
+        },
+        oneWithDevicesWithoutCsis: {
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL1.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [],
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+              },
+            ],
+          },
+          id: 'abc-123-abc-123',
+          status: 'IN_MEETING',
+        },
+        oneWithSomeCsis: {
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL2.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [1000, 1001, 1002],
+              },
+              {
+                url: 'https://fakeURL3.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [2000, 2001, 2002],
+              },
+            ],
+          },
+        },
+      };
+
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeCollection);
+      });
+
+      it('returns undefined if member not found', () => {
+        assert.strictEqual(members.findMemberByCsi(123), undefined);
+      });
+
+      it('returns correct member when CSI matches the first device', () => {
+        assert.strictEqual(members.findMemberByCsi(1001), fakeCollection.oneWithSomeCsis);
+      });
+
+      it('returns correct member when CSI matches the second device', () => {
+        assert.strictEqual(members.findMemberByCsi(2001), fakeCollection.oneWithSomeCsis);
+      });
+    });
+
+    describe('getCsisForMember()', () => {
+      let members;
+
+      // fake collection that contains all combinations of members data structure (with respect to CSIs)
+      const fakeCollection = {
+        oneWithoutParticipant: {
+          id: 'oneWithoutParticipant',
+        },
+        oneWithoutDevices: {
+          id: 'oneWithoutDevices',
+          participant: {},
+        },
+        oneWithEmptyDevices: {
+          id: 'oneWithEmptyDevices',
+          participant: {
+            devices: [],
+          },
+        },
+        oneWithDevicesWithoutCsis: {
+          id: 'oneWithDevicesWithoutCsis',
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL1.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [],
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+              },
+            ],
+          },
+          status: 'IN_MEETING',
+        },
+        oneWithSomeCsis: {
+          id: 'oneWithSomeCsis',
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL2.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [
+                  {mediaType: 'audio', mediaContent: 'main', csi: 1000},
+                  {mediaType: 'video', mediaContent: 'main', csi: 1001},
+                  {mediaType: 'video', mediaContent: 'content', csi: 1002},
+                ],
+              },
+              {
+                url: 'https://fakeURL3.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [
+                  {mediaType: 'audio', mediaContent: 'main', csi: 2000},
+                  {mediaType: 'video', mediaContent: 'main', csi: 2001},
+                  {mediaType: 'video', mediaContent: 'content', csi: 2002},
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeCollection);
+      });
+
+      it('returns empty array if member not found', () => {
+        assert.deepEqual(members.getCsisForMember('wrong id'), []);
+      });
+
+      it('returns empty array if member does not have CSIs', () => {
+        assert.deepEqual(members.getCsisForMember('oneWithoutParticipant'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithoutDevices'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithEmptyDevices'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithDevicesWithoutCsis'), []);
+      });
+
+      it('returns empty array if mediaType and mediaContent do not match', () => {
+        assert.deepEqual(members.getCsisForMember('oneWithSomeCsis', 'audio', 'content'), []);
+      });
+
+      it('returns correct CSI values when there is a match', () => {
+        assert.deepEqual(
+          members.getCsisForMember('oneWithSomeCsis', 'video', 'main'),
+          [1001, 2001]
+        );
       });
     });
   });
