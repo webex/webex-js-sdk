@@ -27,6 +27,7 @@ import {
   OFFLINE,
   ONLINE,
   ROAP,
+  EVENTS,
   LOCUSINFO,
   EVENT_TRIGGERS,
 } from '../../../../src/constants';
