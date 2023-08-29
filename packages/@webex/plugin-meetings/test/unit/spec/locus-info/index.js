@@ -23,8 +23,8 @@ import {
   _MEETING_,
 } from '../../../../src/constants';
 
-import { self, selfWithInactivity } from "./selfConstant";
-import uuid from "uuid";
+import {self, selfWithInactivity} from './selfConstant';
+import uuid from 'uuid';
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -116,7 +116,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_MUTE_ON_ENTRY_CHANGED,
-          {state: newControls.muteOnEntry},
+          {state: newControls.muteOnEntry}
         );
       });
 
@@ -129,7 +129,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_SHARE_CONTROL_CHANGED,
-          {state: newControls.shareControl},
+          {state: newControls.shareControl}
         );
       });
 
@@ -142,7 +142,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_DISALLOW_UNMUTE_CHANGED,
-          {state: newControls.disallowUnmute},
+          {state: newControls.disallowUnmute}
         );
       });
 
@@ -155,7 +155,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_REACTIONS_CHANGED,
-          {state: newControls.reactions},
+          {state: newControls.reactions}
         );
       });
 
@@ -168,7 +168,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED,
-          {state: newControls.viewTheParticipantList},
+          {state: newControls.viewTheParticipantList}
         );
       });
 
@@ -181,7 +181,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_RAISE_HAND_CHANGED,
-          {state: newControls.raiseHand},
+          {state: newControls.raiseHand}
         );
       });
 
@@ -194,7 +194,7 @@ describe('plugin-meetings', () => {
           locusInfo.emitScoped,
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
-          {state: newControls.video},
+          {state: newControls.video}
         );
       });
 
@@ -383,7 +383,7 @@ describe('plugin-meetings', () => {
       it('should update the breakout state', () => {
         locusInfo.emitScoped = sinon.stub();
         let tmpStub = sinon.stub(SelfUtils, 'getReplacedBreakoutMoveId').returns('breakoutMoveId');
-        newControls.breakout = { 'breakout': {} };
+        newControls.breakout = {breakout: {}};
         let selfInfo = {};
 
         locusInfo.updateControls(newControls, selfInfo);
@@ -1067,7 +1067,8 @@ describe('plugin-meetings', () => {
         const selfWithRequestedToUnmute = cloneDeep(self);
 
         selfWithRequestedToUnmute.controls.audio.requestedToUnmute = true;
-        selfWithRequestedToUnmute.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T19:25:04.369Z';
+        selfWithRequestedToUnmute.controls.audio.lastModifiedRequestedToUnmute =
+          '2023-06-16T19:25:04.369Z';
 
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
@@ -1377,7 +1378,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
-         {info: locusInfo.parsedLocus.info, self},
+          {info: locusInfo.parsedLocus.info, self},
         ];
 
         if (expected) {
@@ -1405,7 +1406,6 @@ describe('plugin-meetings', () => {
         }
         locusInfo.emitScoped.resetHistory();
       };
-
 
       it('emits MEETING_INFO_UPDATED if the info changes', () => {
         const initialInfo = cloneDeep(meetingInfo);
@@ -1678,7 +1678,7 @@ describe('plugin-meetings', () => {
 
         spies.forEach((spy) => {
           assert.notCalled(spy);
-        })
+        });
 
         assert.equal(oldWorkingCopy, locusParser.workingCopy);
       });
@@ -1733,7 +1733,7 @@ describe('plugin-meetings', () => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
-          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldSyncUrl'});
 
           assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, fakeDeltaLocus, meeting);
           assert.calledOnce(locusInfo.locusParser.resume);
@@ -1763,7 +1763,7 @@ describe('plugin-meetings', () => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
-          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldSyncUrl' });
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldSyncUrl'});
 
           assert.notCalled(meeting.locusInfo.handleLocusDelta);
           assert.notCalled(meeting.locusInfo.onFullLocus);
@@ -1793,7 +1793,7 @@ describe('plugin-meetings', () => {
           locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
           locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
         }).then(() => {
-          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, { url: 'oldLocusUrl' });
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldLocusUrl'});
 
           assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
           assert.calledOnce(locusInfo.locusParser.resume);
@@ -1808,14 +1808,14 @@ describe('plugin-meetings', () => {
         };
 
         fakeLocus.controls = {
-          breakout: fakeBreakout
+          breakout: fakeBreakout,
         };
         locusInfo.controls = {
           breakout: {
             sessionId: 'sessionId',
             groupId: 'groupId',
-          }
-        }
+          },
+        };
         locusInfo.updateParticipants = sinon.stub();
         locusInfo.onDeltaLocus(fakeLocus);
         assert.calledWith(locusInfo.updateParticipants, {}, false);
@@ -1849,9 +1849,9 @@ describe('plugin-meetings', () => {
         locusInfo.mainSessionLocusCache = {url: 'url'};
         locusInfo.controls = {
           breakout: {
-            sessionType: 'BREAKOUT'
-          }
-        }
+            sessionType: 'BREAKOUT',
+          },
+        };
         const newLocus = {
           controls: {
             breakout: {
@@ -1867,9 +1867,9 @@ describe('plugin-meetings', () => {
         locusInfo.mainSessionLocusCache = null;
         locusInfo.controls = {
           breakout: {
-            sessionType: 'BREAKOUT'
-          }
-        }
+            sessionType: 'BREAKOUT',
+          },
+        };
         const newLocus = {
           controls: {
             breakout: {
@@ -1885,9 +1885,9 @@ describe('plugin-meetings', () => {
         locusInfo.mainSessionLocusCache = {url: 'url'};
         locusInfo.controls = {
           breakout: {
-            sessionType: 'MAIN'
-          }
-        }
+            sessionType: 'MAIN',
+          },
+        };
         const newLocus = {
           controls: {
             breakout: {
@@ -1944,8 +1944,16 @@ describe('plugin-meetings', () => {
       let cachedLocus;
       let newLocus;
       beforeEach(() => {
-        cachedLocus = {controls: {}, participants: [], info: {webExMeetingId: 'testId1', topic: 'test'}};
-        newLocus = {self: {}, participants: [{id: '111'}], info: {testId: 'testId2', webExMeetingName: 'hello'}};
+        cachedLocus = {
+          controls: {},
+          participants: [],
+          info: {webExMeetingId: 'testId1', topic: 'test'},
+        };
+        newLocus = {
+          self: {},
+          participants: [{id: '111'}],
+          info: {testId: 'testId2', webExMeetingName: 'hello'},
+        };
       });
       it('shallow merge new locus into cache', () => {
         locusInfo.mainSessionLocusCache = cachedLocus;
@@ -1979,7 +1987,7 @@ describe('plugin-meetings', () => {
         locusInfo.mainSessionLocusCache = {controls: {}};
         locusInfo.clearMainSessionLocusCache();
         assert.isNull(locusInfo.mainSessionLocusCache);
-      })
+      });
     });
 
     describe('#handleOneonOneEvent', () => {
@@ -2046,13 +2054,13 @@ describe('plugin-meetings', () => {
       });
 
       it('sends client event correctly for state = PARTNER_LEFT', () => {
-        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
             type: _CALL_,
           },
           self: {
-            state:  MEETING_STATE.STATES.DECLINED,
+            state: MEETING_STATE.STATES.DECLINED,
           },
         };
         locusInfo.isMeetingActive();
@@ -2066,13 +2074,13 @@ describe('plugin-meetings', () => {
       });
 
       it('sends client event correctly for state = SELF_LEFT', () => {
-        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
             type: _CALL_,
           },
           self: {
-            state:  MEETING_STATE.STATES.LEFT,
+            state: MEETING_STATE.STATES.LEFT,
           },
         };
 
@@ -2087,7 +2095,7 @@ describe('plugin-meetings', () => {
       });
 
       it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
-        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
             type: _MEETING_,
@@ -2109,7 +2117,7 @@ describe('plugin-meetings', () => {
       });
 
       it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
-        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT})
+        locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
             type: _MEETING_,
@@ -2117,7 +2125,7 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.fullState = {
-          removed: true
+          removed: true,
         };
 
         locusInfo.isMeetingActive();
@@ -2132,7 +2140,7 @@ describe('plugin-meetings', () => {
     });
 
     // semi-integration tests that use real LocusInfo with real Parser
-    // and test various scenarios related to handling out-of-order Locus delta events 
+    // and test various scenarios related to handling out-of-order Locus delta events
     describe('handling of out-of-order Locus delta events', () => {
       let clock;
 
@@ -2141,20 +2149,20 @@ describe('plugin-meetings', () => {
           baseSequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [base]
+            entries: [base],
           },
           sequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [sequence]
+            entries: [sequence],
           },
           syncUrl: `fake sync url for sequence ${sequence}`,
           self: {
             person: {
-              id: 'test person id'
-            }
+              id: 'test person id',
+            },
           },
-        }
+        };
       };
 
       // a list of example delta events, sorted by time and each event is based on the previous one
@@ -2179,9 +2187,8 @@ describe('plugin-meetings', () => {
         sinon.stub(locusInfo, 'updateParticipantDeltas');
         sinon.stub(locusInfo, 'updateParticipants');
         sinon.stub(locusInfo, 'isMeetingActive'),
-        sinon.stub(locusInfo, 'handleOneOnOneEvent'),
-
-        updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo');
+          sinon.stub(locusInfo, 'handleOneOnOneEvent'),
+          (updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo'));
         syncRequestStub = sinon.stub().resolves({body: {}});
 
         mockMeeting.locusInfo = locusInfo;
@@ -2194,12 +2201,12 @@ describe('plugin-meetings', () => {
           sequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [10]
+            entries: [10],
           },
           self: {
             person: {
-              id: 'test person id'
-            }
+              id: 'test person id',
+            },
           },
         });
 
@@ -2216,7 +2223,7 @@ describe('plugin-meetings', () => {
         locusInfo.handleLocusDelta(deltaEvents[4], mockMeeting);
 
         // they should be queued and not processed
-        assert.notCalled(updateLocusInfoStub); 
+        assert.notCalled(updateLocusInfoStub);
 
         // now one of the missing ones, but not the one SDK is really waiting for
         locusInfo.handleLocusDelta(deltaEvents[2], mockMeeting);
@@ -2228,13 +2235,13 @@ describe('plugin-meetings', () => {
         locusInfo.handleLocusDelta(deltaEvents[0], mockMeeting);
 
         // so deltaEvents with indexes 1,2,3 can be processed, but 5 still not, because 4 is missing
-        assert.callCount(updateLocusInfoStub, 3);        
+        assert.callCount(updateLocusInfoStub, 3);
         assert.calledWith(updateLocusInfoStub.getCall(0), deltaEvents[0]);
         assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[1]);
         assert.calledWith(updateLocusInfoStub.getCall(2), deltaEvents[2]);
 
         updateLocusInfoStub.resetHistory();
-        
+
         // now send deltaEvents[4]
         locusInfo.handleLocusDelta(deltaEvents[3], mockMeeting);
 
@@ -2246,12 +2253,12 @@ describe('plugin-meetings', () => {
 
       it('handles out-of-order deltas correctly even if all arrive in reverse order', () => {
         // send a bunch deltas in reverse order
-        for(let i = 4; i >= 0; i--) {
+        for (let i = 4; i >= 0; i--) {
           locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
         }
 
         // they should be queued and then processed in correct order
-        assert.callCount(updateLocusInfoStub, 5);        
+        assert.callCount(updateLocusInfoStub, 5);
         assert.calledWith(updateLocusInfoStub.getCall(0), deltaEvents[0]);
         assert.calledWith(updateLocusInfoStub.getCall(1), deltaEvents[1]);
         assert.calledWith(updateLocusInfoStub.getCall(2), deltaEvents[2]);
@@ -2276,32 +2283,32 @@ describe('plugin-meetings', () => {
           baseSequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [initialDelta.sequence.entries[0]]
+            entries: [initialDelta.sequence.entries[0]],
           },
           sequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [lastOooDelta.sequence.entries[0]]
+            entries: [lastOooDelta.sequence.entries[0]],
           },
           syncUrl: `fake sync url for sequence ${lastOooDelta.sequence.entries[0]}`,
           self: {
             person: {
-              id: 'test person id'
-            }
+              id: 'test person id',
+            },
           },
         };
-        
+
         syncRequestStub.resolves({
-          body: deltaLocusFromSyncResponse
+          body: deltaLocusFromSyncResponse,
         });
-        
+
         // send one correct delta so that SDK has the syncUrl
         locusInfo.handleLocusDelta(initialDelta, mockMeeting);
 
         updateLocusInfoStub.resetHistory();
-        
+
         // send 6 out-of-order deltas to trigger a sync (we're skipping deltaEvents[1])
-        for(let i = firstOooDeltaIdx; i <= lastOooDeltaIdx; i++) {
+        for (let i = firstOooDeltaIdx; i <= lastOooDeltaIdx; i++) {
           locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
         }
 
@@ -2324,13 +2331,13 @@ describe('plugin-meetings', () => {
         sinon.stub(Math, 'random').returns(0.5);
 
         const oooDelta = deltaEvents[3];
-        
+
         // setup the stubs so that the sync request receives a full DTO with the sequence equal to the out-of-order delta we simulate
         const fullLocus = {
-          sequence: oooDelta.sequence
+          sequence: oooDelta.sequence,
         };
         syncRequestStub.resolves({
-          body: fullLocus
+          body: fullLocus,
         });
 
         // send an out-of-order delta
@@ -2348,17 +2355,17 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(updateLocusInfoStub, fullLocus);
       });
 
-      it('does a sync if out-of-order deltas queue becomes too big', async () => {        
+      it('does a sync if out-of-order deltas queue becomes too big', async () => {
         // setup the stubs so that the sync request receives a full DTO with the sequence equal to the out-of-order delta we simulate
         const fullLocus = {
-          sequence: deltaEvents[6].sequence
+          sequence: deltaEvents[6].sequence,
         };
         syncRequestStub.resolves({
-          body: fullLocus
+          body: fullLocus,
         });
 
         // send 5 deltas, starting from deltaEvents[1] so that SDK is blocked waiting for deltaEvents[0]
-        for(let i = 0; i < 5; i++) {
+        for (let i = 0; i < 5; i++) {
           locusInfo.handleLocusDelta(deltaEvents[i + 1], mockMeeting);
         }
 
@@ -2378,33 +2385,33 @@ describe('plugin-meetings', () => {
 
       it('processes delta events that are not included in sync response', async () => {
         // this test sends a bunch of out-of-order deltas, this triggers a sync
-        // but the full locus response doesn't include the last 2 deltas received, so 
+        // but the full locus response doesn't include the last 2 deltas received, so
         // we check that these 2 deltas are also processed after sync response
         const fullLocusFromSyncResponse = {
           baseSequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [deltaEvents[0].sequence.entries[0]]
+            entries: [deltaEvents[0].sequence.entries[0]],
           },
           sequence: {
             rangeStart: 0,
             rangeEnd: 0,
-            entries: [deltaEvents[5].sequence.entries[0]]
+            entries: [deltaEvents[5].sequence.entries[0]],
           },
           syncUrl: `fake sync url for sequence ${deltaEvents[5].sequence.entries[0]}`,
           self: {
             person: {
-              id: 'test person id'
-            }
+              id: 'test person id',
+            },
           },
         };
-        
+
         syncRequestStub.resolves({
-          body: fullLocusFromSyncResponse
+          body: fullLocusFromSyncResponse,
         });
-        
+
         // send at least 6 out-of-order deltas to trigger a sync (we're skipping deltaEvents[0])
-        for(let i = 1; i <= 7; i++) {
+        for (let i = 1; i <= 7; i++) {
           locusInfo.handleLocusDelta(deltaEvents[i], mockMeeting);
         }
 
@@ -2412,7 +2419,7 @@ describe('plugin-meetings', () => {
 
         // check that sync was done
         assert.calledOnceWithExactly(syncRequestStub, {url: mockMeeting.locusUrl});
-        
+
         // and that remaining deltas from the queue that were not included in full Locus were also processed
         assert.callCount(updateLocusInfoStub, 3);
         assert.calledWith(updateLocusInfoStub.getCall(0), fullLocusFromSyncResponse);
