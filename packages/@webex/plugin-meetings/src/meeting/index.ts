@@ -594,7 +594,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     if (attrs.correlationId) {
       LoggerProxy.logger.log(
-        `Meetings:index#constructor --> Initializing the meetin object with correlation id from app ${this.correlationId}`
+        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${this.correlationId}`
       );
       this.correlationId = attrs.correlationId;
     } else {
