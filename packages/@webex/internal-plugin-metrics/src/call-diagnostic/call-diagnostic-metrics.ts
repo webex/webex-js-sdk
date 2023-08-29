@@ -573,7 +573,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // build metrics-a event type
     // @ts-ignore
-    const finalEvent = prepareDiagnosticMetricItem(this.webex, {
+    const diagnosticEvent = prepareDiagnosticMetricItem(this.webex, {
       eventPayload: clientEvent,
       type: ['diagnostic-event'],
     });
@@ -584,7 +584,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       service: 'metrics',
       resource: 'clientmetrics',
       body: {
-        metrics: [finalEvent],
+        metrics: [diagnosticEvent],
       },
     });
   }
