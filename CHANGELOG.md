@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.197](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.196...v3.0.0-beta.197) (2023-08-29)
+
+
+### Features
+
+* **call-leave:** allow metric options to be prepared ahead of browser close ([#3015](https://github.com/webex/webex-js-sdk/issues/3015)) ([1c1e2fc](https://github.com/webex/webex-js-sdk/commit/1c1e2fc8cffa9eb4b984dae1b260d6ece3d2a43a))
+
 ## [3.0.0-beta.196](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.195...v3.0.0-beta.196) (2023-08-29)
 
 
