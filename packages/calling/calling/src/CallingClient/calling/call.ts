@@ -1,5 +1,10 @@
 /* eslint-disable valid-jsdoc */
-import {Event, LocalMicrophoneStream, RoapMediaConnection} from '@webex/internal-media-core';
+import {
+  Event,
+  LocalCameraStream,
+  LocalMicrophoneStream,
+  RoapMediaConnection,
+} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -1859,7 +1864,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack - MediaStreamTrack.
    * @param settings.debugId - String.
    */
-  private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string) {
+  private initMediaConnection(
+    localAudioTrack: MediaStreamTrack,
+    localVideoTrack: MediaStreamTrack,
+    debugId?: string
+  ) {
     const mediaConnection = new RoapMediaConnection(
       {
         skipInactiveTransceivers: true,
@@ -1873,7 +1882,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         localTracks: {audio: localAudioTrack},
         direction: {
           audio: 'sendrecv',
-          video: 'inactive',
+          video: 'sendrecv',
           screenShareVideo: 'inactive',
         },
       },
@@ -1954,12 +1963,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async answer(localAudioStream: LocalMicrophoneStream) {
+  public async answer(
+    localAudioStream: LocalMicrophoneStream,
+    localVideoStream: LocalCameraStream
+  ) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
+    const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
+    localVideoTrack.enabled = true;
+
     if (!this.mediaConnection) {
-      this.initMediaConnection(localAudioTrack);
+      this.initMediaConnection(localAudioTrack, localVideoTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }
@@ -1978,12 +1993,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async dial(localAudioStream: LocalMicrophoneStream) {
+  public async dial(localAudioStream: LocalMicrophoneStream, localVideoStream: LocalCameraStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
+    const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
+    localVideoTrack.enabled = true;
+
     if (!this.mediaConnection) {
-      this.initMediaConnection(localAudioTrack);
+      this.initMediaConnection(localAudioTrack, localVideoTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }

@@ -86,6 +86,7 @@ let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let localVideoStream;
 
 const devicesById = {};
 const img = new Image();
@@ -488,7 +489,7 @@ function createCall(e) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
-  call.dial(localAudioStream);
+  call.dial(localAudioStream, localVideoStream);
 }
 
 function sendDTMF() {
@@ -576,6 +577,9 @@ function initiateTransfer() {
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
+
+  localAudioStream  = await Calling.createCameraStream({video: true});
+  localVideoElem.srcObject = localAudioStream.outputStream;
 }
 
 // Listen for submit on create meeting
@@ -655,7 +659,7 @@ function answer() {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 
-    call.answer(localAudioStream);
+    call.answer(localAudioStream, localVideoStream);
   }
 }
 
