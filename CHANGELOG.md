@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.198](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.197...v3.0.0-beta.198) (2023-08-29)
+
+
+### Bug Fixes
+
+* add a timeout option to dss requests ([#2928](https://github.com/webex/webex-js-sdk/issues/2928)) ([9e9cc5f](https://github.com/webex/webex-js-sdk/commit/9e9cc5fc70eafe7ecf3307a3fb77319c40a8f5ac))
+
 ## [3.0.0-beta.197](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.196...v3.0.0-beta.197) (2023-08-29)
 
 
