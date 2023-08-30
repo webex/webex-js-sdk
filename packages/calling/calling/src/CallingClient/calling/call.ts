@@ -1874,7 +1874,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         skipInactiveTransceivers: true,
         iceServers: [],
         sdpMunging: {
-          convertPort9to0: true,
+          convertPort9to0: false,
           addContentSlides: false,
         },
       },
