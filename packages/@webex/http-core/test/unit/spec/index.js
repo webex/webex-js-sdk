@@ -23,6 +23,7 @@ describe('http-core index tests', () => {
           trackingid: 'undefined_1',
           'spark-user-agent': 'webex-js-sdk/development (node)',
         },
+        keepalive: true,
       });
 
       assert.equal(typeof options.logger, 'object');

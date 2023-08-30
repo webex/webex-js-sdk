@@ -40,6 +40,7 @@ describe('Request utils', () => {
 
         assert.equal(options.download != undefined, true);
         assert.equal(options.upload != undefined, true);
+        assert.equal(options.keepalive, true);
       });
     });
 

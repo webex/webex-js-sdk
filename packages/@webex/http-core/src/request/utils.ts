@@ -72,6 +72,7 @@ export async function prepareFetchOptions(options: any): Promise<any> {
 
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
+  options.keepalive = true;
 
   return intercept(options, options.interceptors, 'Request').then(() => options);
 }
