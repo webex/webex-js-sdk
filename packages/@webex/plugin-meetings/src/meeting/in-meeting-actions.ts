@@ -205,6 +205,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canAnnotate = null;
+
+  canShareWhiteBoard = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -272,6 +276,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canAnnotate: this.canAnnotate,
+    canShareWhiteBoard: this.canShareWhiteBoard,
   });
 
   /**
