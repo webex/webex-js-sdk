@@ -204,7 +204,6 @@ export enum ScreenShareFloorStatus {
  * @property {String} [meetingQuality.remote]
  * @property {Boolean} [rejoin]
  * @property {Boolean} [enableMultistream]
- * @property {String} [correlationId]
  */
 
 /**
@@ -595,7 +594,14 @@ export default class Meeting extends StatelessWebexPlugin {
      * @public
      * @memberof Meeting
      */
-    this.correlationId = this.id;
+    if (attrs.correlationId) {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${this.correlationId}`
+      );
+      this.correlationId = attrs.correlationId;
+    } else {
+      this.correlationId = this.id;
+    }
     /**
      * @instance
      * @type {String}
@@ -3137,18 +3143,10 @@ export default class Meeting extends StatelessWebexPlugin {
           requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
           displayHints: this.userDisplayHints,
         }),
-        canEnableVideo:
-          (ControlsOptionsUtil.hasHints({
-            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-            displayHints: this.userDisplayHints,
-          }) &&
-            ControlsOptionsUtil.hasPolicies({
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-              policies: this.selfUserPolicies,
-            })) ||
-          // @ts-ignore
-          !this.config.experimental.enableUnifiedMeetings ||
-          this.isLocusCall(),
+        canEnableVideo: ControlsOptionsUtil.hasHints({
+          requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+          displayHints: this.userDisplayHints,
+        }),
         canDisableVideo: ControlsOptionsUtil.hasHints({
           requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
           displayHints: this.userDisplayHints,
@@ -4263,16 +4261,9 @@ export default class Meeting extends StatelessWebexPlugin {
       joinSuccess = resolve;
     });
 
-    if (options.correlationId) {
-      this.setCorrelationId(options.correlationId);
-      LoggerProxy.logger.log(
-        `Meeting:index#join --> Using a new correlation id from app ${this.correlationId}`
-      );
-    }
-
     if (!this.hasJoinedOnce) {
       this.hasJoinedOnce = true;
-    } else if (!options.correlationId) {
+    } else {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`
       );
@@ -4780,7 +4771,7 @@ export default class Meeting extends StatelessWebexPlugin {
     };
 
     if (error instanceof Errors.SdpOfferCreationError) {
-      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -4794,7 +4785,7 @@ export default class Meeting extends StatelessWebexPlugin {
       error instanceof Errors.SdpOfferHandlingError ||
       error instanceof Errors.SdpAnswerHandlingError
     ) {
-      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -4806,7 +4797,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
-      sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.id);
+      sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.correlationId);
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
