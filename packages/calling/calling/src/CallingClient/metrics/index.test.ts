@@ -62,7 +62,7 @@ describe('CALLING: Metric tests', () => {
         METRIC_TYPE.BEHAVIORAL,
         undefined
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.REGISTRATION, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
     });
 
     it('submit registration failure metric', () => {
@@ -99,7 +99,10 @@ describe('CALLING: Metric tests', () => {
         METRIC_TYPE.BEHAVIORAL,
         clientError
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.REGISTRATION_ERROR, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+        METRIC_EVENT.REGISTRATION_ERROR,
+        expectedData
+      );
     });
 
     it('submit unknown registration metric', () => {
@@ -154,7 +157,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId,
         undefined
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.CALL, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.CALL, expectedData);
     });
 
     it('submit call failure metric', () => {
@@ -201,7 +204,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId,
         callError
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.CALL_ERROR, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.CALL_ERROR, expectedData);
     });
 
     it('submit unknown call metric', () => {
@@ -264,7 +267,7 @@ describe('CALLING: Metric tests', () => {
         mockSdp,
         undefined
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.MEDIA, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
     });
 
     it('submit media failure metric', () => {
@@ -315,7 +318,7 @@ describe('CALLING: Metric tests', () => {
         mockSdp,
         callError
       );
-      expect(mockSubmitClientMetric).toBeCalledWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
     });
 
     it('submit unknown media metric', () => {

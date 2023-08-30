@@ -109,7 +109,7 @@ describe('Registration Tests', () => {
 
     await reg.triggerRegistration();
 
-    expect(webex.request).toBeCalledWith({
+    expect(webex.request).toBeCalledOnceWith({
       ...mockResponse,
       method: 'POST',
     });
@@ -128,7 +128,7 @@ describe('Registration Tests', () => {
 
     await reg.triggerRegistration();
 
-    expect(webex.request).toBeCalledWith({
+    expect(webex.request).toBeCalledOnceWith({
       ...mockResponse,
       method: 'POST',
     });
@@ -170,7 +170,7 @@ describe('Registration Tests', () => {
       ...mockResponse,
       method: 'POST',
     });
-    expect(global.fetch).toBeCalledWith(mockPostResponse.device.uri, {
+    expect(global.fetch).toBeCalledOnceWith(mockPostResponse.device.uri, {
       method: 'DELETE',
       headers: expect.anything(),
     });
@@ -302,11 +302,11 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
       });
 
-      expect(failbackRetry429Spy).toBeCalledWith();
+      expect(failbackRetry429Spy).toBeCalledOnceWith();
       expect(reg.failback429RetryAttempts).toBe(0);
       expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
-      expect(restoreSpy).toBeCalledWith(FAILBACK_429_RETRY_UTIL);
-      expect(restartSpy).toBeCalledWith(FAILBACK_429_RETRY_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
       expect(reg.failbackTimer).toBe(undefined);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
@@ -326,8 +326,8 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
       });
       expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
-      expect(restoreSpy).toBeCalledWith(FAILBACK_UTIL);
-      expect(restartSpy).toBeCalledWith(FAILBACK_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
     });
@@ -352,7 +352,7 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
       });
       expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
-      expect(restoreSpy).toBeCalledWith(FAILBACK_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(restartSpy).not.toBeCalled();
       expect(reg.failbackTimer).toBe(undefined);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
@@ -375,7 +375,7 @@ describe('Registration Tests', () => {
       /* Active Url should still match backup url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
       expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
-      expect(restoreSpy).toBeCalledWith(FAILBACK_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(restartSpy).not.toBeCalled();
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
@@ -503,7 +503,7 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
-      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
         method: 'startKeepaliveTimer',
         file: REGISTRATION_FILE,
       });
@@ -538,16 +538,16 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledWith(timer);
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
 
       // sendKeepAlive tries to retry 5 times before accepting failure
       // later 2 attempts to register with primary server
       expect(handleErrorSpy).toBeCalledTimes(7);
       expect(reg.getStatus()).toEqual(MobiusStatus.DEFAULT);
       expect(reg.reconnectPending).toStrictEqual(false);
-      expect(reconnectSpy).toBeCalledWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).toBeCalledWith(KEEPALIVE_UTIL);
-      expect(restartRegSpy).toBeCalledWith(KEEPALIVE_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
 
       expect(webex.request).toBeCalledTimes(7);
       expect(reg.keepaliveTimer).toBe(undefined);
@@ -602,11 +602,11 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledWith(timer);
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
       expect(handleErrorSpy).toBeCalledTimes(5);
       expect(reg.getStatus()).toEqual(MobiusStatus.ACTIVE);
-      expect(reconnectSpy).toBeCalledWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).toBeCalledWith(KEEPALIVE_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
       expect(reg.reconnectPending).toStrictEqual(false);
@@ -671,14 +671,14 @@ describe('Registration Tests', () => {
       expect(restoreSpy).not.toBeCalled();
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
-      expect(webex.request).toBeCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         headers: mockResponse.headers,
         uri: `${mockKeepAliveBody.device.uri}/status`,
         method: 'POST',
         service: mockResponse.service,
       });
       expect(reg.keepaliveTimer).toBe(undefined);
-      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
         file: REGISTRATION_FILE,
         method: KEEPALIVE_UTIL,
       });
@@ -726,13 +726,13 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledWith(timer);
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
       expect(handleErrorSpy).toBeCalledTimes(5);
       expect(reg.keepaliveTimer).toStrictEqual(undefined);
       expect(reg.failbackTimer).toStrictEqual(undefined);
       expect(reg.getStatus()).toBe(MobiusStatus.DEFAULT);
       expect(lineEmitter).lastCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reconnectSpy).toBeCalledWith(KEEPALIVE_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).not.toBeCalled();
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(true);
@@ -749,8 +749,8 @@ describe('Registration Tests', () => {
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
 
       expect(reg.getStatus()).toBe(MobiusStatus.ACTIVE);
-      expect(reconnectSpy).toBeCalledWith(CALLS_CLEARED_HANDLER_UTIL);
-      expect(restoreSpy).toBeCalledWith(CALLS_CLEARED_HANDLER_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
