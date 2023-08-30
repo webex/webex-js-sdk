@@ -458,6 +458,16 @@ const User = WebexPlugin.extend({
    * @private
    * @returns {string}
    */
+  testFunc() {
+    return 'this';
+  },
+
+  /**
+   * Extracts the email address from a user identifying object
+   * @param {string|Object} user
+   * @private
+   * @returns {string}
+   */
   _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
   },

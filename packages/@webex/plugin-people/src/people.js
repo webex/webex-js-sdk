@@ -179,6 +179,8 @@ const People = WebexPlugin.extend({
     return base64.encode(`ciscospark://us/PEOPLE/${id}`);
   },
 
+  test() {},
+
   /**
    * Fetches the current user from the /people/me endpoint
    * @instance
