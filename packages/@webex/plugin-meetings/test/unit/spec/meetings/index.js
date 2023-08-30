@@ -679,23 +679,26 @@ describe('plugin-meetings', () => {
 
         it('calls createMeeting and returns its promise', async () => {
           const FAKE_USE_RANDOM_DELAY = true;
-          const create = webex.meetings.create(test1, test2, FAKE_USE_RANDOM_DELAY);
+          const correlationId = 'my-correlationId';
+          const create = webex.meetings.create(test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId);
 
           assert.exists(create.then);
           await create;
           assert.calledOnce(webex.meetings.createMeeting);
-          assert.calledWith(webex.meetings.createMeeting, test1, test2, FAKE_USE_RANDOM_DELAY, {});
+          assert.calledWith(webex.meetings.createMeeting, test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId);
         });
 
         it('calls createMeeting with extra info params and returns its promise', async () => {
           const FAKE_USE_RANDOM_DELAY = false;
+          const correlationId = 'my-correlationId';
+
           const FAKE_INFO_EXTRA_PARAMS = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
-          const create = webex.meetings.create(test1, test2, FAKE_USE_RANDOM_DELAY, FAKE_INFO_EXTRA_PARAMS);
+          const create = webex.meetings.create(test1, test2, FAKE_USE_RANDOM_DELAY, FAKE_INFO_EXTRA_PARAMS, correlationId);
 
           assert.exists(create.then);
           await create;
           assert.calledOnce(webex.meetings.createMeeting);
-          assert.calledWith(webex.meetings.createMeeting, test1, test2, FAKE_USE_RANDOM_DELAY, FAKE_INFO_EXTRA_PARAMS);
+          assert.calledWith(webex.meetings.createMeeting, test1, test2, FAKE_USE_RANDOM_DELAY, FAKE_INFO_EXTRA_PARAMS, correlationId);
         });
 
         it('creates a new meeting when a scheduled meeting exists in the conversation', async () => {
@@ -1095,6 +1098,9 @@ describe('plugin-meetings', () => {
             if (expectedMeetingData.meetingJoinUrl) {
               assert.equal(meeting.meetingJoinUrl, expectedMeetingData.meetingJoinUrl);
             }
+            if(expectedMeetingData.correlationId) {
+              assert.equal(meeting.correlationId, expectedMeetingData.correlationId);
+            }
             assert.equal(meeting.destination, destination);
             assert.equal(meeting.destinationType, type);
             assert.calledWith(
@@ -1124,6 +1130,7 @@ describe('plugin-meetings', () => {
             const expectedMeetingData = {
               permissionToken: 'PT',
               meetingJoinUrl: 'meetingJoinUrl',
+              correlationId: meeting.id,
             };
 
             checkCreateWithoutDelay(meeting, 'test destination', 'test type', {}, expectedMeetingData);
@@ -1334,6 +1341,16 @@ describe('plugin-meetings', () => {
             );
             checkCreateWithoutDelay(meeting, FAKE_LOCUS_MEETING, 'test type');
           });
+
+          it('creates meeting with the correlationId provided', async () => {
+            const meeting = await webex.meetings.createMeeting('test destination', 'test type', false, {}, 'my-correlationId');
+
+            const expectedMeetingData = {
+              correlationId: 'my-correlationId',
+            };
+
+            checkCreateWithoutDelay(meeting, 'test destination', 'test type', {}, expectedMeetingData);
+          })
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo', () => {

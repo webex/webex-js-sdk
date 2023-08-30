@@ -185,6 +185,7 @@ describe('plugin-meetings', () => {
   let testDestination;
   let membersSpy;
   let meetingRequestSpy;
+  let correlationId;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -243,6 +244,7 @@ describe('plugin-meetings', () => {
     test3 = `test3-${uuid.v4()}`;
     test4 = `test4-${uuid.v4()}`;
     testDestination = `testDestination-${uuid.v4()}`;
+    correlationId = uuid.v4();
 
     meeting = new Meeting(
       {
@@ -252,6 +254,7 @@ describe('plugin-meetings', () => {
         locus: {url: url1},
         destination: testDestination,
         destinationType: _MEETING_ID_,
+        correlationId,
       },
       {
         parent: webex,
@@ -270,9 +273,11 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.options);
           assert.exists(meeting.attrs);
           assert.exists(meeting.id);
+          assert.exists(meeting.correlationId);
           assert.equal(meeting.userId, uuid1);
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
+          assert.equal(meeting.correlationId, correlationId);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -323,6 +328,21 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.screenShareAudio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
+
+        it('uses meeting id as correlation id if not provided in constructor', () => {
+          const newMeeting = new Meeting({
+            userId: uuid1,
+            resource: uuid2,
+            deviceUrl: uuid3,
+            locus: {url: url1},
+            destination: testDestination,
+            destinationType: _MEETING_ID_,
+          },
+          {
+            parent: webex,
+          });
+          assert.equal(newMeeting.correlationId, newMeeting.id);
+        })
 
         describe('creates ReceiveSlot manager instance', () => {
           let mockReceiveSlotManagerCtor;
