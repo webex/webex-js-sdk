@@ -5837,16 +5837,6 @@ describe('plugin-meetings', () => {
               expectedEnabled: false,
             },
             {
-              actionName: 'canEnableVideo',
-              callType: 'CALL',
-              expectedEnabled: true,
-            },
-            {
-              actionName: 'canEnableVideo',
-              callType: 'MEETING',
-              expectedEnabled: false,
-            },
-            {
               actionName: 'canShareDesktop',
               callType: 'CALL',
               expectedEnabled: true,
@@ -5905,11 +5895,6 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
             },
             {
-              actionName: 'canEnableVideo',
-              requiredDisplayHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-            },
-            {
               actionName: 'canBroadcastMessageToBreakout',
               requiredDisplayHints: [DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT],
               requiredPolicies: [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
@@ -5927,12 +5912,6 @@ describe('plugin-meetings', () => {
             {
               actionName: 'canShareDesktop',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-              requiredPolicies: [],
-              enableUnifiedMeetings: false,
-            },
-            {
-              actionName: 'canEnableVideo',
-              requiredDisplayHints: [],
               requiredPolicies: [],
               enableUnifiedMeetings: false,
             },
