@@ -5903,17 +5903,9 @@ describe('plugin-meetings', () => {
           ({actionName, callType, expectedEnabled}) => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
               meeting.type = callType;
-              meeting.setUpLocusInfoMeetingInfoListener();
+              meeting.userDisplayHints = [];
 
-              const callback = locusInfoOnSpy.thirdCall.args[1];
-
-              const payload = {
-                info: {
-                  userDisplayHints: [],
-                },
-              };
-
-              callback(payload);
+              meeting.updateMeetingActions();
 
               assert.equal(meeting.inMeetingActions.get()[actionName], expectedEnabled);
             });
@@ -6007,20 +5999,6 @@ describe('plugin-meetings', () => {
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
-
-                meeting.setUpLocusInfoMeetingInfoListener();
-
-                const callback = locusInfoOnSpy.thirdCall.args[1];
-
-                const payload = {
-                  info: {
-                    userDisplayHints: [],
-                  },
-                };
-
-                callback(payload);
-
-                assert.isFalse(meeting.inMeetingActions.get()[actionName]);
 
                 meeting.updateMeetingActions();
 

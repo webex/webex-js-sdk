@@ -3022,7 +3022,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private updateMeetingActions() {
     let changed = false;
-    if (this.userDisplayHints !== undefined && this.selfUserPolicies !== undefined) {
+    if (this.userDisplayHints !== undefined) {
       changed = this.inMeetingActions.set({
         canInviteNewParticipants: MeetingUtil.canInviteNewParticipants(this.userDisplayHints),
         canAdmitParticipant: MeetingUtil.canAdmitParticipant(this.userDisplayHints),
@@ -3170,14 +3170,17 @@ export default class Meeting extends StatelessWebexPlugin {
           policies: this.selfUserPolicies,
         }),
         canShareApplication:
-          ControlsOptionsUtil.hasHints({
+          (ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
             displayHints: this.userDisplayHints,
           }) &&
-          ControlsOptionsUtil.hasPolicies({
-            requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-            policies: this.selfUserPolicies,
-          }),
+            (ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+              policies: this.selfUserPolicies,
+            }) ||
+              // @ts-ignore
+              !this.config.experimental.enableUnifiedMeetings)) ||
+          this.isLocusCall(),
         canShareCamera:
           ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
@@ -3218,7 +3221,7 @@ export default class Meeting extends StatelessWebexPlugin {
             policies: this.selfUserPolicies,
           }),
       });
-    } else if (!isEmpty(this.meetingInfo) && this.selfUserPolicies !== undefined) {
+    } else if (!isEmpty(this.meetingInfo)) {
       changed = this.inMeetingActions.set({
         canUseVoip:
           this.meetingInfo.supportVoIP &&
