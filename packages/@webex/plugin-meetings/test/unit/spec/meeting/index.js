@@ -5658,6 +5658,7 @@ describe('plugin-meetings', () => {
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let canShareWhiteBoardSpy;
         let hasHintsSpy;
 
         beforeEach(() => {
@@ -5685,6 +5686,7 @@ describe('plugin-meetings', () => {
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
+          canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
 
         afterEach(() => {
@@ -5930,6 +5932,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+          assert.calledWith(canShareWhiteBoardSpy, payload.info.userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
