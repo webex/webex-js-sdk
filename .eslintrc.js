@@ -52,7 +52,8 @@ module.exports = {
         'newline-after-var': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
         'lines-between-class-members': ['error', 'always', {exceptAfterSingleLine: true}],
-        'tsdoc/syntax': 'off', // Todo: remove this before merging pr
+        'tsdoc/syntax': 'off', // Todo: remove this before merging pr,
+        'prefer-destructuring': ['error', {object: false, array: false}],
       },
     },
     {
