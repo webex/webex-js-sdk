@@ -35,9 +35,7 @@ describe('plugin-dss', () => {
 
     describe('#submitHttpRequest', () => {
       it('calls dss._request with expected params', async () => {
-        webex.internal.dss._request = sinon.stub().returns(
-          Promise.resolve('some return value')
-        );
+        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
 
         const result = await batcher.submitHttpRequest(['id1']);
 
@@ -60,18 +58,9 @@ describe('plugin-dss', () => {
       it('calls acceptItem on each found or not found entity', async () => {
         batcher.acceptItem = sinon.stub().returns(Promise.resolve(undefined));
         const res = {
-          resultArray: [
-            'item1',
-            'item2',
-          ],
-          foundArray: [
-            'id1',
-            'id2',
-          ],
-          notFoundArray: [
-            'id3',
-            'id4',
-          ],
+          resultArray: ['item1', 'item2'],
+          foundArray: ['id1', 'id2'],
+          notFoundArray: ['id3', 'id4'],
         };
         const result = await batcher.handleHttpSuccess(res);
 
@@ -107,7 +96,9 @@ describe('plugin-dss', () => {
         const result = await batcher.handleItemFailure({requestValue: 'some request'});
         const deferValue = await defer.promise;
 
-        expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([{requestValue: 'some request'}]);
+        expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([
+          {requestValue: 'some request'},
+        ]);
         expect(result).to.be.undefined;
         expect(deferValue).to.be.null;
       });
@@ -121,7 +112,9 @@ describe('plugin-dss', () => {
         const result = await batcher.handleItemSuccess({entity: 'some entity'});
         const deferValue = await defer.promise;
 
-        expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([{entity: 'some entity'}]);
+        expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([
+          {entity: 'some entity'},
+        ]);
         expect(result).to.be.undefined;
         expect(deferValue).to.equal('some entity');
       });

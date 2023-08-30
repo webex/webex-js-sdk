@@ -4300,6 +4300,7 @@ __metadata:
   resolution: "@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss"
   dependencies:
     "@webex/common": "workspace:^"
+    "@webex/common-timers": "workspace:^"
     "@webex/internal-plugin-dss": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
