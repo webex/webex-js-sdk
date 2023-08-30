@@ -59,10 +59,6 @@ export const protoprepareFetchOptions = curry(function protoprepareFetchOptions(
 
   lodashDefaults(options, defaultOptions);
 
-  if (!options.json && options.json !== false) {
-    Reflect.deleteProperty(options, 'json');
-  }
-
   options.logger = options.logger || this.logger || console;
 
   return _prepareFetchOptions(options);
@@ -95,7 +91,9 @@ const setRequestTimings = (options) => {
  */
 export const setTimingsAndFetch = (options) => {
   // call the fetch API
-  return fetch(setRequestTimings(options));
+  const opts = setRequestTimings(options);
+
+  return fetch(opts.uri, opts);
 };
 
 const defaultOptions = {

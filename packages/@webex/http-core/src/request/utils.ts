@@ -56,6 +56,20 @@ export async function prepareFetchOptions(options: any): Promise<any> {
 
   options.headers = options.headers || {};
 
+  if (options.json === true) {
+    // don't override existing accept header declared by user
+    options.headers.accept = options.headers.accept || options.headers.Accept || 'application/json';
+
+    // don't override existing content-type header declared by user
+    if (options.method !== 'GET' && options.method !== 'HEAD') {
+      options.headers['content-type'] =
+        options.headers['content-type'] || options.headers['Content-Type'] || 'application/json';
+      options.body = JSON.stringify(options.body);
+    }
+  } else if (options.json !== undefined) {
+    Reflect.deleteProperty(options, 'json');
+  }
+
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
 

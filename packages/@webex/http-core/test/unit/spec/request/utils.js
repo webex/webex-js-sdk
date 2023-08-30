@@ -22,14 +22,42 @@ describe('Request utils', () => {
   describe('#prepareFetchOptions()', () => {
     it('updates options as expected', async () => {
       const options = {
+        json: true,
+        body: {foo: 'bar'},
+        headers: {},
         interceptors: [WebexTrackingIdInterceptor.create(), UserAgentInterceptor.create()],
       };
 
       return utils.prepareFetchOptions(options).then(() => {
-        assert.equal(Object.keys(options.headers).length, 2);
+        assert.deepEqual(options.headers, {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          trackingid: 'undefined_1',
+          'spark-user-agent': 'webex-js-sdk/development (node)',
+        });
+
+        assert.equal(options.body, '{"foo":"bar"}');
 
         assert.equal(options.download != undefined, true);
         assert.equal(options.upload != undefined, true);
+      });
+    });
+
+    it('updates options as expected when accept and content-type exist', async () => {
+      const options = {
+        json: true,
+        body: {foo: 'bar'},
+        headers: {accept: 'foo', 'content-type': 'bar'},
+        interceptors: [WebexTrackingIdInterceptor.create(), UserAgentInterceptor.create()],
+      };
+
+      return utils.prepareFetchOptions(options).then(() => {
+        assert.deepEqual(options.headers, {
+          accept: 'foo',
+          'content-type': 'bar',
+          trackingid: 'undefined_1',
+          'spark-user-agent': 'webex-js-sdk/development (node)',
+        });
       });
     });
   });
