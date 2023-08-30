@@ -1790,6 +1790,57 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  private copyLinesFromAudioToVideo(sdp?: string) {
+    if (!sdp) {
+      return sdp;
+    }
+
+    try {
+      const ssrc = sdp.match(/^a=ssrc.*/gim);
+      const ufrag = sdp.match(/^a=ice-ufrag.*/gim);
+      const pwd = sdp.match(/^a=ice-pwd.*/gim);
+      const fingerprint = sdp.match(/^a=fingerprint.*/gim);
+      const candidates = sdp.match(/^a=candidate.*/gim);
+      const videoPortMatch = sdp.match(/^m=video (?:\d+)/gim);
+      if (pwd && pwd.length > 1) return sdp;
+      let ssrcS = '';
+      let ufragS = '';
+      let pwdS = '';
+      let fingerprintS = '';
+      let candidatesS = '';
+      let videoPort = 0;
+      if (videoPortMatch && videoPortMatch.length) {
+        const videoPortS = videoPortMatch[0].match(/\d+/);
+        if (videoPortS && videoPortS.length) videoPort = parseInt(videoPortS[0], 10);
+      }
+      if (!videoPort) return sdp;
+      if (ssrc && ssrc.length) ssrcS = `${ssrc[0]}\r\n`;
+      if (ufrag && ufrag.length) ufragS = `${ufrag[0]}\r\n`;
+      if (pwd && pwd.length) pwdS = `${pwd[0]}\r\n`;
+      if (fingerprint && fingerprint.length) fingerprintS = `${fingerprint[0]}\r\n`;
+      if (candidates) {
+        for (let i = 0; i < candidates.length; i += 1) {
+          const p = videoPort + i;
+          candidatesS += `${candidates[i].replace(/(\d+) typ/im, `${p} typ`)}\r\n`;
+        }
+      }
+      sdp += `${
+        ssrcS + ufragS + pwdS + fingerprintS + candidatesS
+      }a=rtcp-mux\r\na=setup:passive\r\n`;
+    } catch (e) {
+      log.info(`Error: ${e}`, {
+        file: CALL_FILE,
+        method: this.copyLinesFromAudioToVideo.name,
+      });
+    }
+    log.info(`Video SDP: ${sdp}`, {
+      file: CALL_FILE,
+      method: this.copyLinesFromAudioToVideo.name,
+    });
+
+    return sdp;
+  }
+
   /**
    * Handle Incoming Roap Offer events.
    *
@@ -1803,6 +1854,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
 
     const message = event.data as RoapMessage;
+    message.sdp = this.copyLinesFromAudioToVideo(message.sdp);
 
     this.remoteRoapMessage = message;
     if (!this.mediaConnection) {
@@ -1850,6 +1902,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.remoteRoapMessage = message;
     message.seq = this.seq;
+    message.sdp = this.copyLinesFromAudioToVideo(message.sdp);
     /* istanbul ignore else */
     if (this.mediaConnection) {
       this.mediaConnection.roapMessageReceived(message);
