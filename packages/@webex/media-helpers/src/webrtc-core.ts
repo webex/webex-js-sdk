@@ -13,7 +13,7 @@ import {
   LocalCameraStream as WcmeLocalCameraStream,
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
-import {TypedEvent} from '@webex/ts-events';
+import {AddEvents, TypedEvent, WithEventsDummyType} from '@webex/ts-events';
 
 export {
   getDevices,
@@ -40,7 +40,19 @@ export enum LocalCameraStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
 
-export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
+interface LocalMicrophoneStreamEvents {
+  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+interface LocalCameraStreamEvents {
+  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   private unmuteAllowed = true;
 
   [LocalMicrophoneStreamEventNames.ServerMuted] = new TypedEvent<
@@ -82,7 +94,7 @@ export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   }
 }
 
-export class LocalCameraStream extends WcmeLocalCameraStream {
+class _LocalCameraStream extends WcmeLocalCameraStream {
   private unmuteAllowed = true;
 
   [LocalCameraStreamEventNames.ServerMuted] = new TypedEvent<
@@ -134,3 +146,17 @@ export const createDisplayStream = () => wcmeCreateDisplayStream(LocalDisplayStr
 
 export const createDisplayStreamWithAudio = () =>
   wcmeCreateDisplayStreamWithAudio(LocalDisplayStream, LocalSystemAudioStream);
+
+export const LocalMicrophoneStream = AddEvents<
+  typeof _LocalMicrophoneStream,
+  LocalMicrophoneStreamEvents
+>(_LocalMicrophoneStream);
+
+export type LocalMicrophoneStream = _LocalMicrophoneStream &
+  WithEventsDummyType<LocalMicrophoneStreamEvents>;
+
+export const LocalCameraStream = AddEvents<typeof _LocalCameraStream, LocalCameraStreamEvents>(
+  _LocalCameraStream
+);
+
+export type LocalCameraStream = _LocalCameraStream & WithEventsDummyType<LocalCameraStreamEvents>;
