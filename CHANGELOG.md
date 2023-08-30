@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.198](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.197...v3.0.0-beta.198) (2023-08-29)
+
+
+### Bug Fixes
+
+* add a timeout option to dss requests ([#2928](https://github.com/webex/webex-js-sdk/issues/2928)) ([9e9cc5f](https://github.com/webex/webex-js-sdk/commit/9e9cc5fc70eafe7ecf3307a3fb77319c40a8f5ac))
+
+## [3.0.0-beta.197](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.196...v3.0.0-beta.197) (2023-08-29)
+
+
+### Features
+
+* **call-leave:** allow metric options to be prepared ahead of browser close ([#3015](https://github.com/webex/webex-js-sdk/issues/3015)) ([1c1e2fc](https://github.com/webex/webex-js-sdk/commit/1c1e2fc8cffa9eb4b984dae1b260d6ece3d2a43a))
+
+## [3.0.0-beta.196](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.195...v3.0.0-beta.196) (2023-08-29)
+
+
+### Bug Fixes
+
+* added mediaType to ReceiveSlotManager logs ([#3025](https://github.com/webex/webex-js-sdk/issues/3025)) ([57b7560](https://github.com/webex/webex-js-sdk/commit/57b7560dbf03e6a30a939c7819859fa6062d7dd3))
+
+## [3.0.0-beta.195](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.194...v3.0.0-beta.195) (2023-08-25)
+
+
+### Features
+
+* **metrics:** fix return type client event CA ([#3018](https://github.com/webex/webex-js-sdk/issues/3018)) ([162d03d](https://github.com/webex/webex-js-sdk/commit/162d03d4954e9e3095a09f3baf1f5fd3e7fa022a))
+
+## [3.0.0-beta.194](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.193...v3.0.0-beta.194) (2023-08-25)
+
+
+### Features
+
+* add annotation self-policy handling to sdk ([#3014](https://github.com/webex/webex-js-sdk/issues/3014)) ([7c9aca0](https://github.com/webex/webex-js-sdk/commit/7c9aca0875c810b62eafa6784593b60dab0569ce))
+
+## [3.0.0-beta.193](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.192...v3.0.0-beta.193) (2023-08-24)
+
+
+### Bug Fixes
+
+* **board:** fix integration board tests for download files ([#3021](https://github.com/webex/webex-js-sdk/issues/3021)) ([b08f37b](https://github.com/webex/webex-js-sdk/commit/b08f37ba33e70985a4519db30ce0f5616dfe6fd2))
+
 ## [3.0.0-beta.192](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.191...v3.0.0-beta.192) (2023-08-21)
 
 

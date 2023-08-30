@@ -3,7 +3,13 @@ import anonymize from 'ip-anonymize';
 import util from 'util';
 
 import {BrowserDetection} from '@webex/common';
-import {isEmpty} from 'lodash';
+import {isEmpty, merge} from 'lodash';
+import {
+  ClientEvent,
+  MediaQualityEventAudioSetupDelayPayload,
+  MediaQualityEventVideoSetupDelayPayload,
+  MetricEventNames,
+} from '../metrics.types';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -99,4 +105,129 @@ export const isLocusServiceErrorCode = (errorCode: string | number) => {
   }
 
   return false;
+};
+
+/**
+ * @param webClientDomain
+ * @returns
+ */
+export const getBuildType = (webClientDomain) => {
+  if (
+    webClientDomain?.includes('localhost') ||
+    webClientDomain?.includes('127.0.0.1') ||
+    process.env.NODE_ENV !== 'production'
+  ) {
+    return 'test';
+  }
+
+  return 'production';
+};
+
+/**
+ * Prepare metric item for submission.
+ * @param {Object} webex sdk instance
+ * @param {Object} item
+ * @returns {Object} prepared item
+ */
+export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
+  const origin = {
+    buildType: getBuildType(item.event?.eventData?.webClientDomain),
+    networkType: 'unknown',
+  };
+
+  // check event names and append latencies?
+  const eventName = item.eventPayload?.event?.name as MetricEventNames;
+  const joinTimes: ClientEvent['payload']['joinTimes'] = {};
+  const audioSetupDelay: MediaQualityEventAudioSetupDelayPayload = {};
+  const videoSetupDelay: MediaQualityEventVideoSetupDelayPayload = {};
+
+  const cdl = webex.internal.newMetrics.callDiagnosticLatencies;
+
+  switch (eventName) {
+    case 'client.interstitial-window.launched':
+      joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+      joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+      break;
+
+    case 'client.call.initiated':
+      joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+      joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
+      break;
+
+    case 'client.locus.join.response':
+      joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
+      joinTimes.callInitJoinReq = cdl.getCallInitJoinReq();
+      joinTimes.joinReqResp = cdl.getJoinReqResp();
+      joinTimes.joinReqSentReceived = cdl.getJoinRespSentReceived();
+      joinTimes.pageJmt = cdl.getPageJMT();
+      joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+      joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();
+      joinTimes.totalJmt = cdl.getTotalJMT();
+      joinTimes.clientJmt = cdl.getClientJMT();
+      break;
+
+    case 'client.ice.end':
+      joinTimes.ICESetupTime = cdl.getICESetupTime();
+      joinTimes.audioICESetupTime = cdl.getAudioICESetupTime();
+      joinTimes.videoICESetupTime = cdl.getVideoICESetupTime();
+      joinTimes.shareICESetupTime = cdl.getShareICESetupTime();
+      break;
+
+    case 'client.media.rx.start':
+      joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+      break;
+
+    case 'client.media-engine.ready':
+      joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
+      joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
+      joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
+      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      break;
+
+    case 'client.mediaquality.event':
+      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+      audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
+      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
+      videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
+  }
+
+  if (!isEmpty(joinTimes)) {
+    item.eventPayload.event = merge(item.eventPayload.event, {joinTimes});
+  }
+
+  if (!isEmpty(audioSetupDelay)) {
+    item.eventPayload.event = merge(item.eventPayload.event, {audioSetupDelay});
+  }
+
+  if (!isEmpty(videoSetupDelay)) {
+    item.eventPayload.event = merge(item.eventPayload.event, {videoSetupDelay});
+  }
+
+  item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
+
+  return item;
+};
+
+/**
+ * Sets the originTime value(s) before the request/fetch.
+ * This function is only useful if you are about to submit a metrics
+ * request using pre-built fetch options;
+ *
+ * @param {any} options
+ * @returns {any} the updated options object
+ */
+export const setMetricTimings = (options) => {
+  if (options.body?.metrics) {
+    const now = new Date().toISOString();
+    options.body.metrics.forEach((metric) => {
+      if (metric.eventPayload) {
+        metric.eventPayload.originTime = {
+          triggered: now,
+          sent: now,
+        };
+      }
+    });
+  }
+
+  return options;
 };

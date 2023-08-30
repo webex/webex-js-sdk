@@ -1,8 +1,21 @@
+export interface RequestOptions {
+  resource: string;
+  dataPath: string;
+  foundPath?: string;
+  notFoundPath?: string;
+  params?: Record<string, unknown>;
+}
+
+export interface RequestResult {
+  foundArray?: any[];
+  notFoundArray?: any[];
+  resultArray: any[];
+}
+
 export interface LookupDetailOptions {
   id: string;
 }
 
-// eslint-disable-next-line no-shadow
 export enum EntityProviderType {
   CI_USER = 'CI_USER',
   CI_MACHINE = 'CI_MACHINE',
@@ -33,4 +46,9 @@ export interface SearchOptions {
   requestedTypes: SearchType[];
   resultSize: number;
   queryString: string;
+}
+
+export interface BatcherOptions {
+  resource: string;
+  lookupValue: string;
 }

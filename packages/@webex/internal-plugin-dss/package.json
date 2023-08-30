@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-dss",
-  "version": "3.0.0-beta.192",
+  "version": "3.0.0-beta.198",
   "description": "",
   "license": "MIT",
   "author": "Colin Read <coread@cisco.com>",
@@ -21,13 +21,14 @@
     ]
   },
   "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/common-timers": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
-    "@webex/common": "workspace:^",
     "@webex/internal-plugin-dss": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",

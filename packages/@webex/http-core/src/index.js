@@ -68,6 +68,36 @@ export const protoprepareFetchOptions = curry(function protoprepareFetchOptions(
   return _prepareFetchOptions(options);
 });
 
+/**
+ * Sets the $timings value(s) before the request/fetch.
+ * This function is only useful if you are about to send a request
+ * using prepared fetch options; normally it is done in webex.request();
+ *
+ * @param {any} options
+ * @returns {any} the updated options object
+ */
+const setRequestTimings = (options) => {
+  const now = new Date().getTime();
+  options.$timings = options.$timings || {};
+  options.$timings.requestStart = now;
+  options.$timings.networkStart = now;
+
+  return options;
+};
+
+/**
+ * Submits a metric from pre-built request options via the fetch API. Updates
+ * the "$timings" values to Date.now() since the existing times were set when
+ * the options were built (not submitted).
+ *
+ * @param {any} options - the pre-built request options for submitting a metric
+ * @returns {Promise} promise that resolves to a response object
+ */
+export const setTimingsAndFetch = (options) => {
+  // call the fetch API
+  return fetch(setRequestTimings(options));
+};
+
 const defaultOptions = {
   json: true,
   interceptors: [
