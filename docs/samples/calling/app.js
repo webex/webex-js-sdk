@@ -578,8 +578,8 @@ async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
 
-  localAudioStream  = await Calling.createCameraStream({video: true});
-  localVideoElem.srcObject = localAudioStream.outputStream;
+  localVideoStream  = await Calling.createCameraStream({video: true});
+  localVideoElem.srcObject = localVideoStream.outputStream;
 }
 
 // Listen for submit on create meeting
