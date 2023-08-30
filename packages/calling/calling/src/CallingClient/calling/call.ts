@@ -1968,10 +1968,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     localVideoStream: LocalCameraStream
   ) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    localAudioTrack.enabled = true;
+    // localAudioTrack.enabled = true;
 
     const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
-    localVideoTrack.enabled = true;
+    // localVideoTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(localAudioTrack, localVideoTrack);
@@ -1995,10 +1995,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public async dial(localAudioStream: LocalMicrophoneStream, localVideoStream: LocalCameraStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    localAudioTrack.enabled = true;
+    // localAudioTrack.enabled = true;
 
     const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
-    localVideoTrack.enabled = true;
+    // localVideoTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(localAudioTrack, localVideoTrack);
