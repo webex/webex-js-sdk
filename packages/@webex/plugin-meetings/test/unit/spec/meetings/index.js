@@ -28,6 +28,7 @@ import {
   ONLINE,
   ROAP,
   LOCUSINFO,
+  EVENTS,
   EVENT_TRIGGERS,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
@@ -1664,6 +1665,22 @@ describe('plugin-meetings', () => {
           },
           EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE,
           {entryExitTone: 'foo'}
+        );
+      });
+
+      it('triggers correct event when LOCUS_INFO_UPDATE_URL emitted', async () => {
+        await meeting.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_URL, 'newLocusUrl');
+
+        assert.calledOnce(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener',
+          },
+          EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+          {'locusUrl': 'newLocusUrl'}
         );
       });
 
