@@ -197,7 +197,7 @@ class Metrics extends WebexPlugin {
   }: {
     name: ClientEvent['name'];
     payload?: RecursivePartial<ClientEvent['payload']>;
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }): Promise<any> {
     return this.callDiagnosticMetrics.buildClientEventFetchRequestOptions({
       name,

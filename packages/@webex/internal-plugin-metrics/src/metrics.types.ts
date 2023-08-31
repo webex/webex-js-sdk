@@ -133,5 +133,5 @@ export type SubmitMQE = (args: {
 export type BuildClientEventFetchRequestOptions = (args: {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
-  options: SubmitClientEventOptions;
+  options?: SubmitClientEventOptions;
 }) => Promise<any>;

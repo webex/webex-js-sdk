@@ -384,7 +384,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options,
   }: {
     name: ClientEvent['name'];
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }) {
     const {meetingId, mediaConnections, rawError} = options;
 
@@ -451,7 +451,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options,
   }: {
     name: ClientEvent['name'];
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }) {
     const {correlationId} = options;
 
@@ -567,7 +567,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }): Promise<any> {
     const clientEvent = this.prepareClientEvent({name, payload, options});
 
