@@ -61,5 +61,17 @@ describe('Request utils', () => {
         });
       });
     });
+
+    it('updates body as expected when json = some object', async () => {
+      const options = {
+        json: {bar: 'baz'},
+        headers: {accept: 'foo', 'content-type': 'bar'},
+        interceptors: [WebexTrackingIdInterceptor.create(), UserAgentInterceptor.create()],
+      };
+
+      return utils.prepareFetchOptions(options).then(() => {
+        assert.equal(options.body, '{"bar":"baz"}');
+      });
+    });
   });
 });

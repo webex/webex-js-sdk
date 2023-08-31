@@ -56,7 +56,7 @@ export async function prepareFetchOptions(options: any): Promise<any> {
 
   options.headers = options.headers || {};
 
-  if (options.json === true) {
+  if (options.json) {
     // don't override existing accept header declared by user
     options.headers.accept = options.headers.accept || options.headers.Accept || 'application/json';
 
@@ -64,7 +64,7 @@ export async function prepareFetchOptions(options: any): Promise<any> {
     if (options.method !== 'GET' && options.method !== 'HEAD') {
       options.headers['content-type'] =
         options.headers['content-type'] || options.headers['Content-Type'] || 'application/json';
-      options.body = JSON.stringify(options.body);
+      options.body = JSON.stringify(options.json === true ? options.body : options.json);
     }
   } else if (options.json !== undefined) {
     Reflect.deleteProperty(options, 'json');
