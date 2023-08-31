@@ -812,6 +812,13 @@ describe('plugin-meetings', () => {
             sinon.assert.called(meeting.setCorrelationId);
           });
 
+          it('should use provided correlation ID and not regenerate one when already joined', async () => {
+            meeting.hasJoinedOnce = true;
+            await meeting.join({correlationId: '123'});
+            sinon.assert.called(meeting.setCorrelationId);
+            assert.equal(meeting.correlationId, '123');
+          });
+
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
             meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
 

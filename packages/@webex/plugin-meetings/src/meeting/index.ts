@@ -3639,10 +3639,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * Convenience method to set the correlation id for the Meeting
    * @param {String} id correlation id to set on the class
    * @returns {undefined}
-   * @public
+   * @private
    * @memberof Meeting
    */
-  public setCorrelationId(id: string) {
+  private setCorrelationId(id: string) {
     this.correlationId = id;
   }
 
@@ -4253,9 +4253,16 @@ export default class Meeting extends StatelessWebexPlugin {
       joinSuccess = resolve;
     });
 
+    if (options.correlationId) {
+      this.setCorrelationId(options.correlationId);
+      LoggerProxy.logger.log(
+        `Meeting:index#join --> Using a new correlation id from app ${this.correlationId}`
+      );
+    }
+
     if (!this.hasJoinedOnce) {
       this.hasJoinedOnce = true;
-    } else {
+    } else if (!options.correlationId) {
       LoggerProxy.logger.log(
         `Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`
       );
