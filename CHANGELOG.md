@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.200](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.199...v3.0.0-beta.200) (2023-08-31)
+
+
+### Features
+
+* **new-metrics:** fix type, revert remove correlationId from join method ([#3039](https://github.com/webex/webex-js-sdk/issues/3039)) ([d86f3fc](https://github.com/webex/webex-js-sdk/commit/d86f3fcbbc0343468c909114d55fe507aabd2f68))
+
 ## [3.0.0-beta.199](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.198...v3.0.0-beta.199) (2023-08-30)
 
 
