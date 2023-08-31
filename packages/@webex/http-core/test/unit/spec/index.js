@@ -23,6 +23,7 @@ describe('http-core index tests', () => {
           trackingid: 'undefined_1',
           'spark-user-agent': 'webex-js-sdk/development (node)',
         },
+        keepalive: true,
       });
 
       assert.equal(typeof options.logger, 'object');
@@ -42,12 +43,13 @@ describe('http-core index tests', () => {
 
     it('calls fetch with expected options', async () => {
       sinon.useFakeTimers(now);
-      const options = {};
+      const options = {uri: 'foo'};
 
       const newOptions = setTimingsAndFetch(options);
 
       sinon.assert.calledOnce(global.fetch);
-      sinon.assert.calledWith(global.fetch, {
+      sinon.assert.calledWith(global.fetch, 'foo', {
+        uri: 'foo',
         $timings: {requestStart: now, networkStart: now},
       });
       sinon.restore();
