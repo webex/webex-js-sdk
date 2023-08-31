@@ -37,7 +37,7 @@ export type InternalEvent = {
 export interface ClientEvent {
   name: RawClientEvent['name'];
   payload?: RawClientEvent;
-  options: SubmitClientEventOptions;
+  options?: SubmitClientEventOptions;
 }
 
 export interface BehavioralEvent {
@@ -115,7 +115,7 @@ export type SubmitBehavioralEvent = (args: {
 export type SubmitClientEvent = (args: {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
-  options: SubmitClientEventOptions;
+  options?: SubmitClientEventOptions;
 }) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {

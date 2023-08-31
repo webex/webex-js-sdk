@@ -514,7 +514,6 @@ describe('internal-plugin-metrics', () => {
         assert.throws(() =>
           cd.submitClientEvent({
             name: 'client.alert.displayed',
-            options: {},
           })
         );
       });
