@@ -62,6 +62,7 @@ exports.buildSamples = async function buildSamples() {
 
   await rimraf('docs/samples/webex.min.*');
   await rimraf('docs/samples/meetings.min.*');
+  await rimraf('docs/samples/calling.min.*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here

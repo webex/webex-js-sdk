@@ -33445,12 +33445,16 @@ __metadata:
   dependencies:
     "@babel/polyfill": ^7.12.1
     "@babel/runtime-corejs2": ^7.14.8
+    "@webex/babel-config-legacy": "workspace:^"
     "@webex/calling": "workspace:^"
     "@webex/common": "workspace:^"
+    "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-presence": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
+    "@webex/jest-config-legacy": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
     "@webex/plugin-attachment-actions": "workspace:^"
     "@webex/plugin-authorization": "workspace:^"
     "@webex/plugin-device-manager": "workspace:^"
@@ -33465,7 +33469,9 @@ __metadata:
     "@webex/plugin-webhooks": "workspace:^"
     "@webex/storage-adapter-local-storage": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
+    "@webex/test-helper-file": "workspace:^"
     "@webex/test-helper-mocha": "workspace:^"
+    "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
     lodash: ^4.17.21
