@@ -8,6 +8,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
 
+import {Timer} from '@webex/common-timers';
 import type {
   SearchOptions,
   LookupDetailOptions,
@@ -29,6 +30,8 @@ import {
   SEARCH_DATA_PATH,
 } from './constants';
 import DssBatcher from './dss-batcher';
+import {DssTimeoutError} from './dss-errors';
+import {BatcherOptions, RequestOptions, RequestResult} from './types';
 
 const DSS = WebexPlugin.extend({
   namespace: 'DSS',
@@ -154,26 +157,34 @@ const DSS = WebexPlugin.extend({
    * Makes the request to the directory service
    * @param {Object} options
    * @param {string} options.resource the URL to query
-   * @param {string} options.params additional params for the body of the request
+   * @param {Mixed} options.params additional params for the body of the request
    * @param {string} options.dataPath the path to get the data in the result object
-   * @param {string} options.foundPath the path to get the lookups of the found data (optional)
-   * @param {string} options.notFoundPath the path to get the lookups of the not found data (optional)
+   * @param {string} [options.foundPath] the path to get the lookups of the found data
+   * @param {string} [options.notFoundPath] the path to get the lookups of the not found data
    * @returns {Promise<Object>} result Resolves with an object
    * @returns {Array} result.resultArray an array of entities found
    * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
    * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
-  _request(options) {
+  _request(options: RequestOptions): Promise<RequestResult> {
     const {resource, params, dataPath, foundPath, notFoundPath} = options;
 
+    const timeout = this.config.requestTimeout;
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const result = {};
-    let expectedSeqNums;
-    let notFoundArray;
+    let expectedSeqNums: string[];
+    let notFoundArray: unknown[];
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timer = new Timer(() => {
+        this.stopListening(this, eventName);
+        reject(new DssTimeoutError({requestId, timeout, resource, params}));
+      }, timeout);
+
       this.listenTo(this, eventName, (data) => {
+        timer.reset();
         const resultData = get(data, dataPath, []);
         let found;
 
@@ -192,6 +203,8 @@ const DSS = WebexPlugin.extend({
         const done = isEqual(expectedSeqNums, Object.keys(result));
 
         if (done) {
+          timer.cancel();
+
           const resultArray: any[] = [];
           const foundArray: any[] = [];
 
@@ -205,7 +218,7 @@ const DSS = WebexPlugin.extend({
               }
             }
           });
-          const resolveValue: {resultArray: any[]; foundArray?: any[]; notFoundArray?: any[]} = {
+          const resolveValue: RequestResult = {
             resultArray,
           };
 
@@ -226,6 +239,7 @@ const DSS = WebexPlugin.extend({
         contentType: 'application/json',
         body: {requestId, ...params},
       });
+      timer.start();
     });
   },
 
@@ -235,8 +249,9 @@ const DSS = WebexPlugin.extend({
    * @param {string} options.resource the URL to query
    * @param {string} options.value the id or email to lookup
    * @returns {Promise} Resolves with an array of entities found
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
-  _batchedLookup(options) {
+  _batchedLookup(options: BatcherOptions) {
     const {resource, lookupValue} = options;
     const dataPath = LOOKUP_DATA_PATH;
     const entitiesFoundPath = LOOKUP_FOUND_PATH;
@@ -262,6 +277,7 @@ const DSS = WebexPlugin.extend({
    * @param {Object} options
    * @param {UUID} options.id the id of the entity to lookup
    * @returns {Promise} Resolves with the entity found or null if not found
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   lookupDetail(options: LookupDetailOptions) {
     const {id} = options;
@@ -286,9 +302,10 @@ const DSS = WebexPlugin.extend({
    * Retrieves basic information about an entity within an organization
    * @param {Object} options
    * @param {UUID} options.id the id of the entity to lookup
-   * @param {UUID} options.entityProviderType the provider to query (optional)
+   * @param {UUID} [options.entityProviderType] the provider to query
    * @param {Boolean} options.shouldBatch whether to batch the query, set to false for single immediate result (defaults to true)
    * @returns {Promise} Resolves with the entity found or null if not found
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   lookup(options: LookupOptions) {
     const {id, entityProviderType, shouldBatch = true} = options;
@@ -325,6 +342,7 @@ const DSS = WebexPlugin.extend({
    * @param {Object} options
    * @param {UUID} options.email the email of the entity to lookup
    * @returns {Promise} Resolves with the entity found or rejects if not found
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   lookupByEmail(options: LookupByEmailOptions) {
     const {email} = options;
@@ -353,6 +371,7 @@ const DSS = WebexPlugin.extend({
    * @param {string[]} options.queryString A query string that will be transformed into a Directory search filter query. It is used to search the following fields: username, givenName, familyName, displayName and email
    * @param {number} options.resultSize The maximum number of results returned from each provider
    * @returns {Promise} Resolves with an array of entities found
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   search(options: SearchOptions) {
     const {requestedTypes, resultSize, queryString} = options;

@@ -2593,18 +2593,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
             displayHints: payload.info.userDisplayHints,
           }),
-          canEnableVideo:
-            (ControlsOptionsUtil.hasHints({
-              requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-              displayHints: payload.info.userDisplayHints,
-            }) &&
-              ControlsOptionsUtil.hasPolicies({
-                requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-                policies: this.selfUserPolicies,
-              })) ||
-            // @ts-ignore
-            !this.config.experimental.enableUnifiedMeetings ||
-            this.isLocusCall(),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: payload.info.userDisplayHints,
+          }),
           canDisableVideo: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: payload.info.userDisplayHints,
@@ -2660,6 +2652,10 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
               displayHints: payload.info.userDisplayHints,
             }) || this.isLocusCall(),
+          canAnnotate: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
+            policies: this.selfUserPolicies,
+          }),
         });
 
         this.recordingController.setDisplayHints(payload.info.userDisplayHints);

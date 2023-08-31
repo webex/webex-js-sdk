@@ -11,7 +11,7 @@
 export interface ClientEvent {
   canProceed: boolean;
   state?: string;
-  mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard" | "gamestate";
+  mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard' | 'gamestate';
   csi?: number;
   /**
    * media capability for both transmit and receive
@@ -41,17 +41,17 @@ export interface ClientEvent {
     };
   };
   mediaLines?: {
-    mediaType: "audio" | "video" | "share" | "share_audio" | "whiteboard" | "gamestate";
+    mediaType: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard' | 'gamestate';
     remoteIP?: string;
     localIP?: string;
     localNetworkPrefix?: string;
     localPort?: number;
     remotePort?: number;
-    protocol: "udp" | "tcp" | "xtls" | "unknown";
-    direction: "sendrecv" | "sendonly" | "recvonly" | "inactive";
+    protocol: 'udp' | 'tcp' | 'xtls' | 'unknown';
+    direction: 'sendrecv' | 'sendonly' | 'recvonly' | 'inactive';
     clusterName?: string;
-    status?: "succeeded" | "in-progress" | "failed";
-    failureReason?: "network" | "transport" | "rejected" | "timeout" | "notstarted" | "succeeded";
+    status?: 'succeeded' | 'in-progress' | 'failed';
+    failureReason?: 'network' | 'transport' | 'rejected' | 'timeout' | 'notstarted' | 'succeeded';
     errorCode?: number;
     mediaLineData?: {};
   }[];
@@ -61,7 +61,7 @@ export interface ClientEvent {
   clientMediaPreferences?: {
     preferTranscoding: boolean;
   };
-  pstnAudioType?: "dial-in" | "dial-out";
+  pstnAudioType?: 'dial-in' | 'dial-out';
   success?: boolean;
   isTranscoded?: boolean;
   isGatewayed?: boolean;
@@ -69,120 +69,127 @@ export interface ClientEvent {
   /**
    * determine how the events are processed as well as how the reports are aggregated and sliced
    */
-  registrationMode?: "SIP" | "Cloud" | "CloudAware";
+  registrationMode?: 'SIP' | 'Cloud' | 'CloudAware';
   /**
    * protocols used to help determine how the events are processed as well as how the reports are aggregated and sliced
    */
-  protocol?: "SIP" | "H323" | "Locus" | "WebRTC";
+  protocol?: 'SIP' | 'H323' | 'Locus' | 'WebRTC';
   /**
    * The underlying service provider of the call.
    */
-  meetingPlatform?: "MsTeams" | "GoogleMeet" | "Zoom" | "Webex";
+  meetingPlatform?: 'MsTeams' | 'GoogleMeet' | 'Zoom' | 'Webex';
   labels?: string[];
-  webexServiceType?: "MC" | "EC" | "SC" | "TC" | "AA" | "RA" | "NBR" | "WRF" | "HOL";
+  webexServiceType?: 'MC' | 'EC' | 'SC' | 'TC' | 'AA' | 'RA' | 'NBR' | 'WRF' | 'HOL';
   /**
    * this defines the sub service type
    */
-  webexSubServiceType?: "PMR" | "Event" | "Training" | "ScheduleMeeting" | "ScheduledMeeting" | "Webinar" | "others";
+  webexSubServiceType?:
+    | 'PMR'
+    | 'Event'
+    | 'Training'
+    | 'ScheduleMeeting'
+    | 'ScheduledMeeting'
+    | 'Webinar'
+    | 'others';
   ivrDialogType?:
-    | "MEDIA_ON_HOLD"
-    | "ANNOUNCEMENT"
-    | "TONE"
-    | "COLLECT_PIN"
-    | "PROMPT"
-    | "MEDIA_SERVICE_AGENT"
-    | "COLLECT";
+    | 'MEDIA_ON_HOLD'
+    | 'ANNOUNCEMENT'
+    | 'TONE'
+    | 'COLLECT_PIN'
+    | 'PROMPT'
+    | 'MEDIA_SERVICE_AGENT'
+    | 'COLLECT';
   ivrDialogResult?:
-    | "SUCCESS"
-    | "FAILURE"
-    | "HOST_PIN_MATCH"
-    | "GUEST_PIN_MATCH"
-    | "PANELIST_PIN_MATCH"
-    | "NO_MATCH"
-    | "INVALID_PIN";
+    | 'SUCCESS'
+    | 'FAILURE'
+    | 'HOST_PIN_MATCH'
+    | 'GUEST_PIN_MATCH'
+    | 'PANELIST_PIN_MATCH'
+    | 'NO_MATCH'
+    | 'INVALID_PIN';
   callType?:
-    | "VIDEO_DIALIN"
-    | "VIDEO_DIALOUT"
-    | "CASCADE"
-    | "HYBRID_CASCADE"
-    | "PSTN_SIP"
-    | "PSTN_DIALIN"
-    | "PSTN_DIALOUT"
-    | "PSTN_ONLY_DIALIN"
-    | "PSTN_ONLY_DIALOUT"
-    | "H323"
-    | "H323_IP"
-    | "SIP_ENTERPRISE"
-    | "SIP_MOBILE"
-    | "SIP_NATIONAL"
-    | "SIP_INTERNATIONAL"
-    | "SIP_EMERGENCY"
-    | "SIP_OPERATOR"
-    | "SIP_SHORTCODE"
-    | "SIP_TOLLFREE"
-    | "SIP_PREMIUM"
-    | "SIP_URI"
-    | "SIP_INBOUND"
-    | "UNKNOWN"
-    | "ZTM"
-    | "SIP_MEETING";
+    | 'VIDEO_DIALIN'
+    | 'VIDEO_DIALOUT'
+    | 'CASCADE'
+    | 'HYBRID_CASCADE'
+    | 'PSTN_SIP'
+    | 'PSTN_DIALIN'
+    | 'PSTN_DIALOUT'
+    | 'PSTN_ONLY_DIALIN'
+    | 'PSTN_ONLY_DIALOUT'
+    | 'H323'
+    | 'H323_IP'
+    | 'SIP_ENTERPRISE'
+    | 'SIP_MOBILE'
+    | 'SIP_NATIONAL'
+    | 'SIP_INTERNATIONAL'
+    | 'SIP_EMERGENCY'
+    | 'SIP_OPERATOR'
+    | 'SIP_SHORTCODE'
+    | 'SIP_TOLLFREE'
+    | 'SIP_PREMIUM'
+    | 'SIP_URI'
+    | 'SIP_INBOUND'
+    | 'UNKNOWN'
+    | 'ZTM'
+    | 'SIP_MEETING';
   eventData?: {};
   derivedSipClientType?:
-    | "SIP_CE_SINGLE_SCREEN"
-    | "SIP_CE_MULTI_SCREEN"
-    | "SIP_JABBER"
-    | "SIP_TIP_SINGLE_SCREEN"
-    | "SIP_TIP_THREE_SCREEN"
-    | "SIP_PSTN"
-    | "SIP_OTHER"
-    | "SIP_WEBEX_CASCADE"
-    | "SIP_NONE";
+    | 'SIP_CE_SINGLE_SCREEN'
+    | 'SIP_CE_MULTI_SCREEN'
+    | 'SIP_JABBER'
+    | 'SIP_TIP_SINGLE_SCREEN'
+    | 'SIP_TIP_THREE_SCREEN'
+    | 'SIP_PSTN'
+    | 'SIP_OTHER'
+    | 'SIP_WEBEX_CASCADE'
+    | 'SIP_NONE';
   /**
    * this defines the major client types
    */
   derivedClientType?:
-    | "MEETING_CENTER"
-    | "EVENT_CENTER"
-    | "TRAINING_CENTER"
-    | "TEAMS_CLIENT"
-    | "TEAMS_DEVICE"
-    | "TEAMS_SHARE"
-    | "SIP"
-    | "RECORDING"
-    | "CLOUD_AWARE_SIP"
-    | "TEAMS_WXC_CLIENT"
-    | "WXC_CLIENT"
-    | "WXC_DEVICE"
-    | "WEBEX_JS_SDK"
-    | "VOICEA_CLIENT"
-    | "CISCO_SIP_GW"
-    | "WEBEX_SDK"
-    | "CPAAS_THIRD_PARTY_SDK"
-    | "WXC_THIRD_PARTY";
+    | 'MEETING_CENTER'
+    | 'EVENT_CENTER'
+    | 'TRAINING_CENTER'
+    | 'TEAMS_CLIENT'
+    | 'TEAMS_DEVICE'
+    | 'TEAMS_SHARE'
+    | 'SIP'
+    | 'RECORDING'
+    | 'CLOUD_AWARE_SIP'
+    | 'TEAMS_WXC_CLIENT'
+    | 'WXC_CLIENT'
+    | 'WXC_DEVICE'
+    | 'WEBEX_JS_SDK'
+    | 'VOICEA_CLIENT'
+    | 'CISCO_SIP_GW'
+    | 'WEBEX_SDK'
+    | 'CPAAS_THIRD_PARTY_SDK'
+    | 'WXC_THIRD_PARTY';
   /**
    * this defines the sub types of clients
    */
   derivedSubClientType?:
-    | "DESKTOP_APP"
-    | "DESKTOP_APP_VDI"
-    | "DEVICE_CURRENT"
-    | "DEVICE_LEGACY_2020"
-    | "HVDI_APP"
-    | "MOBILE_APP"
-    | "VDI_APP"
-    | "WEB_APP"
-    | "MOBILE_NETWORK"
-    | "HOLOGRAM_HEADSET_APP";
+    | 'DESKTOP_APP'
+    | 'DESKTOP_APP_VDI'
+    | 'DEVICE_CURRENT'
+    | 'DEVICE_LEGACY_2020'
+    | 'HVDI_APP'
+    | 'MOBILE_APP'
+    | 'VDI_APP'
+    | 'WEB_APP'
+    | 'MOBILE_NETWORK'
+    | 'HOLOGRAM_HEADSET_APP';
   serverRole?:
-    | "CONFERENCE"
-    | "TRANSCODER"
-    | "WHITEBOARD_INJECTOR"
-    | "MS_TEAMS_CONFERENCE"
-    | "RECORDING"
-    | "GATEWAY"
-    | "GATEWAY_CLIENT_SIDE"
-    | "UNKNOWN"
-    | "HOLOGRAM_RENDER";
+    | 'CONFERENCE'
+    | 'TRANSCODER'
+    | 'WHITEBOARD_INJECTOR'
+    | 'MS_TEAMS_CONFERENCE'
+    | 'RECORDING'
+    | 'GATEWAY'
+    | 'GATEWAY_CLIENT_SIDE'
+    | 'UNKNOWN'
+    | 'HOLOGRAM_RENDER';
   reconnect?: boolean;
   retryCount?: number;
   meetSimple?: boolean;
@@ -190,34 +197,34 @@ export interface ClientEvent {
    * represents media quality status report such as no media or drop out
    */
   mediaStatus?: {
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     mediaSuccess?: boolean;
     shareType?:
-      | "cb-normal-share"
-      | "ce-airplay-share"
-      | "ce-direct-share"
-      | "ce-gui-loopback-share"
-      | "ce-input-source-share"
-      | "ce-input-source-share-hdmi"
-      | "ce-input-source-share-usbc"
-      | "ce-jpg-share"
-      | "ce-miracast-share"
-      | "mcs-normal-share"
-      | "mcs-normal-audio-share"
-      | "mcs-hfps-share"
-      | "mcs-hfps-audio-share";
+      | 'cb-normal-share'
+      | 'ce-airplay-share'
+      | 'ce-direct-share'
+      | 'ce-gui-loopback-share'
+      | 'ce-input-source-share'
+      | 'ce-input-source-share-hdmi'
+      | 'ce-input-source-share-usbc'
+      | 'ce-jpg-share'
+      | 'ce-miracast-share'
+      | 'mcs-normal-share'
+      | 'mcs-normal-audio-share'
+      | 'mcs-hfps-share'
+      | 'mcs-hfps-audio-share';
     isTransmitter?: boolean;
     audioJoinType?:
-      | "phone-call-in"
-      | "phone-call-back"
-      | "voip"
-      | "device-call-back"
-      | "never-join-audio"
-      | "tried-but-never-join";
+      | 'phone-call-in'
+      | 'phone-call-back'
+      | 'voip'
+      | 'device-call-back'
+      | 'never-join-audio'
+      | 'tried-but-never-join';
     /**
      * indicates transport type used
      */
-    transportType?: "UDP" | "TCP" | "xTLS" | "TLS";
+    transportType?: 'UDP' | 'TCP' | 'xTLS' | 'TLS';
     additionalData?: {};
   };
   shareInstanceId?: string;
@@ -228,7 +235,7 @@ export interface ClientEvent {
   audioSetupDelay?: {
     floorReqSentReceived?: number;
     floorRespSentReceived?: number;
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     txReqFloorGranted?: number;
     txSessionCreateConfirm?: number;
     txApeEnrollConfirm?: number;
@@ -268,7 +275,7 @@ export interface ClientEvent {
   videoSetupDelay?: {
     floorReqSentReceived?: number;
     floorRespSentReceived?: number;
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     txReqFloorGranted?: number;
     txSessionCreateConfirm?: number;
     txApeEnrollConfirm?: number;
@@ -308,7 +315,7 @@ export interface ClientEvent {
   shareSetupDelay?: {
     floorReqSentReceived?: number;
     floorRespSentReceived?: number;
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     txReqFloorGranted?: number;
     txSessionCreateConfirm?: number;
     txApeEnrollConfirm?: number;
@@ -348,7 +355,7 @@ export interface ClientEvent {
   shareAudioSetupDelay?: {
     floorReqSentReceived?: number;
     floorRespSentReceived?: number;
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     txReqFloorGranted?: number;
     txSessionCreateConfirm?: number;
     txApeEnrollConfirm?: number;
@@ -388,7 +395,7 @@ export interface ClientEvent {
   whiteboardSetupDelay?: {
     floorReqSentReceived?: number;
     floorRespSentReceived?: number;
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
     txReqFloorGranted?: number;
     txSessionCreateConfirm?: number;
     txApeEnrollConfirm?: number;
@@ -425,19 +432,19 @@ export interface ClientEvent {
   isFocus?: boolean;
   processingDelay?: number;
   shareType?:
-    | "cb-normal-share"
-    | "ce-airplay-share"
-    | "ce-direct-share"
-    | "ce-gui-loopback-share"
-    | "ce-input-source-share"
-    | "ce-input-source-share-hdmi"
-    | "ce-input-source-share-usbc"
-    | "ce-jpg-share"
-    | "ce-miracast-share"
-    | "mcs-normal-share"
-    | "mcs-normal-audio-share"
-    | "mcs-hfps-share"
-    | "mcs-hfps-audio-share";
+    | 'cb-normal-share'
+    | 'ce-airplay-share'
+    | 'ce-direct-share'
+    | 'ce-gui-loopback-share'
+    | 'ce-input-source-share'
+    | 'ce-input-source-share-hdmi'
+    | 'ce-input-source-share-usbc'
+    | 'ce-jpg-share'
+    | 'ce-miracast-share'
+    | 'mcs-normal-share'
+    | 'mcs-normal-audio-share'
+    | 'mcs-hfps-share'
+    | 'mcs-hfps-audio-share';
   isShareBeingTakenOver?: boolean;
   floorBeneficiaryUpdated?: boolean;
   meetingJoinedTime?: string;
@@ -449,9 +456,9 @@ export interface ClientEvent {
     useKeyTime?: number;
     cacheKeyTime?: number;
   }[];
-  e2eeVersion?: "E2EEV1" | "E2EEV2" | "E2EEV3";
+  e2eeVersion?: 'E2EEV1' | 'E2EEV2' | 'E2EEV3';
   isConvergedArchitectureEnabled?: boolean;
-  callingServiceType?: "CUCM" | "WEBEXCALLING" | "BROADWORKS" | "LOCUS";
+  callingServiceType?: 'CUCM' | 'WEBEXCALLING' | 'BROADWORKS' | 'LOCUS';
   inLobby?: boolean;
   isVIPMeeting?: boolean;
   webexAppEntrypoint?: string;
@@ -472,10 +479,10 @@ export interface ClientEvent {
    * Details associated with a breakout move
    */
   breakout?: {
-    moveType?: "between_breakout" | "to_breakout" | "to_main";
-    trigger?: "assignment_changed" | "client_initiated" | "session_ended" | "session_started";
-    startState?: "joined" | "lobby";
-    endState?: "joined" | "lobby";
+    moveType?: 'between_breakout' | 'to_breakout' | 'to_main';
+    trigger?: 'assignment_changed' | 'client_initiated' | 'session_ended' | 'session_started';
+    startState?: 'joined' | 'lobby';
+    endState?: 'joined' | 'lobby';
   };
   /**
    * Latency values associated with breakout session
@@ -491,187 +498,188 @@ export interface ClientEvent {
    * two-way whiteboard related info
    */
   whiteboard?: {
-    action?: "open" | "create";
-    type?: "whiteboard" | "annotation";
-    capability?: "one_way" | "two_way";
-    granted?: "one_way" | "two_way";
+    action?: 'open' | 'create';
+    type?: 'whiteboard' | 'annotation';
+    capability?: 'one_way' | 'two_way';
+    granted?: 'one_way' | 'two_way';
   };
   name:
-    | "client.alert.displayed"
-    | "client.alert.removed"
-    | "client.application.validate"
-    | "client.audio.noise.removal"
-    | "client.breakout-session.join.request"
-    | "client.breakout-session.join.response"
-    | "client.breakout-session.leave"
-    | "client.breakout-session.move.request"
-    | "client.breakout-session.move.response"
-    | "client.call.aborted"
-    | "client.call.declined"
-    | "client.call.displayed"
-    | "client.call.initiated"
-    | "client.call.leave"
-    | "client.call.move-media"
-    | "client.call.remote-ended"
-    | "client.call.remote-started"
-    | "client.call.skip-locus-join"
-    | "client.conversation.request"
-    | "client.conversation.response"
-    | "client.click.pre-join"
-    | "client.crash"
-    | "client.daemon.join.begin"
-    | "client.daemon.job.done"
-    | "client.daemon.launch-meeting-process"
-    | "client.daemon.pending-on-existing-upgrade-job"
-    | "client.daemon.query-site-info"
-    | "client.daemon.upgrade-and-join"
-    | "client.daemon.wakeup-meeting-client"
-    | "client.device.resource-room.joined"
-    | "client.e2ee.join.response"
-    | "client.embedded-object-info"
-    | "client.entering-background"
-    | "client.entering-foreground"
-    | "client.gesture.recognition"
-    | "client.hologram.initiated"
-    | "client.hologram.stopped"
-    | "client.hologram.remote.initiated"
-    | "client.hologram.remote.stopped"
-    | "client.ice.end"
-    | "client.ice.start"
-    | "client.installer.start"
-    | "client.installer.end"
-    | "client.interstitial-window.launched"
-    | "client.ivr.join.request"
-    | "client.ivr.join.response"
-    | "client.ivr.leave.request"
-    | "client.ivr.leave.response"
-    | "client.ivr.notify.request"
-    | "client.ivr.notify.response"
-    | "client.lobby.entered"
-    | "client.lobby.exited"
-    | "client.locus.decline.request"
-    | "client.locus.join.request"
-    | "client.locus.join.response"
-    | "client.locus.leave.request"
-    | "client.locus.leave.response"
-    | "client.locus.media.request"
-    | "client.locus.media.response"
-    | "client.media-engine.crash"
-    | "client.media-engine.lost"
-    | "client.media-engine.local-sdp-generated"
-    | "client.media-engine.ready"
-    | "client.media-engine.remote-sdp-received"
-    | "client.media-status"
-    | "client.media.capabilities"
-    | "client.media.reachability"
-    | "client.media.reconnecting"
-    | "client.media.recovered"
-    | "client.media.render.start"
-    | "client.media.render.stop"
-    | "client.media.rx.start"
-    | "client.media.rx.stop"
-    | "client.media.share.csi.changed"
-    | "client.media.tx.start"
-    | "client.media.tx.stop"
-    | "client.meetinginfo.request"
-    | "client.meetinginfo.response"
-    | "client.meetingmanagersdk.ipc.run"
-    | "client.meeting.app-loaded"
-    | "client.meeting.breakout-session.action"
-    | "client.meeting.breakout-session.summary"
-    | "client.meeting.browser-plugin.started"
-    | "client.meeting.click.joinbutton"
-    | "client.meeting.closed"
-    | "client.meeting.disclaimer-window.accepted"
-    | "client.meeting.disclaimer-window.closed"
-    | "client.meeting.disclaimer-window.showed"
-    | "client.meeting.docshow.request"
-    | "client.meeting.docshow.response"
-    | "client.meeting.e2e.u2c.response"
-    | "client.meeting.e2e.wca.response"
-    | "client.meeting.e2e.key.response"
-    | "client.meeting.e2ee.u2c.response"
-    | "client.meeting.e2ee.wca.response"
-    | "client.meeting.e2ee.key.response"
-    | "client.meeting.gpc.download"
-    | "client.meeting.gpcparameter.request"
-    | "client.meeting.gpcparameter.response"
-    | "client.meeting.interstitial-window.closed"
-    | "client.meeting.interstitial-window.showed"
-    | "client.meeting.join.request"
-    | "client.meeting.key-information"
-    | "client.meeting.launched"
-    | "client.meeting.login-window.clicked"
-    | "client.meeting.login-window.closed"
-    | "client.meeting.login-window.showed"
-    | "client.meeting.login.response"
-    | "client.meeting.people-insights.check.response"
-    | "client.meeting.people-insights.query.response"
-    | "client.meeting.ping.request"
-    | "client.meeting.ping.response"
-    | "client.meeting.plugin-extension.started"
-    | "client.meeting.resume"
-    | "client.meeting.report-log"
-    | "client.meeting.session.connected"
-    | "client.meeting.start-webexapp"
-    | "client.meeting.start-launch"
-    | "client.meeting.summary"
-    | "client.meeting.user-action"
-    | "client.meeting.validated"
-    | "client.meeting.VDI.detect.plugin.response"
-    | "client.meeting.VDI.connect.plugin.response"
-    | "client.mercury.connection.lost"
-    | "client.mercury.connection.restored"
-    | "client.multistream.sca.rx"
-    | "client.multistream.sca.tx"
-    | "client.multistream.scr.rx"
-    | "client.multistream.scr.tx"
-    | "client.muted"
-    | "client.network.changed"
-    | "client.notification.received"
-    | "client.pin.collected"
-    | "client.pin.prompt"
-    | "client.post.meeting.hook"
-    | "client.pstnaudio.attempt.finish"
-    | "client.pstnaudio.attempt.skip"
-    | "client.pstnaudio.attempt.start"
-    | "client.roap-message.received"
-    | "client.roap-message.sent"
-    | "client.share.floor-accept.notification"
-    | "client.share.floor-grant.cancel-request"
-    | "client.share.floor-grant.notification"
-    | "client.share.floor-grant.request"
-    | "client.share.floor-granted.local"
-    | "client.share.initiated"
-    | "client.share.layout.displayed"
-    | "client.share.paused"
-    | "client.share.selected-app"
-    | "client.share.stopped"
-    | "client.started-after-shutdown"
-    | "client.started-from-crash"
-    | "client.stuntrace.failed"
-    | "client.switch.app"
-    | "client.unmuted"
-    | "client.webexapp.launched"
-    | "client.login.start"
-    | "client.login.end"
-    | "client.switch.environment"
-    | "client.warhol.downloaded"
-    | "client.whiteboard.loaded"
-    | "meeting.initiated"
-    | "meeting.joined"
-    | "page.click.pre-join"
-    | "page.meeting.browser-reset"
-    | "page.meeting.close-browser"
-    | "page.meeting.extension.started"
-    | "page.meeting.launch-thinclient"
-    | "page.meeting.loading"
-    | "page.meeting.run-plugin"
-    | "page.meeting.testing-plugin"
-    | "page.meeting.testing-plugin.finished"
-    | "page.meeting.tfs.start-download"
-    | "page.meeting.urlprotocol.detect"
-    | "page.meeting.waiting.user-action";
+    | 'client.alert.displayed'
+    | 'client.alert.removed'
+    | 'client.application.validate'
+    | 'client.audio.noise.removal'
+    | 'client.breakout-session.join.request'
+    | 'client.breakout-session.join.response'
+    | 'client.breakout-session.leave'
+    | 'client.breakout-session.move.request'
+    | 'client.breakout-session.move.response'
+    | 'client.call.aborted'
+    | 'client.call.declined'
+    | 'client.call.displayed'
+    | 'client.call.initiated'
+    | 'client.call.leave'
+    | 'client.call.move-media'
+    | 'client.call.remote-ended'
+    | 'client.call.remote-started'
+    | 'client.call.skip-locus-join'
+    | 'client.conversation.request'
+    | 'client.conversation.response'
+    | 'client.click.pre-join'
+    | 'client.crash'
+    | 'client.daemon.join.begin'
+    | 'client.daemon.job.done'
+    | 'client.daemon.launch-meeting-process'
+    | 'client.daemon.pending-on-existing-upgrade-job'
+    | 'client.daemon.query-site-info'
+    | 'client.daemon.upgrade-and-join'
+    | 'client.daemon.wakeup-meeting-client'
+    | 'client.device.resource-room.joined'
+    | 'client.e2ee.join.response'
+    | 'client.embedded-object-info'
+    | 'client.entering-background'
+    | 'client.entering-foreground'
+    | 'client.exit.app'
+    | 'client.gesture.recognition'
+    | 'client.hologram.initiated'
+    | 'client.hologram.stopped'
+    | 'client.hologram.remote.initiated'
+    | 'client.hologram.remote.stopped'
+    | 'client.ice.end'
+    | 'client.ice.start'
+    | 'client.installer.start'
+    | 'client.installer.end'
+    | 'client.interstitial-window.launched'
+    | 'client.ivr.join.request'
+    | 'client.ivr.join.response'
+    | 'client.ivr.leave.request'
+    | 'client.ivr.leave.response'
+    | 'client.ivr.notify.request'
+    | 'client.ivr.notify.response'
+    | 'client.lobby.entered'
+    | 'client.lobby.exited'
+    | 'client.locus.decline.request'
+    | 'client.locus.join.request'
+    | 'client.locus.join.response'
+    | 'client.locus.leave.request'
+    | 'client.locus.leave.response'
+    | 'client.locus.media.request'
+    | 'client.locus.media.response'
+    | 'client.media-engine.crash'
+    | 'client.media-engine.lost'
+    | 'client.media-engine.local-sdp-generated'
+    | 'client.media-engine.ready'
+    | 'client.media-engine.remote-sdp-received'
+    | 'client.media-status'
+    | 'client.media.capabilities'
+    | 'client.media.reachability'
+    | 'client.media.reconnecting'
+    | 'client.media.recovered'
+    | 'client.media.render.start'
+    | 'client.media.render.stop'
+    | 'client.media.rx.start'
+    | 'client.media.rx.stop'
+    | 'client.media.share.csi.changed'
+    | 'client.media.tx.start'
+    | 'client.media.tx.stop'
+    | 'client.meetinginfo.request'
+    | 'client.meetinginfo.response'
+    | 'client.meetingmanagersdk.ipc.run'
+    | 'client.meeting.app-loaded'
+    | 'client.meeting.breakout-session.action'
+    | 'client.meeting.breakout-session.summary'
+    | 'client.meeting.browser-plugin.started'
+    | 'client.meeting.click.joinbutton'
+    | 'client.meeting.closed'
+    | 'client.meeting.disclaimer-window.accepted'
+    | 'client.meeting.disclaimer-window.closed'
+    | 'client.meeting.disclaimer-window.showed'
+    | 'client.meeting.docshow.request'
+    | 'client.meeting.docshow.response'
+    | 'client.meeting.e2e.u2c.response'
+    | 'client.meeting.e2e.wca.response'
+    | 'client.meeting.e2e.key.response'
+    | 'client.meeting.e2ee.u2c.response'
+    | 'client.meeting.e2ee.wca.response'
+    | 'client.meeting.e2ee.key.response'
+    | 'client.meeting.gpc.download'
+    | 'client.meeting.gpcparameter.request'
+    | 'client.meeting.gpcparameter.response'
+    | 'client.meeting.interstitial-window.closed'
+    | 'client.meeting.interstitial-window.showed'
+    | 'client.meeting.join.request'
+    | 'client.meeting.key-information'
+    | 'client.meeting.launched'
+    | 'client.meeting.login-window.clicked'
+    | 'client.meeting.login-window.closed'
+    | 'client.meeting.login-window.showed'
+    | 'client.meeting.login.response'
+    | 'client.meeting.people-insights.check.response'
+    | 'client.meeting.people-insights.query.response'
+    | 'client.meeting.ping.request'
+    | 'client.meeting.ping.response'
+    | 'client.meeting.plugin-extension.started'
+    | 'client.meeting.resume'
+    | 'client.meeting.report-log'
+    | 'client.meeting.session.connected'
+    | 'client.meeting.start-webexapp'
+    | 'client.meeting.start-launch'
+    | 'client.meeting.summary'
+    | 'client.meeting.user-action'
+    | 'client.meeting.validated'
+    | 'client.meeting.VDI.detect.plugin.response'
+    | 'client.meeting.VDI.connect.plugin.response'
+    | 'client.mercury.connection.lost'
+    | 'client.mercury.connection.restored'
+    | 'client.multistream.sca.rx'
+    | 'client.multistream.sca.tx'
+    | 'client.multistream.scr.rx'
+    | 'client.multistream.scr.tx'
+    | 'client.muted'
+    | 'client.network.changed'
+    | 'client.notification.received'
+    | 'client.pin.collected'
+    | 'client.pin.prompt'
+    | 'client.post.meeting.hook'
+    | 'client.pstnaudio.attempt.finish'
+    | 'client.pstnaudio.attempt.skip'
+    | 'client.pstnaudio.attempt.start'
+    | 'client.roap-message.received'
+    | 'client.roap-message.sent'
+    | 'client.share.floor-accept.notification'
+    | 'client.share.floor-grant.cancel-request'
+    | 'client.share.floor-grant.notification'
+    | 'client.share.floor-grant.request'
+    | 'client.share.floor-granted.local'
+    | 'client.share.initiated'
+    | 'client.share.layout.displayed'
+    | 'client.share.paused'
+    | 'client.share.selected-app'
+    | 'client.share.stopped'
+    | 'client.started-after-shutdown'
+    | 'client.started-from-crash'
+    | 'client.stuntrace.failed'
+    | 'client.switch.app'
+    | 'client.unmuted'
+    | 'client.webexapp.launched'
+    | 'client.login.start'
+    | 'client.login.end'
+    | 'client.switch.environment'
+    | 'client.warhol.downloaded'
+    | 'client.whiteboard.loaded'
+    | 'meeting.initiated'
+    | 'meeting.joined'
+    | 'page.click.pre-join'
+    | 'page.meeting.browser-reset'
+    | 'page.meeting.close-browser'
+    | 'page.meeting.extension.started'
+    | 'page.meeting.launch-thinclient'
+    | 'page.meeting.loading'
+    | 'page.meeting.run-plugin'
+    | 'page.meeting.testing-plugin'
+    | 'page.meeting.testing-plugin.finished'
+    | 'page.meeting.tfs.start-download'
+    | 'page.meeting.urlprotocol.detect'
+    | 'page.meeting.waiting.user-action';
   /**
    * Base type for the various identifiers used to connect the dots.
    * In general, these should be populated whenever possible. Subtypes may make a particular key required.
@@ -747,7 +755,7 @@ export interface ClientEvent {
   };
   errors?: {
     fatal: boolean;
-    category: "signaling" | "media" | "other" | "expected";
+    category: 'signaling' | 'media' | 'other' | 'expected';
     errorDescription?: string;
     errorCode?: number;
     errorCodeStr?: string;
@@ -756,61 +764,61 @@ export interface ClientEvent {
     shownToUser: boolean;
     serviceErrorCode?: number;
     name:
-      | "media-engine"
-      | "ice.failed"
-      | "locus.response"
-      | "locus.leave"
-      | "client.leave"
-      | "media-device"
-      | "media-sca"
-      | "other";
+      | 'media-engine'
+      | 'ice.failed'
+      | 'locus.response'
+      | 'locus.leave'
+      | 'client.leave'
+      | 'media-device'
+      | 'media-sca'
+      | 'other';
   }[];
   /**
    * media quality error report such as no media or drop out
    */
   clientMediaError?: {
-    mediaType?: "audio" | "video" | "share" | "share_audio" | "whiteboard";
-    mediaFailureType?: "noMedia" | "mediaDrop" | "mediaEvent";
+    mediaType?: 'audio' | 'video' | 'share' | 'share_audio' | 'whiteboard';
+    mediaFailureType?: 'noMedia' | 'mediaDrop' | 'mediaEvent';
     isDropAtStart?: boolean;
     isJMF?: boolean;
     txError?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     rxError?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     txDeviceErrorCode?: number;
     rxDeviceErrorCode?: number;
     sessionConnectErrorCode?: number;
@@ -821,60 +829,60 @@ export interface ClientEvent {
     rxMoreError?: string;
     totalUserWhenCBStartError?: number;
     sessionConnectExtErrorCode?: number;
-    sessionConnectErrorType?: "unknown" | "MCC_error" | "MCS_error" | "Tahoe_error";
+    sessionConnectErrorType?: 'unknown' | 'MCC_error' | 'MCS_error' | 'Tahoe_error';
     txSystemErrorCode?: number;
     rxSystemErrorCode?: number;
     errorDetails?: {};
   };
   trigger?:
-    | "bricklet"
-    | "call-history"
-    | "companion-join"
-    | "contact-profile"
-    | "dialpad"
-    | "loci-update"
-    | "media-engine-event"
-    | "meetbutton-click"
-    | "meetings-tab"
-    | "message-click"
-    | "mercury-event"
-    | "obtp"
-    | "onboarding-page"
-    | "other"
-    | "pairing"
-    | "protocol"
-    | "search"
-    | "signaling"
-    | "space-share"
-    | "timeout"
-    | "toast"
-    | "user-interaction"
-    | "wireless-share";
-  leaveReason?: "paired-leave" | "one-to-one" | "ended-by-locus";
+    | 'bricklet'
+    | 'call-history'
+    | 'companion-join'
+    | 'contact-profile'
+    | 'dialpad'
+    | 'loci-update'
+    | 'media-engine-event'
+    | 'meetbutton-click'
+    | 'meetings-tab'
+    | 'message-click'
+    | 'mercury-event'
+    | 'obtp'
+    | 'onboarding-page'
+    | 'other'
+    | 'pairing'
+    | 'protocol'
+    | 'search'
+    | 'signaling'
+    | 'space-share'
+    | 'timeout'
+    | 'toast'
+    | 'user-interaction'
+    | 'wireless-share';
+  leaveReason?: 'paired-leave' | 'one-to-one' | 'ended-by-locus';
   displayLocation?:
-    | "toast"
-    | "room-list"
-    | "call-pane"
-    | "call-view"
-    | "room"
-    | "meeting-list"
-    | "meeting"
-    | "personal-meeting-room"
-    | "intents"
-    | "external-link"
-    | "automation"
-    | "meeting-information"
-    | "contact-card"
-    | "control-center"
-    | "search-result"
-    | "other";
-  displayType?: "scheduled";
+    | 'toast'
+    | 'room-list'
+    | 'call-pane'
+    | 'call-view'
+    | 'room'
+    | 'meeting-list'
+    | 'meeting'
+    | 'personal-meeting-room'
+    | 'intents'
+    | 'external-link'
+    | 'automation'
+    | 'meeting-information'
+    | 'contact-card'
+    | 'control-center'
+    | 'search-result'
+    | 'other';
+  displayType?: 'scheduled';
   dialedDomain?: string;
   isScheduled?: boolean;
   guestModeShare?: boolean;
   highFpsModeShare?: boolean;
   contentAudioShare?: boolean;
-  pairingState?: "paired" | "observing" | "challenging";
+  pairingState?: 'paired' | 'observing' | 'challenging';
   pairedDevice?: {
     deviceType?: string;
     deviceId?: string;
@@ -888,40 +896,40 @@ export interface ClientEvent {
    */
   oldOrigin?: {
     name:
-      | "antares"
-      | "beech"
-      | "breakout"
-      | "cb"
-      | "cloudproxy"
-      | "edonus"
-      | "endpoint"
-      | "givr"
-      | "hecate"
-      | "hedge"
-      | "hesiod"
-      | "homer"
-      | "superhomer"
-      | "l2sip"
-      | "linus"
-      | "locus"
-      | "mcc"
-      | "mcs"
-      | "mercury"
-      | "mes"
-      | "mjs"
-      | "mmp"
-      | "mygdon"
-      | "orpheus"
-      | "page"
-      | "poros"
-      | "rhesos"
-      | "terminus"
-      | "tpgw"
-      | "ucc"
-      | "wdm"
-      | "webexivr";
+      | 'antares'
+      | 'beech'
+      | 'breakout'
+      | 'cb'
+      | 'cloudproxy'
+      | 'edonus'
+      | 'endpoint'
+      | 'givr'
+      | 'hecate'
+      | 'hedge'
+      | 'hesiod'
+      | 'homer'
+      | 'superhomer'
+      | 'l2sip'
+      | 'linus'
+      | 'locus'
+      | 'mcc'
+      | 'mcs'
+      | 'mercury'
+      | 'mes'
+      | 'mjs'
+      | 'mmp'
+      | 'mygdon'
+      | 'orpheus'
+      | 'page'
+      | 'poros'
+      | 'rhesos'
+      | 'terminus'
+      | 'tpgw'
+      | 'ucc'
+      | 'wdm'
+      | 'webexivr';
     userAgent: string;
-    buildType?: "debug" | "test" | "prod" | "tap" | "analyzer-test";
+    buildType?: 'debug' | 'test' | 'prod' | 'tap' | 'analyzer-test';
     /**
      * Will be used as a label for client software status
      */
@@ -930,7 +938,7 @@ export interface ClientEvent {
      * Identifier for a particular instance of a service, such as a particular linus
      */
     instanceId?: string;
-    networkType: "wifi" | "ethernet" | "cellular" | "unknown";
+    networkType: 'wifi' | 'ethernet' | 'cellular' | 'unknown';
     localIP?: string;
     usingProxy?: boolean;
     mediaEngineSoftwareVersion?: string;
@@ -940,7 +948,7 @@ export interface ClientEvent {
      * Details of client environment
      */
     clientInfo?: {
-      os: "windows" | "mac" | "linux" | "ios" | "android" | "chrome" | "uwp-arm64" | "other";
+      os: 'windows' | 'mac' | 'linux' | 'ios' | 'android' | 'chrome' | 'uwp-arm64' | 'other';
       osVersion: string;
       localIP?: string;
       gatewayIP?: string;
@@ -948,64 +956,64 @@ export interface ClientEvent {
       localNetworkPrefix?: string;
       publicNetworkPrefix?: string;
       browserLaunchMethod?:
-        | "activex"
-        | "npapi"
-        | "extension"
-        | "cwsapi"
-        | "java"
-        | "tfs"
-        | "webacd"
-        | "url-handler"
-        | "thinclient";
+        | 'activex'
+        | 'npapi'
+        | 'extension'
+        | 'cwsapi'
+        | 'java'
+        | 'tfs'
+        | 'webacd'
+        | 'url-handler'
+        | 'thinclient';
       clientLaunchMethod?:
-        | "url-handler"
-        | "universal-link"
-        | "voice-command"
-        | "notification"
-        | "manual"
-        | "teams-cross-launch";
+        | 'url-handler'
+        | 'universal-link'
+        | 'voice-command'
+        | 'notification'
+        | 'manual'
+        | 'teams-cross-launch';
       browser?: string;
       browserVersion?: string;
       /**
        * this defines the major client types
        */
       clientType?:
-        | "MEETING_CENTER"
-        | "EVENT_CENTER"
-        | "TRAINING_CENTER"
-        | "TEAMS_CLIENT"
-        | "TEAMS_DEVICE"
-        | "TEAMS_SHARE"
-        | "SIP"
-        | "RECORDING"
-        | "CLOUD_AWARE_SIP"
-        | "TEAMS_WXC_CLIENT"
-        | "WXC_CLIENT"
-        | "WXC_DEVICE"
-        | "WEBEX_JS_SDK"
-        | "VOICEA_CLIENT"
-        | "CISCO_SIP_GW"
-        | "WEBEX_SDK"
-        | "CPAAS_THIRD_PARTY_SDK"
-        | "WXC_THIRD_PARTY";
+        | 'MEETING_CENTER'
+        | 'EVENT_CENTER'
+        | 'TRAINING_CENTER'
+        | 'TEAMS_CLIENT'
+        | 'TEAMS_DEVICE'
+        | 'TEAMS_SHARE'
+        | 'SIP'
+        | 'RECORDING'
+        | 'CLOUD_AWARE_SIP'
+        | 'TEAMS_WXC_CLIENT'
+        | 'WXC_CLIENT'
+        | 'WXC_DEVICE'
+        | 'WEBEX_JS_SDK'
+        | 'VOICEA_CLIENT'
+        | 'CISCO_SIP_GW'
+        | 'WEBEX_SDK'
+        | 'CPAAS_THIRD_PARTY_SDK'
+        | 'WXC_THIRD_PARTY';
       /**
        * this defines the sub types of clients
        */
       subClientType?:
-        | "DESKTOP_APP"
-        | "DESKTOP_APP_VDI"
-        | "DEVICE_CURRENT"
-        | "DEVICE_LEGACY_2020"
-        | "HVDI_APP"
-        | "MOBILE_APP"
-        | "VDI_APP"
-        | "WEB_APP"
-        | "MOBILE_NETWORK"
-        | "HOLOGRAM_HEADSET_APP";
+        | 'DESKTOP_APP'
+        | 'DESKTOP_APP_VDI'
+        | 'DEVICE_CURRENT'
+        | 'DEVICE_LEGACY_2020'
+        | 'HVDI_APP'
+        | 'MOBILE_APP'
+        | 'VDI_APP'
+        | 'WEB_APP'
+        | 'MOBILE_NETWORK'
+        | 'HOLOGRAM_HEADSET_APP';
       clientVersion?: string;
       localClientVersion?: string;
       modelNumber?: string;
-      joinFirstUpdateLater?: "ep-enabled" | "sp-enabled" | "not-enabled";
+      joinFirstUpdateLater?: 'ep-enabled' | 'sp-enabled' | 'not-enabled';
       standbyUsed?: boolean;
       prefetchDocShowUsed?: boolean;
       fastJoinUsed?: boolean;
@@ -1015,7 +1023,7 @@ export interface ClientEvent {
       machineInfo?: string;
       parentAppName?: string;
       parentAppInPermitList?: boolean;
-      meetingSiteType?: "train" | "webex-11" | "orion";
+      meetingSiteType?: 'train' | 'webex-11' | 'orion';
       CDNEnabled?: boolean;
       clientMajorVersion?: string;
       majorVersion?: number;
@@ -1029,47 +1037,47 @@ export interface ClientEvent {
         description: string;
         clockSpeedGigaHertz: number;
         numberOfCores: number;
-        architecture: "intel32" | "intel64" | "amd32" | "amd64" | "arm32" | "arm64" | "unknown";
+        architecture: 'intel32' | 'intel64' | 'amd32' | 'amd64' | 'arm32' | 'arm64' | 'unknown';
         staticPerformance?: string;
       };
       shareType?:
-        | "cb-normal-share"
-        | "ce-airplay-share"
-        | "ce-direct-share"
-        | "ce-gui-loopback-share"
-        | "ce-input-source-share"
-        | "ce-input-source-share-hdmi"
-        | "ce-input-source-share-usbc"
-        | "ce-jpg-share"
-        | "ce-miracast-share"
-        | "mcs-normal-share"
-        | "mcs-normal-audio-share"
-        | "mcs-hfps-share"
-        | "mcs-hfps-audio-share";
+        | 'cb-normal-share'
+        | 'ce-airplay-share'
+        | 'ce-direct-share'
+        | 'ce-gui-loopback-share'
+        | 'ce-input-source-share'
+        | 'ce-input-source-share-hdmi'
+        | 'ce-input-source-share-usbc'
+        | 'ce-jpg-share'
+        | 'ce-miracast-share'
+        | 'mcs-normal-share'
+        | 'mcs-normal-audio-share'
+        | 'mcs-hfps-share'
+        | 'mcs-hfps-audio-share';
       /**
        * Video display mode currently in use
        */
-      videoDisplayMode?: "grid-view" | "active-speaker-view";
+      videoDisplayMode?: 'grid-view' | 'active-speaker-view';
       videoLayoutType?:
-        | "stack"
-        | "stackWithShare"
-        | "sideBySide"
-        | "sideBySideWithShare"
-        | "grid"
-        | "floatingActive"
-        | "floatingThumbnail"
-        | "floatingGrid"
-        | "overlay"
-        | "focus"
-        | "prominent"
-        | "focusWithShare"
-        | "prominentWithShare"
-        | "equal"
-        | "equalWithShare";
+        | 'stack'
+        | 'stackWithShare'
+        | 'sideBySide'
+        | 'sideBySideWithShare'
+        | 'grid'
+        | 'floatingActive'
+        | 'floatingThumbnail'
+        | 'floatingGrid'
+        | 'overlay'
+        | 'focus'
+        | 'prominent'
+        | 'focusWithShare'
+        | 'prominentWithShare'
+        | 'equal'
+        | 'equalWithShare';
       /**
        * this defines the video render type of meetings
        */
-      videoRenderType?: "wme" | "client_d3d" | "client_gdi";
+      videoRenderType?: 'wme' | 'client_d3d' | 'client_gdi';
       vdiInfo?: unknown;
       is64BitsClient?: boolean;
       webexAppVersion?: string;
@@ -1077,12 +1085,12 @@ export interface ClientEvent {
        * this defines launch 32 bits client reason
        */
       launch32BitsReason?:
-        | "forcewin32"
-        | "disablewin64"
-        | "platform_win32"
-        | "platform_arm"
-        | "platform_unknown"
-        | "version_below_41.11";
+        | 'forcewin32'
+        | 'disablewin64'
+        | 'platform_win32'
+        | 'platform_arm'
+        | 'platform_unknown'
+        | 'version_below_41.11';
       inMeetingUpdate?: boolean;
       mtaVersion?: string;
       isWarholOpening?: boolean;
@@ -1090,10 +1098,15 @@ export interface ClientEvent {
     isHybridMedia?: boolean;
     originData?: {};
   };
-  reachabilityStatus?: "none" | "all-false" | "partial-success" | "all-success";
-  recoveredBy?: "retry" | "new";
-  joinType?: "auto" | "no-locus-join";
-  audioJoinType?: "phone-call-in" | "phone-call-back" | "voip" | "device-call-back" | "never-join-audio";
+  reachabilityStatus?: 'none' | 'all-false' | 'partial-success' | 'all-success';
+  recoveredBy?: 'retry' | 'new';
+  joinType?: 'auto' | 'no-locus-join';
+  audioJoinType?:
+    | 'phone-call-in'
+    | 'phone-call-back'
+    | 'voip'
+    | 'device-call-back'
+    | 'never-join-audio';
   isVideoMuted?: boolean;
   /**
    * phrased HTTP timing
@@ -1108,9 +1121,9 @@ export interface ClientEvent {
     verifyCert?: number;
     refreshToken?: number;
   };
-  icePhase?: "JOIN_MEETING_FINAL" | "JOIN_MEETING_RETRY" | "IN_MEETING";
-  userType?: "host" | "attendee" | "cohost" | "panelist";
-  updateType?: "new-user" | "update-user" | "return-user";
+  icePhase?: 'JOIN_MEETING_FINAL' | 'JOIN_MEETING_RETRY' | 'IN_MEETING';
+  userType?: 'host' | 'attendee' | 'cohost' | 'panelist';
+  updateType?: 'new-user' | 'update-user' | 'return-user';
   isRoapCallEnabled?: boolean;
   isFirstTimeUser?: boolean;
   responseCode?: number;
@@ -1202,23 +1215,23 @@ export interface ClientEvent {
    */
   roap?: {
     type?:
-      | "ANSWER"
-      | "ERROR"
-      | "OFFER"
-      | "OFFER_REQUEST"
-      | "OFFER_RESPONSE"
-      | "OK"
-      | "TURN_DISCOVERY_REQUEST"
-      | "TURN_DISCOVERY_RESPONSE";
+      | 'ANSWER'
+      | 'ERROR'
+      | 'OFFER'
+      | 'OFFER_REQUEST'
+      | 'OFFER_RESPONSE'
+      | 'OK'
+      | 'TURN_DISCOVERY_REQUEST'
+      | 'TURN_DISCOVERY_RESPONSE';
     messageType?:
-      | "ANSWER"
-      | "ERROR"
-      | "OFFER"
-      | "OFFER_REQUEST"
-      | "OFFER_RESPONSE"
-      | "OK"
-      | "TURN_DISCOVERY_REQUEST"
-      | "TURN_DISCOVERY_RESPONSE";
+      | 'ANSWER'
+      | 'ERROR'
+      | 'OFFER'
+      | 'OFFER_REQUEST'
+      | 'OFFER_RESPONSE'
+      | 'OK'
+      | 'TURN_DISCOVERY_REQUEST'
+      | 'TURN_DISCOVERY_RESPONSE';
     error?: string;
     duration?: number;
   };
@@ -1236,7 +1249,7 @@ export interface ClientEvent {
     serverOrg?: string;
     serverGroup?: string;
     serverAlias?: string;
-    serverDeployType?: "private" | "public";
+    serverDeployType?: 'private' | 'public';
     startTime: string;
     endTime?: string;
     csi?: number[];
@@ -1253,418 +1266,443 @@ export interface ClientEvent {
     cascadePeerGroup?: string;
     cascadePeerAlias?: string;
     cascadePeerServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
-    cascadePeerDeployType?: "private" | "public";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
+    cascadePeerDeployType?: 'private' | 'public';
   };
   /**
    * Details of server environment
    */
   serverInfo?: {
     serverType:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     serverAddress?: string;
   };
   /**
    * Details of client connect session
    */
   videoSession?: {
-    mediaSessionType?: "AUDIO_CALLBACK" | "AUDIO_VOIP" | "DEVICE_CALLBACK" | "DEVICE_PAIRING" | "VIDEO";
+    mediaSessionType?:
+      | 'AUDIO_CALLBACK'
+      | 'AUDIO_VOIP'
+      | 'DEVICE_CALLBACK'
+      | 'DEVICE_PAIRING'
+      | 'VIDEO';
     isSuccess?: boolean;
     signalingServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     signalingServerAddress?: string;
     mediaServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     mediaServerAddress?: string;
     errorDescription?: string;
     errorCode?: number;
     mediaErrorType?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     isJoinAtStart?: boolean;
   };
   /**
    * Details of client connect session
    */
   audioVOIPSession?: {
-    mediaSessionType?: "AUDIO_CALLBACK" | "AUDIO_VOIP" | "DEVICE_CALLBACK" | "DEVICE_PAIRING" | "VIDEO";
+    mediaSessionType?:
+      | 'AUDIO_CALLBACK'
+      | 'AUDIO_VOIP'
+      | 'DEVICE_CALLBACK'
+      | 'DEVICE_PAIRING'
+      | 'VIDEO';
     isSuccess?: boolean;
     signalingServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     signalingServerAddress?: string;
     mediaServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     mediaServerAddress?: string;
     errorDescription?: string;
     errorCode?: number;
     mediaErrorType?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     isJoinAtStart?: boolean;
   };
   /**
    * Details of client connect session
    */
   audioCallbackSession?: {
-    mediaSessionType?: "AUDIO_CALLBACK" | "AUDIO_VOIP" | "DEVICE_CALLBACK" | "DEVICE_PAIRING" | "VIDEO";
+    mediaSessionType?:
+      | 'AUDIO_CALLBACK'
+      | 'AUDIO_VOIP'
+      | 'DEVICE_CALLBACK'
+      | 'DEVICE_PAIRING'
+      | 'VIDEO';
     isSuccess?: boolean;
     signalingServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     signalingServerAddress?: string;
     mediaServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     mediaServerAddress?: string;
     errorDescription?: string;
     errorCode?: number;
     mediaErrorType?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     isJoinAtStart?: boolean;
   };
   /**
    * Details of client connect session
    */
   devicePairingSession?: {
-    mediaSessionType?: "AUDIO_CALLBACK" | "AUDIO_VOIP" | "DEVICE_CALLBACK" | "DEVICE_PAIRING" | "VIDEO";
+    mediaSessionType?:
+      | 'AUDIO_CALLBACK'
+      | 'AUDIO_VOIP'
+      | 'DEVICE_CALLBACK'
+      | 'DEVICE_PAIRING'
+      | 'VIDEO';
     isSuccess?: boolean;
     signalingServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     signalingServerAddress?: string;
     mediaServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     mediaServerAddress?: string;
     errorDescription?: string;
     errorCode?: number;
     mediaErrorType?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     isJoinAtStart?: boolean;
   };
   /**
    * Details of client connect session
    */
   deviceCallbackSession?: {
-    mediaSessionType?: "AUDIO_CALLBACK" | "AUDIO_VOIP" | "DEVICE_CALLBACK" | "DEVICE_PAIRING" | "VIDEO";
+    mediaSessionType?:
+      | 'AUDIO_CALLBACK'
+      | 'AUDIO_VOIP'
+      | 'DEVICE_CALLBACK'
+      | 'DEVICE_PAIRING'
+      | 'VIDEO';
     isSuccess?: boolean;
     signalingServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     signalingServerAddress?: string;
     mediaServerType?:
-      | "CB"
-      | "CMS"
-      | "HESIOD"
-      | "LINUS"
-      | "MCC"
-      | "MCS"
-      | "MES"
-      | "MJS"
-      | "MRS"
-      | "MYGDONUS"
-      | "MZM"
-      | "TERMINUS"
-      | "TPGW"
-      | "TA"
-      | "HOMER"
-      | "SUPERHOMER"
-      | "U2C"
-      | "WCA"
-      | "MSE"
-      | "UNKNOWN";
+      | 'CB'
+      | 'CMS'
+      | 'HESIOD'
+      | 'LINUS'
+      | 'MCC'
+      | 'MCS'
+      | 'MES'
+      | 'MJS'
+      | 'MRS'
+      | 'MYGDONUS'
+      | 'MZM'
+      | 'TERMINUS'
+      | 'TPGW'
+      | 'TA'
+      | 'HOMER'
+      | 'SUPERHOMER'
+      | 'U2C'
+      | 'WCA'
+      | 'MSE'
+      | 'UNKNOWN';
     mediaServerAddress?: string;
     errorDescription?: string;
     errorCode?: number;
     mediaErrorType?:
-      | "NO_ERROR"
-      | "DEVICE_ERROR"
-      | "LOAD_LIBRARY_ERROR"
-      | "MCS_SESSION_CONNECT_ERROR"
-      | "CB_SESSION_CREATE_ERROR"
-      | "NO_FRAME_DECODE_ERROR"
-      | "NO_PACKET_RECV_ERROR"
-      | "LOW_VOLUME_ERROR"
-      | "INITIAL_MEMORY_ERROR"
-      | "MAC_VIRTUAL_AUDIO_DRV_ERROR"
-      | "MMP_SESSION_CONNECT_ERROR"
-      | "MEDIA_PROCESS_CRASH_ERROR"
-      | "HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR"
-      | "MEDIA_SERVER_CONNECT_ERROR"
-      | "LOCUS_SESSION_CONNECT_ERROR"
-      | "NO_PACKET_SEND_ERROR"
-      | "NETWORK_LOST_ERROR"
-      | "MEDIA_NOT_AVAILABLE";
+      | 'NO_ERROR'
+      | 'DEVICE_ERROR'
+      | 'LOAD_LIBRARY_ERROR'
+      | 'MCS_SESSION_CONNECT_ERROR'
+      | 'CB_SESSION_CREATE_ERROR'
+      | 'NO_FRAME_DECODE_ERROR'
+      | 'NO_PACKET_RECV_ERROR'
+      | 'LOW_VOLUME_ERROR'
+      | 'INITIAL_MEMORY_ERROR'
+      | 'MAC_VIRTUAL_AUDIO_DRV_ERROR'
+      | 'MMP_SESSION_CONNECT_ERROR'
+      | 'MEDIA_PROCESS_CRASH_ERROR'
+      | 'HEARTBEAT_LOST_WITH_MEDIA_PROCESS_ERROR'
+      | 'MEDIA_SERVER_CONNECT_ERROR'
+      | 'LOCUS_SESSION_CONNECT_ERROR'
+      | 'NO_PACKET_SEND_ERROR'
+      | 'NETWORK_LOST_ERROR'
+      | 'MEDIA_NOT_AVAILABLE';
     isJoinAtStart?: boolean;
   };
   /**
@@ -1675,13 +1713,13 @@ export interface ClientEvent {
      * data define for background noise removal event
      */
     eventData?: {
-      crashType?: "client" | "other" | "thirdparty" | "wme" | "mta";
+      crashType?: 'client' | 'other' | 'thirdparty' | 'wme' | 'mta';
       processName?: string;
       moduleName?: string;
       threadInfo?: string;
       crashFrame?: string;
       crashStack?: string;
-      exceptionType?: "unset" | "crash" | "freeze" | "disappear";
+      exceptionType?: 'unset' | 'crash' | 'freeze' | 'disappear';
       lastAction?: string;
       forTrace?: boolean;
       registerInfo?: string;
@@ -1705,398 +1743,398 @@ export interface ClientEvent {
     isBoEnabled: boolean;
     isPreAssigned: boolean;
     boStartedTimers: number;
-    createType: "pre-meeting" | "in-meeting";
-    enableType: "pre-meeting" | "in-meeting";
+    createType: 'pre-meeting' | 'in-meeting';
+    enableType: 'pre-meeting' | 'in-meeting';
   };
   breakoutSessionAction?:
-    | "add"
-    | "assign"
-    | "ask-for-help"
-    | "breakout-session-open"
-    | "breakout-session-close"
-    | "breakout-session-mute-all"
-    | "breakout-session-unmute-all"
-    | "broadcast-open"
-    | "broadcast-send"
-    | "cancel-automatic-close"
-    | "create"
-    | "delete"
-    | "disable"
-    | "dynamic-assign"
-    | "dynamic-exchange"
-    | "end"
-    | "enable"
-    | "exchange"
-    | "join"
-    | "leave"
-    | "lock-all-sessions"
-    | "lock-this-sessions"
-    | "moveto"
-    | "mute-all"
-    | "mute-all-set"
-    | "recreate"
-    | "remove"
-    | "rename"
-    | "search"
-    | "select-all"
-    | "show-all-sessions"
-    | "start"
-    | "unmute-all"
-    | "unlock-all-sessions"
-    | "unlock-this-sessions"
-    | "allow-leave-session"
-    | "allow-join-session-later"
-    | "auto-end-sessions"
-    | "time-before-leave-session";
+    | 'add'
+    | 'assign'
+    | 'ask-for-help'
+    | 'breakout-session-open'
+    | 'breakout-session-close'
+    | 'breakout-session-mute-all'
+    | 'breakout-session-unmute-all'
+    | 'broadcast-open'
+    | 'broadcast-send'
+    | 'cancel-automatic-close'
+    | 'create'
+    | 'delete'
+    | 'disable'
+    | 'dynamic-assign'
+    | 'dynamic-exchange'
+    | 'end'
+    | 'enable'
+    | 'exchange'
+    | 'join'
+    | 'leave'
+    | 'lock-all-sessions'
+    | 'lock-this-sessions'
+    | 'moveto'
+    | 'mute-all'
+    | 'mute-all-set'
+    | 'recreate'
+    | 'remove'
+    | 'rename'
+    | 'search'
+    | 'select-all'
+    | 'show-all-sessions'
+    | 'start'
+    | 'unmute-all'
+    | 'unlock-all-sessions'
+    | 'unlock-this-sessions'
+    | 'allow-leave-session'
+    | 'allow-join-session-later'
+    | 'auto-end-sessions'
+    | 'time-before-leave-session';
   clientAction?:
-    | "changeVolume"
-    | "disableHardMute"
-    | "enableHardMute"
-    | "gesture"
-    | "joinMeetingWithPairedDevice"
-    | "muteAll"
-    | "mutePairedDevice"
-    | "muteSipDevice"
-    | "reaction"
-    | "requestUnmute"
-    | "setLanguage"
-    | "unifyRaiseHand"
-    | "unmuteAll"
-    | "unmutePairedDevice"
-    | "unmuteSipDevice";
+    | 'changeVolume'
+    | 'disableHardMute'
+    | 'enableHardMute'
+    | 'gesture'
+    | 'joinMeetingWithPairedDevice'
+    | 'muteAll'
+    | 'mutePairedDevice'
+    | 'muteSipDevice'
+    | 'reaction'
+    | 'requestUnmute'
+    | 'setLanguage'
+    | 'unifyRaiseHand'
+    | 'unmuteAll'
+    | 'unmutePairedDevice'
+    | 'unmuteSipDevice';
   clientActionFrom?:
-    | "actionBar"
-    | "auto"
-    | "breakoutAssignDialog"
-    | "breakoutPopupDialog"
-    | "fitMenu"
-    | "hardMuteMoreOptionsDialog"
-    | "initAction"
-    | "mainMenu"
-    | "plist"
-    | "plistContextMenu"
-    | "plistToolBar"
-    | "videoThumbnail"
-    | "muteAllAction"
-    | "reactionPopupDialog"
-    | "unmuteAllAction";
+    | 'actionBar'
+    | 'auto'
+    | 'breakoutAssignDialog'
+    | 'breakoutPopupDialog'
+    | 'fitMenu'
+    | 'hardMuteMoreOptionsDialog'
+    | 'initAction'
+    | 'mainMenu'
+    | 'plist'
+    | 'plistContextMenu'
+    | 'plistToolBar'
+    | 'videoThumbnail'
+    | 'muteAllAction'
+    | 'reactionPopupDialog'
+    | 'unmuteAllAction';
   clientActionTime?: number;
   /**
    * Details of client action
    */
   clientActionInfo?: {
     clientAction:
-      | "changeVolume"
-      | "disableHardMute"
-      | "enableHardMute"
-      | "gesture"
-      | "joinMeetingWithPairedDevice"
-      | "muteAll"
-      | "mutePairedDevice"
-      | "muteSipDevice"
-      | "reaction"
-      | "requestUnmute"
-      | "setLanguage"
-      | "unifyRaiseHand"
-      | "unmuteAll"
-      | "unmutePairedDevice"
-      | "unmuteSipDevice";
+      | 'changeVolume'
+      | 'disableHardMute'
+      | 'enableHardMute'
+      | 'gesture'
+      | 'joinMeetingWithPairedDevice'
+      | 'muteAll'
+      | 'mutePairedDevice'
+      | 'muteSipDevice'
+      | 'reaction'
+      | 'requestUnmute'
+      | 'setLanguage'
+      | 'unifyRaiseHand'
+      | 'unmuteAll'
+      | 'unmutePairedDevice'
+      | 'unmuteSipDevice';
     actionFrom?:
-      | "actionBar"
-      | "auto"
-      | "breakoutAssignDialog"
-      | "breakoutPopupDialog"
-      | "fitMenu"
-      | "hardMuteMoreOptionsDialog"
-      | "initAction"
-      | "mainMenu"
-      | "plist"
-      | "plistContextMenu"
-      | "plistToolBar"
-      | "videoThumbnail"
-      | "muteAllAction"
-      | "reactionPopupDialog"
-      | "unmuteAllAction";
-    actionRole?: "host" | "attendee" | "presenter" | "cohost" | "self";
+      | 'actionBar'
+      | 'auto'
+      | 'breakoutAssignDialog'
+      | 'breakoutPopupDialog'
+      | 'fitMenu'
+      | 'hardMuteMoreOptionsDialog'
+      | 'initAction'
+      | 'mainMenu'
+      | 'plist'
+      | 'plistContextMenu'
+      | 'plistToolBar'
+      | 'videoThumbnail'
+      | 'muteAllAction'
+      | 'reactionPopupDialog'
+      | 'unmuteAllAction';
+    actionRole?: 'host' | 'attendee' | 'presenter' | 'cohost' | 'self';
     duration?: number;
     fromValue?: string;
     toValue?: string;
-    gestureType?: "clap" | "none" | "raiseHand" | "thumpUp" | "thumbDown";
+    gestureType?: 'clap' | 'none' | 'raiseHand' | 'thumpUp' | 'thumbDown';
     languageAction?:
-      | "openLanguageDialog"
-      | "subscribeTransLanguage"
-      | "unsubscribeTransLanguage"
-      | "changeSpeakLanguage"
-      | "transcriptTurnOnWebexAssistantDialog"
-      | "transcriptTurnOffWebexAssistantDialog"
-      | "transcriptTurnOnWebexAssistantMenu"
-      | "transcriptTurn0ffWebexAssistantMenu"
-      | "transcriptViewHighlightPanel"
-      | "transcriptViewHighlightPanelViaCloseCaption"
-      | "transcriptViewHighlightPanelViaPanelOption"
-      | "transcriptViewHighlightPanelViaWebexAssistant"
-      | "transcriptEnableCloseCaptionDialog"
-      | "transcriptDisableCloseCaptionDialog"
-      | "transcriptDisableCloseCaptionDialogForActiveCCOpen"
-      | "transcriptDisableCloseCaptionDialogViaCCButton"
-      | "transcriptDisableCloseCaptionDialogViaCCDialog"
-      | "transcriptEnableCloseCaptionMenu"
-      | "transcriptDisableCloseCaptionMenu"
-      | "transcriptTabToCaptions"
-      | "transcriptTabToHighlights"
-      | "transcriptCreateHighlight"
-      | "transcriptDeleteHighlightInHighlight"
-      | "transcriptDeleteHighlightInCaptions"
-      | "transcriptChangeFontSize"
-      | "transcriptBackToDefaultPosition"
-      | "transcriptChangeModeToDark"
-      | "transcriptChangeModeToLight";
+      | 'openLanguageDialog'
+      | 'subscribeTransLanguage'
+      | 'unsubscribeTransLanguage'
+      | 'changeSpeakLanguage'
+      | 'transcriptTurnOnWebexAssistantDialog'
+      | 'transcriptTurnOffWebexAssistantDialog'
+      | 'transcriptTurnOnWebexAssistantMenu'
+      | 'transcriptTurn0ffWebexAssistantMenu'
+      | 'transcriptViewHighlightPanel'
+      | 'transcriptViewHighlightPanelViaCloseCaption'
+      | 'transcriptViewHighlightPanelViaPanelOption'
+      | 'transcriptViewHighlightPanelViaWebexAssistant'
+      | 'transcriptEnableCloseCaptionDialog'
+      | 'transcriptDisableCloseCaptionDialog'
+      | 'transcriptDisableCloseCaptionDialogForActiveCCOpen'
+      | 'transcriptDisableCloseCaptionDialogViaCCButton'
+      | 'transcriptDisableCloseCaptionDialogViaCCDialog'
+      | 'transcriptEnableCloseCaptionMenu'
+      | 'transcriptDisableCloseCaptionMenu'
+      | 'transcriptTabToCaptions'
+      | 'transcriptTabToHighlights'
+      | 'transcriptCreateHighlight'
+      | 'transcriptDeleteHighlightInHighlight'
+      | 'transcriptDeleteHighlightInCaptions'
+      | 'transcriptChangeFontSize'
+      | 'transcriptBackToDefaultPosition'
+      | 'transcriptChangeModeToDark'
+      | 'transcriptChangeModeToLight';
     fromLanguage?:
-      | "lan_af"
-      | "lan_sq"
-      | "lan_am"
-      | "lan_ar"
-      | "lan_hy"
-      | "lan_az"
-      | "lan_eu"
-      | "lan_be"
-      | "lan_bn"
-      | "lan_bs"
-      | "lan_bg"
-      | "lan_ca"
-      | "lan_ceb"
-      | "lan_zh"
-      | "lan_zh-TW"
-      | "lan_co"
-      | "lan_hr"
-      | "lan_cs"
-      | "lan_da"
-      | "lan_nl"
-      | "lan_en"
-      | "lan_en-GB"
-      | "lan_eo"
-      | "lan_et"
-      | "lan_fi"
-      | "lan_fr"
-      | "lan_fr-CA"
-      | "lan_fy"
-      | "lan_gl"
-      | "lan_ka"
-      | "lan_de"
-      | "lan_el"
-      | "lan_gu"
-      | "lan_ht"
-      | "lan_ha"
-      | "lan_haw"
-      | "lan_he"
-      | "lan_hi"
-      | "lan_hmn"
-      | "lan_hu"
-      | "lan_is"
-      | "lan_ig"
-      | "lan_id"
-      | "lan_ga"
-      | "lan_it"
-      | "lan_ja"
-      | "lan_jv"
-      | "lan_kn"
-      | "lan_kk"
-      | "lan_km"
-      | "lan_rw"
-      | "lan_ko"
-      | "lan_ku"
-      | "lan_ky"
-      | "lan_lo"
-      | "lan_la"
-      | "lan_lv"
-      | "lan_lt"
-      | "lan_lb"
-      | "lan_mk"
-      | "lan_mg"
-      | "lan_ms"
-      | "lan_ml"
-      | "lan_mt"
-      | "lan_mi"
-      | "lan_mr"
-      | "lan_mn"
-      | "lan_my"
-      | "lan_ne"
-      | "lan_no"
-      | "lan_ny"
-      | "lan_or"
-      | "lan_ps"
-      | "lan_fa"
-      | "lan_pl"
-      | "lan_pt"
-      | "lan_pa"
-      | "lan_ro"
-      | "lan_ru"
-      | "lan_sm"
-      | "lan_gd"
-      | "lan_sr"
-      | "lan_st"
-      | "lan_sn"
-      | "lan_sd"
-      | "lan_si"
-      | "lan_sk"
-      | "lan_sl"
-      | "lan_so"
-      | "lan_es"
-      | "lan_es-ES"
-      | "lan_su"
-      | "lan_sw"
-      | "lan_sv"
-      | "lan_tl"
-      | "lan_tg"
-      | "lan_ta"
-      | "lan_tt"
-      | "lan_te"
-      | "lan_th"
-      | "lan_tr"
-      | "lan_tk"
-      | "lan_uk"
-      | "lan_ur"
-      | "lan_ug"
-      | "lan_uz"
-      | "lan_vi"
-      | "lan_cy"
-      | "lan_xh"
-      | "lan_yi"
-      | "lan_yo"
-      | "lan_zu";
+      | 'lan_af'
+      | 'lan_sq'
+      | 'lan_am'
+      | 'lan_ar'
+      | 'lan_hy'
+      | 'lan_az'
+      | 'lan_eu'
+      | 'lan_be'
+      | 'lan_bn'
+      | 'lan_bs'
+      | 'lan_bg'
+      | 'lan_ca'
+      | 'lan_ceb'
+      | 'lan_zh'
+      | 'lan_zh-TW'
+      | 'lan_co'
+      | 'lan_hr'
+      | 'lan_cs'
+      | 'lan_da'
+      | 'lan_nl'
+      | 'lan_en'
+      | 'lan_en-GB'
+      | 'lan_eo'
+      | 'lan_et'
+      | 'lan_fi'
+      | 'lan_fr'
+      | 'lan_fr-CA'
+      | 'lan_fy'
+      | 'lan_gl'
+      | 'lan_ka'
+      | 'lan_de'
+      | 'lan_el'
+      | 'lan_gu'
+      | 'lan_ht'
+      | 'lan_ha'
+      | 'lan_haw'
+      | 'lan_he'
+      | 'lan_hi'
+      | 'lan_hmn'
+      | 'lan_hu'
+      | 'lan_is'
+      | 'lan_ig'
+      | 'lan_id'
+      | 'lan_ga'
+      | 'lan_it'
+      | 'lan_ja'
+      | 'lan_jv'
+      | 'lan_kn'
+      | 'lan_kk'
+      | 'lan_km'
+      | 'lan_rw'
+      | 'lan_ko'
+      | 'lan_ku'
+      | 'lan_ky'
+      | 'lan_lo'
+      | 'lan_la'
+      | 'lan_lv'
+      | 'lan_lt'
+      | 'lan_lb'
+      | 'lan_mk'
+      | 'lan_mg'
+      | 'lan_ms'
+      | 'lan_ml'
+      | 'lan_mt'
+      | 'lan_mi'
+      | 'lan_mr'
+      | 'lan_mn'
+      | 'lan_my'
+      | 'lan_ne'
+      | 'lan_no'
+      | 'lan_ny'
+      | 'lan_or'
+      | 'lan_ps'
+      | 'lan_fa'
+      | 'lan_pl'
+      | 'lan_pt'
+      | 'lan_pa'
+      | 'lan_ro'
+      | 'lan_ru'
+      | 'lan_sm'
+      | 'lan_gd'
+      | 'lan_sr'
+      | 'lan_st'
+      | 'lan_sn'
+      | 'lan_sd'
+      | 'lan_si'
+      | 'lan_sk'
+      | 'lan_sl'
+      | 'lan_so'
+      | 'lan_es'
+      | 'lan_es-ES'
+      | 'lan_su'
+      | 'lan_sw'
+      | 'lan_sv'
+      | 'lan_tl'
+      | 'lan_tg'
+      | 'lan_ta'
+      | 'lan_tt'
+      | 'lan_te'
+      | 'lan_th'
+      | 'lan_tr'
+      | 'lan_tk'
+      | 'lan_uk'
+      | 'lan_ur'
+      | 'lan_ug'
+      | 'lan_uz'
+      | 'lan_vi'
+      | 'lan_cy'
+      | 'lan_xh'
+      | 'lan_yi'
+      | 'lan_yo'
+      | 'lan_zu';
     toLanguage?:
-      | "lan_af"
-      | "lan_sq"
-      | "lan_am"
-      | "lan_ar"
-      | "lan_hy"
-      | "lan_az"
-      | "lan_eu"
-      | "lan_be"
-      | "lan_bn"
-      | "lan_bs"
-      | "lan_bg"
-      | "lan_ca"
-      | "lan_ceb"
-      | "lan_zh"
-      | "lan_zh-TW"
-      | "lan_co"
-      | "lan_hr"
-      | "lan_cs"
-      | "lan_da"
-      | "lan_nl"
-      | "lan_en"
-      | "lan_en-GB"
-      | "lan_eo"
-      | "lan_et"
-      | "lan_fi"
-      | "lan_fr"
-      | "lan_fr-CA"
-      | "lan_fy"
-      | "lan_gl"
-      | "lan_ka"
-      | "lan_de"
-      | "lan_el"
-      | "lan_gu"
-      | "lan_ht"
-      | "lan_ha"
-      | "lan_haw"
-      | "lan_he"
-      | "lan_hi"
-      | "lan_hmn"
-      | "lan_hu"
-      | "lan_is"
-      | "lan_ig"
-      | "lan_id"
-      | "lan_ga"
-      | "lan_it"
-      | "lan_ja"
-      | "lan_jv"
-      | "lan_kn"
-      | "lan_kk"
-      | "lan_km"
-      | "lan_rw"
-      | "lan_ko"
-      | "lan_ku"
-      | "lan_ky"
-      | "lan_lo"
-      | "lan_la"
-      | "lan_lv"
-      | "lan_lt"
-      | "lan_lb"
-      | "lan_mk"
-      | "lan_mg"
-      | "lan_ms"
-      | "lan_ml"
-      | "lan_mt"
-      | "lan_mi"
-      | "lan_mr"
-      | "lan_mn"
-      | "lan_my"
-      | "lan_ne"
-      | "lan_no"
-      | "lan_ny"
-      | "lan_or"
-      | "lan_ps"
-      | "lan_fa"
-      | "lan_pl"
-      | "lan_pt"
-      | "lan_pa"
-      | "lan_ro"
-      | "lan_ru"
-      | "lan_sm"
-      | "lan_gd"
-      | "lan_sr"
-      | "lan_st"
-      | "lan_sn"
-      | "lan_sd"
-      | "lan_si"
-      | "lan_sk"
-      | "lan_sl"
-      | "lan_so"
-      | "lan_es"
-      | "lan_es-ES"
-      | "lan_su"
-      | "lan_sw"
-      | "lan_sv"
-      | "lan_tl"
-      | "lan_tg"
-      | "lan_ta"
-      | "lan_tt"
-      | "lan_te"
-      | "lan_th"
-      | "lan_tr"
-      | "lan_tk"
-      | "lan_uk"
-      | "lan_ur"
-      | "lan_ug"
-      | "lan_uz"
-      | "lan_vi"
-      | "lan_cy"
-      | "lan_xh"
-      | "lan_yi"
-      | "lan_yo"
-      | "lan_zu";
+      | 'lan_af'
+      | 'lan_sq'
+      | 'lan_am'
+      | 'lan_ar'
+      | 'lan_hy'
+      | 'lan_az'
+      | 'lan_eu'
+      | 'lan_be'
+      | 'lan_bn'
+      | 'lan_bs'
+      | 'lan_bg'
+      | 'lan_ca'
+      | 'lan_ceb'
+      | 'lan_zh'
+      | 'lan_zh-TW'
+      | 'lan_co'
+      | 'lan_hr'
+      | 'lan_cs'
+      | 'lan_da'
+      | 'lan_nl'
+      | 'lan_en'
+      | 'lan_en-GB'
+      | 'lan_eo'
+      | 'lan_et'
+      | 'lan_fi'
+      | 'lan_fr'
+      | 'lan_fr-CA'
+      | 'lan_fy'
+      | 'lan_gl'
+      | 'lan_ka'
+      | 'lan_de'
+      | 'lan_el'
+      | 'lan_gu'
+      | 'lan_ht'
+      | 'lan_ha'
+      | 'lan_haw'
+      | 'lan_he'
+      | 'lan_hi'
+      | 'lan_hmn'
+      | 'lan_hu'
+      | 'lan_is'
+      | 'lan_ig'
+      | 'lan_id'
+      | 'lan_ga'
+      | 'lan_it'
+      | 'lan_ja'
+      | 'lan_jv'
+      | 'lan_kn'
+      | 'lan_kk'
+      | 'lan_km'
+      | 'lan_rw'
+      | 'lan_ko'
+      | 'lan_ku'
+      | 'lan_ky'
+      | 'lan_lo'
+      | 'lan_la'
+      | 'lan_lv'
+      | 'lan_lt'
+      | 'lan_lb'
+      | 'lan_mk'
+      | 'lan_mg'
+      | 'lan_ms'
+      | 'lan_ml'
+      | 'lan_mt'
+      | 'lan_mi'
+      | 'lan_mr'
+      | 'lan_mn'
+      | 'lan_my'
+      | 'lan_ne'
+      | 'lan_no'
+      | 'lan_ny'
+      | 'lan_or'
+      | 'lan_ps'
+      | 'lan_fa'
+      | 'lan_pl'
+      | 'lan_pt'
+      | 'lan_pa'
+      | 'lan_ro'
+      | 'lan_ru'
+      | 'lan_sm'
+      | 'lan_gd'
+      | 'lan_sr'
+      | 'lan_st'
+      | 'lan_sn'
+      | 'lan_sd'
+      | 'lan_si'
+      | 'lan_sk'
+      | 'lan_sl'
+      | 'lan_so'
+      | 'lan_es'
+      | 'lan_es-ES'
+      | 'lan_su'
+      | 'lan_sw'
+      | 'lan_sv'
+      | 'lan_tl'
+      | 'lan_tg'
+      | 'lan_ta'
+      | 'lan_tt'
+      | 'lan_te'
+      | 'lan_th'
+      | 'lan_tr'
+      | 'lan_tk'
+      | 'lan_uk'
+      | 'lan_ur'
+      | 'lan_ug'
+      | 'lan_uz'
+      | 'lan_vi'
+      | 'lan_cy'
+      | 'lan_xh'
+      | 'lan_yi'
+      | 'lan_yo'
+      | 'lan_zu';
     reactionType?:
-      | "celebrate"
-      | "clap"
-      | "haha"
-      | "love"
-      | "sad"
-      | "smile"
-      | "thumbUp"
-      | "thumbDown"
-      | "wow"
-      | "collapse"
-      | "disable"
-      | "enable"
-      | "disableGestures"
-      | "enableGestures"
-      | "expand"
-      | "openMenu";
-    unifyRaiseHand?: "lowerHand" | "lowerAllHand" | "raiseHand";
+      | 'celebrate'
+      | 'clap'
+      | 'haha'
+      | 'love'
+      | 'sad'
+      | 'smile'
+      | 'thumbUp'
+      | 'thumbDown'
+      | 'wow'
+      | 'collapse'
+      | 'disable'
+      | 'enable'
+      | 'disableGestures'
+      | 'enableGestures'
+      | 'expand'
+      | 'openMenu';
+    unifyRaiseHand?: 'lowerHand' | 'lowerAllHand' | 'raiseHand';
   };
-  clientEventType?: "normal-event" | "user-action";
+  clientEventType?: 'normal-event' | 'user-action';
   /**
    * Audio background noise removal
    */
@@ -2105,13 +2143,13 @@ export interface ClientEvent {
      * background noise removal action data
      */
     actionData?: {
-      bnrActionType: "turn-on-bnr" | "turn-off-bnr";
+      bnrActionType: 'turn-on-bnr' | 'turn-off-bnr';
     };
     /**
      * background noise removal event data
      */
     eventData?: {
-      bnrEventType: "bnr-on" | "bnr-off";
+      bnrEventType: 'bnr-on' | 'bnr-off';
     };
   };
   /**
@@ -2119,7 +2157,7 @@ export interface ClientEvent {
    */
   gestureRecognition?: {
     supportedMachine?: boolean;
-    gestureType?: "clap" | "none" | "raiseHand" | "thumpUp" | "thumbDown";
+    gestureType?: 'clap' | 'none' | 'raiseHand' | 'thumpUp' | 'thumbDown';
     duration?: number;
   };
   /**
@@ -2130,38 +2168,38 @@ export interface ClientEvent {
      * data define for background noise removal action
      */
     actionData?: {
-      pmhActionType: "share" | "view-details" | "close";
+      pmhActionType: 'share' | 'view-details' | 'close';
       pmhActionResult?: string;
     };
     /**
      * data define for background noise removal event
      */
     eventData?: {
-      pmhEventType: "used" | "not-show-again";
+      pmhEventType: 'used' | 'not-show-again';
     };
   };
-  breakoutSessionJoinType?: "any-one-can-join" | "auto" | "manual" | "preassign-rest";
+  breakoutSessionJoinType?: 'any-one-can-join' | 'auto' | 'manual' | 'preassign-rest';
   breakoutSessionActionClickFrom?:
-    | "actionbar"
-    | "assign-dialog"
-    | "auto"
-    | "breakout-session-list"
-    | "contextmenu"
-    | "menu"
-    | "plist"
-    | "popup-dialog";
+    | 'actionbar'
+    | 'assign-dialog'
+    | 'auto'
+    | 'breakout-session-list'
+    | 'contextmenu'
+    | 'menu'
+    | 'plist'
+    | 'popup-dialog';
   broadcastSendType?:
-    | "all-sessions-all-participants"
-    | "all-sessions-all-cohost-and-presenters"
-    | "one-session-all-participants"
-    | "one-session-one-participant";
+    | 'all-sessions-all-participants'
+    | 'all-sessions-all-cohost-and-presenters'
+    | 'one-session-all-participants'
+    | 'one-session-one-participant';
   breakoutSessionDialogOpenTime?: number;
   breakoutSessionDialogAssignTime?: number;
   /**
    * call embedded browser object result, if failed, will populate error at Error item
    */
   embeddedBrowserObject?: {
-    browserType: "IE" | "WebView2";
+    browserType: 'IE' | 'WebView2';
     version?: string;
     callFrom?: string;
   };
@@ -2177,7 +2215,7 @@ export interface ClientEvent {
     clientDownloadTime?: number;
     clientDecompressTime?: number;
     CDNEnabled?: boolean;
-    updateFlag?: "preMeeting" | "inMeeting" | "postMeeting";
+    updateFlag?: 'preMeeting' | 'inMeeting' | 'postMeeting';
     epSP?: boolean;
     isEPUpdate?: boolean;
     spDifferent?: number;
@@ -2207,13 +2245,13 @@ export interface ClientEvent {
   };
   isInstallWebView2?: boolean;
   loginType?:
-    | "no-login"
-    | "login-page"
-    | "reuse-ci-token"
-    | "reuse-site-token"
-    | "login-ci"
-    | "login-site"
-    | "unverified-guest";
+    | 'no-login'
+    | 'login-page'
+    | 'reuse-ci-token'
+    | 'reuse-site-token'
+    | 'login-ci'
+    | 'login-site'
+    | 'unverified-guest';
   loginCrossSite?: boolean;
   crossBrowserLogin?: boolean;
   isMultiSiteUser?: boolean;
@@ -2246,7 +2284,7 @@ export interface ClientEvent {
       cpuBitWidth: number;
     };
     peripherals?: {
-      name: "camera" | "microphone" | "speaker";
+      name: 'camera' | 'microphone' | 'speaker';
       information: string;
       driver?: string;
       errorCode?: string;
@@ -2257,7 +2295,7 @@ export interface ClientEvent {
      * information object for the peripheral
      */
     cameraInfo?: {
-      name: "camera" | "microphone" | "speaker";
+      name: 'camera' | 'microphone' | 'speaker';
       information: string;
       driver?: string;
       errorCode?: string;
@@ -2268,7 +2306,7 @@ export interface ClientEvent {
      * information object for the peripheral
      */
     microphoneInfo?: {
-      name: "camera" | "microphone" | "speaker";
+      name: 'camera' | 'microphone' | 'speaker';
       information: string;
       driver?: string;
       errorCode?: string;
@@ -2279,7 +2317,7 @@ export interface ClientEvent {
      * information object for the peripheral
      */
     speakerInfo?: {
-      name: "camera" | "microphone" | "speaker";
+      name: 'camera' | 'microphone' | 'speaker';
       information: string;
       driver?: string;
       errorCode?: string;
@@ -2293,7 +2331,7 @@ export interface ClientEvent {
       description: string;
       clockSpeedGigaHertz: number;
       numberOfCores: number;
-      architecture: "intel32" | "intel64" | "amd32" | "amd64" | "arm32" | "arm64" | "unknown";
+      architecture: 'intel32' | 'intel64' | 'amd32' | 'amd64' | 'arm32' | 'arm64' | 'unknown';
       staticPerformance?: string;
     };
     /**
@@ -2327,31 +2365,31 @@ export interface ClientEvent {
     configuredBitrate?: number;
   };
   sessionType?:
-    | "AD_HOC"
-    | "ADHOC_UNIFIED_SPACE_MEETING"
-    | "ANSWERED_ELSEWHERE"
-    | "BUTLER"
-    | "CFNA"
-    | "CMR_MEETING"
-    | "DPC_CONTROL"
-    | "EVENT_CENTER_MEETING"
-    | "HALF_ZTM"
-    | "JABBER"
-    | "MEDIA"
-    | "MS_TEAMS"
-    | "NO_JOINS"
-    | "SINGLE_PARTICIPANT"
-    | "SIP_CALL"
-    | "SIP_MEETING"
-    | "SPACE_MEETING"
-    | "SPACE_SHARE"
-    | "SPARK_CALL"
-    | "SPARK_MEETING"
-    | "SPARK_SIP_CALL"
-    | "SPARK_SIP_MEETING"
-    | "UNIFIED_SPACE_MEETING"
-    | "UNKNOWN"
-    | "WHITEBOARD_ONLY_SHARE"
-    | "WIRELESS_SHARE"
-    | "ZTM";
+    | 'AD_HOC'
+    | 'ADHOC_UNIFIED_SPACE_MEETING'
+    | 'ANSWERED_ELSEWHERE'
+    | 'BUTLER'
+    | 'CFNA'
+    | 'CMR_MEETING'
+    | 'DPC_CONTROL'
+    | 'EVENT_CENTER_MEETING'
+    | 'HALF_ZTM'
+    | 'JABBER'
+    | 'MEDIA'
+    | 'MS_TEAMS'
+    | 'NO_JOINS'
+    | 'SINGLE_PARTICIPANT'
+    | 'SIP_CALL'
+    | 'SIP_MEETING'
+    | 'SPACE_MEETING'
+    | 'SPACE_SHARE'
+    | 'SPARK_CALL'
+    | 'SPARK_MEETING'
+    | 'SPARK_SIP_CALL'
+    | 'SPARK_SIP_MEETING'
+    | 'UNIFIED_SPACE_MEETING'
+    | 'UNKNOWN'
+    | 'WHITEBOARD_ONLY_SHARE'
+    | 'WIRELESS_SHARE'
+    | 'ZTM';
 }

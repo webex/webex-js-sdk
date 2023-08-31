@@ -71,6 +71,7 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canAnnotate?: boolean;
 }
 
 /**
@@ -203,6 +204,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canAnnotate = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -270,6 +273,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canAnnotate: this.canAnnotate,
   });
 
   /**
