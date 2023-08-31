@@ -738,6 +738,7 @@ describe('plugin-meetings', () => {
       });
       describe('#join', () => {
         let sandbox = null;
+        let setCorrelationIdSpy;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
 
         beforeEach(() => {
@@ -753,7 +754,7 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.join);
         });
         beforeEach(() => {
-          meeting.setCorrelationId = sinon.stub().returns(true);
+          setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
           webex.meetings.registered = true;
           meeting.updateLLMConnection = sinon.stub();
@@ -803,13 +804,20 @@ describe('plugin-meetings', () => {
 
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
-            sinon.assert.notCalled(meeting.setCorrelationId);
+            sinon.assert.notCalled(setCorrelationIdSpy);
           });
 
           it('should create new correlation ID when already joined', async () => {
             meeting.hasJoinedOnce = true;
             await meeting.join();
-            sinon.assert.called(meeting.setCorrelationId);
+            sinon.assert.called(setCorrelationIdSpy);
+          });
+
+          it('should use provided correlation ID and not regenerate one when already joined', async () => {
+            meeting.hasJoinedOnce = true;
+            await meeting.join({correlationId: '123'});
+            sinon.assert.called(setCorrelationIdSpy);
+            assert.equal(meeting.correlationId, '123');
           });
 
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
