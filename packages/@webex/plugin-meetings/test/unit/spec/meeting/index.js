@@ -330,19 +330,21 @@ describe('plugin-meetings', () => {
         });
 
         it('uses meeting id as correlation id if not provided in constructor', () => {
-          const newMeeting = new Meeting({
-            userId: uuid1,
-            resource: uuid2,
-            deviceUrl: uuid3,
-            locus: {url: url1},
-            destination: testDestination,
-            destinationType: _MEETING_ID_,
-          },
-          {
-            parent: webex,
-          });
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: _MEETING_ID_,
+            },
+            {
+              parent: webex,
+            }
+          );
           assert.equal(newMeeting.correlationId, newMeeting.id);
-        })
+        });
 
         describe('creates ReceiveSlot manager instance', () => {
           let mockReceiveSlotManagerCtor;
@@ -5909,6 +5911,16 @@ describe('plugin-meetings', () => {
               callType: 'MEETING',
               expectedEnabled: false,
             },
+            {
+              actionName: 'canUseVoip',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canUseVoip',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
           ],
           ({actionName, callType, expectedEnabled}) => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
@@ -6020,6 +6032,7 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6030,6 +6043,7 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6040,6 +6054,7 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6050,6 +6065,7 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6060,6 +6076,7 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6070,10 +6087,22 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
           assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when enableUnifiedMeetings is false', () => {
+          meeting.userDisplayHints = [];
+          meeting.selfUserPolicies = {};
+          meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = false;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
         });
 
         it('correctly updates the meeting actions', () => {

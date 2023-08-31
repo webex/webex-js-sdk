@@ -3029,184 +3029,13 @@ export default class Meeting extends StatelessWebexPlugin {
   private updateMeetingActions() {
     let changed = false;
     changed = this.inMeetingActions.set({
-      canInviteNewParticipants: MeetingUtil.canInviteNewParticipants(this.userDisplayHints),
-      canAdmitParticipant: MeetingUtil.canAdmitParticipant(this.userDisplayHints),
-      canLock: MeetingUtil.canUserLock(this.userDisplayHints),
-      canUnlock: MeetingUtil.canUserUnlock(this.userDisplayHints),
-      canSetDisallowUnmute: ControlsOptionsUtil.canSetDisallowUnmute(this.userDisplayHints),
-      canUnsetDisallowUnmute: ControlsOptionsUtil.canUnsetDisallowUnmute(this.userDisplayHints),
-      canSetMuteOnEntry: ControlsOptionsUtil.canSetMuteOnEntry(this.userDisplayHints),
-      canUnsetMuteOnEntry: ControlsOptionsUtil.canUnsetMuteOnEntry(this.userDisplayHints),
-      canSetMuted: ControlsOptionsUtil.canSetMuted(this.userDisplayHints),
-      canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(this.userDisplayHints),
-      canStartRecording: RecordingUtil.canUserStart(this.userDisplayHints, this.selfUserPolicies),
-      canStopRecording: RecordingUtil.canUserStop(this.userDisplayHints, this.selfUserPolicies),
-      canPauseRecording: RecordingUtil.canUserPause(this.userDisplayHints, this.selfUserPolicies),
-      canResumeRecording: RecordingUtil.canUserResume(this.userDisplayHints, this.selfUserPolicies),
-      canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
-      canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
-      canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
-      bothLeaveAndEndMeetingAvailable: MeetingUtil.bothLeaveAndEndMeetingAvailable(
-        this.userDisplayHints
-      ),
-      canEnableClosedCaption: MeetingUtil.canEnableClosedCaption(this.userDisplayHints),
-      canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
-      canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
-      isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(this.userDisplayHints),
-      isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
-      isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
-      canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
-      isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(this.userDisplayHints),
-      canSelectSpokenLanguages: MeetingUtil.canSelectSpokenLanguages(this.userDisplayHints),
-      waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(this.userDisplayHints),
-      canSendReactions: MeetingUtil.canSendReactions(
-        this.inMeetingActions.canSendReactions,
-        this.userDisplayHints
-      ),
-      canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),
-      canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
-        this.userDisplayHints,
-        this.selfUserPolicies
-      ),
-      canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(this.userDisplayHints),
-      isBreakoutPreassignmentsEnabled: MeetingUtil.isBreakoutPreassignmentsEnabled(
-        this.userDisplayHints
-      ),
-      canUserAskForHelp: MeetingUtil.canUserAskForHelp(this.userDisplayHints),
-      canUserRenameSelfAndObserved: MeetingUtil.canUserRenameSelfAndObserved(this.userDisplayHints),
-      canUserRenameOthers: MeetingUtil.canUserRenameOthers(this.userDisplayHints),
-      canMuteAll: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.MUTE_ALL],
-        displayHints: this.userDisplayHints,
-      }),
-      canUnmuteAll: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableHardMute: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableHardMute: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableMuteOnEntry: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableMuteOnEntry: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableReactions: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableReactions: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableReactionDisplayNames: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableReactionDisplayNames: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
-        displayHints: this.userDisplayHints,
-      }),
-      canUpdateShareControl: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableRaiseHand: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableRaiseHand: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
-        displayHints: this.userDisplayHints,
-      }),
-      canEnableVideo: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
-        displayHints: this.userDisplayHints,
-      }),
-      canDisableVideo: ControlsOptionsUtil.hasHints({
-        requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
-        displayHints: this.userDisplayHints,
-      }),
-      canShareFile:
-        (ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.SHARE_FILE],
-          displayHints: this.userDisplayHints,
-        }) &&
-          (ControlsOptionsUtil.hasPolicies({
-            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
-            policies: this.selfUserPolicies,
-          }) ||
-            // @ts-ignore
-            !this.config.experimental.enableUnifiedMeetings)) ||
-        this.isLocusCall(),
-      canTransferFile: ControlsOptionsUtil.hasPolicies({
-        requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
-        policies: this.selfUserPolicies,
-      }),
-      canShareApplication:
-        (ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-          displayHints: this.userDisplayHints,
-        }) &&
-          (ControlsOptionsUtil.hasPolicies({
-            requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-            policies: this.selfUserPolicies,
-          }) ||
-            // @ts-ignore
-            !this.config.experimental.enableUnifiedMeetings)) ||
-        this.isLocusCall(),
-      canShareCamera:
-        ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
-          displayHints: this.userDisplayHints,
-        }) &&
-        ControlsOptionsUtil.hasPolicies({
-          requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
-          policies: this.selfUserPolicies,
-        }),
-      canShareDesktop:
-        (ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-          displayHints: this.userDisplayHints,
-        }) &&
-          (ControlsOptionsUtil.hasPolicies({
-            requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-            policies: this.selfUserPolicies,
-          }) ||
-            // @ts-ignore
-            !this.config.experimental.enableUnifiedMeetings)) ||
-        this.isLocusCall(),
-      canShareContent:
-        ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-          displayHints: this.userDisplayHints,
-        }) || this.isLocusCall(),
-      canAnnotate: ControlsOptionsUtil.hasPolicies({
-        requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
-        policies: this.selfUserPolicies,
-      }),
       canUseVoip:
-        ((ControlsOptionsUtil.hasHints({
-          requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
-          displayHints: this.userDisplayHints,
-        }) ||
-          this.userDisplayHints === undefined) &&
+        ((this.userDisplayHints !== undefined
+          ? ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
+              displayHints: this.userDisplayHints,
+            })
+          : this.meetingInfo?.supportVoIP === true) &&
           ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: this.selfUserPolicies,
@@ -3215,6 +3044,196 @@ export default class Meeting extends StatelessWebexPlugin {
         !this.config.experimental.enableUnifiedMeetings ||
         this.isLocusCall(),
     });
+    if (this.userDisplayHints !== undefined) {
+      changed =
+        this.inMeetingActions.set({
+          canInviteNewParticipants: MeetingUtil.canInviteNewParticipants(this.userDisplayHints),
+          canAdmitParticipant: MeetingUtil.canAdmitParticipant(this.userDisplayHints),
+          canLock: MeetingUtil.canUserLock(this.userDisplayHints),
+          canUnlock: MeetingUtil.canUserUnlock(this.userDisplayHints),
+          canSetDisallowUnmute: ControlsOptionsUtil.canSetDisallowUnmute(this.userDisplayHints),
+          canUnsetDisallowUnmute: ControlsOptionsUtil.canUnsetDisallowUnmute(this.userDisplayHints),
+          canSetMuteOnEntry: ControlsOptionsUtil.canSetMuteOnEntry(this.userDisplayHints),
+          canUnsetMuteOnEntry: ControlsOptionsUtil.canUnsetMuteOnEntry(this.userDisplayHints),
+          canSetMuted: ControlsOptionsUtil.canSetMuted(this.userDisplayHints),
+          canUnsetMuted: ControlsOptionsUtil.canUnsetMuted(this.userDisplayHints),
+          canStartRecording: RecordingUtil.canUserStart(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canStopRecording: RecordingUtil.canUserStop(this.userDisplayHints, this.selfUserPolicies),
+          canPauseRecording: RecordingUtil.canUserPause(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canResumeRecording: RecordingUtil.canUserResume(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
+          canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
+          canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
+          bothLeaveAndEndMeetingAvailable: MeetingUtil.bothLeaveAndEndMeetingAvailable(
+            this.userDisplayHints
+          ),
+          canEnableClosedCaption: MeetingUtil.canEnableClosedCaption(this.userDisplayHints),
+          canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
+          canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
+          isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(this.userDisplayHints),
+          isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
+          isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
+          canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
+          isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(
+            this.userDisplayHints
+          ),
+          canSelectSpokenLanguages: MeetingUtil.canSelectSpokenLanguages(this.userDisplayHints),
+          waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(this.userDisplayHints),
+          canSendReactions: MeetingUtil.canSendReactions(
+            this.inMeetingActions.canSendReactions,
+            this.userDisplayHints
+          ),
+          canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),
+          canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
+          canAdmitLobbyToBreakout: MeetingUtil.canAdmitLobbyToBreakout(this.userDisplayHints),
+          isBreakoutPreassignmentsEnabled: MeetingUtil.isBreakoutPreassignmentsEnabled(
+            this.userDisplayHints
+          ),
+          canUserAskForHelp: MeetingUtil.canUserAskForHelp(this.userDisplayHints),
+          canUserRenameSelfAndObserved: MeetingUtil.canUserRenameSelfAndObserved(
+            this.userDisplayHints
+          ),
+          canUserRenameOthers: MeetingUtil.canUserRenameOthers(this.userDisplayHints),
+          canMuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
+            displayHints: this.userDisplayHints,
+          }),
+          canUnmuteAll: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableHardMute: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableMuteOnEntry: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableReactions: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableReactionDisplayNames: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
+            displayHints: this.userDisplayHints,
+          }),
+          canUpdateShareControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableViewTheParticipantsList: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableRaiseHand: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RAISE_HAND],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIDEO],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableVideo: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
+            displayHints: this.userDisplayHints,
+          }),
+          canShareFile:
+            (ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_FILE],
+              displayHints: this.userDisplayHints,
+            }) &&
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
+          canTransferFile: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            policies: this.selfUserPolicies,
+          }),
+          canShareApplication:
+            (ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
+              displayHints: this.userDisplayHints,
+            }) &&
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
+          canShareCamera:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
+              displayHints: this.userDisplayHints,
+            }) &&
+            ControlsOptionsUtil.hasPolicies({
+              requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
+              policies: this.selfUserPolicies,
+            }),
+          canShareDesktop:
+            (ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
+              displayHints: this.userDisplayHints,
+            }) &&
+              (ControlsOptionsUtil.hasPolicies({
+                requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
+                policies: this.selfUserPolicies,
+              }) ||
+                // @ts-ignore
+                !this.config.experimental.enableUnifiedMeetings)) ||
+            this.isLocusCall(),
+          canShareContent:
+            ControlsOptionsUtil.hasHints({
+              requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
+              displayHints: this.userDisplayHints,
+            }) || this.isLocusCall(),
+          canAnnotate: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
+            policies: this.selfUserPolicies,
+          }),
+        }) || changed;
+    }
     if (changed) {
       Trigger.trigger(
         this,
