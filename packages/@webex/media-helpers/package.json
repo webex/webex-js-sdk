@@ -1,0 +1,47 @@
+{
+  "name": "@webex/media-helpers",
+  "version": "3.0.0-beta.187",
+  "description": "",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "main": "dist/index.js",
+  "devMain": "src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/media-helpers"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
+    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
+    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint 'src/**/*.ts' --fix",
+    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha"
+  },
+  "dependencies": {
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/internal-media-core": "^2.0.0",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
+    "@webex/ts-events": "^1.1.0",
+    "@webex/web-media-effects": "^2.11.5"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "7.22.11",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "eslint": "^8.24.0",
+    "sinon": "^9.2.4"
+  }
+}

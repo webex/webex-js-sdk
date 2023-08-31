@@ -9,6 +9,7 @@
   "workspaces": [
     "./packages/@webex/*",
     "./packages/webex",
+    "./packages/calling/*",
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*"
