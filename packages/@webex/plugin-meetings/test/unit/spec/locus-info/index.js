@@ -1378,7 +1378,6 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
-          {info: locusInfo.parsedLocus.info, self},
         ];
 
         if (expected) {
@@ -1407,7 +1406,7 @@ describe('plugin-meetings', () => {
         locusInfo.emitScoped.resetHistory();
       };
 
-      it('emits MEETING_INFO_UPDATED if the info changes', () => {
+      it('emits MEETING_INFO_UPDATED and updates the meeting if the info changes', () => {
         const initialInfo = cloneDeep(meetingInfo);
 
         locusInfo.emitScoped = sinon.stub();
@@ -1417,6 +1416,21 @@ describe('plugin-meetings', () => {
 
         // since it was initially undefined, this should trigger the event
         checkMeetingInfoUpdatedCalled(true);
+        assert.deepEqual(mockMeeting, {
+          coHost: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          isLocked: false,
+          isUnlocked: true,
+          moderator: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          policy: {
+            LOCK_STATUS_UNLOCKED: true,
+            ROSTER_IN_MEETING: true,
+          },
+          userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
+        });
 
         const newInfo = cloneDeep(meetingInfo);
 
@@ -1426,12 +1440,44 @@ describe('plugin-meetings', () => {
         locusInfo.updateMeetingInfo(newInfo, self);
 
         checkMeetingInfoUpdatedCalled(true);
+        assert.deepEqual(mockMeeting, {
+          coHost: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+            LOCK_CONTROL_LOCK: true,
+          },
+          isLocked: false,
+          isUnlocked: true,
+          moderator: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          policy: {
+            LOCK_STATUS_UNLOCKED: true,
+            ROSTER_IN_MEETING: true,
+          },
+          userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
+        });
 
         // update it with the same info
         locusInfo.updateMeetingInfo(newInfo, self);
 
         // since the info is the same it should not call trigger the event
         checkMeetingInfoUpdatedCalled(false);
+        assert.deepEqual(mockMeeting, {
+          coHost: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+            LOCK_CONTROL_LOCK: true,
+          },
+          isLocked: false,
+          isUnlocked: true,
+          moderator: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          policy: {
+            LOCK_STATUS_UNLOCKED: true,
+            ROSTER_IN_MEETING: true,
+          },
+          userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
+        });
 
         // update it with the same info, but roles changed
         const updateSelf = cloneDeep(self);
@@ -1442,6 +1488,27 @@ describe('plugin-meetings', () => {
         locusInfo.updateMeetingInfo(newInfo, updateSelf);
         // since the info is the same but roles changed, it should call trigger the event
         checkMeetingInfoUpdatedCalledForRoles(true);
+        assert.deepEqual(mockMeeting, {
+          coHost: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+            LOCK_CONTROL_LOCK: true,
+          },
+          isLocked: false,
+          isUnlocked: true,
+          moderator: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          policy: {
+            LOCK_STATUS_UNLOCKED: true,
+            ROSTER_IN_MEETING: true,
+          },
+          userDisplayHints: [
+            'ROSTER_IN_MEETING',
+            'LOCK_STATUS_UNLOCKED',
+            'LOCK_CONTROL_LOCK',
+            'LOWER_SOMEONE_ELSES_HAND',
+          ],
+        });
       });
 
       it('gets roles from self if available', () => {

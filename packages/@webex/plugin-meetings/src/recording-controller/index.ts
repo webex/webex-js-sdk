@@ -89,7 +89,6 @@ export default class RecordingController {
 
   /**
    * @param {MeetingRequest} request
-   * @param {LocusInfo} info
    * @returns {void}
    * @private
    * @memberof RecordingController

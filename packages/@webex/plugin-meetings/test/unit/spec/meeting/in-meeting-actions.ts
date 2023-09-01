@@ -68,6 +68,7 @@ describe('plugin-meetings', () => {
         canShareContent: null,
         canTransferFile: null,
         canAnnotate: null,
+        canUseVoip: null,
         ...expected,
       };
 
@@ -141,6 +142,7 @@ describe('plugin-meetings', () => {
       'canShareContent',
       'canTransferFile',
       'canAnnotate',
+      'canUseVoip',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
