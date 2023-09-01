@@ -2409,12 +2409,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
-            const sdpVideoPortZero = event.roapMessage.sdp.replace(
-              /^m=(video) (?:\d+) /gim,
-              'm=$1 0 '
-            );
+            // const sdpVideoPortZero = event.roapMessage.sdp.replace(
+            //   /^m=(video) (?:\d+) /gim,
+            //   'm=$1 0 '
+            // );
 
-            event.roapMessage.sdp = sdpVideoPortZero;
+            // event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
             this.sendCallStateMachineEvt({type: 'E_SEND_CALL_SETUP', data: event.roapMessage});
             break;
