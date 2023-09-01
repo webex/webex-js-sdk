@@ -49,7 +49,7 @@ const DssBatcher = Batcher.extend({
    * @param {Object} payload
    * @returns {Promise<Array>}
    */
-  submitHttpRequest(payload) {
+  submitHttpRequest(payload: unknown) {
     return this.parent._request({
       dataPath: this.dataPath,
       foundPath: this.entitiesFoundPath,

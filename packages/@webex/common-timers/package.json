@@ -1,10 +1,10 @@
 {
   "name": "@webex/common-timers",
-  "version": "3.0.0-beta.196",
+  "version": "3.0.0-beta.199",
   "description": "Timer wrappers to prevent wedging a process open",
   "license": "MIT",
   "main": "dist/index.js",
-  "devMain": "src/index.js",
+  "devMain": "src/index.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",

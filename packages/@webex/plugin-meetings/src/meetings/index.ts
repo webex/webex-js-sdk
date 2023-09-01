@@ -1054,6 +1054,7 @@ export default class Meetings extends WebexPlugin {
    * @param {string} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {string} correlationId - the optional specified correlationId
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1062,7 +1063,8 @@ export default class Meetings extends WebexPlugin {
     destination: string,
     type: string = null,
     useRandomDelayForInfo = false,
-    infoExtraParams = {}
+    infoExtraParams = {},
+    correlationId: string = undefined
   ) {
     // TODO: type should be from a dictionary
 
@@ -1112,7 +1114,8 @@ export default class Meetings extends WebexPlugin {
               targetDest,
               type,
               useRandomDelayForInfo,
-              infoExtraParams
+              infoExtraParams,
+              correlationId
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1166,6 +1169,7 @@ export default class Meetings extends WebexPlugin {
    * @param {String} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {String} correlationId the optional specified correlationId
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1174,7 +1178,8 @@ export default class Meetings extends WebexPlugin {
     destination: any,
     type: string = null,
     useRandomDelayForInfo = false,
-    infoExtraParams = {}
+    infoExtraParams = {},
+    correlationId: string = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1188,6 +1193,7 @@ export default class Meetings extends WebexPlugin {
         meetingInfoProvider: this.meetingInfo,
         destination,
         destinationType: type,
+        correlationId,
       },
       {
         // @ts-ignore
