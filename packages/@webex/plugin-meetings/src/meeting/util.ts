@@ -598,7 +598,7 @@ const MeetingUtil = {
         renameKey(language, 'languageGroupId', 'languageCode');
       }
       if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
-        meeting.simultaneousInterpretation.updateInterpretation(lanuagesInfo);
+        meeting.simultaneousInterpretation.updateInterpretation({siLanguages: lanuagesInfo});
       }
     }
     Trigger.trigger(
