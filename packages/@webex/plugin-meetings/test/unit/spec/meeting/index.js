@@ -6405,57 +6405,57 @@ describe('plugin-meetings', () => {
 
 
       describe('share scenarios', () => {
-        // describe('triggerAnnotationInfoEvent', () => {
-        //   it('check triggerAnnotationInfoEvent event', () => {
-        //     TriggerProxy.trigger.reset();
-        //     const annotationInfo = {version: '1', policy: 'Approval'};
-        //     const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id};
-        //     meeting.webex.meetings = {};
-        //     meeting.triggerAnnotationInfoEvent({annotation: annotationInfo}, {});
-        //     assert.calledWith(
-        //       TriggerProxy.trigger,
-        //       {},
-        //       {
-        //         file: 'meeting/index',
-        //         function: 'triggerAnnotationInfoEvent',
-        //       },
-        //       'meeting:updateAnnotationInfo',
-        //       expectAnnotationInfo
-        //     );
-        //
-        //     TriggerProxy.trigger.reset();
-        //     meeting.triggerAnnotationInfoEvent(
-        //       {annotation: annotationInfo},
-        //       {annotation: annotationInfo}
-        //     );
-        //     assert.notCalled(TriggerProxy.trigger);
-        //
-        //     TriggerProxy.trigger.reset();
-        //     const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'};
-        //     const expectAnnotationInfoUpdated = {
-        //       annotationInfo: annotationInfoUpdate,
-        //       meetingId: meeting.id,
-        //     };
-        //     meeting.triggerAnnotationInfoEvent(
-        //       {annotation: annotationInfoUpdate},
-        //       {annotation: annotationInfo}
-        //     );
-        //     assert.calledWith(
-        //       TriggerProxy.trigger,
-        //       {},
-        //       {
-        //         file: 'meeting/index',
-        //         function: 'triggerAnnotationInfoEvent',
-        //       },
-        //       'meeting:updateAnnotationInfo',
-        //       expectAnnotationInfoUpdated
-        //     );
-        //
-        //     TriggerProxy.trigger.reset();
-        //     meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate});
-        //     assert.notCalled(TriggerProxy.trigger);
-        //   });
-        // });
+        describe('triggerAnnotationInfoEvent', () => {
+          it('check triggerAnnotationInfoEvent event', () => {
+            TriggerProxy.trigger.reset();
+            const annotationInfo = {version: '1', policy: 'Approval'};
+            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id};
+            meeting.webex.meetings = {};
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo}, {});
+            assert.calledWith(
+              TriggerProxy.trigger,
+              {},
+              {
+                file: 'meeting/index',
+                function: 'triggerAnnotationInfoEvent',
+              },
+              'meeting:updateAnnotationInfo',
+              expectAnnotationInfo
+            );
+
+            TriggerProxy.trigger.reset();
+            meeting.triggerAnnotationInfoEvent(
+              {annotation: annotationInfo},
+              {annotation: annotationInfo}
+            );
+            assert.notCalled(TriggerProxy.trigger);
+
+            TriggerProxy.trigger.reset();
+            const annotationInfoUpdate = {version: '1', policy: 'AnnotationNotAllowed'};
+            const expectAnnotationInfoUpdated = {
+              annotationInfo: annotationInfoUpdate,
+              meetingId: meeting.id,
+            };
+            meeting.triggerAnnotationInfoEvent(
+              {annotation: annotationInfoUpdate},
+              {annotation: annotationInfo}
+            );
+            assert.calledWith(
+              TriggerProxy.trigger,
+              {},
+              {
+                file: 'meeting/index',
+                function: 'triggerAnnotationInfoEvent',
+              },
+              'meeting:updateAnnotationInfo',
+              expectAnnotationInfoUpdated
+            );
+
+            TriggerProxy.trigger.reset();
+            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate});
+            assert.notCalled(TriggerProxy.trigger);
+          });
+        });
 
         describe('setUpLocusMediaSharesListener', () => {
           beforeEach(() => {
