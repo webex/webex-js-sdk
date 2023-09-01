@@ -1677,7 +1677,7 @@ describe('plugin-meetings', () => {
           sinon.match.instanceOf(Meeting),
           {
             file: 'meeting/index',
-            function: 'setupLocusControlsListener',
+            function: 'setUpLocusSelfListener',
           },
           EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
           {'locusUrl': 'newLocusUrl'}
