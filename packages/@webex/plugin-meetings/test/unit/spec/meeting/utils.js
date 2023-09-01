@@ -633,6 +633,13 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canShareWhiteBoard', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD']), true);
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard([]), false);
+      });
+    });
+
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
         assert.deepEqual(

@@ -2461,6 +2461,7 @@ export default class Meeting extends StatelessWebexPlugin {
           canAdmitParticipant: MeetingUtil.canAdmitParticipant(payload.info.userDisplayHints),
           canLock: MeetingUtil.canUserLock(payload.info.userDisplayHints),
           canUnlock: MeetingUtil.canUserUnlock(payload.info.userDisplayHints),
+          canShareWhiteBoard: MeetingUtil.canShareWhiteBoard(payload.info.userDisplayHints),
           canSetDisallowUnmute: ControlsOptionsUtil.canSetDisallowUnmute(
             payload.info.userDisplayHints
           ),
