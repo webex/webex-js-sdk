@@ -1329,6 +1329,71 @@ describe('plugin-meetings', () => {
               data: {intervalData: fakeData, networkType: 'wifi'},
             });
           });
+          it('NO_FRAMES_SENT triggers "meeting:noFramesSent" event and sends metrics', async () => {
+            meeting.mediaProperties.mediaDirection = {sendVideo: true};
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_FRAMES_SENT,
+              {mediaType: 'video'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+              {
+                mediaType: 'video',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+          });
+          it('NO_FRAMES_SENT triggers "meeting:noFramesSent" event and sends metrics for share', async () => {
+            meeting.mediaProperties.mediaDirection = {sendShare: true};
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_FRAMES_SENT,
+              {mediaType: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+              {
+                mediaType: 'share',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+          });
+          it('NO_VIDEO_ENCODED triggers "meeting:noVideoEncoded" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_VIDEO_ENCODED,
+              {mediaType: 'video'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_VIDEO_ENCODED,
+              {
+                mediaType: 'video',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_VIDEO_ENCODED);
+          });
         });
       });
       describe('#acknowledge', () => {
@@ -3605,14 +3670,17 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusServicesListener', () => {
         it('listens to the locus services update event', (done) => {
           const newLocusServices = {
-              services: {
-                record: {
-                  url: 'url',
-                }
+            services: {
+              record: {
+                url: 'url',
               },
+            },
           };
 
-          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined), setSessionId: sinon.stub().returns(undefined)};
+          meeting.recordingController = {
+            setServiceUrl: sinon.stub().returns(undefined),
+            setSessionId: sinon.stub().returns(undefined),
+          };
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -3620,7 +3688,10 @@ describe('plugin-meetings', () => {
             newLocusServices
           );
 
-          assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
+          assert.calledWith(
+            meeting.recordingController.setServiceUrl,
+            newLocusServices.services.record.url
+          );
           assert.calledOnce(meeting.recordingController.setSessionId);
           done();
         });
