@@ -474,6 +474,7 @@ function createCall(e) {
   call.on('call:established', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Established`;
     transferElm.disabled = false;
+    addPlayIfPausedEvents(htmlMediaElements);
   });
   call.on('call:disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
@@ -487,6 +488,12 @@ function createCall(e) {
 
   call.on('call:remote_media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+  });
+
+  call.on('call:remote_video', (track) => {
+    let remoteVideo = document.getElementById('remote-video');
+    remoteVideo.srcObject = new MediaStream([track]);
+    remoteVideo.play();
   });
 
   call.dial(localAudioStream, localVideoStream);
@@ -657,6 +664,11 @@ function answer() {
 
     call.on('call:remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    });
+
+    call.on('call:remote_video', (track) => {
+      document.getElementById('remote-video').srcObject = new MediaStream([track]);
+      addPlayIfPausedEvents(htmlMediaElements);
     });
 
     call.answer(localAudioStream, localVideoStream);
