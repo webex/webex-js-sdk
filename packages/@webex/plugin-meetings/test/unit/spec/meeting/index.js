@@ -3107,7 +3107,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
@@ -3167,7 +3167,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
 
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
@@ -4333,7 +4333,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteTracks();
 
-          assert.equal(TriggerProxy.trigger.callCount, 4);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -4388,8 +4388,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.AUDIO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
             type: 'remoteAudio',
             stream: {id: 'stream'},
           });
@@ -4398,8 +4398,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.VIDEO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
             type: 'remoteVideo',
             stream: {id: 'stream'},
           });
@@ -4408,8 +4408,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.SCREENSHARE_VIDEO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(4).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(4).args[3], {
             type: 'remoteShare',
             stream: {id: 'stream'},
           });
@@ -4836,7 +4836,7 @@ describe('plugin-meetings', () => {
           meeting.startKeepAlive = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.startKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -4850,7 +4850,7 @@ describe('plugin-meetings', () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -5257,6 +5257,19 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
+
+          assert.calledThrice(TriggerProxy.trigger);
+          assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'setUpLocusSelfListener',
+              },
+              EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+              {'locusUrl': 'newLocusUrl/12345'}
+          );
+
           done();
         });
       });
@@ -6508,6 +6521,8 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+
       describe('share scenarios', () => {
         describe('triggerAnnotationInfoEvent', () => {
           it('check triggerAnnotationInfoEvent event', () => {
@@ -6617,6 +6632,10 @@ describe('plugin-meetings', () => {
                   activeSharingId: null,
                   endedSharingId: null,
                 },
+              },
+              meeting: {
+                eventName: EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+                eventPayload: 'newLocusUrl',
               },
             };
 
@@ -6841,7 +6860,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
 
             // Called once --> members:update (ignore)
-            let callCounter = 1;
+            let callCounter = 2;
 
             data.forEach((d, index) => {
               meeting.locusInfo.emit(
@@ -6869,10 +6888,10 @@ describe('plugin-meetings', () => {
 
             assert.callCount(TriggerProxy.trigger, callCounter);
 
-            // Start with 1 to ignore members:update trigger
+            // Start with 2 to ignore members:update trigger, and meeting:locus:locusUrl:update
 
-            let i = 1;
-            let offset = 2;
+            let i = 2;
+            let offset = 3;
 
             while (i < callCounter) {
               const index = Math.floor(i / offset);

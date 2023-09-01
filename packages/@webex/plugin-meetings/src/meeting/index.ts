@@ -2397,6 +2397,16 @@ export default class Meeting extends StatelessWebexPlugin {
       this.locusId = this.locusUrl?.split('/').pop();
       this.recordingController.setLocusUrl(this.locusUrl);
       this.controlsOptionsManager.setLocusUrl(this.locusUrl);
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+        {locusUrl: payload}
+      );
     });
   }
 
