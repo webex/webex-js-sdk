@@ -84,12 +84,16 @@ export default class RtcMetrics {
         appId: RTC_METRICS.APP_ID,
       },
       body: {
-        type: 'webrtc',
-        version: '1.0.0',
-        userId: this.webex.internal.device.userId,
-        meetingId: this.meetingId,
-        correlationId: this.correlationId,
-        metrics: this.metricsQueue,
+        metrics: [
+          {
+            type: 'webrtc',
+            version: '1.0.1',
+            userId: this.webex.internal.device.userId,
+            meetingId: this.meetingId,
+            correlationId: this.correlationId,
+            data: this.metricsQueue,
+          },
+        ],
       },
     });
   }
