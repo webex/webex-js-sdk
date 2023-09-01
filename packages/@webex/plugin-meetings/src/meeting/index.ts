@@ -2398,7 +2398,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {
           file: 'meeting/index',
-          function: 'setupLocusControlsListener',
+          function: 'setUpLocusSelfListener',
         },
         EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
         {locusUrl: payload}
