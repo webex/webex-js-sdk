@@ -5243,6 +5243,19 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
+
+          assert.calledThrice(TriggerProxy.trigger);
+          assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'setUpLocusSelfListener',
+              },
+              EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+              {'locusUrl': 'newLocusUrl/12345'}
+          );
+
           done();
         });
       });
