@@ -498,6 +498,8 @@ const MeetingUtil = {
 
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
+  canShareWhiteBoard: (displayHints) => displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
+
   /**
    * Adds the current locus sequence information to a request body
    * @param {Object} meeting The meeting object
