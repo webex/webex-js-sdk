@@ -1409,14 +1409,19 @@ describe('plugin-meetings', () => {
       it('emits MEETING_INFO_UPDATED and updates the meeting if the info changes', () => {
         const initialInfo = cloneDeep(meetingInfo);
 
-        locusInfo.emitScoped = sinon.stub();
+        let expectedMeeting;
+
+        /*
+        When the event is triggered, it is required that the meeting has already
+        been updated. This is why the meeting is being checked within the stubbed event emitter
+        */
+        sinon.stub(locusInfo, 'emitScoped').callsFake(() => {
+          assert.deepEqual(mockMeeting, expectedMeeting);
+        })
+
 
         // set the info initially as locusInfo.info starts as undefined
-        locusInfo.updateMeetingInfo(initialInfo, self);
-
-        // since it was initially undefined, this should trigger the event
-        checkMeetingInfoUpdatedCalled(true);
-        assert.deepEqual(mockMeeting, {
+        expectedMeeting = {
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
@@ -1430,17 +1435,19 @@ describe('plugin-meetings', () => {
             ROSTER_IN_MEETING: true,
           },
           userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
-        });
+        };
+        locusInfo.updateMeetingInfo(initialInfo, self);
+
+        // since it was initially undefined, this should trigger the event
+
+        checkMeetingInfoUpdatedCalled(true);
 
         const newInfo = cloneDeep(meetingInfo);
 
         newInfo.displayHints.coHost = [DISPLAY_HINTS.LOCK_CONTROL_LOCK];
 
         // Updating with different info should trigger the event
-        locusInfo.updateMeetingInfo(newInfo, self);
-
-        checkMeetingInfoUpdatedCalled(true);
-        assert.deepEqual(mockMeeting, {
+        expectedMeeting = {
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
             LOCK_CONTROL_LOCK: true,
@@ -1455,29 +1462,32 @@ describe('plugin-meetings', () => {
             ROSTER_IN_MEETING: true,
           },
           userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
-        });
+        };
+        locusInfo.updateMeetingInfo(newInfo, self);
+
+        checkMeetingInfoUpdatedCalled(true);
 
         // update it with the same info
+        expectedMeeting = {
+          coHost: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+            LOCK_CONTROL_LOCK: true,
+          },
+          isLocked: false,
+          isUnlocked: true,
+          moderator: {
+            LOWER_SOMEONE_ELSES_HAND: true,
+          },
+          policy: {
+            LOCK_STATUS_UNLOCKED: true,
+            ROSTER_IN_MEETING: true,
+          },
+          userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
+        };
         locusInfo.updateMeetingInfo(newInfo, self);
 
         // since the info is the same it should not call trigger the event
         checkMeetingInfoUpdatedCalled(false);
-        assert.deepEqual(mockMeeting, {
-          coHost: {
-            LOWER_SOMEONE_ELSES_HAND: true,
-            LOCK_CONTROL_LOCK: true,
-          },
-          isLocked: false,
-          isUnlocked: true,
-          moderator: {
-            LOWER_SOMEONE_ELSES_HAND: true,
-          },
-          policy: {
-            LOCK_STATUS_UNLOCKED: true,
-            ROSTER_IN_MEETING: true,
-          },
-          userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
-        });
 
         // update it with the same info, but roles changed
         const updateSelf = cloneDeep(self);
@@ -1485,10 +1495,7 @@ describe('plugin-meetings', () => {
           type: 'COHOST',
           hasRole: true,
         });
-        locusInfo.updateMeetingInfo(newInfo, updateSelf);
-        // since the info is the same but roles changed, it should call trigger the event
-        checkMeetingInfoUpdatedCalledForRoles(true);
-        assert.deepEqual(mockMeeting, {
+        expectedMeeting = {
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
             LOCK_CONTROL_LOCK: true,
@@ -1508,7 +1515,10 @@ describe('plugin-meetings', () => {
             'LOCK_CONTROL_LOCK',
             'LOWER_SOMEONE_ELSES_HAND',
           ],
-        });
+        };
+        locusInfo.updateMeetingInfo(newInfo, updateSelf);
+        // since the info is the same but roles changed, it should call trigger the event
+        checkMeetingInfoUpdatedCalledForRoles(true);
       });
 
       it('gets roles from self if available', () => {

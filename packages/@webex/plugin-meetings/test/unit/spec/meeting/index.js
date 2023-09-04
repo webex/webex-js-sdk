@@ -6295,12 +6295,8 @@ describe('plugin-meetings', () => {
           updateLLMConnectionSpy = sinon.spy(meeting, 'updateLLMConnection');
         });
 
-        const check = async (url, expectedCalled) => {
+        const check = (url, expectedCalled) => {
           meeting.handleDataChannelUrlChange(url);
-
-          assert.notCalled(updateLLMConnectionSpy);
-
-          await testUtils.waitUntil(0);
 
           if (expectedCalled) {
             assert.calledWith(updateLLMConnectionSpy);
@@ -6309,17 +6305,17 @@ describe('plugin-meetings', () => {
           }
         };
 
-        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', async () => {
+        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', () => {
           meeting.config.enableAutomaticLLM = true;
           check('some url', true);
         });
 
-        it('does not call updateLLMConnection if datachannelURL is undefined', async () => {
+        it('does not call updateLLMConnection if datachannelURL is undefined', () => {
           meeting.config.enableAutomaticLLM = true;
           check(undefined, false);
         });
 
-        it('does not call updateLLMConnection if enableAutomaticLLM is false', async () => {
+        it('does not call updateLLMConnection if enableAutomaticLLM is false', () => {
           check('some url', false);
         });
       });
