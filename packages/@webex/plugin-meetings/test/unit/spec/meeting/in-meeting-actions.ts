@@ -67,6 +67,7 @@ describe('plugin-meetings', () => {
         canShareDesktop: null,
         canShareContent: null,
         canTransferFile: null,
+        canDoVideo: null,
         canAnnotate: null,
         canUseVoip: null,
         ...expected,
@@ -141,6 +142,7 @@ describe('plugin-meetings', () => {
       'canShareDesktop',
       'canShareContent',
       'canTransferFile',
+      'canDoVideo',
       'canAnnotate',
       'canUseVoip',
     ].forEach((key) => {

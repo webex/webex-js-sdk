@@ -3059,6 +3059,11 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private updateMeetingActions() {
+    const canDoVideo =
+      ControlsOptionsUtil.hasPolicies({
+        requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+        policies: this.selfUserPolicies,
+      }) || !this.arePolicyRestrictionsSupported();
     let changed = false;
     changed = this.inMeetingActions.set({
       canUseVoip:
@@ -3073,6 +3078,7 @@ export default class Meeting extends StatelessWebexPlugin {
             policies: this.selfUserPolicies,
           })) ||
         !this.arePolicyRestrictionsSupported(),
+      canDoVideo,
     });
     if (this.userDisplayHints !== undefined) {
       changed =
@@ -3218,6 +3224,7 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
           }),
+          canDoVideo,
           canShareApplication:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
