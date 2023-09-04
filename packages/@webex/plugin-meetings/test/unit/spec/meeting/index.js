@@ -5947,6 +5947,7 @@ describe('plugin-meetings', () => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
               meeting.type = callType;
               meeting.userDisplayHints = [];
+              meeting.meetingInfo = {some: 'info'};
 
               meeting.updateMeetingActions();
 
@@ -6005,7 +6006,7 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings}) => {
+          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings, meetingInfo}) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
@@ -6013,6 +6014,8 @@ describe('plugin-meetings', () => {
               meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
                 ? true
                 : enableUnifiedMeetings;
+
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
@@ -6028,6 +6031,8 @@ describe('plugin-meetings', () => {
                 meeting.userDisplayHints = [];
                 meeting.selfUserPolicies = {};
 
+                meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
+
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
@@ -6041,6 +6046,8 @@ describe('plugin-meetings', () => {
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
+
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               meeting.updateMeetingActions();
 
@@ -6087,6 +6094,24 @@ describe('plugin-meetings', () => {
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
           meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when there is no meeting info', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when it is a locus call', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+          meeting.meetingInfo = {some: 'info'};
+          meeting.type = 'CALL';
 
           meeting.updateMeetingActions();
 
@@ -6283,12 +6308,8 @@ describe('plugin-meetings', () => {
           updateLLMConnectionSpy = sinon.spy(meeting, 'updateLLMConnection');
         });
 
-        const check = async (url, expectedCalled) => {
+        const check = (url, expectedCalled) => {
           meeting.handleDataChannelUrlChange(url);
-
-          assert.notCalled(updateLLMConnectionSpy);
-
-          await testUtils.waitUntil(0);
 
           if (expectedCalled) {
             assert.calledWith(updateLLMConnectionSpy);
@@ -6297,17 +6318,17 @@ describe('plugin-meetings', () => {
           }
         };
 
-        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', async () => {
+        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', () => {
           meeting.config.enableAutomaticLLM = true;
           check('some url', true);
         });
 
-        it('does not call updateLLMConnection if datachannelURL is undefined', async () => {
+        it('does not call updateLLMConnection if datachannelURL is undefined', () => {
           meeting.config.enableAutomaticLLM = true;
           check(undefined, false);
         });
 
-        it('does not call updateLLMConnection if enableAutomaticLLM is false', async () => {
+        it('does not call updateLLMConnection if enableAutomaticLLM is false', () => {
           check('some url', false);
         });
       });

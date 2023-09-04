@@ -1106,14 +1106,6 @@ export default class LocusInfo extends EventsScope {
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
 
-      this.emitScoped(
-        {
-          file: 'locus-info',
-          function: 'updateMeetingInfo',
-        },
-        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED
-      );
-
       if (parsedInfo.updates.isLocked) {
         this.emitScoped(
           {
@@ -1139,6 +1131,14 @@ export default class LocusInfo extends EventsScope {
       this.parsedLocus.info = parsedInfo.current;
       // Parses the info and adds necessary values
       this.updateMeeting(parsedInfo.current);
+
+      this.emitScoped(
+        {
+          file: 'locus-info',
+          function: 'updateMeetingInfo',
+        },
+        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED
+      );
     }
     this.roles = roles;
   }
