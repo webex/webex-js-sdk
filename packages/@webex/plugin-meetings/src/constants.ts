@@ -359,6 +359,7 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
+  MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 };
 
 export const EVENT_TYPES = {

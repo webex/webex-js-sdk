@@ -210,6 +210,8 @@ function register() {
       toggleDisplay('incomingsection', true);
       newMeeting.acknowledge(type);
     }
+
+    handleStreamPublishedState(m.meeting);
   });
 }
 
@@ -701,9 +703,7 @@ const htmlMediaElements = [
 
 
 function cleanUpMedia() {
-  localMedia.microphoneStream.stop();
   localMedia.microphoneStream = undefined;
-  localMedia.cameraStream.stop();
   localMedia.cameraStream = undefined;
 
   [
@@ -955,6 +955,38 @@ const localMedia = {
   }
 }
 
+function handleStreamPublishedState(meeting) {
+  meeting.on('meeting:streamPublishStateChanged', ({isPublished, mediaType, stream}) => {
+    let debugString;
+
+    switch (mediaType) {
+      case 'VIDEO-MAIN':
+        debugString = 'local camera';
+        break;
+    
+      case 'VIDEO-SLIDES':
+        debugString = 'local share video';
+        break;
+    
+      case 'AUDIO-MAIN':
+        debugString = 'local microphone';
+        break;
+    
+      case 'AUDIO-SLIDES':
+        debugString = 'local share audio';
+        break;
+    
+      default:
+        break;
+    }
+
+    if (!isPublished) {
+      console.log(`MeetingControls#getUserMedia() :: ${debugString} stream unpublished, stopping it`);
+      stream.stop();
+    }
+  });
+}
+
 async function getUserMedia(constraints = {audio: true, video: true}) {
   const meeting = getCurrentMeeting();
 
@@ -1175,28 +1207,24 @@ async function startScreenShare() {
     const [localShareVideoStream, localShareAudioStream] = await webex.meetings.mediaHelpers.createDisplayStreamWithAudio();
 
     localMedia.screenShare.video = localShareVideoStream;
-    let isAudioShareEnded = false,
-        isVideoShareEnded = false;
+
     localMedia.screenShare.video.on('stream-ended', () => {
       console.log('MeetingControls#startScreenShare() :: local share video stream ended');
 
       localMedia.screenShare.video = undefined;
-      isVideoShareEnded = true;
-
-      if(isAudioShareEnded && isVideoShareEnded) meetingStreamsLocalShare.srcObject = null;
+      meetingStreamsLocalShareVideo.srcObject = null;
     });
 
     localMedia.screenShare.audio = localShareAudioStream;
+
     localMedia.screenShare.audio.on('stream-ended', () => {
       console.log('MeetingControls#startScreenShare() :: local share audio stream ended');
 
       localMedia.screenShare.audio = undefined;
-      isAudioShareEnded = true;
-
-      if(isAudioShareEnded && isVideoShareEnded) meetingStreamsLocalShare.srcObject = null;
+      meetingStreamsLocalShareAudio.srcObject = null;
     });
 
-    meetingStreamsLocalShare.srcObject = localShareVideoStream.outputStream;
+    meetingStreamsLocalShareVideo.srcObject = localShareVideoStream.outputStream;
 
     console.log('MeetingControls#startScreenShare() :: publishing share video & audio stream');
     await meeting.publishStreams({
@@ -1279,7 +1307,7 @@ function clearMediaDeviceList() {
 
 function getLocalMediaSettings() {
   if (localMedia.cameraStream) {
-    const videoSettings = localMedia.cameraStream.getTracks()[0]?.getSettings();
+    const videoSettings = localMedia.cameraStream.getSettings();
     const {frameRate, height} = videoSettings;
     localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
   }
