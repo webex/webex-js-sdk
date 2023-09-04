@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.202](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.201...v3.0.0-beta.202) (2023-09-04)
+
+
+### Bug Fixes
+
+* **meeting:** trigger message when update locusUrl ([#3046](https://github.com/webex/webex-js-sdk/issues/3046)) ([b747498](https://github.com/webex/webex-js-sdk/commit/b7474980951e5aa72ea1cf979ca49c3e75cdbdeb))
+
 ## [3.0.0-beta.201](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.200...v3.0.0-beta.201) (2023-09-01)
 
 
