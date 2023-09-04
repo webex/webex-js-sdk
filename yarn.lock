@@ -7515,9 +7515,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/calling@workspace:^, @webex/calling@workspace:packages/calling/calling":
+"@webex/calling@workspace:^, @webex/calling@workspace:packages/calling":
   version: 0.0.0-use.local
-  resolution: "@webex/calling@workspace:packages/calling/calling"
+  resolution: "@webex/calling@workspace:packages/calling"
   dependencies:
     "@babel/preset-typescript": 7.16.7
     "@commitlint/cli": 15.0.0
