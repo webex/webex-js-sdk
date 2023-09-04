@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, defer, isEmpty} from 'lodash';
+import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -1354,6 +1354,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       return Promise.resolve();
     } catch (err) {
+      this.updateMeetingActions();
+
       if (err instanceof MeetingInfoV2PolicyError) {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.POLICY;
         this.meetingInfoFailureCode = err.wbxAppApiCode;
@@ -2470,15 +2472,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {String} datachannelUrl
    * @returns {void}
    */
-
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
     if (datachannelUrl && this.config.enableAutomaticLLM) {
-      // Defer this as updateLLMConnection relies upon this.locusInfo.url which is only set
-      // after the MEETING_INFO_UPDATED callback finishes
-      defer(() => {
-        this.updateLLMConnection();
-      });
+      this.updateLLMConnection();
     }
   }
 
@@ -3021,6 +3018,31 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Indicates whether policy can be applied
+   * @returns {boolean}
+   */
+  private arePolicyRestrictionsSupported() {
+    // Locus calls do not return the correct display hints
+    if (this.isLocusCall()) {
+      return false;
+    }
+
+    // 1-2-1 calls and SIP dialling will have no meeting info
+    // so cannot support policy information
+    if (isEmpty(this.meetingInfo)) {
+      return false;
+    }
+
+    // Old locus info api does not return policy information
+    // @ts-ignore
+    if (!this.config.experimental.enableUnifiedMeetings) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Updates the meeting actions (display hints), depends on locus display hints, user policy and app api info
    * @returns {undefined}
    * @private
@@ -3040,9 +3062,7 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: this.selfUserPolicies,
           })) ||
-        // @ts-ignore
-        !this.config.experimental.enableUnifiedMeetings ||
-        this.isLocusCall(),
+        !this.arePolicyRestrictionsSupported(),
     });
     if (this.userDisplayHints !== undefined) {
       changed =
@@ -3179,13 +3199,11 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_FILE],
               displayHints: this.userDisplayHints,
             }) &&
-              (ControlsOptionsUtil.hasPolicies({
+              ControlsOptionsUtil.hasPolicies({
                 requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
                 policies: this.selfUserPolicies,
-              }) ||
-                // @ts-ignore
-                !this.config.experimental.enableUnifiedMeetings)) ||
-            this.isLocusCall(),
+              })) ||
+            !this.arePolicyRestrictionsSupported,
           canTransferFile: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
@@ -3195,13 +3213,11 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               displayHints: this.userDisplayHints,
             }) &&
-              (ControlsOptionsUtil.hasPolicies({
+              ControlsOptionsUtil.hasPolicies({
                 requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
                 policies: this.selfUserPolicies,
-              }) ||
-                // @ts-ignore
-                !this.config.experimental.enableUnifiedMeetings)) ||
-            this.isLocusCall(),
+              })) ||
+            !this.arePolicyRestrictionsSupported(),
           canShareCamera:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
@@ -3216,18 +3232,16 @@ export default class Meeting extends StatelessWebexPlugin {
               requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               displayHints: this.userDisplayHints,
             }) &&
-              (ControlsOptionsUtil.hasPolicies({
+              ControlsOptionsUtil.hasPolicies({
                 requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
                 policies: this.selfUserPolicies,
-              }) ||
-                // @ts-ignore
-                !this.config.experimental.enableUnifiedMeetings)) ||
-            this.isLocusCall(),
+              })) ||
+            !this.arePolicyRestrictionsSupported(),
           canShareContent:
             ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
               displayHints: this.userDisplayHints,
-            }) || this.isLocusCall(),
+            }) || !this.arePolicyRestrictionsSupported(),
           canAnnotate: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             policies: this.selfUserPolicies,

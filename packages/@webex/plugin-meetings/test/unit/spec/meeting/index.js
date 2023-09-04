@@ -5934,6 +5934,7 @@ describe('plugin-meetings', () => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
               meeting.type = callType;
               meeting.userDisplayHints = [];
+              meeting.meetingInfo = {some: 'info'};
 
               meeting.updateMeetingActions();
 
@@ -5992,7 +5993,7 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings}) => {
+          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings, meetingInfo}) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
@@ -6000,6 +6001,8 @@ describe('plugin-meetings', () => {
               meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
                 ? true
                 : enableUnifiedMeetings;
+
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
@@ -6015,6 +6018,8 @@ describe('plugin-meetings', () => {
                 meeting.userDisplayHints = [];
                 meeting.selfUserPolicies = {};
 
+                meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
+
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
@@ -6028,6 +6033,8 @@ describe('plugin-meetings', () => {
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
+
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               meeting.updateMeetingActions();
 
@@ -6074,6 +6081,24 @@ describe('plugin-meetings', () => {
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
           meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when there is no meeting info', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when it is a locus call', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+          meeting.meetingInfo = {some: 'info'};
+          meeting.type = 'CALL';
 
           meeting.updateMeetingActions();
 
