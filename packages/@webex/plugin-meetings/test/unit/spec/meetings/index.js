@@ -1371,7 +1371,7 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
             assert.calledOnce(MeetingsUtil.getMeetingAddedType);
-            assert.calledTwice(TriggerProxy.trigger);
+            assert.calledThrice(TriggerProxy.trigger);
             assert.calledWith(
               webex.meetings.meetingInfo.fetchMeetingInfo,
               'test destination',
