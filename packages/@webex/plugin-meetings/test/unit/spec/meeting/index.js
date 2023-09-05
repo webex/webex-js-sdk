@@ -5868,6 +5868,7 @@ describe('plugin-meetings', () => {
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let canShareWhiteBoardSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -5893,6 +5894,7 @@ describe('plugin-meetings', () => {
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
+          canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
 
         afterEach(() => {
@@ -6182,6 +6184,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
+          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
