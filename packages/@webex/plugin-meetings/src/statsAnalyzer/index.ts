@@ -508,7 +508,6 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     // eslint-disable-next-line no-param-reassign
-    if (previousValue === undefined) previousValue = 0;
     // eslint-disable-next-line no-param-reassign
     if (currentValue === undefined) currentValue = 0;
 
