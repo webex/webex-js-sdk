@@ -5942,16 +5942,16 @@ describe('plugin-meetings', () => {
               callType: 'MEETING',
               expectedEnabled: false,
             },
-            {
-              actionName: 'canDoVideo',
-              callType: 'CALL',
-              expectedEnabled: true,
-            },
-            {
-              actionName: 'canDoVideo',
-              callType: 'MEETING',
-              expectedEnabled: false,
-            },
+            // {
+            //   actionName: 'canDoVideo',
+            //   callType: 'CALL',
+            //   expectedEnabled: true,
+            // },
+            // {
+            //   actionName: 'canDoVideo',
+            //   callType: 'MEETING',
+            //   expectedEnabled: false,
+            // },
           ],
           ({actionName, callType, expectedEnabled}) => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
@@ -6010,17 +6010,17 @@ describe('plugin-meetings', () => {
               requiredPolicies: [],
               enableUnifiedMeetings: false,
             },
-            {
-              actionName: 'canDoVideo',
-              requiredDisplayHints: [],
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-              enableUnifiedMeetings: false,
-            }, 
-            {
-              actionName: 'canDoVideo',
-              requiredDisplayHints: [],
-              requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-            },
+            // {
+            //   actionName: 'canDoVideo',
+            //   requiredDisplayHints: [],
+            //   requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+            //   enableUnifiedMeetings: false,
+            // }, 
+            // {
+            //   actionName: 'canDoVideo',
+            //   requiredDisplayHints: [],
+            //   requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
+            // },
             {
               actionName: 'canAnnotate',
               requiredDisplayHints: [],
@@ -6171,6 +6171,70 @@ describe('plugin-meetings', () => {
 
           assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
         });
+
+        forEach(
+          [
+            {
+              meetingInfo: {},
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: true,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {},
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: true,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {},
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: false,
+              },
+              expectedActions: {
+                canDoVideo: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`has expectedActions ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+              meeting.config.experimental.enableUnifiedMeetings = true;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  canDoVideo: meeting.inMeetingActions.canDoVideo,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
 
         it('correctly updates the meeting actions', () => {
           // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
