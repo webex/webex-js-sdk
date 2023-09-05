@@ -30,9 +30,14 @@ module.exports = function injectPackageVersion() {
               false
             );
 
+            /**
+             * TODO: We need to find a way to avoid injection while running locally.
+             * Also need to figure out version injection into CDN before releasing 
+             * Calling SDK.
+             */
             if (!visited) {
               def.properties.push(
-                t.objectProperty(t.identifier('version'), t.stringLiteral(version))
+                t.objectProperty(t.identifier('version'), t.stringLiteral('0.0.0-next'))
               );
             }
           }

@@ -304,7 +304,7 @@ describe('plugin-dss', () => {
     describe('#_request', () => {
       it('handles a request correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuid.v4();
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},

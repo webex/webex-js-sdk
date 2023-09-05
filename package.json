@@ -9,6 +9,7 @@
   "workspaces": [
     "./packages/@webex/*",
     "./packages/webex",
+    "./packages/calling",
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*"
@@ -27,7 +28,7 @@
   "scripts": {
     "clean": "rimraf packages/**/.coverage packages/**/dist packages/**/types",
     "prebuild": "yarn run clean",
-    "build": "node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
+    "build": "yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
     "build:tsc": "yarn workspace @webex/plugin-meetings run build && yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit",
     "build:script": "node ./tooling/index.js build --umd",
     "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/plugin-meetings run build",

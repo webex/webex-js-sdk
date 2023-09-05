@@ -183,6 +183,9 @@ jobs:
       - name: Increment Package Versions
         run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
 
+      - name: Build a webex UMD
+        run: yarn run build
+
       - name: Deploy Packages - [DRY RUN]
         run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
 

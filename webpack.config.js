@@ -21,17 +21,35 @@ dotenv.config({path: '.env.default'});
  */
 module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   entry: {
-    webex:
-      env && env.NODE_ENV === 'development'
-        ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
-        : './packages/webex',
-    meetings: `${path.resolve(__dirname)}/packages/webex/src/meetings.js`,
+    webex: {
+      import:
+        env && env.NODE_ENV === 'development'
+          ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
+          : './packages/webex',
+      library: {
+        name: 'Webex',
+        type: 'umd',
+      },
+    },
+    meetings: {
+      import: `${path.resolve(__dirname)}/packages/webex/src/meetings.js`,
+      library: {
+        name: 'Webex',
+        type: 'umd',
+      },
+    },
+    calling: {
+      import: `${path.resolve(__dirname)}/packages/webex/src/calling.js`,
+      library: {
+        name: 'Calling',
+        type: 'umd',
+        export: 'default',
+      },
+    },
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
     filename: '[name].min.js',
-    library: 'Webex',
-    libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
     path:
       env && env.umd
@@ -63,7 +81,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
           __dirname,
           `./packages/${packageName}/src/index.js`
         );
-        alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index.js`);
+        alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index`);
 
         return alias;
       }, {}),

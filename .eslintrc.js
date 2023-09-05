@@ -53,34 +53,6 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 'off',
         'lines-between-class-members': ['error', 'always', {exceptAfterSingleLine: true}],
         'tsdoc/syntax': 'off', // Todo: remove this before merging pr
-        'valid-jsdoc': [
-          'error',
-          {
-            prefer: {
-              arg: 'param',
-              argument: 'param',
-              return: 'returns',
-              virtual: 'abstract',
-              fires: 'emits',
-            },
-            requireParamDescription: false,
-            requireReturn: true,
-            requireReturnType: true,
-            requireReturnDescription: false,
-          },
-        ],
-        'require-jsdoc': [
-          'warn',
-          {
-            require: {
-              FunctionDeclaration: true,
-              MethodDefinition: true,
-              ClassDeclaration: true,
-              ArrowFunctionExpression: false,
-              FunctionExpression: true,
-            },
-          },
-        ],
       },
     },
     {
