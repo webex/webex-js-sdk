@@ -3080,6 +3080,20 @@ export default class Meeting extends StatelessWebexPlugin {
         }) &&
           !!this.meetingInfo?.video) ||
         !this.arePolicyRestrictionsSupported(),
+      supportHDV:
+        (ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.SUPPORT_HDV],
+          policies: this.selfUserPolicies,
+        }) &&
+          this.meetingInfo?.video?.supportHDV) ||
+        !this.arePolicyRestrictionsSupported(),
+      supportHQV:
+        (ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
+          policies: this.selfUserPolicies,
+        }) &&
+          this.meetingInfo?.video?.supportHQV) ||
+        !this.arePolicyRestrictionsSupported(),
     });
     if (this.userDisplayHints !== undefined) {
       changed =
@@ -3088,6 +3102,7 @@ export default class Meeting extends StatelessWebexPlugin {
           canAdmitParticipant: MeetingUtil.canAdmitParticipant(this.userDisplayHints),
           canLock: MeetingUtil.canUserLock(this.userDisplayHints),
           canUnlock: MeetingUtil.canUserUnlock(this.userDisplayHints),
+          canShareWhiteBoard: MeetingUtil.canShareWhiteBoard(this.userDisplayHints),
           canSetDisallowUnmute: ControlsOptionsUtil.canSetDisallowUnmute(this.userDisplayHints),
           canUnsetDisallowUnmute: ControlsOptionsUtil.canUnsetDisallowUnmute(this.userDisplayHints),
           canSetMuteOnEntry: ControlsOptionsUtil.canSetMuteOnEntry(this.userDisplayHints),

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.205](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.204...v3.0.0-beta.205) (2023-09-05)
+
+
+### Bug Fixes
+
+* update metrics body for use with telemetry service ([#3045](https://github.com/webex/webex-js-sdk/issues/3045)) ([02ffb5e](https://github.com/webex/webex-js-sdk/commit/02ffb5e264cc1dccef77836d383019ada34caf5b))
+
+## [3.0.0-beta.204](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.203...v3.0.0-beta.204) (2023-09-05)
+
+
+### Features
+
+* **whiteboard:** add whiteboard control ([#3047](https://github.com/webex/webex-js-sdk/issues/3047)) ([9744754](https://github.com/webex/webex-js-sdk/commit/9744754a0e5ed4d02388f979b42b19ba3b634ec8))
+
 ## [3.0.0-beta.203](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.202...v3.0.0-beta.203) (2023-09-04)
 
 ## [3.0.0-beta.202](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.201...v3.0.0-beta.202) (2023-09-04)

@@ -5868,6 +5868,7 @@ describe('plugin-meetings', () => {
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
+        let canShareWhiteBoardSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -5893,6 +5894,7 @@ describe('plugin-meetings', () => {
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
+          canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
 
         afterEach(() => {
@@ -6052,6 +6054,90 @@ describe('plugin-meetings', () => {
               meeting.updateMeetingActions();
 
               assert.isFalse(meeting.inMeetingActions.get()[actionName]);
+            });
+          }
+        );
+
+
+        forEach(
+          [
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: false,
+                  supportHQV: false,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: false,
+                [SELF_POLICY.SUPPORT_HQV]: false,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+              },
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+              meeting.config.experimental.enableUnifiedMeetings = true;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  supportHDV: meeting.inMeetingActions.supportHDV,
+                  supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
             });
           }
         );
@@ -6254,6 +6340,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
+          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

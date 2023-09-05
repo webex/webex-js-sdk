@@ -74,6 +74,9 @@ interface IInMeetingActions {
   canDoVideo?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
+  supportHQV?: boolean;
+  supportHDV?: boolean;
+  canShareWhiteBoard?: boolean;
 }
 
 /**
@@ -212,6 +215,12 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUseVoip = null;
 
+  supportHQV = null;
+
+  supportHDV = null;
+
+  canShareWhiteBoard = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -282,6 +291,9 @@ export default class InMeetingActions implements IInMeetingActions {
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
     canUseVoip: this.canUseVoip,
+    supportHQV: this.supportHQV,
+    supportHDV: this.supportHDV,
+    canShareWhiteBoard: this.canShareWhiteBoard,
   });
 
   /**
