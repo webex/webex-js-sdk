@@ -71,6 +71,7 @@ describe('plugin-meetings', () => {
         canUseVoip: null,
         supportHQV: null,
         supportHDV: null,
+        canShareWhiteBoard: null,
         ...expected,
       };
 
@@ -147,6 +148,7 @@ describe('plugin-meetings', () => {
       'canUseVoip',
       'supportHQV',
       'supportHDV',
+      'canShareWhiteBoard',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

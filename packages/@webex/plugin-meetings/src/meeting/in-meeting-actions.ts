@@ -75,6 +75,7 @@ interface IInMeetingActions {
   canUseVoip?: boolean;
   supportHQV?: boolean;
   supportHDV?: boolean;
+  canShareWhiteBoard?: boolean;
 }
 
 /**
@@ -215,6 +216,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   supportHDV = null;
 
+  canShareWhiteBoard = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -286,6 +289,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canUseVoip: this.canUseVoip,
     supportHQV: this.supportHQV,
     supportHDV: this.supportHDV,
+    canShareWhiteBoard: this.canShareWhiteBoard,
   });
 
   /**
