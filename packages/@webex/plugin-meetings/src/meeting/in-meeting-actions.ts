@@ -73,6 +73,8 @@ interface IInMeetingActions {
   canTransferFile?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
+  supportHQV?: boolean;
+  supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
 }
 
@@ -210,6 +212,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUseVoip = null;
 
+  supportHQV = null;
+
+  supportHDV = null;
+
   canShareWhiteBoard = null;
 
   /**
@@ -281,6 +287,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canTransferFile: this.canTransferFile,
     canAnnotate: this.canAnnotate,
     canUseVoip: this.canUseVoip,
+    supportHQV: this.supportHQV,
+    supportHDV: this.supportHDV,
     canShareWhiteBoard: this.canShareWhiteBoard,
   });
 

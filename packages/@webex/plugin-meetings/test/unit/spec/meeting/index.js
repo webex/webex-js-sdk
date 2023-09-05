@@ -6058,6 +6058,90 @@ describe('plugin-meetings', () => {
           }
         );
 
+
+        forEach(
+          [
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: false,
+                  supportHQV: false,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: false,
+                [SELF_POLICY.SUPPORT_HQV]: false,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+              },
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+              meeting.config.experimental.enableUnifiedMeetings = true;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  supportHDV: meeting.inMeetingActions.supportHDV,
+                  supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
         it('canUseVoip is enabled based on locus info when the conditions are met', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};

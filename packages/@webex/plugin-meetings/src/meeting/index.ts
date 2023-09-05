@@ -3073,6 +3073,20 @@ export default class Meeting extends StatelessWebexPlugin {
             policies: this.selfUserPolicies,
           })) ||
         !this.arePolicyRestrictionsSupported(),
+      supportHDV:
+        (ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.SUPPORT_HDV],
+          policies: this.selfUserPolicies,
+        }) &&
+          this.meetingInfo?.video?.supportHDV) ||
+        !this.arePolicyRestrictionsSupported(),
+      supportHQV:
+        (ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
+          policies: this.selfUserPolicies,
+        }) &&
+          this.meetingInfo?.video?.supportHQV) ||
+        !this.arePolicyRestrictionsSupported(),
     });
     if (this.userDisplayHints !== undefined) {
       changed =
