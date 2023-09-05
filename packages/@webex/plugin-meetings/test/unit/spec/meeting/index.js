@@ -5942,16 +5942,6 @@ describe('plugin-meetings', () => {
               callType: 'MEETING',
               expectedEnabled: false,
             },
-            // {
-            //   actionName: 'canDoVideo',
-            //   callType: 'CALL',
-            //   expectedEnabled: true,
-            // },
-            // {
-            //   actionName: 'canDoVideo',
-            //   callType: 'MEETING',
-            //   expectedEnabled: false,
-            // },
           ],
           ({actionName, callType, expectedEnabled}) => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
@@ -6010,17 +6000,6 @@ describe('plugin-meetings', () => {
               requiredPolicies: [],
               enableUnifiedMeetings: false,
             },
-            // {
-            //   actionName: 'canDoVideo',
-            //   requiredDisplayHints: [],
-            //   requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-            //   enableUnifiedMeetings: false,
-            // }, 
-            // {
-            //   actionName: 'canDoVideo',
-            //   requiredDisplayHints: [],
-            //   requiredPolicies: [SELF_POLICY.SUPPORT_VIDEO],
-            // },
             {
               actionName: 'canAnnotate',
               requiredDisplayHints: [],
