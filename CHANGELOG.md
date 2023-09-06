@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.206](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.205...v3.0.0-beta.206) (2023-09-06)
+
+
+### Features
+
+* **videorestrict:** added test to trigger release ([#3056](https://github.com/webex/webex-js-sdk/issues/3056)) ([d22d80f](https://github.com/webex/webex-js-sdk/commit/d22d80f5f71633b94ffb2adaf7777724dc33b498))
+
 ## [3.0.0-beta.205](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.204...v3.0.0-beta.205) (2023-09-05)
 
 
