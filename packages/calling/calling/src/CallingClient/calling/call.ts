@@ -1932,7 +1932,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
       },
       {
-        localTracks: {audio: localAudioTrack},
+        localTracks: {audio: localAudioTrack, video: localVideoTrack},
         direction: {
           audio: 'sendrecv',
           video: 'sendrecv',
@@ -2449,6 +2449,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(EVENT_KEYS.REMOTE_MEDIA, e.track);
+      } else {
+        log.info(`Emitting Remote Video event for track type : ${e.type} ${e.track}`, {
+          file: CALL_FILE,
+          method: 'mediaTrackListener',
+        });
+        this.emit(EVENT_KEYS.REMOTE_VIDEO, e.track);
       }
     });
   }
