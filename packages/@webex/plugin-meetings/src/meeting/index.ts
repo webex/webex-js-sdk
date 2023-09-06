@@ -124,7 +124,6 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
-import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -550,7 +549,6 @@ export default class Meeting extends StatelessWebexPlugin {
   roles: any[];
   environment: string;
   namespace = MEETINGS;
-  annotationInfo: AnnotationInfo;
   allowMediaInLobby: boolean;
 
   /**
