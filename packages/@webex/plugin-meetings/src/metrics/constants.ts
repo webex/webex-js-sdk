@@ -1,6 +1,8 @@
 // Metrics constants ----------------------------------------------------------
 
 const BEHAVIORAL_METRICS = {
+  NO_FRAMES_SENT: 'js_sdk_meetings_no_frames_sent',
+  NO_VIDEO_ENCODED: 'js_sdk_meetings_no_video_encoded',
   MEETINGS_REGISTRATION_FAILED: 'js_sdk_meetings_registration_failed',
   MEETINGS_REGISTRATION_SUCCESS: 'js_sdk_meetings_registration_success',
   MERCURY_CONNECTION_FAILURE: 'js_sdk_mercury_connection_failure',

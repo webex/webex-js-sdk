@@ -4514,6 +4514,35 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       });
     });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_VIDEO_ENCODED, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_VIDEO_ENCODED);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_VIDEO_ENCODED,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_FRAMES_SENT, (data) => {
+      if (
+        (this.mediaProperties.mediaDirection?.sendVideo && data.mediaType === 'video') ||
+        (this.mediaProperties.mediaDirection?.sendShare && data.mediaType === 'share')
+      ) {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'compareLastStatsResult',
+          },
+          EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+          data
+        );
+      }
+    });
   };
 
   /**

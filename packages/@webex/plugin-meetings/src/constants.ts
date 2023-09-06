@@ -308,6 +308,8 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_IS_SHARING_BLOCKED: 'meeting:self:isSharingBlocked',
   MEETING_CONTROLS_LAYOUT_UPDATE: 'meeting:layout:update',
   MEETING_ENTRY_EXIT_TONE_UPDATE: 'meeting:entryExitTone:update',
+  MEETING_NO_FRAMES_SENT: 'meeting:noFramesSent',
+  MEETING_NO_VIDEO_ENCODED: 'meeting:noVideoEncoded',
   MEMBERS_UPDATE: 'members:update',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
