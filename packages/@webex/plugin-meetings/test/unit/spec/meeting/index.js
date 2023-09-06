@@ -1562,6 +1562,155 @@ describe('plugin-meetings', () => {
               },
             });
           });
+          it('NO_FRAMES_SENT triggers "meeting:noFramesSent" event and sends metrics', async () => {
+            meeting.mediaProperties.mediaDirection = {sendVideo: true};
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_FRAMES_SENT,
+              {mediaType: 'video'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+              {
+                mediaType: 'video',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+          });
+          it('NO_FRAMES_SENT triggers "meeting:noFramesSent" event and sends metrics for share', async () => {
+            meeting.mediaProperties.mediaDirection = {sendShare: true};
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_FRAMES_SENT,
+              {mediaType: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+              {
+                mediaType: 'share',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+          });
+          it('NO_VIDEO_ENCODED triggers "meeting:noVideoEncoded" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_VIDEO_ENCODED,
+              {mediaType: 'video'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_VIDEO_ENCODED,
+              {
+                mediaType: 'video',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_VIDEO_ENCODED);
+          });
+          it('NO_VIDEO_DECODED triggers "meeting:noVideoDecoded" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_VIDEO_DECODED,
+              {mediaType: 'video'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_VIDEO_DECODED,
+              {
+                mediaType: 'video',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_VIDEO_DECODED);
+          });
+          it('NO_FRAMES_RECEIVED triggers "meeting:noFramesReceived" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_FRAMES_RECEIVED,
+              {mediaType: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_FRAMES_RECEIVED,
+              {
+                mediaType: 'share',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_FRAMES_RECEIVED);
+          });
+          it('NO_AUDIO_SENT triggers "meeting:noAudioSent" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_AUDIO_SENT,
+              {mediaType: 'audio'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_AUDIO_SENT,
+              {
+                mediaType: 'audio',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_AUDIO_SENT);
+          });
+          it('NO_AUDIO_RECEIVED triggers "meeting:noAudioReceived" event and sends metrics', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.NO_AUDIO_RECEIVED,
+              {mediaType: 'audio'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'compareLastStatsResult',
+              },
+              EVENT_TRIGGERS.MEETING_NO_AUDIO_RECEIVED,
+              {
+                mediaType: 'audio',
+              }
+            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.NO_AUDIO_RECEIVED);
+          });
         });
 
         it('should pass bundlePolicy to createMediaConnection', async () => {

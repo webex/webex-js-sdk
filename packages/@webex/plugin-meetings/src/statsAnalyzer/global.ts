@@ -32,6 +32,7 @@ const STATS_DEFAULT = {
       send: {
         width: 0,
         height: 0,
+        framesSent: 0,
       },
       recv: {
         width: 0,
@@ -42,6 +43,7 @@ const STATS_DEFAULT = {
       send: {
         width: 0,
         height: 0,
+        framesSent: 0,
       },
       recv: {
         width: 0,

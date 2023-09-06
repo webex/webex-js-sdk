@@ -5263,6 +5263,78 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       });
     });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_VIDEO_ENCODED, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_VIDEO_ENCODED);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_VIDEO_ENCODED,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_FRAMES_SENT, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_FRAMES_SENT);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_FRAMES_SENT,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_FRAMES_RECEIVED, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_FRAMES_RECEIVED);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_FRAMES_RECEIVED,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_VIDEO_DECODED, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_VIDEO_DECODED);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_VIDEO_DECODED,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_AUDIO_RECEIVED, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_AUDIO_RECEIVED);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_AUDIO_RECEIVED,
+        data
+      );
+    });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.NO_AUDIO_SENT, (data) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.NO_AUDIO_SENT);
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'compareLastStatsResult',
+        },
+        EVENT_TRIGGERS.MEETING_NO_AUDIO_SENT,
+        data
+      );
+    });
   };
 
   getMediaConnectionDebugId() {
