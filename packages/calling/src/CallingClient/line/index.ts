@@ -2,7 +2,7 @@ import {Mutex} from 'async-mutex';
 import {v4 as uuid} from 'uuid';
 import {IDeviceInfo, MobiusDeviceId, MobiusStatus, ServiceIndicator} from '../../common/types';
 import {ILine, LINE_EVENTS, LineEventTypes, LineStatus} from './types';
-import {LINE_FILE, KEEPALIVE_UTIL} from '../constants';
+import {LINE_FILE} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
@@ -13,8 +13,6 @@ import {LineError} from '../../Errors/catalog/LineError';
 import {LOGGER} from '../../Logger/types';
 import {validateServiceData} from '../../common';
 import SDKConnector from '../../SDKConnector';
-import {EVENT_KEYS} from '../../Events/types';
-import {CallingClientError} from '../../Errors';
 
 export default class Line extends Eventing<LineEventTypes> implements ILine {
   #webex: WebexSDK;
@@ -70,7 +68,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     mutex: Mutex,
     primaryMobiusUris: string[],
     backupMobiusUris: string[],
-    callingClientEmitter: (event: EVENT_KEYS, clientError?: CallingClientError) => void,
     logLevel: LOGGER,
     serviceDataConfig?: CallingClientConfig['serviceData'],
     phoneNumber?: string,
@@ -104,7 +101,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       serviceData,
       this.#mutex,
       this.lineEmitter,
-      callingClientEmitter,
       logLevel
     );
 
@@ -130,33 +126,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    */
   public async deregister() {
     this.registration.deregister();
-  }
-
-  /**
-   * Request for the Device status.
-   */
-  private async sendKeepAlive(deviceInfo: IDeviceInfo): Promise<void> {
-    const deviceId = deviceInfo.device?.deviceId as string;
-    const interval = deviceInfo.keepaliveInterval as number;
-    const url = deviceInfo.device?.uri as string;
-
-    const logContext = {
-      file: LINE_FILE,
-      method: KEEPALIVE_UTIL,
-    };
-
-    this.registration.clearKeepaliveTimer();
-
-    log.info(
-      `Fetched details :-> deviceId: ${deviceId}, interval :-> ${interval}, url: ${url}`,
-      logContext
-    );
-
-    if (this.registration.isDeviceRegistered()) {
-      this.registration.startKeepaliveTimer(url, interval);
-    } else {
-      log.warn('Device is not active, exiting.', logContext);
-    }
   }
 
   /**

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {filterMobiusUris, handleRegistrationErrors, validateServiceData} from '../common/Utils';
+import {filterMobiusUris, handleCallingClientErrors, validateServiceData} from '../common/Utils';
 import {ERROR_TYPE} from '../Errors/types';
 import {LOGGER, LogContext} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
@@ -124,21 +124,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * Calling client events emitter
-   */
-  private callingClientEmitter = (event: EVENT_KEYS, clientError?: CallingClientError) => {
-    switch (event) {
-      case EVENT_KEYS.ERROR:
-        if (clientError) {
-          this.emit(event, clientError);
-        }
-        break;
-      default:
-        break;
-    }
-  };
-
-  /**
    * An Incoming Call listener.
    */
   private incomingCallListener() {
@@ -219,7 +204,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
     } catch (err: unknown) {
-      handleRegistrationErrors(
+      handleCallingClientErrors(
         err as WebexRequestPayload,
         (clientError) => {
           this.metricManager.submitRegistrationMetric(
@@ -308,7 +293,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           '' as LogContext
         );
       } catch (err: unknown) {
-        handleRegistrationErrors(
+        handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.metricManager.submitRegistrationMetric(
@@ -488,7 +473,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.mutex,
       this.primaryMobiusUris,
       this.backupMobiusUris,
-      this.callingClientEmitter,
       this.getLoggingLevel(),
       this.sdkConfig?.serviceData
     );

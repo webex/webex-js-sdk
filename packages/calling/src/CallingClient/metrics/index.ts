@@ -5,6 +5,7 @@ import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../../common
 import {WebexSDK} from '../../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
 import log from '../../Logger';
+import {LineError} from '../../Errors/catalog/LineError';
 
 let metricManager: IMetricManager;
 
@@ -45,7 +46,7 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    clientError: CallingClientError | undefined
+    clientError: LineError | CallingClientError | undefined
   ) {
     let data;
 

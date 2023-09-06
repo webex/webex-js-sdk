@@ -40,6 +40,7 @@ export function getTestUtilsWebex() {
       calendar: null,
       device: {
         url: 'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
+        deviceId: 'c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
         userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
         orgId: '1704d30d-a131-4bc7-9449-948487643793',
         version: '1',
@@ -126,8 +127,6 @@ export const flushPromises = async (count: number): Promise<void> => {
 export const mockCallingClient = {
   emit: jest.fn(),
   register: jest.fn(),
-  sendKeepAlive: jest.fn(),
-  sendMetric: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
 };

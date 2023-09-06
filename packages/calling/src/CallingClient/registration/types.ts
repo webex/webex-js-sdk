@@ -16,7 +16,6 @@ export interface IRegistration {
   setStatus: (value: MobiusStatus) => void;
   getStatus: () => MobiusStatus;
   getDeviceInfo: () => IDeviceInfo;
-  startKeepaliveTimer: (url: string, interval: number) => void;
   clearKeepaliveTimer: () => void;
   deregister: () => void;
   setActiveMobiusUrl: (url: string) => void;

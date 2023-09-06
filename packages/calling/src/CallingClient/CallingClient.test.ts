@@ -1,15 +1,8 @@
-import {Mutex} from 'async-mutex';
 import {LOGGER} from '../Logger/types';
-import {
-  getMockDeviceInfo,
-  getTestUtilsWebex,
-  getMobiusDiscoveryResponse,
-  getMockRequestTemplate,
-} from '../common/testUtil';
+import {getTestUtilsWebex, getMockRequestTemplate, getMockDeviceInfo} from '../common/testUtil';
 import {
   CallDirection,
   CallType,
-  MobiusServers,
   MobiusStatus,
   ServiceIndicator,
   WebexRequestPayload,
@@ -17,26 +10,51 @@ import {
 /* eslint-disable dot-notation */
 import {CallSessionEvent, EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
-import {CallingClient, createClient} from './CallingClient';
+import {createClient} from './CallingClient';
 import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
-import {CALLING_CLIENT_FILE, URL_ENDPOINT} from './constants';
+import {
+  CALLING_CLIENT_FILE,
+  DISCOVERY_URL,
+  NETWORK_CHANGE_DETECTION_UTIL,
+  NETWORK_FLAP_TIMEOUT,
+  REGISTRATION_FILE,
+  SPARK_USER_AGENT,
+} from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
-import * as regUtils from './registration/register';
+import {ILine} from './line/types';
+import {
+  ipPayload,
+  regionBody,
+  regionPayload,
+  primaryUrl,
+  discoveryPayload,
+  registrationPayload,
+  uri,
+  myIP,
+} from './callingClientFixtures';
 
 describe('CallingClient Tests', () => {
   // Common initializers
 
-  const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
+  const handleErrorSpy = jest.spyOn(utils, 'handleCallingClientErrors');
   const webex = getTestUtilsWebex();
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);
 
+  const logSpy = jest.spyOn(log, 'info');
+  const warnSpy = jest.spyOn(log, 'warn');
+
+  const originalProcessNextTick = process.nextTick;
+  function flushPromises() {
+    return new Promise((resolve) => {
+      originalProcessNextTick(resolve);
+    });
+  }
+
   describe('ServiceData tests', () => {
     let callingClient: ICallingClient | undefined;
-    const defaultServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
-    const createRegistrationSpy = jest.spyOn(regUtils, 'createRegistration');
 
     afterEach(() => {
       callManager.removeAllListeners();
@@ -48,35 +66,10 @@ describe('CallingClient Tests', () => {
      * calling and empty domain value.
      */
     it('Verify valid calling serviceData with no input sdk config', async () => {
-      expect(() => {
-        callingClient = createClient(webex);
+      expect(async () => {
+        callingClient = await createClient(webex);
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
-      expect(callingClient).toBeTruthy();
-      expect(createRegistrationSpy).toBeCalledWith(
-        webex,
-        defaultServiceData,
-        expect.any(Mutex),
-        expect.anything(),
-        expect.any(String)
-      );
-    });
-
-    /**
-     * Input sdk config to callingClient but no serviceData in it, it should default to
-     * service type calling and empty domain value.
-     */
-    it('Verify valid calling serviceData with no input sdk config', async () => {
-      expect(() => {
-        callingClient = createClient(webex, {logger: {level: LOGGER.INFO}});
-      }).not.toThrow(Error);
-      expect(callingClient).toBeTruthy();
-      expect(createRegistrationSpy).toBeCalledWith(
-        webex,
-        defaultServiceData,
-        expect.any(Mutex),
-        expect.anything(),
-        expect.any(String)
-      );
     });
 
     /**
@@ -90,36 +83,10 @@ describe('CallingClient Tests', () => {
       /* eslint-disable @typescript-eslint/no-explicit-any */
       const serviceDataObj: any = {indicator: '', domain: ''};
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+      expect(async () => {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
-      expect(callingClient).toBeTruthy();
-      expect(createRegistrationSpy).toBeCalledWith(
-        webex,
-        defaultServiceData,
-        expect.any(Mutex),
-        expect.anything(),
-        expect.any(String)
-      );
-    });
-
-    /**
-     * Input sdk config to callingClient with serviceData carrying invalid value for indicator
-     * and empty string for domain field in it.
-     *
-     * It should throw error and abort execution as indicator value is invalid.
-     *
-     * INDICATOR value MUST MATCH with one of the values in ServiceIndicator enum.
-     */
-    it('Verify invalid service indicator, empty domain', async () => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
-      const serviceDataObj: any = {indicator: 'test', domain: ''};
-
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
-      }).toThrow(Error);
-      expect(callingClient).toBe(undefined);
-      expect(createRegistrationSpy).not.toHaveBeenCalled();
     });
 
     /**
@@ -134,11 +101,14 @@ describe('CallingClient Tests', () => {
       /* eslint-disable @typescript-eslint/no-explicit-any */
       const serviceDataObj: any = {indicator: 'test', domain: 'test.example.com'};
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
-      }).toThrow(Error);
-      expect(callingClient).toBe(undefined);
-      expect(createRegistrationSpy).not.toHaveBeenCalled();
+      try {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      } catch (e) {
+        expect(e.message).toEqual(
+          'Invalid service indicator, Allowed values are: calling,contactcenter'
+        );
+      }
+      expect.assertions(1);
     });
 
     /**
@@ -153,11 +123,12 @@ describe('CallingClient Tests', () => {
     it('CALLING: verify invalid service domain', async () => {
       const serviceDataObj = {indicator: ServiceIndicator.CALLING, domain: 'test'};
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
-      }).toThrow(Error);
-      expect(callingClient).toBe(undefined);
-      expect(createRegistrationSpy).not.toHaveBeenCalled();
+      try {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      } catch (e) {
+        expect(e.message).toEqual('Invalid service domain.');
+      }
+      expect.assertions(1);
     });
 
     /**
@@ -171,17 +142,10 @@ describe('CallingClient Tests', () => {
     it('CALLING: verify valid empty service domain', async () => {
       const serviceDataObj = {indicator: ServiceIndicator.CALLING, domain: ''};
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+      expect(async () => {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
-      expect(callingClient).toBeTruthy();
-      expect(createRegistrationSpy).toBeCalledWith(
-        webex,
-        defaultServiceData,
-        expect.any(Mutex),
-        expect.anything(),
-        expect.any(String)
-      );
     });
 
     /**
@@ -195,29 +159,12 @@ describe('CallingClient Tests', () => {
     it('ContactCenter: verify empty invalid service domain', async () => {
       const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
-      }).toThrow(Error);
-      expect(callingClient).toBe(undefined);
-      expect(createRegistrationSpy).not.toHaveBeenCalled();
-    });
-
-    /**
-     * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', but an invalid(not of valid domain pattern) string for domain field in it.
-     *
-     * It should throw error and abort execution as domain value is invalid.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
-     */
-    it('ContactCenter: verify invalid service domain', async () => {
-      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: 'test'};
-
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
-      }).toThrow(Error);
-      expect(callingClient).toBe(undefined);
-      expect(createRegistrationSpy).not.toHaveBeenCalled();
+      try {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      } catch (e) {
+        expect(e.message).toEqual('Invalid service domain.');
+      }
+      expect.assertions(1);
     });
 
     /**
@@ -234,156 +181,133 @@ describe('CallingClient Tests', () => {
         domain: 'test.example.com',
       };
 
-      expect(() => {
-        callingClient = createClient(webex, {serviceData: serviceDataObj});
+      expect(async () => {
+        callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
+    });
+
+    it('Get current log level', async () => {
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
       expect(callingClient).toBeTruthy();
-      expect(createRegistrationSpy).toBeCalledWith(
-        webex,
-        serviceDataObj,
-        expect.any(Mutex),
-        expect.anything(),
-        expect.any(String)
-      );
+      expect(callingClient.getLoggingLevel).toBeTruthy();
+      expect(callingClient.getLoggingLevel()).toEqual(LOGGER.INFO);
     });
   });
 
-  describe('Registration tests', () => {
-    let callingClient: ICallingClient;
-
-    const warnSpy = jest.spyOn(log, 'warn');
-
-    const mockRegistrationBody = getMockDeviceInfo();
-
-    const mockIPReturnBody = {
-      ipv4: '1.1.1.1',
-      ipv6: '2.2.2.2',
-    };
-
-    const ipPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: mockIPReturnBody,
-    });
-
-    const regionBody = {
-      attribution:
-        'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-      clientAddress: '72.163.220.6',
-      clientRegion: 'AP-SOUTHEAST',
-      countryCode: 'IN',
-      disclaimer:
-        'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-      regionCode: 'AP-SOUTHEAST',
-      timezone: 'Asia/Kolkata',
-    };
-
-    const regionPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: regionBody,
-    });
-
-    const discoveryBody: MobiusServers = getMobiusDiscoveryResponse();
-    const primaryUrl = `${discoveryBody.primary.uris[0]}/calling/web/`;
-    const discoveryPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: discoveryBody,
-    });
-
-    const registrationPayload = <WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: mockRegistrationBody,
-    });
-
-    const mockBody = {
-      userId: webex.internal.device.userId,
-      clientDeviceUri: webex.internal.device.url,
-      serviceData: {
-        domain: '',
-        indicator: 'calling',
-      },
-    };
-
-    beforeEach(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
-    });
+  describe('Mobius Server discovery tests', () => {
+    let callingClient;
 
     afterEach(() => {
       jest.clearAllTimers();
       jest.clearAllMocks();
-      callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-      callingClient.removeAllListeners(EVENT_KEYS.REGISTERED);
+      callingClient.removeAllListeners();
       callManager.removeAllListeners();
+      callingClient = undefined;
       jest.useRealTimers();
     });
 
-    it('verify successful Registration cases and keepalive', async () => {
+    it('verify successful mobius server url discovery', async () => {
       webex.request
         .mockResolvedValueOnce(ipPayload)
         .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(discoveryPayload)
-        .mockReturnValue(registrationPayload);
+        .mockResolvedValueOnce(discoveryPayload);
 
-      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
-      await callingClient.register();
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
-      expect(webex.request).toBeCalledTimes(4);
-      expect(handleErrorSpy).not.toHaveBeenCalled();
-      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
-      expect(callingClient.getActiveMobiusUrl()).toEqual(primaryUrl);
+      expect(webex.request).toBeCalledTimes(3);
+      expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+      expect(handleErrorSpy).not.toBeCalled();
 
-      /** trigger sendKeepAlive and verify whether keepalive request is sent or not */
-
-      jest.useFakeTimers();
-      webex.request.mockClear();
-      const body = getMockDeviceInfo();
-
-      /* specify keepalive interval as 30 seconds and advance timers by 30 */
-      callingClient.sendKeepAlive({...body, keepaliveInterval: 30});
-
-      jest.advanceTimersByTime(30 * 1000);
-      await Promise.resolve();
-
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).nthCalledWith(1, {
+        method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${body.device.uri}/status`,
-        method: 'POST',
+        uri: `${uri}myip`,
+      });
+
+      expect(webex.request).nthCalledWith(2, {
+        method: 'GET',
+        uri: `${DISCOVERY_URL}/${myIP}`,
+        addAuthHeader: false,
+        headers: {
+          [SPARK_USER_AGENT]: null,
+        },
+      });
+
+      expect(webex.request).nthCalledWith(3, {
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
       });
     });
 
-    it('verify successful Registration cases when region discovery fails', async () => {
+    it('case when region discovery fails', async () => {
       const failurePayload = {
         statusCode: 500,
       };
 
-      webex.request
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValueOnce(registrationPayload);
+      webex.request.mockRejectedValueOnce(failurePayload);
 
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      await callingClient.register();
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
       expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
         file: CALLING_CLIENT_FILE,
         method: 'getMobiusServers',
       });
 
-      expect(callingClient.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        uri: `${uri}myip`,
+        method: 'GET',
+      });
 
-      const uri = `${webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`;
+      expect(callingClient.primaryMobiusUris).toEqual([uri]);
 
-      expect(callingClient.getActiveMobiusUrl()).toBe(uri);
-      expect(webex.request).toBeCalledTimes(2);
-
-      expect(webex.request).toHaveBeenNthCalledWith(1, {
+      expect(webex.request).nthCalledWith(1, {
         method: 'GET',
         ...getMockRequestTemplate(),
         uri: `${uri}myip`,
       });
-      expect(webex.request).toHaveBeenNthCalledWith(2, {
-        method: 'POST',
+
+      expect(warnSpy).toBeCalledWith(
+        'Error in finding Mobius Servers. Will use the default URL.',
+        ''
+      );
+    });
+
+    it('when region discovery succeeds but region based mobius url discovery fails', async () => {
+      const failurePayload = {
+        statusCode: 500,
+      };
+
+      webex.request
+        .mockResolvedValueOnce(ipPayload)
+        .mockResolvedValueOnce(regionPayload)
+        .mockRejectedValueOnce(failurePayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
+        file: CALLING_CLIENT_FILE,
+        method: 'getMobiusServers',
+      });
+      expect(webex.request).toBeCalledTimes(3);
+
+      expect(callingClient.primaryMobiusUris).toEqual([uri]);
+
+      expect(webex.request).nthCalledWith(1, {
+        method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}device`,
-        body: mockBody,
+        uri: `${uri}myip`,
+      });
+
+      expect(webex.request).nthCalledWith(2, {
+        method: 'GET',
+        uri: `${DISCOVERY_URL}/${myIP}`,
+        addAuthHeader: false,
+        headers: {
+          [SPARK_USER_AGENT]: null,
+        },
       });
 
       expect(warnSpy).toBeCalledWith(
@@ -392,69 +316,11 @@ describe('CallingClient Tests', () => {
       );
     });
 
-    it('verify failure Registration cases all requests fail ', async () => {
-      webex.request.mockImplementation(() => {
-        throw new Error();
-      });
-
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      callingClient.register();
-      await utils.waitForMsecs(20);
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      expect(handleErrorSpy).toHaveBeenCalled();
-      expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
-        ''
-      );
-    });
-
-    it('verify successful Registration cases when region discovery succeeds but region based Mobius Url fails', async () => {
-      webex.request
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockRejectedValueOnce({statusCode: 404})
-        .mockResolvedValue(registrationPayload);
-
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      await callingClient.register();
-      await utils.waitForMsecs(50);
-
-      expect(handleErrorSpy).toHaveBeenCalled();
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
-
-      const uri = `${webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`;
-      expect(callingClient.getActiveMobiusUrl()).toEqual(uri);
-      expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
-        ''
-      );
-    });
-
-    it('verify failure Registration cases', async () => {
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 401,
-        body: mockRegistrationBody,
-      });
-
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-
-      webex.request
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(discoveryPayload)
-        .mockRejectedValue(failurePayload);
-
-      await callingClient.register();
-      await utils.waitForMsecs(100);
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      expect(handleErrorSpy).toHaveBeenCalled();
-    });
-
-    it('Verify successful registration after initializing callingClient through a config', async () => {
+    it('Verify successful mobius server url discovery after initializing callingClient through a config', async () => {
       const infoSpy = jest.spyOn(log, 'info');
-      webex.request.mockResolvedValueOnce(discoveryPayload).mockReturnValue(registrationPayload);
+      webex.request.mockResolvedValueOnce(discoveryPayload);
 
-      callingClient = new CallingClient(webex, {
+      callingClient = await createClient(webex, {
         discovery: {
           region: 'AP-SOUTHEAST',
           country: 'IN',
@@ -464,15 +330,242 @@ describe('CallingClient Tests', () => {
         },
       });
 
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
-      await callingClient.register();
-      expect(callingClient.getRegistrationStatus()).toBe(MobiusStatus.ACTIVE);
+      expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
 
-      expect(callingClient.getActiveMobiusUrl()).toBe(primaryUrl);
-      expect(infoSpy).toHaveBeenCalledWith('Updating region and country from the SDK config', {
+      expect(infoSpy).toBeCalledWith('Updating region and country from the SDK config', {
         file: 'CallingClient',
         method: 'getMobiusServers',
       });
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
+        method: 'GET',
+      });
+      expect(handleErrorSpy).not.toBeCalled();
+    });
+  });
+
+  describe('Network activity detection tests', () => {
+    let callingClient;
+    let line;
+    let reg;
+    let deRegSpy;
+    let restoreSpy;
+    let restartRegisterSpy;
+    let registerSpy;
+
+    beforeEach(async () => {
+      jest.useFakeTimers();
+
+      webex.request
+        .mockResolvedValueOnce(ipPayload)
+        .mockResolvedValueOnce(regionPayload)
+        .mockResolvedValueOnce(discoveryPayload)
+        .mockResolvedValueOnce(registrationPayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      line = Object.values(callingClient.lineDict)[0] as ILine;
+      reg = line.registration;
+
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      await line.register();
+
+      deRegSpy = jest.spyOn(line.registration, 'deregister');
+      restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      restartRegisterSpy = jest.spyOn(reg, 'restartRegistration');
+      registerSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      callingClient = undefined;
+      jest.useRealTimers();
+    });
+
+    it('detect a network flap in mercury connection', async () => {
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toBeCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).nthCalledWith(
+        7,
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      expect(deRegSpy).toBeCalledWith();
+      expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
+      expect(webex.request).toBeCalledTimes(6);
+      expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
+      expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
+    });
+
+    it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 500,
+        body: '',
+      });
+
+      const mockRegistrationBody = getMockDeviceInfo();
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockRegistrationBody,
+      });
+
+      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValueOnce(successPayload);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toBeCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+      /* We should be detecting the network recovery */
+      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
+        file: REGISTRATION_FILE,
+        method: 'handleConnectionRestoration',
+      });
+
+      expect(deRegSpy).toBeCalledWith();
+      expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
+      expect(webex.request).toBeCalledTimes(6);
+      expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
+      expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
+    });
+
+    it('Simulate a network flap before initial registration is done', async () => {
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      reg.deregister();
+      reg.setActiveMobiusUrl(undefined);
+
+      jest.clearAllMocks();
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toBeCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
+        file: REGISTRATION_FILE,
+        method: 'handleConnectionRestoration',
+      });
+
+      /*
+       * When initial registration is not done, network flap
+       * will not trigger de-registration/registration
+       */
+      expect(webex.request).not.toBeCalled();
+      expect(restoreSpy).not.toBeCalled();
+      expect(registerSpy).not.toBeCalled();
+    });
+
+    it('Simulate a network flap with 1 active call', async () => {
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      /** create a new call */
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+      await flushPromises();
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).not.toBeCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).not.toBeCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      expect(registerSpy).not.toBeCalledWith(true);
+    });
+  });
+
+  describe('Line creation tests', () => {
+    let callingClient;
+    let line;
+
+    beforeEach(async () => {
+      callingClient = await createClient(webex);
+      line = Object.values(callingClient.lineDict)[0];
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      callingClient = undefined;
+      jest.useRealTimers();
+    });
+
+    it('verify line dict successfully created', () => {
+      expect(callingClient.lineDict).toBeTruthy();
+      expect(line).toBeTruthy();
+      expect(Object.keys(callingClient.lineDict).length).toEqual(1);
+    });
+
+    it('verify getLines response', () => {
+      expect(callingClient.getLines).toBeTruthy();
+      expect(callingClient.getLines()).toEqual(callingClient.lineDict);
     });
   });
 
@@ -480,8 +573,8 @@ describe('CallingClient Tests', () => {
   describe('Calling tests', () => {
     let callingClient: ICallingClient;
 
-    beforeAll(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+    beforeAll(async () => {
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
     });
 
     afterAll(() => {
@@ -540,6 +633,7 @@ describe('CallingClient Tests', () => {
       } catch (error) {
         done(error);
       }
+      expect.assertions(3);
     });
 
     it('attempt to create call with incorrect number format 2', (done) => {
@@ -563,6 +657,7 @@ describe('CallingClient Tests', () => {
       } catch (error) {
         done(error);
       }
+      expect.assertions(3);
     });
   });
 
@@ -570,8 +665,8 @@ describe('CallingClient Tests', () => {
     const mockOn = webex.internal.mercury.on;
     let callingClient: ICallingClient;
 
-    beforeEach(() => {
-      callingClient = new CallingClient(webex, {logger: {level: LOGGER.INFO}});
+    beforeEach(async () => {
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
     });
 
     afterEach(() => {
