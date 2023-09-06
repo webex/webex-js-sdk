@@ -6249,6 +6249,15 @@ describe('plugin-meetings', () => {
               },
             },
             {
+              meetingInfo: {},
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: false,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
               meetingInfo: {some: 'data'},
               selfUserPolicies: {
                 [SELF_POLICY.SUPPORT_VIDEO]: true,
