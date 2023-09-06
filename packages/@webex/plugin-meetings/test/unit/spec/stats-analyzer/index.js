@@ -82,6 +82,22 @@ describe('plugin-meetings', () => {
       let pc;
       let networkQualityMonitor;
       let statsAnalyzer;
+      const statusResultOutboundRTP = {
+        type: 'outbound-rtp',
+        frameHeight: 720,
+        frameWidth: 1280,
+        packetsLost: 11,
+        framesSent: 105,
+        hugeFramesSent: 1,
+        framesEncoded: 102,
+        rttThreshold: 501,
+        jitterThreshold: 501,
+        jitterBufferDelay: 288.131459,
+        jitterBufferEmittedCount: 4013,
+        trackIdentifier: '6bbf5506-6a7e-4397-951c-c05b72ab0ace',
+        bytesSent: 1233,
+        totalPacketsSent: 100,
+      };
 
       let receivedEventsData = {
         local: {},
@@ -176,6 +192,12 @@ describe('plugin-meetings', () => {
         });
         statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STOPPED, (data) => {
           receivedEventsData.remote.stopped = data;
+        });
+        statsAnalyzer.on(EVENTS.NO_FRAMES_SENT, (data) => {
+          receivedEventsData.noFramesSent = data;
+        });
+        statsAnalyzer.on(EVENTS.NO_VIDEO_ENCODED, (data) => {
+          receivedEventsData.noVideoEncoded = data;
         });
       });
 
@@ -325,30 +347,91 @@ describe('plugin-meetings', () => {
       });
       it('processes track results and populate statsResults.resolutions object when type is outbound-rtp with video', async () => {
         await startStatsAnalyzer({expected: {receiveVideo: true}});
-        const statusResultInboundRTP = {
-          type: 'outbound-rtp',
-          frameHeight: 720,
-          frameWidth: 1280,
-          packetsLost: 11,
-          framesSent: 105,
-          hugeFramesSent: 1,
-          rttThreshold: 501,
-          jitterThreshold: 501,
-          jitterBufferDelay: 288.131459,
-          jitterBufferEmittedCount: 4013,
-          trackIdentifier: '6bbf5506-6a7e-4397-951c-c05b72ab0ace',
-        };
-        await statsAnalyzer.parseGetStatsResult(statusResultInboundRTP, 'video');
+
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'video');
         checkStats('outbound-rtp');
       });
 
       it('doesnot processes track results with audio', async () => {
         await startStatsAnalyzer({expected: {receiveAudio: true}});
-        const statusResultInboundRTP = {
-          type: 'outbound-rtp',
-        };
-        await statsAnalyzer.parseGetStatsResult(statusResultInboundRTP, 'audio');
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'audio');
         assert.deepEqual(statsAnalyzer.statsResults.resolutions.audio, undefined);
+      });
+
+      it('emits NO_FRAMES_ENCODED when frames are not being encoded', async () => {
+        const expected = {mediaType: 'video'};
+        await startStatsAnalyzer({expected: {sendVideo: true}});
+
+        statsAnalyzer.lastStatsResults.video.send = {framesEncoded: 102, totalPacketsSent: 106};
+
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'video');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noVideoEncoded, expected);
+      });
+
+      it('emits NO_FRAMES_SENT when frames are not being sent but frames are being encoded', async () => {
+        await startStatsAnalyzer({expected: {sendVideo: true}});
+
+        const expected = {mediaType: 'video'};
+
+        statsAnalyzer.lastStatsResults.video.send = {
+          framesEncoded: 10,
+          framesSent: 105,
+          totalPacketsSent: 106,
+        };
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'video');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noFramesSent, expected);
+      });
+
+      it('doesnot emits NO_FRAMES_SENT when last emitted event is LOCAL_MEDIA_STOPPED', async () => {
+        statsAnalyzer.lastEmittedStartStopEvent.video.local = EVENTS.LOCAL_MEDIA_STOPPED;
+
+        await startStatsAnalyzer({expected: {sendVideo: true}});
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'video');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noFramesSent, undefined);
+      });
+
+      it('emits NO_FRAMES_ENCODED when frames are not being encoded for share', async () => {
+        const expected = {mediaType: 'share'};
+        await startStatsAnalyzer({expected: {sendShare: true}});
+
+        statsAnalyzer.lastStatsResults.share.send = {framesEncoded: 102, totalPacketsSent: 106};
+
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'share');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noVideoEncoded, expected);
+      });
+
+      it('emits NO_FRAMES_SENT when frames are not being sent but frames are being encoded for share', async () => {
+        const expected = {mediaType: 'share'};
+        await startStatsAnalyzer({expected: {sendShare: true}});
+
+        statsAnalyzer.lastStatsResults.share.send = {
+          framesEncoded: 10,
+          framesSent: 105,
+          totalPacketsSent: 106,
+        };
+
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'share');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noFramesSent, expected);
+      });
+
+      it('doesnot emits NO_FRAMES_SENT when last emitted event is LOCAL_MEDIA_STOPPED for share', async () => {
+        statsAnalyzer.lastEmittedStartStopEvent.video.local = EVENTS.LOCAL_MEDIA_STOPPED;
+
+        await startStatsAnalyzer({expected: {sendShare: true}});
+        await statsAnalyzer.parseGetStatsResult(statusResultOutboundRTP, 'share');
+
+        statsAnalyzer.compareLastStatsResult();
+        assert.deepEqual(receivedEventsData.noFramesSent, undefined);
       });
     });
   });

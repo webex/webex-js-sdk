@@ -25,6 +25,8 @@ import {
 
 export const EVENTS = {
   MEDIA_QUALITY: 'MEDIA_QUALITY',
+  NO_FRAMES_SENT: 'NO_FRAMES_SENT',
+  NO_VIDEO_ENCODED: 'NO_VIDEO_ENCODED',
   LOCAL_MEDIA_STARTED: 'LOCAL_MEDIA_STARTED',
   LOCAL_MEDIA_STOPPED: 'LOCAL_MEDIA_STOPPED',
   REMOTE_MEDIA_STARTED: 'REMOTE_MEDIA_STARTED',
@@ -517,7 +519,7 @@ export class StatsAnalyzer extends EventsScope {
 
     if (currentValue - previousValue > 0) {
       newEvent = isLocal ? EVENTS.LOCAL_MEDIA_STARTED : EVENTS.REMOTE_MEDIA_STARTED;
-    } else if (currentValue === previousValue && currentValue > 0) {
+    } else if (currentValue === previousValue && currentValue >= 0) {
       newEvent = isLocal ? EVENTS.LOCAL_MEDIA_STOPPED : EVENTS.REMOTE_MEDIA_STOPPED;
     }
 
@@ -632,13 +634,24 @@ export class StatsAnalyzer extends EventsScope {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
           );
-        } else {
+        } else if (this.lastEmittedStartStopEvent[mediaType].local !== EVENTS.LOCAL_MEDIA_STOPPED) {
           if (
             currentStats.framesEncoded === previousStats.framesEncoded ||
             currentStats.framesEncoded === 0
           ) {
+            this.lastEmittedStartStopEvent[mediaType].local = EVENTS.NO_VIDEO_ENCODED;
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames Encoded`
+            );
+            this.emit(
+              {
+                file: 'statsAnalyzer',
+                function: 'compareLastStatsResult',
+              },
+              EVENTS.NO_VIDEO_ENCODED,
+              {
+                mediaType,
+              }
             );
           }
 
@@ -651,8 +664,28 @@ export class StatsAnalyzer extends EventsScope {
               `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames sent`
             );
           }
-        }
 
+          // Video is encoded but frames are not sent
+          if (
+            currentStats.framesEncoded !== previousStats.framesEncoded &&
+            (currentStats.framesSent === previousStats.framesSent || currentStats.framesSent === 0)
+          ) {
+            this.lastEmittedStartStopEvent[mediaType].local = EVENTS.NO_FRAMES_SENT;
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames sent even though frames are encoded`
+            );
+            this.emit(
+              {
+                file: 'statsAnalyzer',
+                function: 'compareLastStatsResult',
+              },
+              EVENTS.NO_FRAMES_SENT,
+              {
+                mediaType,
+              }
+            );
+          }
+        }
         this.emitStartStopEvents(
           mediaType,
           previousStats.framesSent,
@@ -728,13 +761,24 @@ export class StatsAnalyzer extends EventsScope {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} RTP packets sent`
           );
-        } else {
+        } else if (this.lastEmittedStartStopEvent[mediaType].local !== EVENTS.LOCAL_MEDIA_STOPPED) {
           if (
             currentStats.framesEncoded === previousStats.framesEncoded ||
             currentStats.framesEncoded === 0
           ) {
+            this.lastEmittedStartStopEvent[mediaType].local = EVENTS.NO_VIDEO_ENCODED;
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames getting encoded`
+            );
+            this.emit(
+              {
+                file: 'statsAnalyzer',
+                function: 'compareLastStatsResult',
+              },
+              EVENTS.NO_VIDEO_ENCODED,
+              {
+                mediaType,
+              }
             );
           }
 
@@ -745,6 +789,27 @@ export class StatsAnalyzer extends EventsScope {
           ) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} frames sent`
+            );
+          }
+
+          // Share video is encoded but frames are not sent
+          if (
+            currentStats.framesEncoded !== previousStats.framesEncoded &&
+            (currentStats.framesSent === previousStats.framesSent || currentStats.framesSent === 0)
+          ) {
+            this.lastEmittedStartStopEvent[mediaType].local = EVENTS.NO_FRAMES_SENT;
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#compareLastStatsResult --> No ${mediaType} Frames sent even though frames are being encoded`
+            );
+            this.emit(
+              {
+                file: 'statsAnalyzer',
+                function: 'compareLastStatsResult',
+              },
+              EVENTS.NO_FRAMES_SENT,
+              {
+                mediaType,
+              }
             );
           }
         }
@@ -902,7 +967,6 @@ export class StatsAnalyzer extends EventsScope {
 
       this.statsResults[mediaType][sendrecvType].availableBandwidth = kilobytes.toFixed(1);
       this.statsResults[mediaType].bytesSent = kilobytes;
-
       this.statsResults[mediaType][sendrecvType].framesEncoded =
         result.framesEncoded - this.statsResults.internal[mediaType][sendrecvType].framesEncoded;
       this.statsResults[mediaType][sendrecvType].keyFramesEncoded =
