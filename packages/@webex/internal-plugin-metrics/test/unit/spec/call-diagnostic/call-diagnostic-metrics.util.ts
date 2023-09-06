@@ -87,7 +87,7 @@ describe('internal-plugin-metrics', () => {
     [
       ['https://localhost', 'test'],
       ['https://127.0.0.1', 'test'],
-      ['https://web.webex.com', 'production'],
+      ['https://web.webex.com', 'prod'],
     ].forEach(([webClientDomain, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
         assert.deepEqual(getBuildType(webClientDomain), expected);
@@ -113,7 +113,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(item, {
         eventPayload: {
           origin: {
-            buildType: 'production',
+            buildType: 'prod',
             networkType: 'unknown',
           },
           event: {name: eventName, ...expectedEvent},
