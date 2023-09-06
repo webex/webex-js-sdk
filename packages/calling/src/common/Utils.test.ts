@@ -31,7 +31,6 @@ import {
 } from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
-  ErrorObject,
   ERROR_CODE,
   ERROR_LAYER,
   ERROR_TYPE,

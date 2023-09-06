@@ -20,6 +20,7 @@ import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, VOICEMAIL_ACTION} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
+import {VOICEMAIL_FILE} from './constants';
 
 /**
  *

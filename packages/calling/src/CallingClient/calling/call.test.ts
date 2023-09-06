@@ -7,7 +7,7 @@ import * as Utils from '../../common/Utils';
 import {CallEvent, EVENT_KEYS, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_METRIC, METRIC_TYPE} from '../metrics/types';
+import {METRIC_EVENT, TRANSFER_METRIC, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
