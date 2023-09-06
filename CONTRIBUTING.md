@@ -98,10 +98,10 @@ Install tooling dependencies with:
 yarn install
 ```
 
-Build the SDK:
+Build the SDK locally:
 
 ```bash
-yarn run build
+yarn run build:local
 ```
 
 If at any point your out-of-the-box builds or failing or if you are tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
@@ -171,7 +171,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 A local development flow might look like
 
 1. Edit source code in `MYPACKAGE`.
-2. Use `yarn run build` to build all packages .
+2. Use `yarn run build:local` to build all packages .
 3. Use `yarn run test --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
 
 4. Repeat steps 1-3 until the tests pass.
@@ -228,7 +228,7 @@ To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add
 git clone git@github.com:webex/webex-js-sdk.git
 cd webex-js-sdk
 yarn install
-yarn run build
+yarn run build:local
 yarn run samples:serve
 ```
 
