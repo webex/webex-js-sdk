@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.59.3](https://github.com/webex/webex-js-sdk/compare/v2.59.2...v2.59.3) (2023-09-06)
+
+
+### Bug Fixes
+
+* **meeting:** added noFramesSent noVideoEncoded events ([#3041](https://github.com/webex/webex-js-sdk/issues/3041)) ([d0c3188](https://github.com/webex/webex-js-sdk/commit/d0c31884fddd0ebff575dcf422a30adb3e542632))
+
 ### [2.59.2](https://github.com/webex/webex-js-sdk/compare/v2.59.1...v2.59.2) (2023-08-28)
 
 
