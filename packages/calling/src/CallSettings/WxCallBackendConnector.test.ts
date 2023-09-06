@@ -1,3 +1,4 @@
+/* eslint-disable dot-notation */
 import {getTestUtilsWebex} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
 import {
@@ -78,7 +79,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: webexUri,
       });
-      expect(callSettingsClient.xsiEndpoint).toEqual(xsiEndpoint);
+      expect(callSettingsClient['xsiEndpoint']).toEqual(xsiEndpoint);
       webex.request.mockClear();
     });
 
