@@ -1,15 +1,15 @@
 # @webex/typescript-config
 
 [![icense: Cisco](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
-![state: beta](https://img.shields.io/badge/State\-Beta-blue?style=flat-square)
+![state: beta](https://img.shields.io/badge/State-Beta-blue?style=flat-square)
 ![scope: internal](https://img.shields.io/badge/Scope-Internal-red?style=flat-square)
 
 This package is an internal and private plugin used as a shared module when applying a standard [TypeScript](https://www.typescriptlang.org/) configuration to modern modules within this project.
 
-* [Installation](#installation)
-* [Usage](#usage)
-* [Contribute](#contribute)
-* [Maintainers](#maintainers)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contribute](#contribute)
+- [Maintainers](#maintainers)
 
 ## Installation
 
@@ -17,7 +17,7 @@ Since this package is marked `private` as a part of its definition, it can only 
 
 This package is meant to be consumed as a **dev-dependency**, and requires the following peer-dependencies:
 
-* `typescript`
+- `typescript`
 
 Installation, local to this project, can be performed by using the following commands:
 
@@ -42,7 +42,7 @@ a TypeScript configuration file must be consumed within the target package using
   "extends": "@webex/typescript-config/static/index.json", // must directly alias the json file
   "compilerOptions": {
     "outDir": "./dist/module", // Set out directory.
-    "declarationDir": "./dist/types", // Set declration directory.
+    "declarationDir": "./dist/types" // Set declration directory.
   },
   "include": [
     "./src/**/*.ts" // Set the files to include when building.
@@ -56,6 +56,7 @@ Once the `./tsconfig.json` file has been configured based on the information pro
 {
   "scripts": {
     "build": "yarn build:src",
+    "foo": "bar",
     "build:src": "tsc",
     "test:static:syntax": "tsc --noEmit"
   }
