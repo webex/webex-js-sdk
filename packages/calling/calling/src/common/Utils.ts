@@ -461,31 +461,14 @@ export async function handleRegistrationErrors(
 export async function handleCallingClientErrors(
   err: WebexRequestPayload,
   emitterCb: CallingClientErrorEmitterCallback,
-  loggerContext: LogContext,
-  restoreRegCb?: restoreRegistrationCallBack
+  loggerContext: LogContext
 ): Promise<boolean> {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
 
   const errorCode = err.statusCode as number;
-  let finalError = false;
+  const finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
-    case ERROR_CODE.UNAUTHORIZED: {
-      // Return it to the Caller
-      finalError = true;
-      log.warn(`401 Unauthorized`, loggerContext);
-
-      updateErrorContext(
-        loggerContext,
-        ERROR_TYPE.TOKEN_ERROR,
-        'User is unauthorized due to an expired token. Sign out, then sign back in.',
-        clientError
-      );
-
-      emitterCb(clientError, finalError);
-      break;
-    }
-
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateErrorContext(
@@ -495,88 +478,6 @@ export async function handleCallingClientErrors(
         clientError
       );
 
-      emitterCb(clientError, finalError);
-      break;
-    }
-
-    case ERROR_CODE.SERVICE_UNAVAILABLE: {
-      log.warn(`503 Service Unavailable`, loggerContext);
-      updateErrorContext(
-        loggerContext,
-        ERROR_TYPE.SERVICE_UNAVAILABLE,
-        'An error occurred on the server while processing the request. Wait a moment and try again.',
-        clientError
-      );
-
-      emitterCb(clientError, finalError);
-      break;
-    }
-    case ERROR_CODE.FORBIDDEN: {
-      log.warn(`403 Forbidden`, loggerContext);
-      const errorBody = <IDeviceInfo>err.body;
-
-      if (!errorBody) {
-        log.warn('Error response has no body, throwing default error', loggerContext);
-        updateErrorContext(
-          loggerContext,
-          ERROR_TYPE.FORBIDDEN_ERROR,
-          'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
-          clientError
-        );
-
-        emitterCb(clientError, finalError);
-
-        return finalError;
-      }
-      const code = errorBody.errorCode as number;
-      log.warn(`Error code found : ${code}`, loggerContext);
-      switch (code) {
-        case DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED: {
-          const errorMessage = 'User device limit exceeded';
-          log.warn(errorMessage, loggerContext);
-          if (restoreRegCb) {
-            const caller = loggerContext.method || 'handleErrors';
-            await restoreRegCb(errorBody, caller);
-          }
-          break;
-        }
-        case DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED: {
-          const errorMessage =
-            'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.';
-          finalError = true;
-          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
-          log.warn(errorMessage, loggerContext);
-          emitterCb(clientError, true);
-          break;
-        }
-        case DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED: {
-          const errorMessage =
-            'An unknown error occurred while provisioning the device. Wait a moment and try again.';
-          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
-          log.warn(errorMessage, loggerContext);
-          emitterCb(clientError, finalError);
-          break;
-        }
-        default: {
-          const errorMessage =
-            'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.';
-          updateErrorContext(loggerContext, ERROR_TYPE.FORBIDDEN_ERROR, errorMessage, clientError);
-          log.warn(errorMessage, loggerContext);
-          emitterCb(clientError, finalError);
-        }
-      }
-      break;
-    }
-    case ERROR_CODE.DEVICE_NOT_FOUND: {
-      finalError = true;
-      log.warn(`404 Device Not Found`, loggerContext);
-
-      updateErrorContext(
-        loggerContext,
-        ERROR_TYPE.NOT_FOUND,
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-        clientError
-      );
       emitterCb(clientError, finalError);
       break;
     }

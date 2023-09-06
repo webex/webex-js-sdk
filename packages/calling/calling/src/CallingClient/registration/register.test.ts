@@ -28,6 +28,7 @@ import {
 import {ICall} from '../calling/types';
 import {LINE_EVENTS, LineStatus} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
+import {IRegistration} from './types';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -78,7 +79,7 @@ describe('Registration Tests', () => {
     body: mockPostResponse,
   });
 
-  let reg: any;
+  let reg: IRegistration;
   let restartSpy;
   let failbackRetry429Spy;
   let restoreSpy;

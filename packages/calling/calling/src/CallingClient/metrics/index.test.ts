@@ -1,6 +1,6 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../../common/testUtil';
-import getMetricManager from './index';
+import getMetricManager from '.';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from './types';
 import {VERSION} from '../constants';
 import {createClientError} from '../../Errors/catalog/CallingDeviceError';

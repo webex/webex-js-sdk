@@ -1,14 +1,8 @@
 import {LOGGER} from '../Logger/types';
-import {
-  getTestUtilsWebex,
-  getMobiusDiscoveryResponse,
-  getMockRequestTemplate,
-  getMockDeviceInfo,
-} from '../common/testUtil';
+import {getTestUtilsWebex, getMockRequestTemplate, getMockDeviceInfo} from '../common/testUtil';
 import {
   CallDirection,
   CallType,
-  MobiusServers,
   MobiusStatus,
   ServiceIndicator,
   WebexRequestPayload,
@@ -27,11 +21,19 @@ import {
   NETWORK_FLAP_TIMEOUT,
   REGISTRATION_FILE,
   SPARK_USER_AGENT,
-  URL_ENDPOINT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
-import {mockPostResponse} from './registration/registerFixtures';
+import {
+  ipPayload,
+  regionBody,
+  regionPayload,
+  primaryUrl,
+  discoveryPayload,
+  registrationPayload,
+  uri,
+  myIP,
+} from './callingClientFixtures';
 
 describe('CallingClient Tests', () => {
   // Common initializers
@@ -43,48 +45,6 @@ describe('CallingClient Tests', () => {
 
   const logSpy = jest.spyOn(log, 'info');
   const warnSpy = jest.spyOn(log, 'warn');
-
-  const mockIPReturnBody = {
-    ipv4: '1.1.1.1',
-    ipv6: '2.2.2.2',
-  };
-
-  const ipPayload = <WebexRequestPayload>(<unknown>{
-    statusCode: 200,
-    body: mockIPReturnBody,
-  });
-
-  const regionBody = {
-    attribution:
-      'This product includes GeoLite2 data created by MaxMind, available from http://www.maxmind.com',
-    clientAddress: '72.163.220.6',
-    clientRegion: 'AP-SOUTHEAST',
-    countryCode: 'IN',
-    disclaimer:
-      'This service is intended for use by Webex Team only. Unauthorized use is prohibited.',
-    regionCode: 'AP-SOUTHEAST',
-    timezone: 'Asia/Kolkata',
-  };
-
-  const regionPayload = <WebexRequestPayload>(<unknown>{
-    statusCode: 200,
-    body: regionBody,
-  });
-
-  const discoveryBody: MobiusServers = getMobiusDiscoveryResponse();
-  const primaryUrl = `${discoveryBody.primary.uris[0]}/calling/web/`;
-  const discoveryPayload = <WebexRequestPayload>(<unknown>{
-    statusCode: 200,
-    body: discoveryBody,
-  });
-
-  const registrationPayload = <WebexRequestPayload>(<unknown>{
-    statusCode: 200,
-    body: mockPostResponse,
-  });
-
-  const uri = `${webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`;
-  const myIP = mockIPReturnBody.ipv4;
 
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
@@ -108,6 +68,7 @@ describe('CallingClient Tests', () => {
     it('Verify valid calling serviceData with no input sdk config', async () => {
       expect(async () => {
         callingClient = await createClient(webex);
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
     });
 
@@ -118,6 +79,7 @@ describe('CallingClient Tests', () => {
     it('Verify valid calling serviceData with no input sdk config', async () => {
       expect(async () => {
         callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
     });
 
@@ -134,6 +96,7 @@ describe('CallingClient Tests', () => {
 
       expect(async () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
     });
 
@@ -148,13 +111,15 @@ describe('CallingClient Tests', () => {
     it('Verify invalid service indicator, empty domain', async () => {
       /* eslint-disable @typescript-eslint/no-explicit-any */
       const serviceDataObj: any = {indicator: 'test', domain: ''};
+
       try {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
-        expect(e.message).toMatch(
+        expect(e.message).toEqual(
           'Invalid service indicator, Allowed values are: calling,contactcenter'
         );
       }
+      expect.assertions(1);
     });
 
     /**
@@ -172,10 +137,11 @@ describe('CallingClient Tests', () => {
       try {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
-        expect(e.message).toMatch(
+        expect(e.message).toEqual(
           'Invalid service indicator, Allowed values are: calling,contactcenter'
         );
       }
+      expect.assertions(1);
     });
 
     /**
@@ -193,8 +159,9 @@ describe('CallingClient Tests', () => {
       try {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
-        expect(e.message).toMatch('Invalid service domain.');
+        expect(e.message).toEqual('Invalid service domain.');
       }
+      expect.assertions(1);
     });
 
     /**
@@ -210,6 +177,7 @@ describe('CallingClient Tests', () => {
 
       expect(async () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
     });
 
@@ -227,8 +195,9 @@ describe('CallingClient Tests', () => {
       try {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
-        expect(e.message).toMatch('Invalid service domain.');
+        expect(e.message).toEqual('Invalid service domain.');
       }
+      expect.assertions(1);
     });
 
     /**
@@ -245,8 +214,9 @@ describe('CallingClient Tests', () => {
       try {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
-        expect(e.message).toMatch('Invalid service domain.');
+        expect(e.message).toEqual('Invalid service domain.');
       }
+      expect.assertions(1);
     });
 
     /**
@@ -265,6 +235,7 @@ describe('CallingClient Tests', () => {
 
       expect(async () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
+        expect(callingClient).toBeTruthy();
       }).not.toThrow(Error);
     });
 
@@ -700,6 +671,7 @@ describe('CallingClient Tests', () => {
       } catch (error) {
         done(error);
       }
+      expect.assertions(3);
     });
 
     it('attempt to create call with incorrect number format 2', (done) => {
@@ -723,6 +695,7 @@ describe('CallingClient Tests', () => {
       } catch (error) {
         done(error);
       }
+      expect.assertions(3);
     });
   });
 
