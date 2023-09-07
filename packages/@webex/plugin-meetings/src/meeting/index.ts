@@ -5427,6 +5427,10 @@ export default class Meeting extends StatelessWebexPlugin {
           url: this.deviceUrl,
           // @ts-ignore
           deviceType: this.config.deviceType,
+          // @ts-ignore
+          countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+          // @ts-ignore
+          regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
       },
