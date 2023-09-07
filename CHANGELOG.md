@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.208](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.207...v3.0.0-beta.208) (2023-09-07)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** remove the presenter side annotation info ([#3048](https://github.com/webex/webex-js-sdk/issues/3048)) ([3e5e800](https://github.com/webex/webex-js-sdk/commit/3e5e80061be835c55e18216b01079c8b4ecd860c))
+
+## [3.0.0-beta.207](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.206...v3.0.0-beta.207) (2023-09-06)
+
+
+### Features
+
+* **ca:** fix prod meta ([#3060](https://github.com/webex/webex-js-sdk/issues/3060)) ([b359f26](https://github.com/webex/webex-js-sdk/commit/b359f26d157f9b40c25ea011aaef80675bda4469))
+
 ## [3.0.0-beta.206](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.205...v3.0.0-beta.206) (2023-09-06)
 
 

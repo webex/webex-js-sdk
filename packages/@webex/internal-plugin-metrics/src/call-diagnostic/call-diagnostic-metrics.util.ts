@@ -6,6 +6,7 @@ import {BrowserDetection} from '@webex/common';
 import {isEmpty, merge} from 'lodash';
 import {
   ClientEvent,
+  Event,
   MediaQualityEventAudioSetupDelayPayload,
   MediaQualityEventVideoSetupDelayPayload,
   MetricEventNames,
@@ -111,7 +112,7 @@ export const isLocusServiceErrorCode = (errorCode: string | number) => {
  * @param webClientDomain
  * @returns
  */
-export const getBuildType = (webClientDomain) => {
+export const getBuildType = (webClientDomain): Event['origin']['buildType'] => {
   if (
     webClientDomain?.includes('localhost') ||
     webClientDomain?.includes('127.0.0.1') ||
@@ -120,7 +121,7 @@ export const getBuildType = (webClientDomain) => {
     return 'test';
   }
 
-  return 'production';
+  return 'prod';
 };
 
 /**
@@ -130,7 +131,7 @@ export const getBuildType = (webClientDomain) => {
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
-  const origin = {
+  const origin: Partial<Event['origin']> = {
     buildType: getBuildType(item.event?.eventData?.webClientDomain),
     networkType: 'unknown',
   };
