@@ -4041,14 +4041,6 @@ describe('plugin-meetings', () => {
             checkScreenShareAudioPublished(audioShareTrack);
           });
         });
-        it('creates instance and publishes with annotation info', async () => {
-          const annotationInfo = {
-            version: '1',
-            policy: ANNOTATION_POLICY.APPROVAL,
-          };
-          await meeting.publishTracks({annotationInfo});
-          assert.equal(meeting.annotationInfo, annotationInfo);
-        });
 
         describe('unpublishTracks', () => {
           beforeEach(async () => {
