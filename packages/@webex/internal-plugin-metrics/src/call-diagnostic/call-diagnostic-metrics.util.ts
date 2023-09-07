@@ -217,9 +217,11 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
  * @returns {any} the updated options object
  */
 export const setMetricTimings = (options) => {
-  if (options.body?.metrics) {
+  if (options.body && options.json) {
+    const body = JSON.parse(options.body);
+
     const now = new Date().toISOString();
-    options.body.metrics.forEach((metric) => {
+    body.metrics?.forEach((metric) => {
       if (metric.eventPayload) {
         metric.eventPayload.originTime = {
           triggered: now,
@@ -227,6 +229,7 @@ export const setMetricTimings = (options) => {
         };
       }
     });
+    options.body = JSON.stringify(body);
   }
 
   return options;

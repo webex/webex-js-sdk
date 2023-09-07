@@ -238,7 +238,8 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
 
       const options = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -249,11 +250,12 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       const expectedOptions = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -264,7 +266,7 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       check(options, expectedOptions);
@@ -276,7 +278,8 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
 
       const options = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -295,11 +298,12 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       const expectedOptions = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -318,17 +322,63 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       check(options, expectedOptions);
       sinon.restore();
     });
 
-    it(`does not throw when data missing`, () => {
+    it(`returns expected options when json is falsey`, () => {
+      const now = new Date();
+      sinon.useFakeTimers(now.getTime());
+
+      const options = {
+        body: JSON.stringify({
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  sent: 666,
+                },
+              },
+            },
+          ],
+        }),
+      };
+
+      const expectedOptions = {
+        body: JSON.stringify({
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  sent: 666,
+                },
+              },
+            },
+          ],
+        }),
+      };
+
+      check(options, expectedOptions);
+      sinon.restore();
+    });
+
+    it(`does not throw when there is no body`, () => {
       const options = {};
 
       const expectedOptions = {};
+
+      check(options, expectedOptions);
+    });
+
+    it(`does not throw when body is empty`, () => {
+      const options = {body: '"{}"'};
+
+      const expectedOptions = {body: '"{}"'};
 
       check(options, expectedOptions);
     });

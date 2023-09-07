@@ -255,6 +255,7 @@ describe('plugin-meetings', () => {
         destination: testDestination,
         destinationType: _MEETING_ID_,
         correlationId,
+        selfId: uuid1,
       },
       {
         parent: webex,
@@ -262,6 +263,7 @@ describe('plugin-meetings', () => {
     );
 
     meeting.members.selfId = uuid1;
+    meeting.selfId = uuid1;
   });
 
   describe('meeting index', () => {
@@ -5260,16 +5262,16 @@ describe('plugin-meetings', () => {
 
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {
-                file: 'meeting/index',
-                function: 'setUpLocusSelfListener',
-              },
-              EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
-              {'locusUrl': 'newLocusUrl/12345'}
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+            {locusUrl: 'newLocusUrl/12345'}
           );
-          
+
           done();
         });
       });
@@ -6008,7 +6010,13 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings, meetingInfo}) => {
+          ({
+            actionName,
+            requiredDisplayHints,
+            requiredPolicies,
+            enableUnifiedMeetings,
+            meetingInfo,
+          }) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
@@ -6057,7 +6065,6 @@ describe('plugin-meetings', () => {
             });
           }
         );
-
 
         forEach(
           [
@@ -6111,8 +6118,7 @@ describe('plugin-meetings', () => {
             },
             {
               meetingInfo: undefined,
-              selfUserPolicies: {
-              },
+              selfUserPolicies: {},
               expectedActions: {
                 supportHQV: true,
                 supportHDV: true,
@@ -7873,6 +7879,41 @@ describe('plugin-meetings', () => {
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
         });
+      });
+    });
+  });
+
+  describe('#buildLeaveFetchRequestOptions', () => {
+    it('should have #buildLeaveFetchRequestOptions', () => {
+      assert.exists(meeting.buildLeaveFetchRequestOptions);
+    });
+
+    it('calls expected functions', () => {
+      const buildLeaveFetchRequestOptionsSpy = sinon.spy(
+        MeetingUtil,
+        'buildLeaveFetchRequestOptions'
+      );
+      const prepareFetchOptionsSpy = sinon.stub();
+      webex.prepareFetchOptions = prepareFetchOptionsSpy;
+
+      meeting.buildLeaveFetchRequestOptions({resourceId: 'foo'});
+
+      assert.calledOnce(buildLeaveFetchRequestOptionsSpy);
+      assert.instanceOf(buildLeaveFetchRequestOptionsSpy.getCall(0).args[0], Meeting);
+      assert.deepEqual(buildLeaveFetchRequestOptionsSpy.getCall(0).args[1], {resourceId: 'foo'});
+
+      assert.calledOnce(prepareFetchOptionsSpy);
+      assert.deepEqual(prepareFetchOptionsSpy.getCall(0).args[0], {
+        body: {
+          correlationId: meeting.correlationId,
+          device: {
+            deviceType: undefined,
+            url: uuid3,
+          },
+          usingResource: 'foo',
+        },
+        method: 'PUT',
+        uri: `${url1}/participant/${uuid1}/leave`,
       });
     });
   });
