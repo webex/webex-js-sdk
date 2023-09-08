@@ -3452,10 +3452,11 @@ export default class Meeting extends StatelessWebexPlugin {
     localStream?.on(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!localStream) {
-      await this.unpublishStream(MediaType.AudioMain);
+    if (!this.isMultistream || !localStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.AudioMain, oldStream);
     }
-    await this.publishStream(this.mediaProperties.audioStream, MediaType.AudioMain);
+    await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
   }
 
   /**
@@ -3479,10 +3480,11 @@ export default class Meeting extends StatelessWebexPlugin {
     localStream?.on(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!localStream) {
-      await this.unpublishStream(MediaType.VideoMain);
+    if (!this.isMultistream || !localStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.VideoMain, oldStream);
     }
-    await this.publishStream(this.mediaProperties.videoStream, MediaType.VideoMain);
+    await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
   }
 
   /**
@@ -3509,10 +3511,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.mediaDirection.sendShare = !!localDisplayStream;
 
-    if (!localDisplayStream) {
-      await this.unpublishStream(MediaType.VideoSlides);
+    if (!this.isMultistream || !localDisplayStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.VideoSlides, oldStream);
     }
-    await this.publishStream(this.mediaProperties.shareVideoStream, MediaType.VideoSlides);
+    await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
   }
 
   /**
@@ -3538,10 +3541,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareStream();
 
-    if (!localSystemAudioStream) {
-      await this.unpublishStream(MediaType.AudioSlides);
+    if (!this.isMultistream || !localSystemAudioStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.AudioSlides, oldStream);
     }
-    await this.publishStream(this.mediaProperties.shareAudioStream, MediaType.AudioSlides);
+    await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
   }
 
   /**
@@ -5293,16 +5297,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
-      await this.publishStream(this.mediaProperties.audioStream, MediaType.AudioMain);
+      await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
     if (this.mediaProperties.videoStream) {
-      await this.publishStream(this.mediaProperties.videoStream, MediaType.VideoMain);
+      await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
     }
     if (this.mediaProperties.shareVideoStream) {
-      await this.publishStream(this.mediaProperties.shareVideoStream, MediaType.VideoSlides);
+      await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
     }
     if (this.mediaProperties.shareAudioStream) {
-      await this.publishStream(this.mediaProperties.shareAudioStream, MediaType.AudioSlides);
+      await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
     }
 
     return mc;
@@ -6979,12 +6983,10 @@ export default class Meeting extends StatelessWebexPlugin {
       .update({
         // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
         localTracks: {
-          audio: this.mediaProperties.audioStream?.outputStream.getTracks()[0] || null,
-          video: this.mediaProperties.videoStream?.outputStream.getTracks()[0] || null,
-          screenShareVideo:
-            this.mediaProperties.shareVideoStream?.outputStream.getTracks()[0] || null,
-          screenShareAudio:
-            this.mediaProperties.shareAudioStream?.outputStream.getTracks()[0] || null,
+          audio: this.mediaProperties.audioStream?.outputTrack || null,
+          video: this.mediaProperties.videoStream?.outputTrack || null,
+          screenShareVideo: this.mediaProperties.shareVideoStream?.outputTrack || null,
+          screenShareAudio: this.mediaProperties.shareAudioStream?.outputTrack || null,
         },
         direction: {
           audio: Media.getDirection(
@@ -7025,13 +7027,33 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Publishes a stream.
    *
-   * @param {LocalStream} stream to publish
    * @param {MediaType} mediaType of the stream
+   * @param {LocalStream} stream to publish
    * @returns {Promise}
    */
-  private async publishStream(stream: LocalStream, mediaType: MediaType) {
-    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      await this.sendSlotManager.publishStream(mediaType, stream);
+  private async publishStream(mediaType: MediaType, stream?: LocalStream) {
+    if (!stream) {
+      return;
+    }
+
+    if (this.mediaProperties.webrtcMediaConnection) {
+      if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+        await this.sendSlotManager.publishStream(mediaType, stream);
+      }
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'publishStream',
+        },
+        EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
+        {
+          isPublished: true,
+          mediaType,
+          stream,
+        }
+      );
     }
   }
 
@@ -7039,12 +7061,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * Un-publishes a stream.
    *
    * @param {MediaType} mediaType of the stream
+   * @param {LocalStream} stream to unpublish
    * @returns {Promise}
    */
-  private async unpublishStream(mediaType: MediaType) {
+  private async unpublishStream(mediaType: MediaType, stream?: LocalStream) {
+    if (!stream) {
+      return;
+    }
+
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       await this.sendSlotManager.unpublishStream(mediaType);
     }
+
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: 'unpublishStream',
+      },
+      EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
+      {
+        isPublished: false,
+        mediaType,
+        stream,
+      }
+    );
   }
 
   /**

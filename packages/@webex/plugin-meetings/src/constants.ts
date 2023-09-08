@@ -361,6 +361,7 @@ export const EVENT_TRIGGERS = {
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
+  MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 };
 
 export const EVENT_TYPES = {
