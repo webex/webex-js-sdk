@@ -1653,6 +1653,7 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
+            meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.webex.meetings.reachability = {
               isAnyClusterReachable: sinon.stub().resolves(true),
             };
@@ -1778,7 +1779,7 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType, regionCode: 'EU', countryCode: 'UK'},
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -1799,7 +1800,7 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType, regionCode: 'EU', countryCode: 'UK'},
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
