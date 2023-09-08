@@ -185,6 +185,7 @@ describe('plugin-meetings', () => {
   let testDestination;
   let membersSpy;
   let meetingRequestSpy;
+  let correlationId;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -243,6 +244,7 @@ describe('plugin-meetings', () => {
     test3 = `test3-${uuid.v4()}`;
     test4 = `test4-${uuid.v4()}`;
     testDestination = `testDestination-${uuid.v4()}`;
+    correlationId = uuid.v4();
 
     meeting = new Meeting(
       {
@@ -252,6 +254,7 @@ describe('plugin-meetings', () => {
         locus: {url: url1},
         destination: testDestination,
         destinationType: _MEETING_ID_,
+        correlationId,
       },
       {
         parent: webex,
@@ -270,9 +273,11 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.options);
           assert.exists(meeting.attrs);
           assert.exists(meeting.id);
+          assert.exists(meeting.correlationId);
           assert.equal(meeting.userId, uuid1);
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
+          assert.equal(meeting.correlationId, correlationId);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -322,6 +327,23 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.screenShareAudio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
+        });
+
+        it('uses meeting id as correlation id if not provided in constructor', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: _MEETING_ID_,
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.equal(newMeeting.correlationId, newMeeting.id);
         });
 
         describe('creates ReceiveSlot manager instance', () => {
@@ -718,6 +740,7 @@ describe('plugin-meetings', () => {
       });
       describe('#join', () => {
         let sandbox = null;
+        let setCorrelationIdSpy;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
 
         beforeEach(() => {
@@ -733,7 +756,7 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.join);
         });
         beforeEach(() => {
-          meeting.setCorrelationId = sinon.stub().returns(true);
+          setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
           webex.meetings.registered = true;
           meeting.updateLLMConnection = sinon.stub();
@@ -783,13 +806,20 @@ describe('plugin-meetings', () => {
 
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
-            sinon.assert.notCalled(meeting.setCorrelationId);
+            sinon.assert.notCalled(setCorrelationIdSpy);
           });
 
           it('should create new correlation ID when already joined', async () => {
             meeting.hasJoinedOnce = true;
             await meeting.join();
-            sinon.assert.called(meeting.setCorrelationId);
+            sinon.assert.called(setCorrelationIdSpy);
+          });
+
+          it('should use provided correlation ID and not regenerate one when already joined', async () => {
+            meeting.hasJoinedOnce = true;
+            await meeting.join({correlationId: '123'});
+            sinon.assert.called(setCorrelationIdSpy);
+            assert.equal(meeting.correlationId, '123');
           });
 
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
@@ -1231,6 +1261,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({turnServerInfo: undefined})
           );
           assert.calledOnce(meeting.setMercuryListener);
@@ -1301,6 +1333,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1554,6 +1588,8 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
+            webex,
+            meeting.id,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1617,6 +1653,7 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
+            meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.webex.meetings.reachability = {
               isAnyClusterReachable: sinon.stub().resolves(true),
             };
@@ -1742,7 +1779,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -1763,7 +1805,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -1786,18 +1833,19 @@ describe('plugin-meetings', () => {
             direction,
             remoteQualityLevel,
             expectedDebugId,
+            meetingId,
           }) => {
             if (isMultistream) {
               const {iceServers} = mediaConnectionConfig;
 
-              assert.calledOnceWithExactly(
+              assert.calledOnceWithMatch(
                 multistreamRoapMediaConnectionConstructorStub,
                 {
                   iceServers,
                   enableMainAudio: direction.audio !== 'inactive',
                   enableMainVideo: true,
                 },
-                expectedDebugId
+                meetingId
               );
 
               Object.values(localTracks).forEach((track) => {
@@ -1846,6 +1894,7 @@ describe('plugin-meetings', () => {
               },
               remoteQualityLevel: 'HIGH',
               expectedDebugId,
+              meetingId: meeting.id,
             });
 
             // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1875,6 +1924,7 @@ describe('plugin-meetings', () => {
               },
               remoteQualityLevel: 'HIGH',
               expectedDebugId,
+              meetingId: meeting.id,
             });
 
             // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1906,6 +1956,7 @@ describe('plugin-meetings', () => {
               },
               remoteQualityLevel: 'HIGH',
               expectedDebugId,
+              meetingId: meeting.id,
             });
 
             // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1938,6 +1989,7 @@ describe('plugin-meetings', () => {
               },
               remoteQualityLevel: 'HIGH',
               expectedDebugId,
+              meetingId: meeting.id,
             });
 
             // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1967,6 +2019,7 @@ describe('plugin-meetings', () => {
               },
               remoteQualityLevel: 'HIGH',
               expectedDebugId,
+              meetingId: meeting.id,
             });
 
             // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -3068,6 +3121,7 @@ describe('plugin-meetings', () => {
           meeting.destinationType = FAKE_TYPE;
           meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
+          meeting.updateMeetingActions = sinon.stub().returns(undefined);
 
           await meeting.fetchMeetingInfo({
             password: FAKE_PASSWORD,
@@ -3099,13 +3153,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {file: 'meetings', function: 'fetchMeetingInfo'},
             'meeting:meetingInfoAvailable'
           );
+          assert.calledWith(meeting.updateMeetingActions);
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
@@ -3117,6 +3172,7 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
+          meeting.updateMeetingActions = sinon.stub().returns(undefined);
           meeting.fetchMeetingInfoTimeoutId = FAKE_TIMEOUT_FETCHMEETINGINFO_ID;
 
           const clock = sinon.useFakeTimers();
@@ -3157,13 +3213,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
 
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {file: 'meetings', function: 'fetchMeetingInfo'},
             'meeting:meetingInfoAvailable'
           );
+          assert.calledWith(meeting.updateMeetingActions);
         });
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
@@ -4030,14 +4087,6 @@ describe('plugin-meetings', () => {
             checkScreenShareAudioPublished(audioShareTrack);
           });
         });
-        it('creates instance and publishes with annotation info', async () => {
-          const annotationInfo = {
-            version: '1',
-            policy: ANNOTATION_POLICY.APPROVAL,
-          };
-          await meeting.publishTracks({annotationInfo});
-          assert.equal(meeting.annotationInfo, annotationInfo);
-        });
 
         describe('unpublishTracks', () => {
           beforeEach(async () => {
@@ -4322,7 +4371,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteTracks();
 
-          assert.equal(TriggerProxy.trigger.callCount, 4);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -4377,8 +4426,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.AUDIO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
             type: 'remoteAudio',
             stream: {id: 'stream'},
           });
@@ -4387,8 +4436,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.VIDEO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
             type: 'remoteVideo',
             stream: {id: 'stream'},
           });
@@ -4397,8 +4446,8 @@ describe('plugin-meetings', () => {
             track: 'track',
             type: RemoteTrackType.SCREENSHARE_VIDEO,
           });
-          assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
+          assert.equal(TriggerProxy.trigger.getCall(4).args[2], 'media:ready');
+          assert.deepEqual(TriggerProxy.trigger.getCall(4).args[3], {
             type: 'remoteShare',
             stream: {id: 'stream'},
           });
@@ -4825,7 +4874,7 @@ describe('plugin-meetings', () => {
           meeting.startKeepAlive = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.startKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -4839,7 +4888,7 @@ describe('plugin-meetings', () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -5246,6 +5295,19 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
+
+          assert.calledThrice(TriggerProxy.trigger);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+            {locusUrl: 'newLocusUrl/12345'}
+          );
+
           done();
         });
       });
@@ -5772,6 +5834,59 @@ describe('plugin-meetings', () => {
 
       describe('#setUpLocusInfoMeetingInfoListener', () => {
         let locusInfoOnSpy;
+        let handleDataChannelUrlChangeSpy;
+        let updateMeetingActionsSpy;
+
+        beforeEach(() => {
+          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
+          handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
+          updateMeetingActionsSpy = sinon.spy(meeting, 'updateMeetingActions');
+        });
+
+        afterEach(() => {
+          locusInfoOnSpy.restore();
+          updateMeetingActionsSpy.restore();
+        });
+
+        it('registers the correct MEETING_INFO_UPDATED event', () => {
+          const userDisplayPolicy = {a: true};
+          const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
+          const datachannelUrl = 'some url';
+
+          const setUserPolicySpy = sinon.spy(meeting.recordingController, 'setUserPolicy');
+          const setRecordingDisplayHintsSpy = sinon.spy(
+            meeting.recordingController,
+            'setDisplayHints'
+          );
+          const setControlsDisplayHintsSpy = sinon.spy(
+            meeting.controlsOptionsManager,
+            'setDisplayHints'
+          );
+
+          meeting.selfUserPolicies = userDisplayPolicy;
+          meeting.userDisplayHints = userDisplayHints;
+          meeting.datachannelUrl = datachannelUrl;
+
+          meeting.setUpLocusInfoMeetingInfoListener();
+
+          assert.calledThrice(locusInfoOnSpy);
+
+          assert.equal(locusInfoOnSpy.firstCall.args[0], 'MEETING_LOCKED');
+          assert.equal(locusInfoOnSpy.secondCall.args[0], 'MEETING_UNLOCKED');
+          assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
+          const callback = locusInfoOnSpy.thirdCall.args[1];
+
+          callback();
+
+          assert.calledWith(updateMeetingActionsSpy);
+          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
+          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+        });
+      });
+
+      describe('#updateMeetingActions', () => {
         let inMeetingActionsSetSpy;
         let canUserLockSpy;
         let canUserUnlockSpy;
@@ -5788,14 +5903,13 @@ describe('plugin-meetings', () => {
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
-        let handleDataChannelUrlChangeSpy;
         let canSendReactionsSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
-        let hasHintsSpy;
+        let canShareWhiteBoardSpy;
+        // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
-          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
           canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
           canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
           canUserStartSpy = sinon.spy(RecordingUtil, 'canUserStart');
@@ -5815,18 +5929,16 @@ describe('plugin-meetings', () => {
           );
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
-          handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
+          canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
 
         afterEach(() => {
-          locusInfoOnSpy.restore();
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
         });
-
 
         forEach(
           [
@@ -5860,21 +5972,24 @@ describe('plugin-meetings', () => {
               callType: 'MEETING',
               expectedEnabled: false,
             },
+            {
+              actionName: 'canUseVoip',
+              callType: 'CALL',
+              expectedEnabled: true,
+            },
+            {
+              actionName: 'canUseVoip',
+              callType: 'MEETING',
+              expectedEnabled: false,
+            },
           ],
           ({actionName, callType, expectedEnabled}) => {
             it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
               meeting.type = callType;
-              meeting.setUpLocusInfoMeetingInfoListener();
+              meeting.userDisplayHints = [];
+              meeting.meetingInfo = {some: 'info'};
 
-              const callback = locusInfoOnSpy.thirdCall.args[1];
-
-              const payload = {
-                info: {
-                  userDisplayHints: [],
-                },
-              };
-
-              callback(payload);
+              meeting.updateMeetingActions();
 
               assert.equal(meeting.inMeetingActions.get()[actionName], expectedEnabled);
             });
@@ -5925,222 +6040,462 @@ describe('plugin-meetings', () => {
               requiredPolicies: [],
               enableUnifiedMeetings: false,
             },
+            {
+              actionName: 'canAnnotate',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
+            },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings}) => {
+          ({
+            actionName,
+            requiredDisplayHints,
+            requiredPolicies,
+            enableUnifiedMeetings,
+            meetingInfo,
+          }) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
+              meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
 
               meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
                 ? true
                 : enableUnifiedMeetings;
 
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
+
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
               });
 
-              meeting.setUpLocusInfoMeetingInfoListener();
-
-              const callback = locusInfoOnSpy.thirdCall.args[1];
-
-              const payload = {
-                info: {
-                  userDisplayHints: requiredDisplayHints,
-                },
-              };
-
-              callback(payload);
+              meeting.updateMeetingActions();
 
               assert.isTrue(meeting.inMeetingActions.get()[actionName]);
             });
 
             if (requiredDisplayHints.length !== 0) {
               it(`${actionName} is disabled when the required display hints are missing`, () => {
+                meeting.userDisplayHints = [];
                 meeting.selfUserPolicies = {};
+
+                meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
 
-                meeting.setUpLocusInfoMeetingInfoListener();
-
-                const callback = locusInfoOnSpy.thirdCall.args[1];
-
-                const payload = {
-                  info: {
-                    userDisplayHints: [],
-                  },
-                };
-
-                callback(payload);
+                meeting.updateMeetingActions();
 
                 assert.isFalse(meeting.inMeetingActions.get()[actionName]);
               });
             }
 
             it(`${actionName} is disabled when the required policies are missing`, () => {
+              meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = {};
 
-              meeting.setUpLocusInfoMeetingInfoListener();
+              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
-              const callback = locusInfoOnSpy.thirdCall.args[1];
-
-              const payload = {
-                info: {
-                  userDisplayHints: requiredDisplayHints,
-                },
-              };
-
-              callback(payload);
+              meeting.updateMeetingActions();
 
               assert.isFalse(meeting.inMeetingActions.get()[actionName]);
             });
           }
         );
 
-        it('registers the correct MEETING_INFO_UPDATED event', () => {
+        forEach(
+          [
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: false,
+                  supportHQV: false,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: true,
+                [SELF_POLICY.SUPPORT_HQV]: true,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {
+                  supportHDV: true,
+                  supportHQV: true,
+                },
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_HDV]: false,
+                [SELF_POLICY.SUPPORT_HQV]: false,
+              },
+              expectedActions: {
+                supportHQV: false,
+                supportHDV: false,
+              },
+            },
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {},
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+              meeting.config.experimental.enableUnifiedMeetings = true;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  supportHDV: meeting.inMeetingActions.supportHDV,
+                  supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        it('canUseVoip is enabled based on locus info when the conditions are met', () => {
+          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
+          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
+          meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is disabled based on locus info when the required display hints are missing', () => {
+          meeting.userDisplayHints = [];
+          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
+          meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is disabled based on locus info when the required policies are missing', () => {
+          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
+          meeting.selfUserPolicies = {};
+          meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled based on api info when the conditions are met', () => {
+          meeting.userDisplayHints = undefined;
+          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
+          meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when there is no meeting info', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when it is a locus call', () => {
+          meeting.config.experimental.enableUnifiedMeetings = true;
+          meeting.meetingInfo = {some: 'info'};
+          meeting.type = 'CALL';
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is disabled based on api info when supportVoip is false', () => {
+          meeting.userDisplayHints = undefined;
+          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
+          meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is disabled based on api info when the required policies are missing', () => {
+          meeting.userDisplayHints = undefined;
+          meeting.selfUserPolicies = {};
+          meeting.meetingInfo.supportVoIP = true;
+          meeting.config.experimental.enableUnifiedMeetings = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled when enableUnifiedMeetings is false', () => {
+          meeting.userDisplayHints = [];
+          meeting.selfUserPolicies = {};
+          meeting.meetingInfo.supportVoIP = false;
+          meeting.config.experimental.enableUnifiedMeetings = false;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        forEach(
+          [
+            {
+              meetingInfo: {},
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: true,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: {},
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: false,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: {some: 'data'},
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: true,
+              },
+              expectedActions: {
+                canDoVideo: false,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {},
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: true,
+              },
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {},
+              expectedActions: {
+                canDoVideo: true,
+              },
+            },
+            {
+              meetingInfo: {
+                video: {},
+              },
+              selfUserPolicies: {
+                [SELF_POLICY.SUPPORT_VIDEO]: false,
+              },
+              expectedActions: {
+                canDoVideo: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`has expectedActions ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+              meeting.config.experimental.enableUnifiedMeetings = true;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  canDoVideo: meeting.inMeetingActions.canDoVideo,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        it('correctly updates the meeting actions', () => {
           // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
           ControlsOptionsUtil.hasPolicies = sinon.stub().returns(true);
 
-          const setUserPolicySpy = sinon.spy(meeting.recordingController, 'setUserPolicy');
+          const selfUserPolicies = {a: true};
           meeting.selfUserPolicies = {a: true};
+          const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
+          meeting.userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
 
-          meeting.setUpLocusInfoMeetingInfoListener();
+          meeting.updateMeetingActions();
 
-          assert.calledThrice(locusInfoOnSpy);
-
-          assert.equal(locusInfoOnSpy.firstCall.args[0], 'MEETING_LOCKED');
-          assert.equal(locusInfoOnSpy.secondCall.args[0], 'MEETING_UNLOCKED');
-          assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
-          const callback = locusInfoOnSpy.thirdCall.args[1];
-
-          const payload = {
-            info: {
-              userDisplayHints: ['LOCK_CONTROL_UNLOCK'],
-              datachannelUrl: 'some url',
-            },
-          };
-
-          callback(payload);
-
-          assert.calledWith(canUserLockSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserUnlockSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserStartSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
-          assert.calledWith(canSetMuteOnEntrySpy, payload.info.userDisplayHints);
-          assert.calledWith(canUnsetMuteOnEntrySpy, payload.info.userDisplayHints);
-          assert.calledWith(canSetDisallowUnmuteSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUnsetDisallowUnmuteSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
-          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
-          assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
-          assert.calledWith(handleDataChannelUrlChangeSpy, payload.info.datachannelUrl);
-          assert.calledWith(canSendReactionsSpy, null, payload.info.userDisplayHints);
-          assert.calledWith(canUserRenameSelfAndObservedSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserRenameOthersSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserLockSpy, userDisplayHints);
+          assert.calledWith(canUserUnlockSpy, userDisplayHints);
+          assert.calledWith(canUserStartSpy, userDisplayHints);
+          assert.calledWith(canUserStopSpy, userDisplayHints);
+          assert.calledWith(canUserPauseSpy, userDisplayHints);
+          assert.calledWith(canUserResumeSpy, userDisplayHints);
+          assert.calledWith(canSetMuteOnEntrySpy, userDisplayHints);
+          assert.calledWith(canUnsetMuteOnEntrySpy, userDisplayHints);
+          assert.calledWith(canSetDisallowUnmuteSpy, userDisplayHints);
+          assert.calledWith(canUnsetDisallowUnmuteSpy, userDisplayHints);
+          assert.calledWith(canUserRaiseHandSpy, userDisplayHints);
+          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, userDisplayHints);
+          assert.calledWith(canUserLowerAllHandsSpy, userDisplayHints);
+          assert.calledWith(canUserLowerSomeoneElsesHandSpy, userDisplayHints);
+          assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
+          assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
+          assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
+          assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
+          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_FILE],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
-            policies: {a: true},
+            policies: selfUserPolicies,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-            policies: {a: true},
+            policies: selfUserPolicies,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
-            policies: {a: true},
+            policies: selfUserPolicies,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-            policies: {a: true},
+            policies: selfUserPolicies,
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-            displayHints: payload.info.userDisplayHints,
+            displayHints: userDisplayHints,
           });
-
-          assert.calledWith(setUserPolicySpy, {a: true});
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
+            requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
+            policies: selfUserPolicies,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
             {
               file: 'meeting/index',
-              function: 'setUpLocusInfoMeetingInfoListener',
+              function: 'updateMeetingActions',
             },
             'meeting:actionsUpdate',
             meeting.inMeetingActions.get()
@@ -6148,7 +6503,7 @@ describe('plugin-meetings', () => {
 
           TriggerProxy.trigger.resetHistory();
 
-          callback(payload);
+          meeting.updateMeetingActions();
 
           assert.notCalled(TriggerProxy.trigger);
 
@@ -6163,12 +6518,8 @@ describe('plugin-meetings', () => {
           updateLLMConnectionSpy = sinon.spy(meeting, 'updateLLMConnection');
         });
 
-        const check = async (url, expectedCalled) => {
+        const check = (url, expectedCalled) => {
           meeting.handleDataChannelUrlChange(url);
-
-          assert.notCalled(updateLLMConnectionSpy);
-
-          await testUtils.waitUntil(0);
 
           if (expectedCalled) {
             assert.calledWith(updateLLMConnectionSpy);
@@ -6177,17 +6528,17 @@ describe('plugin-meetings', () => {
           }
         };
 
-        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', async () => {
+        it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', () => {
           meeting.config.enableAutomaticLLM = true;
           check('some url', true);
         });
 
-        it('does not call updateLLMConnection if datachannelURL is undefined', async () => {
+        it('does not call updateLLMConnection if datachannelURL is undefined', () => {
           meeting.config.enableAutomaticLLM = true;
           check(undefined, false);
         });
 
-        it('does not call updateLLMConnection if enableAutomaticLLM is false', async () => {
+        it('does not call updateLLMConnection if enableAutomaticLLM is false', () => {
           check('some url', false);
         });
       });
@@ -6511,6 +6862,10 @@ describe('plugin-meetings', () => {
                   endedSharingId: null,
                 },
               },
+              meeting: {
+                eventName: EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+                eventPayload: 'newLocusUrl',
+              },
             };
 
             let shareStatus = null;
@@ -6734,7 +7089,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
 
             // Called once --> members:update (ignore)
-            let callCounter = 1;
+            let callCounter = 2;
 
             data.forEach((d, index) => {
               meeting.locusInfo.emit(
@@ -6762,10 +7117,10 @@ describe('plugin-meetings', () => {
 
             assert.callCount(TriggerProxy.trigger, callCounter);
 
-            // Start with 1 to ignore members:update trigger
+            // Start with 2 to ignore members:update trigger, and meeting:locus:locusUrl:update
 
-            let i = 1;
-            let offset = 2;
+            let i = 2;
+            let offset = 3;
 
             while (i < callCounter) {
               const index = Math.floor(i / offset);

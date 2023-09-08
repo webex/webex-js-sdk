@@ -498,6 +498,8 @@ const MeetingUtil = {
 
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
+  canShareWhiteBoard: (displayHints) => displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
+
   /**
    * Adds the current locus sequence information to a request body
    * @param {Object} meeting The meeting object
@@ -598,7 +600,7 @@ const MeetingUtil = {
         renameKey(language, 'languageGroupId', 'languageCode');
       }
       if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
-        meeting.simultaneousInterpretation.updateInterpretation(lanuagesInfo);
+        meeting.simultaneousInterpretation.updateInterpretation({siLanguages: lanuagesInfo});
       }
     }
     Trigger.trigger(
