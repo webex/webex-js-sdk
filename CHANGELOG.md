@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.209](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.208...v3.0.0-beta.209) (2023-09-08)
+
+
+### Bug Fixes
+
+* geohint info missing in Locus join requests ([#3061](https://github.com/webex/webex-js-sdk/issues/3061)) ([400286b](https://github.com/webex/webex-js-sdk/commit/400286bc576882999396cc48ac266cea13f98f2d))
+
 ## [3.0.0-beta.208](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.207...v3.0.0-beta.208) (2023-09-07)
 
 
