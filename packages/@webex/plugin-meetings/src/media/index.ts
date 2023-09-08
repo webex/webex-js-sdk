@@ -211,10 +211,10 @@ Media.createMediaConnection = (
     {
       // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
       localTracks: {
-        audio: audioStream?.outputStream.getTracks()[0],
-        video: videoStream?.outputStream.getTracks()[0],
-        screenShareVideo: shareVideoStream?.outputStream.getTracks()[0],
-        screenShareAudio: shareAudioStream?.outputStream.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core
+        audio: audioStream?.outputTrack,
+        video: videoStream?.outputTrack,
+        screenShareVideo: shareVideoStream?.outputTrack,
+        screenShareAudio: shareAudioStream?.outputTrack, // TODO: add type for screenShareAudio in internal-media-core
       } as unknown, // TODO: add type for screenShareAudio in internal-media-core
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
@@ -394,9 +394,7 @@ Media.stopStreams = (stream: LocalStream) => {
         stream.stop();
       } catch (e) {
         LoggerProxy.logger.error(
-          `Media:index#stopTracks --> Unable to stop the track with state ${
-            stream.outputStream.getTracks()[0].readyState
-          }, error: ${e}`
+          `Media:index#stopTracks --> Unable to stop the track with state ${stream.outputTrack.readyState}, error: ${e}`
         );
       }
     }
