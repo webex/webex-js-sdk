@@ -17,7 +17,7 @@ describe('plugin-meetings', () => {
       },
     });
 
-    webex.meetings.clientRegion = {
+    webex.meetings.geoHintInfo = {
       countryCode: 'US',
       regionCode: 'WEST-COAST',
     };

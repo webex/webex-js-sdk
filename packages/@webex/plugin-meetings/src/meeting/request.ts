@@ -187,11 +187,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body.deviceCapabilities = deviceCapabilities;
     }
     // @ts-ignore
-    if (this.webex.meetings.clientRegion) {
+    if (this.webex.meetings.geoHintInfo) {
       // @ts-ignore
-      body.device.countryCode = this.webex.meetings.clientRegion.countryCode;
+      body.device.countryCode = this.webex.meetings.geoHintInfo.countryCode;
       // @ts-ignore
-      body.device.regionCode = this.webex.meetings.clientRegion.regionCode;
+      body.device.regionCode = this.webex.meetings.geoHintInfo.regionCode;
     }
 
     if (moderator !== undefined) {
