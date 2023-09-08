@@ -98,6 +98,55 @@ describe('gatherReachability', () => {
     assert.equal(JSON.stringify(getClustersResult.joinCookie), storedResultForJoinCookie);
   });
 
+  it('does reachability only on udp', async () => {
+    const reachability = new Reachability(webex);
+
+    const getClustersResult = {
+      clusters: {clusterId: {
+        tcp: [
+          'stun:170.72.164.1:5004',
+          'stun:170.72.165.2:5004'
+        ],
+        udp: [
+            'stun:170.72.164.3:5004',
+            'stun:170.72.164.3:9000',
+        ],
+        xtls: [
+            'stun:external-media101.public.wjfkm-a-4.prod.infra.webex.com:443',
+            'stun:external-media94.public.wjfkm-a-8.prod.infra.webex.com:443'
+        ]
+      }},
+      joinCookie: {id: 'id'},
+    };
+
+    sinon.stub(reachability.reachabilityRequest, 'getClusters').returns(getClustersResult);
+
+    const createPeerConnectionStub = sinon.stub(reachability, 'createPeerConnection');
+
+    await reachability.gatherReachability();
+
+    // check that a peer connection was created with only the udp urls 
+    assert.calledOnceWithExactly(createPeerConnectionStub, {
+      key: 'clusterId',
+      config: {
+        iceServers: [
+          {
+            username: '',
+            credential: '',
+            urls: ['stun:170.72.164.3:5004'],
+          },
+          {
+            username: '',
+            credential: '',
+            urls: ['stun:170.72.164.3:9000'],
+          }
+        ],
+        iceCandidatePoolSize: '0',
+        iceTransportPolicy: 'all'
+      }
+    })
+  });
+
   describe('clientMediaIPs', () => {
     let testingClass: TestReachability;
 
@@ -135,9 +184,7 @@ describe('gatherReachability', () => {
       assert.deepEqual(res, {
         id1: {
           tcp: {
-            clientMediaIPs: ['1.1.1.1'],
-            latencyInMilliseconds: '12312',
-            reachable: 'true',
+            untested: 'true',
           },
           udp: {
             clientMediaIPs: ['1.1.1.1'],
@@ -147,8 +194,7 @@ describe('gatherReachability', () => {
         },
         id2: {
           tcp: {
-            latencyInMilliseconds: '14123',
-            reachable: 'true',
+            untested: 'true',
           },
           udp: {
             latencyInMilliseconds: '14123',
