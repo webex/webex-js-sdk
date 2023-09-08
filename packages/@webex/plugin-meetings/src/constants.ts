@@ -359,6 +359,8 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
+  // Locus URL changed
+  MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
 };
 
 export const EVENT_TYPES = {
@@ -904,7 +906,13 @@ export const DISPLAY_HINTS = {
   SHARE_CAMERA: 'SHARE_CAMERA',
   SHARE_DESKTOP: 'SHARE_DESKTOP',
   SHARE_CONTENT: 'SHARE_CONTENT',
+  SHARE_WHITEBOARD: 'SHARE_WHITEBOARD',
+
+  // Voip (audio/video)
+  VOIP_IS_ENABLED: 'VOIP_IS_ENABLED',
 };
+
+export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
 
 export const SELF_ROLES = {
   COHOST: 'COHOST',

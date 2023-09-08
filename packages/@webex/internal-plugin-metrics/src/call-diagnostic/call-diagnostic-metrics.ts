@@ -11,6 +11,7 @@ import {
   anonymizeIPAddress,
   clearEmptyKeysRecursively,
   isLocusServiceErrorCode,
+  prepareDiagnosticMetricItem,
   userAgentToString,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
@@ -383,7 +384,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options,
   }: {
     name: ClientEvent['name'];
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }) {
     const {meetingId, mediaConnections, rawError} = options;
 
@@ -450,7 +451,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options,
   }: {
     name: ClientEvent['name'];
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }) {
     const {correlationId} = options;
 
@@ -474,21 +475,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Submit Client Event CA event.
+   * Prepare Client Event CA event.
    * @param arg - submit params
    * @param arg.event - event key
    * @param arg.payload - additional payload to be merged with default payload
    * @param arg.options - payload
+   * @returns {any} options to be with fetch
    * @throws
    */
-  public submitClientEvent({
+  private prepareClientEvent({
     name,
     payload,
     options,
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
-    options: SubmitClientEventOptions;
+    options?: SubmitClientEventOptions;
   }) {
     const {meetingId, correlationId} = options;
     let clientEventObject: ClientEvent['payload'];
@@ -509,6 +511,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // append client event data to the call diagnostic event
     const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
 
+    return diagnosticEvent;
+  }
+
+  /**
+   * Submit Client Event CA event.
+   * @param arg - submit params
+   * @param arg.event - event key
+   * @param arg.payload - additional payload to be merged with default payload
+   * @param arg.options - payload
+   * @throws
+   */
+  public submitClientEvent({
+    name,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    payload?: ClientEventPayload;
+    options?: SubmitClientEventOptions;
+  }) {
+    const diagnosticEvent = this.prepareClientEvent({name, payload, options});
+
     return this.submitToCallDiagnostics(diagnosticEvent);
   }
 
@@ -525,5 +549,43 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
+  }
+
+  /**
+   * Builds a request options object to later be passed to fetch().
+   * @param arg - submit params
+   * @param arg.event - event key
+   * @param arg.payload - additional payload to be merged with default payload
+   * @param arg.options - client event options
+   * @returns {Promise<any>}
+   * @throws
+   */
+  public async buildClientEventFetchRequestOptions({
+    name,
+    payload,
+    options,
+  }: {
+    name: ClientEvent['name'];
+    payload?: ClientEventPayload;
+    options?: SubmitClientEventOptions;
+  }): Promise<any> {
+    const clientEvent = this.prepareClientEvent({name, payload, options});
+
+    // build metrics-a event type
+    // @ts-ignore
+    const diagnosticEvent = prepareDiagnosticMetricItem(this.webex, {
+      eventPayload: clientEvent,
+      type: ['diagnostic-event'],
+    });
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions({
+      method: 'POST',
+      service: 'metrics',
+      resource: 'clientmetrics',
+      body: {
+        metrics: [diagnosticEvent],
+      },
+    });
   }
 }

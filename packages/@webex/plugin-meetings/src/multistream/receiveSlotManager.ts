@@ -59,7 +59,7 @@ export class ReceiveSlotManager {
     if (availableSlot) {
       this.allocatedSlots[mediaType].push(availableSlot);
 
-      LoggerProxy.logger.log(`receive slot re-used: ${availableSlot.id}`);
+      LoggerProxy.logger.log(`${mediaType}: receive slot re-used: ${availableSlot.id}`);
 
       return availableSlot;
     }
@@ -70,7 +70,7 @@ export class ReceiveSlotManager {
     const receiveSlot = new ReceiveSlot(mediaType, wcmeReceiveSlot, this.findMemberIdByCsiCallback);
 
     this.allocatedSlots[mediaType].push(receiveSlot);
-    LoggerProxy.logger.log(`new receive slot allocated: ${receiveSlot.id}`);
+    LoggerProxy.logger.log(`${mediaType}: new receive slot allocated: ${receiveSlot.id}`);
 
     return receiveSlot;
   }
@@ -87,10 +87,10 @@ export class ReceiveSlotManager {
     if (idx >= 0) {
       this.allocatedSlots[slot.mediaType].splice(idx, 1);
       this.freeSlots[slot.mediaType].push(slot);
-      LoggerProxy.logger.log(`receive slot released: ${slot.id}`);
+      LoggerProxy.logger.log(`${slot.mediaType}: receive slot released: ${slot.id}`);
     } else {
       LoggerProxy.logger.warn(
-        'ReceiveSlotManager#releaseSlot --> trying to release a slot that is not managed by this ReceiveSlotManager'
+        `ReceiveSlotManager#releaseSlot --> trying to release a ${slot.mediaType}} slot that is not managed by this ReceiveSlotManager`
       );
     }
   }

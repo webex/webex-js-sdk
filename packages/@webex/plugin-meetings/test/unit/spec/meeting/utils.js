@@ -633,6 +633,13 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canShareWhiteBoard', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD']), true);
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard([]), false);
+      });
+    });
+
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
         assert.deepEqual(
@@ -775,10 +782,12 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, true);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
-          { languageName: 'en', languageCode: 1 },
-          { languageName: 'es', languageCode: 2 },
-        ]);
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
+          siLanguages: [
+            { languageName: 'en', languageCode: 1 },
+            { languageName: 'es', languageCode: 2 },
+          ]
+        });
       });
 
       it('should update simultaneous interpretation settings with host SI disabled', () => {
@@ -787,10 +796,12 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, false);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, [
-          { languageName: 'en', languageCode: 1 },
-          { languageName: 'es', languageCode: 2 },
-        ]);
+        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
+          siLanguages: [
+            { languageName: 'en', languageCode: 1 },
+            { languageName: 'es', languageCode: 2 },
+          ]
+        });
       });
       it('should update simultaneous interpretation settings with SI disabled', () => {
         meetingInfo.turnOnSimultaneousInterpretation = false;
