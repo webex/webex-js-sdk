@@ -79,7 +79,7 @@ interface IVoiceaChannel {
   requestLanguage: (languageCode: string) => void;
   turnOnCaptions: () => undefined | Promise<void>;
   toggleTranscribing: (activate: boolean) => undefined | Promise<void>;
-  deregisterEvents: () => undefined | Promise<void>;
+  deregisterEvents: () => void;
 }
 
 export type {

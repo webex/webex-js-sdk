@@ -299,7 +299,7 @@ describe('internal-plugin-calendar', () => {
       });
 
       describe('#getParticipants()', () => {
-        const id = 'meetingId123';
+        const uri = 'participantsUrl';
 
         it('should fetch the meeting participants', async () => {
           webex.request = sinon.stub().returns(
@@ -310,134 +310,34 @@ describe('internal-plugin-calendar', () => {
             })
           );
 
-          const res = await webex.internal.calendar.getParticipants(id);
+          const res = await webex.internal.calendar.getParticipants(uri);
 
           assert.equal(res.body.encryptedParticipants.length, 1);
           assert.calledWith(webex.request, {
             method: 'GET',
-            service: 'calendar',
-            resource: `calendarEvents/${base64.encode(id)}/participants`,
+            uri,
           });
         });
       });
 
-      describe("#getSchedulerData()", () => {
-        it("should fetch meeting calendar data", async () => {
-          const query = {
-            siteName: "scheduler01.dmz.webex.com",
-            clientMeetingId: "YWJjZGFiY2QtYWJjZC1hYmNkLWFiY2QtMDAwMDAwMDA"
-          };
+      describe('#getNotesByUrl()', () => {
+        const uri = 'notesUrl';
 
-          webex.request = sinon.stub().resolves({
-            body: {
-              encryptedSubject: "My Meeting 1",
-              schedulerPreferences: {
-                uiControlAttributes: {
-                  displayHostSaveMeetingTemplate: true
-                },
-                webexOptions: {
-                  sessionTypeId: 3
-                }
-              }
-            }
-          });
+        it('should fetch the meeting notes', async () => {
+          webex.request = sinon.stub().returns(
+            Promise.resolve({
+              body: {
+                encryptedParticipants: ['participant1'],
+              },
+            })
+          );
 
-          const res = await webex.internal.calendar.getSchedulerData(query);
+          const res = await webex.internal.calendar.getNotesByUrl(uri);
 
-          expect(res.body.encryptedSubject).to.equal("My Meeting 1");
-          expect(res.body.schedulerPreferences.uiControlAttributes.displayHostSaveMeetingTemplate).to.be.true;
-          expect(res.body.schedulerPreferences.webexOptions.sessionTypeId).to.equal(3);
+          assert.equal(res.body.encryptedParticipants.length, 1);
           assert.calledWith(webex.request, {
-            method: "GET",
-            service: "calendar",
-            resource: "schedulerData",
-            qs: {
-              siteName: query.siteName,
-              clientMeetingId: query.clientMeetingId
-            }
-          });
-        });
-      });
-
-      describe("#createCalendarEvent()", () => {
-        it("should create an calendar event", async () => {
-          const data = {
-            encryptionKeyUrl: "kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3",
-            notes: "This is Agenda",
-            subject: "My Meeting 1",
-            webexOptions: "{}"
-          };
-          const query = {};
-
-          webex.request = sinon.stub().resolves({
-            body: {
-              meetingId: "abcdabcd-abcd-abcd-abcd-00000000",
-              globalMeetingId: "xxxx-xxxx-xxxx-xxxx"
-            }
-          });
-
-          const res = await webex.internal.calendar.createCalendarEvent(data);
-
-          expect(res.body.meetingId).to.equal("abcdabcd-abcd-abcd-abcd-00000000");
-          expect(res.body.globalMeetingId).to.equal("xxxx-xxxx-xxxx-xxxx");
-          assert.calledWith(webex.request, {
-            method: "POST",
-            service: "calendar",
-            body: data,
-            resource: "calendarEvents/sync",
-            qs: query
-          });
-        });
-      });
-
-      describe("#updateCalendarEvent()", () => {
-        it("should update a calendar event", async () => {
-          const id = "abcdabcd-abcd-abcd-abcd-00000000";
-          const data = {
-            encryptionKeyUrl: "kms://kms-us-int.wbx2.com/keys/d1c14fc5-be10-4389-ae83-9521f92fbfd3",
-            notes: "This is Agenda",
-            subject: "My Meeting 1",
-            webexOptions: "{}"
-          };
-          const query = {};
-
-          webex.request = sinon.stub().resolves({
-            body: {
-              meetingId: "abcdabcd-abcd-abcd-abcd-00000000",
-              globalMeetingId: "xxxx-xxxx-xxxx-xxxx"
-            }
-          });
-
-          const res = await webex.internal.calendar.updateCalendarEvent(id, data);
-
-          expect(res.body.meetingId).to.equal("abcdabcd-abcd-abcd-abcd-00000000");
-          expect(res.body.globalMeetingId).to.equal("xxxx-xxxx-xxxx-xxxx");
-          assert.calledWith(webex.request, {
-            method: "PATCH",
-            service: "calendar",
-            body: data,
-            resource: `calendarEvents/${base64.encode(id)}/sync`,
-            qs: query
-          });
-        });
-      });
-
-      describe("#deleteCalendarEvent()", () => {
-        it("should delete a calendar event", async () => {
-          const id = "abcdabcd-abcd-abcd-abcd-00000000";
-          const query = {};
-
-          webex.request = sinon.stub().resolves({
-            body: {}
-          });
-
-          await webex.internal.calendar.deleteCalendarEvent(id, query);
-
-          assert.calledWith(webex.request, {
-            method: "DELETE",
-            service: "calendar",
-            resource: `calendarEvents/${base64.encode(id)}/sync`,
-            qs: query
+            method: 'GET',
+            uri,
           });
         });
       });

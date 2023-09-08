@@ -11,6 +11,51 @@
 
 <body>
   <div class="container">
+    <section id="multistream-remote-streams" class="section-box section-wide">
+      <h2 class="collapsible">Multistream Media</h2>
+      <div class="section-content">
+        <fieldset>
+          <legend>Multistream Remote Videos</legend>
+          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-share-audio" autoplay ></audio>
+          <div id="multistream-videos-container" class="multistream-videos-container">
+          </div>
+          <div class="multistream-buttons">
+            <div class="stage-control-wrapper">
+              <span>Choose Layout:</span>
+              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+                <option value="AllEqual">All Equal (max 9)</option>
+                <option value="OnePlusFive">One big plane + five small</option>
+                <option value="Single">Single video pane</option>
+                <option value="Stage">Stage with thumbnails</option>
+                <option value="ScreenShareView">Screen share with thumbnails</option>
+              </select>
+            </div>
+            <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
+              <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
+              <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
+            </div>
+          </div>
+          <div><button id="get-stats" onclick="getStats()">Get stats</button> or CTRL+click on a video pane to see its stats.</div>
+          <div style="display: flex">
+            <select name="remote-media-selector" id="remote-media-selector"></select>
+            <input id="size-hint-input" />
+            <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
+          </div>
+          <div class="prefer-live-video">
+            <span>Set Prefer Live Video:</span>
+            <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
+              <option value="Enable">Enable</option>
+              <option value="Disable">Disable</option>
+            </select>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  </div>
+  <div class="container">
     <div id="docs-content" class="column">
       <section id="meetingAuthentication" class="section-box">
         <h2 class="collapsible">Meeting Management</h2>
@@ -248,7 +293,7 @@
                 <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
                 <div>
                   <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
+
                   <!-- refresh icon -->
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
@@ -260,14 +305,18 @@
                 </div>
                 <input id="meetings-join-moderator" type="checkbox">
                 <label for="meetings-join-moderator">Join as Moderator</label>
+                <input id="meetings-join-breakout-enabled" type="checkbox">
+                <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
+                <input id="meetings-media-in-lobby-enabled" type="checkbox">
+                <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
                 <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
               </div>
 
               <!-- meetings / media quality -->
               <div>
-                <fieldset>
+                <fieldset id="meeting-quality">
                   <legend>Media Quality</legend>
-              
+
                   <!-- Media quality dropdown -->
                   <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
 
@@ -277,9 +326,9 @@
                       <label class="media-button-label" for="local-resolution">Local Resolution</label>
                       <select name="local-resolution" id="local-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-local-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-local-meeting-quality"
+                        type="button"
                         onclick="setLocalMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -292,9 +341,9 @@
                       <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
                       <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-remote-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-remote-meeting-quality"
+                        type="button"
                         onclick="setRemoteMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -302,30 +351,23 @@
                       </button>
                     </div>
                     <label id="ts-sending-quality-status"></label>
-                  </div>                  
+                  </div>
                 </fieldset>
               </div>
 
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
+                <input id="meetings-join-multistream" type="checkbox" onclick="updateMultistreamUI()">
+                <label for="meetings-join-multistream">Use a multistream connection</label>
                 <div class="u-mv">
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
+                    <input type="checkbox" name="ts-media-direction" value="audioEnabled" checked="">audioEnabled
                   </label>
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveVideo" checked="">receiveVideo
+                    <input type="checkbox" name="ts-media-direction" value="videoEnabled" checked="">videoEnabled
                   </label>
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveShare" checked="">receiveShare
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendAudio" checked="">sendAudio
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendVideo" checked="">sendVideo
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendShare" id="sendShareToggle">sendShare
                   </label>
                 </div>
               </div>
@@ -338,7 +380,7 @@
                       <button style="width: 95%;" id="btn-join" onclick="joinMeeting()">Join Meeting</button>
                     </div>
                     <div>
-                      <button style="width: 95%;" id="btn-join" onclick="getMediaStreams()">Get Media Streams</button>
+                      <button style="width: 95%;" id="btn-join" onclick="getUserMedia()">Get Media Streams</button>
                     </div>
                     <div>
                       <button style="width: 95%;" id="btn-join" onclick="addMedia()">Add Media</button>
@@ -381,13 +423,13 @@
                 <label class="context-info">Audio Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-audio-input-devices"></select>
-                  <button type="button" onclick="setAudioInputDevice()">Update Audio</button>
+                  <button type="button" onclick="setAudioInputDevice()">Publish Audio</button>
                   <label id="sd-audio-input-device-status"></label>
                 </div>
                 <label class="context-info">Video Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-video-input-devices"></select>
-                  <button type="button" onclick="setVideoInputDevice()">Update Video</button>
+                  <button type="button" onclick="setVideoInputDevice()">Publish Video</button>
                   <label id="sd-video-input-device-status"></label>
                 </div>
                 <label class="context-info">Audio Output Device</label>
@@ -410,7 +452,7 @@
               </div>
             </fieldset>
           </div>
-        
+
           <!-- PMR management -->
           <div>
             <form id="pmr-management">
@@ -497,7 +539,7 @@
               </div>
             </div>
 
-            <div>
+            <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
                 <div class="video-container">
@@ -506,7 +548,7 @@
                   <span id="remote-video-resolution" class="video-resolution"></span>
                 </div>
 
-                <fieldset>
+                <fieldset id="transcoded-video-resolution">
                   <legend>Set Resolution</legend>
                   <div class="u-mv">
                     <div class="flex" style="align-items: center; gap:10px">
@@ -530,18 +572,22 @@
 
             <div>
               <fieldset>
-                <legend>Local Screenshare</legend>
-                <video id="local-screenshare" autoplay playsinline></video>
+                <legend>Local Screenshare Video</legend>
+                <video id="local-screenshare-video" autoplay playsinline></video>
+              </fieldset>
+              <fieldset>
+                <legend>Local Screenshare Audio</legend>
+                <audio id="local-screenshare-audio" controls autoplay></audio>
               </fieldset>
               <div class="btn-group">
                 <button id="ts-start-screenshare" type="button" onclick="startScreenShare()"
                   class="btn-code">meeting.shareScreen()</button>
                 <button id="ts-stop-screenshare" type="button" onclick="stopScreenShare()"
-                  class="btn-code">meeting.stopScreenScreen()</button>
+                  class="btn-code">meeting.stopShare()</button>
               </div>
             </div>
 
-            <div class="u-mt">
+            <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
               <fieldset>
                 <legend>Remote Screenshare</legend>
                 <video id="remote-screenshare" autoplay playsinline></video>
@@ -555,6 +601,20 @@
               <div id="participant-list">
                 <div id="participant-table"></div>
                 <div id="participant-btn"></div>
+              </div>
+              <p class="note multistream" id="remote-sources-info"></p>
+            </fieldset>
+          </div>
+          <!-- meetings / breakout sessions -->
+          <div>
+            <fieldset>
+              <legend>Breakout Sessions</legend>
+              <input type="checkbox" id="enable-breakout" onclick="toggleBreakout()">
+              <label for="enable-breakout">Enable breakout</label><br>
+              <div id="newBreakout-div"></div>
+              <div id="breakouts-list">
+                <div id="breakout-host-operation"></div>
+                <div id="breakout-table"></div>
               </div>
             </fieldset>
           </div>

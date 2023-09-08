@@ -1,4 +1,4 @@
-import {SELF_ROLES, DISPLAY_HINTS} from '../constants';
+import {SELF_ROLES, DISPLAY_HINTS, INTERSTITIAL_DISPLAY_HINTS} from '../constants';
 
 const InfoUtils: any = {};
 
@@ -9,7 +9,15 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
     coHost: InfoUtils.parseCoHost(info),
   };
 
-  let userDisplayHints = isJoined ? {...parsed.policy} : {};
+  let userDisplayHints = isJoined
+    ? {...parsed.policy}
+    : {
+        ...Object.fromEntries(
+          Object.entries(parsed.policy).filter(([hint]) =>
+            INTERSTITIAL_DISPLAY_HINTS.includes(hint)
+          )
+        ),
+      };
 
   if (roles.includes(SELF_ROLES.COHOST)) {
     userDisplayHints = {...userDisplayHints, ...parsed.coHost};
@@ -27,6 +35,10 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
 
   if (info.meetingId) {
     parsed.meetingNumber = info.meetingId;
+  }
+
+  if (info.datachannelUrl) {
+    parsed.datachannelUrl = info.datachannelUrl;
   }
 
   return parsed;

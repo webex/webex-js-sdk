@@ -3,6 +3,7 @@
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ## [2.59.0](https://github.com/webex/webex-js-sdk/compare/v2.58.1...v2.59.0) (2023-07-24)
+## [3.0.0-beta.206](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.205...v3.0.0-beta.206) (2023-09-06)
 
 
 ### Features
@@ -10,6 +11,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **package-tools:** improve version control ([#2950](https://github.com/webex/webex-js-sdk/issues/2950)) ([a4cb696](https://github.com/webex/webex-js-sdk/commit/a4cb69668fc8bfe819756a4f080d9ea5e30e5e9a))
 
 ### [2.58.1](https://github.com/webex/webex-js-sdk/compare/v2.58.0...v2.58.1) (2023-07-21)
+* **videorestrict:** added test to trigger release ([#3056](https://github.com/webex/webex-js-sdk/issues/3056)) ([d22d80f](https://github.com/webex/webex-js-sdk/commit/d22d80f5f71633b94ffb2adaf7777724dc33b498))
+
+## [3.0.0-beta.205](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.204...v3.0.0-beta.205) (2023-09-05)
 
 
 ### Bug Fixes
@@ -17,6 +21,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **samples:** video resolution issue fix ([#2961](https://github.com/webex/webex-js-sdk/issues/2961)) ([974d9a6](https://github.com/webex/webex-js-sdk/commit/974d9a64d111fab135ab36d6e462c5fa671f2512))
 
 ## [2.58.0](https://github.com/webex/webex-js-sdk/compare/v2.57.1...v2.58.0) (2023-07-20)
+* update metrics body for use with telemetry service ([#3045](https://github.com/webex/webex-js-sdk/issues/3045)) ([02ffb5e](https://github.com/webex/webex-js-sdk/commit/02ffb5e264cc1dccef77836d383019ada34caf5b))
+
+## [3.0.0-beta.204](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.203...v3.0.0-beta.204) (2023-09-05)
 
 
 ### Features
@@ -24,6 +31,11 @@ All notable changes to this project will be documented in this file. See [standa
 * extract media status on members from nested participant ([#2953](https://github.com/webex/webex-js-sdk/issues/2953)) ([9194180](https://github.com/webex/webex-js-sdk/commit/9194180a7e67935b86dd3ab4d8b87637a774143f))
 
 ### [2.57.1](https://github.com/webex/webex-js-sdk/compare/v2.57.0...v2.57.1) (2023-07-14)
+* **whiteboard:** add whiteboard control ([#3047](https://github.com/webex/webex-js-sdk/issues/3047)) ([9744754](https://github.com/webex/webex-js-sdk/commit/9744754a0e5ed4d02388f979b42b19ba3b634ec8))
+
+## [3.0.0-beta.203](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.202...v3.0.0-beta.203) (2023-09-04)
+
+## [3.0.0-beta.202](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.201...v3.0.0-beta.202) (2023-09-04)
 
 
 ### Bug Fixes
@@ -31,6 +43,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **plugin-calendar:** enhance getFreeBusy function ([#2940](https://github.com/webex/webex-js-sdk/issues/2940)) ([a99635a](https://github.com/webex/webex-js-sdk/commit/a99635a0078dc9c75fa989cff0a4486d6acccfad))
 
 ## [2.57.0](https://github.com/webex/webex-js-sdk/compare/v2.56.0...v2.57.0) (2023-07-13)
+* **meeting:** trigger message when update locusUrl ([#3046](https://github.com/webex/webex-js-sdk/issues/3046)) ([b747498](https://github.com/webex/webex-js-sdk/commit/b7474980951e5aa72ea1cf979ca49c3e75cdbdeb))
+
+## [3.0.0-beta.201](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.200...v3.0.0-beta.201) (2023-09-01)
 
 
 ### Features
@@ -38,6 +53,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **internal-plugin-encryption:** support for uploading master key  f… ([#2945](https://github.com/webex/webex-js-sdk/issues/2945)) ([075131c](https://github.com/webex/webex-js-sdk/commit/075131c94fb1981ea0bdcbd3ff93bc08ea266927))
 
 ## [2.56.0](https://github.com/webex/webex-js-sdk/compare/v2.55.1...v2.56.0) (2023-07-11)
+* fix a parameter of updateInterpretation ([#3043](https://github.com/webex/webex-js-sdk/issues/3043)) ([0f779f8](https://github.com/webex/webex-js-sdk/commit/0f779f8507a218d38f22883d2e21214438440999))
+
+## [3.0.0-beta.200](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.199...v3.0.0-beta.200) (2023-08-31)
 
 
 ### Features
@@ -52,6 +70,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **meetings:** update package with import paths ([#2898](https://github.com/webex/webex-js-sdk/issues/2898)) ([7a02ae6](https://github.com/webex/webex-js-sdk/commit/7a02ae68d2f22bcfd78efd92fe0372ef4223cee1))
 
 ## [2.55.0](https://github.com/webex/webex-js-sdk/compare/v2.54.3...v2.55.0) (2023-06-27)
+* **new-metrics:** fix type, revert remove correlationId from join method ([#3039](https://github.com/webex/webex-js-sdk/issues/3039)) ([d86f3fc](https://github.com/webex/webex-js-sdk/commit/d86f3fcbbc0343468c909114d55fe507aabd2f68))
+
+## [3.0.0-beta.199](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.198...v3.0.0-beta.199) (2023-08-30)
 
 
 ### Features
@@ -59,6 +80,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **automation:** github actions deploy foundation ([#2896](https://github.com/webex/webex-js-sdk/issues/2896)) ([7e5939d](https://github.com/webex/webex-js-sdk/commit/7e5939d9c2b27ee881707ae8c068b012fd977fdc))
 
 ### [2.54.3](https://github.com/webex/webex-js-sdk/compare/v2.54.2...v2.54.3) (2023-06-26)
+* **pre-join:** add new correlationId logic ([#3024](https://github.com/webex/webex-js-sdk/issues/3024)) ([cfdb62b](https://github.com/webex/webex-js-sdk/commit/cfdb62bec81641bb799947abaafd4ac33ee23cc7))
+
+## [3.0.0-beta.198](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.197...v3.0.0-beta.198) (2023-08-29)
 
 
 ### Bug Fixes
@@ -80,6 +104,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **plugin-meetings:** peerconnection detached only after sending last mqa ([#2867](https://github.com/webex/webex-js-sdk/issues/2867)) ([3ee1377](https://github.com/webex/webex-js-sdk/commit/3ee1377c56ece9bd9502a5032a1194125077b5bc))
 
 ## [2.54.0](https://github.com/webex/webex-js-sdk/compare/v2.53.1...v2.54.0) (2023-05-31)
+* add a timeout option to dss requests ([#2928](https://github.com/webex/webex-js-sdk/issues/2928)) ([9e9cc5f](https://github.com/webex/webex-js-sdk/commit/9e9cc5fc70eafe7ecf3307a3fb77319c40a8f5ac))
+
+## [3.0.0-beta.197](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.196...v3.0.0-beta.197) (2023-08-29)
 
 
 ### Features
@@ -87,6 +114,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **internal-plugin-calendar:** support query parameter for most cls apis and code refactor ([#2835](https://github.com/webex/webex-js-sdk/issues/2835)) ([7b32c04](https://github.com/webex/webex-js-sdk/commit/7b32c04d751816eb838e3d85ae59f294c256d82b))
 
 ### [2.53.1](https://github.com/webex/webex-js-sdk/compare/v2.53.0...v2.53.1) (2023-05-19)
+* **call-leave:** allow metric options to be prepared ahead of browser close ([#3015](https://github.com/webex/webex-js-sdk/issues/3015)) ([1c1e2fc](https://github.com/webex/webex-js-sdk/commit/1c1e2fc8cffa9eb4b984dae1b260d6ece3d2a43a))
+
+## [3.0.0-beta.196](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.195...v3.0.0-beta.196) (2023-08-29)
 
 
 ### Bug Fixes
@@ -94,6 +124,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **meetings:** commit for patch release ([#2822](https://github.com/webex/webex-js-sdk/issues/2822)) ([f894204](https://github.com/webex/webex-js-sdk/commit/f894204416ae8cb022a3ea6806e116c87f5c503a))
 
 ## [2.53.0](https://github.com/webex/webex-js-sdk/compare/v2.52.13...v2.53.0) (2023-05-18)
+* added mediaType to ReceiveSlotManager logs ([#3025](https://github.com/webex/webex-js-sdk/issues/3025)) ([57b7560](https://github.com/webex/webex-js-sdk/commit/57b7560dbf03e6a30a939c7819859fa6062d7dd3))
+
+## [3.0.0-beta.195](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.194...v3.0.0-beta.195) (2023-08-25)
 
 
 ### Features
@@ -193,6 +226,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **automation:** lock hash ([#2726](https://github.com/webex/webex-js-sdk/issues/2726)) ([32c1597](https://github.com/webex/webex-js-sdk/commit/32c1597a9ea7fa1b153b9f6ddd4cf6bcec235e1b))
 
 ## [2.52.0](https://github.com/webex/webex-js-sdk/compare/v2.51.0...v2.52.0) (2023-04-10)
+* **metrics:** fix return type client event CA ([#3018](https://github.com/webex/webex-js-sdk/issues/3018)) ([162d03d](https://github.com/webex/webex-js-sdk/commit/162d03d4954e9e3095a09f3baf1f5fd3e7fa022a))
+
+## [3.0.0-beta.194](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.193...v3.0.0-beta.194) (2023-08-25)
 
 
 ### Features
@@ -249,6 +285,9 @@ All notable changes to this project will be documented in this file. See [standa
 * improve building workflows ([#2685](https://github.com/webex/webex-js-sdk/issues/2685)) ([7355e00](https://github.com/webex/webex-js-sdk/commit/7355e0027b93fc974963a3d382ecd3eb080d9082))
 
 ### [2.44.1](https://github.com/webex/webex-js-sdk/compare/v2.44.0...v2.44.1) (2023-03-16)
+* add annotation self-policy handling to sdk ([#3014](https://github.com/webex/webex-js-sdk/issues/3014)) ([7c9aca0](https://github.com/webex/webex-js-sdk/commit/7c9aca0875c810b62eafa6784593b60dab0569ce))
+
+## [3.0.0-beta.193](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.192...v3.0.0-beta.193) (2023-08-24)
 
 
 ### Bug Fixes
@@ -256,6 +295,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **metrics:** remove org_id, client_id and user_id tags from operational metrics ([#2641](https://github.com/webex/webex-js-sdk/issues/2641)) ([c138b24](https://github.com/webex/webex-js-sdk/commit/c138b24ec58470691471f61108ea17654c2aac06))
 
 ## [2.44.0](https://github.com/webex/webex-js-sdk/compare/v2.43.2...v2.44.0) (2023-03-14)
+* **board:** fix integration board tests for download files ([#3021](https://github.com/webex/webex-js-sdk/issues/3021)) ([b08f37b](https://github.com/webex/webex-js-sdk/commit/b08f37ba33e70985a4519db30ce0f5616dfe6fd2))
+
+## [3.0.0-beta.192](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.191...v3.0.0-beta.192) (2023-08-21)
 
 
 ### Features
@@ -263,6 +305,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **tools/package:** create package ([#2662](https://github.com/webex/webex-js-sdk/issues/2662)) ([45d0517](https://github.com/webex/webex-js-sdk/commit/45d0517e04afda0c6ad7d428314f1bee1a3547a0))
 
 ### [2.43.2](https://github.com/webex/webex-js-sdk/compare/v2.43.1...v2.43.2) (2023-03-14)
+* **plugin-meetings:** video restrictions ([#3004](https://github.com/webex/webex-js-sdk/issues/3004)) ([a29e85f](https://github.com/webex/webex-js-sdk/commit/a29e85fcd2a683366fa80eae0e950ec1df992ee8))
+
+## [3.0.0-beta.191](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.190...v3.0.0-beta.191) (2023-08-18)
 
 
 ### Bug Fixes
@@ -277,6 +322,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **encryption:** node-jose version ([#2672](https://github.com/webex/webex-js-sdk/issues/2672)) ([760f30d](https://github.com/webex/webex-js-sdk/commit/760f30d1e43c880912ded55a9ac4d898aeb5be58))
 
 ## [2.43.0](https://github.com/webex/webex-js-sdk/compare/v2.42.0...v2.43.0) (2023-03-08)
+* **plugin-meetings:** added error for transcription not working when guest joins first ([#3012](https://github.com/webex/webex-js-sdk/issues/3012)) ([5ee7f46](https://github.com/webex/webex-js-sdk/commit/5ee7f466c4f33d655c910c76909428263d7faf6e))
+
+## [3.0.0-beta.190](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.189...v3.0.0-beta.190) (2023-08-16)
 
 
 ### Features
@@ -284,6 +332,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **config:** update configurations ([#2649](https://github.com/webex/webex-js-sdk/issues/2649)) ([3ae0854](https://github.com/webex/webex-js-sdk/commit/3ae085446b50c32dbccbd5f48afc19759ccfd556))
 
 ## [2.42.0](https://github.com/webex/webex-js-sdk/compare/v2.41.0...v2.42.0) (2023-03-03)
+* **metrics:** add webrtc metrics ([#2936](https://github.com/webex/webex-js-sdk/issues/2936)) ([2098cd1](https://github.com/webex/webex-js-sdk/commit/2098cd18afb25facf2769037044b43a3e7ca6879))
+
+## [3.0.0-beta.189](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.188...v3.0.0-beta.189) (2023-08-14)
 
 
 ### Features
@@ -291,6 +342,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **package:** add cli tooling ([#2636](https://github.com/webex/webex-js-sdk/issues/2636)) ([1227352](https://github.com/webex/webex-js-sdk/commit/1227352e66111669ed24699a380fd860ddf7eca2))
 
 ## [2.41.0](https://github.com/webex/webex-js-sdk/compare/v2.40.0...v2.41.0) (2023-03-02)
+* **meetings:** ignore policies for sharing if type is CALL ([#3002](https://github.com/webex/webex-js-sdk/issues/3002)) ([4907e6b](https://github.com/webex/webex-js-sdk/commit/4907e6b0faa48d3c53fc47b1bfcc59d1c37147ef))
+
+## [3.0.0-beta.188](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.187...v3.0.0-beta.188) (2023-08-11)
 
 
 ### Features
@@ -299,6 +353,24 @@ All notable changes to this project will be documented in this file. See [standa
 * **scheduler:** generate template ([#2609](https://github.com/webex/webex-js-sdk/issues/2609)) ([200ed6a](https://github.com/webex/webex-js-sdk/commit/200ed6ad520bd624e4909d1128b2ce9bc98d46ef))
 
 ## [2.40.0](https://github.com/webex/webex-js-sdk/compare/v2.39.3...v2.40.0) (2023-02-24)
+* **plugin-meetings:** can transfer file policy check ([#2998](https://github.com/webex/webex-js-sdk/issues/2998)) ([f9a28a1](https://github.com/webex/webex-js-sdk/commit/f9a28a1f1eb597b3a200fcbba2e30f1b282a99f6))
+* **plugin-meetings:** consider policy for broadcast message ([#3001](https://github.com/webex/webex-js-sdk/issues/3001)) ([b631edd](https://github.com/webex/webex-js-sdk/commit/b631edd35f94ebae618e40a30585f1cb3ee2c79e))
+
+## [3.0.0-beta.187](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.186...v3.0.0-beta.187) (2023-08-08)
+
+
+### Bug Fixes
+
+* handle out-of-order Locus delta DTOs ([#2994](https://github.com/webex/webex-js-sdk/issues/2994)) ([114f5ca](https://github.com/webex/webex-js-sdk/commit/114f5ca47b4e1f05c0975d63684f1a95a10b8c79))
+
+## [3.0.0-beta.186](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.185...v3.0.0-beta.186) (2023-08-04)
+
+
+### Bug Fixes
+
+* ask for delta instead of full locus DTO when handling DESYNC ([#2991](https://github.com/webex/webex-js-sdk/issues/2991)) ([4c90116](https://github.com/webex/webex-js-sdk/commit/4c90116b6c594f2332a6b5d1ccd9eec1d23a71ae))
+
+## [3.0.0-beta.185](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.184...v3.0.0-beta.185) (2023-08-03)
 
 
 ### Features
@@ -306,6 +378,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **legacy:** elevate babel and eslint ([#2622](https://github.com/webex/webex-js-sdk/issues/2622)) ([cbd2d8e](https://github.com/webex/webex-js-sdk/commit/cbd2d8ea270ec9a62b17fabcd981e6ff915d278d))
 
 ### [2.39.3](https://github.com/webex/webex-js-sdk/compare/v2.39.2...v2.39.3) (2023-02-17)
+* **plugin-meetings:** fix si trigger ([#2989](https://github.com/webex/webex-js-sdk/issues/2989)) ([8d7a264](https://github.com/webex/webex-js-sdk/commit/8d7a264beb81691efbfd78218f1a1baee6c85c15))
+
+## [3.0.0-beta.184](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.183...v3.0.0-beta.184) (2023-08-02)
 
 
 ### Bug Fixes
@@ -327,6 +402,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **plugin-meetings:** send appropriate metrics for chrome os ([#2605](https://github.com/webex/webex-js-sdk/issues/2605)) ([a827eef](https://github.com/webex/webex-js-sdk/commit/a827eef1d33af2eb53cf252defb312d061cc9e31))
 
 ## [2.39.0](https://github.com/webex/webex-js-sdk/compare/v2.38.2...v2.39.0) (2023-02-13)
+* **plugin-meetings:** isVideoMuted should reflect remote video mute ([#2958](https://github.com/webex/webex-js-sdk/issues/2958)) ([b60af35](https://github.com/webex/webex-js-sdk/commit/b60af35952df5a2ab6603a8bfa7fa13aa2b0c9f4))
+
+## [3.0.0-beta.183](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.182...v3.0.0-beta.183) (2023-08-02)
 
 
 ### Features
@@ -334,6 +412,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **meeting:** add mute participant controls ([#2603](https://github.com/webex/webex-js-sdk/issues/2603)) ([4b69091](https://github.com/webex/webex-js-sdk/commit/4b69091eba06478a24bc397c609e03d56723d6e1))
 
 ### [2.38.2](https://github.com/webex/webex-js-sdk/compare/v2.38.1...v2.38.2) (2023-02-10)
+* **SI:** get site feature toggle and scheduled interpretation from meeting info ([#2978](https://github.com/webex/webex-js-sdk/issues/2978)) ([0725309](https://github.com/webex/webex-js-sdk/commit/0725309bfc360c3ba63497726ffe24340c78a2f1))
+
+## [3.0.0-beta.182](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.181...v3.0.0-beta.182) (2023-08-01)
 
 
 ### Bug Fixes
@@ -348,6 +429,9 @@ All notable changes to this project will be documented in this file. See [standa
 * **plugin-meetings:** set correct local audio state in localsdp  ([#2598](https://github.com/webex/webex-js-sdk/issues/2598)) ([a438fde](https://github.com/webex/webex-js-sdk/commit/a438fdeea28f95834a722706bd5a6913fe246941))
 
 ## [2.38.0](https://github.com/webex/webex-js-sdk/compare/v2.37.2...v2.38.0) (2023-01-26)
+* ignore old full Locus DTOs ([#2986](https://github.com/webex/webex-js-sdk/issues/2986)) ([668d752](https://github.com/webex/webex-js-sdk/commit/668d752c1d4cf139e9704a6c7ee46c983e6e2a24))
+
+## [3.0.0-beta.181](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.180...v3.0.0-beta.181) (2023-08-01)
 
 
 ### Features
@@ -358,6 +442,16 @@ All notable changes to this project will be documented in this file. See [standa
 * export types for the meetings SDK ([#2589](https://github.com/webex/webex-js-sdk/issues/2589)) ([4fb8487](https://github.com/webex/webex-js-sdk/commit/4fb848757405ace8b919e698790faf815e8d2dc0))
 * **plugin-meetings:** enable the TLS 443 support for meetings SDK ([#2537](https://github.com/webex/webex-js-sdk/issues/2537)) ([4ae3434](https://github.com/webex/webex-js-sdk/commit/4ae34344825bc138ea3fa0199e8af59b9ea79125))
 * **recording:** add recording streaming service ([#2581](https://github.com/webex/webex-js-sdk/issues/2581)) ([f277800](https://github.com/webex/webex-js-sdk/commit/f27780092590c868f8d7772477099a989e6bff63))
+* **plugin-meetings:** user share policy ([#2985](https://github.com/webex/webex-js-sdk/issues/2985)) ([2d988ed](https://github.com/webex/webex-js-sdk/commit/2d988edd3048c4a9e6837e00e09bf8a960372471))
+
+## [3.0.0-beta.180](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.179...v3.0.0-beta.180) (2023-08-01)
+
+
+### Features
+
+* **ca-metrics:** do not subtract stay in lobby for mediaJMT ([#2979](https://github.com/webex/webex-js-sdk/issues/2979)) ([b3d344a](https://github.com/webex/webex-js-sdk/commit/b3d344ad0fdf3d422d794a620100ff954eb15071))
+
+## [3.0.0-beta.179](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.178...v3.0.0-beta.179) (2023-07-28)
 
 
 ### Bug Fixes
@@ -365,6 +459,1083 @@ All notable changes to this project will be documented in this file. See [standa
 * remove logger as circular dependency ([#2590](https://github.com/webex/webex-js-sdk/issues/2590)) ([d6386ea](https://github.com/webex/webex-js-sdk/commit/d6386ea71a154693cddde497be14029e8cc1ccde))
 * run typecheck only on pr checks ([#2591](https://github.com/webex/webex-js-sdk/issues/2591)) ([4cf3963](https://github.com/webex/webex-js-sdk/commit/4cf3963c53afb01d0e5564d0b60691de508c3c0c))
 * script to postbump ([#2592](https://github.com/webex/webex-js-sdk/issues/2592)) ([63d8b6c](https://github.com/webex/webex-js-sdk/commit/63d8b6cd0b0adb9836ca116c1b87eb8da9061417))
+* **plugin-meetings:** changed sample app to use max-bundle ([#2983](https://github.com/webex/webex-js-sdk/issues/2983)) ([a4fe738](https://github.com/webex/webex-js-sdk/commit/a4fe738d833dcfa28f28c3668e2612fc679a8d2c))
+
+## [3.0.0-beta.178](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.177...v3.0.0-beta.178) (2023-07-26)
+
+
+### Features
+
+* **ca-metrics:** fix latency bugs ([#2976](https://github.com/webex/webex-js-sdk/issues/2976)) ([9085e2d](https://github.com/webex/webex-js-sdk/commit/9085e2dd24c40ec1ef943ce56d3e2ed4ac94f7cc))
+
+## [3.0.0-beta.177](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.176...v3.0.0-beta.177) (2023-07-26)
+
+
+### Bug Fixes
+
+* **samples:** video resolution issue fix ([#2969](https://github.com/webex/webex-js-sdk/issues/2969)) ([8b0fd39](https://github.com/webex/webex-js-sdk/commit/8b0fd392c9b8406fb93948806c265602ead658ff))
+
+## [3.0.0-beta.176](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.175...v3.0.0-beta.176) (2023-07-26)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** add annotation info for share ([#2974](https://github.com/webex/webex-js-sdk/issues/2974)) ([c73de12](https://github.com/webex/webex-js-sdk/commit/c73de1225256b958b7e8df1c438c23fdddda3a0a))
+
+## [3.0.0-beta.175](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.174...v3.0.0-beta.175) (2023-07-25)
+
+## [3.0.0-beta.174](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.173...v3.0.0-beta.174) (2023-07-21)
+
+
+### Features
+
+* **internal-plugin-metrics:** fix latency bugs ([#2970](https://github.com/webex/webex-js-sdk/issues/2970)) ([a8fc5b2](https://github.com/webex/webex-js-sdk/commit/a8fc5b2564f173ea0dc94b22d0c5f7d1e61a841f))
+
+## [3.0.0-beta.173](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.172...v3.0.0-beta.173) (2023-07-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** dialout left reason ([#2963](https://github.com/webex/webex-js-sdk/issues/2963)) ([63fa3b8](https://github.com/webex/webex-js-sdk/commit/63fa3b83300d4bde6d6033a77f6e653a08ab7d1f))
+
+## [3.0.0-beta.172](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.171...v3.0.0-beta.172) (2023-07-21)
+
+
+### Features
+
+* extract media status on members from nested participant ([#2965](https://github.com/webex/webex-js-sdk/issues/2965)) ([6688c84](https://github.com/webex/webex-js-sdk/commit/6688c846b9b469553dc7a51d1c929148ddde9240))
+
+## [3.0.0-beta.171](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.170...v3.0.0-beta.171) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** add screenshare audio ([#2938](https://github.com/webex/webex-js-sdk/issues/2938)) ([f825042](https://github.com/webex/webex-js-sdk/commit/f82504232b85d4c29dbe72ecb2cff304ee6a47f7))
+
+## [3.0.0-beta.170](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.169...v3.0.0-beta.170) (2023-07-20)
+
+
+### Features
+
+* **plugin-meetings:** extract user policy from permission token ([#2942](https://github.com/webex/webex-js-sdk/issues/2942)) ([55fee4d](https://github.com/webex/webex-js-sdk/commit/55fee4dd2723c739f6c361eb9526465da560dda3))
+
+
+### Bug Fixes
+
+* **conversation:** use file.url instead of file.scr.loc for download ([#2925](https://github.com/webex/webex-js-sdk/issues/2925)) ([47fa794](https://github.com/webex/webex-js-sdk/commit/47fa794bdc6aed052957dc34a292af3cbe49f59c))
+
+## [3.0.0-beta.169](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.168...v3.0.0-beta.169) (2023-07-19)
+
+
+### Features
+
+* **ca-metrics:** add bind to passed in func ([#2959](https://github.com/webex/webex-js-sdk/issues/2959)) ([dd2dd4e](https://github.com/webex/webex-js-sdk/commit/dd2dd4e44122dcf4fa49a7c5db452f53b553cdb8))
+
+## [3.0.0-beta.168](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.167...v3.0.0-beta.168) (2023-07-19)
+
+
+### Bug Fixes
+
+* add enum constants for video and display track ([#2955](https://github.com/webex/webex-js-sdk/issues/2955)) ([1ca33c6](https://github.com/webex/webex-js-sdk/commit/1ca33c67d744d9160f17e81183b654bf22350ccb))
+
+## [3.0.0-beta.167](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.166...v3.0.0-beta.167) (2023-07-18)
+
+
+### Features
+
+* **ca-metrics:** fix option types on public methods ([#2957](https://github.com/webex/webex-js-sdk/issues/2957)) ([f286c5a](https://github.com/webex/webex-js-sdk/commit/f286c5af1cc89d0bbda21308b6ee093102741f2e))
+
+## [3.0.0-beta.166](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.165...v3.0.0-beta.166) (2023-07-18)
+
+
+### Features
+
+* **ca-metrics:** add optional type ([#2956](https://github.com/webex/webex-js-sdk/issues/2956)) ([0c4f08f](https://github.com/webex/webex-js-sdk/commit/0c4f08fcac46efb0273d46fccd011ebb56ab5f79))
+
+## [3.0.0-beta.165](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.164...v3.0.0-beta.165) (2023-07-17)
+
+## [3.0.0-beta.164](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.163...v3.0.0-beta.164) (2023-07-17)
+
+
+### Features
+
+* **ca-metrics:** fix package json ([#2951](https://github.com/webex/webex-js-sdk/issues/2951)) ([8de2538](https://github.com/webex/webex-js-sdk/commit/8de253833176bbcfadb1a81d3c6cc016f1a8c583))
+
+## [3.0.0-beta.163](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.162...v3.0.0-beta.163) (2023-07-14)
+
+
+### Features
+
+* **ca-metrics-refactor:** add new implementation ([#2948](https://github.com/webex/webex-js-sdk/issues/2948)) ([6374853](https://github.com/webex/webex-js-sdk/commit/6374853f575595392d02a777db3ef96642b86c14))
+
+## [3.0.0-beta.162](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.161...v3.0.0-beta.162) (2023-07-14)
+
+
+### Features
+
+* **internal-plugin-encryption:** support for uploading master key  f… ([#2947](https://github.com/webex/webex-js-sdk/issues/2947)) ([89368a2](https://github.com/webex/webex-js-sdk/commit/89368a26eccd14c5f805479637bb47693133b9cb))
+
+## [3.0.0-beta.161](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.160...v3.0.0-beta.161) (2023-07-14)
+
+## [3.0.0-beta.160](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.159...v3.0.0-beta.160) (2023-07-11)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** Annotation info with meetingid  ([#2935](https://github.com/webex/webex-js-sdk/issues/2935)) ([efbb7a4](https://github.com/webex/webex-js-sdk/commit/efbb7a490f5e30cb8ceba8430687a5698a4ea223))
+
+## [3.0.0-beta.159](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.158...v3.0.0-beta.159) (2023-07-07)
+
+
+### Bug Fixes
+
+* pr comment from spark-399695 ([#2929](https://github.com/webex/webex-js-sdk/issues/2929)) ([7d59861](https://github.com/webex/webex-js-sdk/commit/7d59861c969eadd0915e2d36823eca0d8b5e9fd7))
+
+## [3.0.0-beta.158](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.157...v3.0.0-beta.158) (2023-07-06)
+
+
+### Features
+
+* **bump:** dummy PR ([#2927](https://github.com/webex/webex-js-sdk/issues/2927)) ([eca421d](https://github.com/webex/webex-js-sdk/commit/eca421de42fdec53e5c3ba4809bc30d746caf1f0))
+* **metrics:** new prepareFetchOptions to allow metrics when page closed ([#2918](https://github.com/webex/webex-js-sdk/issues/2918)) ([1611b10](https://github.com/webex/webex-js-sdk/commit/1611b10d82a15fd4b3d4da6fead32ae2117a1e2c))
+
+
+### Bug Fixes
+
+* **breakout:** skip moved state main locus ([#2919](https://github.com/webex/webex-js-sdk/issues/2919)) ([30e77bc](https://github.com/webex/webex-js-sdk/commit/30e77bc6a32079c84e62240a16303ca179c63799))
+* **breakouts:** typo issue ([#2924](https://github.com/webex/webex-js-sdk/issues/2924)) ([bb6fd4d](https://github.com/webex/webex-js-sdk/commit/bb6fd4d7129976477f5ea971f354ac31b67af24b))
+* **plugin-meetings:** trigger ask return to main event after meeting joined ([#2923](https://github.com/webex/webex-js-sdk/issues/2923)) ([8396f86](https://github.com/webex/webex-js-sdk/commit/8396f86fac2cfaac1fdae48c567cfbd7572ca860))
+
+## [3.0.0-beta.157](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.156...v3.0.0-beta.157) (2023-07-04)
+
+
+### Bug Fixes
+
+* update internal media core ([#2921](https://github.com/webex/webex-js-sdk/issues/2921)) ([ba32678](https://github.com/webex/webex-js-sdk/commit/ba32678746e0b12dc9b14f0f3e67eb311a22bccf))
+
+## [3.0.0-beta.156](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.155...v3.0.0-beta.156) (2023-07-04)
+
+## [3.0.0-beta.155](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.154...v3.0.0-beta.155) (2023-07-03)
+
+
+### Bug Fixes
+
+* effects contraints update ([#2913](https://github.com/webex/webex-js-sdk/issues/2913)) ([408b8e5](https://github.com/webex/webex-js-sdk/commit/408b8e5acc873e1712e0ffc82297eac450b9b715))
+
+## [3.0.0-beta.154](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.153...v3.0.0-beta.154) (2023-06-30)
+
+
+### Bug Fixes
+
+* cannot join meetings if we have no microphone or camera permissions ([#2917](https://github.com/webex/webex-js-sdk/issues/2917)) ([2d0fdd8](https://github.com/webex/webex-js-sdk/commit/2d0fdd86daf2a24cd46b52671eb16d5baa89e20f))
+* **internal-plugin-encryption:** allow mixed case SAN ([#2916](https://github.com/webex/webex-js-sdk/issues/2916)) ([27652c9](https://github.com/webex/webex-js-sdk/commit/27652c9769f809920ae9a9cf260c68225bac36f2))
+* SDK requesting too many streams from Homer ([#2836](https://github.com/webex/webex-js-sdk/issues/2836)) ([c9a5056](https://github.com/webex/webex-js-sdk/commit/c9a50560aa752fd94bf2ed9170ff4e41af097e7d))
+
+## [3.0.0-beta.153](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.152...v3.0.0-beta.153) (2023-06-28)
+
+
+### Bug Fixes
+
+* **locus-info:** adding lastModified field when handling requestedToU… ([#2897](https://github.com/webex/webex-js-sdk/issues/2897)) ([42dc06c](https://github.com/webex/webex-js-sdk/commit/42dc06c48883741f2690aacade0f93e3386ccf0c))
+
+## [3.0.0-beta.152](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.151...v3.0.0-beta.152) (2023-06-28)
+
+
+### Features
+
+* **conversation:** do not encrypte meeting container policies ([#2886](https://github.com/webex/webex-js-sdk/issues/2886)) ([f082170](https://github.com/webex/webex-js-sdk/commit/f082170f5ff9a2a469bd0f7b0fbd60a3068e5476))
+
+## [3.0.0-beta.151](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.150...v3.0.0-beta.151) (2023-06-27)
+
+## [3.0.0-beta.150](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.149...v3.0.0-beta.150) (2023-06-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** set breakoutStatus cache false avoid duplicate changes ([#2900](https://github.com/webex/webex-js-sdk/issues/2900)) ([a5c9e5e](https://github.com/webex/webex-js-sdk/commit/a5c9e5e2d852620d9c4d42fa25cd6b0dfb28fcb1))
+
+## [3.0.0-beta.149](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.148...v3.0.0-beta.149) (2023-06-26)
+
+
+### Features
+
+* **plugin-meetings:** added setActiveSpeakerCsis() API ([#2899](https://github.com/webex/webex-js-sdk/issues/2899)) ([80dfafd](https://github.com/webex/webex-js-sdk/commit/80dfafd8fd64d07d3cfd3d9ae77d59e533860550))
+
+## [3.0.0-beta.148](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.147...v3.0.0-beta.148) (2023-06-26)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** fix annotation info is null ([#2901](https://github.com/webex/webex-js-sdk/issues/2901)) ([447f10b](https://github.com/webex/webex-js-sdk/commit/447f10bebc42d14e2599467c98f7f71d053bf3d4))
+
+## [3.0.0-beta.147](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.146...v3.0.0-beta.147) (2023-06-23)
+
+
+### Features
+
+* transcoded meetings APIs using webrtc-core local tracks ([#2853](https://github.com/webex/webex-js-sdk/issues/2853)) ([26d52f3](https://github.com/webex/webex-js-sdk/commit/26d52f3bdc66538b20bc7a2956deb291dbd1fadb))
+
+## [3.0.0-beta.146](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.145...v3.0.0-beta.146) (2023-06-21)
+
+
+### Features
+
+* **Live-Annotation:** start share with annotation info ([#2894](https://github.com/webex/webex-js-sdk/issues/2894)) ([9695014](https://github.com/webex/webex-js-sdk/commit/96950146f750ba2a939ed95e539e6c5dce792085))
+
+## [3.0.0-beta.145](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.144...v3.0.0-beta.145) (2023-06-21)
+
+
+### Features
+
+* **plugin-meetings:** add canBroadcastMessageToBreakout in meetingActions ([#2895](https://github.com/webex/webex-js-sdk/issues/2895)) ([15a4cab](https://github.com/webex/webex-js-sdk/commit/15a4cab054c7b411d2eb44cf84bc84cf26d42de9))
+
+## [3.0.0-beta.144](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.143...v3.0.0-beta.144) (2023-06-19)
+
+
+### Features
+
+* add media effects in plugin-meetings ([#2874](https://github.com/webex/webex-js-sdk/issues/2874)) ([0d7a75d](https://github.com/webex/webex-js-sdk/commit/0d7a75d7bfaa8cc86b0d239618cf49c9a026444d))
+
+## [3.0.0-beta.143](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.142...v3.0.0-beta.143) (2023-06-19)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** fix change annotation options ([#2888](https://github.com/webex/webex-js-sdk/issues/2888)) ([b6ab9ee](https://github.com/webex/webex-js-sdk/commit/b6ab9ee660eb5eb0cdcd069ca5934e1f18b761f1))
+
+## [3.0.0-beta.142](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.141...v3.0.0-beta.142) (2023-06-16)
+
+
+### Bug Fixes
+
+* changes required to work with new internal media core api ([#2887](https://github.com/webex/webex-js-sdk/issues/2887)) ([f9d39f5](https://github.com/webex/webex-js-sdk/commit/f9d39f5fd9b1e7427e30bf27c9965a8a199026a9))
+
+## [3.0.0-beta.141](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.140...v3.0.0-beta.141) (2023-06-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove listeners ([#2883](https://github.com/webex/webex-js-sdk/issues/2883)) ([f667d41](https://github.com/webex/webex-js-sdk/commit/f667d417fff02c07418de57b7d47bd41ce7b65cf))
+
+## [3.0.0-beta.140](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.139...v3.0.0-beta.140) (2023-06-15)
+
+## [3.0.0-beta.139](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.138...v3.0.0-beta.139) (2023-06-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove bound events before binding ([#2881](https://github.com/webex/webex-js-sdk/issues/2881)) ([04b9365](https://github.com/webex/webex-js-sdk/commit/04b9365b60ce9cc0080c5a340da2c8f227768369))
+
+## [3.0.0-beta.138](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.137...v3.0.0-beta.138) (2023-06-15)
+
+## [3.0.0-beta.137](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.136...v3.0.0-beta.137) (2023-06-14)
+
+
+### Features
+
+* **bulk dss:** add batcher to dss ([#2678](https://github.com/webex/webex-js-sdk/issues/2678)) ([2175be9](https://github.com/webex/webex-js-sdk/commit/2175be940be2905a77b7234aa3f7623c5396efaf))
+
+## [3.0.0-beta.136](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.135...v3.0.0-beta.136) (2023-06-14)
+
+
+### Features
+
+* **plugin-meetings:** preferLiveVideo ([#2859](https://github.com/webex/webex-js-sdk/issues/2859)) ([e5f6f89](https://github.com/webex/webex-js-sdk/commit/e5f6f8947cc2651210523000a422b208e58c283f))
+
+## [3.0.0-beta.135](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.134...v3.0.0-beta.135) (2023-06-14)
+
+## [3.0.0-beta.134](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.133...v3.0.0-beta.134) (2023-06-13)
+
+
+### Bug Fixes
+
+* **meetings:** reaction controls service workaround ([#2876](https://github.com/webex/webex-js-sdk/issues/2876)) ([4423391](https://github.com/webex/webex-js-sdk/commit/44233912911598ecad3b0483c6bd528616682776))
+
+## [3.0.0-beta.133](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.132...v3.0.0-beta.133) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** listen to relay event from llm when update llm ([#2869](https://github.com/webex/webex-js-sdk/issues/2869)) ([bbfe179](https://github.com/webex/webex-js-sdk/commit/bbfe1794a7831968c73d1d47fe5e9b88fffb81c8))
+
+## [3.0.0-beta.132](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.131...v3.0.0-beta.132) (2023-06-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** peerconnection detached only after sending last mqa ([#2873](https://github.com/webex/webex-js-sdk/issues/2873)) ([8ff3444](https://github.com/webex/webex-js-sdk/commit/8ff34444324084d1c77b79156ed3447655e5dabf))
+
+## [3.0.0-beta.131](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.130...v3.0.0-beta.131) (2023-06-13)
+
+## [3.0.0-beta.130](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.129...v3.0.0-beta.130) (2023-06-12)
+
+
+### Features
+
+* **plugin-meetings:** display hints for share ([#2870](https://github.com/webex/webex-js-sdk/issues/2870)) ([b7e509c](https://github.com/webex/webex-js-sdk/commit/b7e509c2093de1623ec587ded21473d480ab8803))
+
+## [3.0.0-beta.129](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.129) (2023-06-09)
+
+
+### Features
+
+* **media-helper:** add effects from web media effects ([#2842](https://github.com/webex/webex-js-sdk/issues/2842)) ([85c879e](https://github.com/webex/webex-js-sdk/commit/85c879e07036fdbe409c6bbbb30bbb355cb8af7a))
+* **media-timeout:** add more metrics ([#2866](https://github.com/webex/webex-js-sdk/issues/2866)) ([8e5ca68](https://github.com/webex/webex-js-sdk/commit/8e5ca68dbabccae85a5a8fb1baeb99f56a31cf18))
+
+
+### Bug Fixes
+
+* Increase addmedia timeout ([#2862](https://github.com/webex/webex-js-sdk/issues/2862)) ([50f3daf](https://github.com/webex/webex-js-sdk/commit/50f3daf1065d92611a38833b06fea2c00585c1b4))
+
+## [3.0.0-beta.128](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.127...v3.0.0-beta.128) (2023-06-09)
+
+
+### Features
+
+* **media-helper:** add effects from web media effects ([#2842](https://github.com/webex/webex-js-sdk/issues/2842)) ([85c879e](https://github.com/webex/webex-js-sdk/commit/85c879e07036fdbe409c6bbbb30bbb355cb8af7a))
+
+
+### Bug Fixes
+
+* Increase addmedia timeout ([#2862](https://github.com/webex/webex-js-sdk/issues/2862)) ([50f3daf](https://github.com/webex/webex-js-sdk/commit/50f3daf1065d92611a38833b06fea2c00585c1b4))
+
+## [3.0.0-beta.127](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.126...v3.0.0-beta.127) (2023-06-08)
+
+
+### Bug Fixes
+
+* **meetings:** video control meeting events ([#2863](https://github.com/webex/webex-js-sdk/issues/2863)) ([d1ffed2](https://github.com/webex/webex-js-sdk/commit/d1ffed25f1f87df90baec36d3cfd38ab00683df6))
+
+## [3.0.0-beta.126](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.125...v3.0.0-beta.126) (2023-06-08)
+
+
+### Features
+
+* **plugin-meetings:** fallback to getting preferred site from user ([#2860](https://github.com/webex/webex-js-sdk/issues/2860)) ([28ebb6d](https://github.com/webex/webex-js-sdk/commit/28ebb6d8c67fe2a91c6475ab21da0fbb70df8ca9))
+* **plugin-meetings:** update internal-media-core - 1.38.2 ([#2861](https://github.com/webex/webex-js-sdk/issues/2861)) ([9a11124](https://github.com/webex/webex-js-sdk/commit/9a111249cc2a7ab1ddcbef95abe05b4b7026cb1d))
+
+## [3.0.0-beta.125](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.124...v3.0.0-beta.125) (2023-06-08)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** processStrokeMessage format bug ([#2858](https://github.com/webex/webex-js-sdk/issues/2858)) ([432da81](https://github.com/webex/webex-js-sdk/commit/432da81df08755d52ef623b5d710b700f294beeb))
+
+## [3.0.0-beta.124](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.123...v3.0.0-beta.124) (2023-06-07)
+
+
+### Features
+
+* **calendar:** spark-413846 replace id with uri when call calendar api getPartipants and getNotes ([#2852](https://github.com/webex/webex-js-sdk/issues/2852)) ([acf99d9](https://github.com/webex/webex-js-sdk/commit/acf99d952dcb30feeda440d936eb3028c5aa4789))
+
+## [3.0.0-beta.123](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.122...v3.0.0-beta.123) (2023-06-07)
+
+
+### Features
+
+* **plugin-meetings:** add method to enable music mode ([#2856](https://github.com/webex/webex-js-sdk/issues/2856)) ([7bd7d7e](https://github.com/webex/webex-js-sdk/commit/7bd7d7eedf6b2532106d2f580d870ea33cd897c0))
+
+## [3.0.0-beta.122](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.121...v3.0.0-beta.122) (2023-06-07)
+
+
+### Features
+
+* **Live-Annotation:** update for new protocol ([#2857](https://github.com/webex/webex-js-sdk/issues/2857)) ([0528206](https://github.com/webex/webex-js-sdk/commit/0528206c2fdd0b44c238869338fe988e26229418))
+
+## [3.0.0-beta.121](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.120...v3.0.0-beta.121) (2023-06-07)
+
+
+### Features
+
+* **breakouts:** emits BREAKOUTS_CLOSING depends on breakoutStatus ([#2855](https://github.com/webex/webex-js-sdk/issues/2855)) ([44cda19](https://github.com/webex/webex-js-sdk/commit/44cda19878759605c0e2ecca399690985480c6b5))
+
+## [3.0.0-beta.120](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.119...v3.0.0-beta.120) (2023-06-06)
+
+
+### Bug Fixes
+
+* **meetings:** video controls changed events ([#2848](https://github.com/webex/webex-js-sdk/issues/2848)) ([c0b4139](https://github.com/webex/webex-js-sdk/commit/c0b41392d2c76eded95cc8000bd0ac8493020a75))
+
+## [3.0.0-beta.119](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.118...v3.0.0-beta.119) (2023-06-06)
+
+
+### Bug Fixes
+
+* upgrade internal-media-core to version 1.38.1 ([#2854](https://github.com/webex/webex-js-sdk/issues/2854)) ([cc46a18](https://github.com/webex/webex-js-sdk/commit/cc46a183e50e485ba7387f677cedc5ce6fffb269))
+
+## [3.0.0-beta.118](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.117...v3.0.0-beta.118) (2023-06-06)
+
+
+### Features
+
+* **Live-Annotation:** add url and shareInstanceId ([#2851](https://github.com/webex/webex-js-sdk/issues/2851)) ([a9721fc](https://github.com/webex/webex-js-sdk/commit/a9721fc088f9ed24f575fae1b5c2d9538de57a60))
+
+## [3.0.0-beta.117](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.116...v3.0.0-beta.117) (2023-06-06)
+
+## [3.0.0-beta.116](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.115...v3.0.0-beta.116) (2023-06-01)
+
+
+### Features
+
+* **Live-Annotation:** add policy for Live-Annotation ([#2844](https://github.com/webex/webex-js-sdk/issues/2844)) ([7038d94](https://github.com/webex/webex-js-sdk/commit/7038d94134a2a0ef70fe5d527f9d00a44608a117))
+
+## [3.0.0-beta.115](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.114...v3.0.0-beta.115) (2023-05-31)
+
+
+### Features
+
+* **ca:** fix error for meeting info ([#2840](https://github.com/webex/webex-js-sdk/issues/2840)) ([614a1d8](https://github.com/webex/webex-js-sdk/commit/614a1d860f05faf250d9a553724a4cad3fd0718e))
+
+## [3.0.0-beta.114](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.113...v3.0.0-beta.114) (2023-05-30)
+
+
+### Features
+
+* **plugin-meetings:** jsdoc for installedOrgID ([#2839](https://github.com/webex/webex-js-sdk/issues/2839)) ([6a741a2](https://github.com/webex/webex-js-sdk/commit/6a741a2453cb495bdd09ba65e78494402ebced0c))
+
+## [3.0.0-beta.113](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.112...v3.0.0-beta.113) (2023-05-29)
+
+
+### Features
+
+* **disclaimer:** SDK - Support audio disclaimer for recording ([#2829](https://github.com/webex/webex-js-sdk/issues/2829)) ([f4c19af](https://github.com/webex/webex-js-sdk/commit/f4c19af932919864b9c2c6fdf80220a067d18d47))
+
+## [3.0.0-beta.112](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.111...v3.0.0-beta.112) (2023-05-26)
+
+
+### Bug Fixes
+
+* refactor code for sending /media requests to Locus ([#2832](https://github.com/webex/webex-js-sdk/issues/2832)) ([464d324](https://github.com/webex/webex-js-sdk/commit/464d324188b1c00bfcb4d1b92c210d14ff786be2))
+
+## [3.0.0-beta.111](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.110...v3.0.0-beta.111) (2023-05-26)
+
+## [3.0.0-beta.110](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.109...v3.0.0-beta.110) (2023-05-26)
+
+## [3.0.0-beta.109](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.108...v3.0.0-beta.109) (2023-05-25)
+
+
+### Features
+
+* **meetings:** in meeting options phase two ([#2828](https://github.com/webex/webex-js-sdk/issues/2828)) ([1889a69](https://github.com/webex/webex-js-sdk/commit/1889a697965e44174eac9dd92667b0b86c63932a))
+
+## [3.0.0-beta.108](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.107...v3.0.0-beta.108) (2023-05-25)
+
+
+### Features
+
+* **meeting-info:** add CA events ([#2820](https://github.com/webex/webex-js-sdk/issues/2820)) ([818f927](https://github.com/webex/webex-js-sdk/commit/818f9270ff1806b969fa3b558279687b5e0fce09))
+
+## [3.0.0-beta.107](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.106...v3.0.0-beta.107) (2023-05-23)
+
+
+### Features
+
+* **breakout:** add unlockEdit parameter when update breakouts ([#2824](https://github.com/webex/webex-js-sdk/issues/2824)) ([eff4d01](https://github.com/webex/webex-js-sdk/commit/eff4d01525481a0bb9cec34316507633f55055e6))
+
+## [3.0.0-beta.106](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.105...v3.0.0-beta.106) (2023-05-19)
+
+
+### Features
+
+* **Live-Annotation:** add supportLiveAnnotation for participant ([#2818](https://github.com/webex/webex-js-sdk/issues/2818)) ([04618be](https://github.com/webex/webex-js-sdk/commit/04618be147ce49e94b4c08c4b939388ed8eddbac))
+
+## [3.0.0-beta.105](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.104...v3.0.0-beta.105) (2023-05-18)
+
+
+### Bug Fixes
+
+* version of internal-media-core used by media-helpers doesn't match plugin-meetings ([#2821](https://github.com/webex/webex-js-sdk/issues/2821)) ([50639f7](https://github.com/webex/webex-js-sdk/commit/50639f7843e9a42ce1a20b24b2fe111b32f6b9d0))
+
+## [3.0.0-beta.104](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.103...v3.0.0-beta.104) (2023-05-18)
+
+
+### Bug Fixes
+
+* **pipeline:** beta tag automation ([#2819](https://github.com/webex/webex-js-sdk/issues/2819)) ([48eab6f](https://github.com/webex/webex-js-sdk/commit/48eab6f9702d400bdc39547ee664a207b7dc59f1))
+
+## [3.0.0-beta.103](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.102...v3.0.0-beta.103) (2023-05-18)
+
+
+### Features
+
+* **CA:** fixed CA & BO issues for the base functions ([#2812](https://github.com/webex/webex-js-sdk/issues/2812)) ([b169f8b](https://github.com/webex/webex-js-sdk/commit/b169f8b4ac9a7f4de402878fe124eab010d21c80))
+
+## [3.0.0-beta.102](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.101...v3.0.0-beta.102) (2023-05-18)
+
+
+### Features
+
+* **Live-Annotation:** add new interface for presenter ([#2809](https://github.com/webex/webex-js-sdk/issues/2809)) ([ad875ca](https://github.com/webex/webex-js-sdk/commit/ad875cac6b881e2768aa7cff60ee6030769a48ed))
+
+## [3.0.0-beta.101](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.100...v3.0.0-beta.101) (2023-05-16)
+
+
+### Features
+
+* **board:** pmr support ([#2815](https://github.com/webex/webex-js-sdk/issues/2815)) ([7be9cf8](https://github.com/webex/webex-js-sdk/commit/7be9cf8017886a5493993f675eca2863a88f9b69))
+
+## [3.0.0-beta.100](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.99...v3.0.0-beta.100) (2023-05-16)
+
+## [3.0.0-beta.99](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.98...v3.0.0-beta.99) (2023-05-12)
+
+
+### Features
+
+* **plugin-meetings:** use WCME 2.0 ([#2810](https://github.com/webex/webex-js-sdk/issues/2810)) ([953df2f](https://github.com/webex/webex-js-sdk/commit/953df2f68e0ecd26c1c909589266bec5294bc89b))
+
+## [3.0.0-beta.98](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.97...v3.0.0-beta.98) (2023-05-12)
+
+
+### Features
+
+* allow for extra params to be provided when fetching meeting info ([#2807](https://github.com/webex/webex-js-sdk/issues/2807)) ([5653a68](https://github.com/webex/webex-js-sdk/commit/5653a68e0797b82660239b317b37567b416099e9))
+
+## [3.0.0-beta.97](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.96...v3.0.0-beta.97) (2023-05-11)
+
+
+### Bug Fixes
+
+* upgrade internal-media-core to version 1.36.1 ([#2808](https://github.com/webex/webex-js-sdk/issues/2808)) ([e9b58d6](https://github.com/webex/webex-js-sdk/commit/e9b58d6fc266da08cfc811adfaab73ebdcd8973e))
+
+## [3.0.0-beta.96](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.95...v3.0.0-beta.96) (2023-05-11)
+
+
+### Bug Fixes
+
+* **CA:** fix call analyzer event relative issues ([#2796](https://github.com/webex/webex-js-sdk/issues/2796)) ([add75bc](https://github.com/webex/webex-js-sdk/commit/add75bcfbe90ac1032368e2fa30abebcf6e4c9c0))
+
+## [3.0.0-beta.95](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.94...v3.0.0-beta.95) (2023-05-11)
+
+
+### Features
+
+* **meetings:** move COM to public ([#2802](https://github.com/webex/webex-js-sdk/issues/2802)) ([0087a53](https://github.com/webex/webex-js-sdk/commit/0087a5313a993f8743f9d28e4bd0bd992f62cf55))
+* **plugin-meetings:** handle breakout.help event from mercury ([#2797](https://github.com/webex/webex-js-sdk/issues/2797)) ([606633b](https://github.com/webex/webex-js-sdk/commit/606633b8101e771935ad53e25a26322a3ddc4361))
+
+
+### Bug Fixes
+
+* **breakouts:** trigger ask return event issue ([#2804](https://github.com/webex/webex-js-sdk/issues/2804)) ([78ac2bb](https://github.com/webex/webex-js-sdk/commit/78ac2bb7c0fd7e7510a664f8a2b9abcf40442ded))
+
+## [3.0.0-beta.94](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.93...v3.0.0-beta.94) (2023-05-10)
+
+
+### Features
+
+* **breakout:** move Call Analyzer refactor ([#2781](https://github.com/webex/webex-js-sdk/issues/2781)) ([c21f531](https://github.com/webex/webex-js-sdk/commit/c21f531f74bb9490bf332e200b3c448f2d1f5c06))
+
+## [3.0.0-beta.93](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.92...v3.0.0-beta.93) (2023-05-09)
+
+
+### Bug Fixes
+
+* **breakouts:** update startTime issue ([#2798](https://github.com/webex/webex-js-sdk/issues/2798)) ([e12cf18](https://github.com/webex/webex-js-sdk/commit/e12cf18b478333fc051c04b751b63293a73cf2af))
+
+## [3.0.0-beta.92](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.91...v3.0.0-beta.92) (2023-05-08)
+
+
+### Bug Fixes
+
+* skip flaky tests ([#2770](https://github.com/webex/webex-js-sdk/issues/2770)) ([546459e](https://github.com/webex/webex-js-sdk/commit/546459ec808c33cc9dde22c0503cbf521ce1137b))
+
+## [3.0.0-beta.91](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.90...v3.0.0-beta.91) (2023-05-05)
+
+
+### Features
+
+* **plugin-meetings:** trigger breakout ask return & leave event ([#2795](https://github.com/webex/webex-js-sdk/issues/2795)) ([4cbc7ae](https://github.com/webex/webex-js-sdk/commit/4cbc7ae8a67679e450e2b15cca7db856a2f61d73))
+
+## [3.0.0-beta.90](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.88...v3.0.0-beta.90) (2023-05-04)
+
+
+### Features
+
+* **breakout:** add ask return to main event ([#2788](https://github.com/webex/webex-js-sdk/issues/2788)) ([3ada9ca](https://github.com/webex/webex-js-sdk/commit/3ada9ca01c60f1823fa21741b6a696dadc5ed64b))
+* **Live-Annotation:** support Live-Annotation ([#2784](https://github.com/webex/webex-js-sdk/issues/2784)) ([715ed1b](https://github.com/webex/webex-js-sdk/commit/715ed1b4b4868cedb9a5eca917f8e9444ad55ed8))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send json in the error payload ([#2791](https://github.com/webex/webex-js-sdk/issues/2791)) ([284c7a0](https://github.com/webex/webex-js-sdk/commit/284c7a0b62147ffe29118d017d5f3a8733d7e5fe))
+
+## [3.0.0-beta.89](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.88...v3.0.0-beta.89) (2023-05-04)
+
+
+### Features
+
+* **breakout:** add ask return to main event ([#2788](https://github.com/webex/webex-js-sdk/issues/2788)) ([3ada9ca](https://github.com/webex/webex-js-sdk/commit/3ada9ca01c60f1823fa21741b6a696dadc5ed64b))
+* **Live-Annotation:** support Live-Annotation ([#2784](https://github.com/webex/webex-js-sdk/issues/2784)) ([715ed1b](https://github.com/webex/webex-js-sdk/commit/715ed1b4b4868cedb9a5eca917f8e9444ad55ed8))
+
+## [3.0.0-beta.88](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.87...v3.0.0-beta.88) (2023-04-28)
+
+
+### Bug Fixes
+
+* **breakout:** add editlock to assign api - SPARK-425241 ([#2780](https://github.com/webex/webex-js-sdk/issues/2780)) ([75a3300](https://github.com/webex/webex-js-sdk/commit/75a33001ad0fe880cce85889ff3f86ac7e71fb6a))
+
+## [3.0.0-beta.87](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.86...v3.0.0-beta.87) (2023-04-27)
+
+
+### Features
+
+* change of SDK multistream APIs to use webrtc-core local tracks ([#2778](https://github.com/webex/webex-js-sdk/issues/2778)) ([a7521a3](https://github.com/webex/webex-js-sdk/commit/a7521a3f1025af481af39f7e08481af8daa67ce2))
+
+## [3.0.0-beta.86](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.85...v3.0.0-beta.86) (2023-04-26)
+
+
+### Bug Fixes
+
+* default bundle policy from WCME not applied ([#2785](https://github.com/webex/webex-js-sdk/issues/2785)) ([9a313e1](https://github.com/webex/webex-js-sdk/commit/9a313e115ed59d2baacb7e4b4c935c142136c5e0))
+
+## [3.0.0-beta.85](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.84...v3.0.0-beta.85) (2023-04-26)
+
+
+### Bug Fixes
+
+* reconnection fails when TURN discovery is skipped because of rea… ([#2782](https://github.com/webex/webex-js-sdk/issues/2782)) ([9e8e38a](https://github.com/webex/webex-js-sdk/commit/9e8e38a00552316148b3fb52df274f652939eb50))
+
+## [3.0.0-beta.84](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.83...v3.0.0-beta.84) (2023-04-26)
+
+## [3.0.0-beta.83](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.82...v3.0.0-beta.83) (2023-04-25)
+
+
+### Features
+
+* **metrics:** include is multistream ([#2779](https://github.com/webex/webex-js-sdk/issues/2779)) ([42b2b99](https://github.com/webex/webex-js-sdk/commit/42b2b9942c094e83fbad3c9e3c9d2b1e7049d8bf))
+
+## [3.0.0-beta.82](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.81...v3.0.0-beta.82) (2023-04-25)
+
+
+### Features
+
+* expose bundlePolicy option via addMedia ([#2765](https://github.com/webex/webex-js-sdk/issues/2765)) ([77af49e](https://github.com/webex/webex-js-sdk/commit/77af49e8870075a2d93af78874d9fa964a0695b3))
+
+## [3.0.0-beta.81](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.80...v3.0.0-beta.81) (2023-04-25)
+
+
+### Features
+
+* **meetings:** call control imo ([#2766](https://github.com/webex/webex-js-sdk/issues/2766)) ([d8569cf](https://github.com/webex/webex-js-sdk/commit/d8569cf6e87f087b05f19de73ea896390126a110))
+
+## [3.0.0-beta.80](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.79...v3.0.0-beta.80) (2023-04-25)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** pass devcie url for llm POST call ([#2777](https://github.com/webex/webex-js-sdk/issues/2777)) ([2944ba1](https://github.com/webex/webex-js-sdk/commit/2944ba10d431e813646f8ef1109ef27363b13f84))
+
+## [3.0.0-beta.79](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.78...v3.0.0-beta.79) (2023-04-24)
+
+
+### Bug Fixes
+
+* **meeting:** bypass Password Prompt for User Joined to a Meeting ([#2762](https://github.com/webex/webex-js-sdk/issues/2762)) ([8eb70ee](https://github.com/webex/webex-js-sdk/commit/8eb70eea797d52e1ebf44355ae13eb87a7da06d4))
+
+## [3.0.0-beta.78](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.77...v3.0.0-beta.78) (2023-04-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** check if joinedWith exists in changedSelf ([#2767](https://github.com/webex/webex-js-sdk/issues/2767)) ([f5d0b4d](https://github.com/webex/webex-js-sdk/commit/f5d0b4d739076a3af06396f7f286e7faef371f7d))
+
+## [3.0.0-beta.77](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.76...v3.0.0-beta.77) (2023-04-20)
+
+
+### Bug Fixes
+
+* sending correct maxPayloadBitsPerSecond & maxMbps mediaRequestManager ([#2763](https://github.com/webex/webex-js-sdk/issues/2763)) ([b742053](https://github.com/webex/webex-js-sdk/commit/b74205330d400d427d3a12281b0013300e68f510))
+
+## [3.0.0-beta.76](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.75...v3.0.0-beta.76) (2023-04-20)
+
+## [3.0.0-beta.75](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.74...v3.0.0-beta.75) (2023-04-20)
+
+
+### Features
+
+* **plugin-meetings:** policy error handling ([#2760](https://github.com/webex/webex-js-sdk/issues/2760)) ([04c9cc2](https://github.com/webex/webex-js-sdk/commit/04c9cc2084c737d533d0110d1eaf8bf57ce88e7c))
+
+## [3.0.0-beta.74](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.73...v3.0.0-beta.74) (2023-04-19)
+
+
+### Bug Fixes
+
+* **meetings:** don't fetch mtg info if we know we can't ([#2702](https://github.com/webex/webex-js-sdk/issues/2702)) ([d72aae2](https://github.com/webex/webex-js-sdk/commit/d72aae20d4caee1cd7a9eceaf64fc9a65aa47b0a))
+
+## [3.0.0-beta.73](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.72...v3.0.0-beta.73) (2023-04-18)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** clear previous requests after reconnection ([#2750](https://github.com/webex/webex-js-sdk/issues/2750)) ([13f32b3](https://github.com/webex/webex-js-sdk/commit/13f32b3a3d579097e8ac0da5744a5bd504c209f5))
+
+## [3.0.0-beta.72](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.71...v3.0.0-beta.72) (2023-04-17)
+
+
+### Features
+
+* **plugin-meetings:** installed org ID ([#2743](https://github.com/webex/webex-js-sdk/issues/2743)) ([348d1b6](https://github.com/webex/webex-js-sdk/commit/348d1b633cff5fb419dda2dd52787e14bde782fe))
+
+## [3.0.0-beta.71](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.70...v3.0.0-beta.71) (2023-04-14)
+
+## [3.0.0-beta.70](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.69...v3.0.0-beta.70) (2023-04-14)
+
+
+### Features
+
+* **plugin-meetings:** use the first site if none are default ([#2737](https://github.com/webex/webex-js-sdk/issues/2737)) ([8937a16](https://github.com/webex/webex-js-sdk/commit/8937a167b720119e4f527cce9c4c1310dbe0cd6d))
+
+## [3.0.0-beta.69](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.68...v3.0.0-beta.69) (2023-04-13)
+
+## [3.0.0-beta.68](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.67...v3.0.0-beta.68) (2023-04-12)
+
+
+### Features
+
+* Call Analyzer -Breakout Move Metrics ([#2699](https://github.com/webex/webex-js-sdk/issues/2699)) ([b66f5ed](https://github.com/webex/webex-js-sdk/commit/b66f5ede8015d1ad34de14c034dc0ab30b0f92de))
+
+## [3.0.0-beta.67](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.66...v3.0.0-beta.67) (2023-04-12)
+
+## [3.0.0-beta.66](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.65...v3.0.0-beta.66) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** duplicate-SCRs - remove duplicates temp fix ([#2722](https://github.com/webex/webex-js-sdk/issues/2722)) ([40e2862](https://github.com/webex/webex-js-sdk/commit/40e2862e61f2864c0b1342248eee3467ff037420))
+
+## [3.0.0-beta.65](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.64...v3.0.0-beta.65) (2023-04-11)
+
+
+### Features
+
+* **plugin-meetings:** dynamic assignment API for admitting user from lobby to breakout ([#2705](https://github.com/webex/webex-js-sdk/issues/2705)) ([6b2366c](https://github.com/webex/webex-js-sdk/commit/6b2366c78a49fd374bceee3c7161c3f554bdf050))
+
+## [3.0.0-beta.64](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.63...v3.0.0-beta.64) (2023-04-11)
+
+## [3.0.0-beta.63](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.62...v3.0.0-beta.63) (2023-04-07)
+
+
+### Features
+
+* **conversation:** add recipients to reactions ([#2720](https://github.com/webex/webex-js-sdk/issues/2720)) ([d60fef3](https://github.com/webex/webex-js-sdk/commit/d60fef3dcb8bf25696df26c951e4ae426e2b2ddb))
+
+## [3.0.0-beta.62](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.61...v3.0.0-beta.62) (2023-04-05)
+
+## [3.0.0-beta.61](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.60...v3.0.0-beta.61) (2023-04-05)
+
+
+### Features
+
+* **multistream:** improve logging for setLayout ([#2715](https://github.com/webex/webex-js-sdk/issues/2715)) ([7f3396e](https://github.com/webex/webex-js-sdk/commit/7f3396e38e67830ca534d8fad220a9485d0382ca))
+
+## [3.0.0-beta.60](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.59...v3.0.0-beta.60) (2023-04-05)
+
+
+### Bug Fixes
+
+* updated @webex/internal-media-core ([#2716](https://github.com/webex/webex-js-sdk/issues/2716)) ([c2a4a1e](https://github.com/webex/webex-js-sdk/commit/c2a4a1e6975f8fd600e404d359afeec7f87d198f))
+
+## [3.0.0-beta.59](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.58...v3.0.0-beta.59) (2023-04-03)
+
+
+### Features
+
+* **plugin-meetings:** add new display hint ([#2714](https://github.com/webex/webex-js-sdk/issues/2714)) ([dde0fc1](https://github.com/webex/webex-js-sdk/commit/dde0fc1c353b1225b087484764deb14ff7565588))
+
+## [3.0.0-beta.58](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.57...v3.0.0-beta.58) (2023-03-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error when sync meetings fails ([#2684](https://github.com/webex/webex-js-sdk/issues/2684)) ([d483044](https://github.com/webex/webex-js-sdk/commit/d483044ee8c1ea572b7e92e12b1836bd90ce9e26))
+
+## [3.0.0-beta.57](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.56...v3.0.0-beta.57) (2023-03-31)
+
+
+### Bug Fixes
+
+* added correlation id to logs ([#2707](https://github.com/webex/webex-js-sdk/issues/2707)) ([5725e32](https://github.com/webex/webex-js-sdk/commit/5725e3207835841fdda8c432d383a287000ef5cc))
+
+## [3.0.0-beta.56](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.55...v3.0.0-beta.56) (2023-03-29)
+
+
+### Bug Fixes
+
+* **meetings:** set controls to switch ([#2703](https://github.com/webex/webex-js-sdk/issues/2703)) ([8234ec1](https://github.com/webex/webex-js-sdk/commit/8234ec10248d7d457911306acb0a6977c25ee025))
+
+## [3.0.0-beta.55](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.54...v3.0.0-beta.55) (2023-03-29)
+
+
+### Features
+
+* provided size hint chooses 1080 above 720px height ([#2701](https://github.com/webex/webex-js-sdk/issues/2701)) ([7ef6d42](https://github.com/webex/webex-js-sdk/commit/7ef6d42c4e8e8cc2e8ee128c8e74065180c6759a))
+
+## [3.0.0-beta.54](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.53...v3.0.0-beta.54) (2023-03-29)
+
+## [3.0.0-beta.53](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.52...v3.0.0-beta.53) (2023-03-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** stop screen share when disconnected ([#2696](https://github.com/webex/webex-js-sdk/issues/2696)) ([30c7190](https://github.com/webex/webex-js-sdk/commit/30c7190a7c4c457eed03ec63f830ff168f6a21a2))
+
+## [3.0.0-beta.52](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.51...v3.0.0-beta.52) (2023-03-22)
+
+## [3.0.0-beta.51](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.50...v3.0.0-beta.51) (2023-03-21)
+
+
+### Features
+
+* assign attendees to bo session ([#2668](https://github.com/webex/webex-js-sdk/issues/2668)) ([278491d](https://github.com/webex/webex-js-sdk/commit/278491d58b9b3a437cf5c6d7ee0814ee9cc3410e))
+
+## [3.0.0-beta.50](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.49...v3.0.0-beta.50) (2023-03-21)
+
+
+### Bug Fixes
+
+* **metrics:** remove org_id, client_id and user_id tags from operational metrics ([#2681](https://github.com/webex/webex-js-sdk/issues/2681)) ([372840d](https://github.com/webex/webex-js-sdk/commit/372840de69c8d42bd40e5d97557e2e3c04ec585f))
+
+## [3.0.0-beta.49](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.48...v3.0.0-beta.49) (2023-03-17)
+
+
+### Bug Fixes
+
+* **remote-video-mute:** fixed remote video mute ([#2683](https://github.com/webex/webex-js-sdk/issues/2683)) ([c2fa0a4](https://github.com/webex/webex-js-sdk/commit/c2fa0a4b8ad240382667030224b33280fcf8f929))
+
+## [3.0.0-beta.48](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.47...v3.0.0-beta.48) (2023-03-17)
+
+
+### Features
+
+* **reachability:** add clientMediaIP ([#2635](https://github.com/webex/webex-js-sdk/issues/2635)) ([297a642](https://github.com/webex/webex-js-sdk/commit/297a642850bad4ced54cf76092f9d94bb28c4e69))
+
+## [3.0.0-beta.47](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.46...v3.0.0-beta.47) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing frame sizes for mqe ([#2666](https://github.com/webex/webex-js-sdk/issues/2666)) ([7434e66](https://github.com/webex/webex-js-sdk/commit/7434e6670ca8ebb523c6d03aee39ed650a172078))
+
+## [3.0.0-beta.46](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.45...v3.0.0-beta.46) (2023-03-16)
+
+
+### Bug Fixes
+
+* **conversations:** various general packages ([#2680](https://github.com/webex/webex-js-sdk/issues/2680)) ([fa65653](https://github.com/webex/webex-js-sdk/commit/fa65653bdd77fa3455aa9de5c3c693cf9edf7014))
+
+## [3.0.0-beta.45](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.44...v3.0.0-beta.45) (2023-03-16)
+
+
+### Bug Fixes
+
+* **duplicate-panes:** refactor slot allocation ([#2673](https://github.com/webex/webex-js-sdk/issues/2673)) ([51233e5](https://github.com/webex/webex-js-sdk/commit/51233e505577495c35bae5fe7da8ed58361121b5))
+
+## [3.0.0-beta.44](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.43...v3.0.0-beta.44) (2023-03-15)
+
+
+### Features
+
+* Host/Cohost - Admit user in lobby to main meeting from Breakout Session SPARK-400367 ([#2658](https://github.com/webex/webex-js-sdk/issues/2658)) ([c43e6b3](https://github.com/webex/webex-js-sdk/commit/c43e6b36212608e4f0d3f1edbb3467382e98aafa))
+* **remote-video-mute:** respect remote video mute ([#2665](https://github.com/webex/webex-js-sdk/issues/2665)) ([e6b684b](https://github.com/webex/webex-js-sdk/commit/e6b684b2b25f30360e9152f290fe6bd474066508))
+
+## [3.0.0-beta.43](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.42...v3.0.0-beta.43) (2023-03-14)
+
+
+### Features
+
+* **meetings:** mute all ([#2667](https://github.com/webex/webex-js-sdk/issues/2667)) ([c198945](https://github.com/webex/webex-js-sdk/commit/c19894556bab55b5707638a607e350a41a1ffdb5))
+
+## [3.0.0-beta.42](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.41...v3.0.0-beta.42) (2023-03-13)
+
+
+### Bug Fixes
+
+* remove dependency of ReceiveSlotManager on Meeting ([#2664](https://github.com/webex/webex-js-sdk/issues/2664)) ([82a65e2](https://github.com/webex/webex-js-sdk/commit/82a65e2eb6ce46b3d88e7784d6c60017c7c986b3))
+
+## [3.0.0-beta.41](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.40...v3.0.0-beta.41) (2023-03-09)
+
+
+### Features
+
+* **internal-plugin-support:** allow productAreaTag and issueTypeTag to be in log metadata ([#2650](https://github.com/webex/webex-js-sdk/issues/2650)) ([3d3d95a](https://github.com/webex/webex-js-sdk/commit/3d3d95abe0efb51a32f1bc745a7156ef88eb7b2c))
+
+## [3.0.0-beta.40](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.39...v3.0.0-beta.40) (2023-03-09)
+
+
+### Features
+
+* add start and end apis for breakout sessions feature Spark-400363 ([#2646](https://github.com/webex/webex-js-sdk/issues/2646)) ([7bbab5c](https://github.com/webex/webex-js-sdk/commit/7bbab5cf5e2b6bbcebfda8c2b8c12d6eadeb31ac))
+
+## [3.0.0-beta.39](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.38...v3.0.0-beta.39) (2023-03-08)
+
+
+### Features
+
+* **meetings:** export RemoteMedia class ([#2655](https://github.com/webex/webex-js-sdk/issues/2655)) ([08cd2d5](https://github.com/webex/webex-js-sdk/commit/08cd2d508b89fbfd011cc2be8e0ffbe63411f2d2))
+* provide size hint remote media ([#2653](https://github.com/webex/webex-js-sdk/issues/2653)) ([1a1c3b7](https://github.com/webex/webex-js-sdk/commit/1a1c3b7e1a5b5824894dec6fb23ec43dd472b387))
+
+## [3.0.0-beta.38](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.37...v3.0.0-beta.38) (2023-03-07)
+
+
+### Bug Fixes
+
+* remove code for resetting of source state ([#2652](https://github.com/webex/webex-js-sdk/issues/2652)) ([84b5b61](https://github.com/webex/webex-js-sdk/commit/84b5b611701a5ae932f8cd825ce1a938293b72c3))
+
+## [3.0.0-beta.37](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.35...v3.0.0-beta.37) (2023-03-07)
+
+
+### Bug Fixes
+
+* added converged org id to .env.defaults ([#2644](https://github.com/webex/webex-js-sdk/issues/2644)) ([09097c2](https://github.com/webex/webex-js-sdk/commit/09097c2d39d7bdff7bf6bd4f274f1193bf716515))
+* **plugin-meetings:** add optional chaining around stats lookup ([#2648](https://github.com/webex/webex-js-sdk/issues/2648)) ([4ded82a](https://github.com/webex/webex-js-sdk/commit/4ded82ade0d0e13808a421a10a1a0bf4db12bbaf))
+* **plugin-meetings:** changed SDK to use webrtc-core local tracks internally ([#2638](https://github.com/webex/webex-js-sdk/issues/2638)) ([cb27441](https://github.com/webex/webex-js-sdk/commit/cb2744143e0dd6d0563b69c9c1c8756219627afe))
+
+## [3.0.0-beta.36](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.35...v3.0.0-beta.36) (2023-03-07)
+
+
+### Bug Fixes
+
+* added converged org id to .env.defaults ([#2644](https://github.com/webex/webex-js-sdk/issues/2644)) ([09097c2](https://github.com/webex/webex-js-sdk/commit/09097c2d39d7bdff7bf6bd4f274f1193bf716515))
+* **plugin-meetings:** changed SDK to use webrtc-core local tracks internally ([#2638](https://github.com/webex/webex-js-sdk/issues/2638)) ([cb27441](https://github.com/webex/webex-js-sdk/commit/cb2744143e0dd6d0563b69c9c1c8756219627afe))
+
+## [3.0.0-beta.35](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.34...v3.0.0-beta.35) (2023-03-03)
+
+
+### Features
+
+* **reachability:** add join cookie ([#2634](https://github.com/webex/webex-js-sdk/issues/2634)) ([1d2b353](https://github.com/webex/webex-js-sdk/commit/1d2b3530909680ae2bf7188faadeca9b89733368))
+
+## [3.0.0-beta.34](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.33...v3.0.0-beta.34) (2023-02-27)
+
+
+### Bug Fixes
+
+* merge changes from latest master into beta ([#2631](https://github.com/webex/webex-js-sdk/issues/2631)) ([b49e0db](https://github.com/webex/webex-js-sdk/commit/b49e0db23b9e530c5e2c27be0cde5ed912b682a0))
+
+## [3.0.0-beta.33](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.32...v3.0.0-beta.33) (2023-02-24)
+
+
+### Bug Fixes
+
+* reduced maxMacroblocksLimit for multistream ([#2632](https://github.com/webex/webex-js-sdk/issues/2632)) ([be4fae0](https://github.com/webex/webex-js-sdk/commit/be4fae08399d95c885893208c64cfb8b5882460f))
+
+## [3.0.0-beta.32](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.31...v3.0.0-beta.32) (2023-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** update degradation logic to use live sources ([#2625](https://github.com/webex/webex-js-sdk/issues/2625)) ([26746af](https://github.com/webex/webex-js-sdk/commit/26746afd597d104199497ff51f18d1c867ba77d8))
+
+## [3.0.0-beta.31](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.30...v3.0.0-beta.31) (2023-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add multistream logs to log buffer ([#2626](https://github.com/webex/webex-js-sdk/issues/2626)) ([06ae8f1](https://github.com/webex/webex-js-sdk/commit/06ae8f1f11dbd64d31fdd8a7b445639ec8f49023))
+
+## [3.0.0-beta.30](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.29...v3.0.0-beta.30) (2023-02-23)
+
+
+### Bug Fixes
+
+* emitting SourceUpdate event when memberId is found for ReceiveSlot ([#2627](https://github.com/webex/webex-js-sdk/issues/2627)) ([9efef88](https://github.com/webex/webex-js-sdk/commit/9efef88e1e9b99bcaf1224bdacee374fa9230d24))
+
+## [3.0.0-beta.29](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.28...v3.0.0-beta.29) (2023-02-23)
+
+
+### Features
+
+* **breakout:** add broadcast, askAllReturn methods ([#2615](https://github.com/webex/webex-js-sdk/issues/2615)) ([24affd7](https://github.com/webex/webex-js-sdk/commit/24affd70b19cb82c1e9715dcd15dbcd0e569015a))
+
+## [3.0.0-beta.28](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.27...v3.0.0-beta.28) (2023-02-22)
+
+
+### Bug Fixes
+
+* update memberId on ReceiveSlots when members are updated ([#2624](https://github.com/webex/webex-js-sdk/issues/2624)) ([ec05bd4](https://github.com/webex/webex-js-sdk/commit/ec05bd4cbbff807234a08ae66f1bfe716efcdb0f))
+
+## [3.0.0-beta.27](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.26...v3.0.0-beta.27) (2023-02-21)
+
+
+### Features
+
+* **plugin-meetings:** breakout session, host enable/disable breakout ([#2612](https://github.com/webex/webex-js-sdk/issues/2612)) ([7736913](https://github.com/webex/webex-js-sdk/commit/7736913b5c4cffefd6424121342b2a648667ba00))
+
+## [3.0.0-beta.26](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.25...v3.0.0-beta.26) (2023-02-13)
+
+
+### Features
+
+* **meeting:** add mute participant controls ([#2603](https://github.com/webex/webex-js-sdk/issues/2603)) ([#2616](https://github.com/webex/webex-js-sdk/issues/2616)) ([a35a71f](https://github.com/webex/webex-js-sdk/commit/a35a71f32f7cb580e9b1557f73996cbcb66cfa81))
+
+## [3.0.0-beta.25](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.24...v3.0.0-beta.25) (2023-02-13)
+
+
+### Bug Fixes
+
+* enabled screen share for multistream ([#2614](https://github.com/webex/webex-js-sdk/issues/2614)) ([7787b06](https://github.com/webex/webex-js-sdk/commit/7787b062093d38921dccc0d1bbaf51f6c4398ea6))
+
+## [3.0.0-beta.24](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.23...v3.0.0-beta.24) (2023-02-10)
+
+
+### Features
+
+* **gitignore:** remove types folder from gitignore ([#2610](https://github.com/webex/webex-js-sdk/issues/2610)) ([9134949](https://github.com/webex/webex-js-sdk/commit/9134949e5195fcb95420b97241210ea5f9ab0bd6))
+
+## [3.0.0-beta.23](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.22...v3.0.0-beta.23) (2023-02-09)
+
+
+### Features
+
+* **plugin-meetings:** send MQEs for multistream connections ([#2574](https://github.com/webex/webex-js-sdk/issues/2574)) ([8987df2](https://github.com/webex/webex-js-sdk/commit/8987df239f1b363e545508bd7db6c74b64605ab9))
+
+## [3.0.0-beta.22](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.21...v3.0.0-beta.22) (2023-02-08)
+
+
+### Bug Fixes
+
+* updated publish/unpublish tracks API ([#2599](https://github.com/webex/webex-js-sdk/issues/2599)) ([07e4ee8](https://github.com/webex/webex-js-sdk/commit/07e4ee8e87e49553f3450e97a37f3f8dd57cb91a))
+
+## [3.0.0-beta.21](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.20...v3.0.0-beta.21) (2023-02-08)
+
+
+### Features
+
+* **reactions:** export constants and fix types ([#2606](https://github.com/webex/webex-js-sdk/issues/2606)) ([f7448a3](https://github.com/webex/webex-js-sdk/commit/f7448a30757eb89378a73790aaaeb099eb34f5af))
+
+## [3.0.0-beta.20](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.19...v3.0.0-beta.20) (2023-02-08)
+
+
+### Bug Fixes
+
+* update webrtc-adapter ([#2604](https://github.com/webex/webex-js-sdk/issues/2604)) ([4a24997](https://github.com/webex/webex-js-sdk/commit/4a24997dfc1278e85bad263c6363d5fbfb9e6ef5))
+
+## [3.0.0-beta.19](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.18...v3.0.0-beta.19) (2023-02-01)
+
+
+### Bug Fixes
+
+* workaround for edonus bug when handling Roap glare ([#2587](https://github.com/webex/webex-js-sdk/issues/2587)) ([45207ea](https://github.com/webex/webex-js-sdk/commit/45207ea4118e8a3f70bdeec6ddc45785486693af))
+
+## [3.0.0-beta.18](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.17...v3.0.0-beta.18) (2023-01-31)
+
+
+### Features
+
+* **in-meeting-reactions:** Reaction class ([#2566](https://github.com/webex/webex-js-sdk/issues/2566)) ([65015b5](https://github.com/webex/webex-js-sdk/commit/65015b5d872d63ddd419f3a09033281c245f61cd))
+* **plugin-meetings:** add max-fs degradation based on macroblock requested ([#2575](https://github.com/webex/webex-js-sdk/issues/2575)) ([acbbb2c](https://github.com/webex/webex-js-sdk/commit/acbbb2c6279770cb668f186a8350eff94624610f))
+* **plugin-meetings:** add multistream failover support ([#2594](https://github.com/webex/webex-js-sdk/issues/2594)) ([7555de2](https://github.com/webex/webex-js-sdk/commit/7555de2be5249948c4272b147aea3b1c4e95238a))
+* **plugin-meetings:** fix build script ([#2597](https://github.com/webex/webex-js-sdk/issues/2597)) ([0c9598f](https://github.com/webex/webex-js-sdk/commit/0c9598f1b744e64f742b6c896c21180db533686a))
+
+
+### Bug Fixes
+
+* added support for receiving multistream screen share ([#2545](https://github.com/webex/webex-js-sdk/issues/2545)) ([daf4347](https://github.com/webex/webex-js-sdk/commit/daf4347937d4ae92b2c595f328bb3e1a3aa91772))
+* **plugin-meetings:** imports of MediaConnection from internal-media-core ([#2578](https://github.com/webex/webex-js-sdk/issues/2578)) ([3ddfb22](https://github.com/webex/webex-js-sdk/commit/3ddfb227f32a5fd6b96cc15ea3f7d22f2f6c5487))
+* **plugin-meetings:** set the preferTranscoding param correctly ([#2558](https://github.com/webex/webex-js-sdk/issues/2558)) ([db3f620](https://github.com/webex/webex-js-sdk/commit/db3f62082706fa2f8d752440ecbe4bbeadac9ff7))
+
+## [3.0.0-beta.17](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.16...v3.0.0-beta.17) (2023-01-20)
+
+## [3.0.0-beta.16](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.15...v3.0.0-beta.16) (2023-01-19)
 
 ### [2.37.2](https://github.com/webex/webex-js-sdk/compare/v2.37.1...v2.37.2) (2023-01-17)
 
@@ -373,57 +1544,350 @@ All notable changes to this project will be documented in this file. See [standa
 
 * **plugin-conversation:** Send kms on join ([#2568](https://github.com/webex/webex-js-sdk/issues/2568)) ([0960a66](https://github.com/webex/webex-js-sdk/commit/0960a66830559d01656b04cfc0642e7ff820e041))
 
-### [2.37.1](https://github.com/webex/webex-js-sdk/compare/v2.37.0...v2.37.1) (2023-01-17)
+### [2.37.1](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.14...v2.37.1) (2023-01-17)
 
 
 ### Bug Fixes
 
 * **plugin-meetings:** fix broken api documentation ([#2561](https://github.com/webex/webex-js-sdk/issues/2561)) ([60e0abf](https://github.com/webex/webex-js-sdk/commit/60e0abf71efaf1665a64cdbcaa7dae2ef19e94b8))
 
-## [2.37.0](https://github.com/webex/webex-js-sdk/compare/v2.36.1...v2.37.0) (2023-01-12)
+## [3.0.0-beta.15](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.14...v3.0.0-beta.15) (2023-01-19)
+
+
+### Bug Fixes
+
+* merge latest master into beta ([#2573](https://github.com/webex/webex-js-sdk/issues/2573)) ([8059d6e](https://github.com/webex/webex-js-sdk/commit/8059d6e8a02a9a9e4fcfcabeffe6fa5feed8a210))
+
+## [3.0.0-beta.14](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.13...v3.0.0-beta.14) (2023-01-13)
 
 
 ### Features
 
-* **post-meeting-survey:** allow survey session id in log metadata ([#2560](https://github.com/webex/webex-js-sdk/issues/2560)) ([96d4ccc](https://github.com/webex/webex-js-sdk/commit/96d4ccc477eb3c6d070864e3c5b9f74d0d82bf60))
+* **reactions:** add enable/disable ([#2559](https://github.com/webex/webex-js-sdk/issues/2559)) ([b0c7409](https://github.com/webex/webex-js-sdk/commit/b0c740939f288926ec51a10f918c5a43b755fc33))
 
-### [2.36.1](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v2.36.1) (2023-01-12)
+## [3.0.0-beta.13](https://github.com/webex/webex-js-sdk/compare/v2.37.0...v3.0.0-beta.13) (2023-01-13)
 
+## [3.0.0-beta.12](https://github.com/webex/webex-js-sdk/compare/v2.36.1...v3.0.0-beta.12) (2023-01-12)
 
-### Bug Fixes
+## [3.0.0-beta.11](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v3.0.0-beta.11) (2023-01-11)
 
-* **plugin-meetings:** facing mode in get media streams ([#2556](https://github.com/webex/webex-js-sdk/issues/2556)) ([7cbbdb7](https://github.com/webex/webex-js-sdk/commit/7cbbdb771c10571ae42dab1e8148b23229131af9))
-
-## [2.36.0](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v2.36.0) (2023-01-09)
+## [3.0.0-beta.10](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2023-01-09)
 
 
 ### Features
 
-* **reactions:** add sendReaction on meeting plugin ([#2551](https://github.com/webex/webex-js-sdk/issues/2551)) ([d45dba7](https://github.com/webex/webex-js-sdk/commit/d45dba717a4867a57cf68f65c3406289f4c63fab))
+* **plugin-meetings:** automatically connect llm ([#2550](https://github.com/webex/webex-js-sdk/issues/2550)) ([99e4e0f](https://github.com/webex/webex-js-sdk/commit/99e4e0fd718a07adeaae50ed01a5b87717589eba))
 
-### [2.35.4](https://github.com/webex/webex-js-sdk/compare/v2.35.3...v2.35.4) (2023-01-04)
+## [3.0.0-beta.9](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v3.0.0-beta.9) (2023-01-06)
 
-### Bug Fixes
+## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)
 
-- **plugin-meetings:** return feedbackId from uploadLogs ([#2546](https://github.com/webex/webex-js-sdk/issues/2546)) ([eaa7d28](https://github.com/webex/webex-js-sdk/commit/eaa7d28f7c22523bdd1534470a2ab930e30c0ce7))
-
-### [2.35.3](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v2.35.3) (2022-12-21)
 
 ### Bug Fixes
 
-- version of [@webex](https://github.com/webex) dependencies ([#2543](https://github.com/webex/webex-js-sdk/issues/2543)) ([296769f](https://github.com/webex/webex-js-sdk/commit/296769fa2e76846618b6f9929767d5238d2c41a4))
+* remove unused code ([#2542](https://github.com/webex/webex-js-sdk/issues/2542)) ([665b602](https://github.com/webex/webex-js-sdk/commit/665b602faa0f51cd60e38517f2e4f043cdcca846))
 
-### [2.35.2](https://github.com/webex/webex-js-sdk/compare/v2.35.1...v2.35.2) (2022-12-13)
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
 
-### Bug Fixes
-
-- setup peer connection in reconnection manager ([#2535](https://github.com/webex/webex-js-sdk/issues/2535)) ([5bcf541](https://github.com/webex/webex-js-sdk/commit/5bcf5418d54d76c3e9a6d87044d1f39e5528e0be))
-
-### [2.35.1](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v2.35.1) (2022-12-13)
 
 ### Bug Fixes
 
-- **voicea:** remove custom state and triggers for webex assistant ([#2532](https://github.com/webex/webex-js-sdk/issues/2532)) ([c1bd494](https://github.com/webex/webex-js-sdk/commit/c1bd494a9046016567b1e3861e6115f70ef10736))
+* added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+
+### Features
+
+* showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v3.0.0-beta.5) (2022-12-19)
+
+
+### Bug Fixes
+
+* set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+
+### Bug Fixes
+
+* use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
+## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
+
+
+### Bug Fixes
+
+* update WCME deps ([#2531](https://github.com/webex/webex-js-sdk/issues/2531)) ([e5d1ee6](https://github.com/webex/webex-js-sdk/commit/e5d1ee648b32406c499a6d0557292cb147150b51))
+
+## [3.0.0-beta.2](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.2) (2022-12-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* release breaking changes for multistream
+
+### Features
+
+* creating a beta release for v3 of SDK ([e745851](https://github.com/webex/webex-js-sdk/commit/e745851ec9a34b51893e5d591deb8232e454b12d))
+* **plugin-meetings:** merge sdk_v3 branch into the beta branch ([#2526](https://github.com/webex/webex-js-sdk/issues/2526)) ([b89635c](https://github.com/webex/webex-js-sdk/commit/b89635c842bd41101b5c6b3b6f03446e034ce236))
+
+## [3.0.0-beta.12](https://github.com/webex/webex-js-sdk/compare/v2.36.1...v3.0.0-beta.12) (2023-01-12)
+
+## [3.0.0-beta.11](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v3.0.0-beta.11) (2023-01-11)
+
+## [3.0.0-beta.10](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2023-01-09)
+
+
+### Features
+
+* **plugin-meetings:** automatically connect llm ([#2550](https://github.com/webex/webex-js-sdk/issues/2550)) ([99e4e0f](https://github.com/webex/webex-js-sdk/commit/99e4e0fd718a07adeaae50ed01a5b87717589eba))
+
+## [3.0.0-beta.9](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v3.0.0-beta.9) (2023-01-06)
+
+## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)
+
+
+### Bug Fixes
+
+* remove unused code ([#2542](https://github.com/webex/webex-js-sdk/issues/2542)) ([665b602](https://github.com/webex/webex-js-sdk/commit/665b602faa0f51cd60e38517f2e4f043cdcca846))
+
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
+
+
+### Bug Fixes
+
+* added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+
+### Features
+
+* showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v3.0.0-beta.5) (2022-12-19)
+
+
+### Bug Fixes
+
+* set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+
+### Bug Fixes
+
+* use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
+## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
+
+
+### Bug Fixes
+
+* update WCME deps ([#2531](https://github.com/webex/webex-js-sdk/issues/2531)) ([e5d1ee6](https://github.com/webex/webex-js-sdk/commit/e5d1ee648b32406c499a6d0557292cb147150b51))
+
+## [3.0.0-beta.2](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.2) (2022-12-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* release breaking changes for multistream
+
+### Features
+
+* creating a beta release for v3 of SDK ([e745851](https://github.com/webex/webex-js-sdk/commit/e745851ec9a34b51893e5d591deb8232e454b12d))
+* **plugin-meetings:** merge sdk_v3 branch into the beta branch ([#2526](https://github.com/webex/webex-js-sdk/issues/2526)) ([b89635c](https://github.com/webex/webex-js-sdk/commit/b89635c842bd41101b5c6b3b6f03446e034ce236))
+
+## [3.0.0-beta.11](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v3.0.0-beta.11) (2023-01-11)
+
+## [3.0.0-beta.10](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2023-01-09)
+
+
+### Features
+
+* **plugin-meetings:** automatically connect llm ([#2550](https://github.com/webex/webex-js-sdk/issues/2550)) ([99e4e0f](https://github.com/webex/webex-js-sdk/commit/99e4e0fd718a07adeaae50ed01a5b87717589eba))
+
+## [3.0.0-beta.9](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v3.0.0-beta.9) (2023-01-06)
+
+## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)
+
+
+### Bug Fixes
+
+* remove unused code ([#2542](https://github.com/webex/webex-js-sdk/issues/2542)) ([665b602](https://github.com/webex/webex-js-sdk/commit/665b602faa0f51cd60e38517f2e4f043cdcca846))
+
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
+
+
+### Bug Fixes
+
+* added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+
+### Features
+
+* showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v3.0.0-beta.5) (2022-12-19)
+
+
+### Bug Fixes
+
+* set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+
+### Bug Fixes
+
+* use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
+## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
+
+
+### Bug Fixes
+
+* update WCME deps ([#2531](https://github.com/webex/webex-js-sdk/issues/2531)) ([e5d1ee6](https://github.com/webex/webex-js-sdk/commit/e5d1ee648b32406c499a6d0557292cb147150b51))
+
+## [3.0.0-beta.2](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.2) (2022-12-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* release breaking changes for multistream
+
+### Features
+
+* creating a beta release for v3 of SDK ([e745851](https://github.com/webex/webex-js-sdk/commit/e745851ec9a34b51893e5d591deb8232e454b12d))
+* **plugin-meetings:** merge sdk_v3 branch into the beta branch ([#2526](https://github.com/webex/webex-js-sdk/issues/2526)) ([b89635c](https://github.com/webex/webex-js-sdk/commit/b89635c842bd41101b5c6b3b6f03446e034ce236))
+
+## [3.0.0-beta.10](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2023-01-09)
+
+
+### Features
+
+* **plugin-meetings:** automatically connect llm ([#2550](https://github.com/webex/webex-js-sdk/issues/2550)) ([99e4e0f](https://github.com/webex/webex-js-sdk/commit/99e4e0fd718a07adeaae50ed01a5b87717589eba))
+
+## [3.0.0-beta.9](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v3.0.0-beta.9) (2023-01-06)
+
+## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)
+
+### Bug Fixes
+
+- remove unused code ([#2542](https://github.com/webex/webex-js-sdk/issues/2542)) ([665b602](https://github.com/webex/webex-js-sdk/commit/665b602faa0f51cd60e38517f2e4f043cdcca846))
+
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
+
+### Bug Fixes
+
+- added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+### Features
+
+- showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v3.0.0-beta.5) (2022-12-19)
+
+### Bug Fixes
+
+- set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+### Bug Fixes
+
+- use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
+## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
+
+### Bug Fixes
+
+- update WCME deps ([#2531](https://github.com/webex/webex-js-sdk/issues/2531)) ([e5d1ee6](https://github.com/webex/webex-js-sdk/commit/e5d1ee648b32406c499a6d0557292cb147150b51))
+
+## [3.0.0-beta.2](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.2) (2022-12-08)
+
+### ⚠ BREAKING CHANGES
+
+- release breaking changes for multistream
+
+### Features
+
+- creating a beta release for v3 of SDK ([e745851](https://github.com/webex/webex-js-sdk/commit/e745851ec9a34b51893e5d591deb8232e454b12d))
+- **plugin-meetings:** merge sdk_v3 branch into the beta branch ([#2526](https://github.com/webex/webex-js-sdk/issues/2526)) ([b89635c](https://github.com/webex/webex-js-sdk/commit/b89635c842bd41101b5c6b3b6f03446e034ce236))
+
+## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)
+
+### Bug Fixes
+
+- remove unused code ([#2542](https://github.com/webex/webex-js-sdk/issues/2542)) ([665b602](https://github.com/webex/webex-js-sdk/commit/665b602faa0f51cd60e38517f2e4f043cdcca846))
+
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
+
+### Bug Fixes
+
+- added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+### Features
+
+- showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2022-12-19)
+
+### Bug Fixes
+
+- set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+### Bug Fixes
+
+- use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
+## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
+
+### Bug Fixes
+
+- update WCME deps ([#2531](https://github.com/webex/webex-js-sdk/issues/2531)) ([e5d1ee6](https://github.com/webex/webex-js-sdk/commit/e5d1ee648b32406c499a6d0557292cb147150b51))
+
+## [3.0.0-beta.2](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.2) (2022-12-08)
+
+### ⚠ BREAKING CHANGES
+
+- release breaking changes for multistream
+
+### Features
+
+- creating a beta release for v3 of SDK ([e745851](https://github.com/webex/webex-js-sdk/commit/e745851ec9a34b51893e5d591deb8232e454b12d))
+- **plugin-meetings:** merge sdk_v3 branch into the beta branch ([#2526](https://github.com/webex/webex-js-sdk/issues/2526)) ([b89635c](https://github.com/webex/webex-js-sdk/commit/b89635c842bd41101b5c6b3b6f03446e034ce236))
+
+## [3.0.0-beta.1](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.1) (2022-12-07)
+
+### ⚠ BREAKING CHANGES
+
+- release breaking changes for multistream
+
+### Features
+
+- creating a beta release for v3 of SDK ([90c5ec5](https://github.com/webex/webex-js-sdk/commit/90c5ec5bbf02f65bb1a056c785b2c1f27acff870))
+
+## [3.0.0-beta.0](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.0) (2022-12-05)
+
+### ⚠ BREAKING CHANGES
+
+- release breaking changes for multistream
+
+### Features
+
+- creating a beta release for v3 of SDK ([f2e5a9c](https://github.com/webex/webex-js-sdk/commit/f2e5a9c4ea741975d4b42c60928b4a00ba228e60))
 
 ## [2.35.0](https://github.com/webex/webex-js-sdk/compare/v2.34.0...v2.35.0) (2022-12-05)
 

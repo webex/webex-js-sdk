@@ -2,9 +2,7 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import Media from '@webex/plugin-meetings/src/media/index';
-
-import ReconnectionManager from '../../../../src/reconnection-manager';
+import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 
 const {assert} = chai;
 
@@ -12,10 +10,18 @@ chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
-  describe('ReconnectionManager.reconnectMedia', () => {
-    it('uses correct TURN TLS information on reInitiatePeerconnection', async () => {
-      const fakeMeeting = {
-        setRemoteStream: sinon.stub().resolves({}),
+  describe('ReconnectionManager.reconnect', () => {
+    let fakeMediaConnection;
+    let fakeMeeting;
+
+    beforeEach(() => {
+      fakeMediaConnection = {
+        initiateOffer: sinon.stub().resolves({}),
+        reconnect: sinon.stub().resolves({}),
+      };
+      fakeMeeting = {
+        closePeerConnections: sinon.stub().resolves({}),
+        createMediaConnection: sinon.stub().returns(fakeMediaConnection),
         config: {
           reconnection: {
             enabled: true,
@@ -32,8 +38,11 @@ describe('plugin-meetings', () => {
         },
         mediaProperties: {
           unsetPeerConnection: sinon.stub(),
-          reInitiatePeerconnection: sinon.stub().resolves({}),
-          peerConnection: sinon.stub(),
+          webrtcMediaConnection: fakeMediaConnection,
+        },
+        mediaRequestManagers: {
+          audio: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
+          video: {commit: sinon.stub(), clearPreviousRequests: sinon.stub()},
         },
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
@@ -44,35 +53,111 @@ describe('plugin-meetings', () => {
             },
             turnDiscoverySkippedReason: undefined,
           }),
-          sendRoapMediaRequest: sinon.stub().resolves({}),
         },
         statsAnalyzer: {
-          updatePeerconnection: sinon.stub().returns(Promise.resolve()),
+          updateMediaConnection: sinon.stub(),
         },
         webex: {
           meetings: {
             getMeetingByType: sinon.stub().returns(true),
             syncMeetings: sinon.stub().resolves({}),
           },
+          internal: {
+            newMetrics: {
+              submitClientEvent: sinon.stub()
+            }
+          }
         },
       };
+    });
 
-      Media.attachMedia = sinon.stub().resolves({});
+    it('uses correct TURN TLS information on the reconnection', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
-      rm.iceState.disconnected = true;
-
-      await rm.reconnectMedia();
+      await rm.reconnect();
 
       assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
-      assert.calledOnce(fakeMeeting.mediaProperties.reInitiatePeerconnection);
-      assert.calledWith(fakeMeeting.mediaProperties.reInitiatePeerconnection, {
-        url: 'fake_turn_url',
-        username: 'fake_turn_username',
-        password: 'fake_turn_password',
+      assert.calledOnce(fakeMediaConnection.reconnect);
+      assert.calledWith(fakeMediaConnection.reconnect, [
+        {
+          urls: 'fake_turn_url',
+          username: 'fake_turn_username',
+          credential: 'fake_turn_password',
+        },
+      ]);
+
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.reconnecting',
+        options: {
+          meetingId: rm.meeting.id,
+        },
+      });
+
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.recovered',
+        payload: {
+          recoveredBy: 'new',
+        },
+        options: {
+          meetingId: rm.meeting.id,
+        },
       });
     });
+
+    it('does not clear previous requests and re-request media for non-multistream meetings', async () => {
+      fakeMeeting.isMultistream = false;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.notCalled(fakeMeeting.mediaRequestManagers.audio.clearPreviousRequests);
+      assert.notCalled(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
+      assert.notCalled(fakeMeeting.mediaRequestManagers.audio.commit);
+      assert.notCalled(fakeMeeting.mediaRequestManagers.video.commit);
+    });
+
+    it('does clear previous requests and re-request media for multistream meetings', async () => {
+      fakeMeeting.isMultistream = true;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.clearPreviousRequests);
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
+      assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
+    });
+
+
+    it('sends the correct client event when reconnection fails', async () => {
+      sinon.stub(ReconnectionManager.prototype, 'executeReconnection').rejects();
+      fakeMeeting.isMultistream = true;
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      try {
+        await rm.reconnect();
+      } catch (err) {
+        assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+          name: 'client.call.aborted',
+          payload: {
+            errors: [
+              {
+                category: 'expected',
+                errorCode: 2008,
+                fatal: true,
+                name: 'media-engine',
+                shownToUser: false,
+              },
+            ],
+          },
+          options: {
+            meetingId: rm.meeting.id,
+          },
+        });
+      }
+    });
   });
+
   /**
    * Currently, testing dependent classes that aren't available at the top
    * level causes testing errors in CI based around related files. Skipping this here until a solution

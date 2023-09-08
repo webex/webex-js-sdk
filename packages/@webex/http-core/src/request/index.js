@@ -5,6 +5,7 @@
 import {EventEmitter} from 'events';
 
 import _request from './request';
+import {intercept} from './utils';
 
 /**
  * @param {Object} options
@@ -21,42 +22,9 @@ export default function request(options) {
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
 
-  return intercept(options.interceptors, 'Request')
+  return intercept(options, options.interceptors, 'Request')
     .then((...args) => _request(options, ...args))
-    .then((...args) => intercept(options.interceptors.slice().reverse(), 'Response', ...args));
-
-  /**
-   * @param {Array} interceptors
-   * @param {string} key
-   * @param {Object} res
-   * @private
-   * @returns {Promise}
-   */
-  function intercept(interceptors, key, res) {
-    const successKey = `on${key}`;
-    const errorKey = `on${key}Error`;
-
-    return interceptors.reduce(
-      (promise, interceptor) =>
-        promise.then(
-          (result) => {
-            interceptor.logOptions(options);
-            if (interceptor[successKey]) {
-              return interceptor[successKey](options, result);
-            }
-
-            return Promise.resolve(result);
-          },
-          (reason) => {
-            interceptor.logOptions(options);
-            if (interceptor[errorKey]) {
-              return interceptor[errorKey](options, reason);
-            }
-
-            return Promise.reject(reason);
-          }
-        ),
-      Promise.resolve(res)
+    .then((...args) =>
+      intercept(options, options.interceptors.slice().reverse(), 'Response', ...args)
     );
-  }
 }

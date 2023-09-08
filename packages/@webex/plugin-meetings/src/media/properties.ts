@@ -1,41 +1,64 @@
-import {ICE_STATE, MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
+import {ConnectionState, Event} from '@webex/internal-media-core';
+
+import {
+  LocalCameraTrack,
+  LocalMicrophoneTrack,
+  LocalDisplayTrack,
+  LocalSystemAudioTrack,
+} from '@webex/media-helpers';
+
+import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import MediaUtil from './util';
+export type MediaDirection = {
+  sendAudio: boolean;
+  sendVideo: boolean;
+  sendShare: boolean;
+  receiveAudio: boolean;
+  receiveVideo: boolean;
+  receiveShare: boolean;
+};
 
 /**
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioTrack: any;
-  localQualityLevel: any;
-  mediaDirection: any;
+  audioTrack?: LocalMicrophoneTrack;
+  mediaDirection: MediaDirection;
   mediaSettings: any;
-  peerConnection: any;
+  webrtcMediaConnection: any;
   remoteAudioTrack: any;
   remoteQualityLevel: any;
   remoteShare: any;
   remoteVideoTrack: any;
-  shareTrack: any;
+  shareVideoTrack?: LocalDisplayTrack;
+  shareAudioTrack?: LocalSystemAudioTrack;
   videoDeviceId: any;
-  videoTrack: any;
+  videoTrack?: LocalCameraTrack;
   namespace = MEETINGS;
 
   /**
    * @param {Object} [options] -- to auto construct
    * @returns {MediaProperties}
    */
-  constructor(options: any = {}) {
-    this.peerConnection = MediaUtil.createPeerConnection();
-    this.mediaDirection = options.mediaDirection;
-    this.videoTrack = options.videoTrack;
-    this.audioTrack = options.audioTrack;
-    this.shareTrack = options.shareTrack;
-    this.remoteShare = options.remoteShare;
-    this.remoteAudioTrack = options.remoteAudioTrack;
-    this.remoteVideoTrack = options.remoteVideoTrack;
-    this.localQualityLevel = options.localQualityLevel || QUALITY_LEVELS['720p'];
-    this.remoteQualityLevel = options.remoteQualityLevel || QUALITY_LEVELS.HIGH;
+  constructor() {
+    this.webrtcMediaConnection = null;
+    this.mediaDirection = {
+      receiveAudio: false,
+      receiveVideo: false,
+      receiveShare: false,
+      sendAudio: false,
+      sendVideo: false,
+      sendShare: false,
+    };
+    this.videoTrack = null;
+    this.audioTrack = null;
+    this.shareVideoTrack = null;
+    this.shareAudioTrack = null;
+    this.remoteShare = undefined;
+    this.remoteAudioTrack = undefined;
+    this.remoteVideoTrack = undefined;
+    this.remoteQualityLevel = QUALITY_LEVELS.HIGH;
     this.mediaSettings = {};
     this.videoDeviceId = null;
   }
@@ -56,24 +79,24 @@ export default class MediaProperties {
     this.mediaSettings[type] = values;
   }
 
-  setMediaPeerConnection(peerConnection) {
-    this.peerConnection = peerConnection;
+  setMediaPeerConnection(mediaPeerConnection) {
+    this.webrtcMediaConnection = mediaPeerConnection;
   }
 
-  setLocalVideoTrack(videoTrack) {
+  setLocalVideoTrack(videoTrack?: LocalCameraTrack) {
     this.videoTrack = videoTrack;
   }
 
-  setLocalAudioTrack(audioTrack) {
+  setLocalAudioTrack(audioTrack?: LocalMicrophoneTrack) {
     this.audioTrack = audioTrack;
   }
 
-  setLocalQualityLevel(localQualityLevel) {
-    this.localQualityLevel = localQualityLevel;
+  setLocalShareVideoTrack(shareVideoTrack?: LocalDisplayTrack) {
+    this.shareVideoTrack = shareVideoTrack;
   }
 
-  setLocalShareTrack(shareTrack) {
-    this.shareTrack = shareTrack;
+  setLocalShareAudioTrack(shareAudioTrack?: LocalSystemAudioTrack) {
+    this.shareAudioTrack = shareAudioTrack;
   }
 
   setRemoteQualityLevel(remoteQualityLevel) {
@@ -112,36 +135,7 @@ export default class MediaProperties {
   }
 
   unsetPeerConnection() {
-    this.peerConnection = null;
-  }
-
-  reInitiatePeerconnection(turnServerInfo) {
-    this.peerConnection = MediaUtil.createPeerConnection(turnServerInfo);
-  }
-
-  unsetLocalVideoTrack() {
-    this.videoTrack = null;
-  }
-
-  unsetLocalShareTrack() {
-    this.shareTrack = null;
-  }
-
-  unsetLocalAudioTrack() {
-    this.audioTrack = null;
-  }
-
-  /**
-   * Removes remote stream from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
-   */
-  unsetRemoteStream() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetRemoteStream --> [DEPRECATION WARNING]: unsetRemoteStream has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
-    );
-    // unsets audio and video only
-    this.unsetRemoteMedia();
+    this.webrtcMediaConnection = null;
   }
 
   /**
@@ -157,24 +151,6 @@ export default class MediaProperties {
     this.remoteShare = null;
   }
 
-  unsetLocalVideoTracks() {
-    this.unsetLocalVideoTrack();
-    this.unsetLocalShareTrack();
-  }
-
-  /**
-   * Removes remote stream and remote share from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
-   */
-  unsetRemoteStreams() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetRemoteStreams --> [DEPRECATION WARNING]: unsetRemoteStreams has been deprecated after v1.89.3 (use unsetRemoteTracks instead)'
-    );
-    this.unsetRemoteStream();
-    this.unsetRemoteShare();
-  }
-
   /**
    * Unsets all remote tracks
    * @returns {void}
@@ -184,68 +160,48 @@ export default class MediaProperties {
     this.unsetRemoteShare();
   }
 
-  unsetShareStreams() {
-    this.unsetLocalShareTrack();
-    this.unsetRemoteShare();
-  }
-
   /**
-   * Removes both local and remote video stream from class instance
-   * @deprecated after v1.89.3
-   * @returns {void}
+   * Returns if we have at least one local share track or not.
+   * @returns {Boolean}
    */
-  unsetMediaStreams() {
-    LoggerProxy.logger.warn(
-      'Media:properties#unsetMediaStreams --> [DEPRECATION WARNING]: unsetMediaStreams has been deprecated after v1.89.3 (use unsetMediaTracks instead)'
-    );
-    this.unsetLocalVideoTrack();
-    this.unsetRemoteStream();
+  hasLocalShareTrack() {
+    return !!(this.shareAudioTrack || this.shareVideoTrack);
   }
 
   /**
-   * Removes both local and remote video stream from class instance
-   * @returns {void}
-   */
-  unsetMediaTracks() {
-    this.unsetLocalVideoTrack();
-    this.unsetRemoteMedia();
-  }
-
-  /**
-   * Waits until ice connection is established
+   * Waits for the webrtc media connection to be connected.
    *
    * @returns {Promise<void>}
    */
-  waitForIceConnectedState() {
-    const isIceConnected = () =>
-      this.peerConnection.iceConnectionState === ICE_STATE.CONNECTED ||
-      this.peerConnection.iceConnectionState === ICE_STATE.COMPLETED;
+  waitForMediaConnectionConnected(): Promise<void> {
+    const isConnected = () =>
+      this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
 
-    if (isIceConnected()) {
+    if (isConnected()) {
       return Promise.resolve();
     }
 
     return new Promise<void>((resolve, reject) => {
       let timer;
 
-      const iceListener = () => {
+      const connectionStateListener = () => {
         LoggerProxy.logger.log(
-          `Media:properties#waitForIceConnectedState --> ice state: ${this.peerConnection.iceConnectionState}, conn state: ${this.peerConnection.connectionState}`
+          `Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
         );
 
-        if (isIceConnected()) {
+        if (isConnected()) {
           clearTimeout(timer);
-          this.peerConnection.removeEventListener('iceconnectionstatechange', iceListener);
+          this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
           resolve();
         }
       };
 
       timer = setTimeout(() => {
-        this.peerConnection.removeEventListener('iceconnectionstatechange', iceListener);
+        this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
         reject();
       }, PC_BAIL_TIMEOUT);
 
-      this.peerConnection.addEventListener('iceconnectionstatechange', iceListener);
+      this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
     });
   }
 
@@ -256,14 +212,12 @@ export default class MediaProperties {
    */
   async getCurrentConnectionType() {
     // we can only get the connection type after ICE connection has been established
-    await this.waitForIceConnectedState();
+    await this.waitForMediaConnectionConnected();
 
     const allStatsReports = [];
 
     try {
-      // eslint-disable-next-line no-await-in-loop
-      const statsResult = await this.peerConnection.getStats();
-
+      const statsResult = await this.webrtcMediaConnection.getStats();
       statsResult.forEach((report) => allStatsReports.push(report));
     } catch (error) {
       LoggerProxy.logger.warn(

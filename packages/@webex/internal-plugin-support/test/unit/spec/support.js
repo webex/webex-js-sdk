@@ -74,6 +74,22 @@ describe('plugin-support', () => {
 
       assert.equal(found?.value, surveySessionId);
     });
+
+    it('sends productAreaTag if specified in metadata', () => {
+      const productAreaTag = 'product-area-tag';
+      const result = webex.internal.support._constructFileMetadata({productAreaTag});
+      const found = result.find((attr) => attr.key === 'productAreaTag');
+
+      assert.equal(found?.value, productAreaTag);
+    });
+
+    it('sends issueTypeTag if specified in metadata', () => {
+      const issueTypeTag = 'issueTypeTag';
+      const result = webex.internal.support._constructFileMetadata({issueTypeTag});
+      const found = result.find((attr) => attr.key === 'issueTypeTag');
+
+      assert.equal(found?.value, issueTypeTag);
+    });
   });
 
   describe('#submitLogs()', () => {

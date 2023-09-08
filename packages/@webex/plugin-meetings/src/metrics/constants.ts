@@ -9,6 +9,7 @@ const BEHAVIORAL_METRICS = {
   JOIN_FAILURE: 'js_sdk_join_failures',
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
+  ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',
   MEETING_LEAVE_FAILURE: 'js_sdk_meeting_leave_failure',
@@ -40,10 +41,6 @@ const BEHAVIORAL_METRICS = {
   INVALID_ICE_CANDIDATE: 'js_sdk_invalid_ice_candidate',
   UPLOAD_LOGS_FAILURE: 'js_sdk_upload_logs_failure',
   RECEIVE_TRANSCRIPTION_FAILURE: 'js_sdk_receive_transcription_failure',
-  ENABLE_BNR_SUCCESS: 'js_sdk_enable_bnr_success',
-  ENABLE_BNR_FAILURE: 'js_sdk_enable_bnr_failure',
-  DISABLE_BNR_SUCCESS: 'js_sdk_disable_bnr_success',
-  DISABLE_BNR_FAILURE: 'js_sdk_disable_bnr_failure',
   FETCH_MEETING_INFO_V1_SUCCESS: 'js_sdk_fetch_meeting_info_v1_success',
   FETCH_MEETING_INFO_V1_FAILURE: 'js_sdk_fetch_meeting_info_v1_failure',
   ADHOC_MEETING_SUCCESS: 'js_sdk_adhoc_meeting_success',
@@ -56,6 +53,7 @@ const BEHAVIORAL_METRICS = {
   MOVE_FROM_SUCCESS: 'js_sdk_move_from_success',
   MOVE_FROM_FAILURE: 'js_sdk_move_from_failure',
   TURN_DISCOVERY_FAILURE: 'js_sdk_turn_discovery_failure',
+  MEETING_INFO_POLICY_ERROR: 'js_sdk_meeting_info_policy_error',
 };
 
 export {BEHAVIORAL_METRICS as default};
