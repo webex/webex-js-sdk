@@ -412,6 +412,7 @@ export default class Reachability {
       reachabilityMap[clusterId] = {
         udp: latencyResult,
         tcp: {untested: 'true'},
+        xtls: {untested: 'true'},
       };
     });
 

@@ -186,6 +186,9 @@ describe('gatherReachability', () => {
           tcp: {
             untested: 'true',
           },
+          xtls: {
+            untested: 'true',
+          },
           udp: {
             clientMediaIPs: ['1.1.1.1'],
             latencyInMilliseconds: '12312',
@@ -193,6 +196,9 @@ describe('gatherReachability', () => {
           },
         },
         id2: {
+          xtls: {
+            untested: 'true',
+          },
           tcp: {
             untested: 'true',
           },
