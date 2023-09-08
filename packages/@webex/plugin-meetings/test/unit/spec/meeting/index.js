@@ -5899,50 +5899,52 @@ describe('plugin-meetings', () => {
           [
             {
               actionName: 'canShareApplication',
-              callType: 'CALL',
               expectedEnabled: true,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canShareApplication',
-              callType: 'MEETING',
               expectedEnabled: false,
+              arePolicyRestrictionsSupported: true,
             },
             {
               actionName: 'canShareDesktop',
-              callType: 'CALL',
+              arePolicyRestrictionsSupported: false,
               expectedEnabled: true,
             },
             {
               actionName: 'canShareDesktop',
-              callType: 'MEETING',
+              arePolicyRestrictionsSupported: true,
               expectedEnabled: false,
             },
             {
               actionName: 'canShareContent',
-              callType: 'CALL',
+              arePolicyRestrictionsSupported: false,
               expectedEnabled: true,
             },
             {
               actionName: 'canShareContent',
-              callType: 'MEETING',
+              arePolicyRestrictionsSupported: true,
               expectedEnabled: false,
             },
             {
               actionName: 'canUseVoip',
-              callType: 'CALL',
               expectedEnabled: true,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canUseVoip',
-              callType: 'MEETING',
               expectedEnabled: false,
+              arePolicyRestrictionsSupported: true,
             },
           ],
-          ({actionName, callType, expectedEnabled}) => {
-            it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
-              meeting.type = callType;
+          ({actionName, arePolicyRestrictionsSupported, expectedEnabled}) => {
+            it(`${actionName} is ${expectedEnabled} when the call type is ${arePolicyRestrictionsSupported}`, () => {
               meeting.userDisplayHints = [];
               meeting.meetingInfo = {some: 'info'};
+              sinon
+                .stub(meeting, 'arePolicyRestrictionsSupported')
+                .returns(arePolicyRestrictionsSupported);
 
               meeting.updateMeetingActions();
 
@@ -5988,12 +5990,14 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               requiredPolicies: [],
               enableUnifiedMeetings: false,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canShareApplication',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               requiredPolicies: [],
               enableUnifiedMeetings: false,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canAnnotate',
@@ -6001,10 +6005,20 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings, meetingInfo}) => {
+          ({
+            actionName,
+            requiredDisplayHints,
+            requiredPolicies,
+            enableUnifiedMeetings,
+            meetingInfo,
+            arePolicyRestrictionsSupported,
+          }) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = {};
+              meeting.selfUserPolicies = undefined;
+              sinon
+                .stub(meeting, 'arePolicyRestrictionsSupported')
+                .returns(arePolicyRestrictionsSupported);
 
               meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
                 ? true
@@ -6012,6 +6026,9 @@ describe('plugin-meetings', () => {
 
               meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
+              if (requiredPolicies) {
+                meeting.selfUserPolicies = {};
+              }
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
               });
@@ -6024,10 +6041,13 @@ describe('plugin-meetings', () => {
             if (requiredDisplayHints.length !== 0) {
               it(`${actionName} is disabled when the required display hints are missing`, () => {
                 meeting.userDisplayHints = [];
-                meeting.selfUserPolicies = {};
+                meeting.selfUserPolicies = undefined;
 
                 meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
+                if (requiredPolicies) {
+                  meeting.selfUserPolicies = {};
+                }
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
@@ -6040,8 +6060,11 @@ describe('plugin-meetings', () => {
 
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = {};
+              meeting.selfUserPolicies = undefined;
 
+                if (requiredPolicies) {
+                  meeting.selfUserPolicies = {};
+                }
               meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               meeting.updateMeetingActions();
@@ -6104,8 +6127,15 @@ describe('plugin-meetings', () => {
             },
             {
               meetingInfo: undefined,
-              selfUserPolicies: {
+              selfUserPolicies: {},
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
               },
+            },
+            {
+              meetingInfo: {some: 'data'},
+              selfUserPolicies: undefined,
               expectedActions: {
                 supportHQV: true,
                 supportHDV: true,
@@ -6120,7 +6150,6 @@ describe('plugin-meetings', () => {
             )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
               meeting.meetingInfo = meetingInfo;
               meeting.selfUserPolicies = selfUserPolicies;
-              meeting.config.experimental.enableUnifiedMeetings = true;
 
               meeting.updateMeetingActions();
 
@@ -6139,7 +6168,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6150,7 +6178,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6161,7 +6188,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6172,7 +6198,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6180,15 +6205,12 @@ describe('plugin-meetings', () => {
         });
 
         it('canUseVoip is enabled when there is no meeting info', () => {
-          meeting.config.experimental.enableUnifiedMeetings = true;
-
           meeting.updateMeetingActions();
 
           assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
         });
 
         it('canUseVoip is enabled when it is a locus call', () => {
-          meeting.config.experimental.enableUnifiedMeetings = true;
           meeting.meetingInfo = {some: 'info'};
           meeting.type = 'CALL';
 
@@ -6201,7 +6223,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6212,18 +6233,16 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
           assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
         });
 
-        it('canUseVoip is enabled when enableUnifiedMeetings is false', () => {
-          meeting.userDisplayHints = [];
-          meeting.selfUserPolicies = {};
+        it('canUseVoip is enabled when there are no policies', () => {
+          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
+          meeting.selfUserPolicies = undefined;
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = false;
 
           meeting.updateMeetingActions();
 
@@ -6257,6 +6276,13 @@ describe('plugin-meetings', () => {
               },
               expectedActions: {
                 canDoVideo: false,
+              },
+            },
+            {
+              meetingInfo: {some: 'data'},
+              selfUserPolicies: undefined,
+              expectedActions: {
+                canDoVideo: true,
               },
             },
             {
