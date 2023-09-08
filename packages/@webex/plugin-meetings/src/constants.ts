@@ -359,8 +359,6 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
-  // Locus URL changed
-  MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 };
 
