@@ -2485,12 +2485,13 @@ describe('plugin-meetings', () => {
             reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST,
           });
         });
-        it.only('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
           const leave = meeting.leave();
 
           await leave;
 
-          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.leave',
             payload: {
               trigger: 'user-interaction',
@@ -2506,12 +2507,33 @@ describe('plugin-meetings', () => {
             )
           );
         });
-        it.only('should send client.call.leave after meetingRequest.leaveMeeting when erroring', async () => {
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting when erroring', async () => {
           meeting.meetingRequest.leaveMeeting = sinon
             .stub()
             .returns(Promise.reject(new Error('forced')));
 
           await assert.isRejected(meeting.leave());
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            payload: {
+              trigger: 'user-interaction',
+              canProceed: false,
+              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              errors: [
+                {
+                  fatal: false,
+                  errorDescription: 'forced',
+                  category: 'signaling',
+                  errorCode: 1000,
+                  name: 'client.leave',
+                  shownToUser: false,
+                },
+              ],
+            },
+            options: {meetingId: meeting.id},
+          });
 
           assert(
             webex.internal.newMetrics.submitClientEvent.calledAfter(

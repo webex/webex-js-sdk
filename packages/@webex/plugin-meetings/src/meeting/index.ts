@@ -5921,7 +5921,7 @@ export default class Meeting extends StatelessWebexPlugin {
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
-    const submitLeaveMetric = () =>
+    const submitLeaveMetric = (payload = {}) =>
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.call.leave',
@@ -5929,6 +5929,7 @@ export default class Meeting extends StatelessWebexPlugin {
           trigger: 'user-interaction',
           canProceed: false,
           leaveReason,
+          ...payload,
         },
         options: {meetingId: this.id},
       });
@@ -5975,7 +5976,18 @@ export default class Meeting extends StatelessWebexPlugin {
       })
       .catch((error) => {
         // CA team recommends submitting this *after* locus /leave
-        submitLeaveMetric();
+        submitLeaveMetric({
+          errors: [
+            {
+              fatal: false,
+              errorDescription: error.message,
+              category: 'signaling',
+              errorCode: 1000,
+              name: 'client.leave',
+              shownToUser: false,
+            },
+          ],
+        });
 
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#leave --> Failed to leave ', error);
