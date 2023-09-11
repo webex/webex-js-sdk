@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.212](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.211...v3.0.0-beta.212) (2023-09-11)
+
+
+### Bug Fixes
+
+* don't send fake TCP reachability results ([#3065](https://github.com/webex/webex-js-sdk/issues/3065)) ([4133866](https://github.com/webex/webex-js-sdk/commit/413386621702ee648397466cd8f1dedec54210e5))
+
 ## [3.0.0-beta.211](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.210...v3.0.0-beta.211) (2023-09-11)
 
 
