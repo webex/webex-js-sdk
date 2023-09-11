@@ -1,6 +1,13 @@
 import {IRegistration} from '../registration/types';
 import {LineError} from '../../Errors/catalog/LineError';
-import {IDeviceInfo, MobiusDeviceId, MobiusStatus} from '../../common/types';
+import {
+  CallDetails,
+  CorrelationId,
+  IDeviceInfo,
+  MobiusDeviceId,
+  MobiusStatus,
+} from '../../common/types';
+import {ICall} from '../calling/types';
 
 export enum LineStatus {
   INACTIVE = 'inactive',
@@ -14,6 +21,7 @@ export enum LINE_EVENTS {
   RECONNECTING = 'reconnecting',
   REGISTERED = 'registered',
   UNREGISTERED = 'unregistered',
+  INCOMING_CALL = 'line:incoming_call',
 }
 
 export interface ILine {
@@ -40,6 +48,8 @@ export interface ILine {
   getRegistrationStatus: () => MobiusStatus;
   getDeviceId: () => MobiusDeviceId | undefined;
   lineEmitter: (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => void;
+  makeCall: (dest: CallDetails) => ICall | undefined;
+  getCall: (correlationId: CorrelationId) => ICall;
 }
 
 export type LineEventTypes = {
@@ -49,6 +59,7 @@ export type LineEventTypes = {
   [LINE_EVENTS.RECONNECTING]: () => void;
   [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
   [LINE_EVENTS.UNREGISTERED]: () => void;
+  [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 
 export type LineEmitterCallback = (

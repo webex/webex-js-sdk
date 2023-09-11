@@ -4,27 +4,36 @@ import {CallId, DisplayInformation} from '../common/types';
 import {CallError, CallingClientError} from '../Errors';
 
 /** External Eventing Start */
-export enum EVENT_KEYS {
-  ALERTING = 'call:alerting',
-  CALL_ERROR = 'call:error',
-  CALLER_ID = 'call:caller_id',
-  CONNECT = 'call:connect',
-  DISCONNECT = 'call:disconnect',
-  ERROR = 'callingClient:error',
-  ESTABLISHED = 'call:established',
-  HELD = 'call:held',
-  HOLD_ERROR = 'call:hold_error',
-  INCOMING_CALL = 'callingClient:incoming_call',
-  OUTGOING_CALL = 'callingClient:outgoing_call',
-  PROGRESS = 'call:progress',
-  REMOTE_MEDIA = 'call:remote_media',
-  RESUME_ERROR = 'call:resume_error',
-  RESUMED = 'call:resumed',
-  TRANSFER_ERROR = 'call:transfer_error',
-  USER_SESSION_INFO = 'callingClient:user_recent_sessions',
+export enum COMMON_EVENT_KEYS {
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
+}
+
+export enum LINE_EVENT_KEYS {
+  INCOMING_CALL = 'incoming_call',
+}
+
+export enum CALLING_CLIENT_EVENT_KEYS {
+  ERROR = 'callingClient:error',
+  OUTGOING_CALL = 'callingClient:outgoing_call',
+  USER_SESSION_INFO = 'callingClient:user_recent_sessions',
   ALL_CALLS_CLEARED = 'callingClient:all_calls_cleared',
+}
+
+export enum CALL_EVENT_KEYS {
+  ALERTING = 'alerting',
+  CALL_ERROR = 'call_error',
+  CALLER_ID = 'caller_id',
+  CONNECT = 'connect',
+  DISCONNECT = 'disconnect',
+  ESTABLISHED = 'established',
+  HELD = 'held',
+  HOLD_ERROR = 'hold_error',
+  PROGRESS = 'progress',
+  REMOTE_MEDIA = 'remote_media',
+  RESUME_ERROR = 'resume_error',
+  RESUMED = 'resumed',
+  TRANSFER_ERROR = 'transfer_error',
 }
 
 export enum SUPPLEMENTARY_SERVICES {
@@ -160,21 +169,21 @@ export type CallerIdDisplay = {
 };
 
 export type CallEventTypes = {
-  [EVENT_KEYS.ALERTING]: (callId: CallId) => void;
-  [EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
-  [EVENT_KEYS.CALLER_ID]: (display: CallerIdDisplay) => void;
-  [EVENT_KEYS.CONNECT]: (callId: CallId) => void;
-  [EVENT_KEYS.DISCONNECT]: (callId: CallId) => void;
-  [EVENT_KEYS.ESTABLISHED]: (callId: CallId) => void;
-  [EVENT_KEYS.HELD]: (callId: CallId) => void;
-  [EVENT_KEYS.HOLD_ERROR]: (error: CallError) => void;
-  [EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
-  [EVENT_KEYS.PROGRESS]: (callId: CallId) => void;
-  [EVENT_KEYS.REMOTE_MEDIA]: (track: MediaStreamTrack) => void;
-  [EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
-  [EVENT_KEYS.RESUMED]: (callId: CallId) => void;
-  [EVENT_KEYS.TRANSFER_ERROR]: (error: CallError) => void;
-  [EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
+  [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
+  [CALL_EVENT_KEYS.CALLER_ID]: (display: CallerIdDisplay) => void;
+  [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.DISCONNECT]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.ESTABLISHED]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.HELD]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.HOLD_ERROR]: (error: CallError) => void;
+  [LINE_EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
+  [CALL_EVENT_KEYS.PROGRESS]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.REMOTE_MEDIA]: (track: MediaStreamTrack) => void;
+  [CALL_EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
+  [CALL_EVENT_KEYS.RESUMED]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.TRANSFER_ERROR]: (error: CallError) => void;
+  [CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
 };
 
 export type MessageId = {
@@ -182,19 +191,18 @@ export type MessageId = {
 };
 
 export type VoicemailEventTypes = {
-  [EVENT_KEYS.CB_VOICEMESSAGE_CONTENT_GET]: (messageId: MessageId) => void;
+  [COMMON_EVENT_KEYS.CB_VOICEMESSAGE_CONTENT_GET]: (messageId: MessageId) => void;
 };
 
 export type CallingClientEventTypes = {
-  [EVENT_KEYS.ERROR]: (error: CallingClientError) => void;
-  [EVENT_KEYS.USER_SESSION_INFO]: (event: CallSessionEvent) => void;
-  [EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
-  [EVENT_KEYS.OUTGOING_CALL]: (callId: string) => void;
-  [EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
+  [CALLING_CLIENT_EVENT_KEYS.ERROR]: (error: CallingClientError) => void;
+  [CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO]: (event: CallSessionEvent) => void;
+  [CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL]: (callId: string) => void;
+  [CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
 };
 
 export type CallHistoryEventTypes = {
-  [EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
 };
 /* External Eventing End */
 

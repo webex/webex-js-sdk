@@ -5,9 +5,10 @@ import {CallDirection, CallType, ServiceIndicator} from '../../common/types';
 import {getTestUtilsWebex} from '../../common/testUtil';
 import {getCallManager} from './callManager';
 import {ICall, ICallManager, MobiusCallState} from './types';
-import {EVENT_KEYS} from '../../Events/types';
 import {Call} from './call';
 import log from '../../Logger';
+import {ILine} from '../line/types';
+import {LINE_EVENT_KEYS} from '../../Events/types';
 
 const webex = getTestUtilsWebex();
 const defaultServiceIndicator = ServiceIndicator.CALLING;
@@ -99,6 +100,11 @@ const successResponseBody = {
   },
 };
 
+const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
+const mockLine = {
+  lineId: mockLineId,
+} as ILine;
+
 describe('Call Manager Tests with respect to calls', () => {
   const dummyResponse = {
     statusCode: 200,
@@ -109,6 +115,7 @@ describe('Call Manager Tests with respect to calls', () => {
       },
     },
   };
+
   const patchMock = jest.spyOn(Call.prototype as any, 'patch');
   const setDisconnectReasonMock = jest.spyOn(Call.prototype as any, 'setDisconnectReason');
   const deleteCallMock = jest.spyOn(Call.prototype as any, 'delete');
@@ -128,7 +135,7 @@ describe('Call Manager Tests with respect to calls', () => {
 
   beforeEach(() => {
     callManager = getCallManager(webex, defaultServiceIndicator);
-    callManager.removeAllListeners(EVENT_KEYS.INCOMING_CALL);
+    callManager.removeAllListeners(LINE_EVENT_KEYS.INCOMING_CALL);
     /* expect 0 calls at the beginning of each test as we are clearing calls at the end of every test case */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
   });
@@ -153,6 +160,7 @@ describe('Call Manager Tests with respect to calls', () => {
   });
 
   it('create a call using call manager', async () => {
+    callManager.updateLine('8a67806f-fc4d-446b-a131-31e71ea5b010', mockLine);
     webex.request.mockReturnValueOnce({
       statusCode: 200,
       body: {
@@ -168,20 +176,23 @@ describe('Call Manager Tests with respect to calls', () => {
     });
 
     expect(callManager).toBeTruthy();
-    const call = await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     call.setCallId('8a67806f-fc4d-446b-a131-31e71ea5b020');
 
     expect(call).toBeTruthy();
     expect(call.getCallId()).toStrictEqual('8a67806f-fc4d-446b-a131-31e71ea5b020');
+    expect(call.lineId).toStrictEqual(mockLineId);
   });
 
   it('Accept an incoming call from Mobius where Call Setup was the first message', async () => {
-    callManager.on(EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
+    callManager.updateLine('375b8503-f716-3407-853b-cd9a8c4419a7', mockLine);
+    callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
       expect(callObj.getCallId()).toStrictEqual(setupEvent.data.callId);
       expect(callObj.getBroadworksCorrelationInfo()).toStrictEqual(
         setupEvent.data.broadworksCorrelationInfo
       );
+      expect(callObj.lineId).toStrictEqual(mockLineId);
     });
     patchMock.mockResolvedValue(dummyResponse);
 
@@ -196,8 +207,9 @@ describe('Call Manager Tests with respect to calls', () => {
   });
 
   it('Accept an incoming call from Mobius where Media Event was the first message', async () => {
+    callManager.updateLine('8a67806f-fc4d-446b-a131-31e71ea5b010', mockLine);
     patchMock.mockResolvedValue(dummyResponse);
-    callManager.on(EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
+    callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
       expect(callObj.getCallId()).toStrictEqual(setupEvent.data.callId);
       expect(callObj['remoteRoapMessage'].sdp).toStrictEqual(mediaEvent.data.message.sdp);
     });
@@ -213,7 +225,7 @@ describe('Call Manager Tests with respect to calls', () => {
     webex.request.mockReturnValueOnce(successResponseBody);
 
     /* lets add a call to disconnect it later */
-    const call = await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     /* clear the last added call */
@@ -233,7 +245,7 @@ describe('Call Manager Tests with respect to calls', () => {
     webex.request.mockReturnValueOnce(successResponseBody);
 
     /* lets add a call to disconnect it later */
-    await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     /* clear the last added call */
@@ -250,6 +262,7 @@ describe('Call Manager Tests with respect to calls', () => {
   });
 
   it('Accept an incoming call but Outgoing patch request fails', async () => {
+    callManager.updateLine('8a67806f-fc4d-446b-a131-31e71ea5b010', mockLine);
     /* Intentionally failing the Patch with 503 */
     dummyResponse.statusCode = 503;
     patchMock.mockRejectedValue(dummyResponse);
@@ -271,9 +284,10 @@ describe('Call Manager Tests with respect to calls', () => {
   });
 
   it('Walk through an End to End call', async () => {
+    callManager.updateLine('8a67806f-fc4d-446b-a131-31e71ea5b010', mockLine);
     let call: ICall;
 
-    callManager.on(EVENT_KEYS.INCOMING_CALL, async (callObj: ICall) => {
+    callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, async (callObj: ICall) => {
       expect(callObj.getCallId()).toStrictEqual(setupEvent.data.callId);
       call = callObj;
       await waitForMsecs(50);
@@ -374,8 +388,8 @@ describe('Coverage for Events listener', () => {
 
   beforeEach(() => {
     callManager = getCallManager(webex, defaultServiceIndicator);
-    callManager.removeAllListeners(EVENT_KEYS.INCOMING_CALL);
-    call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    callManager.removeAllListeners(LINE_EVENT_KEYS.INCOMING_CALL);
+    call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
     call.setCallId(dummyCallId);
     setupEvent.data.correlationId = call.getCorrelationId();
   });

@@ -4,6 +4,7 @@ import {CallError} from '../../Errors/catalog/CallError';
 import {CallDetails, CallDirection, CallId, DisplayInformation} from '../../common/types';
 import {Eventing} from '../../Events/impl';
 import {CallerIdInfo, CallEvent, CallEventTypes, RoapEvent, RoapMessage} from '../../Events/types';
+import {ILine} from '../line/types';
 
 export enum MobiusEventType {
   CALL_SETUP = 'mobius.call',
@@ -194,6 +195,7 @@ export type CallRtpStats = {
 };
 
 export interface ICall extends Eventing<CallEventTypes> {
+  lineId: string;
   getCallId: () => string;
   getCorrelationId: () => string;
   getDirection: () => CallDirection;
@@ -229,9 +231,15 @@ export type CallErrorEmitterCallBack = (error: CallError) => void;
 export type RetryCallBack = (interval: number) => void;
 
 export interface ICallManager extends Eventing<CallEventTypes> {
-  createCall: (destination: CallDetails, direction: CallDirection, deviceId: string) => ICall;
+  createCall: (
+    destination: CallDetails,
+    direction: CallDirection,
+    deviceId: string,
+    lineId: string
+  ) => ICall;
   endCall: (callId: CallId) => void;
   getCall: (callId: CallId) => ICall;
   updateActiveMobius: (url: string) => void;
   getActiveCalls: () => Record<string, ICall>;
+  updateLine: (deviceId: string, line: ILine) => void;
 }
