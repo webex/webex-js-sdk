@@ -83,6 +83,7 @@ export type MetricEventNames =
   | FeatureEvent['name']
   | MediaQualityEvent['name'];
 
+export type ClientInfo = NonNullable<RawEvent['origin']['clientInfo']>;
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];

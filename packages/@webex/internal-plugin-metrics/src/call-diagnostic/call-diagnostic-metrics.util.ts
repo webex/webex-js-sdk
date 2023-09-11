@@ -231,3 +231,13 @@ export const setMetricTimings = (options) => {
 
   return options;
 };
+
+export const extractVersionMetadata = (version: string) => {
+  // extract major and minor version
+  const [majorVersion, minorVersion] = version.split('.');
+
+  return {
+    majorVersion: parseInt(majorVersion, 10),
+    minorVersion: parseInt(minorVersion, 10),
+  };
+};
