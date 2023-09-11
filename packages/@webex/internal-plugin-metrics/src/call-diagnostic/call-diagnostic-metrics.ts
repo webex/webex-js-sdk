@@ -86,6 +86,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns if the meeting has converged architecture enabled
+   * @param options.meetingId
+   */
+  getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
+    if (meetingId) {
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      return meeting?.meetingInfo?.enableConvergedArchitecture;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Get origin object for Call Diagnostic Event payload.
    * @param options
    * @param meetingId
@@ -434,6 +449,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       userType: meeting.getCurUserType(),
       loginType: this.getCurLoginType(),
+      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
+        meetingId,
+      }),
     };
 
     return clientEventObject;
