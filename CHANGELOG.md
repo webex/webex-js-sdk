@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.211](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.210...v3.0.0-beta.211) (2023-09-11)
+
+
+### Features
+
+* **call-leave:** reorder metric send ([#3007](https://github.com/webex/webex-js-sdk/issues/3007)) ([7593198](https://github.com/webex/webex-js-sdk/commit/7593198e243076b7ab433d9f65116c872f33b81b))
+
 ## [3.0.0-beta.210](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.209...v3.0.0-beta.210) (2023-09-08)
 
 
