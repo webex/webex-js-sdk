@@ -3029,20 +3029,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {boolean}
    */
   private arePolicyRestrictionsSupported() {
-    // Locus calls do not return the correct display hints
-    if (this.isLocusCall()) {
+    // If we don't have policies we can't support policies
+    if (!this.selfUserPolicies) {
       return false;
     }
 
     // 1-2-1 calls and SIP dialling will have no meeting info
     // so cannot support policy information
     if (isEmpty(this.meetingInfo)) {
-      return false;
-    }
-
-    // Old locus info api does not return policy information
-    // @ts-ignore
-    if (!this.config.experimental.enableUnifiedMeetings) {
       return false;
     }
 
