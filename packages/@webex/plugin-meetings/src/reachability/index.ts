@@ -140,7 +140,7 @@ export default class Reachability {
    * @memberof Reachability
    */
   private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = _.uniq([...cluster.udp, ...cluster.tcp]).map((url) => ({
+    const iceServers = _.uniq(cluster.udp).map((url) => ({
       username: '',
       credential: '',
       urls: [url],
@@ -411,7 +411,8 @@ export default class Reachability {
 
       reachabilityMap[clusterId] = {
         udp: latencyResult,
-        tcp: latencyResult,
+        tcp: {untested: 'true'},
+        xtls: {untested: 'true'},
       };
     });
 
