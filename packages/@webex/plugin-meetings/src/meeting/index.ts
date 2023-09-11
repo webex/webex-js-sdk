@@ -3,7 +3,11 @@ import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
+import {
+  ClientEvent,
+  ClientEventLeaveReason,
+  CALL_DIAGNOSTIC_CONFIG,
+} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -5910,8 +5914,15 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+  public leave(
+    options: {
+      resourceId?: string;
+      reason?: any;
+      clientEventLeaveReason?: ClientEventLeaveReason;
+    } = {} as any
+  ) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
@@ -5922,7 +5933,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           trigger: 'user-interaction',
           canProceed: false,
-          leaveReason,
+          leaveReason: options.clientEventLeaveReason,
           ...payload,
         },
         options: {meetingId: this.id},

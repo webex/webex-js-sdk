@@ -2487,7 +2487,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
-          const leave = meeting.leave();
+          const leave = meeting.leave({clientEventLeaveReason: 'ended-by-locus'});
 
           await leave;
 
@@ -2496,7 +2496,7 @@ describe('plugin-meetings', () => {
             payload: {
               trigger: 'user-interaction',
               canProceed: false,
-              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              leaveReason: 'ended-by-locus',
             },
             options: {meetingId: meeting.id},
           });
@@ -2520,7 +2520,7 @@ describe('plugin-meetings', () => {
             payload: {
               trigger: 'user-interaction',
               canProceed: false,
-              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              leaveReason: undefined,
               errors: [
                 {
                   fatal: false,
