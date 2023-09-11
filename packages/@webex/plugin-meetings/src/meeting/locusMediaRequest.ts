@@ -83,6 +83,8 @@ export type Config = {
   device: {
     url: string;
     deviceType: string;
+    countryCode?: string;
+    regionCode?: string;
   };
   correlationId: string;
   preferTranscoding: boolean;
