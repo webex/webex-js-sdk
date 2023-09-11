@@ -1779,7 +1779,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType, regionCode: 'EU', countryCode: 'UK'},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -1800,7 +1805,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType, regionCode: 'EU', countryCode: 'UK'},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -2342,6 +2352,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.meetingRequest.declineMeeting);
         });
       });
+
       describe('#leave', () => {
         let sandbox;
 
@@ -2473,6 +2484,62 @@ describe('plugin-meetings', () => {
             deviceUrl: meeting.deviceUrl,
             reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST,
           });
+        });
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
+          const leave = meeting.leave();
+
+          await leave;
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            payload: {
+              trigger: 'user-interaction',
+              canProceed: false,
+              leaveReason: 'CLIENT_LEAVE_REQUEST',
+            },
+            options: {meetingId: meeting.id},
+          });
+
+          assert(
+            webex.internal.newMetrics.submitClientEvent.calledAfter(
+              meeting.meetingRequest.leaveMeeting
+            )
+          );
+        });
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting when erroring', async () => {
+          meeting.meetingRequest.leaveMeeting = sinon
+            .stub()
+            .returns(Promise.reject(new Error('forced')));
+
+          await assert.isRejected(meeting.leave());
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            payload: {
+              trigger: 'user-interaction',
+              canProceed: false,
+              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              errors: [
+                {
+                  fatal: false,
+                  errorDescription: 'forced',
+                  category: 'signaling',
+                  errorCode: 1000,
+                  name: 'client.leave',
+                  shownToUser: false,
+                },
+              ],
+            },
+            options: {meetingId: meeting.id},
+          });
+
+          assert(
+            webex.internal.newMetrics.submitClientEvent.calledAfter(
+              meeting.meetingRequest.leaveMeeting
+            )
+          );
         });
       });
       describe('#requestScreenShareFloor', () => {
@@ -5253,16 +5320,16 @@ describe('plugin-meetings', () => {
 
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {
-                file: 'meeting/index',
-                function: 'setUpLocusSelfListener',
-              },
-              EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
-              {'locusUrl': 'newLocusUrl/12345'}
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+            {locusUrl: 'newLocusUrl/12345'}
           );
-          
+
           done();
         });
       });
@@ -6062,9 +6129,9 @@ describe('plugin-meetings', () => {
               meeting.userDisplayHints = requiredDisplayHints;
               meeting.selfUserPolicies = undefined;
 
-                if (requiredPolicies) {
-                  meeting.selfUserPolicies = {};
-                }
+              if (requiredPolicies) {
+                meeting.selfUserPolicies = {};
+              }
               meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               meeting.updateMeetingActions();
@@ -6073,7 +6140,6 @@ describe('plugin-meetings', () => {
             });
           }
         );
-
 
         forEach(
           [
