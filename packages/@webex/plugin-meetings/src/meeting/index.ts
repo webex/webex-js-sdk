@@ -3029,20 +3029,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {boolean}
    */
   private arePolicyRestrictionsSupported() {
-    // Locus calls do not return the correct display hints
-    if (this.isLocusCall()) {
+    // If we don't have policies we can't support policies
+    if (!this.selfUserPolicies) {
       return false;
     }
 
     // 1-2-1 calls and SIP dialling will have no meeting info
     // so cannot support policy information
     if (isEmpty(this.meetingInfo)) {
-      return false;
-    }
-
-    // Old locus info api does not return policy information
-    // @ts-ignore
-    if (!this.config.experimental.enableUnifiedMeetings) {
       return false;
     }
 
@@ -5427,6 +5421,10 @@ export default class Meeting extends StatelessWebexPlugin {
           url: this.deviceUrl,
           // @ts-ignore
           deviceType: this.config.deviceType,
+          // @ts-ignore
+          countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+          // @ts-ignore
+          regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
       },
@@ -5917,20 +5915,25 @@ export default class Meeting extends StatelessWebexPlugin {
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
-      name: 'client.call.leave',
-      payload: {
-        trigger: 'user-interaction',
-        canProceed: false,
-        leaveReason,
-      },
-      options: {meetingId: this.id},
-    });
+    const submitLeaveMetric = (payload = {}) =>
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.call.leave',
+        payload: {
+          trigger: 'user-interaction',
+          canProceed: false,
+          leaveReason,
+          ...payload,
+        },
+        options: {meetingId: this.id},
+      });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
       .then((leave) => {
+        // CA team recommends submitting this *after* locus /leave
+        submitLeaveMetric();
+
         this.meetingFiniteStateMachine.leave();
         this.clearMeetingData();
 
@@ -5966,6 +5969,20 @@ export default class Meeting extends StatelessWebexPlugin {
         return leave;
       })
       .catch((error) => {
+        // CA team recommends submitting this *after* locus /leave
+        submitLeaveMetric({
+          errors: [
+            {
+              fatal: false,
+              errorDescription: error.message,
+              category: 'signaling',
+              errorCode: 1000,
+              name: 'client.leave',
+              shownToUser: false,
+            },
+          ],
+        });
+
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#leave --> Failed to leave ', error);
         // upload logs on leave irrespective of meeting delete

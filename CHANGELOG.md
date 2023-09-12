@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.212](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.211...v3.0.0-beta.212) (2023-09-11)
+
+
+### Bug Fixes
+
+* don't send fake TCP reachability results ([#3065](https://github.com/webex/webex-js-sdk/issues/3065)) ([4133866](https://github.com/webex/webex-js-sdk/commit/413386621702ee648397466cd8f1dedec54210e5))
+
+## [3.0.0-beta.211](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.210...v3.0.0-beta.211) (2023-09-11)
+
+
+### Features
+
+* **call-leave:** reorder metric send ([#3007](https://github.com/webex/webex-js-sdk/issues/3007)) ([7593198](https://github.com/webex/webex-js-sdk/commit/7593198e243076b7ab433d9f65116c872f33b81b))
+
+## [3.0.0-beta.210](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.209...v3.0.0-beta.210) (2023-09-08)
+
+
+### Features
+
+* **plugin-meetings:** fix canDoVideo ([#3063](https://github.com/webex/webex-js-sdk/issues/3063)) ([f65d73b](https://github.com/webex/webex-js-sdk/commit/f65d73b18cf123bab117715d0967e182065f3c9f))
+
+## [3.0.0-beta.209](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.208...v3.0.0-beta.209) (2023-09-08)
+
+
+### Bug Fixes
+
+* geohint info missing in Locus join requests ([#3061](https://github.com/webex/webex-js-sdk/issues/3061)) ([400286b](https://github.com/webex/webex-js-sdk/commit/400286bc576882999396cc48ac266cea13f98f2d))
+
 ## [3.0.0-beta.208](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.207...v3.0.0-beta.208) (2023-09-07)
 
 
