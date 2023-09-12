@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
+import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
   CallErrorEmitterCallBack,
@@ -28,6 +29,7 @@ import {
 } from '../Errors/types';
 import {
   ALLOWED_SERVICES,
+  CALLING_BACKEND,
   CorrelationId,
   DecodeType,
   DisplayInformation,
@@ -89,7 +91,6 @@ import {
 } from '../CallingClient/constants';
 import {JanusResponseEvent} from '../CallHistory/types';
 import {
-  CALLING_BACKEND,
   VoicemailResponseEvent,
   MessageInfo,
   CallingPartyInfo,
@@ -106,8 +107,6 @@ import {
   XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
   XSI_ACTION_ENDPOINT,
   INFER_ID_CONSTANT,
-} from './constants';
-import {
   BW_XSI_URL,
   ENTITLEMENT_BASIC,
   ENTITLEMENT_BROADWORKS_CONN,
@@ -115,7 +114,7 @@ import {
   NATIVE_WEBEX_TEAMS_CALLING,
   NATIVE_SIP_CALL_TO_UCM,
   BW_XSI_ENDPOINT_VERSION,
-} from '../Voicemail/constants';
+} from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import {scimResponseBody} from '../CallingClient/calling/CallerId/types';
 import SDKConnector from '../SDKConnector';
@@ -123,7 +122,6 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback, LineStatus} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
-import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
@@ -760,7 +758,19 @@ export async function serviceErrorCodeHandler(
 
       return errorDetails;
     }
+    case ERROR_CODE.NOT_IMPLEMENTED: {
+      log.warn(`501 Not Implemented error occurred`, loggerContext);
 
+      const errorDetails = {
+        statusCode: 501,
+        data: {
+          error: 'Method is not implemented at the backend',
+        },
+        message: failureMessage,
+      };
+
+      return errorDetails;
+    }
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal server error occurred`, loggerContext);
 
@@ -1220,7 +1230,9 @@ export async function resolveCallerIdDisplay(filter: string) {
     displayResult.name = scimResource.displayName;
 
     /* Pick only the primary number  OR  2nd preference Work */
-    const numberObj = scimResource.phoneNumbers.find((num) => num.primary === true);
+    const numberObj =
+      scimResource.phoneNumbers.find((num) => num.primary) ||
+      scimResource.phoneNumbers.find((num) => num.type.toLowerCase() === 'work');
 
     if (numberObj) {
       displayResult.num = <string>numberObj.value;

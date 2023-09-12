@@ -94,13 +94,46 @@ packages.forEach((packageName) => {
 
 module.exports = {
   clearMocks: true,
-  rootDir: './',
-  testEnvironment: 'jsdom',
-  collectCoverage: false,
-  coverageReporters: ['text'],
-  coverageProvider: 'v8',
-  transform: {
-    '\\.[jt]sx?$': ['babel-jest', {rootMode: 'upward'}],
+  collectCoverage: true,
+  // TODO: Increase thresholds to 85% as project is maintained
+  // TODO: remove the thresholds for individual files.
+  coverageThreshold: {
+    global: {
+      lines: 85,
+      functions: 85,
+      branches: 85,
+      statements: 85,
+    },
+    'src/Events/impl': {
+      lines: 80,
+      functions: 65,
+      statements: 80,
+    },
+    'src/Logger': {
+      lines: 75,
+      functions: 85,
+      statements: 75,
+    },
+    'src/Voicemail': {
+      lines: 75,
+      functions: 70,
+      statements: 75,
+      branches: 65,
+    },
+    'src/Hooks': {
+      lines: 50,
+      functions: 0,
+      statements: 50,
+    },
+    'src/SDKConnector': {
+      lines: 60,
+      functions: 60,
+      statements: 60,
+    },
+    'src/CallHistory': {
+      statements: 55,
+      functions: 75,
+    },
   },
   projects: jestProject,
   reporters: [

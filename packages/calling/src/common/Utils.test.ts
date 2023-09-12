@@ -1,8 +1,7 @@
 /* eslint-disable no-underscore-dangle */
-import {CallingPartyInfo, CALLING_BACKEND, MessageInfo} from '../Voicemail/types';
+import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
-
 import {
   getTestUtilsWebex,
   getSampleScimResponse,
@@ -18,6 +17,7 @@ import {
   ServiceIndicator,
   SORT,
   WebexRequestPayload,
+  CALLING_BACKEND,
 } from './types';
 import log from '../Logger';
 import {
@@ -31,7 +31,6 @@ import {
 } from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
-  ErrorObject,
   ERROR_CODE,
   ERROR_LAYER,
   ERROR_TYPE,
@@ -1007,7 +1006,7 @@ describe('resolveContact tests', () => {
     const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
 
     expect(webexSpy).toBeCalledOnceWith(expect.objectContaining({uri: query}));
-    expect(displayInfo?.num).toStrictEqual('5009');
+    expect(displayInfo?.num).toStrictEqual('5008');
     webexSpy.mockReset();
 
     scimResponse.Resources[0].phoneNumbers[1].primary = true;

@@ -4,8 +4,8 @@ import {Mutex} from 'async-mutex';
 import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
-import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../metrics/types';
-import getMetricManager from '../metrics';
+import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
+import {getMetricManager} from '../../Metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
@@ -39,7 +39,6 @@ import {
   REGISTRATION_FILE,
   DEFAULT_REHOMING_INTERVAL_MIN,
   DEFAULT_REHOMING_INTERVAL_MAX,
-  NETWORK_FLAP_TIMEOUT,
   DEFAULT_KEEPALIVE_INTERVAL,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';

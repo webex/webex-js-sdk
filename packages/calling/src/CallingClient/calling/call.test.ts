@@ -7,7 +7,7 @@ import * as Utils from '../../common/Utils';
 import {CallEvent, EVENT_KEYS, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_METRIC, METRIC_TYPE} from '../metrics/types';
+import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -682,10 +682,6 @@ describe('State Machine handler tests', () => {
 
     dummyEvent.type = 'E_RECV_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_CONNECT');
-
-    dummyEvent.type = 'E_CALL_ESTABLISHED';
-    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 
@@ -1130,7 +1126,7 @@ describe('State Machine handler tests', () => {
     };
 
     await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-    expect(call['waitingForOK']).toBe(true);
+    expect(call['receivedRoapOKSeq']).toBe(0);
     expect(mediaConnection.roapMessageReceived).not.toHaveBeenLastCalledWith(
       dummyEvent.data as RoapMessage
     );
@@ -1219,7 +1215,7 @@ describe('State Machine handler tests', () => {
     };
 
     call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-    expect(call['waitingForOK']).toBe(true);
+    expect(call['receivedRoapOKSeq']).toBe(2);
     expect(mediaConnection.roapMessageReceived).not.toHaveBeenLastCalledWith(
       dummyEvent.data as RoapMessage
     );
@@ -1251,6 +1247,276 @@ describe('State Machine handler tests', () => {
     expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER');
     call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
     expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+  });
+
+  it('successfully handles out of order events when ROAP OK is received while executing outgoingRoapAnswer', async () => {
+    const mockStatusBody = {
+      device: {
+        deviceId: '123e4567-e89b-12d3-a456-426614174000',
+        correlationId: 'b5476d4c-f48b-475e-b4e2-994e24d14ca2',
+      },
+      callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+    };
+
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+    const dummyEvent = {
+      type: 'E_RECV_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+      },
+    };
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+
+    webex.request.mockReturnValue(statusPayload);
+    call['direction'] = CallDirection.INBOUND;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+
+    dummyEvent.type = 'E_SEND_CALL_CONNECT';
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    /* we should expect to forward the roap offer message to mediaSdk for further processing */
+    dummyEvent.type = 'E_RECV_ROAP_OFFER';
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    /* expect sending roap answer to mobius */
+    dummyEvent.type = 'E_SEND_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'ANSWER',
+    };
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toBeCalledOnceWith(dummyEvent.data as RoapMessage);
+
+    /* we receive roap Offer Request followed by roap Ok from mobius and handle
+      out of order events by buffering and processing them in sequence */
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: true,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
+    dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
+    dummyEvent.data = {
+      seq: 2,
+      messageType: 'OFFER_REQUEST',
+    };
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['receivedRoapOKSeq']).toBe(0);
+    expect(mediaConnection.roapMessageReceived).not.toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenNthCalledWith(
+      2,
+      dummyOkEvent.data.message as RoapMessage
+    );
+
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    const dummyOfferEvent = {
+      type: 'E_SEND_ROAP_OFFER',
+      data: {
+        seq: 2,
+        messageType: 'OFFER',
+        sdp: 'sdp',
+      },
+    };
+
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER_REQUEST');
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 2,
+      messageType: 'ANSWER',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyOkEvent.data = {
+      received: false,
+      message: {
+        seq: 2,
+        messageType: 'OK',
+      },
+    };
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
+
+    /* With the two roap offer/answer transactions that we simulated earlier
+      we get a total 4 outgoing and 3 incoming roap messages.
+    */
+    expect(postMediaSpy).toBeCalledTimes(3);
+    expect(mediaConnection.roapMessageReceived).toBeCalledTimes(4);
+
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+    expect(call.isConnected()).toBe(true);
+
+    dummyEvent.type = 'E_CALL_HOLD';
+    dummyEvent.data = {
+      seq: 3,
+      messageType: 'OFFER',
+    };
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+
+    dummyEvent.type = 'E_RECV_ROAP_OFFER';
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyEvent.type = 'E_SEND_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 3,
+      messageType: 'ANSWER',
+    };
+
+    await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_ROAP_OFFER';
+    dummyEvent.data = {
+      seq: 4,
+      messageType: 'OFFER',
+    };
+
+    dummyOkEvent.data = {
+      received: true,
+      message: {
+        seq: 3,
+        messageType: 'OK',
+      },
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    await call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(call['receivedRoapOKSeq']).toBe(3);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenNthCalledWith(
+      6,
+      dummyOkEvent.data.message as RoapMessage
+    );
+
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+
+    dummyEvent.type = 'E_SEND_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 4,
+      messageType: 'ANSWER',
+    };
+
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_OFFER');
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+  });
+
+  it('handle hold event successfully when media received after progress but before connect', async () => {
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+        sdp: 'sdp',
+      },
+    };
+
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+    const infoSpy = jest.spyOn(log, 'info');
+
+    webex.request.mockReturnValue(statusPayload);
+
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    dummyEvent.type = 'E_SEND_ROAP_OFFER';
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_CALL_PROGRESS';
+    dummyEvent.data = undefined as any;
+
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
+
+    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'ANSWER',
+      sdp: 'sdp',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyEvent.data as RoapMessage
+    );
+    expect(call['mediaNegotiationCompleted']).toBe(false);
+
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(call['mediaNegotiationCompleted']).toBe(true);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
+
+    dummyEvent.type = 'E_RECV_CALL_CONNECT';
+    dummyEvent.data = undefined as any;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+
+    /* Call will move to connect state then immediately move to established state as
+       media negotiation is already completed before connect was received
+    */
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+    expect(call.isConnected()).toBe(true);
+
+    dummyEvent.type = 'E_CALL_HOLD';
+    dummyEvent.data = undefined as any;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
+
+    expect(infoSpy).toHaveBeenLastCalledWith(`handleCallHold: ${call.getCorrelationId()}  `, {
+      file: 'call',
+      method: 'handleCallHold',
+    });
   });
 });
 
@@ -1940,7 +2206,7 @@ describe('Supplementary Services tests', () => {
       expect(requestSpy).toBeCalled();
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL,
-        TRANSFER_METRIC.CONSULT_TRANSFER,
+        TRANSFER_ACTION.CONSULT,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -1986,7 +2252,7 @@ describe('Supplementary Services tests', () => {
       expect(requestSpy).toBeCalled();
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL,
-        TRANSFER_METRIC.BLIND_TRANSFER,
+        TRANSFER_ACTION.BLIND,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -2043,7 +2309,7 @@ describe('Supplementary Services tests', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL_ERROR,
-        call['callStateMachine'].state.value.toString(),
+        TRANSFER_ACTION.BLIND,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),
@@ -2089,7 +2355,7 @@ describe('Supplementary Services tests', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL_ERROR,
-        call['callStateMachine'].state.value.toString(),
+        TRANSFER_ACTION.CONSULT,
         METRIC_TYPE.BEHAVIORAL,
         call.getCallId(),
         call.getCorrelationId(),

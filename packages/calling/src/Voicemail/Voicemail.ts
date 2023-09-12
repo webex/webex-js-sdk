@@ -3,22 +3,19 @@
 /* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {
-  IVoicemail,
-  CALLING_BACKEND,
-  VoicemailResponseEvent,
-  LoggerInterface,
-  CallingPartyInfo,
-} from './types';
+import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
+import {CALLING_BACKEND, DisplayInformation, SORT} from '../common/types';
 import log from '../Logger';
 import {getCallingBackEnd} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
-import {DisplayInformation, SORT} from '../common/types';
 import {VoicemailEventTypes} from '../Events/types';
 import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
+import {IMetricManager, METRIC_EVENT, METRIC_TYPE, VOICEMAIL_ACTION} from '../Metrics/types';
+import {getMetricManager} from '../Metrics';
 import {VOICEMAIL_FILE} from './constants';
+
 /**
  *
  */
@@ -31,6 +28,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 
   private backendConnector!: IVoicemail;
 
+  private metricManager: IMetricManager;
+
   /**
    * @param webex -.
    * @param logger -.
@@ -42,6 +41,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       SDKConnector.setWebex(webex);
     }
     this.webex = this.sdkConnector.getWebex();
+    this.metricManager = getMetricManager(this.webex, undefined);
     this.callingBackend = getCallingBackEnd(this.webex);
     this.initializeBackendConnector();
     log.setLogger(logger.level, VOICEMAIL_FILE);
@@ -85,6 +85,36 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   }
 
   /**
+   * @param response - VoicemailResponseEvent to be used in submitting metric.
+   * @param metricAction - Action for the metric being submitted.
+   * @param messageId - Message identifier of the voicemail message.
+   */
+  private submitMetric(response: VoicemailResponseEvent, metricAction: string, messageId?: string) {
+    const {
+      statusCode,
+      data: {error: errorMessage},
+    } = response;
+
+    if (statusCode >= 200 && statusCode < 300) {
+      this.metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL,
+        metricAction,
+        METRIC_TYPE.BEHAVIORAL,
+        messageId
+      );
+    } else {
+      this.metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        metricAction,
+        METRIC_TYPE.BEHAVIORAL,
+        messageId,
+        errorMessage,
+        statusCode
+      );
+    }
+  }
+
+  /**
    * Call voicemail class to fetch the voicemail lists.
    *
    * @param sort - Sort voicemail list (ASC | DESC). TODO: Once we start implementing sorting.
@@ -106,6 +136,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       refresh
     );
 
+    this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAILS);
+
     return response;
   }
 
@@ -117,6 +149,24 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.getVoicemailContent(messageId);
+
+    this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT, messageId);
+
+    return response;
+  }
+
+  /**
+   * Fetches a quantitative summary of voicemails for a user.
+   *
+   * @returns - A Promise that resolves with the data containing null or counters for newMessages, oldMessage, newUrgentMessages, oldUrgentMessages.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    const response = await this.backendConnector.getVoicemailSummary();
+
+    /* istanbul ignore else */
+    if (response !== null) {
+      this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY);
+    }
 
     return response;
   }
@@ -130,6 +180,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.voicemailMarkAsRead(messageId);
 
+    this.submitMetric(response, VOICEMAIL_ACTION.MARK_READ, messageId);
+
     return response;
   }
 
@@ -141,6 +193,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.voicemailMarkAsUnread(messageId);
+
+    this.submitMetric(response, VOICEMAIL_ACTION.MARK_UNREAD, messageId);
 
     return response;
   }
@@ -154,6 +208,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.deleteVoicemail(messageId);
 
+    this.submitMetric(response, VOICEMAIL_ACTION.DELETE, messageId);
+
     return response;
   }
 
@@ -165,6 +221,10 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null> {
     const response = await this.backendConnector.getVMTranscript(messageId);
+
+    if (response !== null) {
+      this.submitMetric(response, VOICEMAIL_ACTION.TRANSCRIPT, messageId);
+    }
 
     return response;
   }

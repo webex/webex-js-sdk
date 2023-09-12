@@ -3,19 +3,17 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {WebexRequestPayload, SORT, HTTP_METHODS, DisplayInformation} from '../common/types';
-import {getVgActionEndpoint, serviceErrorCodeHandler} from '../common/Utils';
-import {SUCCESS_MESSAGE, USERS, CONTENT} from '../common/constants';
-import log from '../Logger';
 import {
-  API_V1,
-  LIMIT,
-  OFFSET,
-  SORT_ORDER,
-  UCM_VOICEMAIL_FILE,
-  VMGATEWAY,
-  VOICEMAILS,
-} from './constants';
+  WebexRequestPayload,
+  SORT,
+  HTTP_METHODS,
+  DisplayInformation,
+  CALLING_BACKEND,
+} from '../common/types';
+import {getVgActionEndpoint, serviceErrorCodeHandler} from '../common/Utils';
+import {SUCCESS_MESSAGE, USERS, CONTENT, UCM_CONNECTOR_FILE} from '../common/constants';
+import log from '../Logger';
+import {API_V1, LIMIT, OFFSET, SORT_ORDER, VMGATEWAY, VOICEMAILS} from './constants';
 import {
   CallingPartyInfo,
   IUcmBackendConnector,
@@ -25,7 +23,6 @@ import {
   UcmVMResponse,
   VoicemailResponseEvent,
   UcmVMContentResponse,
-  CALLING_BACKEND,
   VoicemailEvent,
   ResponseString$,
   ResponseNumber$,
@@ -59,7 +56,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
     this.orgId = this.webex.internal.device.orgId;
-    log.setLogger(logger.level, UCM_VOICEMAIL_FILE);
+    log.setLogger(logger.level, UCM_CONNECTOR_FILE);
   }
 
   /**
@@ -67,7 +64,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public init() {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'init',
     };
 
@@ -104,7 +101,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public async getVoicemailList(offset: number, offsetLimit: number, sort: SORT) {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'getVoicemailList',
     };
 
@@ -176,7 +173,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'getVoicemailContent',
     };
 
@@ -192,6 +189,14 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return errorStatus;
     }
+  }
+
+  /**
+   * Fetches a quantitative summary of voicemails for a user.
+   * Not implemented for this connector.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    return Promise.resolve(null);
   }
 
   /**
@@ -270,7 +275,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'voicemailMarkAsRead',
     };
 
@@ -307,7 +312,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'voicemailMarkAsUnread',
     };
 
@@ -344,7 +349,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
-      file: UCM_VOICEMAIL_FILE,
+      file: UCM_CONNECTOR_FILE,
       method: 'deleteVoicemail',
     };
 

@@ -5,7 +5,7 @@
  In our respective UTs, we can specify the return values of these functions
  using webex.request.mockReturnValue() or webex.request.mockReturnValueOnce().
 */
-import {MediaConnectionConfig} from '@webex/internal-media-core/dist/types/MediaConnection';
+import {MediaConnectionConfig} from '@webex/internal-media-core';
 import platform from 'platform';
 import {MobiusServers} from './types';
 
@@ -136,7 +136,7 @@ export const getMockRequestTemplate = () => {
     headers: {
       'cisco-device-url':
         'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
-      'spark-user-agent': 'web-calling-sdk/1.66.0 (web-calling)',
+      'spark-user-agent': 'web-calling-sdk/1.71.1 (web-calling)',
     },
     service: 'mobius',
   };

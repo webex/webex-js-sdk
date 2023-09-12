@@ -1,4 +1,4 @@
-export const VERSION = '1.66.0';
+export const VERSION = '1.71.1';
 export const REPO_NAME = 'web-calling-sdk';
 export const CALLING_FEATURE = 'web-calling';
 export const CALLING_USER_AGENT = `${REPO_NAME}/${VERSION} (${CALLING_FEATURE})`;

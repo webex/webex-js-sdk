@@ -76,8 +76,8 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_METRIC} from '../metrics/types';
-import getMetricManager from '../metrics';
+import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
+import {getMetricManager} from '../../Metrics';
 import {SERVICES_ENDPOINT} from '../../common/constants';
 
 /**
@@ -141,7 +141,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private serviceIndicator: ServiceIndicator;
 
-  private waitingForOK: boolean;
+  private mediaNegotiationCompleted: boolean;
+
+  private receivedRoapOKSeq: number;
 
   /**
    * Getter to check if the call is muted or not.
@@ -212,7 +214,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.localRoapMessage = {} as RoapMessage;
 
     this.mobiusUrl = activeUrl;
-    this.waitingForOK = false;
+    this.receivedRoapOKSeq = 0;
+    this.mediaNegotiationCompleted = false;
 
     log.info(`Mobius Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -1130,7 +1133,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       this.remoteRoapMessage = message;
-    } else if (this.waitingForOK) {
+    } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote Offer Request for later handling', {
         file: CALL_FILE,
         method: this.handleIncomingRoapOfferRequest.name,
@@ -1203,7 +1206,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     /* In case of Early Media , media negotiations would have already started
      * So we can directly go to call established state */
 
-    if (this.earlyMedia) {
+    if (this.earlyMedia || this.mediaNegotiationCompleted) {
+      this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
   }
@@ -1541,8 +1545,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: 'handleRoapEstablished',
     });
 
-    this.waitingForOK = false;
     const {received, message} = event.data as {received: boolean; message: RoapMessage};
+
+    this.receivedRoapOKSeq = message.seq;
 
     if (!received) {
       log.info('Sending Media Ok to the remote End', {
@@ -1551,6 +1556,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       try {
+        if (this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS') {
+          log.info(
+            'Media negotiation completed before call connect. Setting media negotiation completed flag.',
+            {
+              file: CALL_FILE,
+              method: 'handleRoapEstablished',
+            }
+          );
+          this.mediaNegotiationCompleted = true;
+        }
         message.seq = this.seq;
         const res = await this.postMedia(message);
 
@@ -1559,7 +1574,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           method: 'handleRoapEstablished',
         });
         /* istanbul ignore else */
-        if (!this.earlyMedia) {
+        if (!this.earlyMedia && !this.mediaNegotiationCompleted) {
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
         }
       } catch (err) {
@@ -1757,8 +1772,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingRoapAnswer.name,
       });
-
-      this.waitingForOK = true;
     } catch (err) {
       log.warn('MediaAnswer failed with Mobius', {
         file: CALL_FILE,
@@ -1810,7 +1823,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleIncomingRoapOffer.name,
       });
-    } else if (this.waitingForOK) {
+    } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote offer for later handling', {
         file: CALL_FILE,
         method: this.handleIncomingRoapOffer.name,
@@ -2171,7 +2184,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
-          TRANSFER_METRIC.BLIND_TRANSFER,
+          TRANSFER_ACTION.BLIND,
           METRIC_TYPE.BEHAVIORAL,
           this.getCallId(),
           this.getCorrelationId(),
@@ -2188,7 +2201,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           (error: CallError) => {
             this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
-            this.submitCallErrorMetric(error);
+            this.submitCallErrorMetric(error, TRANSFER_ACTION.BLIND);
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2216,7 +2229,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
-          TRANSFER_METRIC.CONSULT_TRANSFER,
+          TRANSFER_ACTION.CONSULT,
           METRIC_TYPE.BEHAVIORAL,
           this.getCallId(),
           this.getCorrelationId(),
@@ -2233,7 +2246,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           (error: CallError) => {
             this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
-            this.submitCallErrorMetric(error);
+            this.submitCallErrorMetric(error, TRANSFER_ACTION.CONSULT);
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2412,12 +2425,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   /**
    * @param state - Current state of the call state machine.
    * @param error - Error object containing the message and type.
+   * @param transferMetricAction - Metric action type incase of a transfer metric.
    */
-  private submitCallErrorMetric(error: CallError) {
+  private submitCallErrorMetric(error: CallError, transferMetricAction?: TRANSFER_ACTION) {
     if (error.getCallError().errorLayer === ERROR_LAYER.CALL_CONTROL) {
       this.metricManager.submitCallMetric(
         METRIC_EVENT.CALL_ERROR,
-        this.callStateMachine.state.value.toString(),
+        transferMetricAction || this.callStateMachine.state.value.toString(),
         METRIC_TYPE.BEHAVIORAL,
         this.callId,
         this.correlationId,

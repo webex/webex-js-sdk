@@ -12,6 +12,7 @@ import {
   TOKEN,
   USER,
   XML_TYPE,
+  BW_XSI_ENDPOINT_VERSION,
 } from '../common/constants';
 import {
   serviceErrorCodeHandler,
@@ -28,15 +29,19 @@ import {
   VoicemailResponseEvent,
   BroadworksTokenType,
   VoicemailList,
-  CALLING_BACKEND,
   CallingPartyInfo,
 } from './types';
+import {
+  CALLING_BACKEND,
+  DisplayInformation,
+  HTTP_METHODS,
+  SORT,
+  WebexRequestPayload,
+} from '../common/types';
 import log from '../Logger';
-import {DisplayInformation, HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {
   BROADWORKS_VOICEMAIL_FILE,
   BW_TOKEN_FETCH_ENDPOINT,
-  BW_XSI_ENDPOINT_VERSION,
   JSON_FORMAT,
   MARK_AS_READ,
   MARK_AS_UNREAD,
@@ -328,6 +333,14 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       return errorStatus;
     }
+  }
+
+  /**
+   * Fetches a quantitative summary of voicemails for a user.
+   * Not implemented for this connector.
+   */
+  public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    return Promise.resolve(null);
   }
 
   /**

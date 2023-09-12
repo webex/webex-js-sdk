@@ -6,13 +6,6 @@ export interface LoggerInterface {
   level: LOGGER;
 }
 
-export enum CALLING_BACKEND {
-  WXC = 'WEBEX_CALLING',
-  BWRKS = 'BROADWORKS_CALLING',
-  UCM = 'UCM_CALLING',
-  INVALID = 'Calling backend is currently not supported',
-}
-
 export type BroadworksTokenType = {
   token: {
     bearer: string;
@@ -32,6 +25,13 @@ export type CallingPartyInfo = {
   userId?: ResponseString$;
   address: ResponseString$;
   userExternalId?: ResponseString$;
+};
+
+export type SummaryInfo = {
+  newMessages: number;
+  oldMessages: number;
+  newUrgentMessages: number;
+  oldUrgentMessages: number;
 };
 
 export type MessageInfo = {
@@ -63,10 +63,11 @@ export type VoicemailResponseEvent = {
       type: string | null;
       content: string | null;
     };
+    voicemailSummary?: SummaryInfo;
     voicemailTranscript?: string | null;
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface IVoicemail {
@@ -79,6 +80,7 @@ export interface IVoicemail {
     refresh?: boolean
   ) => Promise<VoicemailResponseEvent>;
   getVoicemailContent: (messageId: string) => Promise<VoicemailResponseEvent>;
+  getVoicemailSummary: () => Promise<VoicemailResponseEvent | null>;
   voicemailMarkAsRead: (messageId: string) => Promise<VoicemailResponseEvent>;
   voicemailMarkAsUnread: (messageId: string) => Promise<VoicemailResponseEvent>;
   deleteVoicemail: (messageId: string) => Promise<VoicemailResponseEvent>;

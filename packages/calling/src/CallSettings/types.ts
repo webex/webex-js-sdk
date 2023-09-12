@@ -1,4 +1,3 @@
-import {ISDKConnector} from '../SDKConnector/types';
 import {LOGGER} from '../Logger/types';
 
 export interface LoggerInterface {
@@ -10,14 +9,16 @@ export type ToggleSetting = {
   ringSplashEnabled?: boolean;
 };
 
+export type CallForwardAlwaysSetting = {
+  enabled: boolean;
+  ringReminderEnabled?: boolean;
+  destinationVoicemailEnabled?: boolean;
+  destination?: string;
+};
+
 export type CallForwardSetting = {
   callForwarding: {
-    always: {
-      enabled: boolean;
-      ringReminderEnabled?: boolean;
-      destinationVoicemailEnabled?: boolean;
-      destination?: string;
-    };
+    always: CallForwardAlwaysSetting;
     busy: {
       enabled: boolean;
       destinationVoicemailEnabled?: boolean;
@@ -83,14 +84,13 @@ export type VoicemailSetting = {
 export type CallSettingResponse = {
   statusCode: number;
   data: {
-    callSetting?: ToggleSetting | CallForwardSetting | VoicemailSetting;
+    callSetting?: ToggleSetting | CallForwardSetting | VoicemailSetting | CallForwardAlwaysSetting;
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface ICallSettings {
-  getSDKConnector: () => ISDKConnector;
   getCallWaitingSetting: () => Promise<CallSettingResponse>;
   getDoNotDisturbSetting: () => Promise<CallSettingResponse>;
   setDoNotDisturbSetting: (flag: boolean) => Promise<CallSettingResponse>;
@@ -98,4 +98,20 @@ export interface ICallSettings {
   setCallForwardSetting: (request: CallForwardSetting) => Promise<CallSettingResponse>;
   getVoicemailSetting: () => Promise<CallSettingResponse>;
   setVoicemailSetting: (request: VoicemailSetting) => Promise<CallSettingResponse>;
+  getCallForwardAlwaysSetting: (directoryNumber?: string) => Promise<CallSettingResponse>;
 }
+
+export type IWxCallBackendConnector = ICallSettings;
+export type IUcmBackendConnector = ICallSettings;
+
+export type CallForwardingAlwaysSettingsUCM = {
+  dn: string;
+  destination?: string;
+  destinationVoicemailEnabled: boolean;
+};
+
+export type CallForwardingSettingsUCM = {
+  callForwarding: {
+    always: CallForwardingAlwaysSettingsUCM[];
+  };
+};

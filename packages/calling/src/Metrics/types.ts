@@ -1,6 +1,6 @@
-import {LineError} from '../../Errors/catalog/LineError';
-import {CallError, CallingClientError} from '../../Errors';
-import {CallId, CorrelationId, IDeviceInfo} from '../../common/types';
+import {LineError} from '../Errors/catalog/LineError';
+import {CallError, CallingClientError} from '../Errors';
+import {CallId, CorrelationId, IDeviceInfo} from '../common/types';
 
 export enum METRIC_TYPE {
   OPERATIONAL = 'operational',
@@ -14,6 +14,8 @@ export enum METRIC_EVENT {
   MEDIA_ERROR = 'web-calling-sdk-media-error',
   REGISTRATION = 'web-calling-sdk-registration',
   REGISTRATION_ERROR = 'web-calling-sdk-registration-error',
+  VOICEMAIL = 'web-calling-sdk-voicemail',
+  VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
 }
 
 export enum REG_ACTION {
@@ -22,9 +24,19 @@ export enum REG_ACTION {
   KEEPALIVE_FAILURE = 'keepaliveFailure',
 }
 
-export enum TRANSFER_METRIC {
-  BLIND_TRANSFER = 'Blind Transfer',
-  CONSULT_TRANSFER = 'Consult Transfer',
+export enum TRANSFER_ACTION {
+  BLIND = 'TRANSFER_BLIND',
+  CONSULT = 'TRANSFER_CONSULT',
+}
+
+export enum VOICEMAIL_ACTION {
+  GET_VOICEMAILS = 'get_voicemails',
+  GET_VOICEMAIL_CONTENT = 'get_voicemail_content',
+  GET_VOICEMAIL_SUMMARY = 'get_voicemail_summary',
+  MARK_READ = 'mark_read',
+  MARK_UNREAD = 'mark_unread',
+  DELETE = 'delete',
+  TRANSCRIPT = 'transcript',
 }
 
 export interface IMetricManager {
@@ -41,7 +53,7 @@ export interface IMetricManager {
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId,
-    callError: CallError | undefined
+    callError?: CallError
   ) => void;
   submitMediaMetric: (
     name: METRIC_EVENT,
@@ -49,8 +61,16 @@ export interface IMetricManager {
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId,
-    localSdp: string | undefined,
-    remoteSdp: string | undefined,
-    callError: CallError | undefined
+    localSdp?: string,
+    remoteSdp?: string,
+    callError?: CallError
+  ) => void;
+  submitVoicemailMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    messageId?: string,
+    voicemailError?: string,
+    statusCode?: number
   ) => void;
 }

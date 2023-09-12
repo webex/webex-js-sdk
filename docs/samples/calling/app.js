@@ -79,6 +79,10 @@ const contactGroupsHeader = document.getElementById('contactGroupsHeaderId');
 const cloudContactsElem = document.querySelector('#cloud-contact-form');
 const contactObj = document.querySelector('#contact-object');
 const contactGroupObj = document.querySelector('#contactgroup-object');
+const summaryContent = document.querySelector('#summary-data');
+const directoryNumberCFA = document.querySelector('#directoryNumber');
+const cfaDataElem = document.querySelector('#callforwardalways-data');
+
 
 let base64;
 let audio64;
@@ -270,11 +274,11 @@ async function initCalling(e) {
 
       fetchLines();
       fetchDNDSetting();
-      fetchCallWaitingSetting();
       fetchCallForwardSetting();
       fetchVoicemailSetting();
-    })
-  })
+      fetchCallWaitingSetting();
+    });
+  });
 
   return false;
 }
@@ -1096,6 +1100,23 @@ async function fetchTranscript() {
   transcriptContent.innerText = JSON.stringify(transcript.data.voicemailTranscript, undefined, 2);
 }
 
+/**
+ * Fetches a quantitative summary of voicemails for a user.
+ */
+async function fetchVoicemailSummary() {
+  const logger = {level: 'info'};
+
+  // eslint-disable-next-line prefer-template
+  if (window.voicemail === undefined) {
+    voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
+    voicemail.init();
+  }
+
+  const summary = await voicemail.getVoicemailSummary();
+  const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);
+  summaryContent.innerText = summaryStr.replace(/[\{\}"|"]/g, '');
+}
+
 async function getContacts() {
   const contactsList = await contacts.getContacts();
   console.log('Contacts: ', contactsList);
@@ -1209,6 +1230,14 @@ async function toggleDNDSetting() {
   }
 }
 
+async function getCallForwardAlwaysSetting() {
+  if (window.callSettings === undefined) {
+    callSettings = window.callSettings = CreateCallSettingsClient(webex, logger, enableProd);
+  }
+  const directoryNumber = directoryNumberCFA.value;
+  const response = await callSettings.getCallForwardAlwaysSetting(directoryNumber);
+  cfaDataElem.innerHTML = response.data.callSetting || response.data.error ;
+}
 async function fetchCallWaitingSetting() {
   const response = await callSettings.getCallWaitingSetting();
 

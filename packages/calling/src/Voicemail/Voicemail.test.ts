@@ -7,11 +7,13 @@ import {
   ENTITLEMENT_STANDARD,
   NATIVE_SIP_CALL_TO_UCM,
   NATIVE_WEBEX_TEAMS_CALLING,
-} from './constants';
-import {CALLING_BACKEND} from './types';
+} from '../common/constants';
+import {VoicemailResponseEvent} from './types';
+import {CALLING_BACKEND, SORT} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
+import {VOICEMAIL_ACTION, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();
@@ -79,26 +81,26 @@ describe('Voicemail Client tests', () => {
       webex.internal.device.callingBehavior = data.callingBehavior;
       webex.internal.device.features.entitlement.models = [{_values: {key: data.entitlement}}];
       if (data.valid) {
-        const voiceMailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
+        const voicemailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
 
-        expect(voiceMailClient).toBeTruthy();
-        expect(voiceMailClient.getSDKConnector().getWebex()).toBeTruthy();
+        expect(voicemailClient).toBeTruthy();
+        expect(voicemailClient.getSDKConnector().getWebex()).toBeTruthy();
 
         switch (data.callingBehavior) {
           case NATIVE_SIP_CALL_TO_UCM:
-            expect(voiceMailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.UCM);
-            expect(voiceMailClient['backendConnector']).toBeInstanceOf(UcmBackendConnector);
+            expect(voicemailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.UCM);
+            expect(voicemailClient['backendConnector']).toBeInstanceOf(UcmBackendConnector);
             break;
           case NATIVE_WEBEX_TEAMS_CALLING:
             if (data.entitlement === ENTITLEMENT_BROADWORKS_CONN) {
-              expect(voiceMailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.BWRKS);
-              expect(voiceMailClient['backendConnector']).toBeInstanceOf(
+              expect(voicemailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.BWRKS);
+              expect(voicemailClient['backendConnector']).toBeInstanceOf(
                 BroadworksBackendConnector
               );
             } else {
               /* entitlement basic and standard */
-              expect(voiceMailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.WXC);
-              expect(voiceMailClient['backendConnector']).toBeInstanceOf(WxCallBackendConnector);
+              expect(voicemailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.WXC);
+              expect(voicemailClient['backendConnector']).toBeInstanceOf(WxCallBackendConnector);
             }
             break;
           default:
@@ -109,6 +111,117 @@ describe('Voicemail Client tests', () => {
           createVoicemailClient(webex, {level: LOGGER.INFO});
         }).toThrowError('Calling backend is not identified, exiting....');
       }
+    });
+  });
+
+  describe('voicemail metrics test', () => {
+    webex.internal.device.callingBehavior = NATIVE_WEBEX_TEAMS_CALLING;
+    webex.internal.device.features.entitlement.models = [{_values: {key: ENTITLEMENT_STANDARD}}];
+    const voicemailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
+    const messageId =
+      '/v2.0/user/08cedee9-296f-4aaf-bd4b-e14f2399abdf/VoiceMessagingMessages/ec8c3baf-afe4-4cef-b02f-19026b9e039c';
+    const metricSpy = jest.spyOn(voicemailClient['metricManager'], 'submitVoicemailMetric');
+
+    voicemailClient['backendConnector'] = {
+      getVoicemailList: jest.fn(),
+      getVoicemailContent: jest.fn(),
+      getVoicemailSummary: jest.fn(),
+      voicemailMarkAsRead: jest.fn(),
+      voicemailMarkAsUnread: jest.fn(),
+      deleteVoicemail: jest.fn(),
+      getVMTranscript: jest.fn(),
+      resolveContact: jest.fn(),
+    };
+
+    const testData: {
+      metricAction: VOICEMAIL_ACTION;
+      method: string;
+    }[] = [
+      {
+        metricAction: VOICEMAIL_ACTION.GET_VOICEMAILS,
+        method: voicemailClient.getVoicemailList.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT,
+        method: voicemailClient.getVoicemailContent.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.MARK_READ,
+        method: voicemailClient.voicemailMarkAsRead.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.MARK_UNREAD,
+        method: voicemailClient.voicemailMarkAsUnread.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.DELETE,
+        method: voicemailClient.deleteVoicemail.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.TRANSCRIPT,
+        method: voicemailClient.getVMTranscript.name,
+      },
+      {
+        metricAction: VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY,
+        method: voicemailClient.getVoicemailSummary.name,
+      },
+    ].map((stat) =>
+      Object.assign(stat, {
+        toString() {
+          return `test ${this['method']} with metrics`;
+        },
+      })
+    );
+
+    it.each(testData)('%s', async (data) => {
+      const response = {
+        statusCode: 204,
+        message: 'SUCCESS',
+        data: {},
+      } as VoicemailResponseEvent;
+
+      const args =
+        (data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY && []) ||
+        data.metricAction === VOICEMAIL_ACTION.GET_VOICEMAILS
+          ? [0, 0, SORT.ASC]
+          : [messageId];
+
+      voicemailClient['backendConnector'][data.method].mockResolvedValue(response);
+      await voicemailClient[data.method](...args);
+
+      expect(metricSpy).toBeCalledOnceWith(
+        METRIC_EVENT.VOICEMAIL,
+        data.metricAction,
+        METRIC_TYPE.BEHAVIORAL,
+        [VOICEMAIL_ACTION.GET_VOICEMAILS, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY].includes(
+          data.metricAction
+        )
+          ? undefined
+          : messageId
+      );
+
+      metricSpy.mockClear();
+
+      const errorMessage = 'User is unauthorised';
+      const errorCode = 401;
+
+      response.statusCode = errorCode;
+      response.data = {error: errorMessage};
+
+      await voicemailClient[data.method](...args);
+
+      expect(metricSpy).toBeCalledOnceWith(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        data.metricAction,
+        METRIC_TYPE.BEHAVIORAL,
+        [VOICEMAIL_ACTION.GET_VOICEMAILS, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY].includes(
+          data.metricAction
+        )
+          ? undefined
+          : messageId,
+        errorMessage,
+        errorCode
+      );
     });
   });
 });

@@ -49,8 +49,8 @@ import {
 import {CallingClientError} from '../Errors';
 import Line from './line';
 import {ILine, LINE_EVENTS, LineStatus} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from './metrics/types';
-import getMetricManager from './metrics';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
+import {getMetricManager} from '../Metrics';
 
 /**
  *
@@ -229,7 +229,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   private async getMobiusServers() {
     /* Following operations are performed in a synchronous way ->
-    
+
         1. Get RegionInfo
         2. Get Mobius Server with that RegionInfo
         3. Check whether Mobius server was found without any error
@@ -397,7 +397,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       const match = dest.address.match(VALID_PHONE);
 
       if (match && match[0].length === dest.address.length) {
-        const sanitizedNumber = dest.address.replace(/[^[*+]\d#]/gi, '').replace(/\s+/gi, '');
+        const sanitizedNumber = dest.address
+          .replace(/[^[*+]\d#]/gi, '')
+          .replace(/\s+/gi, '')
+          .replace(/-/gi, '');
         const formattedDest = {
           type: dest.type,
           address: `tel:${sanitizedNumber}`,

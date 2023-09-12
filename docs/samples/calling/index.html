@@ -277,6 +277,11 @@
               </p>
 
               <pre id="transcript-data"></pre>
+              <p>
+                <button id="getSummary" type="button" onclick="fetchVoicemailSummary()" class="btn-code">Fetch Summary</button>
+              </p>
+
+              <pre id="summary-data"></pre>
             </div>
           </fieldset>
         </form>
@@ -326,6 +331,12 @@
                 </div>
                 <input type="button" id="cfButton" value="Save" onclick="updateCallForwardSetting(this.form)">
               </form>
+              <br>
+              <p>
+                <input id="directoryNumber" name="directoryNumber" type="string" placeholder="+1432514567">
+              </p>
+              <button id="CallForwardAlways-button" class="btn-code" onclick="getCallForwardAlwaysSetting()">Call Forward Always</button>
+              <pre id="callforwardalways-data"></pre>
             </fieldset>
             <fieldset id="vmSelection">
               <legend>Voicemail

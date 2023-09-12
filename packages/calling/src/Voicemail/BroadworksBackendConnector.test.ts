@@ -369,5 +369,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
       expect(response).toBeNull();
     });
+
+    it('verify fetching voicemail summary data to be null', async () => {
+      const response = await broadworksBackendConnector.getVoicemailSummary();
+
+      expect(response).toBeNull();
+    });
   });
 });

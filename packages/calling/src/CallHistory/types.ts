@@ -14,7 +14,7 @@ export type JanusResponseEvent = {
     userSessions?: UserSession[];
     error?: string;
   };
-  message: string;
+  message: string | null;
 };
 
 export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
