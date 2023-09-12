@@ -380,7 +380,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-
         });
       });
 
@@ -759,7 +758,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), false);
 
       });
-      it('returns false if converged architecture is not enabled', () => {
+      it('returns undefined if converged architecture is not defined', () => {
         fakeMeeting.meetingInfo = {};
         assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), undefined);
       });
