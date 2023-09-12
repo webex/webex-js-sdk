@@ -32,6 +32,7 @@ describe('internal-plugin-metrics', () => {
           lastActive: 'lastActive',
         },
       },
+      meetingInfo: {},
       getCurUserType: () => 'host',
     };
 
@@ -303,6 +304,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           options
         );
@@ -326,6 +328,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -459,6 +462,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -525,6 +529,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -772,6 +777,22 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#getIsConvergedArchitectureEnabled', () => {
+      it('returns true if converged architecture is enabled', () => {
+        fakeMeeting.meetingInfo = {enableConvergedArchitecture: true};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), true);
+      });
+      it('returns false if converged architecture is not enabled', () => {
+        fakeMeeting.meetingInfo = {enableConvergedArchitecture: false};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), false);
+
+      });
+      it('returns undefined if converged architecture is not defined', () => {
+        fakeMeeting.meetingInfo = {};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), undefined);
+      });
+    })
+
     describe('#buildClientEventFetchRequestOptions', () => {
       it('returns expected options', async () => {
         const options = {
@@ -808,6 +829,7 @@ describe('internal-plugin-metrics', () => {
                     name: 'client.exit.app',
                     trigger: 'user-interaction',
                     userType: 'host',
+                    isConvergedArchitectureEnabled: undefined,
                   },
                   eventId: 'my-fake-id',
                   origin: {
