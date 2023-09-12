@@ -6,7 +6,32 @@ import {ClientEventError} from '../metrics.types';
 
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
+export const UNKNOWN_ERROR = 9999;
 export const ICE_FAILURE_CLIENT_CODE = 2004;
+export const WBX_APP_API_URL = 'wbxappapi';
+
+// Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+const MEDIA_ERROR_NAMES = {
+  PERMISSION_DENIED_ERROR: 'PermissionDeniedError',
+  NOT_ALLOWED_ERROR: 'NotAllowedError',
+  NOT_READABLE_ERROR: 'NotReadableError',
+  ABORT_ERROR: 'AbortError',
+  NOT_FOUND_ERROR: 'NotFoundError',
+  OVERCONSTRAINED_ERROR: 'OverconstrainedError',
+  SECURITY_ERROR: 'SecurityError',
+  TYPE_ERROR: 'TypeError',
+};
+
+export const SERVICE_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
+  [MEDIA_ERROR_NAMES.PERMISSION_DENIED_ERROR]: 2729, // User did not grant permission
+  [MEDIA_ERROR_NAMES.NOT_ALLOWED_ERROR]: 2729, // User did not grant permission
+  [MEDIA_ERROR_NAMES.NOT_READABLE_ERROR]: 2001, // Although the user granted permission to use the matching devices, a hardware error occurred at the operating system, browser, or Web page level which prevented access to the device.
+  [MEDIA_ERROR_NAMES.ABORT_ERROR]: 2001, // Although the user and operating system both granted access to the hardware device, and no hardware issues occurred that would cause a NotReadableError DOMException, throw if some problem occurred which prevented the device from being used.
+  [MEDIA_ERROR_NAMES.NOT_FOUND_ERROR]: 2729, // User did not grant permission
+  [MEDIA_ERROR_NAMES.OVERCONSTRAINED_ERROR]: 2729, // Thrown if the specified constraints resulted in no candidate devices which met the criteria requested.
+  [MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2001, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
+  [MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
+};
 
 const ERROR_DESCRIPTIONS = {
   UNKNOWN_CALL_FAILURE: 'UnknownCallFailure',
@@ -63,41 +88,79 @@ const ERROR_DESCRIPTIONS = {
   RECORDING_IN_PROGRESS_FAILED: 'RecordingInProgressFailed',
   MEETING_INFO_LOOKUP_ERROR: 'MeetingInfoLookupError',
   CALL_FULL_ADD_GUEST: 'CallFullAddGuest',
+  REQUIRE_WEBEX_LOGIN: 'RequireWebexLogin',
+  USER_NOT_ALLOWED_ACCESS_MEETING: 'UserNotAllowedAccessMeeting',
+  USER_NEEDS_ACTIVATION: 'UserNeedsActivation',
+  SIGN_UP_INVALID_EMAIL: 'SignUpInvalidEmail',
+  UNKNOWN_ERROR: 'UnknownError',
+  NO_MEDIA_FOUND: 'NoMediaFound',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   // ---- Webex API ----
+  // Taken from https://wiki.cisco.com/display/HFWEB/MeetingInfo+API and https://sqbu-github.cisco.com/WebExSquared/spark-client-framework/blob/master/spark-client-framework/Services/WebexMeetingService/WebexMeetingModel.h
   // Site not support the URL's domain
   58400: 4100,
   99002: 4100,
-  // Cannot find the data
+  // Cannot find the data. Unkown meeting.
   99009: 4100,
+  // Meeting is not allow to cross env
+  58500: 4100,
+  // Input parameters contain invalit item
+  400001: 4100,
+  // Empty password or token. Meeting is not allow to access since require password
+  403004: 4005,
+  // Wrong password. Meeting is not allow to access since password error
+  403028: 4005,
+  // Wrong or expired permission. Meeting is not allow to access since permissionToken error or expire
+  403032: 4005,
+  // Meeting is required login for current user
+  403034: 4036,
+  // Meeting is not allow to access since require password or hostKey
+  // Empty password or host key
+  403036: 4005,
+  // Meeting is not allow to access since password or hostKey error
+  // Wrong password or host key
+  403038: 4005,
   // CMR Meeting Not Supported (meeting exists, but not CMR meeting)
   403040: 4100,
   // Requires Moderator Pin or Guest Pin
   403041: 4005,
-  // Meeting is not allow to access since password or hostKey error
-  403038: 4005,
-  // Meeting is not allow to access since require password or hostKey
-  403036: 4005,
+  // Email blocked
+  403047: 4101,
+  // Device not authenticated for your organization
+  403408: 4101,
   // Invalid panelist Pin
-  403043: 4100,
-  // Device not registered in org
-  403048: 4100,
-  // Not allowed to join external meetings
-  403049: 4100,
-  403100: 4100,
-  // Enforce sign in: need login before access when policy enforce sign in
-  403101: 4100,
+  403043: 4005,
+  // Device not registered in org. Device not authenticated.
+  403048: 4101,
+  // Not allowed to join external meetings. Violate meeting join policy. Your organization settings don't allow you to join this meeting.
+  403049: 4101,
+  // Invalid email. Requires sign in meeting's current site.
+  403100: 4101,
+  // Enforce sign in: need login before access when policy enforce sign in. GuestForceUserSignInPolicy
+  403101: 4036,
   // Enforce sign in: sign in with your email address that is approved by your organization
-  403102: 4100,
-  // Join internal Meeting: need login before access when policy enforce sign in
-  403103: 4100,
+  403102: 4036,
+  // Join internal Meeting: need login before access when policy enforce sign in. Guest force user sign in internal meeting policy.
+  403103: 4036,
   // Join internal Meeting: The host's organization policy doesn't allow your account to join this meeting. Try switching to another account
-  403104: 4100,
-  404001: 4100,
-  // Site data not found
+  403104: 4101,
+  404001: 4101,
+  // Site data not found. Unkonwn meeting. Site data not found(or null).
   404006: 4100,
+  // Invalid input with too many requests. Too many requests access, please input captcha code
+  423001: 4005,
+  // Wrong password with too many requests. PasswordError too many time, please input captcha code
+  423005: 4005,
+  // Wrong password or host key with too many requests
+  423006: 4005,
+  // PasswordError with right captcha, please input captcha code
+  423010: 4005,
+  // PasswordOrHostKeyError with right captcha, please input captcha code
+  423012: 4005,
+  // Unverified or invalid input. Force show captcha. Please input captcha code"
+  423013: 4005,
   // Too many requests access
   429005: 4100,
 
@@ -120,6 +183,10 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2423004: 4003,
   // LOCUS_REQUIRES_MODERATOR_PIN_OR_GUEST
   2423005: 4005,
+  2423006: 4005,
+  2423016: 4005,
+  2423017: 4005,
+  2423018: 4005,
   // LOCUS_REQUIRES_MODERATOR_ROLE
   2423007: 4006,
   // LOCUS_JOIN_RESTRICTED_USER_NOT_IN_ROOM
@@ -164,6 +231,20 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2405001: 4029,
   // LOCUS_RECORDING_NOT_ENABLED
   2409005: 4029,
+
+  // ---- U2C Sign in catalog ------
+  // The user exists, but hasn't completed activation. Needs to visit Atlas for more processing.
+  100002: 4102,
+  // The user exists, had completed activation earlier, but requires re-activation because of change in login strategy.
+  // Common example is: user signed up using an OAuth provider, but that OAuth provider was removed by org's admin. Now the user needs to re-activate using alternate login strategies: password-pin, new OAuth provider, SSO, etc.
+  100007: 4102,
+  // The user does not exist
+  100001: 4103,
+  // The user wasn't found, and the organization used for search is a domain-claimed organization.
+  100006: 4103,
+  100005: 4103, // Depracated because of an issue in the UCF Clients
+  // If both email-hash and domain-hash are null or undefined.
+  100004: 4103,
 };
 
 export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEventError>> = {
@@ -428,6 +509,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'expected',
     fatal: true,
   },
+  4036: {
+    errorDescription: ERROR_DESCRIPTIONS.REQUIRE_WEBEX_LOGIN,
+    category: 'expected',
+    fatal: true,
+  },
   5000: {
     errorDescription: ERROR_DESCRIPTIONS.SIP_CALLEE_BUSY,
     category: 'expected',
@@ -449,6 +535,31 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.CALL_FULL_ADD_GUEST,
     category: 'expected',
     fatal: false,
+  },
+  4101: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_ALLOWED_ACCESS_MEETING,
+    category: 'expected',
+    fatal: true,
+  },
+  4102: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NEEDS_ACTIVATION,
+    category: 'expected',
+    fatal: true,
+  },
+  4103: {
+    errorDescription: ERROR_DESCRIPTIONS.SIGN_UP_INVALID_EMAIL,
+    category: 'expected',
+    fatal: true,
+  },
+  2729: {
+    errorDescription: ERROR_DESCRIPTIONS.NO_MEDIA_FOUND,
+    category: 'expected',
+    fatal: false,
+  },
+  9999: {
+    errorDescription: ERROR_DESCRIPTIONS.UNKNOWN_ERROR,
+    category: 'other',
+    fatal: true,
   },
 };
 
