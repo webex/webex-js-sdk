@@ -224,6 +224,8 @@ export const setMetricTimings = (options) => {
     const now = new Date().toISOString();
     body.metrics?.forEach((metric) => {
       if (metric.eventPayload) {
+        // The event will effectively be triggered and sent at the same time.
+        // The existing triggered time is from when the options were built.
         metric.eventPayload.originTime = {
           triggered: now,
           sent: now,
