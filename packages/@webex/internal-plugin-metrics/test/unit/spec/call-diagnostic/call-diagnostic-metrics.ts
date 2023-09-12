@@ -144,6 +144,35 @@ describe('internal-plugin-metrics', () => {
           userAgent,
         });
       });
+
+      it('builds origin correctly, when overriding clientVersion', () => {
+        webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            "clientVersion": "43.9.0.1234",
+            "localNetworkPrefix": "1.3.4.0",
+            "majorVersion": 43,
+            "minorVersion": 9,
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      })
     });
 
     describe('#getIdentifiers', () => {
