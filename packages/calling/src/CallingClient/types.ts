@@ -23,11 +23,6 @@ export interface CallingClientConfig {
   serviceData?: ServiceData;
 }
 
-export type CallingClientEmitterCallback = (
-  event: EVENT_KEYS,
-  clientError?: CallingClientError
-) => void;
-
 export type CallingClientErrorEmitterCallback = (
   err: CallingClientError,
   finalError?: boolean

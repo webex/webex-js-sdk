@@ -1,6 +1,6 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../../common/testUtil';
-import {getMetricManager} from '.';
+import getMetricManager from '.';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION} from './types';
 import {VERSION} from '../constants';
 import {createClientError} from '../../Errors/catalog/CallingDeviceError';
@@ -116,8 +116,7 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
-      expect(logSpy).toBeCalledTimes(1);
-      expect(logSpy).toBeCalledWith(
+      expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
           file: 'metric',
@@ -220,8 +219,7 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
-      expect(logSpy).toBeCalledTimes(1);
-      expect(logSpy).toBeCalledWith(
+      expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
           file: 'metric',
@@ -336,8 +334,7 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
-      expect(logSpy).toBeCalledTimes(1);
-      expect(logSpy).toBeCalledWith(
+      expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
           file: 'metric',

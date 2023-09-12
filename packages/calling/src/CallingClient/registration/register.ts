@@ -44,8 +44,6 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
-import {CallingClientEmitterCallback} from '../types';
-import {EVENT_KEYS} from '../../Events/types';
 
 /**
  *
@@ -71,7 +69,6 @@ export class Registration implements IRegistration {
   private mutex: Mutex;
   private metricManager: IMetricManager;
   private lineEmitter: LineEmitterCallback;
-  private callingClientEmitter: CallingClientEmitterCallback;
   private callManager: ICallManager;
   private deviceInfo: IDeviceInfo = {};
   private primaryMobiusUris: string[];
@@ -91,7 +88,6 @@ export class Registration implements IRegistration {
     serviceData: ServiceData,
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
-    callingClientEmitter: CallingClientEmitterCallback,
     logLevel: LOGGER
   ) {
     this.sdkConnector = SDKConnector;
@@ -110,7 +106,6 @@ export class Registration implements IRegistration {
     this.callManager = getCallManager(this.webex, serviceData.indicator);
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
     this.lineEmitter = lineEmitter;
-    this.callingClientEmitter = callingClientEmitter;
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
@@ -646,7 +641,7 @@ export class Registration implements IRegistration {
           body,
           (clientError, finalError) => {
             if (finalError) {
-              this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
+              this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
             } else {
               this.lineEmitter(LINE_EVENTS.UNREGISTERED);
             }
@@ -697,7 +692,7 @@ export class Registration implements IRegistration {
    * @param interval
    * @returns
    */
-  public startKeepaliveTimer(url: string, interval: number) {
+  private startKeepaliveTimer(url: string, interval: number) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
     this.keepaliveTimer = setInterval(async () => {
@@ -727,7 +722,7 @@ export class Registration implements IRegistration {
               error,
               (clientError, finalError) => {
                 if (finalError) {
-                  this.callingClientEmitter(EVENT_KEYS.ERROR, clientError);
+                  this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
                 }
                 this.metricManager.submitRegistrationMetric(
                   METRIC_EVENT.REGISTRATION,
@@ -877,7 +872,5 @@ export const createRegistration = (
   serviceData: ServiceData,
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
-  callingClientEmitter: CallingClientEmitterCallback,
   logLevel: LOGGER
-): IRegistration =>
-  new Registration(webex, serviceData, mutex, lineEmitter, callingClientEmitter, logLevel);
+): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel);
