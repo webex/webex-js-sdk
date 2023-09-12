@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {
   clearEmptyKeysRecursively,
+  extractVersionMetadata,
   getBuildType,
   isLocusServiceErrorCode,
   prepareDiagnosticMetricItem,
@@ -381,6 +382,24 @@ describe('internal-plugin-metrics', () => {
       const expectedOptions = {body: '"{}"'};
 
       check(options, expectedOptions);
+    });
+  });
+
+  describe('extractVersionMetadata', () => {
+    [
+      ['1.2.3', {majorVersion: 1, minorVersion: 2}],
+      ['0.0.1', {majorVersion: 0, minorVersion: 0}],
+      ['0.0.0', {majorVersion: 0, minorVersion: 0}],
+      ['1.2', {majorVersion: 1, minorVersion: 2}],
+      ['1', {majorVersion: 1, minorVersion: NaN}],
+      ['foo', {majorVersion: NaN, minorVersion: NaN}],
+      ['1.foo', {majorVersion: 1, minorVersion: NaN}],
+      ['foo.1', {majorVersion: NaN, minorVersion: 1}],
+      ['foo.bar', {majorVersion: NaN, minorVersion: NaN}],
+    ].forEach(([version, expected]) => {
+      it(`returns expected result for ${version}`, () => {
+        assert.deepEqual(extractVersionMetadata(version as string), expected);
+      });
     });
   });
 });

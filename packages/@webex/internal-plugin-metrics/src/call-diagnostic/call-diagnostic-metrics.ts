@@ -13,6 +13,7 @@ import {
   isLocusServiceErrorCode,
   prepareDiagnosticMetricItem,
   userAgentToString,
+  extractVersionMetadata,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -28,6 +29,7 @@ import {
   SubmitMQEPayload,
   ClientEventError,
   ClientEventPayload,
+  ClientInfo,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
@@ -86,6 +88,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns if the meeting has converged architecture enabled
+   * @param options.meetingId
+   */
+  getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
+    if (meetingId) {
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      return meeting?.meetingInfo?.enableConvergedArchitecture;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Get origin object for Call Diagnostic Event payload.
    * @param options
    * @param meetingId
@@ -98,6 +115,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const defaultSubClientType: SubClientType =
       // @ts-ignore
       this.webex.meetings.config?.metrics?.subClientType;
+    // @ts-ignore
+    const providedClientVersion: string = this.webex.meetings.config?.metrics?.clientVersion;
+    // @ts-ignore
+    const defaultSDKClientVersion = `${CLIENT_NAME}/${this.webex.version}`;
+
+    let versionMetadata: Pick<ClientInfo, 'majorVersion' | 'minorVersion'> = {};
+
+    // sdk version split doesn't really make sense for now...
+    if (providedClientVersion) {
+      versionMetadata = extractVersionMetadata(providedClientVersion);
+    }
 
     if (
       (defaultClientType && defaultSubClientType) ||
@@ -114,8 +142,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         }),
         clientInfo: {
           clientType: options?.clientType || defaultClientType,
-          // @ts-ignore
-          clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
+          clientVersion: providedClientVersion || defaultSDKClientVersion,
+          ...versionMetadata,
           localNetworkPrefix:
             // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
@@ -434,6 +462,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       userType: meeting.getCurUserType(),
       loginType: this.getCurLoginType(),
+      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
+        meetingId,
+      }),
     };
 
     return clientEventObject;
