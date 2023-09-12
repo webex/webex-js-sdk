@@ -145,7 +145,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('builds origin correcly, when overriding clientVersion', () => {
+      it('builds origin correctly, when overriding clientVersion', () => {
         webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
 
         //@ts-ignore
