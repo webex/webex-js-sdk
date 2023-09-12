@@ -125,11 +125,13 @@ describe('internal-plugin-metrics', () => {
         sinon.useFakeTimers(now.getTime());
 
         webex.internal.newMetrics.setMetricTimingsAndFetch({
-          body: {metrics: [{eventPayload: {}}]},
+          json: true,
+          body: JSON.stringify({metrics: [{eventPayload: {}}]}),
         });
 
         const expected = {
-          body: {
+          json: true,
+          body: JSON.stringify({
             metrics: [
               {
                 eventPayload: {
@@ -140,7 +142,7 @@ describe('internal-plugin-metrics', () => {
                 },
               },
             ],
-          },
+          }),
         };
 
         sinon.assert.calledOnce(webex.setTimingsAndFetch);

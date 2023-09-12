@@ -5903,6 +5903,34 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns a promise that will resolve to fetch options for leaving a meeting.
+   *
+   * This is to support quickly submitting a leave request when the browser/tab is closing.
+   * Calling meeting.leave will not work because there are some async steps that will
+   * not complete before the browser is closed.  Instead, we pre-gather all the
+   * information/options needed for the request(s), and then simply and quickly
+   * fire the fetch(es) when pagehide is triggered.
+   *
+   * We must use fetch instead of request because fetch has a keepalive option that
+   * allows the request it to outlive the page.
+   *
+   * Note: the $timings values will be wrong, but setRequestTimingsAndFetch() will
+   * properly adjust them before submitting.
+   *
+   * @public
+   * @param {Object} options leave options
+   * @param {String} options.resourceId the device with which to leave from, empty if just the computer
+   * @param {any} options.reason the reason for leaving
+   * @returns {Promise} resolves to options to be used with fetch
+   */
+  public buildLeaveFetchRequestOptions(options: {resourceId?: string; reason?: any} = {} as any) {
+    const requestOptions = MeetingUtil.buildLeaveFetchRequestOptions(this, options);
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions(requestOptions);
+  }
+
+  /**
    * Leave the current meeting
    * @param {Object} options leave options
    * @param {String} options.resourceId the device with which to leave from, empty if just the computer
