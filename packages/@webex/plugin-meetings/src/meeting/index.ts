@@ -3,7 +3,11 @@ import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
+import {
+  ClientEvent,
+  ClientEventLeaveReason,
+  CALL_DIAGNOSTIC_CONFIG,
+} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -5932,14 +5936,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Leave the current meeting
-   * @param {Object} options leave options
-   * @param {String} options.resourceId the device with which to leave from, empty if just the computer
+   * @param {Object} options - leave options
+   * @param {String} [options.resourceId] - the device with which to leave from, empty if just the computer
+   * @param {String} [options.clientEventLeaveReason] - the leaveReason to include in the Call Analyzer event.
+   *                 Must be one of: 'paired-leave' | 'one-to-one' | 'ended-by-locus' (defaults to no reason)
+   *                 https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/main/diagnostic-events.raml#L796
+   * @param {String} [options.reason] - only used for logging
    * @returns {Promise}
    * @public
    * @memberof Meeting
    */
-  public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+  public leave(
+    options: {
+      resourceId?: string;
+      clientEventLeaveReason?: ClientEventLeaveReason;
+      reason?: any;
+    } = {} as any
+  ) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
@@ -5950,7 +5965,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           trigger: 'user-interaction',
           canProceed: false,
-          leaveReason,
+          leaveReason: options.clientEventLeaveReason,
           ...payload,
         },
         options: {meetingId: this.id},
