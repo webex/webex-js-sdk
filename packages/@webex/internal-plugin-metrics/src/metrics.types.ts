@@ -89,6 +89,7 @@ export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subCl
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
+export type ClientEventLeaveReason = ClientEvent['payload']['leaveReason'];
 
 export type MediaQualityEventAudioSetupDelayPayload = NonNullable<
   MediaQualityEvent['payload']
