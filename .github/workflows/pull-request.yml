@@ -485,44 +485,14 @@ jobs:
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
 
-  test-documentation:
-    name: Test - Documentation
+  build-documentation:
+    name: Build - Documentation
     needs: generate-package-matrix
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Project
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v3.7.0
-        with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
-
-      - name: Uncache Environment Variables
-        uses: actions/cache@v3
-        with:
-          path: './.env'
-          key: env-${{ env.rid }}
-
-      - name: Uncache Dependencies
-        uses: actions/cache@v3
-        with:
-          path: '**/node_modules'
-          key: node-modules-${{ hashFiles('./yarn.lock') }}
-
-      - name: Uncache Distributables
-        uses: actions/cache@v3
-        with:
-          path: '**/dist'
-          key: dist-${{ env.rid }}
-
-      - name: Synchronize Packages
-        run: yarn
+      - name: TODO - Documentation Deploy Steps
+        run: echo "TODO - Documentation Deploy Steps"
 
       - name: Build Docs
         run: yarn run build:docs
