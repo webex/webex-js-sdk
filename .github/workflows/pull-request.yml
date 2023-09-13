@@ -500,13 +500,4 @@ jobs:
       - name: Build Samples
         run: yarn run samples:build
 
-      - name: Publish Docs Folder
-        run: |
-          git add docs/
-          git add -f docs/samples/webex.min.js*
-          git add -f docs/samples/meetings.min.js*
-          git add -f docs/samples/calling.min.js*
-          git commit -m "feat(docs): update docs"
-          git push origin HEAD:documentation
-
 
