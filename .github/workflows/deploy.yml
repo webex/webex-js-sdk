@@ -211,5 +211,5 @@ jobs:
           git add -f docs/samples/meetings.min.js*
           git add -f docs/samples/calling.min.js*
           git commit -m "feat(docs): update docs"
-          git push upstream HEAD:documentation
+          git push origin HEAD:documentation
 
