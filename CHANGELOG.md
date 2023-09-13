@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.214](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.213...v3.0.0-beta.214) (2023-09-13)
+
+
+### Bug Fixes
+
+* **call-analyzer:** fix client.call.leave reason ([#3075](https://github.com/webex/webex-js-sdk/issues/3075)) ([cb1440f](https://github.com/webex/webex-js-sdk/commit/cb1440fa3c03cfbb3f39d3a7cdb6d95f636c47a6))
+
 ## [3.0.0-beta.213](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.212...v3.0.0-beta.213) (2023-09-12)
 
 
