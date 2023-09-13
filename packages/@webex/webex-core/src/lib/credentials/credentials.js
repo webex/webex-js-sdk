@@ -48,6 +48,25 @@ const Credentials = WebexPlugin.extend({
         return Boolean(this.supertoken && this.supertoken.canRefresh);
       },
     },
+    isUnverifiedGuest: {
+      deps: ['supertoken'],
+      /**
+       * Returns true if the user is an unverified guest
+       * @returns {boolean}
+       */
+      fn() {
+        let isGuest = false;
+        try {
+          isGuest =
+            JSON.parse(base64.decode(this.supertoken.access_token.split('.')[1])).user_type ===
+            'guest';
+        } catch {
+          /* the non-guest token is formatted differently so catch is expected */
+        }
+
+        return isGuest;
+      },
+    },
   },
 
   props: {

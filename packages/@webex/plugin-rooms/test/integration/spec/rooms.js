@@ -367,8 +367,8 @@ describe('plugin-rooms', function () {
           }
         }));
     });
-
-    describe('#update()', () => {
+    // SPARK-413317
+    describe.skip('#update()', () => {
       let room;
 
       beforeEach(() =>

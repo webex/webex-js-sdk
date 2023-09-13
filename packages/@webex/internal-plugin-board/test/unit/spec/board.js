@@ -236,7 +236,7 @@ describe('plugin-board', () => {
       webex.request.resetHistory();
       webex.request.returns(Promise.resolve({statusCode: 200, body: channelRes}));
 
-      return webex.internal.board.createChannel(conversation);
+      
     });
 
     afterAll(() => {
@@ -249,16 +249,41 @@ describe('plugin-board', () => {
       );
     });
 
-    it('requests POST to channels service', () => {
-      assert.calledWith(
-        webex.request,
-        sinon.match({
-          method: 'POST',
-          api: 'board',
-          resource: '/channels',
-          body: channelRequestBody,
+    it('supports creating ambiguous channels for PMR support', () => {
+      return webex.internal.board.createChannel()
+        .then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              api: 'board',
+              resource: '/channels',
+              body: {
+                kmsMessage: {
+                  method: 'create',
+                  uri: '/resources',
+                  userIds: [],
+                  keyUris: [],
+                },
+              }
+            })
+          )
         })
-      );
+    });
+
+    it('requests POST to channels service', () => {
+      return webex.internal.board.createChannel(conversation)
+        .then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              api: 'board',
+              resource: '/channels',
+              body: channelRequestBody,
+            }),
+          );
+        });
     });
   });
 

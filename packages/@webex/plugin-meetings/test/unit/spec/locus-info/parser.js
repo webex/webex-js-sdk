@@ -238,6 +238,68 @@ describe('locus-info/parser', () => {
     });
   });
 
+  describe('Full Locus handling', () => {
+    describe('isNewFullLocus', () => {
+      let parser;
+
+      beforeEach(() => {
+        parser = new LocusDeltaParser();
+      })
+      it('returns false if incoming Locus is not valid', () => {
+        const fakeInvalidIncomingLocus = {};
+
+        parser.workingCopy = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [1]}};
+
+        assert.isFalse(parser.isNewFullLocus(fakeInvalidIncomingLocus));
+      });
+
+      const runCheck = (incomingSequence, currentSequence, expectedResult) => {
+        parser.workingCopy = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [1, 2, currentSequence]}};
+
+        const fakeIncomingLocus = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [1, 10, incomingSequence]}};
+
+        assert.strictEqual(parser.isNewFullLocus(fakeIncomingLocus), expectedResult);
+      }
+      it('returns true if there is no working copy', () => {
+        const fakeIncomingLocus = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [10]}};
+
+        // sanity check that we initially have no working copy 
+        assert.isNull(parser.workingCopy);
+
+        assert.isTrue(parser.isNewFullLocus(fakeIncomingLocus));
+      });
+
+      it('returns true if new sequence is higher than existing one', () => {
+        runCheck(101, 100, true);
+      });
+
+      it('returns false if new sequence is same than existing one', () => {
+        runCheck(100, 100, false);
+      });
+
+      it('returns false if new sequence is older than existing one', () => {
+        runCheck(99, 100, false);
+      });
+
+      it('returns true if incoming Locus has empty sequence', () => {
+        parser.workingCopy = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [1, 2, 3]}};
+
+        const fakeIncomingLocus = { sequence: {rangeStart: 0, rangeEnd: 0, entries: []}};
+
+        assert.isTrue(parser.isNewFullLocus(fakeIncomingLocus));
+      });
+
+      it('returns true if working copy has empty sequence', () => {
+        parser.workingCopy = { sequence: {rangeStart: 0, rangeEnd: 0, entries: []}};
+
+        const fakeIncomingLocus = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [1,2,3]}};
+
+        assert.isTrue(parser.isNewFullLocus(fakeIncomingLocus));
+      });
+
+    })
+  });
+
   describe('Invalid Locus objects', () => {
     let sandbox = null;
     let parser;
@@ -271,28 +333,6 @@ describe('locus-info/parser', () => {
       const result = parser.isValidLocus(null);
 
       assert.isFalse(result);
-    });
-
-    it('sets parser status to IDLE if workingCopy is invalid', () => {
-      const {IDLE, WORKING} = LocusDeltaParser.status;
-
-      parser.workingCopy = null;
-      parser.status = WORKING;
-
-      parser.isValidLocus(loci);
-
-      assert.equal(parser.status, IDLE);
-    });
-
-    it('sets parser status to IDLE if new loci is invalid', () => {
-      const {IDLE, WORKING} = LocusDeltaParser.status;
-
-      parser.workingCopy = loci;
-      parser.status = WORKING;
-
-      parser.isValidLocus(null);
-
-      assert.equal(parser.status, IDLE);
     });
   });
 });

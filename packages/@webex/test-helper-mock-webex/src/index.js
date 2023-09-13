@@ -185,13 +185,7 @@ function makeWebex(options) {
         voicea: {},
         meetings: {
           mediaSettings: {
-            sendAudio: true,
-            sendVideo: true,
-            receiveAudio: true,
-            receiveVideo: true,
             pstn: false,
-            sendShare: false,
-            receiveShare: false,
           },
           reconnection: {
             enabled: true,
@@ -289,6 +283,22 @@ function makeWebex(options) {
     mercury: {},
     llm: {},
     voicea: {},
+    newMetrics: {
+      submitInternalEvent: sinon.stub(),
+      submitMQE: sinon.stub(),
+      submitClientEvent: sinon.stub(),
+      callDiagnosticLatencies: {
+        saveTimestamp: sinon.stub(),
+      },
+      callDiagnosticMetrics: {
+        submitClientEvent: sinon.stub(),
+        submitMQE: sinon.stub(),
+        callDiagnosticEventsBatcher: {
+          queue: sinon.stub(),
+        },
+        submitToCallDiagnostics: sinon.stub(),
+      },
+    },
   });
 
   return webex;

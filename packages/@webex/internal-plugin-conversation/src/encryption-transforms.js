@@ -82,6 +82,14 @@ export const transforms = toArray('outbound', {
   },
 
   encryptActivity(ctx, key, activity) {
+    // Meeting Container policy update requests do not need to be encrypted.
+    if (
+      activity?.target?.objectType === 'meetingContainer' &&
+      activity?.object?.objectType === 'policies'
+    ) {
+      return Promise.resolve();
+    }
+
     // Activity is already encrypted
     if (activity.encryptionKeyUrl || activity.object?.created === 'True') {
       return Promise.resolve();

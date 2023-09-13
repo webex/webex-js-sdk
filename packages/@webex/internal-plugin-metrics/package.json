@@ -4,13 +4,14 @@
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
+  "types": "dist/types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/@webex/internal-plugin-metrics"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [
@@ -33,15 +34,8 @@
     "prettier": "^2.7.1",
     "sinon": "^9.2.4"
   },
-  "dependencies": {
-    "@webex/common": "workspace:^",
-    "@webex/common-timers": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/webex-core": "workspace:^"
-  },
   "scripts": {
-    "build": "yarn build:src",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
@@ -49,5 +43,12 @@
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/common-timers": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/webex-core": "workspace:^"
   }
 }

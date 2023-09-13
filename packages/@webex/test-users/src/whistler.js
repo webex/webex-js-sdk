@@ -1,5 +1,7 @@
 import btoa from 'btoa';
 import {request} from '@webex/http-core';
+import randomName from 'node-random-name';
+import uuid from 'uuid';
 
 /**
  * Fetches credentials/access_token to talk to the whistler endpoint
@@ -85,8 +87,10 @@ const getClientCredentials = ({
 export default function createTestUser(options = {}) {
   const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
-  const machineAccount = options.machineAccount || process.env.WHISTLER_MACHINE_ACCOUNT;
-  const machinePassword = options.machinePassword || process.env.WHISTLER_MACHINE_PASSWORD;
+  const machineAccount =
+    options.machineAccount || process.env.WHISTLER_MACHINE_ACCOUNT || randomName();
+  const machinePassword =
+    options.machinePassword || process.env.WHISTLER_MACHINE_PASSWORD || `${uuid.v4()}zAY1*`;
   const idbrokerUrl = options.idbrokerUrl || process.env.IDBROKER_BASE_URL;
   const orgId = options.orgId || process.env.WHISTLER_TEST_ORG_ID;
   const whistlerServiceUrl = options.whistlerServiceUrl || process.env.WHISTLER_API_SERVICE_URL;

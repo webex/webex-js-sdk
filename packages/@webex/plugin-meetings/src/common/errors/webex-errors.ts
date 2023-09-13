@@ -72,13 +72,17 @@ WebExMeetingsErrors[UserNotJoinedError.CODE] = UserNotJoinedError;
  * @classdesc Raised whenever the user has not established media yet.
  * @extends WebexMeetingsError
  * @property {number} code - 30103
- * @property {string} message - 'User has not established media yet'
+ * @property {string} message - error message
  */
 class NoMediaEstablishedYetError extends WebexMeetingsError {
   static CODE = 30103;
 
+  // eslint-disable-next-line require-jsdoc
   constructor() {
-    super(NoMediaEstablishedYetError.CODE, 'User has not established media yet');
+    super(
+      NoMediaEstablishedYetError.CODE,
+      'Webrtc media connection is missing, call addMedia() first'
+    );
   }
 }
 
@@ -102,24 +106,6 @@ class UserInLobbyError extends WebexMeetingsError {
 
 export {UserInLobbyError};
 WebExMeetingsErrors[UserInLobbyError.CODE] = UserInLobbyError;
-
-/**
- * @class InvalidSdpError
- * @classdesc Raised whenever SDP generated via browser is invalid.
- * @extends WebexMeetingsError
- * @property {number} code - 30201
- * @property {string} message - 'user is still in the lobby or not joined'
- */
-class InvalidSdpError extends WebexMeetingsError {
-  static CODE = 30201;
-
-  constructor(message) {
-    super(InvalidSdpError.CODE, message || 'iceConnection: sdp generated is invalid');
-  }
-}
-
-export {InvalidSdpError};
-WebExMeetingsErrors[InvalidSdpError.CODE] = InvalidSdpError;
 
 /**
  * @class IceGatheringFailed

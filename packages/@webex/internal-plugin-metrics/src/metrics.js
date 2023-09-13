@@ -10,7 +10,6 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
-import CallDiagnosticEventsBatcher from './call-diagnostic-events-batcher';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -38,7 +37,6 @@ const Metrics = WebexPlugin.extend({
   children: {
     batcher: Batcher,
     clientMetricsBatcher: ClientMetricsBatcher,
-    callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher,
   },
 
   namespace: 'Metrics',
@@ -48,13 +46,12 @@ const Metrics = WebexPlugin.extend({
   },
 
   /**
-   * This corresponds to #sendSemiStructured() in the deprecated metrics handler
+   * Returns the payload for submitting client metrics.
    * @param {string} eventName
-   * @param {Object} props
-   * @param {string} preLoginId
-   * @returns {Object} HttpResponse object
+   * @param {any} props
+   * @returns {any} - the payload
    */
-  submitClientMetrics(eventName, props = {}, preLoginId) {
+  getClientMetricsPayload(eventName, props) {
     if (!eventName) {
       throw Error('Missing behavioral metric name. Please provide one');
     }
@@ -103,6 +100,19 @@ const Metrics = WebexPlugin.extend({
     // is impossible so unable to use Date.now()
     payload.timestamp = new Date().valueOf();
 
+    return payload;
+  },
+
+  /**
+   * This corresponds to #sendSemiStructured() in the deprecated metrics handler
+   * @param {string} eventName
+   * @param {Object} props
+   * @param {string} preLoginId
+   * @returns {Object} HttpResponse object
+   */
+  submitClientMetrics(eventName, props = {}, preLoginId) {
+    const payload = this.getClientMetricsPayload(eventName, props);
+
     if (preLoginId) {
       const _payload = {
         metrics: [payload],
@@ -150,15 +160,6 @@ const Metrics = WebexPlugin.extend({
         body: payload,
       })
     );
-  },
-
-  submitCallDiagnosticEvents(payload) {
-    const event = {
-      type: 'diagnostic-event',
-      eventPayload: payload,
-    };
-
-    return this.callDiagnosticEventsBatcher.request(event);
   },
 });
 

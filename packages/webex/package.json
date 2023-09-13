@@ -26,7 +26,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",
@@ -69,6 +69,7 @@
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-llm": "workspace:^",
     "@webex/internal-plugin-presence": "workspace:^",
     "@webex/internal-plugin-support": "workspace:^",
     "@webex/plugin-attachment-actions": "workspace:^",

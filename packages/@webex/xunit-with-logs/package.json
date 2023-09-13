@@ -9,7 +9,7 @@
     "directory": "packages/@webex/xunit-with-logs"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",

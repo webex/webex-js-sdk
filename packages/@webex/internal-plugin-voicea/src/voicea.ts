@@ -2,7 +2,14 @@ import uuid from 'uuid';
 import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {WebexPlugin, config} from '@webex/webex-core';
 
-import {EVENT_TRIGGERS, VOICEA_RELAY_TYPES, TRANSCRIPTION_TYPE, VOICEA} from './constants';
+import {
+  EVENT_TRIGGERS,
+  VOICEA_RELAY_TYPES,
+  TRANSCRIPTION_TYPE,
+  VOICEA,
+  ANNOUNCE_STATUS,
+  TURN_ON_CAPTION_STATUS,
+} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
   AnnouncementPayload,
@@ -22,13 +29,15 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private seqNum: number;
 
-  private hasVoiceaJoined: boolean;
-
   private areCaptionsEnabled: boolean;
 
   private hasSubscribedToEvents = false;
 
   private vmcDeviceId?: string;
+
+  private announceStatus: string;
+
+  private captionStatus: string;
 
   /**
    * @param {Object} e
@@ -40,7 +49,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     switch (e.data.relayType) {
       case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
         this.vmcDeviceId = e.headers.from;
-        this.hasVoiceaJoined = true;
+        this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
       case VOICEA_RELAY_TYPES.TRANSLATION_RESPONSE:
@@ -66,14 +75,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     }
   }
 
-  // @ts-ignore
+  /**
+   * Listen to websocket messages
+   * @returns {void}
+   */
   public deregisterEvents() {
-    this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
   }
 
   /**
@@ -83,9 +96,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   constructor(...args) {
     super(...args);
     this.seqNum = 1;
-    this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
   }
 
   /**
@@ -243,9 +257,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   private sendAnnouncement = (): void => {
-    // @ts-ignore
-    if (this.hasVoiceaJoined || !this.webex.internal.llm.isConnected()) return;
-
+    this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
     // @ts-ignore
     this.webex.internal.llm.socket.send({
@@ -327,11 +339,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * Turn on Captions
+   * request turn on Captions
    * @returns {Promise}
    */
-  public turnOnCaptions = async (): undefined | Promise<void> => {
-    if (this.hasVoiceaJoined && this.areCaptionsEnabled) return undefined;
+  private requestTurnOnCaptions = (): undefined | Promise<void> => {
+    this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
     // @ts-ignore
     // eslint-disable-next-line newline-before-return
     return this.request({
@@ -341,18 +353,65 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body: {
         transcribe: {caption: true},
       },
-    }).then(() => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'turnOnCaptions',
-        },
-        EVENT_TRIGGERS.CAPTIONS_TURNED_ON
-      );
-      this.areCaptionsEnabled = true;
-      this.sendAnnouncement();
-    });
+    })
+      .then(() => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'turnOnCaptions',
+          },
+          EVENT_TRIGGERS.CAPTIONS_TURNED_ON
+        );
+        this.areCaptionsEnabled = true;
+        this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
+        this.announce();
+      })
+      .catch(() => {
+        this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+        throw new Error('turn on captions fail');
+      });
+  };
+
+  /**
+   * is announce processing
+   * @returns {boolean}
+   */
+  private isAnnounceProcessing = () =>
+    [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
+
+  /**
+   * announce to voicea data chanel
+   * @returns {void}
+   */
+  public announce = () => {
+    if (this.isAnnounceProcessing()) return;
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) {
+      throw new Error('voicea can not announce before llm connected');
+    }
+    this.sendAnnouncement();
+  };
+
+  /**
+   * is turn on caption processing
+   * @returns {boolean}
+   */
+  private isCaptionProcessing = () =>
+    [TURN_ON_CAPTION_STATUS.SENDING, TURN_ON_CAPTION_STATUS.ENABLED].includes(this.captionStatus);
+
+  /**
+   * Turn on Captions
+   * @returns {Promise}
+   */
+  public turnOnCaptions = async (): undefined | Promise<void> => {
+    if (this.isCaptionProcessing()) return undefined;
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) {
+      throw new Error('can not turn on captions before llm connected');
+    }
+
+    return this.requestTurnOnCaptions();
   };
 
   /**
@@ -370,9 +429,21 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         transcribe: {transcribing: activate},
       },
     }).then(() => {
-      if (activate && !this.areCaptionsEnabled && !this.hasVoiceaJoined) this.turnOnCaptions();
+      if (activate && !this.areCaptionsEnabled) this.turnOnCaptions();
     });
   };
+
+  /**
+   * get caption status
+   * @returns {string}
+   */
+  public getCaptionStatus = () => this.captionStatus;
+
+  /**
+   * get announce status
+   * @returns {string}
+   */
+  public getAnnounceStatus = () => this.announceStatus;
 }
 
 export default VoiceaChannel;

@@ -1,16 +1,17 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import TurnDiscovery from '@webex/plugin-meetings/src/roap/turnDiscovery';
-import {ROAP} from '@webex/plugin-meetings/src/constants';
+import MockWebex from '@webex/test-helper-mock-webex';
 
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
-import RoapHandler from '@webex/plugin-meetings/src/roap/handler';
 import Roap from '@webex/plugin-meetings/src/roap/';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 
 describe('Roap', () => {
   describe('doTurnDiscovery', () => {
     it('calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments', async () => {
+      const webex = new MockWebex({});
+
       const RESULT = {something: 'some value'};
       const meeting = {id: 'some meeting id'} as Meeting;
 
@@ -18,7 +19,7 @@ describe('Roap', () => {
         .stub(TurnDiscovery.prototype, 'doTurnDiscovery')
         .resolves(RESULT);
 
-      const roap = new Roap({}, {parent: 'fake'});
+      const roap = new Roap({}, {parent: webex});
 
       // call with isReconnecting: true
       const result = await roap.doTurnDiscovery(meeting, true);
@@ -40,26 +41,30 @@ describe('Roap', () => {
 
   describe('sendRoapMediaRequest', () => {
     let sendRoapStub;
-    let roapHandlerSubmitStub;
+    let meeting;
 
-    const meeting = {
-      id: 'some meeting id',
-      correlationId: 'correlation id',
-      selfUrl: 'self url',
-      mediaId: 'media id',
-      audio:{
-        isLocallyMuted: () => true,
-      },
-      video:{
-        isLocallyMuted: () => false,
-      },
-      setRoapSeq: sinon.stub(),
-      config: {experimental: {enableTurnDiscovery: false}},
-    };
+    let webex;
 
     beforeEach(() => {
+      webex = new MockWebex({});
+      meeting = {
+        id: 'some meeting id',
+        correlationId: 'correlation id',
+        selfUrl: 'self url',
+        mediaId: 'media id',
+        audio:{
+          isLocallyMuted: () => true,
+        },
+        video:{
+          isLocallyMuted: () => false,
+        },
+        setRoapSeq: sinon.stub(),
+        config: {experimental: {enableTurnDiscovery: false}},
+        locusMediaRequest: {fake: true},
+        webex: { meetings: { reachability: { isAnyClusterReachable: () => true}}},
+      };
+
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
-      roapHandlerSubmitStub = sinon.stub(RoapHandler.prototype, 'submit');
       meeting.setRoapSeq.resetHistory();
     });
 
@@ -68,25 +73,26 @@ describe('Roap', () => {
     });
 
     [
-      {reconnect: true, enableTurnDiscovery: true, expectEmptyMediaId: false},
-      {reconnect: true, enableTurnDiscovery: false, expectEmptyMediaId: true},
-      {reconnect: false, enableTurnDiscovery: true, expectEmptyMediaId: false},
-      {reconnect: false, enableTurnDiscovery: false, expectEmptyMediaId: false},
-    ].forEach(({reconnect, enableTurnDiscovery, expectEmptyMediaId}) =>
+      {reconnect: true, turnDiscoverySkipped: false, expectEmptyMediaId: false},
+      {reconnect: true, turnDiscoverySkipped: true, expectEmptyMediaId: true},
+      {reconnect: false, turnDiscoverySkipped: false, expectEmptyMediaId: false},
+      {reconnect: false, turnDiscoverySkipped: true, expectEmptyMediaId: false},
+    ].forEach(({reconnect, turnDiscoverySkipped, expectEmptyMediaId}) =>
       it(`sends roap OFFER with ${expectEmptyMediaId ? 'empty ' : ''}mediaId when ${
         reconnect ? '' : 'not '
       }reconnecting and TURN discovery is ${
-        enableTurnDiscovery ? 'enabled' : 'disabled'
+        turnDiscoverySkipped ? 'skipped' : 'not skipped'
       }`, async () => {
-        meeting.config.experimental.enableTurnDiscovery = enableTurnDiscovery;
+        const roap = new Roap({}, {parent: webex});
 
-        const roap = new Roap({}, {parent: 'fake'});
+        sinon.stub(roap.turnDiscovery, 'isSkipped').resolves(turnDiscoverySkipped);
 
         await roap.sendRoapMediaRequest({
           meeting,
           sdp: 'sdp',
           reconnect,
-          roapSeq: 1,
+          seq: 2,
+          tieBreaker: 4294967294,
         });
 
         const expectedRoapMessage = {
@@ -98,30 +104,13 @@ describe('Roap', () => {
         };
 
         assert.calledOnce(sendRoapStub);
-        assert.calledWith(sendRoapStub, {
+        assert.calledWith(sendRoapStub, sinon.match({
           roapMessage: expectedRoapMessage,
-          correlationId: meeting.correlationId,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-          audioMuted: meeting.audio?.isLocallyMuted(),
-          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
-        });
-
-        assert.calledTwice(roapHandlerSubmitStub);
-        assert.calledWith(roapHandlerSubmitStub, {
-          type: ROAP.SEND_ROAP_MSG,
-          msg: expectedRoapMessage,
-          correlationId: meeting.correlationId,
-        });
-        assert.calledWith(roapHandlerSubmitStub, {
-          type: ROAP.SEND_ROAP_MSG_SUCCESS,
-          seq: 2,
-          correlationId: meeting.correlationId,
-        });
-
-        assert.calledOnce(meeting.setRoapSeq);
-        assert.calledWith(meeting.setRoapSeq, 2);
+          locusMediaRequest: meeting.locusMediaRequest,
+        }));
       })
     );
   });

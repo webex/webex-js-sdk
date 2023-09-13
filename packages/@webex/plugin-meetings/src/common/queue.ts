@@ -1,13 +1,18 @@
 /**
- * Simple queue
+ * Simple queue in which the elements are always sorted
  */
-export default class SimpleQueue {
-  queue: any[];
+export default class SortedQueue<ItemType> {
+  queue: ItemType[];
+  // returns -1 if left < right, 0 if left === right, +1 if left > right
+  compareFunc: (left: ItemType, right: ItemType) => number;
+
   /**
-   * @constructs SimpleQueue
+   * @constructs SortedQueue
+   * @param {Function} compareFunc comparison function used for sorting the elements of the queue
    */
-  constructor() {
+  constructor(compareFunc: (left: ItemType, right: ItemType) => number) {
     this.queue = [];
+    this.compareFunc = compareFunc;
   }
 
   /**
@@ -23,8 +28,17 @@ export default class SimpleQueue {
    * @param {object} item
    * @returns {undefined}
    */
-  enqueue(item: object) {
-    this.queue.push(item);
+  enqueue(item: ItemType) {
+    // Find the index of the first item in the queue that's greater or equal to the new item.
+    // That's where we want to insert the new item.
+    const idx = this.queue.findIndex((existingItem) => {
+      return this.compareFunc(existingItem, item) >= 0;
+    });
+    if (idx >= 0) {
+      this.queue.splice(idx, 0, item);
+    } else {
+      this.queue.push(item);
+    }
   }
 
   /**
@@ -32,7 +46,7 @@ export default class SimpleQueue {
    * Returns null if the queue is empty.
    * @returns {(object|null)} Queue item or null.
    */
-  dequeue() {
+  dequeue(): ItemType {
     if (this.queue.length === 0) {
       return null;
     }

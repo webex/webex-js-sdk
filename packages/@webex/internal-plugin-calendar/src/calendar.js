@@ -315,15 +315,26 @@ const Calendar = WebexPlugin.extend({
   },
 
   /**
-   * Retrieves an array of meeting participants for the meeting id
-   * @param {String} id
+   * Retrieves an array of meeting participants for the meeting participantsUrl
+   * @param {String} participantsUrl
    * @returns {Promise} Resolves with an object of meeting participants
    */
-  getParticipants(id) {
+  getParticipants(participantsUrl) {
     return this.request({
       method: 'GET',
-      service: 'calendar',
-      resource: `calendarEvents/${base64.encode(id)}/participants`,
+      uri: participantsUrl,
+    });
+  },
+
+  /**
+   * get meeting notes using notesUrl from meeting object.
+   * @param {String} notesUrl
+   * @returns {Promise} Resolves with an object of meeting notes
+   */
+  getNotesByUrl(notesUrl) {
+    return this.request({
+      method: 'GET',
+      uri: notesUrl,
     });
   },
 
@@ -364,7 +375,7 @@ const Calendar = WebexPlugin.extend({
         meetingObjects.forEach((meeting) => {
           if (!meeting.encryptedParticipants) {
             promises.push(
-              this.getParticipants(meeting.id).then((notesResponse) => {
+              this.getParticipants(meeting.participantsUrl).then((notesResponse) => {
                 meeting.encryptedParticipants = notesResponse.body.encryptedParticipants;
               })
             );

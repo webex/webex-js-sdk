@@ -59,6 +59,34 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#isUnverifiedGuest', () => {
+      let credentials;
+      let webex;
+      beforeEach('generate the webex instance', () => {
+        webex = new MockWebex();
+        credentials = new Credentials(undefined, {parent: webex});
+      });
+
+      it('should have #isUnverifiedGuest', () => {
+        assert.exists(credentials.isUnverifiedGuest);
+      });
+
+      it('should get the user status and return as a boolean', () => {
+        credentials.set('supertoken', 'AT');
+        assert.isFalse(credentials.isUnverifiedGuest);
+      });
+
+      it('should get guest user ', () => {
+        credentials.set('supertoken', 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX3R5cGUiOiJndWVzdCJ9');
+        assert.isTrue(credentials.isUnverifiedGuest);
+      });
+
+      it('should get login user ', () => {
+        credentials.set('supertoken', 'dGhpc2lzbm90YXJlYWx1c2VydG9rZW4=');
+        assert.isFalse(credentials.isUnverifiedGuest);
+      });
+    });
+
     describe('#canAuthorize', () => {
       it('indicates if the current state has enough information to populate an auth header, even if a token refresh or token downscope is required', () => {
         const webex = new MockWebex();

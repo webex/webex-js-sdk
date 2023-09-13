@@ -30,3 +30,15 @@ export const TRANSCRIPTION_TYPE = {
 };
 
 export const VOICEA = 'voicea';
+
+export const ANNOUNCE_STATUS = {
+  IDLE: 'idle',
+  JOINED: 'joined',
+  JOINING: 'joining',
+};
+
+export const TURN_ON_CAPTION_STATUS = {
+  IDLE: 'idle',
+  ENABLED: 'enabled',
+  SENDING: 'sending',
+};

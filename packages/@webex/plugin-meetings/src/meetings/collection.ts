@@ -40,4 +40,24 @@ export default class MeetingCollection extends Collection {
 
     return null;
   }
+
+  /**
+   * get a specific meeting searching for key
+   * @param {String} breakoutUrl
+   * @returns {Meeting} if found, else returns null
+   * @public
+   * @memberof MeetingCollection
+   */
+  public getActiveBreakoutLocus(breakoutUrl: string) {
+    if (breakoutUrl) {
+      // @ts-ignore
+      return find(
+        // @ts-ignore
+        this.meetings,
+        (meeting) => meeting.breakouts?.url === breakoutUrl && meeting.breakouts?.isActiveBreakout
+      );
+    }
+
+    return null;
+  }
 }

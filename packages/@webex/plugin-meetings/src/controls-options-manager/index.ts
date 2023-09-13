@@ -3,7 +3,8 @@ import PermissionError from '../common/errors/permission';
 import {CONTROLS, HTTP_VERBS} from '../constants';
 import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
-import Setting from './enums';
+import {Control, Setting} from './enums';
+import {ControlConfig} from './types';
 import Util from './util';
 import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
@@ -134,31 +135,105 @@ export default class ControlsOptionsManager {
   }
 
   /**
+   * Set controls for this meeting.
+   *
+   * @param {Array<ControlConfig>} controls - Spread Array of ControlConfigs
+   * @returns {Promise<Array<any>>}- Promise resolving if the request was successful.
+   */
+  public update(...controls: Array<ControlConfig>) {
+    const payloads = controls.map((control) => {
+      if (!Object.keys(Control).includes(control.scope)) {
+        throw new Error(
+          `updating meeting control scope "${control.scope}" is not a supported scope`
+        );
+      }
+
+      if (!Util.canUpdate(control, this.displayHints)) {
+        throw new PermissionError(
+          `updating meeting control scope "${control.scope}" not allowed, due to moderator property.`
+        );
+      }
+
+      return {
+        [control.scope]: control.properties,
+      };
+    });
+
+    return payloads.reduce((previous, payload) => {
+      return previous.then(() =>
+        // @ts-ignore
+        this.request.request({
+          uri: `${this.locusUrl}/${CONTROLS}`,
+          body: payload,
+          method: HTTP_VERBS.PATCH,
+        })
+      );
+    }, Promise.resolve());
+  }
+
+  /**
    * @param {Setting} setting
-   * @param {boolean} enabled
    * @private
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
-  private setControls(setting: Setting, enabled: boolean): Promise<any> {
-    LoggerProxy.logger.log(`ControlsOptionsManager:index#setControls --> ${setting} [${enabled}]`);
+  private setControls(setting: {[key in Setting]?: boolean}): Promise<any> {
+    LoggerProxy.logger.log(
+      `ControlsOptionsManager:index#setControls --> ${JSON.stringify(setting)}`
+    );
 
-    if (Util?.[`${enabled ? CAN_SET : CAN_UNSET}${setting}`](this.displayHints)) {
-      // @ts-ignore
-      return this.request.request({
-        uri: `${this.locusUrl}/${CONTROLS}`,
-        body: {
-          [camelCase(setting)]: {
-            [ENABLED]: enabled,
-          },
-        },
-        method: HTTP_VERBS.PATCH,
-      });
+    const body: Record<string, any> = {};
+    let error: PermissionError;
+
+    let shouldSkipCheckToMergeBody = false;
+
+    Object.entries(setting).forEach(([key, value]) => {
+      if (
+        !shouldSkipCheckToMergeBody &&
+        !Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)
+      ) {
+        error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
+      }
+
+      if (error) {
+        return;
+      }
+
+      switch (key) {
+        case Setting.muted:
+          shouldSkipCheckToMergeBody = true;
+          body.audio = body.audio
+            ? {...body.audio, [camelCase(key)]: value}
+            : {[camelCase(key)]: value};
+          break;
+
+        case Setting.disallowUnmute:
+        case Setting.muteOnEntry:
+          if (Object.keys(setting).includes(Setting.muted)) {
+            body.audio = body.audio
+              ? {...body.audio, [camelCase(key)]: value}
+              : {[camelCase(key)]: value};
+            body.audio[camelCase(key)] = value;
+          } else {
+            body[camelCase(key)] = {[ENABLED]: value};
+          }
+          break;
+
+        default:
+          error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
+      }
+    });
+
+    if (error) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(
-      new PermissionError(`${setting} [${enabled}] not allowed, due to moderator property.`)
-    );
+    // @ts-ignore
+    return this.request.request({
+      uri: `${this.locusUrl}/${CONTROLS}`,
+      body,
+      method: HTTP_VERBS.PATCH,
+    });
   }
 
   /**
@@ -168,7 +243,7 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   public setMuteOnEntry(enabled: boolean): Promise<any> {
-    return this.setControls(Setting.muteOnEntry, enabled);
+    return this.setControls({[Setting.muteOnEntry]: enabled});
   }
 
   /**
@@ -178,6 +253,26 @@ export default class ControlsOptionsManager {
    * @returns {Promise}
    */
   public setDisallowUnmute(enabled: boolean): Promise<any> {
-    return this.setControls(Setting.disallowUnmute, enabled);
+    return this.setControls({[Setting.disallowUnmute]: enabled});
+  }
+
+  /**
+   * @public
+   * @param {boolean} mutedEnabled
+   * @param {boolean} disallowUnmuteEnabled
+   * @param {boolean} muteOnEntryEnabled
+   * @memberof ControlsOptionsManager
+   * @returns {Promise}
+   */
+  public setMuteAll(
+    mutedEnabled: boolean,
+    disallowUnmuteEnabled: boolean,
+    muteOnEntryEnabled: boolean
+  ): Promise<any> {
+    return this.setControls({
+      [Setting.muted]: mutedEnabled,
+      [Setting.disallowUnmute]: disallowUnmuteEnabled,
+      [Setting.muteOnEntry]: muteOnEntryEnabled,
+    });
   }
 }

@@ -28,21 +28,23 @@ class ReachabilityRequest {
   }
 
   /**
-   * gets the cluster information
+   * Gets the cluster information
    *
-   * @param {boolean} includeVideoMesh whether to include the video mesh clusters in the result or not
    * @returns {Promise}
    */
-  getClusters = (): Promise<ClusterList> =>
+  getClusters = (): Promise<{clusters: ClusterList; joinCookie: any}> =>
     this.webex
       .request({
         method: HTTP_VERBS.GET,
         shouldRefreshAccessToken: false,
         api: API.CALLIOPEDISCOVERY,
         resource: RESOURCE.CLUSTERS,
+        qs: {
+          JCSupport: 1,
+        },
       })
       .then((res) => {
-        const {clusters} = res.body;
+        const {clusters, joinCookie} = res.body;
 
         Object.keys(clusters).forEach((key) => {
           clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
@@ -52,7 +54,10 @@ class ReachabilityRequest {
           `Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`
         );
 
-        return clusters;
+        return {
+          clusters,
+          joinCookie,
+        };
       });
 
   /**

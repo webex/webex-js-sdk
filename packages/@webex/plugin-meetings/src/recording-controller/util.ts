@@ -1,17 +1,34 @@
-import {DISPLAY_HINTS} from '../constants';
+import {DISPLAY_HINTS, SELF_POLICY} from '../constants';
 import RecordingAction from './enums';
+import MeetingUtil from '../meeting/util';
 
-const canUserStart = (displayHints: Array<string>): boolean =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START);
+const canUserStart = (
+  displayHints: Array<string>,
+  userPolicies: Record<SELF_POLICY, boolean>
+): boolean =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START) &&
+  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
 
-const canUserPause = (displayHints: Array<string>): boolean =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE);
+const canUserPause = (
+  displayHints: Array<string>,
+  userPolicies: Record<SELF_POLICY, boolean>
+): boolean =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE) &&
+  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
 
-const canUserResume = (displayHints: Array<string>): boolean =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME);
+const canUserResume = (
+  displayHints: Array<string>,
+  userPolicies: Record<SELF_POLICY, boolean>
+): boolean =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME) &&
+  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
 
-const canUserStop = (displayHints: Array<string>): boolean =>
-  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP);
+const canUserStop = (
+  displayHints: Array<string>,
+  userPolicies: Record<SELF_POLICY, boolean>
+): boolean =>
+  displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP) &&
+  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
 
 const extractLocusId = (url: string) => {
   return url?.split('/').pop();

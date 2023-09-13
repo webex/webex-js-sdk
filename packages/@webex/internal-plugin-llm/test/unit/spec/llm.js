@@ -20,7 +20,9 @@ describe('plugin-llm', () => {
       });
 
       llmService = webex.internal.llm;
-      llmService.connect = sinon.stub().resolves(true);
+      llmService.connect = sinon.stub().callsFake(() => {
+        llmService.connected = true;
+      });
       llmService.disconnect = sinon.stub().resolves(true);
       llmService.request = sinon.stub().resolves({
         headers: {},
@@ -65,6 +67,7 @@ describe('plugin-llm', () => {
           sinon.match({
             method: 'POST',
             url: `${datachannelUrl}`,
+            body: {deviceUrl: webex.internal.device.url},
           })
         );
 

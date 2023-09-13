@@ -425,7 +425,6 @@ describe('Encryption', function () {
     describe('upload customer master key', () => {
       let uploadedkeyId;
 
-      /* eslint-disable no-unused-expressions */
       skipInBrowser(it)('upload customer master key', () =>
         webex.internal.encryption.kms
           .deleteAllCustomerMasterKeys({assignedOrgId: spock.orgId})

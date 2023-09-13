@@ -20,3 +20,4 @@ packages/@webex/storage-adapter-local-forage              @webex/web-client
 packages/@webex/storage-adapter-local-storage             @webex/web-client
 packages/@webex/storage-adapter-session-storage           @webex/web-client
 packages/@webex/storage-adapter-spec                      @webex/web-client
+docs/samples/browser-plugin-meetings                      @webex/web-client

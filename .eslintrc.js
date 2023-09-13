@@ -46,6 +46,12 @@ module.exports = {
         'react/prop-types': 'off',
         'no-shadow': 0, // should be disabled for ts files as typescript/no-shadow covers it
         '@typescript-eslint/no-shadow': 2,
+        'no-unused-vars': 'off', // should be disabled for ts files as typescript/no-unused-vars covers it
+        '@typescript-eslint/no-unused-vars': [
+          'error',
+          {vars: 'all', args: 'after-used', ignoreRestSiblings: true},
+        ],
+        '@typescript-eslint/no-var-requires': 1,
         '@typescript-eslint/no-empty-function': 'off',
         '@typescript-eslint/ban-ts-comment': 'off',
         'import/prefer-default-export': 'warn',
@@ -59,7 +65,6 @@ module.exports = {
     {
       files: ['*.js'],
       rules: {
-        '@typescript-eslint/no-var-requires': 1,
         'valid-jsdoc': [
           'error',
           {
@@ -104,6 +109,15 @@ module.exports = {
         'func-names': 0,
         'no-invalid-this': 0,
         'require-jsdoc': 0,
+        'no-unused-expressions': 'off',
+        'chai-friendly/no-unused-expressions': [
+          'error',
+          {
+            allowShortCircuit: false,
+            allowTernary: false,
+            allowTaggedTemplates: false,
+          },
+        ],
       },
     },
     {
@@ -260,6 +274,7 @@ module.exports = {
     'tooling/*',
     '**/test/**/*',
     'docs/**',
+    '*.json',
     // Files with decorator
     'authorization.js',
     'kms.js',

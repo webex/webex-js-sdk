@@ -54,6 +54,18 @@ describe('Webex', () => {
     });
   });
 
+  describe('#request', () => {
+    it('exists', () => {
+      assert.property(webex, 'request');
+    });
+  });
+
+  describe('#prepareFetchOptions', () => {
+    it('exists', () => {
+      assert.property(webex, 'prepareFetchOptions');
+    });
+  });
+
   describe('#initialize()', () => {
     it('initializes without arguments', () => {
       let webex;

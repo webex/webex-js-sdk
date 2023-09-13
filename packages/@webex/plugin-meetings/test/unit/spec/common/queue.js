@@ -1,5 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-import SimpleQueue from '@webex/plugin-meetings/src/common/queue';
+import SortedQueue from '@webex/plugin-meetings/src/common/queue';
 
 describe('common/queue', () => {
   let fifo = null;
@@ -11,7 +11,15 @@ describe('common/queue', () => {
   };
 
   beforeEach(() => {
-    fifo = new SimpleQueue();
+    fifo = new SortedQueue((left, right) => {
+      if (left.text > right.text) {
+        return 1;
+      }
+      if (left.text < right.text) {
+        return -1;
+      }
+      return 0;
+    });
   });
 
   afterEach(() => {
@@ -65,5 +73,26 @@ describe('common/queue', () => {
 
   it('Returns null if the queue is empty.', () => {
     assert.equal(fifo.dequeue(), null);
+  });
+
+  it('Implement lifo', () => {
+    const lifo = new SortedQueue((left, right) => {
+      if (left.text < right.text) {
+        return 1;
+      }
+      if (left.text > right.text) {
+        return -1;
+      }
+      return 0;
+    });
+
+    const item1 = {text: 'fake item1'};
+    const item2 = {text: 'fake item2'};
+
+    lifo.enqueue(item1);
+    lifo.enqueue(item2);
+
+    assert.equal(lifo.dequeue(), item2);
+    assert.equal(lifo.dequeue(), item1);
   });
 });

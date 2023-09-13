@@ -1,5 +1,3 @@
-import {assert} from '@webex/test-helper-chai';
-import {Defer} from '@webex/common';
 
 const max = 30000;
 const waitForSpy = (spy, event) => {
@@ -195,49 +193,7 @@ const delayedTest = (callback, timeout) =>
     }, timeout);
   });
 
-const addMedia = (user) => {
-  const mediaReadyPromises = {
-    local: new Defer(),
-    remoteAudio: new Defer(),
-    remoteVideo: new Defer(),
-  };
-  const mediaReady = (media) => {
-    if (!media) {
-      return;
-    }
-    if (mediaReadyPromises[media.type]) {
-      mediaReadyPromises[media.type].resolve();
-    }
-  };
 
-  user.meeting.on('media:ready', mediaReady);
-
-  return user.meeting
-    .getMediaStreams({
-      sendAudio: true,
-      sendVideo: true,
-      sendShare: false,
-    })
-    .then(([localStream, localShare]) =>
-      user.meeting.addMedia({
-        mediaSettings: {
-          sendAudio: true,
-          sendVideo: true,
-          sendShare: false,
-          receiveShare: true,
-          receiveAudio: true,
-          receiveVideo: true,
-        },
-        localShare,
-        localStream,
-      })
-    )
-    .then(() => Promise.all(Object.values(mediaReadyPromises).map((defer) => defer.promise)))
-    .then(() => {
-      assert.exists(user.meeting.mediaProperties.audioTrack, 'audioTrack not present');
-      assert.exists(user.meeting.mediaProperties.videoTrack, 'videoTrack not present');
-    });
-};
 
 const waitUntil = (waitTime) =>
   new Promise((resolve) => {
@@ -279,7 +235,6 @@ export default {
   waitForEvents,
   checkParticipantUpdatedStatus,
   delayedPromise,
-  addMedia,
   waitUntil,
   delayedTest,
   flushPromises,
