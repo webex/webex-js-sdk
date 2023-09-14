@@ -179,7 +179,7 @@ Sample code can be found in [docs/samples](./docs/samples). You can demo them by
 
 | Samples                         | Hosted                                                                                 |
 | ------------------------------- | -------------------------------------------------------------------------------------- |
-| [Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) |
+| [Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/](https://webex.github.io/webex-js-sdk/) |
 
 ## FedRAMP Environment
 
