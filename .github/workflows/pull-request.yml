@@ -487,7 +487,6 @@ jobs:
 
   build-documentation:
     name: Build - Documentation
-    needs: generate-package-matrix
     runs-on: ubuntu-latest
 
     steps:
