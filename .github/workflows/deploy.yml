@@ -238,9 +238,7 @@ jobs:
       - name: Publish Docs Folder
         run: |
           git add docs/
-          git add -f docs/samples/webex.min.js*
-          git add -f docs/samples/meetings.min.js*
-          git add -f docs/samples/calling.min.js*
           git commit -m "chore(docs): update docs"
+          git pull origin documentation
           git push origin HEAD:documentation
 
