@@ -5,6 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
+      - SPARK-455628-Pipeline-changes-to-push-to-documentation-branch
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
