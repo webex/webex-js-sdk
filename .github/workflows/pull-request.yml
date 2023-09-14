@@ -485,18 +485,4 @@ jobs:
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
 
-  build-documentation:
-    name: Build - Documentation
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: TODO - Documentation Deploy Steps
-        run: echo "TODO - Documentation Deploy Steps"
-
-      - name: Build Docs
-        run: yarn run build:docs
-
-      - name: Build Samples
-        run: yarn run samples:build
-
 
