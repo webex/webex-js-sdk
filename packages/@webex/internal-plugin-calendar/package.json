@@ -28,12 +28,10 @@
     "sinon": "^9.2.4"
   },
   "dependencies": {
-    "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-encryption": "workspace:^",
     "@webex/webex-core": "workspace:^",
-    "btoa": "^1.2.1",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
   }
