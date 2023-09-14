@@ -774,6 +774,19 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should generate event error payload correctly for nested error', () => {
+        const res = cd.generateClientEventErrorPayload({error: {body: {errorCode: 2409005}}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'StartRecordingFailed',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          errorCode: 4029,
+          serviceErrorCode: 2409005,
+        });
+      });
+
       it('should return default meeting info lookup error payload correctly if not locus error', () => {
         const res = cd.generateClientEventErrorPayload({body: {errorCode: 9400000}});
         assert.deepEqual(res, {
