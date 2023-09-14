@@ -230,7 +230,7 @@ jobs:
       - name: Build Samples
         run: yarn run samples:build
 
-      -name: Provide the identity
+      - name: Provide the identity
         run: |
           git config --global user.email "priyakesari1993@gmail.com"
           git config --global user.name "Priya Kesari"
