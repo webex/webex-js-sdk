@@ -5,6 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
+      - SPARK-455628-Pipeline-changes-to-push-to-documentation-branch
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -171,7 +172,7 @@ jobs:
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
-        run: | 
+        run: |
           yarn
           yarn package-tools sync --tag ${GITHUB_REF##*/}
 
@@ -197,3 +198,49 @@ jobs:
     steps:
       - name: TODO - Documentation Deploy Steps
         run: echo "TODO - Documentation Deploy Steps"
+
+      - name: Checkout Project
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build Docs
+        run: yarn run build:docs
+
+      - name: Build Samples
+        run: yarn run samples:build
+
+      - name: Provide the identity
+        run: |
+          git config --global user.email "priyakesari1993@gmail.com"
+          git config --global user.name "Priya Kesari"
+
+      - name: Publish Docs Folder
+        run: |
+          git add docs/
+          git add -f docs/samples/webex.min.js*
+          git add -f docs/samples/meetings.min.js*
+          git add -f docs/samples/calling.min.js*
+          git commit -m "feat(docs): update docs"
+          git push origin HEAD:documentation
+
