@@ -43,6 +43,7 @@ import {
   UNKNOWN_ERROR,
   BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+  CALL_DIAGNOSTIC_LOG_IDENTIFIER,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -67,6 +68,7 @@ type GetIdentifiersOptions = {
 export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
+  private logger: any; // to avoid adding @ts-ignore everywhere
 
   /**
    * Constructor
@@ -74,6 +76,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   constructor(...args) {
     super(...args);
+    // @ts-ignore
+    this.logger = this.webex.logger;
     // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
   }
@@ -444,7 +448,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {meetingId, mediaConnections} = options;
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @prepareClientEvent. Creating in meeting event object.',
+      name
+    );
+    const {meetingId, mediaConnections, rawError} = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -470,6 +479,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       meeting,
       mediaConnections: meeting?.mediaConnections || mediaConnections,
     });
+
+    // check if we need to generate errors
+    const errors: ClientEvent['payload']['errors'] = [];
+
+    if (rawError) {
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Error detected, attempting to map and attach it to the event...',
+        name,
+        rawError
+      );
+
+      const generatedError = this.generateClientEventErrorPayload(rawError);
+      if (generatedError) {
+        errors.push(generatedError);
+      }
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Generated errors:',
+        generatedError
+      );
+    }
 
     // create client event object
     const clientEventObject: ClientEvent['payload'] = {
@@ -506,6 +537,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
+      name
+    );
     const {correlationId} = options;
 
     // grab identifiers
@@ -595,6 +631,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }) {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitClientEvent',
+      name,
+      payload,
+      options
+    );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
 
     return this.submitToCallDiagnostics(diagnosticEvent);
@@ -611,6 +654,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       eventPayload: event,
       type: ['diagnostic-event'],
     };
+
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+      finalEvent
+    );
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
@@ -633,6 +682,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }): Promise<any> {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions',
+      name,
+      payload,
+      options
+    );
+
     const clientEvent = this.prepareClientEvent({name, payload, options});
 
     // build metrics-a event type
