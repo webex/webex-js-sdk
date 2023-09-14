@@ -5,7 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
-      - SPARK-455628-Pipeline-changes-to-push-to-documentation-branch
+      - deploy_cd_test
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -241,6 +241,6 @@ jobs:
           git add -f docs/samples/webex.min.js*
           git add -f docs/samples/meetings.min.js*
           git add -f docs/samples/calling.min.js*
-          git commit -m "feat(docs): update docs"
+          git commit -m "chore(docs): update docs"
           git push origin HEAD:documentation
 
