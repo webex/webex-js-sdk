@@ -43,6 +43,7 @@ import {
   UNKNOWN_ERROR,
   BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+  CALL_DIAGNOSTIC_LOG_IDENTIFIER,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
