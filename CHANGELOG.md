@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.217](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.216...v3.0.0-beta.217) (2023-09-15)
+
+
+### Features
+
+* byok revoked error handling ([#3083](https://github.com/webex/webex-js-sdk/issues/3083)) ([9893f02](https://github.com/webex/webex-js-sdk/commit/9893f02d1e22db82dac8e73a6c547770df1fe61e))
+
 ## [3.0.0-beta.216](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.215...v3.0.0-beta.216) (2023-09-15)
 
 
