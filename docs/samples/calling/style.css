@@ -1,10 +1,9 @@
 body {
-  padding: 1rem;
+  margin: 0;
+  padding: 0;
   background-color: #eee;
   font-family: sans-serif;
   font-size: 15px;
-  overflow: hidden;
-  margin: 0;
 }
 
 video {
@@ -16,18 +15,19 @@ video {
 h2 {
   font-weight: 500;
   font-size: 2.2rem;
+  margin: 0 0 1rem 0;
 }
 
 section {
   background-color: #fff;
   padding: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
 }
 
 select {
   min-width: 300px;
   margin-right: 1rem;
-  min-height: 32px;
 }
 
 label {
@@ -72,7 +72,7 @@ fieldset legend {
   font-size: 1.1rem;
 }
 
-button {
+button, input[type="button"] {
   position: relative;
   display: inline-block;
   min-width: 4.5rem;
@@ -92,31 +92,31 @@ button {
   border-color: transparent;
   transition: background-color 0.15s ease;
 }
-button:hover {
+button:hover, input[type="button"]:hover {
   color: var(--md-button-secondary-text-color, #000);
   background-color: var(--md-button-secondary-hover-bg-color, #ccc);
 }
-button:active {
+button:active, input[type="button"]:active {
   background-color: var(--md-button-bg-color, rgba(0, 0, 0, 0.3));
 }
-button:disabled {
+button:disabled, input[type="button"]:disabled {
   color: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
   fill: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
   background-color: var(--md-button-disabled-bg-color, rgba(0, 0, 0, 0.04));
   pointer-events: none;
   cursor: default;
 }
-button.btn--green {
+button.btn--green, input[type="button"].btn--green {
   color: #fff;
   color: var(--md-button-join-text-color, #fff);
   background-color: #00ab50;
   background-color: var(--md-button-join-bg-color, #00ab50);
   border-color: transparent;
 }
-button.btn--green:disabled{
+button.btn--green:disabled, input[type="button"].btn--green:disabled{
   opacity: .5;
 }
-button.btn--red {
+button.btn--red, input[type="button"].btn--red {
   color: #fff;
   color: var(--md-button-cancel-text-color, #fff);
   background-color: #f7644a;
@@ -127,7 +127,7 @@ button.btn--red {
 .btn--green:disabled {
   opacity: .5;
 }
-button.btn-code {
+button.btn-code, input[type="button"].btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
   margin: 0.2rem 0;
 }
@@ -254,18 +254,13 @@ input[type=email]:focus {
 
 /* Container - Docs / Streams Fixed */
 .container {
-  display: grid;
-  position: relative;
-  max-width: 1400px;
-  margin: 1rem auto;
-  grid-gap: 2rem;
-  grid-template-columns: 1fr 400px;
-  padding-bottom: 1rem;
+  overflow: auto;
+  height: 100vh;
 }
 
 .docs {
-  overflow: auto;
-  height: 98vh;
+  max-width: 87.5rem;
+  margin-top: 1.5rem;
 }
 
 .hidden {
@@ -275,6 +270,10 @@ th , td {
   border:1px solid black;
   padding: 5px;
   font-size: small;
+}
+
+table {
+  border-collapse: collapse;
 }
 
 .styled-table {
@@ -328,4 +327,49 @@ select.ServiceData {
 
 select.ServiceData:invalid {
   color: #555555d4;
+}
+
+h2 {
+  color: #0052bf;
+  font-size: 1.5rem;
+  width: 100%;
+}
+
+legend {
+  font-size: 1.15rem;
+  color: #1a73e8;
+}
+
+.collapsible {
+  cursor: pointer;
+}
+
+.section-content {
+  height: auto;
+  visibility: visible;
+}
+
+.collapsed {
+  height: 0;
+  visibility: hidden;
+}
+
+.text-color {
+  color: #555;
+}
+
+input[type="string"],
+select {
+  padding: 0 0.5rem;
+  height: 1.75rem;
+  border-radius: 4px;
+  box-sizing: border-box;
+  border: 0.0625rem solid;
+  border-color: var(--md-input-outline-color, #ccc);
+  background-color: var(--md-input-background-color, #fff);
+  font-family: CiscoSansTT Regular, Helvetica Neue, Helvetica, sans-serif;
+  font-size: 1rem;
+  transition: box-shadow 0.15s ease-out;
+  color: #555;
+  width: 10rem;
 }

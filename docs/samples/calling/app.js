@@ -40,6 +40,7 @@ const createCallingForm = document.querySelector('#calling-create');
 const enableProduction = document.querySelector('#enableProduction');
 const answerElm = document.querySelector('#answer');
 const imageElm = document.querySelector('#img_home');
+const outboundEndElm = document.querySelector('#end-call');
 const endElm = document.querySelector('#end');
 const endSecondElm = document.querySelector('#end-second');
 const callDetailsElm = document.querySelector('#call-object');
@@ -52,7 +53,7 @@ const localVideoElem = document.querySelector('#local-video');
 const callListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-call');
 const audioInputDevicesElem = document.querySelector('#sd-audio-input-devices');
-const videoInputDevicesElem = document.querySelector('#sd-video-input-devices');
+// const videoInputDevicesElem = document.querySelector('#sd-video-input-devices');
 const audioOutputDevicesElem = document.querySelector('#sd-audio-output-devices');
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const dtmfDigit = document.getElementById('dtmf_digit');
@@ -82,7 +83,8 @@ const contactGroupObj = document.querySelector('#contactgroup-object');
 const summaryContent = document.querySelector('#summary-data');
 const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
-
+const makeCallBtn = document.querySelector('#create-call-action');
+const muteElm = document.getElementById('mute_button');
 
 let base64;
 let audio64;
@@ -94,6 +96,16 @@ let localAudioStream;
 const devicesById = {};
 const img = new Image();
 const vmAvatarImg = new Image(100);
+
+document.querySelectorAll('.collapsible').forEach((el) => {
+  el.addEventListener('click', (event) => {
+    const {parentElement} = event.currentTarget;
+
+    const sectionContentElement = parentElement.querySelector('.section-content');
+
+    sectionContentElement.classList.toggle('collapsed');
+  });
+});
 
 const getOptionValue = (select) => {
   const selected = select.options[select.options.selectedIndex];
@@ -114,9 +126,10 @@ function getMediaSettings() {
 function getAudioVideoInput() {
   const deviceId = (id) => devicesById[id];
   const audioInput = getOptionValue(audioInputDevicesElem) || 'default';
-  const videoInput = getOptionValue(videoInputDevicesElem) || 'default';
+  // const videoInput = getOptionValue(videoInputDevicesElem) || 'default';
 
-  return {audio: deviceId(audioInput), video: deviceId(videoInput)};
+  return {audio: deviceId(audioInput)};
+  // return {audio: deviceId(audioInput), video: deviceId(videoInput)};
 }
 
 let enableProd = true;
@@ -194,7 +207,7 @@ async function initCalling(e) {
     level: 'info'
   }
 
-  const {region, country} = registrationForm.elements;
+  const {region, country} = credentialsFormElm.elements;
 
   const serviceData = {indicator: 'calling', domain: ''};
 
@@ -307,6 +320,7 @@ callListener.addEventListener('callingClient:incoming_call', (myEvent) => {
   const callerDisplay = myEvent.detail.callObject.getCallerInfo();
 
   incomingDetailsElm.innerText = `Call from ${callerDisplay.name}, Ph: ${callerDisplay.num}`;
+  makeCallBtn.disabled = true;
   console.log(`Call from :${callerDisplay.name}:${callerDisplay.num}`);
 });
 
@@ -343,6 +357,15 @@ function createDevice() {
         imageElm.appendChild(img);
       }
     });
+
+    call.on('call:disconnect', () => {
+      callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
+      makeCallBtn.disabled = false;
+      endElm.disabled = true;
+      muteElm.value = 'Mute';
+      answerElm.disabled = true;
+    });
+
     callNotifyEvent.detail.callObject = callObj;
     correlationId = callObj.getCorrelationId();
     console.log(`APP.JS::  Incoming Call with correlationId: ${correlationId}`);
@@ -361,6 +384,10 @@ function endCall() {
   call.end();
   callDetailsElm.innerText = `${call.getCorrelationId()}: Call Disconnected`;
   imageElm.removeChild(img);
+  outboundEndElm.disabled = true;
+  makeCallBtn.disabled = false;
+  endElm.disabled = true;
+  muteElm.value = 'Mute';
 }
 
 function endSecondCall() {
@@ -368,13 +395,12 @@ function endSecondCall() {
   transferDetailsElm.innerText = `${callTranferObj.getCorrelationId()}: Call Disconnected`;
   imageElm.removeChild(img);
   endSecondElm.disabled = true;
+  muteElm.value = 'Mute';
 }
 
 function muteUnmute() {
-  const elem = document.getElementById('mute_button');
+  muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
 
-  if (elem.value === 'Mute') elem.value = 'Unmute';
-  else elem.value = 'Mute';
   call.mute(localAudioStream);
 }
 
@@ -419,15 +445,15 @@ function populateSourceDevices(mediaDevice) {
     case 'audiooutput':
       select = audioOutputDevicesElem;
       break;
-    case 'videoinput':
-      select = videoInputDevicesElem;
-      break;
+    // case 'videoinput':
+    //   select = videoInputDevicesElem;
+    //   break;
   }
 
   devicesById[mediaDevice.ID] = mediaDevice;
   option.value = mediaDevice.ID;
   option.text = mediaDevice.label;
-  select.appendChild(option);
+  select && select.appendChild(option);
 }
 
 /**
@@ -451,7 +477,6 @@ function createCall(e) {
 
   console.log(destination.value);
 
-  console.log(destination.value);
   call = callingClient.makeCall({
     type: 'uri',
     address: destination.value,
@@ -477,9 +502,15 @@ function createCall(e) {
   call.on('call:established', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Established`;
     transferElm.disabled = false;
+    outboundEndElm.disabled = false;
+    makeCallBtn.disabled = true;
   });
   call.on('call:disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
+    makeCallBtn.disabled = false;
+    endElm.disabled = true;
+    muteElm.value = 'Mute';
+    outboundEndElm.disabled = true;
 
     if (transferInitiated) {
       transferDetailsElm.innerText = `Transferred Successfully`;
@@ -580,6 +611,7 @@ function initiateTransfer() {
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
+  makeCallBtn.disabled = false;
 }
 
 // Listen for submit on create meeting
@@ -597,22 +629,21 @@ function addPlayIfPausedEvents(mediaElements) {
 function clearMediaDeviceList() {
   audioInputDevicesElem.innerText = '';
   audioOutputDevicesElem.innerText = '';
-  videoInputDevicesElem.innerText = '';
+  // videoInputDevicesElem.innerText = '';
 }
 
 async function getMediaDevices() {
-  const cameras = await window.Media.Media.getCameras();
-
+  const cameras = await callingClient.mediaEngine.Media.getCameras();  
   cameras.forEach((camera) => {
     populateSourceDevices(camera);
   });
-  const microphones = await window.Media.Media.getMicrophones();
 
+  const microphones = await callingClient.mediaEngine.Media .getMicrophones();
   microphones.forEach((microphone) => {
     populateSourceDevices(microphone);
   });
-  const speakers = await window.Media.Media.getSpeakers();
 
+  const speakers = await callingClient.mediaEngine.Media.getSpeakers();
   speakers.forEach((speaker) => {
     populateSourceDevices(speaker);
   });
@@ -670,7 +701,7 @@ function renderContacts(contacts, groupIdDisplayNameMap) {
 
     const phoneNumbers = contact.phoneNumbers?.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
     return acc +
-     `
+    `
       <tr>
         <td>${i + 1}</td>
         <td><img src=${contact.avatarURL} width="80"> </td>
