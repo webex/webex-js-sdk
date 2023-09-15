@@ -234,7 +234,7 @@ jobs:
         run: yarn run samples:build
 
       - name: Adding SSh keys for authentication
-        uses: webex/webex-js-sdk/.github/actions/add-ssh-keys@deploy_cd_test
+        uses: actions/add-ssh-keys@deploy_cd_test
         with:
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
           ssh-public-key: ${{ secrets.DEPLOY_KEY_PUB }}
