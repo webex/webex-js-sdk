@@ -52,3 +52,9 @@ export interface BatcherOptions {
   resource: string;
   lookupValue: string;
 }
+
+export interface SearchPlaceOptions {
+  resultSize: number;
+  queryString: string;
+  isOnlySchedulableRooms: boolean;
+}
