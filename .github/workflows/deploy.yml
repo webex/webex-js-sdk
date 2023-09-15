@@ -233,9 +233,11 @@ jobs:
       - name: Build Samples
         run: yarn run samples:build
 
-      - add_ssh_keys:
-          fingerprints:
-            - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
+      - name: Adding SSh keys for authentication
+        uses: webex/webex-js-sdk/.github/actions/add-ssh-keys@deploy_cd_test
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-public-key: ${{ secrets.DEPLOY_KEY_PUB }}
 
       - name: Publish Docs Folder
         run: |
