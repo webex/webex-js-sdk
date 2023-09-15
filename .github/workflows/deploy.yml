@@ -9,6 +9,10 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
+  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
+  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
+  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
+  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
 
 jobs:
   initialize:
@@ -230,11 +234,6 @@ jobs:
 
       - name: Build Samples
         run: yarn run samples:build
-
-      - name: Provide the identity
-        run: |
-          git config --global user.email "priyakesari1993@gmail.com"
-          git config --global user.name "Priya Kesari"
 
       - name: Publish Docs Folder
         run: |
