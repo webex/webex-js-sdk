@@ -9,6 +9,8 @@ on:
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
   token: ${{ secrets.NPM_TOKEN }}
+  GIT_AUTHOR_NAME: ${{ github.actor }}
+  GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
 
 jobs:
   initialize:
@@ -161,7 +163,7 @@ jobs:
 
       - name: Configure npm
         run: echo "//registry.npmjs.org/:_authToken=${{ env.token }}" > ~/.npmrc
-  
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -175,7 +177,7 @@ jobs:
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
-        run: | 
+        run: |
           yarn
           yarn package-tools sync --tag ${GITHUB_REF##*/}
 
@@ -199,5 +201,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: TODO - Documentation Deploy Steps
-        run: echo "TODO - Documentation Deploy Steps"
+      - name: Documentation Deploy Steps
+        run: echo "Documentation Deploy Steps"
+
+      - name: Build Docs
+        run: yarn run build:docs
+
+      - name: Build Samples
+        run: yarn run samples:build
+
+      - name: Set Git Identity
+        run: |
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git config user.name "${GIT_AUTHOR_NAME}"
+
+      - name: Publish Docs Folder
+        run: |
+          git add docs/
+          git commit -m "chore(docs): update docs"
+          git push origin HEAD:documentation --force
