@@ -218,17 +218,32 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
  * @returns {any} the updated options object
  */
 export const setMetricTimings = (options) => {
-  if (options.body?.metrics) {
+  if (options.body && options.json) {
+    const body = JSON.parse(options.body);
+
     const now = new Date().toISOString();
-    options.body.metrics.forEach((metric) => {
+    body.metrics?.forEach((metric) => {
       if (metric.eventPayload) {
+        // The event will effectively be triggered and sent at the same time.
+        // The existing triggered time is from when the options were built.
         metric.eventPayload.originTime = {
           triggered: now,
           sent: now,
         };
       }
     });
+    options.body = JSON.stringify(body);
   }
 
   return options;
+};
+
+export const extractVersionMetadata = (version: string) => {
+  // extract major and minor version
+  const [majorVersion, minorVersion] = version.split('.');
+
+  return {
+    majorVersion: parseInt(majorVersion, 10),
+    minorVersion: parseInt(minorVersion, 10),
+  };
 };

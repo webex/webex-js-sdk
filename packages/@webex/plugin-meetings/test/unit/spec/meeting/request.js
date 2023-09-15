@@ -4,8 +4,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
-import { merge } from 'lodash';
-
+import {merge} from 'lodash';
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
@@ -30,7 +29,9 @@ describe('plugin-meetings', () => {
       },
     };
 
-    webex.boundedStorage.get = sinon.mock().returns(Promise.resolve(JSON.stringify({anycastEntryPoint: "aws-eu-west-1"})))
+    webex.boundedStorage.get = sinon
+      .mock()
+      .returns(Promise.resolve(JSON.stringify({anycastEntryPoint: 'aws-eu-west-1'})));
 
     const request = sinon.mock().returns(Promise.resolve({}));
 
@@ -39,9 +40,9 @@ describe('plugin-meetings', () => {
         meeting: {
           request,
           locusInfo: {
-            sequence: {}
-          }
-        }
+            sequence: {},
+          },
+        },
       },
       {
         parent: webex,
@@ -54,11 +55,13 @@ describe('plugin-meetings', () => {
 
   const checkRequest = (expectedParams) => {
     assert.calledOnceWithExactly(locusDeltaRequestSpy, expectedParams);
-    assert.calledOnceWithExactly(meetingsRequest.request, merge(expectedParams, {body: {sequence: {}}}));
-  }
+    assert.calledOnceWithExactly(
+      meetingsRequest.request,
+      merge(expectedParams, {body: {sequence: {}}})
+    );
+  };
 
   describe('meeting request library', () => {
-
     beforeEach(() => {
       sinon.stub(uuid, 'v4').returns('12345');
     });
@@ -72,8 +75,6 @@ describe('plugin-meetings', () => {
         const locusUrl = 'locusURL';
         const deviceUrl = 'deviceUrl';
         const tones = '1234';
-
-
 
         await meetingsRequest.sendDTMF({
           locusUrl,
@@ -236,7 +237,7 @@ describe('plugin-meetings', () => {
 
       it('adds deviceCapabilities to request when breakouts are supported', async () => {
         await meetingsRequest.joinMeeting({
-          breakoutsSupported: true
+          breakoutsSupported: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -245,7 +246,7 @@ describe('plugin-meetings', () => {
 
       it('adds deviceCapabilities to request when live annotation are supported', async () => {
         await meetingsRequest.joinMeeting({
-          liveAnnotationSupported: true
+          liveAnnotationSupported: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
         assert.deepEqual(requestParams.body.deviceCapabilities, ['ANNOTATION_ON_SHARE_SUPPORTED']);
@@ -256,7 +257,10 @@ describe('plugin-meetings', () => {
           breakoutsSupported: true,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
-        assert.deepEqual(requestParams.body.deviceCapabilities, ['BREAKOUTS_SUPPORTED','ANNOTATION_ON_SHARE_SUPPORTED']);
+        assert.deepEqual(requestParams.body.deviceCapabilities, [
+          'BREAKOUTS_SUPPORTED',
+          'ANNOTATION_ON_SHARE_SUPPORTED',
+        ]);
       });
       it('does not add deviceCapabilities to request when breakouts and live annotation are not supported', async () => {
         await meetingsRequest.joinMeeting({});
@@ -264,17 +268,18 @@ describe('plugin-meetings', () => {
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
-
       });
 
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
           locale: 'en_UK',
-          deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']
+          deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'],
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
-        assert.deepEqual(requestParams.body.deviceCapabilities, ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED']);
+        assert.deepEqual(requestParams.body.deviceCapabilities, [
+          'SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED',
+        ]);
         assert.deepEqual(requestParams.body.locale, 'en_UK');
       });
 
@@ -305,8 +310,8 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.method, 'POST');
         assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
         assert.deepEqual(requestParams.body.clientMediaPreferences, {
-          "joinCookie": {anycastEntryPoint: "aws-eu-west-1"},
-          "preferTranscoding": true
+          joinCookie: {anycastEntryPoint: 'aws-eu-west-1'},
+          preferTranscoding: true,
         });
       });
     });
@@ -335,8 +340,8 @@ describe('plugin-meetings', () => {
               provisionalType: 'DIAL_IN',
               clientUrl,
             },
-            correlationId
-          }
+            correlationId,
+          },
         });
       });
 
@@ -369,7 +374,6 @@ describe('plugin-meetings', () => {
             correlationId,
           },
         });
-
       });
 
       it('sends disconnect phone audio request', async () => {
@@ -391,10 +395,10 @@ describe('plugin-meetings', () => {
           body: {
             device: {
               url: phoneUrl,
-              deviceType: 'PROVISIONAL'
+              deviceType: 'PROVISIONAL',
             },
-            correlationId
-          }
+            correlationId,
+          },
         });
       });
     });
@@ -467,12 +471,11 @@ describe('plugin-meetings', () => {
           method: 'PATCH',
           uri: `${locusUrl}/controls`,
           body: {
-            lock: {locked: true}
-          }
+            lock: {locked: true},
+          },
         });
       });
     });
-
 
     describe('#endMeetingForAll', () => {
       it('sends request to endMeetingForAll', async () => {
@@ -551,10 +554,83 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#prepareLeaveMeetingRequestOptions', () => {
+      it('returns expected result', async () => {
+        const result = meetingsRequest.prepareLeaveMeetingRequestOptions({
+          locusUrl: 'locusUrl',
+          selfId: 'selfId',
+          correlationId: 'correlationId',
+          resourceId: 'resourceId',
+          deviceUrl: 'deviceUrl',
+        });
+
+        assert.deepEqual(result, {
+          body: {
+            correlationId: 'correlationId',
+            device: {
+              deviceType: undefined,
+              url: 'deviceUrl',
+            },
+            usingResource: 'resourceId',
+          },
+          method: 'PUT',
+          uri: 'locusUrl/participant/selfId/leave',
+        });
+      });
+    });
+
+    describe('#buildLeaveMeetingRequestOptions', () => {
+      it('calls expected functions and returns expected result', async () => {
+        // return this.buildLocusDeltaRequestOptions(this.prepareLeaveMeetingRequestOptions(options));
+        const prepareLeaveMeetingRequestOptionsSpy = sinon.spy(
+          meetingsRequest,
+          'prepareLeaveMeetingRequestOptions'
+        );
+        const buildLocusDeltaRequestOptionsSpy = sinon.spy(
+          meetingsRequest,
+          'buildLocusDeltaRequestOptions'
+        );
+
+        const inputOpts = {
+          locusUrl: 'locusUrl',
+          selfId: 'selfId',
+          correlationId: 'correlationId',
+          resourceId: 'resourceId',
+          deviceUrl: 'deviceUrl',
+        };
+
+        const result = meetingsRequest.buildLeaveMeetingRequestOptions(inputOpts);
+
+        assert.calledOnceWithExactly(prepareLeaveMeetingRequestOptionsSpy, inputOpts);
+        assert.calledOnceWithExactly(buildLocusDeltaRequestOptionsSpy, {
+          method: 'PUT',
+          uri: 'locusUrl/participant/selfId/leave',
+          body: {
+            device: {deviceType: undefined, url: 'deviceUrl'},
+            usingResource: 'resourceId',
+            correlationId: 'correlationId',
+          },
+        });
+
+        assert.deepEqual(result, {
+          body: {
+            correlationId: 'correlationId',
+            device: {
+              deviceType: undefined,
+              url: 'deviceUrl',
+            },
+            sequence: {},
+            usingResource: 'resourceId',
+          },
+          method: 'PUT',
+          uri: 'locusUrl/participant/selfId/leave',
+        });
+      });
+    });
   });
 
   describe('#declineMeeting', () => {
-
     it('sends a request to decline the meeting', async () => {
       const reason = 'reason';
       const deviceUrl = 'deviceUrl';
@@ -564,7 +640,7 @@ describe('plugin-meetings', () => {
       await meetingsRequest.declineMeeting({
         locusUrl,
         deviceUrl,
-        reason
+        reason,
       });
 
       const expectedBody = {
@@ -581,7 +657,6 @@ describe('plugin-meetings', () => {
         body: expectedBody,
       });
     });
-
   });
 
   describe('#getLocusStatusByUrl', () => {
@@ -592,12 +667,11 @@ describe('plugin-meetings', () => {
       assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
         method: 'GET',
         uri: locusUrl,
-      })
+      });
     });
   });
 
   describe('#changeMeetingFloor', () => {
-
     it('change meeting floor', async () => {
       const options = {
         disposition: 'GRANTED',
@@ -606,11 +680,11 @@ describe('plugin-meetings', () => {
         resourceId: 'resourceId',
         resourceUrl: 'resourceUrl',
         uri: 'optionsUrl',
-        annotationInfo:{
+        annotationInfo: {
           version: '1',
           policy: 'Approval',
         },
-      }
+      };
 
       const expectBody = {
         annotation: {
@@ -622,19 +696,18 @@ describe('plugin-meetings', () => {
             devices: [
               {
                 deviceType: undefined,
-                url: "deviceUrl"
-              }
+                url: 'deviceUrl',
+              },
             ],
             url: 'personUrl',
           },
           disposition: 'GRANTED',
           requester: {
-            "url": "personUrl"
-          }
+            url: 'personUrl',
+          },
         },
         resourceUrl: 'resourceUrl',
       };
-
 
       await meetingsRequest.changeMeetingFloor(options);
 
@@ -642,7 +715,7 @@ describe('plugin-meetings', () => {
         method: 'PUT',
         uri: 'optionsUrl',
         body: expectBody,
-      })
+      });
     });
   });
 });

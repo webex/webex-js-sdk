@@ -3,7 +3,11 @@ import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
+import {
+  ClientEvent,
+  ClientEventLeaveReason,
+  CALL_DIAGNOSTIC_CONFIG,
+} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -5903,15 +5907,54 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Leave the current meeting
+   * Returns a promise that will resolve to fetch options for leaving a meeting.
+   *
+   * This is to support quickly submitting a leave request when the browser/tab is closing.
+   * Calling meeting.leave will not work because there are some async steps that will
+   * not complete before the browser is closed.  Instead, we pre-gather all the
+   * information/options needed for the request(s), and then simply and quickly
+   * fire the fetch(es) when pagehide is triggered.
+   *
+   * We must use fetch instead of request because fetch has a keepalive option that
+   * allows the request it to outlive the page.
+   *
+   * Note: the $timings values will be wrong, but setRequestTimingsAndFetch() will
+   * properly adjust them before submitting.
+   *
+   * @public
    * @param {Object} options leave options
    * @param {String} options.resourceId the device with which to leave from, empty if just the computer
+   * @param {any} options.reason the reason for leaving
+   * @returns {Promise} resolves to options to be used with fetch
+   */
+  public buildLeaveFetchRequestOptions(options: {resourceId?: string; reason?: any} = {} as any) {
+    const requestOptions = MeetingUtil.buildLeaveFetchRequestOptions(this, options);
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions(requestOptions);
+  }
+
+  /**
+   * Leave the current meeting
+   * @param {Object} options - leave options
+   * @param {String} [options.resourceId] - the device with which to leave from, empty if just the computer
+   * @param {String} [options.clientEventLeaveReason] - the leaveReason to include in the Call Analyzer event.
+   *                 Must be one of: 'paired-leave' | 'one-to-one' | 'ended-by-locus' (defaults to no reason)
+   *                 https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/main/diagnostic-events.raml#L796
+   * @param {String} [options.reason] - only used for logging
    * @returns {Promise}
    * @public
    * @memberof Meeting
    */
-  public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+  public leave(
+    options: {
+      resourceId?: string;
+      clientEventLeaveReason?: ClientEventLeaveReason;
+      reason?: any;
+    } = {} as any
+  ) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
@@ -5922,7 +5965,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           trigger: 'user-interaction',
           canProceed: false,
-          leaveReason,
+          leaveReason: options.clientEventLeaveReason,
           ...payload,
         },
         options: {meetingId: this.id},

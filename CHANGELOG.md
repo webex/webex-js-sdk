@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.215](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.214...v3.0.0-beta.215) (2023-09-14)
+
+
+### Features
+
+* **ca:** fix locus errors ([#3079](https://github.com/webex/webex-js-sdk/issues/3079)) ([a858f23](https://github.com/webex/webex-js-sdk/commit/a858f2334b4782fb7f0dc1167d6b04e82f18beb0))
+
+## [3.0.0-beta.214](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.213...v3.0.0-beta.214) (2023-09-13)
+
+
+### Bug Fixes
+
+* **call-analyzer:** fix client.call.leave reason ([#3075](https://github.com/webex/webex-js-sdk/issues/3075)) ([cb1440f](https://github.com/webex/webex-js-sdk/commit/cb1440fa3c03cfbb3f39d3a7cdb6d95f636c47a6))
+
+## [3.0.0-beta.213](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.212...v3.0.0-beta.213) (2023-09-12)
+
+
+### Features
+
+* **ca-metrics:** add converged architecture flag ([#3069](https://github.com/webex/webex-js-sdk/issues/3069)) ([891b79b](https://github.com/webex/webex-js-sdk/commit/891b79b8ccd3e1090d8db91bd8bb9cc0e60a10b5))
+* **ca:** align version number ([#3068](https://github.com/webex/webex-js-sdk/issues/3068)) ([67fbdc6](https://github.com/webex/webex-js-sdk/commit/67fbdc6e28d1f258a1108d78b03470a7f4a30d67))
+
 ## [3.0.0-beta.212](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.211...v3.0.0-beta.212) (2023-09-11)
 
 

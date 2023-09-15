@@ -90,9 +90,9 @@ const setRequestTimings = (options) => {
  * @returns {Promise} promise that resolves to a response object
  */
 export const setTimingsAndFetch = (options) => {
-  // call the fetch API
   const opts = setRequestTimings(options);
 
+  // call the fetch API
   return fetch(opts.uri, opts);
 };
 

@@ -11,6 +11,7 @@ import config from './config';
 import NewMetrics from './new-metrics';
 import {
   ClientEvent,
+  ClientEventLeaveReason,
   SubmitBehavioralEvent,
   SubmitClientEvent,
   SubmitInternalEvent,
@@ -31,6 +32,7 @@ export {default, getOSNameInternal} from './metrics';
 export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics};
 export type {
   ClientEvent,
+  ClientEventLeaveReason,
   SubmitBehavioralEvent,
   SubmitClientEvent,
   SubmitInternalEvent,

@@ -255,6 +255,7 @@ describe('plugin-meetings', () => {
         destination: testDestination,
         destinationType: _MEETING_ID_,
         correlationId,
+        selfId: uuid1,
       },
       {
         parent: webex,
@@ -262,6 +263,7 @@ describe('plugin-meetings', () => {
     );
 
     meeting.members.selfId = uuid1;
+    meeting.selfId = uuid1;
   });
 
   describe('meeting index', () => {
@@ -2487,7 +2489,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
-          const leave = meeting.leave();
+          const leave = meeting.leave({clientEventLeaveReason: 'ended-by-locus'});
 
           await leave;
 
@@ -2496,7 +2498,7 @@ describe('plugin-meetings', () => {
             payload: {
               trigger: 'user-interaction',
               canProceed: false,
-              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              leaveReason: 'ended-by-locus',
             },
             options: {meetingId: meeting.id},
           });
@@ -2520,7 +2522,7 @@ describe('plugin-meetings', () => {
             payload: {
               trigger: 'user-interaction',
               canProceed: false,
-              leaveReason: 'CLIENT_LEAVE_REQUEST',
+              leaveReason: undefined,
               errors: [
                 {
                   fatal: false,
@@ -7958,6 +7960,41 @@ describe('plugin-meetings', () => {
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
         });
+      });
+    });
+  });
+
+  describe('#buildLeaveFetchRequestOptions', () => {
+    it('should have #buildLeaveFetchRequestOptions', () => {
+      assert.exists(meeting.buildLeaveFetchRequestOptions);
+    });
+
+    it('calls expected functions', () => {
+      const buildLeaveFetchRequestOptionsSpy = sinon.spy(
+        MeetingUtil,
+        'buildLeaveFetchRequestOptions'
+      );
+      const prepareFetchOptionsSpy = sinon.stub();
+      webex.prepareFetchOptions = prepareFetchOptionsSpy;
+
+      meeting.buildLeaveFetchRequestOptions({resourceId: 'foo'});
+
+      assert.calledOnce(buildLeaveFetchRequestOptionsSpy);
+      assert.instanceOf(buildLeaveFetchRequestOptionsSpy.getCall(0).args[0], Meeting);
+      assert.deepEqual(buildLeaveFetchRequestOptionsSpy.getCall(0).args[1], {resourceId: 'foo'});
+
+      assert.calledOnce(prepareFetchOptionsSpy);
+      assert.deepEqual(prepareFetchOptionsSpy.getCall(0).args[0], {
+        body: {
+          correlationId: meeting.correlationId,
+          device: {
+            deviceType: undefined,
+            url: uuid3,
+          },
+          usingResource: 'foo',
+        },
+        method: 'PUT',
+        uri: `${url1}/participant/${uuid1}/leave`,
       });
     });
   });

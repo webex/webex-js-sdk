@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-messages",
-  "version": "3.0.0-beta.212",
+  "version": "3.0.0-beta.215",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

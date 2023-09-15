@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {
   clearEmptyKeysRecursively,
+  extractVersionMetadata,
   getBuildType,
   isLocusServiceErrorCode,
   prepareDiagnosticMetricItem,
@@ -238,7 +239,8 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
 
       const options = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -249,11 +251,12 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       const expectedOptions = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -264,7 +267,7 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       check(options, expectedOptions);
@@ -276,7 +279,8 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
 
       const options = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -295,11 +299,12 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       const expectedOptions = {
-        body: {
+        json: true,
+        body: JSON.stringify({
           metrics: [
             {
               eventPayload: {
@@ -318,19 +323,83 @@ describe('internal-plugin-metrics', () => {
               },
             },
           ],
-        },
+        }),
       };
 
       check(options, expectedOptions);
       sinon.restore();
     });
 
-    it(`does not throw when data missing`, () => {
+    it(`returns expected options when json is falsey`, () => {
+      const now = new Date();
+      sinon.useFakeTimers(now.getTime());
+
+      const options = {
+        body: JSON.stringify({
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  sent: 666,
+                },
+              },
+            },
+          ],
+        }),
+      };
+
+      const expectedOptions = {
+        body: JSON.stringify({
+          metrics: [
+            {
+              eventPayload: {
+                originTime: {
+                  triggered: 555,
+                  sent: 666,
+                },
+              },
+            },
+          ],
+        }),
+      };
+
+      check(options, expectedOptions);
+      sinon.restore();
+    });
+
+    it(`does not throw when there is no body`, () => {
       const options = {};
 
       const expectedOptions = {};
 
       check(options, expectedOptions);
+    });
+
+    it(`does not throw when body is empty`, () => {
+      const options = {body: '"{}"'};
+
+      const expectedOptions = {body: '"{}"'};
+
+      check(options, expectedOptions);
+    });
+  });
+
+  describe('extractVersionMetadata', () => {
+    [
+      ['1.2.3', {majorVersion: 1, minorVersion: 2}],
+      ['0.0.1', {majorVersion: 0, minorVersion: 0}],
+      ['0.0.0', {majorVersion: 0, minorVersion: 0}],
+      ['1.2', {majorVersion: 1, minorVersion: 2}],
+      ['1', {majorVersion: 1, minorVersion: NaN}],
+      ['foo', {majorVersion: NaN, minorVersion: NaN}],
+      ['1.foo', {majorVersion: 1, minorVersion: NaN}],
+      ['foo.1', {majorVersion: NaN, minorVersion: 1}],
+      ['foo.bar', {majorVersion: NaN, minorVersion: NaN}],
+    ].forEach(([version, expected]) => {
+      it(`returns expected result for ${version}`, () => {
+        assert.deepEqual(extractVersionMetadata(version as string), expected);
+      });
     });
   });
 });
