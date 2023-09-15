@@ -7,6 +7,7 @@ import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 
 import testUtils from '../../../utils/testUtils';
+import { IP_VERSION } from '../../../../src/constants';
 
 describe('TurnDiscovery', () => {
   let clock;
@@ -50,7 +51,10 @@ describe('TurnDiscovery', () => {
         testMeeting.roapSeq = newSeq;
       }),
       updateMediaConnections: sinon.stub(),
-      webex: {meetings: {reachability: {isAnyClusterReachable: () => Promise.resolve(false)}}},
+      webex: {meetings: {reachability: {
+        isAnyClusterReachable: () => Promise.resolve(false),
+        getIpVersion: () => IP_VERSION.unknown,
+      }}},
       isMultistream: false,
       locusMediaRequest: { fake: true },
     };
@@ -78,7 +82,8 @@ describe('TurnDiscovery', () => {
       locusSelfUrl: testMeeting.selfUrl,
       mediaId: expectedMediaId,
       meetingId: testMeeting.id,
-      locusMediaRequest: testMeeting.locusMediaRequest
+      locusMediaRequest: testMeeting.locusMediaRequest,
+      ipVersion: 0,
     });
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {

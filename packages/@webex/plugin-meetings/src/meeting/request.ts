@@ -25,6 +25,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
+  IP_VERSION,
 } from '../constants';
 import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
@@ -123,6 +124,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
+    ipVersion: IP_VERSION;
   }) {
     const {
       asResourceOccupant,
@@ -143,6 +145,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       locale,
       deviceCapabilities = [],
       liveAnnotationSupported,
+      ipVersion,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -168,6 +171,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       clientMediaPreferences: {
         preferTranscoding: preferTranscoding ?? true,
         joinCookie,
+        ipver: ipVersion,
       },
     };
 

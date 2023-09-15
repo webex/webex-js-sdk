@@ -2,7 +2,7 @@
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {REACHABILITY} from '../constants';
+import {IP_VERSION, REACHABILITY} from '../constants';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 
 /**
@@ -70,9 +70,10 @@ export default class RoapRequest extends StatelessWebexPlugin {
     locusSelfUrl: string;
     mediaId: string;
     meetingId: string;
+    ipVersion: IP_VERSION;
     locusMediaRequest?: LocusMediaRequest;
   }) {
-    const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest} = options;
+    const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest, ipVersion} = options;
 
     if (!mediaId) {
       LoggerProxy.logger.info('Roap:request#sendRoap --> sending empty mediaID');
@@ -109,6 +110,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
         mediaId,
         roapMessage,
         reachability: localSdpWithReachabilityData.reachability,
+        ipVersion,
       })
       .then((res) => {
         // @ts-ignore

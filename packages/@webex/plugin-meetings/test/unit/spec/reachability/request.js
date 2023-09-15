@@ -3,6 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import ReachabilityRequest from '@webex/plugin-meetings/src/reachability/request';
+import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 
 
 describe('plugin-meetings/reachability', () => {
@@ -47,7 +48,7 @@ describe('plugin-meetings/reachability', () => {
         }
       }));
 
-      const res = await reachabilityRequest.getClusters();
+      const res = await reachabilityRequest.getClusters(IP_VERSION.only_ipv4);
 
       const requestParams = webex.request.getCall(0).args[0];
 
@@ -58,6 +59,7 @@ describe('plugin-meetings/reachability', () => {
 
       assert.deepEqual(requestParams.qs, {
         JCSupport: 1,
+        ipver: 4,
       });
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
