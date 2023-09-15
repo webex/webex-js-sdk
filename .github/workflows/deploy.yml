@@ -9,10 +9,9 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
-  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
-  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
-  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
-  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
+  GIT_AUTHOR_NAME: ${{ github.actor }}
+  GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
+
 
 jobs:
   initialize:
@@ -234,6 +233,11 @@ jobs:
 
       - name: Build Samples
         run: yarn run samples:build
+
+      - name: Set Git Identity
+        run: |
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git config user.name "${GIT_AUTHOR_NAME}"
 
       - name: Publish Docs Folder
         run: |
