@@ -202,7 +202,6 @@ jobs:
       - name: TODO - Documentation Deploy Steps
         run: echo "TODO - Documentation Deploy Steps"
 
-
       - name: Checkout Project
         uses: actions/checkout@v3
 
@@ -234,10 +233,9 @@ jobs:
       - name: Build Samples
         run: yarn run samples:build
 
-      - name: Set Git Identity
-        run: |
-          git config user.email "${GIT_AUTHOR_EMAIL}"
-          git config user.name "${GIT_AUTHOR_NAME}"
+      - add_ssh_keys:
+          fingerprints:
+            - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
 
       - name: Publish Docs Folder
         run: |
