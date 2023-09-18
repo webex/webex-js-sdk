@@ -211,7 +211,7 @@ export interface ICall extends Eventing<CallEventTypes> {
   startCallerIdResolution: (callerInfo: CallerIdInfo) => void;
   handleMidCallEvent: (event: MidCallEvent) => void;
   dial: (localAudioStream: LocalMicrophoneStream) => void;
-  sendDTMF: (tone: string) => void;
+  sendDigit: (tone: string) => void;
   answer: (localAudioStream: LocalMicrophoneStream) => void;
   completeTransfer: (
     transferType: TransferType,

@@ -495,12 +495,12 @@ function createCall(e) {
   call.dial(localAudioStream);
 }
 
-function sendDTMF() {
+function sendDigit() {
   const digits = dtmfDigit.value;
 
-  console.log(`dtmf pressed :- ${digits}`);
+  console.log(`Digit pressed :- ${digits}`);
 
-  call.sendDTMF(digits);
+  call.sendDigit(digits);
 }
 
 async function getCallQuality() {
