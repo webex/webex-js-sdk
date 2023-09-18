@@ -528,7 +528,7 @@ describe('State Machine handler tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 
-    call.sendDTMF('1');
+    call.sendDigit('1');
     expect(dtmfMock).toBeCalledOnceWith('1');
 
     call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'});
@@ -592,10 +592,10 @@ describe('State Machine handler tests', () => {
     expect(warnSpy).toBeCalledTimes(4);
     warnSpy.mockClear();
     /* Try sending a dtmf which shouldn't work as call is not connected. */
-    call.sendDTMF('1');
+    call.sendDigit('1');
     expect(warnSpy).toBeCalledOnceWith(`Can't send DTMF as call is not yet connected`, {
       file: 'call',
-      method: 'sendDTMF',
+      method: 'sendDigit',
     });
   });
 
