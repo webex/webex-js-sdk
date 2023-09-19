@@ -21,7 +21,6 @@
     "build": "tsc",
     "build:src": "tsc",
     "test:unit": "jest --config=jest.config.js --runInBand",
-    "start": "web-dev-server --config web-dev-server.config.js",
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
