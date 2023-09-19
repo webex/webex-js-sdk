@@ -8,6 +8,7 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
+  token: ${{ secrets.NPM_TOKEN }}
 
 jobs:
   initialize:
@@ -158,6 +159,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
+      - name: Configure npm
+        run: echo "//registry.npmjs.org/:_authToken=${{ env.token }}" > ~/.npmrc
+  
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
