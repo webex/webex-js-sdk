@@ -46,7 +46,7 @@
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest",
-    "deploy:npm": "yarn npm publish"
+    "deploy:npm": "echo yarn npm publish"
   },
   "devDependencies": {
     "@webex/babel-config-legacy": "workspace:^",
