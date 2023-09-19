@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.217](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.216...v3.0.0-beta.217) (2023-09-15)
+
+
+### Features
+
+* byok revoked error handling ([#3083](https://github.com/webex/webex-js-sdk/issues/3083)) ([9893f02](https://github.com/webex/webex-js-sdk/commit/9893f02d1e22db82dac8e73a6c547770df1fe61e))
+
+## [3.0.0-beta.216](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.215...v3.0.0-beta.216) (2023-09-15)
+
+
+### Features
+
+* **internal-plugin-calendar:** support unified scheduler in beta branch (merge from master) ([#3076](https://github.com/webex/webex-js-sdk/issues/3076)) ([d119728](https://github.com/webex/webex-js-sdk/commit/d11972894f6084c81b571b48d3da708c961158a9))
+* **internal-plugin-dss:** support search places feature in beta branch (merge from master) ([#3077](https://github.com/webex/webex-js-sdk/issues/3077)) ([f5e9bba](https://github.com/webex/webex-js-sdk/commit/f5e9bba0edd0c14cc38a8cbaa726c9c999fda810))
+
 ## [3.0.0-beta.215](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.214...v3.0.0-beta.215) (2023-09-14)
 
 
