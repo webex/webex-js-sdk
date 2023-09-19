@@ -1,17 +1,18 @@
-# web-calling-sdk
+# @webex/calling
 
-> A framework for interacting with Web Calling API across multiple browsers.
+With the Webex Calling SDK, you can effortlessly integrate fundamental audio calling capabilities into your solutions, enhancing the way your users connect.
 
-> API guide https://sqbu-github.cisco.com/pages/webrtc-calling/mobius/mobius-api-spec/docs/
-> Registration flow details https://wiki.cisco.com/display/IPCBU/Registration+Flows
-> Calling SDK API https://wiki.cisco.com/display/IPCBU/Calling+SDK+API
+> [Introduction to the Webex Web Calling SDK](https://github.com/webex/webex-js-sdk/wiki/Introducing-the-Webex-Web-Calling-SDK)
+> [Quickstart guide](https://github.com/webex/webex-js-sdk/wiki/Quickstart-Guide-(Calling))
+> API guide - TBD
+
  
 ## Developing
 
 ```shell
-git clone https://github.com/webex/webex-js-sdk.git
+git clone https://github.com/\<your-fork\>/webex-js-sdk.git
 cd web-js-sdk/
-yarn i
+yarn install
 ```
 
 ### Building
@@ -22,7 +23,7 @@ project after some code changes, state them here:
 ```shell
 yarn workspaces foreach --parallel --verbose run build:src
 
- yarn workspace @webex/calling run build
+yarn build:local
 ```
 
 ### Testing
@@ -31,31 +32,15 @@ yarn workspaces foreach --parallel --verbose run build:src
  yarn workspace @webex/calling run test
 ```
 
-
-### Testing on samples // This will change in future for now 
-
-```
- yarn workspace @webex/calling run build:browser
- yarn run samples:serve
-```
-
-
-### Deploying / Publishing
-
-In case there's some step you have to take that publishes this project to a
-server, this is the right time to state it.
-
+### Testing on samples
 ```shell
-yarn release
+ yarn run samples:serve
 ```
 
 ### Consuming the SDK
 
-The Calling SDK package can be incorporated into an existing project by updating the .npmrc and package.json. Add the line pasted below to get access to the calling-sdk package located in the artifactory.
+The Calling package can be incorporated into an existing project by updating the package.json. Add the line pasted below to get access to the calling-sdk package located in the artifactory.
 
-```shell
-@webex:registry=https://engci-maven.cisco.com/artifactory/api/npm/webex-npm-group
-```
 
 Use the following commands to update the package.json and package.lock/yarn.lock with the latest version of the calling-sdk package.
 ```shell

@@ -2579,24 +2579,24 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   /**
-   * Sends DTMF to remote.
+   * Sends digit over the established call.
    *
    * @param tone - DTMF tones.
    */
-  public sendDTMF(tone: string) {
+  public sendDigit(tone: string) {
     /* istanbul ignore else */
     if (!this.connected) {
       log.warn(`Can't send DTMF as call is not yet connected`, {
         file: CALL_FILE,
-        method: 'sendDTMF',
+        method: 'sendDigit',
       });
 
       return;
     }
 
-    log.info(`Sending DTMF : ${tone}`, {
+    log.info(`Sending digit : ${tone}`, {
       file: CALL_FILE,
-      method: 'sendDTMF',
+      method: 'sendDigit',
     });
 
     this.mediaConnection.insertDTMF(tone);
