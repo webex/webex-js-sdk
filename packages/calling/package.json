@@ -10,11 +10,8 @@
   "author": "devsupport@webex.com",
   "repository": {
     "type": "git",
-    "url": "https://sqbu-github.cisco.com/WebExSquared/web-calling-sdk"
-  },
-  "publishConfig": {
-    "registry": "https://engci-maven.cisco.com/artifactory/api/npm/webex-npm-group/",
-    "tag": "latest"
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/calling"
   },
   "engines": {
     "node": ">=14.x"
@@ -126,6 +123,5 @@
   "gh-pages-deploy": {
     "staticpath": "docs",
     "noprompt": true
-  },
-  "version": "0.0.1-next.1"
+  }
 }
