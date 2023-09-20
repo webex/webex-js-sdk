@@ -4,7 +4,9 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
-import {merge} from 'lodash';
+import { merge } from 'lodash';
+import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
+
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
@@ -291,7 +293,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.locale, undefined);
       });
 
-      it('includes joinCookie correctly', async () => {
+      it('includes joinCookie and ipver correctly', async () => {
         const locusUrl = 'locusURL';
         const deviceUrl = 'deviceUrl';
         const correlationId = 'random-uuid';
@@ -304,14 +306,16 @@ describe('plugin-meetings', () => {
           correlationId,
           roapMessage,
           permissionToken,
+          ipVersion: IP_VERSION.ipv4_and_ipv6
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.equal(requestParams.method, 'POST');
         assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
         assert.deepEqual(requestParams.body.clientMediaPreferences, {
-          joinCookie: {anycastEntryPoint: 'aws-eu-west-1'},
-          preferTranscoding: true,
+          "joinCookie": {anycastEntryPoint: "aws-eu-west-1"},
+          "preferTranscoding": true,
+          "ipver": 1
         });
       });
     });

@@ -146,7 +146,7 @@ export default class Meetings extends WebexPlugin {
   meetingCollection: any;
   personalMeetingRoom: any;
   preferredWebexSite: any;
-  reachability: any;
+  reachability: Reachability;
   registered: any;
   request: any;
   geoHintInfo: any;
@@ -202,15 +202,17 @@ export default class Meetings extends WebexPlugin {
      * @memberof Meetings
      */
     this.personalMeetingRoom = null;
+
     /**
-     * The Reachability object to interact with server, starts as null until {@link Meeting#setReachability} is called
+     * The Reachability object to interact with server
      * starts as null
      * @instance
      * @type {Object}
      * @private
      * @memberof Meetings
      */
-    this.reachability = null;
+    // @ts-ignore
+    this.reachability = new Reachability(this.webex);
 
     /**
      * If the meetings plugin has been registered and listening via {@link Meetings#register}
@@ -928,17 +930,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * initializes the reachability instance for Meetings
-   * @returns {undefined}
-   * @public
-   * @memberof Meetings
-   */
-  setReachability() {
-    // @ts-ignore
-    this.reachability = new Reachability(this.webex);
-  }
-
-  /**
    * gets the reachability instance for Meetings
    * @returns {Reachability}
    * @public
@@ -955,10 +946,6 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   startReachability() {
-    if (!this.reachability) {
-      this.setReachability();
-    }
-
     return this.getReachability().gatherReachability();
   }
 

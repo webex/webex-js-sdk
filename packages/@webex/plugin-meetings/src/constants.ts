@@ -1236,3 +1236,13 @@ export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
   supportHostKey: true,
   supportCountryList: true,
 };
+
+/** the values for IP_VERSION are fixed and defined in Orpheus API */
+export const IP_VERSION = {
+  unknown: 0,
+  only_ipv4: 4,
+  only_ipv6: 6,
+  ipv4_and_ipv6: 1,
+} as const;
+
+export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
