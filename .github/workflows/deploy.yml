@@ -217,6 +217,9 @@ jobs:
 
       - name: Publish Docs Folder
         run: |
-          git add docs/
-          git commit -m "chore(docs): update docs"
-          git push origin HEAD:documentation --force
+          # Check if there's anything to commit before committing
+          if [ -n "$(git status --porcelain)" ]; then
+            git add docs/
+            git commit -m "chore(docs): update docs"
+            git push origin HEAD:documentation --force
+          fi
