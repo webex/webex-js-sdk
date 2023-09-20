@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.218](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.217...v3.0.0-beta.218) (2023-09-20)
+
+
+### Features
+
+* sending ipver parameter to Locus and Orpheus ([#3096](https://github.com/webex/webex-js-sdk/issues/3096)) ([2faa945](https://github.com/webex/webex-js-sdk/commit/2faa9455bee03a36e3d4b85d407fc8e19644172c))
+
 ## [3.0.0-beta.217](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.216...v3.0.0-beta.217) (2023-09-15)
 
 
