@@ -27,6 +27,7 @@ import {
   PC_BAIL_TIMEOUT,
   DISPLAY_HINTS,
   SELF_POLICY,
+  IP_VERSION,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -1658,6 +1659,7 @@ describe('plugin-meetings', () => {
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.webex.meetings.reachability = {
               isAnyClusterReachable: sinon.stub().resolves(true),
+              getIpVersion: () => IP_VERSION.unknown,
             };
             meeting.roap.doTurnDiscovery = sinon
               .stub()
@@ -1797,6 +1799,7 @@ describe('plugin-meetings', () => {
                 clientMediaPreferences: {
                   preferTranscoding: !meeting.isMultistream,
                   joinCookie: undefined,
+                  ipver: 0,
                 },
               },
             });
@@ -1822,6 +1825,7 @@ describe('plugin-meetings', () => {
                 ],
                 clientMediaPreferences: {
                   preferTranscoding: !meeting.isMultistream,
+                  ipver: 0,
                 },
                 respOnlySdp: true,
                 usingResource: null,

@@ -117,7 +117,7 @@ webex.meetings.getMeetingByType('SIP_URI', sipUri);
 
 ```js
 webex.meetings.personalMeetingRoom; // the personal meeting room instance
-webex.meetings.reachability; // the reachability instance, not initialized until after setReachability is called
+webex.meetings.reachability; // the reachability instance
 webex.meetings.meetingCollection; // the collection of meetings instance
 webex.meetings.meetingInfo; // the meeting info instance
 ```

@@ -7,7 +7,7 @@
 import _ from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
+import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY, IP_VERSION} from '../constants';
 
 import ReachabilityRequest from './request';
 
@@ -70,7 +70,9 @@ export default class Reachability {
 
     // Fetch clusters and measure latency
     try {
-      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters();
+      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
+        this.getIpVersion()
+      );
 
       // Perform Reachability Check
       const results = await this.performReachabilityCheck(clusters);
@@ -130,6 +132,14 @@ export default class Reachability {
     }
 
     return reachable;
+  }
+
+  /**
+   * Returns what we know about the IP version of the networks we're connected to.
+   * @returns {IP_VERSION}
+   */
+  getIpVersion(): IP_VERSION {
+    return IP_VERSION.unknown;
   }
 
   /**

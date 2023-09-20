@@ -1,5 +1,5 @@
 import LoggerProxy from '../common/logs/logger-proxy';
-import {HTTP_VERBS, RESOURCE, API} from '../constants';
+import {HTTP_VERBS, RESOURCE, API, IP_VERSION} from '../constants';
 
 export interface ClusterNode {
   isVideoMesh: boolean;
@@ -30,9 +30,10 @@ class ReachabilityRequest {
   /**
    * Gets the cluster information
    *
+   * @param {IP_VERSION} ipVersion information about current ip network we're on
    * @returns {Promise}
    */
-  getClusters = (): Promise<{clusters: ClusterList; joinCookie: any}> =>
+  getClusters = (ipVersion: IP_VERSION): Promise<{clusters: ClusterList; joinCookie: any}> =>
     this.webex
       .request({
         method: HTTP_VERBS.GET,
@@ -41,6 +42,7 @@ class ReachabilityRequest {
         resource: RESOURCE.CLUSTERS,
         qs: {
           JCSupport: 1,
+          ipver: ipVersion,
         },
       })
       .then((res) => {
@@ -51,7 +53,9 @@ class ReachabilityRequest {
         });
 
         LoggerProxy.logger.log(
-          `Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`
+          `Reachability:request#getClusters --> get clusters (ipver=${ipVersion}) successful:${JSON.stringify(
+            clusters
+          )}`
         );
 
         return {

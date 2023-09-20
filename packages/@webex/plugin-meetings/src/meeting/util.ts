@@ -72,6 +72,7 @@ const MeetingUtil = {
           audioMuted,
           videoMuted,
         },
+        ipVersion: meeting.getWebexObject().meetings.reachability.getIpVersion(),
       })
       .then((response) => {
         // @ts-ignore
@@ -124,6 +125,7 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
+        ipVersion: meeting.getWebexObject().meetings.reachability.getIpVersion(),
       })
       .then((res) => {
         // @ts-ignore
