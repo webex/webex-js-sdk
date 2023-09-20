@@ -161,9 +161,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
-      - name: Configure npm
-        run: echo "//registry.npmjs.org/:_authToken=${{ env.token }}" > ~/.npmrc
-
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -194,6 +191,8 @@ jobs:
 
       - name: Deploy Packages - [DRY RUN]
         run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-documentation:
     name: Publish - Documentation
