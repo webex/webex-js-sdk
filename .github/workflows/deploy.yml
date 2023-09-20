@@ -5,6 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
+      - deploy_cd_test
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -161,7 +162,7 @@ jobs:
 
       - name: Configure npm
         run: echo "//registry.npmjs.org/:_authToken=${{ env.token }}" > ~/.npmrc
-  
+
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
@@ -175,7 +176,7 @@ jobs:
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
-        run: | 
+        run: |
           yarn
           yarn package-tools sync --tag ${GITHUB_REF##*/}
 
@@ -201,3 +202,22 @@ jobs:
     steps:
       - name: TODO - Documentation Deploy Steps
         run: echo "TODO - Documentation Deploy Steps"
+
+      - name: Build Docs
+        run: yarn run build:docs
+
+      - name: Build Samples
+        run: yarn run samples:build
+
+      - name: Adding SSh keys for authentication
+        uses: webex/webex-js-sdk/.github/actions/add-ssh-keys@deploy_cd_test
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-public-key: ${{ secrets.DEPLOY_KEY_PUB }}
+
+      - name: Publish Docs Folder
+        run: |
+          git add docs/
+          git commit -m "chore(docs): update docs"
+          git push origin HEAD:documentation --force
+
