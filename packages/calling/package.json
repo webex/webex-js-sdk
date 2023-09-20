@@ -24,7 +24,6 @@
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "test:spell-check": "cspell \"{README.md,.github/*.md,src/**/*.ts}\"",
     "build:docs": "typedoc --out docs/",
     "docs": "typedoc --emit none",
     "deploy:npm": "npm publish"
