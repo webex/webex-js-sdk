@@ -255,6 +255,7 @@ describe('plugin-meetings', () => {
         destination: testDestination,
         destinationType: _MEETING_ID_,
         correlationId,
+        selfId: uuid1,
       },
       {
         parent: webex,
@@ -262,6 +263,7 @@ describe('plugin-meetings', () => {
     );
 
     meeting.members.selfId = uuid1;
+    meeting.selfId = uuid1;
   });
 
   describe('meeting index', () => {
@@ -1653,6 +1655,7 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
+            meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.webex.meetings.reachability = {
               isAnyClusterReachable: sinon.stub().resolves(true),
             };
@@ -1778,7 +1781,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -1799,7 +1807,12 @@ describe('plugin-meetings', () => {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
               body: {
-                device: {url: meeting.deviceUrl, deviceType: meeting.config.deviceType},
+                device: {
+                  url: meeting.deviceUrl,
+                  deviceType: meeting.config.deviceType,
+                  regionCode: 'EU',
+                  countryCode: 'UK',
+                },
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
@@ -2341,6 +2354,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.meetingRequest.declineMeeting);
         });
       });
+
       describe('#leave', () => {
         let sandbox;
 
@@ -2472,6 +2486,62 @@ describe('plugin-meetings', () => {
             deviceUrl: meeting.deviceUrl,
             reason: MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST,
           });
+        });
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting', async () => {
+          const leave = meeting.leave({clientEventLeaveReason: 'ended-by-locus'});
+
+          await leave;
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            payload: {
+              trigger: 'user-interaction',
+              canProceed: false,
+              leaveReason: 'ended-by-locus',
+            },
+            options: {meetingId: meeting.id},
+          });
+
+          assert(
+            webex.internal.newMetrics.submitClientEvent.calledAfter(
+              meeting.meetingRequest.leaveMeeting
+            )
+          );
+        });
+
+        it('should send client.call.leave after meetingRequest.leaveMeeting when erroring', async () => {
+          meeting.meetingRequest.leaveMeeting = sinon
+            .stub()
+            .returns(Promise.reject(new Error('forced')));
+
+          await assert.isRejected(meeting.leave());
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.call.leave',
+            payload: {
+              trigger: 'user-interaction',
+              canProceed: false,
+              leaveReason: undefined,
+              errors: [
+                {
+                  fatal: false,
+                  errorDescription: 'forced',
+                  category: 'signaling',
+                  errorCode: 1000,
+                  name: 'client.leave',
+                  shownToUser: false,
+                },
+              ],
+            },
+            options: {meetingId: meeting.id},
+          });
+
+          assert(
+            webex.internal.newMetrics.submitClientEvent.calledAfter(
+              meeting.meetingRequest.leaveMeeting
+            )
+          );
         });
       });
       describe('#requestScreenShareFloor', () => {
@@ -4041,14 +4111,6 @@ describe('plugin-meetings', () => {
             checkScreenShareAudioPublished(audioShareTrack);
           });
         });
-        it('creates instance and publishes with annotation info', async () => {
-          const annotationInfo = {
-            version: '1',
-            policy: ANNOTATION_POLICY.APPROVAL,
-          };
-          await meeting.publishTracks({annotationInfo});
-          assert.equal(meeting.annotationInfo, annotationInfo);
-        });
 
         describe('unpublishTracks', () => {
           beforeEach(async () => {
@@ -5260,16 +5322,16 @@ describe('plugin-meetings', () => {
 
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {
-                file: 'meeting/index',
-                function: 'setUpLocusSelfListener',
-              },
-              EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
-              {'locusUrl': 'newLocusUrl/12345'}
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+            {locusUrl: 'newLocusUrl/12345'}
           );
-          
+
           done();
         });
       });
@@ -5906,50 +5968,52 @@ describe('plugin-meetings', () => {
           [
             {
               actionName: 'canShareApplication',
-              callType: 'CALL',
               expectedEnabled: true,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canShareApplication',
-              callType: 'MEETING',
               expectedEnabled: false,
+              arePolicyRestrictionsSupported: true,
             },
             {
               actionName: 'canShareDesktop',
-              callType: 'CALL',
+              arePolicyRestrictionsSupported: false,
               expectedEnabled: true,
             },
             {
               actionName: 'canShareDesktop',
-              callType: 'MEETING',
+              arePolicyRestrictionsSupported: true,
               expectedEnabled: false,
             },
             {
               actionName: 'canShareContent',
-              callType: 'CALL',
+              arePolicyRestrictionsSupported: false,
               expectedEnabled: true,
             },
             {
               actionName: 'canShareContent',
-              callType: 'MEETING',
+              arePolicyRestrictionsSupported: true,
               expectedEnabled: false,
             },
             {
               actionName: 'canUseVoip',
-              callType: 'CALL',
               expectedEnabled: true,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canUseVoip',
-              callType: 'MEETING',
               expectedEnabled: false,
+              arePolicyRestrictionsSupported: true,
             },
           ],
-          ({actionName, callType, expectedEnabled}) => {
-            it(`${actionName} is ${expectedEnabled} when the call type is ${callType}`, () => {
-              meeting.type = callType;
+          ({actionName, arePolicyRestrictionsSupported, expectedEnabled}) => {
+            it(`${actionName} is ${expectedEnabled} when the call type is ${arePolicyRestrictionsSupported}`, () => {
               meeting.userDisplayHints = [];
               meeting.meetingInfo = {some: 'info'};
+              sinon
+                .stub(meeting, 'arePolicyRestrictionsSupported')
+                .returns(arePolicyRestrictionsSupported);
 
               meeting.updateMeetingActions();
 
@@ -5995,12 +6059,14 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               requiredPolicies: [],
               enableUnifiedMeetings: false,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canShareApplication',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
               requiredPolicies: [],
               enableUnifiedMeetings: false,
+              arePolicyRestrictionsSupported: false,
             },
             {
               actionName: 'canAnnotate',
@@ -6008,10 +6074,20 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
           ],
-          ({actionName, requiredDisplayHints, requiredPolicies, enableUnifiedMeetings, meetingInfo}) => {
+          ({
+            actionName,
+            requiredDisplayHints,
+            requiredPolicies,
+            enableUnifiedMeetings,
+            meetingInfo,
+            arePolicyRestrictionsSupported,
+          }) => {
             it(`${actionName} is enabled when the conditions are met`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = {};
+              meeting.selfUserPolicies = undefined;
+              sinon
+                .stub(meeting, 'arePolicyRestrictionsSupported')
+                .returns(arePolicyRestrictionsSupported);
 
               meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
                 ? true
@@ -6019,6 +6095,9 @@ describe('plugin-meetings', () => {
 
               meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
+              if (requiredPolicies) {
+                meeting.selfUserPolicies = {};
+              }
               forEach(requiredPolicies, (policy) => {
                 meeting.selfUserPolicies[policy] = true;
               });
@@ -6031,10 +6110,13 @@ describe('plugin-meetings', () => {
             if (requiredDisplayHints.length !== 0) {
               it(`${actionName} is disabled when the required display hints are missing`, () => {
                 meeting.userDisplayHints = [];
-                meeting.selfUserPolicies = {};
+                meeting.selfUserPolicies = undefined;
 
                 meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
+                if (requiredPolicies) {
+                  meeting.selfUserPolicies = {};
+                }
                 forEach(requiredPolicies, (policy) => {
                   meeting.selfUserPolicies[policy] = true;
                 });
@@ -6047,8 +6129,11 @@ describe('plugin-meetings', () => {
 
             it(`${actionName} is disabled when the required policies are missing`, () => {
               meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = {};
+              meeting.selfUserPolicies = undefined;
 
+              if (requiredPolicies) {
+                meeting.selfUserPolicies = {};
+              }
               meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
 
               meeting.updateMeetingActions();
@@ -6057,7 +6142,6 @@ describe('plugin-meetings', () => {
             });
           }
         );
-
 
         forEach(
           [
@@ -6111,8 +6195,15 @@ describe('plugin-meetings', () => {
             },
             {
               meetingInfo: undefined,
-              selfUserPolicies: {
+              selfUserPolicies: {},
+              expectedActions: {
+                supportHQV: true,
+                supportHDV: true,
               },
+            },
+            {
+              meetingInfo: {some: 'data'},
+              selfUserPolicies: undefined,
               expectedActions: {
                 supportHQV: true,
                 supportHDV: true,
@@ -6127,7 +6218,6 @@ describe('plugin-meetings', () => {
             )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
               meeting.meetingInfo = meetingInfo;
               meeting.selfUserPolicies = selfUserPolicies;
-              meeting.config.experimental.enableUnifiedMeetings = true;
 
               meeting.updateMeetingActions();
 
@@ -6146,7 +6236,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6157,7 +6246,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6168,7 +6256,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6179,7 +6266,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6187,15 +6273,12 @@ describe('plugin-meetings', () => {
         });
 
         it('canUseVoip is enabled when there is no meeting info', () => {
-          meeting.config.experimental.enableUnifiedMeetings = true;
-
           meeting.updateMeetingActions();
 
           assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
         });
 
         it('canUseVoip is enabled when it is a locus call', () => {
-          meeting.config.experimental.enableUnifiedMeetings = true;
           meeting.meetingInfo = {some: 'info'};
           meeting.type = 'CALL';
 
@@ -6208,7 +6291,6 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
@@ -6219,18 +6301,16 @@ describe('plugin-meetings', () => {
           meeting.userDisplayHints = undefined;
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
-          meeting.config.experimental.enableUnifiedMeetings = true;
 
           meeting.updateMeetingActions();
 
           assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
         });
 
-        it('canUseVoip is enabled when enableUnifiedMeetings is false', () => {
-          meeting.userDisplayHints = [];
-          meeting.selfUserPolicies = {};
+        it('canUseVoip is enabled when there are no policies', () => {
+          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
+          meeting.selfUserPolicies = undefined;
           meeting.meetingInfo.supportVoIP = false;
-          meeting.config.experimental.enableUnifiedMeetings = false;
 
           meeting.updateMeetingActions();
 
@@ -6264,6 +6344,13 @@ describe('plugin-meetings', () => {
               },
               expectedActions: {
                 canDoVideo: false,
+              },
+            },
+            {
+              meetingInfo: {some: 'data'},
+              selfUserPolicies: undefined,
+              expectedActions: {
+                canDoVideo: true,
               },
             },
             {
@@ -7873,6 +7960,41 @@ describe('plugin-meetings', () => {
         it('emits the expected event when not muted', async () => {
           await testEmit(false);
         });
+      });
+    });
+  });
+
+  describe('#buildLeaveFetchRequestOptions', () => {
+    it('should have #buildLeaveFetchRequestOptions', () => {
+      assert.exists(meeting.buildLeaveFetchRequestOptions);
+    });
+
+    it('calls expected functions', () => {
+      const buildLeaveFetchRequestOptionsSpy = sinon.spy(
+        MeetingUtil,
+        'buildLeaveFetchRequestOptions'
+      );
+      const prepareFetchOptionsSpy = sinon.stub();
+      webex.prepareFetchOptions = prepareFetchOptionsSpy;
+
+      meeting.buildLeaveFetchRequestOptions({resourceId: 'foo'});
+
+      assert.calledOnce(buildLeaveFetchRequestOptionsSpy);
+      assert.instanceOf(buildLeaveFetchRequestOptionsSpy.getCall(0).args[0], Meeting);
+      assert.deepEqual(buildLeaveFetchRequestOptionsSpy.getCall(0).args[1], {resourceId: 'foo'});
+
+      assert.calledOnce(prepareFetchOptionsSpy);
+      assert.deepEqual(prepareFetchOptionsSpy.getCall(0).args[0], {
+        body: {
+          correlationId: meeting.correlationId,
+          device: {
+            deviceType: undefined,
+            url: uuid3,
+          },
+          usingResource: 'foo',
+        },
+        method: 'PUT',
+        uri: `${url1}/participant/${uuid1}/leave`,
       });
     });
   });

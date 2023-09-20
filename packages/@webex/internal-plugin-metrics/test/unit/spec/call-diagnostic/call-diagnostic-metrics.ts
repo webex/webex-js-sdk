@@ -16,7 +16,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -32,6 +32,7 @@ describe('internal-plugin-metrics', () => {
           lastActive: 'lastActive',
         },
       },
+      meetingInfo: {},
       getCurUserType: () => 'host',
     };
 
@@ -144,6 +145,35 @@ describe('internal-plugin-metrics', () => {
           userAgent,
         });
       });
+
+      it('builds origin correctly, when overriding clientVersion', () => {
+        webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            "clientVersion": "43.9.0.1234",
+            "localNetworkPrefix": "1.3.4.0",
+            "majorVersion": 43,
+            "minorVersion": 9,
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      })
     });
 
     describe('#getIdentifiers', () => {
@@ -274,6 +304,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           options
         );
@@ -297,6 +328,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -430,6 +462,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -554,6 +587,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -798,6 +832,10 @@ describe('internal-plugin-metrics', () => {
         checkCodeError({body: {reason: {reasonCode: 2409005}}}, defaultExpectedRes);
       });
 
+      it('should generate event error payload correctly if rawError has error.body.errorCode', () => {
+        checkCodeError({error: {body: {errorCode: 2409005}}}, defaultExpectedRes);
+      });
+
       const checkLocusError = (payload: any, isExpectedToBeCalled: boolean) => {
         const res = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
@@ -882,6 +920,22 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#getIsConvergedArchitectureEnabled', () => {
+      it('returns true if converged architecture is enabled', () => {
+        fakeMeeting.meetingInfo = {enableConvergedArchitecture: true};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), true);
+      });
+      it('returns false if converged architecture is not enabled', () => {
+        fakeMeeting.meetingInfo = {enableConvergedArchitecture: false};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), false);
+
+      });
+      it('returns undefined if converged architecture is not defined', () => {
+        fakeMeeting.meetingInfo = {};
+        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), undefined);
+      });
+    })
+
     describe('#buildClientEventFetchRequestOptions', () => {
       it('returns expected options', async () => {
         const options = {
@@ -918,6 +972,7 @@ describe('internal-plugin-metrics', () => {
                     name: 'client.exit.app',
                     trigger: 'user-interaction',
                     userType: 'host',
+                    isConvergedArchitectureEnabled: undefined,
                   },
                   eventId: 'my-fake-id',
                   origin: {

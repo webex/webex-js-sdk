@@ -139,24 +139,24 @@ describe('plugin-meetings', () => {
       it('should add the sequence object to a request body', () => {
         const body = {};
 
-        MeetingUtil.addSequence({
-          locusInfo: {
-            sequence: 'sequence'
-          }
-        }, body);
+        MeetingUtil.addSequence(
+          {
+            locusInfo: {
+              sequence: 'sequence',
+            },
+          },
+          body
+        );
 
         assert.deepEqual(body, {
-          sequence: 'sequence'
+          sequence: 'sequence',
         });
       });
 
       it('should work with an undefined meeting', () => {
         const body = {};
 
-        MeetingUtil.addSequence(
-          undefined,
-          body
-        );
+        MeetingUtil.addSequence(undefined, body);
 
         assert.deepEqual(body, {});
       });
@@ -182,13 +182,13 @@ describe('plugin-meetings', () => {
       it('should call handleLocusDelta with the new delta locus', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub()
+            handleLocusDelta: sinon.stub(),
           },
         };
 
         const originalResponse = {
           body: {
-            locus: 'locus'
+            locus: 'locus',
           },
         };
 
@@ -228,24 +228,19 @@ describe('plugin-meetings', () => {
     });
 
     describe('generateLocusDeltaRequest', () => {
-
-      afterEach(() => {
-        WeakRef.prototype.deref.restore();
-      });
-
       it('generates the correct wrapper function', async () => {
         const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
 
         const meeting = {
           request: sinon.stub().returns(Promise.resolve('result')),
-        }
+        };
 
         const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
 
         const options = {
           some: 'option',
-          body: {}
+          body: {},
         };
 
         let result = await locusDeltaRequest(options);
@@ -269,8 +264,21 @@ describe('plugin-meetings', () => {
         result = await locusDeltaRequest(options);
         assert.equal(result, undefined);
 
+        WeakRef.prototype.deref.restore();
       });
 
+      it('calls generateBuildLocusDeltaRequestOptions as expected', () => {
+        const generateBuildLocusDeltaRequestOptionsSpy = sinon.spy(
+          MeetingUtil,
+          'generateBuildLocusDeltaRequestOptions'
+        );
+
+        const meeting = {};
+
+        MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        assert.calledOnceWithExactly(generateBuildLocusDeltaRequestOptionsSpy, meeting);
+      });
     });
 
     describe('selfSupportsFeature', () => {
@@ -284,7 +292,7 @@ describe('plugin-meetings', () => {
       it('returns true if policy is true', () => {
         assert.equal(
           MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_ANNOTATION, {
-            [SELF_POLICY.SUPPORT_ANNOTATION]: true
+            [SELF_POLICY.SUPPORT_ANNOTATION]: true,
           }),
           true
         );
@@ -312,7 +320,7 @@ describe('plugin-meetings', () => {
           locusMediaRequest: {
             send: sinon.stub().resolves({body: {}, headers: {}}),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
@@ -355,7 +363,7 @@ describe('plugin-meetings', () => {
               })
             ),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -392,7 +400,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -411,7 +419,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -430,7 +438,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -454,7 +462,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -474,7 +482,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -493,7 +501,7 @@ describe('plugin-meetings', () => {
           meetingRequest: {
             joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
@@ -521,7 +529,7 @@ describe('plugin-meetings', () => {
           locusMediaRequest: {
             send: sinon.stub().resolves({body: {}, headers: {}}),
           },
-          getWebexObject: sinon.stub().returns(webex)
+          getWebexObject: sinon.stub().returns(webex),
         };
 
         try {
@@ -542,8 +550,7 @@ describe('plugin-meetings', () => {
           });
         }
       });
-
-    })
+    });
 
     describe('getUserDisplayHintsFromLocusInfo', () => {
       it('returns display hints', () => {
@@ -711,13 +718,28 @@ describe('plugin-meetings', () => {
 
     describe('canBroadcastMessageToBreakout', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], {
-          [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: true
-        }), true);
-        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout([], {[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: true}), false);
-        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], {[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: false}), false);
-        assert.deepEqual(MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], undefined), false);
-
+        assert.deepEqual(
+          MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], {
+            [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: true,
+          }),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.canBroadcastMessageToBreakout([], {
+            [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: true,
+          }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], {
+            [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE]: false,
+          }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canBroadcastMessageToBreakout(['BROADCAST_MESSAGE_TO_BREAKOUT'], undefined),
+          false
+        );
       });
     });
 
@@ -755,7 +777,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-
     describe('parseInterpretationInfo', () => {
       let meetingInfo = {};
       beforeEach(() => {
@@ -774,8 +795,8 @@ describe('plugin-meetings', () => {
         meetingInfo.simultaneousInterpretation = {
           currentSIInterpreter: true,
           siLanguages: [
-            { languageCode: 'en', languageGroupId: 1 },
-            { languageCode: 'es', languageGroupId: 2 },
+            {languageCode: 'en', languageGroupId: 1},
+            {languageCode: 'es', languageGroupId: 2},
           ],
         };
 
@@ -784,9 +805,9 @@ describe('plugin-meetings', () => {
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
         assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
           siLanguages: [
-            { languageName: 'en', languageCode: 1 },
-            { languageName: 'es', languageCode: 2 },
-          ]
+            {languageName: 'en', languageCode: 1},
+            {languageName: 'es', languageCode: 2},
+          ],
         });
       });
 
@@ -798,9 +819,9 @@ describe('plugin-meetings', () => {
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
         assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
           siLanguages: [
-            { languageName: 'en', languageCode: 1 },
-            { languageName: 'es', languageCode: 2 },
-          ]
+            {languageName: 'en', languageCode: 1},
+            {languageName: 'es', languageCode: 2},
+          ],
         });
       });
       it('should update simultaneous interpretation settings with SI disabled', () => {
@@ -818,6 +839,124 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.simultaneousInterpretation.updateMeetingSIEnabled);
         assert.notCalled(meeting.simultaneousInterpretation.updateHostSIEnabled);
         assert.notCalled(meeting.simultaneousInterpretation.updateInterpretation);
+      });
+    });
+
+    describe('prepareLeaveMeetingOptions', () => {
+      it('works as expected', () => {
+        const meeting = {
+          locusUrl: 'locusUrl',
+          selfId: 'selfId',
+          correlationId: 'correlationId',
+          resourceId: 'resourceId',
+          deviceUrl: 'deviceUrl',
+        };
+
+        const leaveOptions = MeetingUtil.prepareLeaveMeetingOptions(meeting, {
+          selfId: 'bob',
+          foo: 'bar',
+        });
+
+        assert.deepEqual(leaveOptions, {
+          correlationId: 'correlationId',
+          deviceUrl: 'deviceUrl',
+          foo: 'bar',
+          locusUrl: 'locusUrl',
+          resourceId: 'resourceId',
+          selfId: 'bob',
+        });
+      });
+    });
+
+    describe('leaveMeeting', () => {
+      it('calls prepareLeaveMeetingOptions as expected', () => {
+        const meeting = {
+          locusUrl: 'locusUrl',
+          selfId: 'selfId',
+          correlationId: 'correlationId',
+          resourceId: 'resourceId',
+          deviceUrl: 'deviceUrl',
+          locusInfo: {parsedLocus: {}},
+          meetingRequest: {
+            leaveMeeting: () => Promise.resolve(),
+          },
+        };
+
+        const prepareLeaveMeetingOptionsSpy = sinon.spy(MeetingUtil, 'prepareLeaveMeetingOptions');
+
+        MeetingUtil.leaveMeeting(meeting, {foo: 'bar'});
+
+        assert.calledOnce(prepareLeaveMeetingOptionsSpy);
+        assert.deepEqual(prepareLeaveMeetingOptionsSpy.getCall(0).args[0], meeting);
+        assert.deepEqual(prepareLeaveMeetingOptionsSpy.getCall(0).args[1], {foo: 'bar'});
+      });
+    });
+
+    describe('buildLeaveFetchRequestOptions', () => {
+      it('calls expected functions', () => {
+        const buildLeaveMeetingRequestOptionsSpy = sinon.stub();
+
+        const meeting = {
+          locusUrl: 'locusUrl',
+          selfId: 'selfId',
+          correlationId: 'correlationId',
+          resourceId: 'resourceId',
+          deviceUrl: 'deviceUrl',
+          meetingRequest: {
+            leaveMeeting: () => Promise.resolve(),
+            buildLeaveMeetingRequestOptions: buildLeaveMeetingRequestOptionsSpy,
+          },
+        };
+
+        const prepareLeaveMeetingOptionsSpy = sinon.spy(MeetingUtil, 'prepareLeaveMeetingOptions');
+
+        const options = MeetingUtil.buildLeaveFetchRequestOptions(meeting, {foo: 'bar'});
+
+        assert.calledOnce(prepareLeaveMeetingOptionsSpy);
+        assert.deepEqual(prepareLeaveMeetingOptionsSpy.getCall(0).args[0], meeting);
+        assert.deepEqual(prepareLeaveMeetingOptionsSpy.getCall(0).args[1], {foo: 'bar'});
+
+        assert.calledOnce(buildLeaveMeetingRequestOptionsSpy);
+        assert.deepEqual(buildLeaveMeetingRequestOptionsSpy.getCall(0).args[0], {
+          correlationId: 'correlationId',
+          deviceUrl: 'deviceUrl',
+          foo: 'bar',
+          locusUrl: 'locusUrl',
+          resourceId: 'resourceId',
+          selfId: 'selfId',
+        });
+      });
+    });
+
+    describe('generateBuildLocusDeltaRequestOptions', () => {
+      it('generates the correct wrapper function', async () => {
+        const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
+
+        const meeting = {locusInfo: {sequence: 123}};
+
+        const buildLocusDeltaRequestOptions =
+          MeetingUtil.generateBuildLocusDeltaRequestOptions(meeting);
+
+        let result = buildLocusDeltaRequestOptions({
+          some: 'option',
+          body: {},
+        });
+        assert.deepEqual(result, {some: 'option', body: {sequence: 123}});
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, {sequence: 123});
+
+        addSequenceSpy.resetHistory();
+
+        // body missing from options
+        result = buildLocusDeltaRequestOptions({});
+        assert.deepEqual(result, {body: {sequence: 123}});
+        assert.calledOnceWithExactly(addSequenceSpy, meeting, {sequence: 123});
+
+        // meeting disappears so the WeakRef returns undefined
+        sinon.stub(WeakRef.prototype, 'deref').returns(undefined);
+
+        const input = {foo: 'bar'};
+        result = buildLocusDeltaRequestOptions(input);
+        assert.equal(result, input);
       });
     });
   });

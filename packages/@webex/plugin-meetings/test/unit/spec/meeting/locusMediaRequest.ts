@@ -41,7 +41,7 @@ describe('LocusMediaRequest.send()', () => {
 
   const createExpectedRoapBody = (expectedMessageType, expectedMute:{audioMuted: boolean, videoMuted: boolean}) => {
     return {
-      device: { url: 'deviceUrl', deviceType: 'deviceType' },
+      device: { url: 'deviceUrl', deviceType: 'deviceType', regionCode: 'regionCode' },
       correlationId: 'correlationId',
       localMedias: [
         {
@@ -72,6 +72,7 @@ describe('LocusMediaRequest.send()', () => {
       device: {
         url: 'deviceUrl',
         deviceType: 'deviceType',
+        regionCode: 'regionCode',
       },
       correlationId: 'correlationId',
       usingResource: null,
@@ -105,6 +106,7 @@ describe('LocusMediaRequest.send()', () => {
       device: {
         url: 'deviceUrl',
         deviceType: 'deviceType',
+        regionCode: 'regionCode',
       },
       correlationId: 'correlationId',
       preferTranscoding: true,

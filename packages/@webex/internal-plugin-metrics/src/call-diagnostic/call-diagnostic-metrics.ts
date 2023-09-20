@@ -13,6 +13,9 @@ import {
   isLocusServiceErrorCode,
   prepareDiagnosticMetricItem,
   userAgentToString,
+  extractVersionMetadata,
+  isMeetingInfoServiceError,
+  isBrowserMediaErrorName,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -28,6 +31,8 @@ import {
   SubmitMQEPayload,
   ClientEventError,
   ClientEventPayload,
+  ClientInfo,
+  ClientEventPayloadError,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
@@ -36,9 +41,8 @@ import {
   NEW_LOCUS_ERROR_CLIENT_CODE,
   SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
   UNKNOWN_ERROR,
-  SERVICE_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
+  BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
-  WBX_APP_API_URL,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -89,6 +93,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns if the meeting has converged architecture enabled
+   * @param options.meetingId
+   */
+  getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
+    if (meetingId) {
+      // @ts-ignore
+      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+
+      return meeting?.meetingInfo?.enableConvergedArchitecture;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Get origin object for Call Diagnostic Event payload.
    * @param options
    * @param meetingId
@@ -101,6 +120,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const defaultSubClientType: SubClientType =
       // @ts-ignore
       this.webex.meetings.config?.metrics?.subClientType;
+    // @ts-ignore
+    const providedClientVersion: string = this.webex.meetings.config?.metrics?.clientVersion;
+    // @ts-ignore
+    const defaultSDKClientVersion = `${CLIENT_NAME}/${this.webex.version}`;
+
+    let versionMetadata: Pick<ClientInfo, 'majorVersion' | 'minorVersion'> = {};
+
+    // sdk version split doesn't really make sense for now...
+    if (providedClientVersion) {
+      versionMetadata = extractVersionMetadata(providedClientVersion);
+    }
 
     if (
       (defaultClientType && defaultSubClientType) ||
@@ -117,8 +147,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         }),
         clientInfo: {
           clientType: options?.clientType || defaultClientType,
-          // @ts-ignore
-          clientVersion: `${CLIENT_NAME}/${this.webex.version}`,
+          clientVersion: providedClientVersion || defaultSDKClientVersion,
+          ...versionMetadata,
           localNetworkPrefix:
             // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
@@ -351,24 +381,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   generateClientEventErrorPayload(rawError: any) {
     if (rawError.name) {
-      const clientErrorCode = SERVICE_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name];
-      if (clientErrorCode) {
+      if (isBrowserMediaErrorName) {
         return this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
-          clientErrorCode,
+          clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
         });
       }
     }
 
     const serviceErrorCode =
-      rawError?.body?.errorCode || rawError?.body?.code || rawError?.body?.reason?.reasonCode;
+      rawError?.error?.body?.errorCode ||
+      rawError?.body?.errorCode ||
+      rawError?.body?.code ||
+      rawError?.body?.reason?.reasonCode;
+
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
       if (clientErrorCode) {
         return this.getErrorPayloadForClientErrorCode({clientErrorCode, serviceErrorCode});
       }
 
-      // by default, if it is locus error, return nre locus err
+      // by default, if it is locus error, return new locus err
       if (isLocusServiceErrorCode(serviceErrorCode)) {
         return this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
@@ -377,9 +410,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
-    // MeetingInfo errors sometime has body.data.meetingInfo object
-    // MeetingInfo errors come with a wbxappapi url
-    if (rawError.body?.data?.meetingInfo || rawError.body?.url?.includes(WBX_APP_API_URL)) {
+    if (isMeetingInfoServiceError(rawError)) {
       return this.getErrorPayloadForClientErrorCode({
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
@@ -447,6 +478,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       userType: meeting.getCurUserType(),
       loginType: this.getCurLoginType(),
+      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
+        meetingId,
+      }),
     };
 
     return clientEventObject;
@@ -512,7 +546,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     let clientEventObject: ClientEvent['payload'];
 
     // check if we need to generate errors
-    const errors: ClientEvent['payload']['errors'] = [];
+    const errors: ClientEventPayloadError = [];
 
     if (rawError) {
       const generatedError = this.generateClientEventErrorPayload(rawError);

@@ -2,6 +2,85 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.217](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.216...v3.0.0-beta.217) (2023-09-15)
+
+
+### Features
+
+* byok revoked error handling ([#3083](https://github.com/webex/webex-js-sdk/issues/3083)) ([9893f02](https://github.com/webex/webex-js-sdk/commit/9893f02d1e22db82dac8e73a6c547770df1fe61e))
+
+## [3.0.0-beta.216](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.215...v3.0.0-beta.216) (2023-09-15)
+
+
+### Features
+
+* **internal-plugin-calendar:** support unified scheduler in beta branch (merge from master) ([#3076](https://github.com/webex/webex-js-sdk/issues/3076)) ([d119728](https://github.com/webex/webex-js-sdk/commit/d11972894f6084c81b571b48d3da708c961158a9))
+* **internal-plugin-dss:** support search places feature in beta branch (merge from master) ([#3077](https://github.com/webex/webex-js-sdk/issues/3077)) ([f5e9bba](https://github.com/webex/webex-js-sdk/commit/f5e9bba0edd0c14cc38a8cbaa726c9c999fda810))
+
+## [3.0.0-beta.215](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.214...v3.0.0-beta.215) (2023-09-14)
+
+
+### Features
+
+* **ca:** fix locus errors ([#3079](https://github.com/webex/webex-js-sdk/issues/3079)) ([a858f23](https://github.com/webex/webex-js-sdk/commit/a858f2334b4782fb7f0dc1167d6b04e82f18beb0))
+
+## [3.0.0-beta.214](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.213...v3.0.0-beta.214) (2023-09-13)
+
+
+### Bug Fixes
+
+* **call-analyzer:** fix client.call.leave reason ([#3075](https://github.com/webex/webex-js-sdk/issues/3075)) ([cb1440f](https://github.com/webex/webex-js-sdk/commit/cb1440fa3c03cfbb3f39d3a7cdb6d95f636c47a6))
+
+## [3.0.0-beta.213](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.212...v3.0.0-beta.213) (2023-09-12)
+
+
+### Features
+
+* **ca-metrics:** add converged architecture flag ([#3069](https://github.com/webex/webex-js-sdk/issues/3069)) ([891b79b](https://github.com/webex/webex-js-sdk/commit/891b79b8ccd3e1090d8db91bd8bb9cc0e60a10b5))
+* **ca:** align version number ([#3068](https://github.com/webex/webex-js-sdk/issues/3068)) ([67fbdc6](https://github.com/webex/webex-js-sdk/commit/67fbdc6e28d1f258a1108d78b03470a7f4a30d67))
+
+## [3.0.0-beta.212](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.211...v3.0.0-beta.212) (2023-09-11)
+
+
+### Bug Fixes
+
+* don't send fake TCP reachability results ([#3065](https://github.com/webex/webex-js-sdk/issues/3065)) ([4133866](https://github.com/webex/webex-js-sdk/commit/413386621702ee648397466cd8f1dedec54210e5))
+
+## [3.0.0-beta.211](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.210...v3.0.0-beta.211) (2023-09-11)
+
+
+### Features
+
+* **call-leave:** reorder metric send ([#3007](https://github.com/webex/webex-js-sdk/issues/3007)) ([7593198](https://github.com/webex/webex-js-sdk/commit/7593198e243076b7ab433d9f65116c872f33b81b))
+
+## [3.0.0-beta.210](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.209...v3.0.0-beta.210) (2023-09-08)
+
+
+### Features
+
+* **plugin-meetings:** fix canDoVideo ([#3063](https://github.com/webex/webex-js-sdk/issues/3063)) ([f65d73b](https://github.com/webex/webex-js-sdk/commit/f65d73b18cf123bab117715d0967e182065f3c9f))
+
+## [3.0.0-beta.209](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.208...v3.0.0-beta.209) (2023-09-08)
+
+
+### Bug Fixes
+
+* geohint info missing in Locus join requests ([#3061](https://github.com/webex/webex-js-sdk/issues/3061)) ([400286b](https://github.com/webex/webex-js-sdk/commit/400286bc576882999396cc48ac266cea13f98f2d))
+
+## [3.0.0-beta.208](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.207...v3.0.0-beta.208) (2023-09-07)
+
+
+### Bug Fixes
+
+* **Live-Annotation:** remove the presenter side annotation info ([#3048](https://github.com/webex/webex-js-sdk/issues/3048)) ([3e5e800](https://github.com/webex/webex-js-sdk/commit/3e5e80061be835c55e18216b01079c8b4ecd860c))
+
+## [3.0.0-beta.207](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.206...v3.0.0-beta.207) (2023-09-06)
+
+
+### Features
+
+* **ca:** fix prod meta ([#3060](https://github.com/webex/webex-js-sdk/issues/3060)) ([b359f26](https://github.com/webex/webex-js-sdk/commit/b359f26d157f9b40c25ea011aaef80675bda4469))
+
 ## [3.0.0-beta.206](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.205...v3.0.0-beta.206) (2023-09-06)
 
 

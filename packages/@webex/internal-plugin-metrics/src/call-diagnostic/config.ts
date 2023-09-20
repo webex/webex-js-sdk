@@ -6,12 +6,12 @@ import {ClientEventError} from '../metrics.types';
 
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
-export const UNKNOWN_ERROR = 9999;
+export const UNKNOWN_ERROR = 9999; // Unexpected error that is not a meetingInfo error, locus error or browser media error.
 export const ICE_FAILURE_CLIENT_CODE = 2004;
-export const WBX_APP_API_URL = 'wbxappapi';
+export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
-const MEDIA_ERROR_NAMES = {
+const BROWSER_MEDIA_ERROR_NAMES = {
   PERMISSION_DENIED_ERROR: 'PermissionDeniedError',
   NOT_ALLOWED_ERROR: 'NotAllowedError',
   NOT_READABLE_ERROR: 'NotReadableError',
@@ -22,15 +22,15 @@ const MEDIA_ERROR_NAMES = {
   TYPE_ERROR: 'TypeError',
 };
 
-export const SERVICE_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
-  [MEDIA_ERROR_NAMES.PERMISSION_DENIED_ERROR]: 2729, // User did not grant permission
-  [MEDIA_ERROR_NAMES.NOT_ALLOWED_ERROR]: 2729, // User did not grant permission
-  [MEDIA_ERROR_NAMES.NOT_READABLE_ERROR]: 2001, // Although the user granted permission to use the matching devices, a hardware error occurred at the operating system, browser, or Web page level which prevented access to the device.
-  [MEDIA_ERROR_NAMES.ABORT_ERROR]: 2001, // Although the user and operating system both granted access to the hardware device, and no hardware issues occurred that would cause a NotReadableError DOMException, throw if some problem occurred which prevented the device from being used.
-  [MEDIA_ERROR_NAMES.NOT_FOUND_ERROR]: 2729, // User did not grant permission
-  [MEDIA_ERROR_NAMES.OVERCONSTRAINED_ERROR]: 2729, // Thrown if the specified constraints resulted in no candidate devices which met the criteria requested.
-  [MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2001, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
-  [MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
+export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
+  [BROWSER_MEDIA_ERROR_NAMES.PERMISSION_DENIED_ERROR]: 2729, // User did not grant permission
+  [BROWSER_MEDIA_ERROR_NAMES.NOT_ALLOWED_ERROR]: 2729, // User did not grant permission
+  [BROWSER_MEDIA_ERROR_NAMES.NOT_READABLE_ERROR]: 2001, // Although the user granted permission to use the matching devices, a hardware error occurred at the operating system, browser, or Web page level which prevented access to the device.
+  [BROWSER_MEDIA_ERROR_NAMES.ABORT_ERROR]: 2001, // Although the user and operating system both granted access to the hardware device, and no hardware issues occurred that would cause a NotReadableError DOMException, throw if some problem occurred which prevented the device from being used.
+  [BROWSER_MEDIA_ERROR_NAMES.NOT_FOUND_ERROR]: 2729, // User did not grant permission
+  [BROWSER_MEDIA_ERROR_NAMES.OVERCONSTRAINED_ERROR]: 2729, // Thrown if the specified constraints resulted in no candidate devices which met the criteria requested.
+  [BROWSER_MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2001, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
+  [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
 const ERROR_DESCRIPTIONS = {

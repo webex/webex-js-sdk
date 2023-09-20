@@ -3,7 +3,11 @@ import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {ClientEvent, CALL_DIAGNOSTIC_CONFIG} from '@webex/internal-plugin-metrics';
+import {
+  ClientEvent,
+  ClientEventLeaveReason,
+  CALL_DIAGNOSTIC_CONFIG,
+} from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
   Errors,
@@ -124,7 +128,6 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
-import {AnnotationInfo} from '../annotation/annotation.types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -150,7 +153,6 @@ export type LocalTracks = {
     audio?: LocalSystemAudioTrack;
     video?: LocalDisplayTrack;
   };
-  annotationInfo?: AnnotationInfo;
 };
 
 export type AddMediaOptions = {
@@ -551,7 +553,6 @@ export default class Meeting extends StatelessWebexPlugin {
   roles: any[];
   environment: string;
   namespace = MEETINGS;
-  annotationInfo: AnnotationInfo;
   allowMediaInLobby: boolean;
 
   /**
@@ -3032,20 +3033,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {boolean}
    */
   private arePolicyRestrictionsSupported() {
-    // Locus calls do not return the correct display hints
-    if (this.isLocusCall()) {
+    // If we don't have policies we can't support policies
+    if (!this.selfUserPolicies) {
       return false;
     }
 
     // 1-2-1 calls and SIP dialling will have no meeting info
     // so cannot support policy information
     if (isEmpty(this.meetingInfo)) {
-      return false;
-    }
-
-    // Old locus info api does not return policy information
-    // @ts-ignore
-    if (!this.config.experimental.enableUnifiedMeetings) {
       return false;
     }
 
@@ -5430,6 +5425,10 @@ export default class Meeting extends StatelessWebexPlugin {
           url: this.deviceUrl,
           // @ts-ignore
           deviceType: this.config.deviceType,
+          // @ts-ignore
+          countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+          // @ts-ignore
+          regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
       },
@@ -5441,9 +5440,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
-
-    this.annotationInfo = localTracks?.annotationInfo;
-
     const promises = [];
 
     // setup all the references to local tracks in this.mediaProperties before creating media connection
@@ -5911,32 +5907,76 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Leave the current meeting
+   * Returns a promise that will resolve to fetch options for leaving a meeting.
+   *
+   * This is to support quickly submitting a leave request when the browser/tab is closing.
+   * Calling meeting.leave will not work because there are some async steps that will
+   * not complete before the browser is closed.  Instead, we pre-gather all the
+   * information/options needed for the request(s), and then simply and quickly
+   * fire the fetch(es) when pagehide is triggered.
+   *
+   * We must use fetch instead of request because fetch has a keepalive option that
+   * allows the request it to outlive the page.
+   *
+   * Note: the $timings values will be wrong, but setRequestTimingsAndFetch() will
+   * properly adjust them before submitting.
+   *
+   * @public
    * @param {Object} options leave options
    * @param {String} options.resourceId the device with which to leave from, empty if just the computer
+   * @param {any} options.reason the reason for leaving
+   * @returns {Promise} resolves to options to be used with fetch
+   */
+  public buildLeaveFetchRequestOptions(options: {resourceId?: string; reason?: any} = {} as any) {
+    const requestOptions = MeetingUtil.buildLeaveFetchRequestOptions(this, options);
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions(requestOptions);
+  }
+
+  /**
+   * Leave the current meeting
+   * @param {Object} options - leave options
+   * @param {String} [options.resourceId] - the device with which to leave from, empty if just the computer
+   * @param {String} [options.clientEventLeaveReason] - the leaveReason to include in the Call Analyzer event.
+   *                 Must be one of: 'paired-leave' | 'one-to-one' | 'ended-by-locus' (defaults to no reason)
+   *                 https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/main/diagnostic-events.raml#L796
+   * @param {String} [options.reason] - only used for logging
    * @returns {Promise}
    * @public
    * @memberof Meeting
    */
-  public leave(options: {resourceId?: string; reason?: any} = {} as any) {
+  public leave(
+    options: {
+      resourceId?: string;
+      clientEventLeaveReason?: ClientEventLeaveReason;
+      reason?: any;
+    } = {} as any
+  ) {
     const leaveReason = options.reason || MEETING_REMOVED_REASON.CLIENT_LEAVE_REQUEST;
+
     /// @ts-ignore
     this.webex.internal.newMetrics.submitInternalEvent({name: 'internal.reset.join.latencies'});
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
-      name: 'client.call.leave',
-      payload: {
-        trigger: 'user-interaction',
-        canProceed: false,
-        leaveReason,
-      },
-      options: {meetingId: this.id},
-    });
+    const submitLeaveMetric = (payload = {}) =>
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.call.leave',
+        payload: {
+          trigger: 'user-interaction',
+          canProceed: false,
+          leaveReason: options.clientEventLeaveReason,
+          ...payload,
+        },
+        options: {meetingId: this.id},
+      });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
       .then((leave) => {
+        // CA team recommends submitting this *after* locus /leave
+        submitLeaveMetric();
+
         this.meetingFiniteStateMachine.leave();
         this.clearMeetingData();
 
@@ -5972,6 +6012,20 @@ export default class Meeting extends StatelessWebexPlugin {
         return leave;
       })
       .catch((error) => {
+        // CA team recommends submitting this *after* locus /leave
+        submitLeaveMetric({
+          errors: [
+            {
+              fatal: false,
+              errorDescription: error.message,
+              category: 'signaling',
+              errorCode: 1000,
+              name: 'client.leave',
+              shownToUser: false,
+            },
+          ],
+        });
+
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#leave --> Failed to leave ', error);
         // upload logs on leave irrespective of meeting delete
@@ -6155,7 +6209,6 @@ export default class Meeting extends StatelessWebexPlugin {
             deviceUrl: this.deviceUrl,
             uri: content.url,
             resourceUrl: this.resourceUrl,
-            annotationInfo: this.annotationInfo,
           })
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
@@ -7033,9 +7086,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async publishTracks(tracks: LocalTracks): Promise<void> {
     this.checkMediaConnection();
-
-    this.annotationInfo = tracks.annotationInfo;
-
     if (
       !tracks.microphone &&
       !tracks.camera &&

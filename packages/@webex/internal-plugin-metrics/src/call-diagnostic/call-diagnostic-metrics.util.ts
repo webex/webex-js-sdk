@@ -6,10 +6,12 @@ import {BrowserDetection} from '@webex/common';
 import {isEmpty, merge} from 'lodash';
 import {
   ClientEvent,
+  Event,
   MediaQualityEventAudioSetupDelayPayload,
   MediaQualityEventVideoSetupDelayPayload,
   MetricEventNames,
 } from '../metrics.types';
+import {BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP, WBX_APP_API_URL} from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -95,7 +97,7 @@ export const clearEmptyKeysRecursively = (obj: any) => {
  * If it is 7 digits and starts with a 2, it is locus.
  *
  * @param errorCode
- * @returns
+ * @returns {boolean}
  */
 export const isLocusServiceErrorCode = (errorCode: string | number) => {
   const code = `${errorCode}`;
@@ -108,10 +110,40 @@ export const isLocusServiceErrorCode = (errorCode: string | number) => {
 };
 
 /**
+ * MeetingInfo errors sometimes has body.data.meetingInfo object
+ * MeetingInfo errors come with a wbxappapi url
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isMeetingInfoServiceError = (rawError: any) => {
+  if (rawError.body?.data?.meetingInfo || rawError.body?.url?.includes(WBX_APP_API_URL)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * MDN Media Devices getUserMedia() method returns a name if it errs
+ * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+ *
+ * @param errorCode
+ * @returns
+ */
+export const isBrowserMediaErrorName = (errorName: any) => {
+  if (BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[errorName]) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * @param webClientDomain
  * @returns
  */
-export const getBuildType = (webClientDomain) => {
+export const getBuildType = (webClientDomain): Event['origin']['buildType'] => {
   if (
     webClientDomain?.includes('localhost') ||
     webClientDomain?.includes('127.0.0.1') ||
@@ -120,7 +152,7 @@ export const getBuildType = (webClientDomain) => {
     return 'test';
   }
 
-  return 'production';
+  return 'prod';
 };
 
 /**
@@ -130,7 +162,7 @@ export const getBuildType = (webClientDomain) => {
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
-  const origin = {
+  const origin: Partial<Event['origin']> = {
     buildType: getBuildType(item.event?.eventData?.webClientDomain),
     networkType: 'unknown',
   };
@@ -217,17 +249,32 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
  * @returns {any} the updated options object
  */
 export const setMetricTimings = (options) => {
-  if (options.body?.metrics) {
+  if (options.body && options.json) {
+    const body = JSON.parse(options.body);
+
     const now = new Date().toISOString();
-    options.body.metrics.forEach((metric) => {
+    body.metrics?.forEach((metric) => {
       if (metric.eventPayload) {
+        // The event will effectively be triggered and sent at the same time.
+        // The existing triggered time is from when the options were built.
         metric.eventPayload.originTime = {
           triggered: now,
           sent: now,
         };
       }
     });
+    options.body = JSON.stringify(body);
   }
 
   return options;
+};
+
+export const extractVersionMetadata = (version: string) => {
+  // extract major and minor version
+  const [majorVersion, minorVersion] = version.split('.');
+
+  return {
+    majorVersion: parseInt(majorVersion, 10),
+    minorVersion: parseInt(minorVersion, 10),
+  };
 };

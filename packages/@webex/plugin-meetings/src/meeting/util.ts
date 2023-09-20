@@ -188,6 +188,24 @@ const MeetingUtil = {
     });
   },
 
+  /**
+   * Returns options for leaving a meeting.
+   * @param {any} meeting
+   * @param {any} options
+   * @returns {any} leave options
+   */
+  prepareLeaveMeetingOptions: (meeting, options: any = {}) => {
+    const defaultOptions = {
+      locusUrl: meeting.locusUrl,
+      selfId: meeting.selfId,
+      correlationId: meeting.correlationId,
+      resourceId: meeting.resourceId,
+      deviceUrl: meeting.deviceUrl,
+    };
+
+    return {...defaultOptions, ...options};
+  },
+
   // by default will leave on meeting's resourceId
   // if you explicity want it not to leave on resource id, pass
   // {resourceId: null}
@@ -202,15 +220,7 @@ const MeetingUtil = {
       return Promise.reject(new UserNotJoinedError());
     }
 
-    const defaultOptions = {
-      locusUrl: meeting.locusUrl,
-      selfId: meeting.selfId,
-      correlationId: meeting.correlationId,
-      resourceId: meeting.resourceId,
-      deviceUrl: meeting.deviceUrl,
-    };
-
-    const leaveOptions = {...defaultOptions, ...options};
+    const leaveOptions = MeetingUtil.prepareLeaveMeetingOptions(meeting, options);
 
     return meeting.meetingRequest
       .leaveMeeting(leaveOptions)
@@ -300,6 +310,18 @@ const MeetingUtil = {
 
         return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
       });
+  },
+
+  /**
+   * Returns request options for leaving a meeting.
+   * @param {any} meeting
+   * @param {any} options
+   * @returns {any} request options
+   */
+  buildLeaveFetchRequestOptions: (meeting, options: any = {}) => {
+    const leaveOptions = MeetingUtil.prepareLeaveMeetingOptions(meeting, options);
+
+    return meeting.meetingRequest.buildLeaveMeetingRequestOptions(leaveOptions);
   },
 
   getTrack: (stream) => {
@@ -538,14 +560,14 @@ const MeetingUtil = {
     return response;
   },
 
-  generateLocusDeltaRequest: (originalMeeting) => {
+  generateBuildLocusDeltaRequestOptions: (originalMeeting) => {
     const meetingRef = new WeakRef(originalMeeting);
 
-    const locusDeltaRequest = (originalOptions) => {
+    const buildLocusDeltaRequestOptions = (originalOptions) => {
       const meeting = meetingRef.deref();
 
       if (!meeting) {
-        return Promise.resolve();
+        return originalOptions;
       }
 
       const options = cloneDeep(originalOptions);
@@ -555,6 +577,27 @@ const MeetingUtil = {
       }
 
       MeetingUtil.addSequence(meeting, options.body);
+
+      return options;
+    };
+
+    return buildLocusDeltaRequestOptions;
+  },
+
+  generateLocusDeltaRequest: (originalMeeting) => {
+    const meetingRef = new WeakRef(originalMeeting);
+
+    const buildLocusDeltaRequestOptions =
+      MeetingUtil.generateBuildLocusDeltaRequestOptions(originalMeeting);
+
+    const locusDeltaRequest = (originalOptions) => {
+      const meeting = meetingRef.deref();
+
+      if (!meeting) {
+        return Promise.resolve();
+      }
+
+      const options = buildLocusDeltaRequestOptions(originalOptions);
 
       return meeting
         .request(options)

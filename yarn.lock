@@ -4231,7 +4231,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar"
   dependencies:
-    "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-encryption": "workspace:^"
@@ -4240,7 +4239,6 @@ __metadata:
     "@webex/test-helper-retry": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
-    btoa: "npm:^1.2.1"
     lodash: "npm:^4.17.21"
     sinon: "npm:^9.2.4"
     uuid: "npm:^3.3.2"

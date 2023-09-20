@@ -37,6 +37,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
   meetingRef: WeakRef<any>;
   locusDeltaRequest: (options: object) => Promise<any>;
+  buildLocusDeltaRequestOptions: (options: object) => Promise<any>;
 
   /**
    * Constructor
@@ -49,6 +50,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     super(otherAttrs, options);
 
     this.locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+    this.buildLocusDeltaRequestOptions = MeetingUtil.generateBuildLocusDeltaRequestOptions(meeting);
 
     this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
       leading: true,
@@ -185,11 +187,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body.deviceCapabilities = deviceCapabilities;
     }
     // @ts-ignore
-    if (this.webex.meetings.clientRegion) {
+    if (this.webex.meetings.geoHintInfo) {
       // @ts-ignore
-      body.device.countryCode = this.webex.meetings.clientRegion.countryCode;
+      body.device.countryCode = this.webex.meetings.geoHintInfo.countryCode;
       // @ts-ignore
-      body.device.regionCode = this.webex.meetings.clientRegion.regionCode;
+      body.device.regionCode = this.webex.meetings.geoHintInfo.regionCode;
     }
 
     if (moderator !== undefined) {
@@ -457,13 +459,49 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Make a network request to leave a meeting
+   * Prepares request options to to leave a meeting
    * @param {Object} options
    * @param {Url} options.locusUrl
    * @param {String} options.selfId
    * @param {Url} options.deviceUrl
    * @param {String} options.resourceId,
    * @param {String} options.correlationId
+   * @returns {Object} request options
+   */
+  prepareLeaveMeetingRequestOptions({
+    locusUrl,
+    selfId,
+    deviceUrl: url,
+    resourceId,
+    correlationId,
+  }: {
+    locusUrl: string;
+    selfId: string;
+    deviceUrl: string;
+    resourceId: string;
+    correlationId: string;
+  }) {
+    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${LEAVE}`;
+    const body = {
+      device: {
+        // @ts-ignore
+        deviceType: this.config.meetings.deviceType,
+        url,
+      },
+      usingResource: resourceId || null,
+      correlationId,
+    };
+
+    return {
+      method: HTTP_VERBS.PUT,
+      uri,
+      body,
+    };
+  }
+
+  /**
+   * Make a network request to leave a meeting
+   * @param {Object} options
    * @returns {Promise}
    */
   leaveMeeting({
@@ -497,6 +535,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       uri,
       body,
     });
+  }
+
+  /**
+   * Builds request options to leave a meeting
+   * @param {Object} options
+   * @returns {Object} request options
+   */
+  buildLeaveMeetingRequestOptions(options: any) {
+    return this.buildLocusDeltaRequestOptions(this.prepareLeaveMeetingRequestOptions(options));
   }
 
   /**
