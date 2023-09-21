@@ -16,32 +16,16 @@ describe('createMediaConnection', () => {
     id: 'any fake track'
   }
   const fakeAudioStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeVideoStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeShareVideoStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeShareAudioStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   afterEach(() => {
     sinon.restore();
@@ -159,50 +143,11 @@ describe('createMediaConnection', () => {
             credential: 'turn password',
           },
         ],
-        enableMainAudio: true,
-        enableMainVideo: true,
         bundlePolicy: 'max-bundle',
       },
       'meeting id'
     );
   });
-
-  forEach([
-    {sendAudio: true, receiveAudio: true, sendVideo: true, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: true, receiveAudio: false, sendVideo: true, receiveVideo: false, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: false, receiveAudio: true, sendVideo: false, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: false, receiveAudio: false, sendVideo: false, receiveVideo: false, enableMainAudio: false, enableMainVideo: false,},
-  ], ({sendAudio, sendVideo, receiveAudio, receiveVideo, enableMainAudio, enableMainVideo}) => {
-    it(`sets enableMainVideo to ${enableMainVideo} and enableMainAudio to ${enableMainAudio} when sendAudio: ${sendAudio} sendVideo: ${sendVideo} receiveAudio: ${receiveAudio} receiveVideo: ${receiveVideo}`, () => {
-      const multistreamRoapMediaConnectionConstructorStub = sinon
-        .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
-        .returns(fakeRoapMediaConnection);
-
-        Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', 'correlationId', {
-          mediaProperties: {
-            mediaDirection: {
-              sendAudio,
-              sendVideo,
-              sendShare: false,
-              receiveAudio,
-              receiveVideo,
-              receiveShare: true,
-            },
-          },
-        });
-        assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
-        assert.calledWith(
-          multistreamRoapMediaConnectionConstructorStub,
-          {
-            iceServers: [],
-            enableMainAudio,
-            enableMainVideo,
-          },
-          'meeting id'
-        );
-      });
-    }
-  );
 
   it('passes empty ICE servers array to MultistreamRoapMediaConnection if turnServerInfo is undefined (multistream enabled)', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
@@ -226,8 +171,6 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
-        enableMainAudio: true,
-        enableMainVideo: true,
       },
       'meeting id'
     );
@@ -255,8 +198,6 @@ describe('createMediaConnection', () => {
         multistreamRoapMediaConnectionConstructorStub,
         {
           iceServers: [],
-          enableMainAudio: true,
-          enableMainVideo: true,
         },
         'meeting id'
       );

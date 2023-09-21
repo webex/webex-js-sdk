@@ -18,9 +18,9 @@ describe('plugin-meetings', () => {
   const createFakeLocalStream = (id, muted) => {
     return {
       id,
-      setMuted: sinon.stub(),
       setServerMuted: sinon.stub(),
       setUnmuteAllowed: sinon.stub(),
+      setMuted: sinon.stub(),
       muted,
     };
   };
@@ -120,6 +120,7 @@ describe('plugin-meetings', () => {
 
       // now simulate server requiring us to locally unmute
       audio.handleServerLocalUnmuteRequired(meeting);
+      
       await testUtils.flushPromises();
 
       // check that local stream was unmuted
@@ -165,8 +166,9 @@ describe('plugin-meetings', () => {
 
     describe('#isLocallyMuted()', () => {
       it('does not consider remote mute status for audio', async () => {
-        // simulate being already remote muted
+        // simulate being already remote muted and locally unmuted
         meeting.remoteMuted = true;
+        meeting.mediaProperties.audioStream.muted = false;
 
         // create a new MuteState instance
         audio = createMuteState(AUDIO, meeting, true);
@@ -180,6 +182,7 @@ describe('plugin-meetings', () => {
       it('does not consider remote mute status for video', async () => {
         // simulate being already remote muted
         meeting.remoteVideoMuted = true;
+        meeting.mediaProperties.videoStream.muted = false;
 
         // create a new MuteState instance
         video = createMuteState(VIDEO, meeting, true);
@@ -391,7 +394,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
 
-        // now mute video -> the call to remoteUpdateAudioVideo should have mute for video and undefined for audio
+        // now mute video -> the call to remoteUpdateAudioVideo should have unmute for video and undefined for audio
         await simulateVideoMuteChange(true);
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, true);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
@@ -401,7 +404,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, false, undefined);
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
 
-        // unmute video -> the call to remoteUpdateAudioVideo should have both audio undefined
+        // unmute video -> the call to remoteUpdateAudioVideo should have audio undefined
         await simulateVideoMuteChange(false);
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, false);
       });
@@ -542,7 +545,6 @@ describe('plugin-meetings', () => {
             it('tests when stream muted is false and remoteMuted is false', async () => {
               await setupWithoutInit(mediaType, false, false);
               setupSpies(mediaType);
-              muteState.state.server.localMute = true;
 
               muteState.init(meeting);
 

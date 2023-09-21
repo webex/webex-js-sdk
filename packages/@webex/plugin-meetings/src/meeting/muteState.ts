@@ -132,7 +132,6 @@ export class MuteState {
    * @param {ServerMuteReason} reason - reason for muting/unmuting
    * @returns {void}
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private muteLocalStream(meeting: any, mute: boolean, reason: ServerMuteReason) {
     this.ignoreMuteStateChange = true;
     if (this.type === AUDIO) {
