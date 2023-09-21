@@ -3,6 +3,9 @@
   "files": [
     "dist"
   ],
+  "contributors": [
+    "Sreekanth Narayanan (sreenara@cisco.com)"
+  ],
   "main": "dist/module/index.js",
   "module": "dist/module/index.js",
   "types": "dist/types/index.d.ts",
