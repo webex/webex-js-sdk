@@ -19,7 +19,6 @@ import {
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
-  RecursivePartial,
   Event,
   ClientType,
   SubClientType,
@@ -640,6 +639,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
 
+    if (options?.preLoginId) {
+      return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
+    }
+
     return this.submitToCallDiagnostics(diagnosticEvent);
   }
 
@@ -663,6 +666,61 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
+
+  /**
+   * Pre login events are not batched. We make the request directly.
+   * @param event
+   * @param preLoginId
+   * @returns
+   */
+  public submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
+    // build metrics-a event type
+    // @ts-ignore
+    const diagnosticEvent = prepareDiagnosticMetricItem(this.webex, {
+      eventPayload: event,
+      type: ['diagnostic-event'],
+    });
+
+    // append sent timestamp
+    diagnosticEvent.eventPayload.originTime.sent = new Date().toISOString();
+
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Sending the request:`,
+      diagnosticEvent
+    );
+
+    // @ts-ignore
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'metrics',
+        resource: 'clientmetrics-prelogin',
+        headers: {
+          authorization: false,
+          'x-prelogin-userid': preLoginId,
+        },
+        body: diagnosticEvent,
+      })
+      .then((res) => {
+        this.logger.log(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Request successful:`,
+          res
+        );
+
+        return res;
+      })
+      .catch((err) => {
+        this.logger.error(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Request failed:`,
+          err
+        );
+
+        return Promise.reject(err);
+      });
+  };
 
   /**
    * Builds a request options object to later be passed to fetch().
