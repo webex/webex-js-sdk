@@ -30,7 +30,7 @@ export default class MediaProperties {
   webrtcMediaConnection: any;
   remoteAudioStream: RemoteStream;
   remoteQualityLevel: any;
-  remoteShare: RemoteStream;
+  remoteShareStream: RemoteStream;
   remoteVideoStream: RemoteStream;
   shareVideoStream?: LocalDisplayStream;
   shareAudioStream?: LocalSystemAudioStream;
@@ -56,7 +56,7 @@ export default class MediaProperties {
     this.audioStream = null;
     this.shareVideoStream = null;
     this.shareAudioStream = null;
-    this.remoteShare = undefined;
+    this.remoteShareStream = undefined;
     this.remoteAudioStream = undefined;
     this.remoteVideoStream = undefined;
     this.remoteQualityLevel = QUALITY_LEVELS.HIGH;
@@ -104,8 +104,8 @@ export default class MediaProperties {
     this.remoteQualityLevel = remoteQualityLevel;
   }
 
-  setRemoteShare(remoteShare: RemoteStream) {
-    this.remoteShare = remoteShare;
+  setRemoteShareStream(remoteShareStream: RemoteStream) {
+    this.remoteShareStream = remoteShareStream;
   }
 
   /**
@@ -148,8 +148,8 @@ export default class MediaProperties {
     this.remoteVideoStream = null;
   }
 
-  unsetRemoteShare() {
-    this.remoteShare = null;
+  unsetRemoteShareStream() {
+    this.remoteShareStream = null;
   }
 
   /**
@@ -158,7 +158,7 @@ export default class MediaProperties {
    */
   unsetRemoteStreams() {
     this.unsetRemoteMedia();
-    this.unsetRemoteShare();
+    this.unsetRemoteShareStream();
   }
 
   /**
