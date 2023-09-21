@@ -186,6 +186,7 @@ describe('plugin-meetings', () => {
         const meeting = {
           locusInfo: {
             onDeltaLocus: sinon.stub(),
+            handleLocusDelta: sinon.stub()
           },
         };
 

@@ -443,7 +443,6 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             mockSendSlotManagerCtor = sinon
               .stub(SendSlotManagerModule,'default');
-              console.log(mockSendSlotManagerCtor);
 
             meeting = new Meeting(
               {
@@ -1864,13 +1863,13 @@ describe('plugin-meetings', () => {
           });
         };
 
-        const checkMediaConnectionCreated = ({mediaConnectionConfig, localStreams, direction, remoteQualityLevel, expectedDebugId, meetingId}) => {
+        const checkMediaConnectionCreated = ({mediaConnectionConfig, localStreams, direction, remoteQualityLevel, expectedDebugId}) => {
           if (isMultistream) {
             const {iceServers} = mediaConnectionConfig;
 
             assert.calledOnceWithMatch(multistreamRoapMediaConnectionConstructorStub, {
               iceServers,
-            }, meetingId);
+            }, expectedDebugId);
 
             for(let type in localStreams){
               const stream = localStreams[type];
@@ -1937,8 +1936,38 @@ describe('plugin-meetings', () => {
           // and that it was the only /media request that was sent
           assert.calledOnce(locusMediaRequestStub);
         });
-          
         it('addMedia() works correctly when media is enabled with streams to publish', async () => {
+          await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: fakeMicrophoneStream,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: false, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when media is enabled with tracks to publish and track is muted', async () => {
+          fakeMicrophoneStream.muted = true;
+
           await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
           await simulateRoapOffer();
 
@@ -4090,7 +4119,7 @@ describe('plugin-meetings', () => {
             meeting.requestScreenShareFloor.reset();
             await meeting.publishStreams({screenShare: {audio: audioShareStream}});
             assert.notCalled(meeting.requestScreenShareFloor);
-          });
+          })
 
           it('updates MuteState instance and publishes the stream for main audio', async () => {
             await meeting.publishStreams({microphone: audioStream});
@@ -4119,6 +4148,14 @@ describe('plugin-meetings', () => {
             checkScreenShareVideoPublished(videoShareStream);
             checkScreenShareAudioPublished(audioShareStream);
           });
+        });
+        it('creates instance and publishes with annotation info', async () => {
+          const annotationInfo = {
+            version: '1',
+            policy: ANNOTATION_POLICY.APPROVAL,
+          };
+          await meeting.publishStreams({annotationInfo});
+          assert.equal(meeting.annotationInfo, annotationInfo);
         });
 
         describe('unpublishStreams', () => {
@@ -4398,7 +4435,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 6);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),

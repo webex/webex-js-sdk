@@ -16,32 +16,16 @@ describe('createMediaConnection', () => {
     id: 'any fake track'
   }
   const fakeAudioStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeVideoStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeShareVideoStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   const fakeShareAudioStream = {
-    outputStream:{
-      getTracks(){
-        return [fakeTrack]
-      }
-    }
+    outputTrack: fakeTrack,
   };
   afterEach(() => {
     sinon.restore();

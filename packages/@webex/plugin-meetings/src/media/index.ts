@@ -20,13 +20,8 @@ import RtcMetrics from '../rtcMetrics';
 
 const {isBrowser} = BrowserDetection();
 
-// TODO: in internal-media-core add appropriate types in MultistreamConnectionConfig for enable main audio and video
-type MultistreamConnectionConfig = ConstructorParameters<
-  typeof MultistreamRoapMediaConnection
->[0] & {
-  enableMainAudio: boolean;
-  enableMainVideo: boolean;
-};
+// TODO: Export MultiStreamConnectionConfig and update here: SPARK-458871
+type MultistreamConnectionConfig = ConstructorParameters<typeof MultistreamRoapMediaConnection>[0];
 
 export type BundlePolicy = ConstructorParameters<
   typeof MultistreamRoapMediaConnection
@@ -219,13 +214,13 @@ Media.createMediaConnection = (
       },
     },
     {
-      // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
+      // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now SPARK-460530
       localTracks: {
         audio: audioStream?.outputTrack,
         video: videoStream?.outputTrack,
         screenShareVideo: shareVideoStream?.outputTrack,
-        screenShareAudio: shareAudioStream?.outputTrack, // TODO: add type for screenShareAudio in internal-media-core
-      } as unknown, // TODO: add type for screenShareAudio in internal-media-core
+        screenShareAudio: shareAudioStream?.outputTrack, // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
+      } as unknown,
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
         video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
@@ -393,20 +388,18 @@ Media.toggleStream = () => {};
  * @param {LocalStream} stream A local stream
  * @returns {null}
  */
-Media.stopStreams = (stream: LocalStream) => {
+Media.stopStream = (stream: LocalStream) => {
   if (!stream) {
     return Promise.resolve();
   }
 
   return Promise.resolve().then(() => {
-    if (stream && stream.stop) {
-      try {
-        stream.stop();
-      } catch (e) {
-        LoggerProxy.logger.error(
-          `Media:index#stopTracks --> Unable to stop the track with state ${stream.outputTrack.readyState}, error: ${e}`
-        );
-      }
+    try {
+      stream.stop();
+    } catch (e) {
+      LoggerProxy.logger.error(
+        `Media:index#stopStream --> Unable to stop the stream with ready state of the output track => ${stream.outputTrack.readyState} & input track => ${stream.inputTrack.readyState}, error: ${e}`
+      );
     }
   });
 };

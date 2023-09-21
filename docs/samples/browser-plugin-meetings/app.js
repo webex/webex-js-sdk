@@ -957,23 +957,27 @@ const localMedia = {
 
 function handleStreamPublishedState(meeting) {
   meeting.on('meeting:streamPublishStateChanged', ({isPublished, mediaType, stream}) => {
-    let debugString;
+    let debugString, streamElm;
 
     switch (mediaType) {
       case 'VIDEO-MAIN':
         debugString = 'local camera';
+        streamElm = meetingStreamsLocalVideo;
         break;
     
       case 'VIDEO-SLIDES':
         debugString = 'local share video';
+        streamElm = meetingStreamsLocalShareVideo;
         break;
     
       case 'AUDIO-MAIN':
         debugString = 'local microphone';
+        streamElm = meetingStreamsLocalAudio;
         break;
     
       case 'AUDIO-SLIDES':
         debugString = 'local share audio';
+        streamElm = meetingStreamsLocalShareAudio;
         break;
     
       default:
@@ -983,6 +987,10 @@ function handleStreamPublishedState(meeting) {
     if (!isPublished) {
       console.log(`MeetingControls#getUserMedia() :: ${debugString} stream unpublished, stopping it`);
       stream.stop();
+      if(mediaType === 'VIDEO-MAIN') {
+        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+      }
+      streamElm.srcObject = null;
     }
   });
 }
