@@ -18,6 +18,7 @@ describe('internal-plugin-metrics', () => {
             get: sinon.stub(),
           },
         },
+        request: sinon.stub().resolves({})
       });
 
       webex.emit('ready');
@@ -26,6 +27,8 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.clientMetricsAliasUser = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.postPreLoginMetric = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
         sinon.stub();
       webex.setTimingsAndFetch = sinon.stub();
@@ -94,6 +97,33 @@ describe('internal-plugin-metrics', () => {
       assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp);
       assert.calledOnce(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps);
     });
+
+    describe('#clientMetricsAliasUser', () => {
+      it('aliases the user correctly', () => {
+        webex.internal.newMetrics.clientMetricsAliasUser('my-id');
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          api: 'metrics',
+          resource: 'clientmetrics',
+          headers: { 'x-prelogin-userid': 'my-id' },
+          body: {},
+          qs: { alias: true }
+        });
+      })
+    });
+
+    describe('#postPreLoginMetric', () => {
+      it('sends the request correctly', () => {
+        webex.internal.newMetrics.postPreLoginMetric({event: 'test'}, 'my-id');
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          api: 'metrics',
+          resource: 'clientmetrics-prelogin',
+          headers: { 'x-prelogin-userid': 'my-id', authorization: false },
+          body: {event: 'test'},
+        });
+      })
+    })
 
     describe('#buildClientEventFetchRequestOptions', () => {
       it('builds client event fetch options successfully', () => {
