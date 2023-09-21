@@ -49,7 +49,9 @@ describe.only('internal-plugin-metrics', () => {
           metrics: {
             submitClientMetrics: sinon.stub(),
           },
-          newMetrics: {},
+          newMetrics: {
+           postPreLoginMetric: sinon.stub(),
+          },
           device: {
             userId: 'userId',
             url: 'deviceUrl',
@@ -1061,29 +1063,23 @@ describe.only('internal-plugin-metrics', () => {
           type: ['diagnostic-event'],
         });
 
-        assert.calledWith(webex.request, {
-          method: 'POST',
-          api: 'metrics',
-          resource: 'clientmetrics-prelogin',
-          headers: { authorization: false, 'x-prelogin-userid': 'my-id' },
-          body: {
-            eventPayload: {
-              event: {
-                name: 'client.alert.displayed',
-                canProceed: true,
-              },
-              originTime: {
-                sent: now.toISOString(),
-                triggered: 'now',
-              },
-              origin: {
-                buildType: 'test',
-                networkType: 'unknown',
-              },
+        assert.calledWith(webex.internal.newMetrics.postPreLoginMetric, {
+          eventPayload: {
+            event: {
+              name: 'client.alert.displayed',
+              canProceed: true,
             },
-            type: ['diagnostic-event'],
+            originTime: {
+              sent: now.toISOString(),
+              triggered: 'now',
+            },
+            origin: {
+              buildType: 'test',
+              networkType: 'unknown',
+            },
           },
-        });
+          type: ['diagnostic-event'],
+        }, 'my-id');
       });
     });
   });

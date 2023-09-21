@@ -691,35 +691,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     );
 
     // @ts-ignore
-    return this.webex
-      .request({
-        method: 'POST',
-        api: 'metrics',
-        resource: 'clientmetrics-prelogin',
-        headers: {
-          authorization: false,
-          'x-prelogin-userid': preLoginId,
-        },
-        body: diagnosticEvent,
-      })
-      .then((res) => {
-        this.logger.log(
-          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-          `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Request successful:`,
-          res
-        );
-
-        return res;
-      })
-      .catch((err) => {
-        this.logger.error(
-          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-          `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Request failed:`,
-          err
-        );
-
-        return Promise.reject(err);
-      });
+    return this.webex.internal.newMetrics.postPreLoginMetric(diagnosticEvent, preLoginId);
   };
 
   /**
