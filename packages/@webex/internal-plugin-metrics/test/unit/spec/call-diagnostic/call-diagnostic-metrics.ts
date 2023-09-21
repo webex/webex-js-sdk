@@ -78,6 +78,11 @@ describe('internal-plugin-metrics', () => {
           isUnverifiedGuest: false,
         },
         prepareFetchOptions: sinon.stub().callsFake((opts: any) => ({...opts, foo: 'bar'})),
+        request: sinon.stub().resolves({body: {}}),
+        logger: {
+          log: sinon.stub(),
+          error: sinon.stub(),
+        },
       };
 
       webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -160,10 +165,10 @@ describe('internal-plugin-metrics', () => {
             browser: getBrowserName(),
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
-            "clientVersion": "43.9.0.1234",
-            "localNetworkPrefix": "1.3.4.0",
-            "majorVersion": 43,
-            "minorVersion": 9,
+            clientVersion: '43.9.0.1234',
+            localNetworkPrefix: '1.3.4.0',
+            majorVersion: 43,
+            minorVersion: 9,
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
@@ -173,7 +178,7 @@ describe('internal-plugin-metrics', () => {
           networkType: 'unknown',
           userAgent,
         });
-      })
+      });
     });
 
     describe('#getIdentifiers', () => {
@@ -563,6 +568,25 @@ describe('internal-plugin-metrics', () => {
           }
         );
       });
+
+      it('should submit client to diagnostic when no preLoginId provided', () => {
+        const testEvent = {name: 'client.alert.displayed', options: {meetingId: 'meetingId'}};
+        sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
+        sinon.stub(cd, 'submitToCallDiagnostics');
+        //@ts-ignore
+        cd.submitClientEvent(testEvent);
+        assert.calledWith(cd.submitToCallDiagnostics, testEvent);
+      });
+
+      it('should submit event to prelogin when preLoginId provided', () => {
+        const testEvent = {name: 'client.alert.displayed', options: {preLoginId: 'preLoginId'}};
+        sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
+        sinon.stub(cd, 'submitToCallDiagnosticsPreLogin');
+        //@ts-ignore
+        cd.submitClientEvent(testEvent);
+        assert.calledWith(cd.submitToCallDiagnosticsPreLogin, testEvent);
+      });
+
     });
 
     it('should send request to call diagnostic batcher', () => {
@@ -694,6 +718,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
     });
+
     describe('#getErrorPayloadForClientErrorCode', () => {
       it('it should grab the payload for client error code correctly', () => {
         const res = cd.getErrorPayloadForClientErrorCode({
@@ -785,13 +810,15 @@ describe('internal-plugin-metrics', () => {
       it('returns false if converged architecture is not enabled', () => {
         fakeMeeting.meetingInfo = {enableConvergedArchitecture: false};
         assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), false);
-
       });
       it('returns undefined if converged architecture is not defined', () => {
         fakeMeeting.meetingInfo = {};
-        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), undefined);
+        assert.deepEqual(
+          cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}),
+          undefined
+        );
       });
-    })
+    });
 
     describe('#buildClientEventFetchRequestOptions', () => {
       it('returns expected options', async () => {
@@ -864,6 +891,54 @@ describe('internal-plugin-metrics', () => {
           method: 'POST',
           resource: 'clientmetrics',
           service: 'metrics',
+        });
+      });
+    });
+
+    describe('#submitToCallDiagnosticsPreLogin', async () => {
+      it('should call webex.request with expected options', async () => {
+        sinon.spy(Utils, 'prepareDiagnosticMetricItem');
+        await cd.submitToCallDiagnosticsPreLogin(
+          {
+            //@ts-ignore
+            event: {name: 'client.alert.displayed', canProceed: true},
+            //@ts-ignore
+            originTime: {triggered: 'now'},
+          },
+          'my-id'
+        );
+
+        assert.calledWith(Utils.prepareDiagnosticMetricItem, webex, {
+          eventPayload: {
+            event: {name: 'client.alert.displayed', canProceed: true},
+            originTime: {triggered: 'now', sent: now.toISOString()},
+            origin: {buildType: 'test', networkType: 'unknown'},
+          },
+          type: ['diagnostic-event'],
+        });
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          api: 'metrics',
+          resource: 'clientmetrics-prelogin',
+          headers: { authorization: false, 'x-prelogin-userid': 'my-id' },
+          body: {
+            eventPayload: {
+              event: {
+                name: 'client.alert.displayed',
+                canProceed: true,
+              },
+              originTime: {
+                sent: now.toISOString(),
+                triggered: 'now',
+              },
+              origin: {
+                buildType: 'test',
+                networkType: 'unknown',
+              },
+            },
+            type: ['diagnostic-event'],
+          },
         });
       });
     });
