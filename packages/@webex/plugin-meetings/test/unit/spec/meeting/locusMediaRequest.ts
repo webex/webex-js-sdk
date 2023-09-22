@@ -7,6 +7,7 @@ import Meetings from '@webex/plugin-meetings';
 import { LocalMuteRequest, LocusMediaRequest, RoapRequest } from "@webex/plugin-meetings/src/meeting/locusMediaRequest";
 import testUtils from '../../../utils/testUtils';
 import { Defer } from '@webex/common';
+import { IP_VERSION } from '../../../../src/constants';
 
 describe('LocusMediaRequest.send()', () => {
   let locusMediaRequest: LocusMediaRequest;
@@ -37,6 +38,7 @@ describe('LocusMediaRequest.send()', () => {
       clientIpAddress: 'some ip',
       timeShot: '2023-05-23T08:03:49Z',
     },
+    ipVersion: IP_VERSION.only_ipv4,
   };
 
   const createExpectedRoapBody = (expectedMessageType, expectedMute:{audioMuted: boolean, videoMuted: boolean}) => {
@@ -51,6 +53,7 @@ describe('LocusMediaRequest.send()', () => {
       ],
       clientMediaPreferences: {
         preferTranscoding: true,
+        ipver: 4,
         joinCookie: {
           anycastEntryPoint: 'aws-eu-west-1',
           clientIpAddress: 'some ip',
@@ -65,6 +68,7 @@ describe('LocusMediaRequest.send()', () => {
     mediaId: 'mediaId',
     selfUrl: 'fakeMeetingSelfUrl',
     muteOptions: {},
+    ipVersion: IP_VERSION.only_ipv6
   };
 
   const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}, sequence = undefined) => {
@@ -85,6 +89,7 @@ describe('LocusMediaRequest.send()', () => {
       ],
       clientMediaPreferences: {
         preferTranscoding: true,
+        ipver: 6,
       },
     };
 

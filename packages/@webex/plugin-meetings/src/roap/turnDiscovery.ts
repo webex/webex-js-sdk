@@ -182,6 +182,8 @@ export default class TurnDiscovery {
         mediaId: isReconnecting ? '' : meeting.mediaId,
         meetingId: meeting.id,
         locusMediaRequest: meeting.locusMediaRequest,
+        // @ts-ignore - because of meeting.webex
+        ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
       })
       .then(({mediaConnections}) => {
         if (mediaConnections) {
@@ -212,6 +214,8 @@ export default class TurnDiscovery {
       mediaId: meeting.mediaId,
       meetingId: meeting.id,
       locusMediaRequest: meeting.locusMediaRequest,
+      // @ts-ignore - because of meeting.webex
+      ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
     });
   }
 

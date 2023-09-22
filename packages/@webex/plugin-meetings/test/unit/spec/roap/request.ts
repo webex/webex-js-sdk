@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
-import {REACHABILITY} from '@webex/plugin-meetings/src/constants';
+import {IP_VERSION, REACHABILITY} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings/roap', () => {
   let roapRequest;
@@ -109,9 +109,11 @@ describe('plugin-meetings/roap', () => {
   describe('sendRoap', () => {
     it('includes joinCookie in the request correctly', async () => {
       const locusMediaRequest = {send: sinon.stub().resolves({body: {locus: {}}})};
+      const ipVersion = IP_VERSION.unknown;
 
       await roapRequest.sendRoap({
         locusSelfUrl: locusUrl,
+        ipVersion,
         mediaId: 'mediaId',
         roapMessage: {
           seq: 'seq',
@@ -138,6 +140,7 @@ describe('plugin-meetings/roap', () => {
       assert.deepEqual(requestParams, {
         type: 'RoapMessage',
         selfUrl: locusUrl,
+        ipVersion,
         joinCookie: {
           anycastEntryPoint: 'aws-eu-west-1',
         },
@@ -180,6 +183,7 @@ describe('plugin-meetings/roap', () => {
       new: 'sdp',
       reachability: { someResult: 'whatever' }
     };
+    const ipVersion = IP_VERSION.only_ipv6;
 
     roapRequest.attachReachabilityData = sinon.stub().returns(
       Promise.resolve({
@@ -195,6 +199,7 @@ describe('plugin-meetings/roap', () => {
         seq: 1,
       },
       locusSelfUrl: 'locusSelfUrl',
+      ipVersion,
       mediaId: 'mediaId',
       meetingId: 'meetingId',
       preferTranscoding: true,
@@ -206,6 +211,7 @@ describe('plugin-meetings/roap', () => {
     assert.deepEqual(requestParams, {
       type: 'RoapMessage',
       selfUrl: 'locusSelfUrl',
+      ipVersion,
       joinCookie: {
         anycastEntryPoint: 'aws-eu-west-1',
       },

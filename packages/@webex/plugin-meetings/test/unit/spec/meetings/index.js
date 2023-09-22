@@ -452,32 +452,14 @@ describe('plugin-meetings', () => {
           it('should have #getReachability', () => {
             assert.exists(webex.meetings.getReachability);
           });
-          describe('before #setReachability', () => {
-            it('does not get a reachability instance', () => {
-              const reachability = webex.meetings.getReachability();
+          it('gets the reachability data instance from webex.meetings', () => {
+            const reachability = webex.meetings.getReachability();
 
-              assert.notExists(
-                reachability,
-                'reachability is undefined because #setReachability has not been called'
-              );
-            });
-          });
-          describe('after #setReachability', () => {
-            beforeEach(() => {
-              webex.meetings.setReachability();
-              const reachabilityMocker = webex.meetings.getReachability();
-
-              sinon.stub(reachabilityMocker, 'gatherReachability').returns(true);
-            });
-            it('gets the reachability data instance from webex.meetings', () => {
-              const reachability = webex.meetings.getReachability();
-
-              assert.exists(
-                reachability,
-                'reachability is defined because #setReachability has been called'
-              );
-              assert.instanceOf(reachability, Reachability, 'should be a reachability instance');
-            });
+            assert.exists(
+              reachability,
+              'reachability is defined'
+            );
+            assert.instanceOf(reachability, Reachability, 'should be a reachability instance');
           });
         });
         describe('#getPersonalMeetingRoom', () => {
