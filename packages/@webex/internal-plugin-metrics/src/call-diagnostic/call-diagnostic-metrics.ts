@@ -381,7 +381,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   generateClientEventErrorPayload(rawError: any) {
     if (rawError.name) {
-      if (isBrowserMediaErrorName) {
+      if (isBrowserMediaErrorName(rawError.name)) {
         return this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
@@ -438,7 +438,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
-    errors?: ClientEvent['payload']['errors'];
+    errors?: ClientEventPayloadError;
   }) {
     const {meetingId, mediaConnections} = options;
 
@@ -500,7 +500,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
-    errors?: ClientEvent['payload']['errors'];
+    errors?: ClientEventPayloadError;
   }) {
     const {correlationId} = options;
 

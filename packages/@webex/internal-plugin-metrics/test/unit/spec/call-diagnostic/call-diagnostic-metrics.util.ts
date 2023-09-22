@@ -4,6 +4,7 @@ import {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
+  isBrowserMediaErrorName,
   isLocusServiceErrorCode,
   isMeetingInfoServiceError,
   prepareDiagnosticMetricItem,
@@ -11,7 +12,7 @@ import {
 } from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 
-describe.only('internal-plugin-metrics', () => {
+describe('internal-plugin-metrics', () => {
   describe('clearEmptyKeysRecursively', () => {
     it('should clear empty objects and empty nested objects recursively', () => {
       const obj: any = {
