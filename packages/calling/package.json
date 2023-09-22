@@ -4,6 +4,9 @@
     "dist"
   ],
   "contributors": [
+    "Bhargav Chinta (bchinta@cisco.com)",
+    "Priya Kesari (pkesari@cisco.com)",
+    "Shreyas Sharma (shreysh2@cisco.com)",
     "Sreekanth Narayanan (sreenara@cisco.com)"
   ],
   "main": "dist/module/index.js",
