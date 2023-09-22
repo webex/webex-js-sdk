@@ -127,15 +127,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   /**
-   * SDK connector function.
-   *
-   * @returns SdkConnector.
-   */
-  public getSDKConnector(): ISDKConnector {
-    return this.sdkConnector;
-  }
-
-  /**
    *
    */
   private registerSessionsListener() {

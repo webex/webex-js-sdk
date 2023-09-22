@@ -1,0 +1,82 @@
+<!DOCTYPE html><html class="default"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>Calling SDK (@webex/calling)</title><meta name="description" content="Documentation for Calling SDK (@webex/calling)"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script async src="assets/search.js" id="search-script"></script></head><body><script>document.body.classList.add(localStorage.getItem("tsd-theme") || "os")</script><header><div class="tsd-page-toolbar"><div class="container"><div class="table-wrap"><div class="table-cell" id="tsd-search" data-base="."><div class="field"><label for="tsd-search-field" class="tsd-widget search no-caption">Search</label><input type="text" id="tsd-search-field"/></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="index.html" class="title">Calling SDK (@webex/calling)</a></div><div class="table-cell" id="tsd-widgets"><div id="tsd-filter"><a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a><div class="tsd-filter-group"><div class="tsd-select" id="tsd-filter-visibility"><span class="tsd-select-label">All</span><ul class="tsd-select-list"><li data-value="public">Public</li><li data-value="protected">Public/Protected</li><li data-value="private" class="selected">All</li></ul></div> <input type="checkbox" id="tsd-filter-inherited" checked/><label class="tsd-widget" for="tsd-filter-inherited">Inherited</label></div></div><a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a></div></div></div></div><div class="tsd-page-title"><div class="container"><h1>Calling SDK (@webex/calling)</h1></div></div></header><div class="container container-main"><div class="row"><div class="col-8 col-content"><div class="tsd-panel tsd-typography">
+<a href="#table-of-contents" id="table-of-contents" style="color: inherit; text-decoration: none;">
+  <h3>Table of Contents</h3>
+</a>
+<ul>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#developing">Developing</a></li>
+<li><a href="#building">Building</a> </li>
+<li><a href="#testing">Testing</a></li>
+<li><a href="#samples">Samples</a> </li>
+<li><a href="#consuming-sdk">Consuming SDK</a><ul>
+<li><a href="#npm">NPM</a></li>
+<li><a href="#cdn">CDN</a></li>
+</ul>
+</li>
+<li><a href="#kitchen-sink-app">Kitchen Sink App</a></li>
+</ul>
+<hr>
+
+<a href="#getting-started" id="getting-started" style="color: inherit; text-decoration: none;">
+  <h2>Getting Started</h2>
+</a>
+<p>With the Webex Calling SDK, you can effortlessly integrate fundamental audio calling capabilities into your solutions, enhancing the way your users connect.</p>
+<ul>
+<li><a href="https://github.com/webex/webex-js-sdk/wiki/Introducing-the-Webex-Web-Calling-SDK">Introduction to the Webex Web Calling SDK</a></li>
+<li><a href="https://github.com/webex/webex-js-sdk/wiki/Quickstart-Guide-(Calling)">Quickstart guide</a>.</li>
+<li>API guide - TBD.</li>
+</ul>
+
+<a href="#developing" id="developing" style="color: inherit; text-decoration: none;">
+  <h2>Developing</h2>
+</a>
+<pre><code class="language-bash"><span class="hl-0">git clone https://github.com/</span><span class="hl-1">\&lt;</span><span class="hl-0">your-fork</span><span class="hl-1">\&gt;</span><span class="hl-0">/webex-js-sdk.git</span><br/><span class="hl-2">cd</span><span class="hl-0"> web-js-sdk/</span><br/><span class="hl-0">yarn install</span>
+</code></pre>
+
+<a href="#building" id="building" style="color: inherit; text-decoration: none;">
+  <h2>Building</h2>
+</a>
+<p>If your project needs some additional steps for the developer to build the
+project after some code changes, state them here:</p>
+<pre><code class="language-bash"><span class="hl-0">yarn workspaces foreach --parallel --verbose run build:src</span><br/><br/><span class="hl-0">yarn build:local</span>
+</code></pre>
+
+<a href="#testing" id="testing" style="color: inherit; text-decoration: none;">
+  <h2>Testing</h2>
+</a>
+<pre><code class="language-bash"><span class="hl-0"> yarn workspace @webex/calling run </span><span class="hl-2">test</span>
+</code></pre>
+
+<a href="#samples" id="samples" style="color: inherit; text-decoration: none;">
+  <h2>Samples</h2>
+</a>
+<pre><code class="language-bash"><span class="hl-0">  yarn run samples:serve</span>
+</code></pre>
+
+<a href="#consuming-sdk" id="consuming-sdk" style="color: inherit; text-decoration: none;">
+  <h2>Consuming SDK</h2>
+</a>
+<p>To consume the latest stable version of the Calling SDK one can use NPM or CDN.</p>
+
+<a href="#npm" id="npm" style="color: inherit; text-decoration: none;">
+  <h1>NPM</h1>
+</a>
+<pre><code class="language-javascript"><span class="hl-0">  </span><span class="hl-3">npm</span><span class="hl-0"> </span><span class="hl-3">install</span><span class="hl-0"> @</span><span class="hl-3">webex</span><span class="hl-0">/</span><span class="hl-3">calling</span>
+</code></pre>
+<p>(or)</p>
+<pre><code class="language-javascript"><span class="hl-0">  </span><span class="hl-3">yarn</span><span class="hl-0"> </span><span class="hl-3">add</span><span class="hl-0"> @</span><span class="hl-3">webex</span><span class="hl-0">/</span><span class="hl-3">calling</span>
+</code></pre>
+<pre><code class="language-javascript"><span class="hl-0">  </span><span class="hl-4">import</span><span class="hl-0"> </span><span class="hl-3">Calling</span><span class="hl-0"> </span><span class="hl-4">from</span><span class="hl-0"> </span><span class="hl-5">&#39;@webex/calling&#39;</span>
+</code></pre>
+
+<a href="#cdn" id="cdn" style="color: inherit; text-decoration: none;">
+  <h1>CDN</h1>
+</a>
+<pre><code class="language-javascript"><span class="hl-0">  </span><span class="hl-6">&lt;</span><span class="hl-7">script</span><span class="hl-0"> </span><span class="hl-8">src</span><span class="hl-0">=</span><span class="hl-5">&quot;../calling.min.js&quot;</span><span class="hl-6">&gt;&lt;/</span><span class="hl-7">script</span><span class="hl-6">&gt;</span>
+</code></pre>
+
+<a href="#kitchen-sink-app" id="kitchen-sink-app" style="color: inherit; text-decoration: none;">
+  <h3>Kitchen Sink App</h3>
+</a>
+<p>To test Calling SDK API, use this Kitchen Sink app: <a href="https://webex.github.io/webex-js-sdk/samples/calling/">https://webex.github.io/webex-js-sdk/samples/calling/</a> </p>
+</div></div><div class="col-4 col-menu menu-sticky-wrap menu-highlight"><nav class="tsd-navigation primary"><ul><li class="current"><a href="modules.html">Exports</a></li></ul></nav><nav class="tsd-navigation secondary menu-sticky"><ul><li class="tsd-kind-class"><a href="classes/CallHistory.html" class="tsd-kind-icon">Call<wbr/>History</a></li><li class="tsd-kind-interface"><a href="interfaces/ICallHistory.html" class="tsd-kind-icon">ICall<wbr/>History</a></li><li class="tsd-kind-class"><a href="classes/CallSettings.html" class="tsd-kind-icon">Call<wbr/>Settings</a></li><li class="tsd-kind-interface"><a href="interfaces/ICallSettings.html" class="tsd-kind-icon">ICall<wbr/>Settings</a></li><li class="tsd-kind-class"><a href="classes/CallingClient.html" class="tsd-kind-icon">Calling<wbr/>Client</a></li><li class="tsd-kind-interface"><a href="interfaces/ICall.html" class="tsd-kind-icon">ICall</a></li><li class="tsd-kind-interface"><a href="interfaces/ICallManager.html" class="tsd-kind-icon">ICall<wbr/>Manager</a></li><li class="tsd-kind-interface"><a href="interfaces/ILine.html" class="tsd-kind-icon">ILine</a></li><li class="tsd-kind-interface"><a href="interfaces/IRegistration.html" class="tsd-kind-icon">IRegistration</a></li><li class="tsd-kind-interface"><a href="interfaces/ICallingClient.html" class="tsd-kind-icon">ICalling<wbr/>Client</a></li><li class="tsd-kind-class"><a href="classes/ContactsClient.html" class="tsd-kind-icon">Contacts<wbr/>Client</a></li><li class="tsd-kind-interface"><a href="interfaces/IContacts.html" class="tsd-kind-icon">IContacts</a></li><li class="tsd-kind-class"><a href="classes/Voicemail.html" class="tsd-kind-icon">Voicemail</a></li><li class="tsd-kind-interface"><a href="interfaces/IVoicemail.html" class="tsd-kind-icon">IVoicemail</a></li></ul></nav></div></div></div><footer class=""><div class="container"><h2>Legend</h2><div class="tsd-legend-group"><ul class="tsd-legend"><li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li><li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li><li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li></ul><ul class="tsd-legend"><li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li><li class="tsd-kind-method tsd-parent-kind-interface"><span class="tsd-kind-icon">Method</span></li></ul></div><h2>Settings</h2><p>Theme <select id="theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></p></div></footer><div class="overlay"></div><script src="assets/main.js"></script></body></html>

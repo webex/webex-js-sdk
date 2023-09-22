@@ -68,15 +68,6 @@ export class ContactsClient implements IContacts {
   }
 
   /**
-   * SDK connector function.
-   *
-   * Returns SdkConnector.
-   */
-  public getSDKConnector(): ISDKConnector {
-    return this.sdkConnector;
-  }
-
-  /**
    * Decrypt emails, phoneNumbers, sipAddresses.
    *
    * @param contactDetails - Array ContactDetail.

@@ -1,6 +1,5 @@
 import {Eventing} from '../Events/impl';
 import {CallHistoryEventTypes, UserSession} from '../Events/types';
-import {ISDKConnector} from '../SDKConnector/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
 
@@ -18,7 +17,16 @@ export type JanusResponseEvent = {
 };
 
 export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
-  getSDKConnector: () => ISDKConnector;
+  /**
+   * This API is used to fetch the the recent Call History Records.
+   *
+   * Example
+   * ```javascript
+   * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
+   * ```
+   *
+   * callHistory is an instance of CallHistory Client which is required to access to this API
+   */
   getCallHistoryData: (
     days: number,
     limit: number,

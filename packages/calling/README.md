@@ -1,52 +1,75 @@
-# @webex/calling
+### Table of Contents
+- [Getting Started](#getting-started)
+- [Developing](#developing)
+- [Building](#building) 
+- [Testing](#testing)
+- [Samples](#samples) 
+- [Consuming SDK](#consuming-sdk)
+  - [NPM](#npm)
+  - [CDN](#cdn)
+- [Kitchen Sink App](#kitchen-sink-app)
+---
 
+## Getting Started
 With the Webex Calling SDK, you can effortlessly integrate fundamental audio calling capabilities into your solutions, enhancing the way your users connect.
 
-> [Introduction to the Webex Web Calling SDK](https://github.com/webex/webex-js-sdk/wiki/Introducing-the-Webex-Web-Calling-SDK)
-> [Quickstart guide](https://github.com/webex/webex-js-sdk/wiki/Quickstart-Guide-(Calling))
-> API guide - TBD
-
+- [Introduction to the Webex Web Calling SDK](https://github.com/webex/webex-js-sdk/wiki/Introducing-the-Webex-Web-Calling-SDK)
+- [Quickstart guide](https://github.com/webex/webex-js-sdk/wiki/Quickstart-Guide-(Calling)).
+- API guide - TBD.
  
 ## Developing
 
-```shell
+```bash
 git clone https://github.com/\<your-fork\>/webex-js-sdk.git
 cd web-js-sdk/
 yarn install
 ```
 
-### Building
+## Building
 
 If your project needs some additional steps for the developer to build the
 project after some code changes, state them here:
 
-```shell
+```bash
 yarn workspaces foreach --parallel --verbose run build:src
 
 yarn build:local
 ```
 
-### Testing
+## Testing
 
-```shell
+```bash
  yarn workspace @webex/calling run test
 ```
 
-### Testing on samples
-```shell
- yarn run samples:serve
+## Samples 
+```bash
+  yarn run samples:serve
 ```
 
-### Consuming the SDK
-
-The Calling package can be incorporated into an existing project by updating the package.json. Add the line pasted below to get access to the calling-sdk package located in the artifactory.
-
-
-Use the following commands to update the package.json and package.lock/yarn.lock with the latest version of the calling-sdk package.
-```shell
-npm install @webex/web-calling-sdk
+## Consuming SDK
+To consume the latest stable version of the Calling SDK one can use NPM or CDN.
+# NPM
+```javascript
+  npm install @webex/calling
 ```
 (or)
-```shell 
-yarn add @webex/web-calling-sdk
+
+```javascript
+  yarn add @webex/calling
 ```
+
+```javascript
+  import Calling from '@webex/calling'
+```
+# CDN
+```javascript
+  <script src="../calling.min.js"></script>
+```
+
+### Kitchen Sink App
+To test Calling SDK API, use this Kitchen Sink app: https://webex.github.io/webex-js-sdk/samples/calling/ 
+
+
+
+

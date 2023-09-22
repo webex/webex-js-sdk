@@ -31,7 +31,7 @@
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "build:docs": "typedoc --out docs/",
+    "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
     "deploy:npm": "npm publish"
   },
