@@ -13,6 +13,8 @@ import {
   broadworksUserMessageId,
   getDescVoicemailListJsonBWRKS,
   getAscVoicemailListJsonBWRKS,
+  getEmptyVoicemailListJsonBWRKS,
+  getInvalidVoicemailListJsonBWRKS,
 } from './voicemailFixture';
 import {CallingPartyInfo, IBroadworksCallBackendConnector} from './types';
 import {
@@ -35,6 +37,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
   beforeAll(() => {
     webex.internal.device.features.entitlement.models = [{_values: {key: 'broadworks-connector'}}];
     broadworksBackendConnector = new BroadworksBackendConnector(webex, {level: LOGGER.INFO});
+    broadworksBackendConnector.getSDKConnector();
   });
 
   describe('Voicemail failure test cases', () => {
@@ -42,6 +45,16 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
     beforeEach(() => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 422,
+          ok: false,
+        })
+      ) as jest.Mock;
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
     });
 
     it('verify exception case for the mark read case when messageid is invalid', async () => {
@@ -51,11 +64,75 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       expect(response.statusCode).toBe(422);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: NaN,
+          statusCode: 422,
         },
         {
           file: 'BroadworksBackendConnector',
           method: 'voicemailMarkAsRead',
+        }
+      );
+    });
+
+    it('verify failure case for the mark read case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.voicemailMarkAsRead('dummy');
+
+      expect(response.message).toBe('FAILURE');
+      expect(response.statusCode).toBe(422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 422,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'voicemailMarkAsRead',
+        }
+      );
+    });
+
+    it('verify failure case for the mark as unread case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.voicemailMarkAsUnread('dummy');
+
+      expect(response.message).toBe('FAILURE');
+      expect(response.statusCode).toBe(422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 422,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'voicemailMarkAsUnread',
+        }
+      );
+    });
+
+    it('verify failure case for the delete voicemail case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.deleteVoicemail('dummy');
+
+      expect(response.message).toBe('FAILURE');
+      expect(response.statusCode).toBe(422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 422,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+    });
+
+    it('verify failure case for the voicemail content case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.getVoicemailContent('dummy');
+
+      expect(response.message).toBe('FAILURE');
+      expect(response.statusCode).toBe(422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 422,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'getVoicemailContent',
         }
       );
     });
@@ -108,6 +185,15 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       );
     });
 
+    it('verify no response case when token have userid', async () => {
+      broadworksBackendConnector['bwtoken'] =
+        'bwtoken.eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBZG1pbiJ9.rtyWAvhMH8l2-WQT3rGOtXNkI7hVcfoH5LSQ_CofmX0';
+      const response = await broadworksBackendConnector.init();
+
+      /* eslint-disable no-unused-expressions */
+      expect(response).toBeUndefined;
+    });
+
     it('verify no change in xsi url received without ep version', async () => {
       const voiceMailPayload = JSON.parse(JSON.stringify(mockBWRKSData));
 
@@ -122,6 +208,29 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         voiceMailPayload.body.devices[0].settings.broadworksXsiActionsUrl
       );
     });
+
+    it('verify failure case for voicemail list fetch', async () => {
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const responseDetails = {
+        data: {
+          error: '422 Exception has occurred',
+        },
+        message: 'FAILURE',
+        statusCode: 422,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 422,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'getVoicemailList',
+        }
+      );
+    });
   });
 
   describe('Voicemail success tests for Broadworks', () => {
@@ -129,6 +238,10 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       getSortedVoicemailListSpy = jest.spyOn(utils, 'getSortedVoicemailList');
       storeVoicemailListSpy = jest.spyOn(utils, 'storeVoicemailList');
       fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
     });
 
     const success = 'SUCCESS';
@@ -304,6 +417,68 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         method: 'getVoicemailList',
       });
       sessionStorage.removeItem(CONTEXT);
+    });
+
+    it('verify empty voicemail listing data', async () => {
+      global.fetch.mockReturnValueOnce({
+        status: 200,
+        ok: true,
+        json: () => Promise.resolve(getEmptyVoicemailListJsonBWRKS),
+      });
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [],
+      };
+
+      const responseDetails = {
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(global.fetch).toBeCalledOnceWith(`${broadworksUserInfoUrl}${JSON_FORMAT}`, {
+        headers: {Authorization: `bearer ${bwToken}`},
+        method: 'GET',
+      });
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'BroadworksBackendConnector',
+        method: 'getVoicemailList',
+      });
+    });
+
+    it('verify empty voicemail listing data when response data is in invalid format', async () => {
+      global.fetch.mockReturnValueOnce({
+        status: 200,
+        ok: true,
+        json: () => Promise.resolve(getInvalidVoicemailListJsonBWRKS),
+      });
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [{}],
+      };
+
+      const responseDetails = {
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(global.fetch).toBeCalledOnceWith(`${broadworksUserInfoUrl}${JSON_FORMAT}`, {
+        headers: {Authorization: `bearer ${bwToken}`},
+        method: 'GET',
+      });
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'BroadworksBackendConnector',
+        method: 'getVoicemailList',
+      });
     });
 
     it('verify successful voicemailMarkAsRead', async () => {

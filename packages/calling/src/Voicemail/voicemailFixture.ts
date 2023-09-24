@@ -285,6 +285,22 @@ const MOCK_VOICEMAIL_FIFTH_MESSAGE = {
   },
 };
 
+export const getEmptyVoicemailListJsonBWRKS = {
+  statusCode: 200,
+  VoiceMessagingMessages: {
+    messageInfoList: {},
+  },
+};
+
+export const getInvalidVoicemailListJsonBWRKS = {
+  statusCode: 200,
+  VoiceMessagingMessages: {
+    messageInfoList: {
+      messageInfo: {},
+    },
+  },
+};
+
 export const getVoicemailListJsonBWRKS = {
   statusCode: 200,
   VoiceMessagingMessages: {
@@ -418,6 +434,22 @@ export const mockUCMVoicemailBody = {
   },
 };
 
+export const mockVoicemailContentResponse = {
+  statusCode: 200,
+  headers: {
+    mediatype: 'audio/wav',
+  },
+  body: voicemailContent,
+};
+
+export const voicemailEventProcessingPayload = {
+  data: {
+    messageId: '1234567890',
+    eventType: 'processing',
+    status: 'waiting',
+  },
+};
+
 export const getVoiceMailListJsonUCM = {
   statusCode: 200,
   body: {
@@ -444,6 +476,14 @@ export const getDescVoiceMailListJsonUCM = {
       ],
     },
   },
+};
+
+export const failure = 'FAILURE';
+
+export const responseDetails422 = {
+  data: {error: '422 Exception has occurred'},
+  message: failure,
+  statusCode: 422,
 };
 
 export const mockVoicemailTranscriptResponse = {

@@ -465,7 +465,9 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       return responseDetails;
     } catch (err: unknown) {
       /* Catch the exception error code from try block, return the error object to user */
-      const errorInfo = err as WebexRequestPayload;
+      const errorInfo = {
+        statusCode: err instanceof Error ? Number(err.message) : '',
+      } as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;

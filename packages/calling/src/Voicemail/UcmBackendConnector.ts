@@ -11,7 +11,13 @@ import {
   CALLING_BACKEND,
 } from '../common/types';
 import {getVgActionEndpoint, serviceErrorCodeHandler} from '../common/Utils';
-import {SUCCESS_MESSAGE, USERS, CONTENT, UCM_CONNECTOR_FILE} from '../common/constants';
+import {
+  SUCCESS_MESSAGE,
+  USERS,
+  CONTENT,
+  UCM_CONNECTOR_FILE,
+  FAILURE_MESSAGE,
+} from '../common/constants';
 import log from '../Logger';
 import {API_V1, LIMIT, OFFSET, SORT_ORDER, VMGATEWAY, VOICEMAILS} from './constants';
 import {
@@ -254,10 +260,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     });
     const contentInfo = response?.body as UcmVMContentResponse;
     const respHeaders = response.headers;
+    const statusCode = response.statusCode;
     const mediaType = respHeaders?.mediatype as string;
     const mediaContent = contentInfo as string;
     const responseDetails = {
-      statusCode: response.statusCode as number,
+      statusCode: statusCode as number,
       data: {
         voicemailContent: {
           type: mediaType,
@@ -266,6 +273,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       },
       message: SUCCESS_MESSAGE,
     };
+
+    if (statusCode !== 200 && statusCode !== 204) {
+      responseDetails.message = FAILURE_MESSAGE;
+    }
 
     return responseDetails;
   }

@@ -83,8 +83,19 @@ describe('Voicemail Client tests', () => {
       if (data.valid) {
         const voicemailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
 
+        voicemailClient['backendConnector'].init = jest.fn(() => Promise.resolve({}));
+        voicemailClient['backendConnector'].resolveContact = jest.fn(() => Promise.resolve({}));
+
+        const connectorResponse = voicemailClient.init();
+        const contactResponse = voicemailClient.resolveContact({
+          name: {$: 'test'},
+          address: {$: 'test address'},
+        });
+
         expect(voicemailClient).toBeTruthy();
         expect(voicemailClient.getSDKConnector().getWebex()).toBeTruthy();
+        expect(connectorResponse).toBeTruthy();
+        expect(contactResponse).toBeTruthy();
 
         switch (data.callingBehavior) {
           case NATIVE_SIP_CALL_TO_UCM:

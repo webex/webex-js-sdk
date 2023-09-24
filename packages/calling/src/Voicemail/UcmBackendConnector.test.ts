@@ -6,18 +6,23 @@ import {
   getDescVoiceMailListJsonUCM,
   getVoiceMailListJsonUCM,
   mockUCMVoicemailBody,
+  mockVoicemailContentResponse,
   orgId,
+  responseDetails422,
   ucmBackendInfoUrl,
   voicemailContent,
 } from './voicemailFixture';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import * as utils from '../common/Utils';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {CONTENT, FAILURE_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {VoicemailResponseEvent} from './types';
+import {ISDKConnector} from '../SDKConnector/types';
 
 let ucmBackendConnector: UcmBackendConnector;
 const webex = getTestUtilsWebex();
 let voicemailPayload: WebexRequestPayload;
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
+let sdkConnector: ISDKConnector;
 
 describe('Voicemail UCM Backend Connector Test case', () => {
   const responseDetails = {
@@ -41,7 +46,19 @@ describe('Voicemail UCM Backend Connector Test case', () => {
     webex.internal.device.callingBehavior = 'NATIVE_SIP_CALL_TO_UCM';
     ucmBackendConnector = new UcmBackendConnector(webex, {level: LOGGER.INFO});
     ucmBackendConnector.init();
+    sdkConnector = ucmBackendConnector.getSDKConnector();
     voicemailPayload = getVoiceMailListJsonUCM;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('verify UCM Backend Connector object', () => {
+    expect(ucmBackendConnector.getSDKConnector().getWebex()).toBeTruthy();
+    expect(ucmBackendConnector.getSDKConnector().getWebex().internal.device.userId).toBe(
+      '8a67806f-fc4d-446b-a131-31e71ea5b0e9'
+    );
   });
 
   it('verify fetching transcript returned null', async () => {
@@ -61,6 +78,31 @@ describe('Voicemail UCM Backend Connector Test case', () => {
       headers: {orgId},
       method: HTTP_METHODS.GET,
       uri: `${ucmBackendInfoUrl + voicemailContent}`,
+    });
+  });
+
+  it('verify successful voicemailContent', async () => {
+    const voiceMailPayload = <VoicemailResponseEvent>(<unknown>mockVoicemailContentResponse);
+
+    webex.request.mockResolvedValueOnce(voiceMailPayload);
+    const response = await (await ucmBackendConnector.getVoicemailContent(messageId)).data;
+    const voicemailContentResponse = voicemailContent;
+    const vmResponseDetails = {
+      voicemailContent: {
+        type: 'audio/wav',
+        content: voicemailContentResponse,
+      },
+    };
+
+    expect(response).toStrictEqual(vmResponseDetails);
+    expect(webex.request).toBeCalledOnceWith({
+      headers: {
+        orgId,
+        deviceUrl: webex.internal.device.url,
+        mercuryHostname: webex.internal.services._serviceUrls.mercuryApi,
+      },
+      method: HTTP_METHODS.GET,
+      uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
     });
   });
 
@@ -152,6 +194,10 @@ describe('Voicemail failure tests for UCM', () => {
     serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('verify failure voicemail listing when bad request occur', async () => {
     webex.request.mockRejectedValueOnce(failurePayload);
     const response = await ucmBackendConnector.getVoicemailList(0, 20, SORT.DESC);
@@ -171,6 +217,40 @@ describe('Voicemail failure tests for UCM', () => {
       headers: {orgId},
       method: HTTP_METHODS.GET,
       uri: `${ucmBackendInfoUrl + voicemailContent}`,
+    });
+  });
+
+  it('verify failure voicemailContent when bad request occur', async () => {
+    const vmContentSpy = jest.spyOn(ucmBackendConnector, 'getVoicemailContent');
+    const failurePayload422 = {
+      statusCode: 422,
+    };
+
+    const messageId = mockUCMVoicemailBody.body.items['MsgId'];
+
+    webex.request.mockRejectedValue(failurePayload422);
+    const response = await ucmBackendConnector.getVoicemailContent(messageId);
+
+    expect(vmContentSpy).toBeCalledTimes(1);
+    expect(response).toStrictEqual(responseDetails422);
+
+    expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      {
+        statusCode: 422,
+      },
+      {
+        file: 'UcmBackendConnector',
+        method: 'getVoicemailContent',
+      }
+    );
+    expect(webex.request).toBeCalledOnceWith({
+      headers: {
+        orgId,
+        deviceUrl: webex.internal.device.url,
+        mercuryHostname: webex.internal.services._serviceUrls.mercuryApi,
+      },
+      method: HTTP_METHODS.GET,
+      uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
     });
   });
 
