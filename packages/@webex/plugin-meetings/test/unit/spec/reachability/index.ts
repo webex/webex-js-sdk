@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Reachability, {ICECandidateResult} from '@webex/plugin-meetings/src/reachability/';
+import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
 
 describe('isAnyClusterReachable', () => {
   let webex;
@@ -250,4 +251,12 @@ describe('gatherReachability', () => {
       });
     });
   });
+
+  describe('getIpVersion', () => {
+    it('returns unknown', () => {
+      const reachability = new Reachability(webex);
+
+      assert.equal(reachability.getIpVersion(), IP_VERSION.unknown);
+    })
+  })
 });

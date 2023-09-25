@@ -1,5 +1,6 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
@@ -15,7 +16,11 @@ describe('plugin-meetings', () => {
     const meeting = {};
 
     beforeEach(() => {
-      webex = new MockWebex({});
+      webex = new MockWebex({
+        children: {
+          meetings: Meetings,
+        },
+      });
       const logger = {
         info: sandbox.stub(),
         log: sandbox.stub(),
@@ -334,6 +339,7 @@ describe('plugin-meetings', () => {
           selfUrl: 'self url',
           sequence: {},
           type: 'LocalMute',
+          ipVersion: 0,
         });
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
