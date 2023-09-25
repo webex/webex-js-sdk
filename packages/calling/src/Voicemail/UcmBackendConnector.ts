@@ -274,7 +274,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       message: SUCCESS_MESSAGE,
     };
 
-    if (statusCode !== 200 && statusCode !== 204) {
+    if (statusCode !== 200 && statusCode !== 202) {
       responseDetails.message = FAILURE_MESSAGE;
     }
 

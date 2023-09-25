@@ -15,8 +15,10 @@ import {
   getAscVoicemailListJsonBWRKS,
   getEmptyVoicemailListJsonBWRKS,
   getInvalidVoicemailListJsonBWRKS,
+  resolveContactArgs,
+  responseDetails422,
 } from './voicemailFixture';
-import {CallingPartyInfo, IBroadworksCallBackendConnector} from './types';
+import {IBroadworksCallBackendConnector} from './types';
 import {
   JSON_FORMAT,
   MARK_AS_READ,
@@ -25,6 +27,7 @@ import {
   NO_VOICEMAIL_STATUS_CODE,
 } from './constants';
 import * as utils from '../common/Utils';
+import {FAILURE_MESSAGE, UNPROCESSABLE_CONTENT_CODE} from '../common/constants';
 
 const webex = getTestUtilsWebex();
 
@@ -33,6 +36,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
   let getSortedVoicemailListSpy: jest.SpyInstance;
   let storeVoicemailListSpy: jest.SpyInstance;
   let fetchVoicemailListSpy: jest.SpyInstance;
+  const {messageId} = mockVoicemailBody.body.items[0];
 
   beforeAll(() => {
     webex.internal.device.features.entitlement.models = [{_values: {key: 'broadworks-connector'}}];
@@ -47,7 +51,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
       global.fetch = jest.fn(() =>
         Promise.resolve({
-          status: 422,
+          status: UNPROCESSABLE_CONTENT_CODE,
           ok: false,
         })
       ) as jest.Mock;
@@ -60,11 +64,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify exception case for the mark read case when messageid is invalid', async () => {
       const response = await broadworksBackendConnector.voicemailMarkAsRead('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -76,11 +80,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify failure case for the mark read case when response is not ok', async () => {
       const response = await broadworksBackendConnector.voicemailMarkAsRead('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -92,11 +96,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify failure case for the mark as unread case when response is not ok', async () => {
       const response = await broadworksBackendConnector.voicemailMarkAsUnread('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -108,11 +112,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify failure case for the delete voicemail case when response is not ok', async () => {
       const response = await broadworksBackendConnector.deleteVoicemail('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -124,11 +128,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify failure case for the voicemail content case when response is not ok', async () => {
       const response = await broadworksBackendConnector.getVoicemailContent('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -139,7 +143,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
     it('verify failed case when token is empty', async () => {
       const failurePayload = {
-        message: 'FAILURE',
+        message: FAILURE_MESSAGE,
         status: 401,
       };
       const voiceMailPayload = <WebexRequestPayload>failurePayload;
@@ -148,7 +152,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       webex.request.mockRejectedValue(voiceMailPayload);
       const response = await broadworksBackendConnector.init();
 
-      expect(response.message).toBe('FAILURE');
+      expect(response.message).toBe(FAILURE_MESSAGE);
       expect(response.statusCode).toBe(401);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
@@ -163,7 +167,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
     it('verify failed case when token is invalid', async () => {
       const failurePayload = {
-        message: 'FAILURE',
+        message: FAILURE_MESSAGE,
         status: 401,
       };
       const voiceMailPayload = <WebexRequestPayload>failurePayload;
@@ -172,7 +176,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       webex.request.mockRejectedValue(voiceMailPayload);
       const response = await broadworksBackendConnector.init();
 
-      expect(response.message).toBe('FAILURE');
+      expect(response.message).toBe(FAILURE_MESSAGE);
       expect(response.statusCode).toBe(401);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
@@ -185,13 +189,11 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       );
     });
 
-    it('verify no response case when token have userid', async () => {
-      broadworksBackendConnector['bwtoken'] =
-        'bwtoken.eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBZG1pbiJ9.rtyWAvhMH8l2-WQT3rGOtXNkI7hVcfoH5LSQ_CofmX0';
+    it('verify no response case when token have invalid userid', async () => {
+      broadworksBackendConnector['bwtoken'] = 'bwtoken.eyJhbGciOiJIUzI1NiJ9';
       const response = await broadworksBackendConnector.init();
 
-      /* eslint-disable no-unused-expressions */
-      expect(response).toBeUndefined;
+      expect(response).toBeUndefined();
     });
 
     it('verify no change in xsi url received without ep version', async () => {
@@ -212,18 +214,10 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     it('verify failure case for voicemail list fetch', async () => {
       const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
 
-      const responseDetails = {
-        data: {
-          error: '422 Exception has occurred',
-        },
-        message: 'FAILURE',
-        statusCode: 422,
-      };
-
-      expect(response).toStrictEqual(responseDetails);
+      expect(response).toStrictEqual(responseDetails422);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: 422,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -482,7 +476,6 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successful voicemailMarkAsRead', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         data: {},
         statusCode: 200,
@@ -500,7 +493,6 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successful voicemailMarkAsUnread', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 200,
         data: {},
@@ -518,8 +510,6 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successful deleteVoicemail', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
-
       const response = await broadworksBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response.data).toStrictEqual({});
@@ -540,7 +530,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify resolution of contact to null', async () => {
-      const response = await broadworksBackendConnector.resolveContact({} as CallingPartyInfo);
+      const response = await broadworksBackendConnector.resolveContact(resolveContactArgs);
 
       expect(response).toBeNull();
     });

@@ -800,11 +800,11 @@ export async function serviceErrorCodeHandler(
     }
 
     default: {
-      log.warn(`422 Exception has occurred`, loggerContext);
+      log.warn(`${errorCode || 422} Exception has occurred`, loggerContext);
       const errorDetails = {
-        statusCode: 422,
+        statusCode: errorCode ?? 422,
         data: {
-          error: '422 Exception has occurred',
+          error: `${errorCode || 422} Exception has occurred`,
         },
         message: failureMessage,
       };

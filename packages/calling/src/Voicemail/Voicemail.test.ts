@@ -14,6 +14,7 @@ import {UcmBackendConnector} from './UcmBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {VOICEMAIL_ACTION, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
+import {resolveContactArgs} from './voicemailFixture';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();
@@ -87,10 +88,7 @@ describe('Voicemail Client tests', () => {
         voicemailClient['backendConnector'].resolveContact = jest.fn(() => Promise.resolve({}));
 
         const connectorResponse = voicemailClient.init();
-        const contactResponse = voicemailClient.resolveContact({
-          name: {$: 'test'},
-          address: {$: 'test address'},
-        });
+        const contactResponse = voicemailClient.resolveContact(resolveContactArgs);
 
         expect(voicemailClient).toBeTruthy();
         expect(voicemailClient.getSDKConnector().getWebex()).toBeTruthy();

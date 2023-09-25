@@ -8,13 +8,20 @@ import {
   mockUCMVoicemailBody,
   mockVoicemailContentResponse,
   orgId,
+  resolveContactArgs,
+  responseDetails204,
   responseDetails422,
   ucmBackendInfoUrl,
   voicemailContent,
 } from './voicemailFixture';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import * as utils from '../common/Utils';
-import {CONTENT, FAILURE_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {
+  CONTENT,
+  FAILURE_MESSAGE,
+  SUCCESS_MESSAGE,
+  UNPROCESSABLE_CONTENT_CODE,
+} from '../common/constants';
 import {VoicemailResponseEvent} from './types';
 import {ISDKConnector} from '../SDKConnector/types';
 
@@ -23,6 +30,7 @@ const webex = getTestUtilsWebex();
 let voicemailPayload: WebexRequestPayload;
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
 let sdkConnector: ISDKConnector;
+const messageId = mockUCMVoicemailBody.body.items['messageId'];
 
 describe('Voicemail UCM Backend Connector Test case', () => {
   const responseDetails = {
@@ -37,7 +45,6 @@ describe('Voicemail UCM Backend Connector Test case', () => {
     data: voicemailResponseInfo,
     message: SUCCESS_MESSAGE,
   };
-  const messageId = mockUCMVoicemailBody.body.items['MsgId'];
 
   beforeAll(() => {
     webex.version = '2.31.1';
@@ -158,6 +165,12 @@ describe('Voicemail UCM Backend Connector Test case', () => {
       },
     });
   });
+
+  it('verify resolution of contact to null', async () => {
+    const response = await ucmBackendConnector.resolveContact(resolveContactArgs);
+
+    expect(response).toBeNull();
+  });
 });
 
 describe('Voicemail failure tests for UCM', () => {
@@ -223,10 +236,8 @@ describe('Voicemail failure tests for UCM', () => {
   it('verify failure voicemailContent when bad request occur', async () => {
     const vmContentSpy = jest.spyOn(ucmBackendConnector, 'getVoicemailContent');
     const failurePayload422 = {
-      statusCode: 422,
+      statusCode: UNPROCESSABLE_CONTENT_CODE,
     };
-
-    const messageId = mockUCMVoicemailBody.body.items['MsgId'];
 
     webex.request.mockRejectedValue(failurePayload422);
     const response = await ucmBackendConnector.getVoicemailContent(messageId);
@@ -236,7 +247,7 @@ describe('Voicemail failure tests for UCM', () => {
 
     expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
       {
-        statusCode: 422,
+        statusCode: UNPROCESSABLE_CONTENT_CODE,
       },
       {
         file: 'UcmBackendConnector',
@@ -254,11 +265,46 @@ describe('Voicemail failure tests for UCM', () => {
     });
   });
 
+  it('verify failure voicemailContent when failure voicemail api response received', async () => {
+    const vmContentSpy = jest.spyOn(ucmBackendConnector, 'getVoicemailContent');
+    const failureVoicemailResponse = {
+      statusCode: 204,
+    };
+
+    webex.request.mockResolvedValueOnce(failureVoicemailResponse);
+    const response = await ucmBackendConnector.getVoicemailContent(messageId);
+    const failureVmResponseDetails = {
+      data: {
+        voicemailContent: {
+          type: undefined,
+          content: undefined,
+        },
+      },
+      message: FAILURE_MESSAGE,
+      ...failureVoicemailResponse,
+    };
+    expect(vmContentSpy).toBeCalledTimes(1);
+    expect(response).toStrictEqual(responseDetails204);
+
+    expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(failureVmResponseDetails, {
+      file: 'UcmBackendConnector',
+      method: 'getVoicemailContent',
+    });
+    expect(webex.request).toBeCalledOnceWith({
+      headers: {
+        orgId,
+        deviceUrl: webex.internal.device.url,
+        mercuryHostname: webex.internal.services._serviceUrls.mercuryApi,
+      },
+      method: HTTP_METHODS.GET,
+      uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
+    });
+  });
+
   it('verify failure voicemailMarkAsRead when bad request occur', async () => {
     webex.request.mockRejectedValue(failurePayload);
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
 
-    const response = await ucmBackendConnector.voicemailMarkAsRead(MsgId);
+    const response = await ucmBackendConnector.voicemailMarkAsRead(messageId);
 
     expect(response).toStrictEqual(responseDetails);
     expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
@@ -271,7 +317,7 @@ describe('Voicemail failure tests for UCM', () => {
       }
     );
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.PUT,
       headers: {
         orgId,
@@ -284,8 +330,7 @@ describe('Voicemail failure tests for UCM', () => {
 
   it('verify failure voicemailMarkAsUnread when bad request occur', async () => {
     webex.request.mockRejectedValue(failurePayload);
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
-    const response = await ucmBackendConnector.voicemailMarkAsUnread(MsgId);
+    const response = await ucmBackendConnector.voicemailMarkAsUnread(messageId);
 
     expect(response).toStrictEqual(responseDetails);
     expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
@@ -299,7 +344,7 @@ describe('Voicemail failure tests for UCM', () => {
     );
 
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.PUT,
       headers: {
         orgId,
@@ -313,9 +358,7 @@ describe('Voicemail failure tests for UCM', () => {
   it('verify failure delete voicemail when bad request occur', async () => {
     webex.request.mockRejectedValue(failurePayload);
 
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
-
-    const response = await ucmBackendConnector.deleteVoicemail(MsgId);
+    const response = await ucmBackendConnector.deleteVoicemail(messageId);
 
     expect(response).toStrictEqual(responseDetails);
 
@@ -329,7 +372,7 @@ describe('Voicemail failure tests for UCM', () => {
       }
     );
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.DELETE,
       headers: {
         orgId,
@@ -361,9 +404,8 @@ describe('Voicemail failure tests for UCM', () => {
 
   it('verify failure voicemailMarkAsRead when user is unauthorised, possible token expiry', async () => {
     webex.request.mockRejectedValue(failurePayload401);
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
 
-    const response = await ucmBackendConnector.voicemailMarkAsRead(MsgId);
+    const response = await ucmBackendConnector.voicemailMarkAsRead(messageId);
 
     expect(response).toStrictEqual(responseDetails401);
 
@@ -378,7 +420,7 @@ describe('Voicemail failure tests for UCM', () => {
     );
 
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.PUT,
       headers: {
         orgId,
@@ -391,9 +433,8 @@ describe('Voicemail failure tests for UCM', () => {
 
   it('verify failure voicemailMarkAsUnread when user is unauthorised, possible token expiry', async () => {
     webex.request.mockRejectedValue(failurePayload401);
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
 
-    const response = await ucmBackendConnector.voicemailMarkAsUnread(MsgId);
+    const response = await ucmBackendConnector.voicemailMarkAsUnread(messageId);
 
     expect(response).toStrictEqual(responseDetails401);
 
@@ -408,7 +449,7 @@ describe('Voicemail failure tests for UCM', () => {
     );
 
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.PUT,
       headers: {
         orgId,
@@ -422,9 +463,7 @@ describe('Voicemail failure tests for UCM', () => {
   it('verify failure delete voicemail when user is unauthorised, possible token expiry', async () => {
     webex.request.mockRejectedValue(failurePayload401);
 
-    const {MsgId} = mockUCMVoicemailBody.body.items[0];
-
-    const response = await ucmBackendConnector.deleteVoicemail(MsgId);
+    const response = await ucmBackendConnector.deleteVoicemail(messageId);
 
     expect(response).toStrictEqual(responseDetails401);
 
@@ -439,7 +478,7 @@ describe('Voicemail failure tests for UCM', () => {
     );
 
     expect(webex.request).toBeCalledOnceWith({
-      uri: `${ucmBackendInfoUrl}/${MsgId}`,
+      uri: `${ucmBackendInfoUrl}/${messageId}`,
       method: HTTP_METHODS.DELETE,
       headers: {
         orgId,
