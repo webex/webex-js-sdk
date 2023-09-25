@@ -16,6 +16,8 @@ import {
   extractVersionMetadata,
   isMeetingInfoServiceError,
   isBrowserMediaErrorName,
+  isMeetingInfoServiceError,
+  isBrowserMediaErrorName,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -39,7 +41,6 @@ import {
   CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
   NEW_LOCUS_ERROR_CLIENT_CODE,
   SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
-  CALL_DIAGNOSTIC_LOG_IDENTIFIER,
   UNKNOWN_ERROR,
   BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
