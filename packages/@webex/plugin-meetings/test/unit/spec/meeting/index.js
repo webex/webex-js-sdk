@@ -1266,6 +1266,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({turnServerInfo: undefined})
           );
           assert.calledOnce(meeting.setMercuryListener);
@@ -1338,6 +1339,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1593,6 +1595,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
