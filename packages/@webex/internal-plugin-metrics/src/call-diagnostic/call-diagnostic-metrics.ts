@@ -366,7 +366,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         error = merge(
           {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
           {errorCode: clientErrorCode},
-          {errorData: {errorName: serviceErrorName}},
+          serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
           partialParsedError
         );

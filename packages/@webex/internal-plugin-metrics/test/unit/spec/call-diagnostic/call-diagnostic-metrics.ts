@@ -457,7 +457,6 @@ describe.only('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
-                errorData: {errorName: undefined},
               },
             ],
             loginType: 'login-ci',
@@ -518,7 +517,6 @@ describe.only('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
-                errorData: {errorName: undefined},
               },
             ],
             loginType: 'login-ci',
@@ -768,7 +766,6 @@ describe.only('internal-plugin-metrics', () => {
           shownToUser: false,
           errorCode: 4008,
           serviceErrorCode: 10000,
-          errorData: {errorName: undefined},
         });
       });
 
@@ -790,19 +787,18 @@ describe.only('internal-plugin-metrics', () => {
         shownToUser: false,
         errorCode: 4029,
         serviceErrorCode: 2409005,
-        errorData: {errorName: undefined},
       };
       
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
         const res = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'expected',
-          errorDescription: 'NoMediaFound',
-          fatal: false,
+          errorDescription: 'CameraPermissionDenied',
+          fatal: true,
           name: 'other',
           shownToUser: false,
           serviceErrorCode: undefined,
-          errorCode: 2729,
+          errorCode: 4032,
           errorData: {errorName: payload.name},
         };
 
@@ -851,7 +847,6 @@ describe.only('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 2400000,
           errorCode: 4008,
-          errorData: {errorName: undefined},
         };
 
         if (isExpectedToBeCalled) {
@@ -879,7 +874,6 @@ describe.only('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 4100,
-          errorData: {errorName: undefined},
         };
 
         if (isExpectedToBeCalled) {
@@ -912,7 +906,6 @@ describe.only('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 9999,
           errorCode: 9999,
-          errorData: {errorName: undefined},
         });
       });
     });
