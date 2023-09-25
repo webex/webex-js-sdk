@@ -23,13 +23,13 @@ const BROWSER_MEDIA_ERROR_NAMES = {
 };
 
 export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
-  [BROWSER_MEDIA_ERROR_NAMES.PERMISSION_DENIED_ERROR]: 2729, // User did not grant permission
-  [BROWSER_MEDIA_ERROR_NAMES.NOT_ALLOWED_ERROR]: 2729, // User did not grant permission
-  [BROWSER_MEDIA_ERROR_NAMES.NOT_READABLE_ERROR]: 2001, // Although the user granted permission to use the matching devices, a hardware error occurred at the operating system, browser, or Web page level which prevented access to the device.
-  [BROWSER_MEDIA_ERROR_NAMES.ABORT_ERROR]: 2001, // Although the user and operating system both granted access to the hardware device, and no hardware issues occurred that would cause a NotReadableError DOMException, throw if some problem occurred which prevented the device from being used.
+  [BROWSER_MEDIA_ERROR_NAMES.PERMISSION_DENIED_ERROR]: 4032, // User did not grant permission
+  [BROWSER_MEDIA_ERROR_NAMES.NOT_ALLOWED_ERROR]: 4032, // User did not grant permission
+  [BROWSER_MEDIA_ERROR_NAMES.NOT_READABLE_ERROR]: 2729, // Although the user granted permission to use the matching devices, a hardware error occurred at the operating system, browser, or Web page level which prevented access to the device.
+  [BROWSER_MEDIA_ERROR_NAMES.ABORT_ERROR]: 2729, // Although the user and operating system both granted access to the hardware device, and no hardware issues occurred that would cause a NotReadableError DOMException, throw if some problem occurred which prevented the device from being used.
   [BROWSER_MEDIA_ERROR_NAMES.NOT_FOUND_ERROR]: 2729, // User did not grant permission
   [BROWSER_MEDIA_ERROR_NAMES.OVERCONSTRAINED_ERROR]: 2729, // Thrown if the specified constraints resulted in no candidate devices which met the criteria requested.
-  [BROWSER_MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2001, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
+  [BROWSER_MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2729, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
   [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
@@ -95,6 +95,7 @@ const ERROR_DESCRIPTIONS = {
   UNKNOWN_ERROR: 'UnknownError',
   NO_MEDIA_FOUND: 'NoMediaFound',
   STREAM_ERROR_NO_MEDIA: 'StreamErrorNoMedia',
+  CAMERA_PERMISSION_DENIED: 'CameraPermissionDenied',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -512,6 +513,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   4030: {
     errorDescription: ERROR_DESCRIPTIONS.RECORDING_IN_PROGRESS_FAILED,
+    category: 'expected',
+    fatal: true,
+  },
+  4032: {
+    errorDescription: ERROR_DESCRIPTIONS.CAMERA_PERMISSION_DENIED,
     category: 'expected',
     fatal: true,
   },
