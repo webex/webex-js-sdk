@@ -12,6 +12,8 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
   new <T extends EventMap>(): TypedEmitter<T>;
 })<T> {
   /**
+   * @event
+   *
    * @param event - TODO.
    * @param args - TODO.
    */
@@ -33,6 +35,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
 
   /**
    * .
+   * @event
    *
    * @param event - Event to listen to.
    * @param listener - Callback for event.
@@ -43,6 +46,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
 
   /**
    * .
+   * @event
    *
    * @param event - Event to remove listener on.
    * @param listener - Callback for event.

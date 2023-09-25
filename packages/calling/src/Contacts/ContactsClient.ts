@@ -65,7 +65,7 @@ export class ContactsClient implements IContacts {
     this.defaultGroupId = '';
 
     log.setLogger(logger.level, CONTACTS_FILE);
-  }
+  } // constructor, no docs
 
   /**
    * Decrypt emails, phoneNumbers, sipAddresses.
@@ -739,8 +739,6 @@ export class ContactsClient implements IContacts {
 
   /**
    * Delete a contact.
-   *
-   * @param contactId - ContactId of the contact to delete.
    */
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {

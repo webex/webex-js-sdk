@@ -52,16 +52,11 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.janusUrl = this.webex.internal.services._serviceUrls.janus;
     this.registerSessionsListener();
     log.setLogger(logger.level, CALL_HISTORY_FILE);
-  }
+  } // constructor, no docs
 
   /**
    * Function to display the Janus API response.
    *
-   * @param days - NUMBER_OF_DAYS.
-   * @param limit - LIMIT.
-   * @param sort - (ASC | DESC).
-   * @param sortBy - (startTime | endTime).
-   * @returns (user session response | error response).
    */
   public async getCallHistoryData(
     days: number = NUMBER_OF_DAYS,

@@ -68,60 +68,130 @@ export type ContactResponse = {
   message: string | null;
 };
 
+/**
+ * Interface for Contacts Module
+ * This contains the APIs that allows to fetch, create and update the contacts and groups.
+ *
+ * To access these APIs, instance of ContactsClient is required.
+ *
+ * Example
+ * ```javascript
+ * const contactClient = createContactClient(webex, logger);
+ * ```
+ */
 export interface IContacts {
   /**
    * This API is used to fetch the list of contacts and groups for a user.
    *
    * Example
    * ```javascript
-   * const contactsResponse = await contacts.getContacts();
+   * const contactsResponse = await contactClient.getContacts();
    * ```
    *
-   * contacts is an instance of Contacts Client which is required to access to this API.
    * The contactsResponse object will have the list of contacts and groups
-   * Each contact object will have properties as mentioned in{@link Contact}
-   * Each group object will have properties as mentioned in {@link ContactGroup}
+   * Each contact object will have properties as mentioned in Contact
+   * Each group object will have properties as mentioned in ContactGroup
    *
+   * Example - Contact
+   * ```json
+   * {
+   *  addressInfo: {
+   *    city: 'Test City',
+   *    country: 'Test Country',
+   *    state: 'Test State',
+   *    street: 'Test Street',
+   *    zipCode: '123456'
+   *  },
+   *  avatarURL: 'https://avatarURL',
+   *  avatarUrlDomain: 'https://avatarUrlDomain',
+   *  companyName: 'Test Company',
+   *  contactId: '1234567890',
+   *  contactType: 'CUSTOM',
+   *  department: 'Test Department',
+   *  displayName: 'Test User',
+   *  emails: [],
+   *  encryptionKeyUrl: 'https://encryptionKeyUrl',
+   *  firstName: 'Test',
+   *  groups: [],
+   *  kmsResourceObjectUrl: 'https://kmsResourceObjectUrl',
+   *  lastName: 'User',
+   *  manager: 'Test Manager',
+   *  ownerId: '1234567890',
+   *  phoneNumbers: [],
+   *  primaryContactMethod: 'Test Contact Method',
+   *  schemas: 'Test Schema',
+   *  sipAddresses: [],
+   *  title: 'Test Title'
+   * }
+   * ```
+   *
+   *  Example - ContactGroup
+   * ```json
+   * {
+   *  displayName: 'Test Group',
+   *  encryptionKeyUrl: 'https://encryptionKeyUrl',
+   *  groupId: '1234567890',
+   *  groupType: 'NORMAL',
+   *  members: [],
+   *  ownerId: '1234567890'
+   * }
+   * ```
    */
   getContacts: () => Promise<ContactResponse>;
+
   /**
    * This API is used to create a contact group with the given display name.
    *
    * Example
    * ```javascript
-   * const contactGroup = await contacts.createContactGroup(displayName, encryptionKeyUrl, groupType);
+   * const contactGroup = await contactClient.createContactGroup(displayName, encryptionKeyUrl, groupType);
    * ```
    *
-   * The contactGroup object for the given display name will be created and returned as a response with the properties of {@link ContactGroup}.
+   * The contactGroup object for the given display name will be created and returned as a response with the properties of ContactGroup.
    *
+   * Example - ContactGroup
+   * ```json
+   * {
+   *  displayName: 'Test Group',
+   *  encryptionKeyUrl: 'https://encryptionKeyUrl',
+   *  groupId: '1234567890',
+   *  groupType: 'NORMAL',
+   *  members: [],
+   *  ownerId: '1234567890'
+   * }
+   * ```
    */
   createContactGroup: (
     displayName: string,
     encryptionKeyUrl?: string,
     groupType?: GroupType
   ) => Promise<ContactResponse>;
+
   /**
    * This API is used to delete a contact group whose gorupId is received.
+   *
    * Example
    * ```javascript
-   * const response = await contacts.deleteContactGroup(groupId);
+   * const response = await contactClient.deleteContactGroup(groupId);
    * ```
    * The response received contains the status code and message based on the success or failure of the API call.
    */
   deleteContactGroup: (groupId: string) => Promise<ContactResponse>;
+
   /**
    * This API is responsible for creating a new contact.
    * Example
    * ```javascript
-   * const contact = await contacts.createContact(contactInfo);
+   * const contact = await contactClient.createContact(contactInfo);
    * ```
    */
   createContact: (contactInfo: Contact) => Promise<ContactResponse>;
+
   /**
    * This API is responsible for deleting an existing contact for the given contactId.
    * Example
    * ```javascript
-   * const response = await contacts.deleteContact(contactId);
+   * const response = await contactClient.deleteContact(contactId);
    * ```
    * The response received contains the status code and message based on the success or failure of the API call.
    */

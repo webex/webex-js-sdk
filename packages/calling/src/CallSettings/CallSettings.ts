@@ -40,7 +40,7 @@ export class CallSettings implements ICallSettings {
     log.setLogger(logger.level, CALL_SETTINGS_FILE);
     this.webex = this.sdkConnector.getWebex();
     this.initializeBackendConnector(logger, useProdWebexApis);
-  }
+  } // constructor, no docs
 
   /**
    * Setup and initialize the Call Settings backend connector class object.
