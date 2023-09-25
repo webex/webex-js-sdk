@@ -94,6 +94,7 @@ const ERROR_DESCRIPTIONS = {
   SIGN_UP_INVALID_EMAIL: 'SignUpInvalidEmail',
   UNKNOWN_ERROR: 'UnknownError',
   NO_MEDIA_FOUND: 'NoMediaFound',
+  STREAM_ERROR_NO_MEDIA: 'StreamErrorNoMedia',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -350,9 +351,14 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     fatal: true,
   },
   3007: {
-    errorDescription: ERROR_DESCRIPTIONS.ROOM_TOO_LARGE_FREE_ACCOUNT,
+    errorDescription: ERROR_DESCRIPTIONS.STREAM_ERROR_NO_MEDIA,
     category: 'expected',
     fatal: true,
+  },
+  3013: {
+    errorDescription: ERROR_DESCRIPTIONS.ROOM_TOO_LARGE_FREE_ACCOUNT,
+    category: 'expected',
+    fatal: false,
   },
   4001: {
     errorDescription: ERROR_DESCRIPTIONS.MEETING_INACTIVE,

@@ -351,9 +351,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   public getErrorPayloadForClientErrorCode({
     clientErrorCode,
     serviceErrorCode,
+    serviceErrorName,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
+    serviceErrorName?: any;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -364,6 +366,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         error = merge(
           {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
           {errorCode: clientErrorCode},
+          {errorName: serviceErrorName},
           {serviceErrorCode},
           partialParsedError
         );
@@ -385,6 +388,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         return this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
+          serviceErrorName: rawError.name,
         });
       }
     }

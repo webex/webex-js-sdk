@@ -457,6 +457,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
+                errorName: undefined,
               },
             ],
             loginType: 'login-ci',
@@ -517,6 +518,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
+                errorName: undefined,
               },
             ],
             loginType: 'login-ci',
@@ -766,6 +768,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           errorCode: 4008,
           serviceErrorCode: 10000,
+          errorName: undefined,
         });
       });
 
@@ -787,6 +790,7 @@ describe('internal-plugin-metrics', () => {
         shownToUser: false,
         errorCode: 4029,
         serviceErrorCode: 2409005,
+        errorName: undefined,
       };
       
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
@@ -799,6 +803,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 2729,
+          errorName: payload.name,
         };
 
         if (isExpectedToBeCalled) {
@@ -846,6 +851,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 2400000,
           errorCode: 4008,
+          errorName: undefined,
         };
 
         if (isExpectedToBeCalled) {
@@ -873,6 +879,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 4100,
+          errorName: undefined,
         };
 
         if (isExpectedToBeCalled) {
@@ -905,6 +912,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          errorName: undefined,
         });
       });
     });
