@@ -9,495 +9,517 @@
 
 <body>
   <main class="container">
-    <article id="docs-content" class="docs">
+    <div style="display: flex; justify-content: center;">
+      <article id="docs-content" class="docs">
 
-      <!-- ############################## ############################## ############################## -->
-      <section>
-        <h2>Calling SDK </h2>
-        <p>This is the kitchen sink sample for the calling webrtc SDK.</p>
-      </section>
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2>Calling SDK </h2>
+          <p>This is the kitchen sink sample for the calling webrtc SDK.</p>
+        </section>
 
+        <!-- ############################## ############################## ############################## -->
+        <!-- meeting / authentication -->
+        <section id="authentication">
+          <h2 class="collapsible">Authentication</h2>
+          <div class="section-content">
+            <p class="note">TIP: Get access token from our developer portal: <a
+                href="https://developer.webex.com/docs/api/getting-started"
+                target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
+            <p class="note">NOTE: Webex JS SDK must be initialized using a valid token.</p>
 
-      <!-- ############################## ############################## ############################## -->
-      <!-- meeting / authentication -->
-      <section id="authentication">
-        <h2>Authentication</h2>
-        <div>
-          <p class="note">TIP: Get access token from our developer portal: <a
-              href="https://developer.webex.com/docs/api/getting-started"
-              target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
-          <p class="note">NOTE: Webex JS SDK must be initialized using a valid token.</p>
-
-          <!-- meeting / authentication-credentials -->
-          <form id="credentials">
-            <fieldset>
-              <legend>Credentials</legend>
-              <div class="u-mv">
-                <p class="note">Initializes webex object and registers Webex JS SDK as a device. Supplementary services
-                  require token with spark:calls_write scope.</p>
-                <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button>
-                <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
-                <button id="access-token-save" class="btn-code" type="submit">calling.init()</button>
-                <pre id="access-token-status">Not initialized</pre>
-              </div>
-            </fieldset>
-          </form>
-          <!-- authentication-registration -->
-          <form id="auth-registration">
-            <fieldset>
-              <legend>Registration</legend>
-              <p class="note">
-                Registers with Mobius.
-              </p>
-              <div class="u-mv">
+            <!-- meeting / authentication-credentials -->
+            <form id="credentials">
+              <fieldset>
+                <legend>Credentials</legend>
                 <div class="u-mv">
-                  <select name="Service Indicator" id="ServiceIndicator" class="ServiceData" required>
-                    <option value="" disabled selected hidden>Choose Service ...</option>
-                    <option value="calling">calling</option>
-                    <option value="contactcenter">contactcenter</option>
-                  </select>
-                  <input id="ServiceDomain" name="ServiceDomain" placeholder="Service Domain" type="string">
+                  <p class="note">Initializes webex object and registers Webex JS SDK as a device. Supplementary services
+                    require token with spark:calls_write scope.</p>
+                  <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+                  <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+                  <button id="access-token-save" class="btn-code" type="submit">calling.init()</button>
+                  <pre id="access-token-status">Not initialized</pre>
                 </div>
-                <input id="region" name="region" value="Region" type="string">
-                <input id="country" name="country" value="Country" type="string">
-                <button id="registration-register" type="button" onclick="createDevice()"
-                  class="btn-code">register</button>
-                <button id="registration-unregister" type="button" onclick="unregister()"
-                  class="btn-code">unregister</button>
-                <pre id="registration-status">Not Registered</pre>
-              </div>
-            </fieldset>
+
+                <fieldset>
+                  <legend>Advanced Settings</legend>
+
+                  <p class="text-color" style="margin-top: 0; padding: 0;">
+                    Following options allow to set the type of registration, service domain (e.g. cisco.webex.com), server region (e.g. east) and the country (e.g. us).
+                    <br><br>
+                    <strong>Note:</strong> Please update these before <mark>calling.init()</mark> if want to use different values.
+                  </p>
+                  
+                  <div class="u-mv">
+                    <select name="Service Indicator" id="ServiceIndicator" class="ServiceData">
+                      <option value="" disabled selected hidden>Choose Service ...</option>
+                      <option value="calling">calling</option>
+                      <option value="contactcenter">contactcenter</option>
+                    </select>
+                    <input id="ServiceDomain" name="ServiceDomain" placeholder="Service Domain" type="string">
+                  </div>
+                  <input id="region" name="region" value="Region" type="string">
+                  <input id="country" name="country" value="Country" type="string">
+                </fieldset>
+              </fieldset>
+            </form>
+            <!-- authentication-registration -->
+            <form id="auth-registration">
+              <fieldset>
+                <legend>Registration</legend>
+                <p class="note">
+                  Register with WebexCalling.
+                </p>
+                <div class="u-mv">
+                  <div>
+                    <button id="registration-register" type="button" onclick="createDevice()" class="btn-code">register</button>
+                    <button id="registration-unregister" type="button" onclick="unregister()" class="btn-code">unregister</button>
+                  </div>
+                  <pre id="registration-status">Not Registered</pre>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </section>
+
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2 class="collapsible">Media Streams</h2>
+          <form id="streams" class="section-content">
+            <div class="flex flex--wrap">
+              <fieldset>
+                <legend>Local Video</legend>
+                <video id="local-video" muted="true" autoplay playsinline></video>
+              </fieldset>
+
+              <fieldset>
+                <legend>Local Audio</legend>
+                <audio id="local-audio" muted="true" autoplay></audio>
+              </fieldset>
+
+              <fieldset>
+                <legend>Remote Video</legend>
+                <video id="remote-video" autoplay playsinline></video>
+                <audio id="remote-audio" autoplay></audio>
+              </fieldset>
+
+            </div>
           </form>
-        </div>
-      </section>
+        </section>
 
-      <!-- ############################## ############################## ############################## -->
-      <!-- calling-management -->
-      <section id="callingManagement">
-        <h2>Call initialization</h2>
-
-        <form id="call-create">
-          <fieldset>
-            <legend>Make a call</legend>
+        <!-- calling-management -->
+        <section id="callingManagement">
+          <h2 class="collapsible">Call initialization</h2>
+          <div class="section-content">
+            <fieldset>
+            <legend>Add Local Media</legend>
+            <p class="note">NOTE: In order to send audio/video we must request permissions from the user to access camera
+              and microphone.</p>
             <div class="u-mv">
-              <input id="destination" name="destination" value="Destination" type="string">
-              <p></p>
-              <button id="create-call-action" type="submit" class="btn-code">Make Call</button>
-              <button id="end-call" type="button" onclick="endCall()" class="btn-code">End Call</button>
-              <input onclick="muteUnmute()" type="button" value="Mute" id="mute_button"></input>
-              <input onclick="holdResume()" type="button" value="Hold" id="hold_button"></input>
+              <button id="sd-get-media-streams" type="button" onclick="getMediaStreams()"
+                class="btn-code">getMediaStreams()</button>
+            </div>
+          </fieldset>
+          
+            <form id="call-create">
+              <fieldset>
+                <legend>Outgoing Call</legend>
+                <div class="u-mv">
+                  <input id="destination" name="destination" placeholder="Destination" type="string" style="display: block; margin-bottom: 0.5rem;">
+                  <button id="create-call-action" type="submit" class="btn-code btn--green" disabled>Make Call</button>
+                  <button id="end-call" type="button" onclick="endCall()" class="btn-code btn--red" disabled>End Call</button>
+                </div>
+              </fieldset>
+            </form>
 
-              <input id="dtmf_digit" name="dtmf_digit" value="DTMF Digit" type="string">
-              <button id="send-digit" type="button" onclick="sendDigit()" class="btn-code">Send Digit</button>
+            <!-- calling / incoming -->
+            <div id="incomingsection">
+              <fieldset>
+                <legend>Incoming Call</legend>
+                <div class="u-mv">
+                  <pre id="incoming-call"> No Incoming Calls</pre>
+                  <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
+                  <button onclick="endCall()" disabled="" id="end" class="btn--red">End Call</button>
+                </div>
+              </fieldset>
+            </div>
 
+            <fieldset>
               <pre id="call-object">Call-object</pre>
-              <pre id="user_session">User-Session-Object</pre>
+              <pre id="user_session" style="max-width: 61rem; overflow-x: auto;">User-Session-Object</pre>
               <div id="img_home"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Call Controls</legend>
+              <div style="margin-bottom: 1rem;">
+                <input onclick="muteUnmute()" type="button" value="Mute" class="btn-code" id="mute_button"></input>
+                <input onclick="holdResume()" type="button" value="Hold" class="btn-code" id="hold_button"></input>
+
+                <input id="dtmf_digit" name="dtmf_digit" value="DTMF Digit" type="string">
+                <button id="send-digit" type="button" onclick="sendDigit()" class="btn-code">Send Digit</button>
+              </div>
+
+              <!--- Transfer section -->
+              <div id="transfersection">
+                  <h3 style="color: #1a73e8; margin-bottom: 0.25rem;">Call Transfer</h3>
+                  <input id="transfer_target" name="transfer_target" value="Transfer Target" type="string">
+                  <select name="transfer-options" id="transfer-options">
+                    <option>
+                      <button id="blind-transfer" type="button" disabled="" class="btn-code">Blind Transfer</button>
+                    </option>
+                    <option>
+                      <button id="consult-transfer" type="button" disabled="" class="btn-code">Consult Transfer</button>
+                    </option>
+                  </select>
+                  <button id="transfer" type="button" onclick="initiateTransfer()" disabled="true"
+                    class="btn-code">Transfer</button>
+                  <button onclick="endSecondCall()" disabled="" id="end-second" class="btn--red">End Call</button>
+                  <pre id="transfer-call">Transfer call status</pre>
+              </div>
+            </fieldset>
+
+            <!--  Call Quality-->
+            <div id="callquality">
+              <fieldset>
+                <legend>Call Quality</legend>
+                <div class="umv">
+                  <pre id="call-quality-metrics">Call quality Metrics</pre>
+                  <button id="get-call-quality" type="button" onclick="getCallQuality()" class="btn-code">Call
+                    Quality</button>
+                </div>
+              </fieldset>
             </div>
-          </fieldset>
-        </form>
 
-        <!--- Transfer section -->
-        <div id="transfersection">
-          <fieldset>
-            <legend>Call Transfer</legend>
-            <input id="transfer_target" name="transfer_target" value="Transfer Target" type="string">
-            <select name="transfer-options" id="transfer-options">
-              <option>
-                <button id="blind-transfer" type="button" disabled="" class="btn-code">Blind Transfer</button>
-              </option>
-              <option>
-                <button id="consult-transfer" type="button" disabled="" class="btn-code">Consult Transfer</button>
-              </option>
-            </select>
-            <button id="transfer" type="button" onclick="initiateTransfer()" disabled="true"
-              class="btn-code">Transfer</button>
-            <button onclick="endSecondCall()" disabled="" id="end-second" class="btn--red">End Call</button>
-            <pre id="transfer-call">Tranfer call status</pre>
-          </fieldset>
-        </div>
+            <!-- TODO: Once we have track changes in places and logic to update devices, below section will be added back -->
+            <!-- meeting-controls / media-devices -->
+            <fieldset id="control-devices">
+              <legend>Media Devices</legend>
+              <div>
+                <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
 
-        <!-- calling / incoming -->
-        <div id="incomingsection">
-          <fieldset>
-            <legend>Incoming Call</legend>
-            <div class="u-mv">
-              <pre id="incoming-call"> No Incoming Calls</pre>
-              <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
-              <button onclick="endCall()" disabled="" id="end" class="btn--red">End Call</button>
-              <input onclick="holdResume()" type="button" value="Hold" id="hold_button"></input>
-            </div>
-          </fieldset>
-        </div>
+                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get
+                  Devices</button>
 
-        <!--  Call Quality-->
-        <div id="callquality">
-          <fieldset>
-            <legend>Call Quality</legend>
-            <div class="umv">
-              <pre id="call-quality-metrics">Call quality Metrics</pre>
-              <button id="get-call-quality" type="button" onclick="getCallQuality()" class="btn-code">Call
-                Quality</button>
-            </div>
-          </fieldset>
-        </div>
+                <div class="u-mv">
+                  <label>
+                    <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
+                  </label>
+                  <!-- <label>
+                    <input type="checkbox" name="ts-media-direction" value="receiveVideo" checked="">receiveVideo
+                  </label> -->
+                  <label>
+                    <input type="checkbox" name="ts-media-direction" value="sendAudio" checked="">sendAudio
+                  </label>
+                  <!-- <label>
+                    <input type="checkbox" name="ts-media-direction" value="sendVideo" checked="">sendVideo
+                  </label> -->
+                </div>
+              </div>
 
-        <!-- meetings / create -->
-        <form id="meetings-create">
-          <fieldset>
-            <legend>TODO: Dial a Number</legend>
-            <p class="note">NOTE: Supported destination types (number)</p>
-            <!-- <div class="u-mv">
-                  <button id="create-calling-client" type="submit" class="btn-code">CallingClient.createClient()</button>
+              <div>
+                <div class="u-mv">
+                  <label class="context-info">Audio Input Device</label>
+                  <select id="sd-audio-input-devices"></select>
+                  <!-- <button type="button" onclick="setAudioInputDevice()" class="btn-code">updateAudio()</button>
+                  <label id="sd-audio-input-device-status"></label> -->
+                </div>
+                <!-- <div class="u-mv">
+                  <label class="context-info">Video Input Device</label>
+                  <select id="sd-video-input-devices"></select>
+                  <button type="button" onclick="setVideoInputDevice()" class="btn-code">updateVideo()</button>
+                  <label id="sd-video-input-device-status"></label>
                 </div> -->
-          </fieldset>
-        </form>
-
-        <!-- TODO: Once we have track changes in places and logic to update devices, below section will be added back -->
-        <!-- meeting-controls / media-devices
-        <fieldset id="control-devices">
-          <legend>Media Devices</legend>
-          <div>
-            <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
-
-            <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get
-              Devices</button>
-
-            <div class="u-mv">
-              <label>
-                <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
-              </label>
-              <label>
-                <input type="checkbox" name="ts-media-direction" value="receiveVideo" checked="">receiveVideo
-              </label>
-              <label>
-                <input type="checkbox" name="ts-media-direction" value="sendAudio" checked="">sendAudio
-              </label>
-              <label>
-                <input type="checkbox" name="ts-media-direction" value="sendVideo" checked="">sendVideo
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <div class="u-mv">
-              <label class="context-info">Audio Input Device</label>
-              <select id="sd-audio-input-devices"></select>
-              <button type="button" onclick="setAudioInputDevice()" class="btn-code">updateAudio()</button>
-              <label id="sd-audio-input-device-status"></label>
-            </div>
-            <div class="u-mv">
-              <label class="context-info">Video Input Device</label>
-              <select id="sd-video-input-devices"></select>
-              <button type="button" onclick="setVideoInputDevice()" class="btn-code">updateVideo()</button>
-              <label id="sd-video-input-device-status"></label>
-            </div>
-            <div class="u-mv">
-              <label class="context-info">Audio Output Device</label>
-              <select id="sd-audio-output-devices"></select>
-              <button type="button" onclick="setAudioOutputDevice()" class="btn-code">setSinkId()</button>
-              <label id="sd-audio-output-device-status"></label>
-            </div>
-          </div>
-        </fieldset> -->
-
-
-        <!-- calling / local-media -->
-        <fieldset>
-          <legend>Add Local Media</legend>
-          <p class="note">NOTE: In order to send audio/video we must request permissions from the user to access camera
-            and microphone.</p>
-          <div class="u-mv">
-            <button id="sd-get-media-streams" type="button" onclick="getMediaStreams()"
-              class="btn-code">getMediaStreams()</button>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Cleanup Media</legend>
-          <div class="u-mv">
-            <button id="sd-stop-media-streams" type="button" onclick="cleanUpMedia()"
-              class="btn-code">cleanUpMedia()</button>
-          </div>
-        </fieldset>
-
-        <!-- calling / incoming -->
-        <fieldset id="incomingsection" class="hidden">
-          <legend>Incoming Call</legend>
-          <div class="u-mv">
-            <button onclick="answer(this)" id="answer" class="btn--green">Answer</button>
-            <button onclick="reject(this)" id="reject" class="btn--red">Reject</button>
-          </div>
-        </fieldset>
-        <!-- Call history section -->
-        <fieldset id="callHistorysection">
-          <legend>Call History</legend>
-          <div class="u-mv">
-            <button id="Call-history" type="button" onclick="createCallHistory()" class="btn-code">Call history</button>
-            <table>
-              <thead id="callHistoryHeaderId"></thead>
-              <tbody id="callHistoryTableId"></tbody>
-            </table>
-          </div>
-        </fieldset>
-        <!-- Voice Mail section -->
-        <form id="voicemail-form">
-          <fieldset id="voiceMailsection">
-            <legend>Voice Mail</legend>
-            <div class="u-mv">
-              <button id="Voice-mail" type="button" onclick="createVoiceMail()" class="btn-code">Voice Mail</button>
-              <table id="voicemailTable" class="styled-table"></table>
-
-              <h3>Pagination</h3>
-              <input id="offset" name="vmOffset" placeholder="VM Offset">
-              <input id="offsetLength" name="vmOffsetLength" placeholder="Offset Length">
-              <p>
-                <button id="fetchVoicemailListButton" type="button" onclick="fetchVoicemailList()">Fetch Voicemail
-                  List</button>
-              </p>
-
-              <p>
-                <input id="contactName" name="contactName" type="string" placeholder="Name">
-                <input id="contactUserId" name="contactUserId" type="string" placeholder="User's UUID">
-              </p>
-              <p>
-                <button id="resolveContact" type="button" onclick="resolveContactInfo()" class="btn-code">Resolve
-                  Contact</button>
-              </p>
-
-              <div id="img_vm_contact"></div>
-              <pre id="resolved-contact"></pre>
-
-              <p>
-                <input id="messageId" name="messageId" type="string" placeholder="MessageId">
-              </p>
-              <p>
-                <button id="getTranscript" type="button" onclick="fetchTranscript()" class="btn-code">Fetch
-                  Transcript</button>
-              </p>
-
-              <pre id="transcript-data"></pre>
-              <p>
-                <button id="getSummary" type="button" onclick="fetchVoicemailSummary()" class="btn-code">Fetch Summary</button>
-              </p>
-
-              <pre id="summary-data"></pre>
-            </div>
-          </fieldset>
-        </form>
-        <!-- Call Settings section -->
-        <fieldset id="callSettingsSelection">
-          <legend>Call Settings</legend>
-          <div class="u-mv">
-            <button onclick="toggleDNDSetting()" id="DND-button" class="btn-code">DND</button>
-            <button id="CallWaiting-button" class="btn-code">Call Waiting</button>
-            <div class="u-pt"><br></div>
-            <fieldset id="callForwardSelection">
-              <legend>Call Forwarding</legend>
-              <form id="callForwardForm">
                 <div class="u-mv">
-                  <label>Always
-                    <input type="checkbox" id="alwaysCb" name="alwaysCb" checked="" onchange="changeElementVisibility(document.getElementById('alwaysCb'),
-                        document.getElementById('alwaysDest'))" disabled="true">
-                    <input type="string" id="alwaysDest" name="alwaysDest" placeholder="Destination" disabled="true">
-                  </label>
+                  <label class="context-info">Audio Output Device</label>
+                  <select id="sd-audio-output-devices"></select>
+                  <!-- <button type="button" onclick="setAudioOutputDevice()" class="btn-code">setSinkId()</button>
+                  <label id="sd-audio-output-device-status"></label> -->
                 </div>
-                <div class="u-mv">
-                  <label>When not answered
-                    <input type="checkbox" id="notAnsweredCb" name="notAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('notAnsweredCb'),
-                        document.getElementById('notAnsweredDest'));
-                        changeElementVisibility(document.getElementById('notAnsweredCb'),
-                        document.getElementById('notAnsweredRings'));" disabled="true">
-                    <input type="string" id="notAnsweredDest" name="notAnsweredDest" placeholder="Destination"
-                      disabled="true">
-                    <input type="string" id="notAnsweredRings" name="notAnsweredRings"
-                      placeholder="After number of rings" disabled="true">
-                  </label>
-                </div>
-                <div class="u-mv">
-                  <label>When busy
-                    <input type="checkbox" id="busyCb" name="busyCb" checked="" onchange="changeElementVisibility(document.getElementById('busyCb'),
-                        document.getElementById('busyDest'))" disabled="true">
-                    <input type="string" id="busyDest" name="busyDest" placeholder="Destination" disabled="true">
-                  </label>
-                </div>
-                <div class="u-mv">
-                  <label>When not reachable
-                    <input type="checkbox" id="notReachableCb" name="notReachableCb" checked="" onchange="changeElementVisibility(document.getElementById('notReachableCb'),
-                        document.getElementById('notReachableDest'))" disabled="true">
-                    <input type="string" id="notReachableDest" name="notReachableDest" placeholder="Destination"
-                      disabled="true">
-                  </label>
-                </div>
-                <input type="button" id="cfButton" value="Save" onclick="updateCallForwardSetting(this.form)">
-              </form>
-              <br>
-              <p>
-                <input id="directoryNumber" name="directoryNumber" type="string" placeholder="+1432514567">
-              </p>
-              <button id="CallForwardAlways-button" class="btn-code" onclick="getCallForwardAlwaysSetting()">Call Forward Always</button>
-              <pre id="callforwardalways-data"></pre>
+              </div>
             </fieldset>
-            <fieldset id="vmSelection">
-              <legend>Voicemail
-                <input type="checkbox" id="vmCb" name="vmCb" checked="" onchange="changeElementVisibility(document.getElementById('vmCb'),
-                          document.getElementById('vmDiv'))" disabled="true">
-              </legend>
-              <form id="voicemailForm">
-                <div id="vmDiv">
-                  <h4>Forward calls to voicemail</h4>
-                  <div class="u-mv">
-                    <label>Always
-                      <input type="checkbox" id="alwaysCb" name="alwaysCb" checked="" disabled="true">
-                    </label>
-                  </div>
-                  <div class="u-mv">
-                    <label>When busy
-                      <input type="checkbox" id="busyCb" name="busyCb" checked="" disabled="true">
-                    </label>
-                  </div>
-                  <div class="u-mv">
-                    <label>When not answered
-                      <input type="checkbox" id="vmNotAnsweredCb" name="vmNotAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('vmNotAnsweredCb'),
-                          document.getElementById('notAnsweredRings'))" disabled="true">
-                      <input type="string" id="vmNotAnsweredRings" name="vmNotAnsweredRings"
-                        placeholder="Number of rings" disabled="true">
-                    </label>
-                  </div>
-                  <h4>Voicemail notifications</h4>
-                  <div class="u-mv">
-                    <label>Show unread voice messages badge
-                      <input type="checkbox" id="notifCb" name="notifCb" checked="" disabled="true">
-                    </label>
-                  </div>
-                  <div class="u-mv">
-                    <label>Get notifications via email
-                      <input type="checkbox" id="notifEmailCb" name="notifEmailCb" checked="" onchange="changeElementVisibility(document.getElementById('notifEmailCb'),
-                          document.getElementById('notifEmailId'))" disabled="true">
-                      <input type="string" id="notifEmailId" name="notifEmailId" placeholder="Email Id" disabled="true">
-                    </label>
-                  </div>
-                  <div class="u-mv">
-                    <label>Get voice messages via email
-                      <input type="checkbox" id="vmEmailCb" name="vmEmailCb" checked="" onchange="changeElementVisibility(document.getElementById('vmEmailCb'),
-                          document.getElementById('vmEmailId'))" disabled="true">
-                      <input type="string" id="vmEmailId" name="vmEmailId" placeholder="Email Id" disabled="true">
-                    </label>
-                  </div>
-                </div>
-                <input type="button" id="cfButton" value="Save" onclick="updateVoicemailSetting(this.form)">
-              </form>
-            </fieldset>
-          </div>
-        </fieldset>
-      </section>
-      <section>
-        <h2> Contacts</h2>
-        <!-- Contacts section -->
-        <button id="getContacts" type="button" onclick="getContacts()" class="btn-code">Get contacts</button>
-        <p class="note">NOTE:Works with custom contacts only. Cloud contacts need Dss plugin</p>
 
-        <fieldset id="getContactSection">
-          <legend>Contacts</legend>
 
-          <div class="u-mv">
-            <table>
-              <thead id="contactsHeaderId">
-                <tr>
-                  <th>Id</th>
-                  <th>Avatar</th>
-                  <th>Display Name</th>
-                  <th>Type</th>
-                  <th>Phone</th>
-                  <th>Contact Id</th>
-                  <th>Groups</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="contactsTableId"></tbody>
-            </table>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Contact Groups</legend>
-          <div class="u-mv">
-            <table>
-              <thead id="contactGroupsHeaderId">
-                <tr>
-                  <th>Id</th>
-                  <th>Group Name</th>
-                  <th>GroupType</th>
-                  <th>Group Id</th>
-                  <th>Members</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="contactGroupsTableId"></tbody>
-            </table>
-          </div>
-        </fieldset>
-        <form id="contacts-form">
-          <fieldset id="postContactSection">
-            <legend>Create Custom Contact</legend>
-            <div class="u-mv">
-              <input id="displayName" name="displayName" placeholder="Display name" type="string">
-              <input id="phone" name="phone" placeholder="Phone" type="string">
-              <input id="email" name="email" placeholder="email" type="email">
-              <input id="avatarURL" name="avatarURL" placeholder="avatarURL" type="string">
-              <br>
-              <button type="button" onclick="createCustomContact()" class="btn-code">Create contact</button>
-            </div>
-          </fieldset>
-        </form>
-        <form id="cloud-contact-form">
-          <fieldset id="postContactGroupSection">
-            <legend>Create Cloud contact (Directory)</legend>
-            <div class="u-mv">
-              <input id="contactId" name="contactId" placeholder="contactId/userId" type="string">
-              <input id="addedPhone" name="phone" placeholder="Phone" type="string">
-              <button type="button" onclick="createCloudContact()" class="btn-code">Create contact</button>
-            </div>
-          </fieldset>
-        </form>
-        <pre id="contact-object">Contact-Object</pre>
-        <form id="contactgroups-form">
-          <fieldset id="postContactGroupSection">
-            <legend>Create Contact groups</legend>
-            <div class="u-mv">
-              <input id="displayName" name="displayName" placeholder="Display name" type="string">
-              <select name="Contact Group Type" id="groupType">
-                <option selected value="NORMAL">NORMAL</option>
-                <option value="EXTERNAL">EXTERNAL</option>
-              </select>
-              <button type="button" onclick="createContactGroup()" class="btn-code">Create Contact Group</button>
-              <pre id="contactgroup-object">ContactGroup-Object</pre>
-            </div>
-          </fieldset>
-        </form>
-      </section>
-      <section>
-        <h2>Media Streams</h2>
-        <form id="streams">
-          <div class="flex flex--wrap">
-            <fieldset>
-              <legend>Local Video</legend>
-              <video id="local-video" muted="true" autoplay playsinline></video>
-            </fieldset>
+            <!-- calling / local-media -->
+            <!-- <fieldset>
+              <legend>Add Local Media</legend>
+              <p class="note">NOTE: In order to send audio/video we must request permissions from the user to access camera
+                and microphone.</p>
+              <div class="u-mv">
+                <button id="sd-get-media-streams" type="button" onclick="getMediaStreams()"
+                  class="btn-code">getMediaStreams()</button>
+              </div>
+            </fieldset> -->
 
             <fieldset>
-              <legend>Local Audio</legend>
-              <audio id="local-audio" muted="true" autoplay></audio>
+              <legend>Cleanup Media</legend>
+              <div class="u-mv">
+                <button id="sd-stop-media-streams" type="button" onclick="cleanUpMedia()"
+                  class="btn-code">cleanUpMedia()</button>
+              </div>
             </fieldset>
 
-            <fieldset>
-              <legend>Remote Video</legend>
-              <video id="remote-video" autoplay playsinline></video>
-              <audio id="remote-audio" autoplay></audio>
+            <!-- calling / incoming -->
+            <fieldset id="incomingsection" class="hidden">
+              <legend>Incoming Call</legend>
+              <div class="u-mv">
+                <button onclick="answer(this)" id="answer" class="btn--green">Answer</button>
+                <button onclick="reject(this)" id="reject" class="btn--red">Reject</button>
+              </div>
             </fieldset>
+            <!-- Call history section -->
+            <fieldset id="callHistorysection">
+              <legend>Call History</legend>
+              <div class="u-mv">
+                <button id="Call-history" type="button" onclick="createCallHistory()" class="btn-code">Call history</button>
+                <table>
+                  <thead id="callHistoryHeaderId"></thead>
+                  <tbody id="callHistoryTableId"></tbody>
+                </table>
+              </div>
+            </fieldset>
+            <!-- Voice Mail section -->
+            <form id="voicemail-form">
+              <fieldset id="voiceMailsection">
+                <legend>Voice Mail</legend>
+                <div class="u-mv">
+                  <button id="Voice-mail" type="button" onclick="createVoiceMail()" class="btn-code">Voice Mail</button>
+                  <table id="voicemailTable" class="styled-table"></table>
 
+                  <h3>Pagination</h3>
+                  <input id="offset" name="vmOffset" placeholder="VM Offset" type="string">
+                  <input id="offsetLength" name="vmOffsetLength" placeholder="Offset Length" type="string">
+                  <p>
+                    <button id="fetchVoicemailListButton" type="button" onclick="fetchVoicemailList()">Fetch Voicemail
+                      List</button>
+                  </p>
+
+                  <p>
+                    <input id="contactName" name="contactName" type="string" placeholder="Name">
+                    <input id="contactUserId" name="contactUserId" type="string" placeholder="User's UUID">
+                  </p>
+                  <p>
+                    <button id="resolveContact" type="button" onclick="resolveContactInfo()" class="btn-code">Resolve
+                      Contact</button>
+                  </p>
+
+                  <div id="img_vm_contact"></div>
+                  <pre id="resolved-contact"></pre>
+
+                  <p>
+                    <input id="messageId" name="messageId" type="string" placeholder="MessageId">
+                  </p>
+                  <p>
+                    <button id="getTranscript" type="button" onclick="fetchTranscript()" class="btn-code">Fetch
+                      Transcript</button>
+                  </p>
+
+                  <pre id="transcript-data"></pre>
+                  <p>
+                    <button id="getSummary" type="button" onclick="fetchVoicemailSummary()" class="btn-code">Fetch Summary</button>
+                  </p>
+
+                  <pre id="summary-data"></pre>
+                </div>
+              </fieldset>
+            </form>
+            <!-- Call Settings section -->
+            <fieldset id="callSettingsSelection">
+              <legend>Call Settings</legend>
+              <div class="u-mv">
+                <button onclick="toggleDNDSetting()" id="DND-button" class="btn-code">DND</button>
+                <button id="CallWaiting-button" class="btn-code">Call Waiting</button>
+                <div class="u-pt"><br></div>
+                <fieldset id="callForwardSelection">
+                  <legend>Call Forwarding</legend>
+                  <form id="callForwardForm">
+                    <div class="u-mv">
+                      <label>Always
+                        <input type="checkbox" id="alwaysCb" name="alwaysCb" checked="" onchange="changeElementVisibility(document.getElementById('alwaysCb'),
+                            document.getElementById('alwaysDest'))" disabled="true">
+                        <input type="string" id="alwaysDest" name="alwaysDest" placeholder="Destination" disabled="true">
+                      </label>
+                    </div>
+                    <div class="u-mv">
+                      <label>When not answered
+                        <input type="checkbox" id="notAnsweredCb" name="notAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('notAnsweredCb'),
+                            document.getElementById('notAnsweredDest'));
+                            changeElementVisibility(document.getElementById('notAnsweredCb'),
+                            document.getElementById('notAnsweredRings'));" disabled="true">
+                        <input type="string" id="notAnsweredDest" name="notAnsweredDest" placeholder="Destination"
+                          disabled="true">
+                        <input type="string" id="notAnsweredRings" name="notAnsweredRings"
+                          placeholder="After number of rings" disabled="true">
+                      </label>
+                    </div>
+                    <div class="u-mv">
+                      <label>When busy
+                        <input type="checkbox" id="busyCb" name="busyCb" checked="" onchange="changeElementVisibility(document.getElementById('busyCb'),
+                            document.getElementById('busyDest'))" disabled="true">
+                        <input type="string" id="busyDest" name="busyDest" placeholder="Destination" disabled="true">
+                      </label>
+                    </div>
+                    <div class="u-mv">
+                      <label>When not reachable
+                        <input type="checkbox" id="notReachableCb" name="notReachableCb" checked="" onchange="changeElementVisibility(document.getElementById('notReachableCb'),
+                            document.getElementById('notReachableDest'))" disabled="true">
+                        <input type="string" id="notReachableDest" name="notReachableDest" placeholder="Destination"
+                          disabled="true">
+                      </label>
+                    </div>
+                    <input type="button" id="cfButton" value="Save" onclick="updateCallForwardSetting(this.form)">
+                  </form>
+                  <br>
+                  <p>
+                    <input id="directoryNumber" name="directoryNumber" type="string" placeholder="+1432514567">
+                  </p>
+                  <button id="CallForwardAlways-button" class="btn-code" onclick="getCallForwardAlwaysSetting()">Call Forward Always</button>
+                  <pre id="callforwardalways-data"></pre>
+                </fieldset>
+                <fieldset id="vmSelection">
+                  <legend>Voicemail
+                    <input type="checkbox" id="vmCb" name="vmCb" checked="" onchange="changeElementVisibility(document.getElementById('vmCb'),
+                              document.getElementById('vmDiv'))" disabled="true">
+                  </legend>
+                  <form id="voicemailForm">
+                    <div id="vmDiv">
+                      <h4>Forward calls to voicemail</h4>
+                      <div class="u-mv">
+                        <label>Always
+                          <input type="checkbox" id="alwaysCb" name="alwaysCb" checked="" disabled="true">
+                        </label>
+                      </div>
+                      <div class="u-mv">
+                        <label>When busy
+                          <input type="checkbox" id="busyCb" name="busyCb" checked="" disabled="true">
+                        </label>
+                      </div>
+                      <div class="u-mv">
+                        <label>When not answered
+                          <input type="checkbox" id="vmNotAnsweredCb" name="vmNotAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('vmNotAnsweredCb'),
+                              document.getElementById('notAnsweredRings'))" disabled="true">
+                          <input type="string" id="vmNotAnsweredRings" name="vmNotAnsweredRings"
+                            placeholder="Number of rings" disabled="true">
+                        </label>
+                      </div>
+                      <h4>Voicemail notifications</h4>
+                      <div class="u-mv">
+                        <label>Show unread voice messages badge
+                          <input type="checkbox" id="notifCb" name="notifCb" checked="" disabled="true">
+                        </label>
+                      </div>
+                      <div class="u-mv">
+                        <label>Get notifications via email
+                          <input type="checkbox" id="notifEmailCb" name="notifEmailCb" checked="" onchange="changeElementVisibility(document.getElementById('notifEmailCb'),
+                              document.getElementById('notifEmailId'))" disabled="true">
+                          <input type="string" id="notifEmailId" name="notifEmailId" placeholder="Email Id" disabled="true">
+                        </label>
+                      </div>
+                      <div class="u-mv">
+                        <label>Get voice messages via email
+                          <input type="checkbox" id="vmEmailCb" name="vmEmailCb" checked="" onchange="changeElementVisibility(document.getElementById('vmEmailCb'),
+                              document.getElementById('vmEmailId'))" disabled="true">
+                          <input type="string" id="vmEmailId" name="vmEmailId" placeholder="Email Id" disabled="true">
+                        </label>
+                      </div>
+                    </div>
+                    <input type="button" id="cfButton" value="Save" onclick="updateVoicemailSetting(this.form)">
+                  </form>
+                </fieldset>
+              </div>
+            </fieldset>
           </div>
-      </section>
-    </article>
+        </section>
+
+        <section>
+          <h2 class="collapsible"> Contacts</h2>
+          <div class="section-content">
+            <!-- Contacts section -->
+            <button id="getContacts" type="button" onclick="getContacts()" class="btn-code">Get contacts</button>
+            <p class="note">NOTE:Works with custom contacts only. Cloud contacts need Dss plugin</p>
+
+            <fieldset id="getContactSection">
+              <legend>Contacts</legend>
+
+              <div class="u-mv">
+                <table>
+                  <thead id="contactsHeaderId">
+                    <tr>
+                      <th>Id</th>
+                      <th>Avatar</th>
+                      <th>Display Name</th>
+                      <th>Type</th>
+                      <th>Phone</th>
+                      <th>Contact Id</th>
+                      <th>Groups</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactsTableId"></tbody>
+                </table>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Contact Groups</legend>
+              <div class="u-mv">
+                <table>
+                  <thead id="contactGroupsHeaderId">
+                    <tr>
+                      <th>Id</th>
+                      <th>Group Name</th>
+                      <th>GroupType</th>
+                      <th>Group Id</th>
+                      <th>Members</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactGroupsTableId"></tbody>
+                </table>
+              </div>
+            </fieldset>
+            <form id="contacts-form">
+              <fieldset id="postContactSection">
+                <legend>Create Custom Contact</legend>
+                <div class="u-mv">
+                  <input id="displayName" name="displayName" placeholder="Display name" type="string">
+                  <input id="phone" name="phone" placeholder="Phone" type="string">
+                  <input id="email" name="email" placeholder="email" type="email" style="margin-top: 0.5rem;">
+                  <input id="avatarURL" name="avatarURL" placeholder="avatarURL" type="string">
+                  <br>
+                  <button type="button" onclick="createCustomContact()" class="btn-code">Create contact</button>
+                </div>
+              </fieldset>
+            </form>
+            <form id="cloud-contact-form">
+              <fieldset id="postContactGroupSection">
+                <legend>Create Cloud contact (Directory)</legend>
+                <div class="u-mv">
+                  <input id="contactId" name="contactId" placeholder="contactId/userId" type="string">
+                  <input id="addedPhone" name="phone" placeholder="Phone" type="string">
+                  <button type="button" onclick="createCloudContact()" class="btn-code">Create contact</button>
+                </div>
+              </fieldset>
+            </form>
+            <pre id="contact-object">Contact-Object</pre>
+            <form id="contactgroups-form">
+              <fieldset id="postContactGroupSection">
+                <legend>Create Contact groups</legend>
+                <div class="u-mv">
+                  <input id="displayName" name="displayName" placeholder="Display name" type="string">
+                  <select name="Contact Group Type" id="groupType">
+                    <option selected value="NORMAL">NORMAL</option>
+                    <option value="EXTERNAL">EXTERNAL</option>
+                  </select>
+                  <button type="button" onclick="createContactGroup()" class="btn-code">Create Contact Group</button>
+                  <pre id="contactgroup-object">ContactGroup-Object</pre>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </section>
+
+      </article>
+    </div>
   </main>
   <script src="init.js"></script>
   <script src="../calling.min.js"></script>
