@@ -4,7 +4,9 @@ import {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
+  isBrowserMediaErrorName,
   isLocusServiceErrorCode,
+  isMeetingInfoServiceError,
   prepareDiagnosticMetricItem,
   setMetricTimings,
 } from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
@@ -76,6 +78,53 @@ describe('internal-plugin-metrics', () => {
       it(`for code ${error} returns the correct result`, () => {
         //@ts-ignore
         assert.deepEqual(isLocusServiceErrorCode(error), expected);
+      });
+    });
+  });
+
+  describe('isMeetingInfoServiceError', () => {
+    [
+      [{body: {data: {meetingInfo: 'something'}}}, true],
+      [{body: {url: 'abcde-123-wbxappapi-efgh'}}, true],
+      [{body: {data: {meetingInformation: 'something'}}}, false],
+      [{body: {uri: 'abcde-123-wbxappap-efgh'}}, false],
+      ['2400001', false],
+      [2400001, false],
+      [{}, false],
+    ].forEach(([rawError, expected]) => {
+      it(`for rawError ${rawError} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isMeetingInfoServiceError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isBrowserMediaErrorName', () => {
+    [
+      ['PermissionDeniedError', true],
+      ['PermissionDeniedErrors', false],
+      ['NotAllowedError', true],
+      ['NotAllowedErrors', false],
+      ['NotReadableError', true],
+      ['NotReadableErrors', false],
+      ['AbortError', true],
+      ['AbortErrors', false],
+      ['NotFoundError', true],
+      ['NotFoundErrors', false],
+      ['OverconstrainedError', true],
+      ['OverconstrainedErrors', false],
+      ['SecurityError', true],
+      ['SecurityErrors', false],
+      ['TypeError', true],
+      ['TypeErrors', false],
+      ['', false],
+      ['SomethingElse', false],
+      [{name: 'SomethingElse'}, false],
+
+    ].forEach(([errorName, expected]) => {
+      it(`for rawError ${errorName} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isBrowserMediaErrorName(errorName), expected);
       });
     });
   });
