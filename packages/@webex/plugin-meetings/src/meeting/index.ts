@@ -158,8 +158,8 @@ export type AddMediaOptions = {
   localStreams?: LocalStreams;
   audioEnabled?: boolean; // if not specified, default value true is used
   videoEnabled?: boolean; // if not specified, default value true is used
-  enableShareAudio?: boolean; // if not specified, default value true is used
-  enableShareVideo?: boolean; // if not specified, default value true is used
+  shareAudioEnabled?: boolean; // if not specified, default value true is used
+  shareVideoEnabled?: boolean; // if not specified, default value true is used
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
@@ -5361,8 +5361,8 @@ export default class Meeting extends StatelessWebexPlugin {
       localStreams,
       audioEnabled = true,
       videoEnabled = true,
-      enableShareAudio = true,
-      enableShareVideo = true,
+      shareAudioEnabled = true,
+      shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy,
       allowMediaInLobby,
@@ -5408,7 +5408,7 @@ export default class Meeting extends StatelessWebexPlugin {
       sendShare: false,
       receiveAudio: audioEnabled,
       receiveVideo: videoEnabled,
-      receiveShare: enableShareAudio || enableShareVideo,
+      receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
     this.locusMediaRequest = new LocusMediaRequest(
