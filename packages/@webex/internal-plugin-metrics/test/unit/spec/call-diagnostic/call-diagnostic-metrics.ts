@@ -16,7 +16,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -457,7 +457,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
-                errorName: undefined,
+                errorData: {errorName: undefined},
               },
             ],
             loginType: 'login-ci',
@@ -518,7 +518,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
-                errorName: undefined,
+                errorData: {errorName: undefined},
               },
             ],
             loginType: 'login-ci',
@@ -768,7 +768,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           errorCode: 4008,
           serviceErrorCode: 10000,
-          errorName: undefined,
+          errorData: {errorName: undefined},
         });
       });
 
@@ -790,7 +790,7 @@ describe('internal-plugin-metrics', () => {
         shownToUser: false,
         errorCode: 4029,
         serviceErrorCode: 2409005,
-        errorName: undefined,
+        errorData: {errorName: undefined},
       };
       
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
@@ -803,7 +803,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 2729,
-          errorName: payload.name,
+          errorData: {errorName: payload.name},
         };
 
         if (isExpectedToBeCalled) {
@@ -851,7 +851,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 2400000,
           errorCode: 4008,
-          errorName: undefined,
+          errorData: {errorName: undefined},
         };
 
         if (isExpectedToBeCalled) {
@@ -879,7 +879,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 4100,
-          errorName: undefined,
+          errorData: {errorName: undefined},
         };
 
         if (isExpectedToBeCalled) {
@@ -912,7 +912,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 9999,
           errorCode: 9999,
-          errorName: undefined,
+          errorData: {errorName: undefined},
         });
       });
     });
