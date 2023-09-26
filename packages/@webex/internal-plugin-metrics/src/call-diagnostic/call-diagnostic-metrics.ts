@@ -14,6 +14,8 @@ import {
   prepareDiagnosticMetricItem,
   userAgentToString,
   extractVersionMetadata,
+  isMeetingInfoServiceError,
+  isBrowserMediaErrorName,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -30,14 +32,17 @@ import {
   ClientEventError,
   ClientEventPayload,
   ClientInfo,
+  ClientEventPayloadError,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
   CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
   CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
-  MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
   NEW_LOCUS_ERROR_CLIENT_CODE,
   SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP,
+  UNKNOWN_ERROR,
+  BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
+  MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -346,9 +351,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   public getErrorPayloadForClientErrorCode({
     clientErrorCode,
     serviceErrorCode,
+    serviceErrorName,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
+    serviceErrorName?: any;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -359,6 +366,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         error = merge(
           {fatal: true, shownToUser: false, name: 'other', category: 'other'}, // default values
           {errorCode: clientErrorCode},
+          serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
           partialParsedError
         );
@@ -375,30 +383,49 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
+    if (rawError.name) {
+      if (isBrowserMediaErrorName(rawError.name)) {
+        return this.getErrorPayloadForClientErrorCode({
+          serviceErrorCode: undefined,
+          clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
+          serviceErrorName: rawError.name,
+        });
+      }
+    }
+
     const serviceErrorCode =
-      rawError?.error?.body?.errorCode || rawError?.body?.errorCode || rawError?.body?.code;
+      rawError?.error?.body?.errorCode ||
+      rawError?.body?.errorCode ||
+      rawError?.body?.code ||
+      rawError?.body?.reason?.reasonCode;
+
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
       if (clientErrorCode) {
         return this.getErrorPayloadForClientErrorCode({clientErrorCode, serviceErrorCode});
       }
 
-      // by default, if it is locus error, return nre locus err
+      // by default, if it is locus error, return new locus err
       if (isLocusServiceErrorCode(serviceErrorCode)) {
         return this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
         });
       }
+    }
 
-      // otherwise return meeting info
+    if (isMeetingInfoServiceError(rawError)) {
       return this.getErrorPayloadForClientErrorCode({
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
       });
     }
 
-    return undefined;
+    // otherwise return unkown error
+    return this.getErrorPayloadForClientErrorCode({
+      clientErrorCode: UNKNOWN_ERROR,
+      serviceErrorCode: UNKNOWN_ERROR,
+    });
   }
 
   /**
@@ -411,11 +438,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private createClientEventObjectInMeeting({
     name,
     options,
+    errors,
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
   }) {
-    const {meetingId, mediaConnections, rawError} = options;
+    const {meetingId, mediaConnections} = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -441,16 +470,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       meeting,
       mediaConnections: meeting?.mediaConnections || mediaConnections,
     });
-
-    // check if we need to generate errors
-    const errors: ClientEvent['payload']['errors'] = [];
-
-    if (rawError) {
-      const generatedError = this.generateClientEventErrorPayload(rawError);
-      if (generatedError) {
-        errors.push(generatedError);
-      }
-    }
 
     // create client event object
     const clientEventObject: ClientEvent['payload'] = {
@@ -481,9 +500,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private createClientEventObjectPreMeeting({
     name,
     options,
+    errors,
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
   }) {
     const {correlationId} = options;
 
@@ -495,6 +516,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // create client event object
     const clientEventObject: ClientEvent['payload'] = {
       name,
+      errors,
       canProceed: true,
       identifiers,
       eventData: {
@@ -524,15 +546,25 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }) {
-    const {meetingId, correlationId} = options;
+    const {meetingId, correlationId, rawError} = options;
     let clientEventObject: ClientEvent['payload'];
+
+    // check if we need to generate errors
+    const errors: ClientEventPayloadError = [];
+
+    if (rawError) {
+      const generatedError = this.generateClientEventErrorPayload(rawError);
+      if (generatedError) {
+        errors.push(generatedError);
+      }
+    }
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      clientEventObject = this.createClientEventObjectInMeeting({name, options});
+      clientEventObject = this.createClientEventObjectInMeeting({name, options, errors});
     } else if (correlationId) {
       // any pre join events or events that are outside the meeting.
-      clientEventObject = this.createClientEventObjectPreMeeting({name, options});
+      clientEventObject = this.createClientEventObjectPreMeeting({name, options, errors});
     } else {
       throw new Error('Not implemented');
     }

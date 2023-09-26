@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.219](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.218...v3.0.0-beta.219) (2023-09-25)
+
+
+### Features
+
+* **spark-454223:** CA error handling for pre join events ([#3074](https://github.com/webex/webex-js-sdk/issues/3074)) ([f435ded](https://github.com/webex/webex-js-sdk/commit/f435dedc696ad68777ea12233fea9413a5a21cc1))
+
 ## [3.0.0-beta.218](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.217...v3.0.0-beta.218) (2023-09-20)
 
 

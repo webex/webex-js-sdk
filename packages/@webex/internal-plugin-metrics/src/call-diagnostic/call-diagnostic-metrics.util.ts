@@ -11,6 +11,7 @@ import {
   MediaQualityEventVideoSetupDelayPayload,
   MetricEventNames,
 } from '../metrics.types';
+import {BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP, WBX_APP_API_URL} from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -96,12 +97,42 @@ export const clearEmptyKeysRecursively = (obj: any) => {
  * If it is 7 digits and starts with a 2, it is locus.
  *
  * @param errorCode
- * @returns
+ * @returns {boolean}
  */
 export const isLocusServiceErrorCode = (errorCode: string | number) => {
   const code = `${errorCode}`;
 
   if (code.length === 7 && code.charAt(0) === '2') {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * MeetingInfo errors sometimes has body.data.meetingInfo object
+ * MeetingInfo errors come with a wbxappapi url
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isMeetingInfoServiceError = (rawError: any) => {
+  if (rawError.body?.data?.meetingInfo || rawError.body?.url?.includes(WBX_APP_API_URL)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * MDN Media Devices getUserMedia() method returns a name if it errs
+ * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+ *
+ * @param errorCode
+ * @returns
+ */
+export const isBrowserMediaErrorName = (errorName: any) => {
+  if (BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[errorName]) {
     return true;
   }
 

@@ -16,7 +16,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -412,7 +412,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('it should include errors if provided', () => {
+      it('it should include errors if provided with meetingId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -463,6 +463,64 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('it should include errors if provided with correlationId', () => {
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          correlationId: 'correlationId',
+          rawError: {
+            body: {
+              errorCode: 2409005,
+            },
+          },
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            errors: [
+              {
+                category: 'expected',
+                errorDescription: 'StartRecordingFailed',
+                fatal: true,
+                name: 'other',
+                shownToUser: false,
+                serviceErrorCode: 2409005,
+                errorCode: 4029,
+              },
+            ],
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -721,22 +779,67 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#generateClientEventErrorPayload', () => {
-      it('should generate event error payload correctly', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2409005}});
-        assert.deepEqual(res, {
+      const defaultExpectedRes =  {
+        category: 'expected',
+        errorDescription: 'StartRecordingFailed',
+        fatal: true,
+        name: 'other',
+        shownToUser: false,
+        errorCode: 4029,
+        serviceErrorCode: 2409005,
+      };
+      
+      const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
+        const res = cd.generateClientEventErrorPayload(payload);
+        const expectedResult = {
           category: 'expected',
-          errorDescription: 'StartRecordingFailed',
+          errorDescription: 'CameraPermissionDenied',
           fatal: true,
           name: 'other',
           shownToUser: false,
-          errorCode: 4029,
-          serviceErrorCode: 2409005,
-        });
+          serviceErrorCode: undefined,
+          errorCode: 4032,
+          errorData: {errorName: payload.name},
+        };
+
+        if (isExpectedToBeCalled) {
+          assert.deepEqual(res, expectedResult);
+        } else {
+          assert.notDeepEqual(res, expectedResult);
+        }
+      }
+
+      it('should generate media event error payload if rawError has a media error name', () => {
+        checkNameError({name: 'PermissionDeniedError'}, true);
       });
 
-      it('should return default new locus event error payload correctly if locus error', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2400000}});
-        assert.deepEqual(res, {
+      it('should not generate media event error payload if rawError has a name that is not recognized', () => {
+        checkNameError({name: 'SomeRandomError'}, false);
+      });
+
+      const checkCodeError = (payload: any, expetedRes: any) => {
+        const res = cd.generateClientEventErrorPayload(payload);
+        assert.deepEqual(res, expetedRes);
+      }
+      it('should generate event error payload correctly', () => {
+        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes)
+      });
+
+      it('should generate event error payload correctly if rawError has body.code', () => {
+        checkCodeError({body: {code: 2409005}}, defaultExpectedRes)
+      });
+
+      it('should generate event error payload correctly if rawError has body.reason.reasonCode', () => {
+        checkCodeError({body: {reason: {reasonCode: 2409005}}}, defaultExpectedRes);
+      });
+
+      it('should generate event error payload correctly if rawError has error.body.errorCode', () => {
+        checkCodeError({error: {body: {errorCode: 2409005}}}, defaultExpectedRes);
+      });
+
+      const checkLocusError = (payload: any, isExpectedToBeCalled: boolean) => {
+        const res = cd.generateClientEventErrorPayload(payload);
+        const expectedResult = {
           category: 'signaling',
           errorDescription: 'NewLocusError',
           fatal: true,
@@ -744,38 +847,66 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 2400000,
           errorCode: 4008,
-        });
+        };
+
+        if (isExpectedToBeCalled) {
+          assert.deepEqual(res, expectedResult);
+        } else {
+          assert.notDeepEqual(res, expectedResult);
+        }
+      }
+
+      it('should return default new locus event error payload correctly if locus error is recognized', () => {
+        checkLocusError({body: {errorCode: 2400000}}, true);
       });
 
-      it('should generate event error payload correctly for nested error', () => {
-        const res = cd.generateClientEventErrorPayload({error: {body: {errorCode: 2409005}}});
-        assert.deepEqual(res, {
-          category: 'expected',
-          errorDescription: 'StartRecordingFailed',
-          fatal: true,
-          name: 'other',
-          shownToUser: false,
-          errorCode: 4029,
-          serviceErrorCode: 2409005,
-        });
+      it('should not return default new locus event error payload correctly if locus is not recognized', () => {
+        checkLocusError({body: {errorCode: 1400000}}, false);
       });
 
-      it('should return default meeting info lookup error payload correctly if not locus error', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 9400000}});
-        assert.deepEqual(res, {
+      const checkMeetingInfoError = (payload: any, isExpectedToBeCalled: boolean) => {
+        const res = cd.generateClientEventErrorPayload(payload);
+        const expectedResult = {
           category: 'signaling',
           errorDescription: 'MeetingInfoLookupError',
           fatal: true,
           name: 'other',
           shownToUser: false,
-          serviceErrorCode: 9400000,
+          serviceErrorCode: undefined,
           errorCode: 4100,
-        });
+        };
+
+        if (isExpectedToBeCalled) {
+          assert.deepEqual(res, expectedResult);
+        } else {
+          assert.notDeepEqual(res, expectedResult);
+        }
+      }
+
+      it('should return default meeting info lookup error payload if data.meetingInfo was found on error body', () => {
+        checkMeetingInfoError({body: {data: {meetingInfo: 'something'}}}, true);
       });
 
-      it('should return undefined if no error code provided', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: undefined}});
-        assert.deepEqual(res, undefined);
+      it('should return default meeting info lookup error payload if body.url contains wbxappapi', () => {
+        checkMeetingInfoError({body: {url: '1234567-wbxappapiabcdefg'}}, true);
+      });
+
+
+      it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
+        checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
+      });
+
+      it('should return unknown error otherwise', () => {
+        const res = cd.generateClientEventErrorPayload({somethgin: 'new'});
+        assert.deepEqual(res, {
+          category: 'other',
+          errorDescription: 'UnknownError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 9999,
+          errorCode: 9999,
+        });
       });
     });
 
