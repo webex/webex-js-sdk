@@ -89,7 +89,7 @@ We provide a built, minified version of the SDK, that includes `window.Webex`. Y
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
 
-For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
+For a quick example, we will use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
 1. Create `index.js`.
 
