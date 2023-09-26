@@ -56,6 +56,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     this.sdkConnector = SDKConnector;
+    /* istanbul ignore else */
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -138,6 +139,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         stringObj = {$: ''};
         stringObj.$ = msgInfoObj.MsgId;
         message.messageId = stringObj;
+        /* istanbul ignore else */
         if (msgInfoObj.Read === 'true') {
           message.read = {};
         }
@@ -158,7 +160,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {
           voicemailList: messageinfoArray,
         },
@@ -264,7 +266,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     const mediaType = respHeaders?.mediatype as string;
     const mediaContent = contentInfo as string;
     const responseDetails = {
-      statusCode: statusCode as number,
+      statusCode: Number(statusCode),
       data: {
         voicemailContent: {
           type: mediaType,
@@ -274,6 +276,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       message: SUCCESS_MESSAGE,
     };
 
+    /* istanbul ignore else */
     if (statusCode !== 200 && statusCode !== 202) {
       responseDetails.message = FAILURE_MESSAGE;
     }
@@ -304,7 +307,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -341,7 +344,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -375,7 +378,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };

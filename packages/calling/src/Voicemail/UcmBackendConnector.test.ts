@@ -92,7 +92,7 @@ describe('Voicemail UCM Backend Connector Test case', () => {
     const voiceMailPayload = <VoicemailResponseEvent>(<unknown>mockVoicemailContentResponse);
 
     webex.request.mockResolvedValueOnce(voiceMailPayload);
-    const response = await (await ucmBackendConnector.getVoicemailContent(messageId)).data;
+    const response = (await ucmBackendConnector.getVoicemailContent(messageId)).data;
     const voicemailContentResponse = voicemailContent;
     const vmResponseDetails = {
       voicemailContent: {

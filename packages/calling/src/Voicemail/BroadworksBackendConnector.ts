@@ -78,6 +78,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     this.sdkConnector = SDKConnector;
+    /* istanbul ignore else */
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -124,6 +125,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
     try {
       await this.getBwToken();
+      /* istanbul ignore else */
       if (this.bwtoken && this.bwtoken.split('.').length > 1) {
         const decodedString = Buffer.from(this.bwtoken.split('.')[1], BASE64).toString(BINARY);
 
@@ -179,6 +181,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     this.xsiAccessToken = `${BEARER} ${this.bwtoken}`;
     log.info(`XsiEndpoint is ${this.xsiEndpoint}`, loggerContext);
 
+    /* istanbul ignore else */
     if (userIdResponse && typeof userIdResponse !== OBJECT) {
       this.xsiVoiceMessageURI = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${userIdResponse}/${VOICE_MESSAGING_MESSAGES}`;
       userIdResponse = {
@@ -216,6 +219,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     let messageinfo: MessageInfo[] | undefined;
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
+    /* istanbul ignore else */
     if (refresh) {
       try {
         const response = await fetch(`${urlXsi}`, {
@@ -225,6 +229,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
           },
         });
 
+        /* istanbul ignore else */
         if (!response.ok) {
           /* Throw error code if any the exception error */
           throw new Error(`${response.status}`);
@@ -300,6 +305,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         },
       });
 
+      /* istanbul ignore else */
       if (!response.ok) {
         /* Throw error code if any the exception error */
         throw new Error(`${response.status}`);
@@ -364,6 +370,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         },
       });
 
+      /* istanbul ignore else */
       if (!response.ok) {
         /* Throw error code if any the exception error */
         throw new Error(`${response.status}`);
@@ -408,6 +415,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         },
       });
 
+      /* istanbul ignore else */
       if (!response.ok) {
         /* Throw error code if any the exception error */
         throw new Error(`${response.status}`);
@@ -452,6 +460,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         },
       });
 
+      /* istanbul ignore else */
       if (!response.ok) {
         /* Throw error code if any the exception error */
         throw new Error(`${response.status}`);

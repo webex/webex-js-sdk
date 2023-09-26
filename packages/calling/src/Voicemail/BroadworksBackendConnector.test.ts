@@ -42,6 +42,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     webex.internal.device.features.entitlement.models = [{_values: {key: 'broadworks-connector'}}];
     broadworksBackendConnector = new BroadworksBackendConnector(webex, {level: LOGGER.INFO});
     broadworksBackendConnector.getSDKConnector();
+    fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
   });
 
   describe('Voicemail failure test cases', () => {
@@ -117,6 +118,23 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+    });
+
+    it('verify failure case for the delete voicemail case when api response fails', async () => {
+      global.fetch.mockRejectedValueOnce('server is busy');
+
+      const response = await broadworksBackendConnector.deleteVoicemail(messageId.$);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: '',
         },
         {
           file: 'BroadworksBackendConnector',
@@ -225,13 +243,21 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         }
       );
     });
+
+    it('verify failure case for voicemail list fetch when api request fails', async () => {
+      global.fetch.mockRejectedValueOnce('server is busy');
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(fetchVoicemailListSpy).not.toBeCalled();
+    });
   });
 
   describe('Voicemail success tests for Broadworks', () => {
     beforeEach(() => {
       getSortedVoicemailListSpy = jest.spyOn(utils, 'getSortedVoicemailList');
       storeVoicemailListSpy = jest.spyOn(utils, 'storeVoicemailList');
-      fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
     });
 
     afterEach(() => {
