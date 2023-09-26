@@ -7,14 +7,18 @@ import {NO_VOICEMAIL_MSG, NO_VOICEMAIL_STATUS_CODE} from './constants';
 import {
   getAscVoicemailListJsonWXC,
   getDescVoicemailListJsonWXC,
+  getEmptyVoicemailListJsonWxC,
+  getInvalidVoicemailListJsonWxC,
   getVoicemailListJsonWXC,
   mockVoicemailBody,
   mockVoicemailTranscriptResponse,
   mockWXCData,
+  responseDetails422,
   voicemailSummaryUrl,
 } from './voicemailFixture';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import * as utils from '../common/Utils';
+import {FAILURE_MESSAGE} from '../common/constants';
 
 describe('Voicemail webex call Backend Connector Test case', () => {
   let wxCallBackendConnector: IWxCallBackendConnector;
@@ -23,11 +27,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
   let getSortedVoicemailListSpy: jest.SpyInstance;
   let storeVoicemailListSpy: jest.SpyInstance;
   let fetchVoicemailListSpy: jest.SpyInstance;
+  const {messageId} = mockVoicemailBody.body.items[0];
 
   beforeAll(() => {
     wxCallBackendConnector = new WxCallBackendConnector(webex, {level: LOGGER.INFO});
     wxCallBackendConnector.init();
     wxCallBackendConnector['context'] = CONTEXT;
+    wxCallBackendConnector.getSDKConnector();
   });
 
   beforeEach(() => {
@@ -91,7 +97,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       };
 
       webex.request.mockRejectedValue(failurePayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
@@ -119,7 +124,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       };
 
       webex.request.mockRejectedValue(failurePayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
@@ -148,7 +152,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
@@ -177,7 +180,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 400,
         data: {error: '400 Bad request'},
@@ -232,7 +234,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       };
 
       webex.request.mockRejectedValue(failurePayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
@@ -260,7 +261,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       };
 
       webex.request.mockRejectedValue(failurePayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
@@ -289,7 +289,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
@@ -318,7 +317,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
 
       webex.request.mockRejectedValue(failurePayload);
 
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 401,
         data: {error: 'User is unauthorised, possible token expiry'},
@@ -370,6 +368,22 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         }
       );
     });
+
+    it('verify failure case for the voicemail content when api response is invalid', async () => {
+      webex.request.mockResolvedValueOnce({});
+      const xsiActionsEndpointUrl = mockWXCData.body.items[0].xsiActionsEndpoint;
+      const response = await wxCallBackendConnector.getVoicemailContent(messageId);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: `${xsiActionsEndpointUrl}${messageId}`,
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(expect.anything(), {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailContent',
+      });
+    });
   });
 
   describe('Voicemail success tests for webex call', () => {
@@ -379,6 +393,10 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       message: SUCCESS,
       statusCode: 200,
     };
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
 
     it('verify successfully fetching voicemail summary with newMessages and newUrgentMessage', async () => {
       const mockRawRequest = {
@@ -662,6 +680,60 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       });
     });
 
+    it('verify empty voicemail list data', async () => {
+      webex.request.mockResolvedValueOnce(getEmptyVoicemailListJsonWxC);
+
+      const response = await wxCallBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [],
+      };
+
+      const responseDetails = {
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(storeVoicemailListSpy).toBeCalledOnceWith(
+        CONTEXT,
+        voicemailResponseInfo.voicemailList
+      );
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailList',
+      });
+    });
+
+    it('verify empty voicemail list data when response data is in invalid format', async () => {
+      webex.request.mockResolvedValueOnce(getInvalidVoicemailListJsonWxC);
+
+      const response = await wxCallBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [{}],
+      };
+
+      const responseDetails = {
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(storeVoicemailListSpy).toBeCalledOnceWith(
+        CONTEXT,
+        voicemailResponseInfo.voicemailList
+      );
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailList',
+      });
+    });
+
     it('verify successful fetching of voicemail list without refresh', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
@@ -705,7 +777,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
 
       const response = await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
@@ -716,7 +787,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
 
       const response = await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
@@ -727,7 +797,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      const {messageId} = mockVoicemailBody.body.items[0];
       const response = await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response).toStrictEqual(EMPTY_SUCCESS_RESPONSE);

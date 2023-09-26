@@ -14,6 +14,7 @@ import {UcmBackendConnector} from './UcmBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {VOICEMAIL_ACTION, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
+import {resolveContactArgs} from './voicemailFixture';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();
@@ -83,8 +84,16 @@ describe('Voicemail Client tests', () => {
       if (data.valid) {
         const voicemailClient = createVoicemailClient(webex, {level: LOGGER.INFO});
 
+        voicemailClient['backendConnector'].init = jest.fn(() => Promise.resolve({}));
+        voicemailClient['backendConnector'].resolveContact = jest.fn(() => Promise.resolve({}));
+
+        const connectorResponse = voicemailClient.init();
+        const contactResponse = voicemailClient.resolveContact(resolveContactArgs);
+
         expect(voicemailClient).toBeTruthy();
         expect(voicemailClient.getSDKConnector().getWebex()).toBeTruthy();
+        expect(connectorResponse).toBeTruthy();
+        expect(contactResponse).toBeTruthy();
 
         switch (data.callingBehavior) {
           case NATIVE_SIP_CALL_TO_UCM:
