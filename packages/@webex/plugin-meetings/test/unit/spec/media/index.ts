@@ -43,7 +43,7 @@ describe('createMediaConnection', () => {
     const ENABLE_EXTMAP = false;
     const ENABLE_RTX = true;
 
-    Media.createMediaConnection(false, 'some debug id', webex, 'meetingId', {
+    Media.createMediaConnection(false, 'some debug id', webex, 'meetingId', 'correlationId', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: false,
@@ -115,7 +115,7 @@ describe('createMediaConnection', () => {
       .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', {
+    Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', 'correlationId', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: true,
@@ -163,7 +163,7 @@ describe('createMediaConnection', () => {
         .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
         .returns(fakeRoapMediaConnection);
 
-        Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', {
+        Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', 'correlationId', {
           mediaProperties: {
             mediaDirection: {
               sendAudio,
@@ -194,7 +194,7 @@ describe('createMediaConnection', () => {
       .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(true, 'debug string', webex, 'meeting id', {
+    Media.createMediaConnection(true, 'debug string', webex, 'meeting id', 'correlationId', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: true,
@@ -222,7 +222,7 @@ describe('createMediaConnection', () => {
         .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
         .returns(fakeRoapMediaConnection);
 
-      Media.createMediaConnection(true, 'debug string', webex, 'meeting id', {
+      Media.createMediaConnection(true, 'debug string', webex, 'meeting id', 'correlationId', {
         mediaProperties: {
           mediaDirection: {
             sendAudio: true,
@@ -258,7 +258,7 @@ describe('createMediaConnection', () => {
     const ENABLE_EXTMAP = false;
     const ENABLE_RTX = true;
 
-    Media.createMediaConnection(false, 'some debug id', webex, 'meeting id', {
+    Media.createMediaConnection(false, 'some debug id', webex, 'meeting id', 'correlationId', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: true,

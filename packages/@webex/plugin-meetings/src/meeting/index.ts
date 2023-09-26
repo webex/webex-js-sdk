@@ -5286,6 +5286,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex,
       this.id,
+      this.correlationId,
       {
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
