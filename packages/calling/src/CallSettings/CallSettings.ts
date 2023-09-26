@@ -17,9 +17,18 @@ import {CALL_SETTINGS_FILE} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
- * Call Settings class which implements the public ICallSettings interface
- * This class will select appropriate calling backends according to the user
- * entitlements.
+ * CallSettings class represents the CallSettings Client Module
+ * Purpose of this class is to provide the APIs to fetch and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
+ * The appropriate calling backends is initialized according to the user entitlements while intsantiating the CallSettings Client.
+ *
+ * To access the APIs, instance of CallSettings Client is required.
+ *
+ * Example
+ * ```javascript
+ * const callSettings = createCallSettingsClient(webex, logger);
+ * ```
+ *
+ * @implements {ICallSettings}
  */
 export class CallSettings implements ICallSettings {
   private sdkConnector: ISDKConnector;
@@ -30,6 +39,9 @@ export class CallSettings implements ICallSettings {
 
   private backendConnector!: ICallSettings;
 
+  /**
+   * @ignore
+   */
   constructor(webex: WebexSDK, logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.sdkConnector = SDKConnector;
 
@@ -40,7 +52,7 @@ export class CallSettings implements ICallSettings {
     log.setLogger(logger.level, CALL_SETTINGS_FILE);
     this.webex = this.sdkConnector.getWebex();
     this.initializeBackendConnector(logger, useProdWebexApis);
-  } // constructor, no docs
+  }
 
   /**
    * Setup and initialize the Call Settings backend connector class object.
@@ -90,6 +102,7 @@ export class CallSettings implements ICallSettings {
 
   /**
    * Reads Call Forward setting at the backend.
+   *
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getCallForwardSetting();
@@ -131,6 +144,7 @@ export class CallSettings implements ICallSettings {
 }
 
 /**
+ * Creates an instance of CallSettings Client.
  */
 export const createCallSettingsClient = (
   webex: WebexSDK,

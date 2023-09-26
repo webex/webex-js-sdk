@@ -31,7 +31,18 @@ import {
 import {serviceErrorCodeHandler} from '../common/Utils';
 
 /**
+ * ContactsClient class represents the ContactsClient Module.
  * Client of contacts-service which stores encrypted custom contacts and org contacts.
+ * Purpose of this class is to provide the APIs to fetch and update the contacts and groups from contacts-service.
+ *
+ * To access the APIs, instance of ContactsClient is required.
+ *
+ * Example
+ * ```javascript
+ * const contactClient = createContactsClient(webex, logger);
+ * ```
+ *
+ * @implements {IContacts}
  */
 export class ContactsClient implements IContacts {
   private sdkConnector: ISDKConnector;
@@ -47,8 +58,7 @@ export class ContactsClient implements IContacts {
   private defaultGroupId: string;
 
   /**
-   * @param webex - A webex instance.
-   * @param logger - Logger to set logger level.
+   * @ignore
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     this.sdkConnector = SDKConnector;
@@ -65,14 +75,10 @@ export class ContactsClient implements IContacts {
     this.defaultGroupId = '';
 
     log.setLogger(logger.level, CONTACTS_FILE);
-  } // constructor, no docs
+  }
 
   /**
    * Decrypt emails, phoneNumbers, sipAddresses.
-   *
-   * @param contactDetails - Array ContactDetail.
-   * @param encryptionKeyUrl - KMS encryptionKeyUrl for the contact.
-   * @returns Decrypted phoneNumbers.
    */
   private async decryptContactDetail(
     encryptionKeyUrl: string,
@@ -96,9 +102,6 @@ export class ContactsClient implements IContacts {
   /**
    * Encrypt emails, phoneNumbers, sipAddresses.
    *
-   * @param contactDetails - Array ContactDetail.
-   * @param encryptionKeyUrl - KMS encryptionKeyUrl for the contact.
-   * @returns Decrypted phoneNumbers.
    */
   private async encryptContactDetail(
     encryptionKeyUrl: string,
@@ -121,9 +124,6 @@ export class ContactsClient implements IContacts {
 
   /**
    * Encrypts a given contact.
-   *
-   * @param contact - Plaintext contact object.
-   * @returns Promise for encrypted contact.
    */
   private async encryptContact(contact: Contact): Promise<Contact> {
     const {encryptionKeyUrl} = contact;
@@ -190,9 +190,6 @@ export class ContactsClient implements IContacts {
 
   /**
    * Decrypts a given contact.
-   *
-   * @param contact - Plaintext contact object.
-   * @returns Promise for encrypted contact.
    */
   private async decryptContact(contact: Contact): Promise<Contact> {
     const {encryptionKeyUrl} = contact;
@@ -258,12 +255,7 @@ export class ContactsClient implements IContacts {
   }
 
   /**
-   * @param contact - Contact object.
-   * @param contactsDataMap - Object with contactId as key and contact info for corresponding contact as value.
-   * @param avatarUrlDomain - Avatar Url.
-   * @param encryptionKeyUrl - Encryption key received from KMS.
-   * @param ownerId - OwnerId.
-   * @returns Array of contact detail fetched from DSS.
+   * Fetches contacts from DSS.
    */
   private async fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): Promise<Contact[]> {
     const contactList = [];
@@ -333,6 +325,7 @@ export class ContactsClient implements IContacts {
 
   /**
    * Returns list of contacts.
+   * @ignore
    */
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
@@ -503,11 +496,7 @@ export class ContactsClient implements IContacts {
   /**
    * Creates a personal contact group
    * Also creates a KRO, if there aren't any groups.
-   *
-   * @param displayName - Display name for group, plaintext.
-   * @param encryptionKeyUrl - EncryptionKeyUrl for the content key to be used.
-   * @param groupType - Default is NORMAL.
-   * @returns Promises that resolve to ContactResponse.
+   * @ignore
    */
   public async createContactGroup(
     displayName: string,
@@ -588,6 +577,7 @@ export class ContactsClient implements IContacts {
 
   /**
    * Deletes a contact group.
+   * @ignore
    *
    * @param groupId - GroupId of the group to delete.
    */
@@ -631,10 +621,8 @@ export class ContactsClient implements IContacts {
   }
 
   /**
-   * Creates a contact.
-   *
-   * @param contactInfo - The contact information to use when creating the contact (required).
-   * @returns - A Promise that resolves with the response of created contact.
+   * Creates a custom contact.
+   * @ignore
    */
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
@@ -739,6 +727,7 @@ export class ContactsClient implements IContacts {
 
   /**
    * Delete a contact.
+   * @ignore
    */
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {
@@ -780,8 +769,7 @@ export class ContactsClient implements IContacts {
 }
 
 /**
- * @param webex - A webex instance.
- * @param logger - Logger to set logger level.
+ * Creates a ContactsClient instance
  */
 export const createContactsClient = (webex: WebexSDK, logger: LoggerInterface): IContacts =>
   new ContactsClient(webex, logger);

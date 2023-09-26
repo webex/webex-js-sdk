@@ -1,6 +1,5 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
@@ -18,7 +17,17 @@ import {
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
+ * CallHistory class represents the CallHistory Client Module
+ * Purpose of this class is to provide the APIs to fetch the recent Call History Records.
  *
+ * To access the API, instance of CallHistory Client is required.
+ *
+ * Example
+ * ```javascript
+ * const callHistory = createCallHistoryClient(webex, logger);
+ * ```
+ *
+ * @implements {ICallHistory}
  */
 export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICallHistory {
   private sdkConnector: ISDKConnector;
@@ -37,10 +46,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   private userSessions: UserSession[] | undefined;
 
   /**
-   * Creation of a webex object with SDK connector.
-   *
-   * @param webex - WebexSDK.
-   * @param logger -.
+   * @ignore
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     super();
@@ -52,11 +58,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.janusUrl = this.webex.internal.services._serviceUrls.janus;
     this.registerSessionsListener();
     log.setLogger(logger.level, CALL_HISTORY_FILE);
-  } // constructor, no docs
+  }
 
   /**
    * Function to display the Janus API response.
-   *
    */
   public async getCallHistoryData(
     days: number = NUMBER_OF_DAYS,
@@ -136,8 +141,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 }
 /**
- * @param webex -.
- * @param logger -.
+ * Function to create the CallHistory Client instance
  */
 export const createCallHistoryClient = (webex: WebexSDK, logger: LoggerInterface): ICallHistory =>
   new CallHistory(webex, logger);

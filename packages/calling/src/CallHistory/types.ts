@@ -16,6 +16,10 @@ export type JanusResponseEvent = {
   message: string | null;
 };
 
+/**
+ * Interface for CallHistory Client
+ * This contains the APIs that helps to fetch the recent Call History Records.
+ */
 export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
   /**
    * This API is used to fetch the the recent Call History Records.
@@ -24,13 +28,11 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * ```javascript
    * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
    * ```
-   *
-   * callHistory is an instance of CallHistory Client which is required to access to this API
    */
-  getCallHistoryData: (
+  getCallHistoryData(
     days: number,
     limit: number,
     sort: SORT,
     sortBy: SORT_BY
-  ) => Promise<JanusResponseEvent>;
+  ): Promise<JanusResponseEvent>;
 }
