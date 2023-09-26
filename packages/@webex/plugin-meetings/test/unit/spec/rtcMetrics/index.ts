@@ -2,6 +2,7 @@ import RtcMetrics from '@webex/plugin-meetings/src/rtcMetrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import RTC_METRICS from '../../../../src/rtcMetrics/constants';
 
 const FAKE_METRICS_ITEM = {payload: ['fake-metrics']};
 
@@ -23,6 +24,13 @@ describe('RtcMetrics', () => {
     (metrics as any).sendMetrics();
 
     assert.callCount(webex.request, 1);
+    assert.calledWithMatch(webex.request, sinon.match.has('headers', {
+      type: 'webrtcMedia',
+      appId: RTC_METRICS.APP_ID,
+    }));
+    assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].data[0].payload', FAKE_METRICS_ITEM.payload));
+    assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].meetingId', 'mock-meeting-id'));
+    assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].correlationId', 'mock-correlation-id'));
   });
 
   it('should send metrics requests over time', () => {
