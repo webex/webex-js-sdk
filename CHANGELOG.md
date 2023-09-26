@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.220](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.219...v3.0.0-beta.220) (2023-09-26)
+
+
+### Bug Fixes
+
+* add correct correlation id to rtcmetrics ([#3109](https://github.com/webex/webex-js-sdk/issues/3109)) ([5ccc748](https://github.com/webex/webex-js-sdk/commit/5ccc748c9d5e1929fc7a158038eb725d2a441239))
+* improve error logging for xhr ([#3110](https://github.com/webex/webex-js-sdk/issues/3110)) ([539f12c](https://github.com/webex/webex-js-sdk/commit/539f12c2a03a74db0d95162ececc73667abf4d0e))
+
 ## [3.0.0-beta.219](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.218...v3.0.0-beta.219) (2023-09-25)
 
 
