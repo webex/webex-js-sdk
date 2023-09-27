@@ -6239,7 +6239,7 @@ describe('plugin-meetings', () => {
           }
         );
 
-        it('canUseVoip is disabled based on locus info when the required policies are missing', () => {
+        it('canUseVoip is disabled when the required policies are missing', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
