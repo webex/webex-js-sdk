@@ -139,6 +139,7 @@ export class CallSettings implements ICallSettings {
    * Reads the Call Forwarding Always settings at the backend.
    * This will also check if CFA is set to Voicemail.
    * If CFA is set to destination, that will take precedence.
+   * @param directoryNumber - Directory number of the user.
    */
   public async getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse> {
     return this.backendConnector.getCallForwardAlwaysSetting(directoryNumber);

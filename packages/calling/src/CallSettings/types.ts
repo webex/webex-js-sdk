@@ -228,7 +228,9 @@ export interface ICallSettings {
   setVoicemailSetting(request: VoicemailSetting): Promise<CallSettingResponse>;
 
   /**
-   * This API is used to fetch the settings for callForwardAlways.
+   * This API is used to fetch the call forward settings including the Voicemail.
+   * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
+   * This parameter is only required for CCUC backend
    */
   getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse>;
 }
