@@ -17,9 +17,8 @@ import {CALL_SETTINGS_FILE} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
- * CallSettings class represents the CallSettings Client Module
- * Purpose of this class is to provide the APIs to fetch and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
- * The appropriate calling backends is initialized according to the user entitlements while intsantiating the CallSettings Client.
+ * Purpose of the CallSettings Client instance is to provide the APIs to fetch and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
+ * The appropriate calling backends is initialized according to the user entitlements while instantiating the CallSettings Client.
  *
  * To access the APIs, instance of CallSettings Client is required.
  *
@@ -95,6 +94,7 @@ export class CallSettings implements ICallSettings {
 
   /**
    * Updates DND setting at the backend.
+   * @param enabled - true to enable DND, false to disable DND.
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
     return this.backendConnector.setDoNotDisturbSetting(enabled);
@@ -110,6 +110,7 @@ export class CallSettings implements ICallSettings {
 
   /**
    * Updates Call Forward setting at the backend.
+   * @param callForwardingRequest - CallForwardSetting object.
    */
   public async setCallForwardSetting(
     callForwardingRequest: CallForwardSetting
@@ -126,6 +127,7 @@ export class CallSettings implements ICallSettings {
 
   /**
    * Updates Voicemail setting at the backend.
+   * @param voicemailRequest - VoicemailSetting object.
    */
   public async setVoicemailSetting(
     voicemailRequest: VoicemailSetting

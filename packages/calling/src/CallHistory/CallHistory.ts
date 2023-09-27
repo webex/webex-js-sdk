@@ -17,8 +17,7 @@ import {
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
- * CallHistory class represents the CallHistory Client Module
- * Purpose of this class is to provide the APIs to fetch the recent Call History Records.
+ * Purpose of the CallHistory Client instance is to provide the APIs to fetch the recent Call History Records.
  *
  * To access the API, instance of CallHistory Client is required.
  *
@@ -62,6 +61,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
   /**
    * Function to display the Janus API response.
+   * @param days - Number of days to fetch the call history data.
+   * @param limit - Number of records to be fetched.
+   * @param sort - Sort the records in ascending or descending order.
+   * @param sortBy - Sort the records by start time or end time.
    */
   public async getCallHistoryData(
     days: number = NUMBER_OF_DAYS,

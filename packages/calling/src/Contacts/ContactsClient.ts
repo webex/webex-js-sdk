@@ -31,9 +31,9 @@ import {
 import {serviceErrorCodeHandler} from '../common/Utils';
 
 /**
- * ContactsClient class represents the ContactsClient Module.
+ *
  * Client of contacts-service which stores encrypted custom contacts and org contacts.
- * Purpose of this class is to provide the APIs to fetch and update the contacts and groups from contacts-service.
+ * Purpose of this contactsClient instance is to provide the APIs to fetch and update the contacts and groups from contacts-service.
  *
  * To access the APIs, instance of ContactsClient is required.
  *
@@ -325,7 +325,6 @@ export class ContactsClient implements IContacts {
 
   /**
    * Returns list of contacts.
-   * @ignore
    */
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
@@ -494,9 +493,11 @@ export class ContactsClient implements IContacts {
   }
 
   /**
-   * Creates a personal contact group
+   * Creates a personal contact group.
    * Also creates a KRO, if there aren't any groups.
-   * @ignore
+   * @param displayName - Name of the group to create.
+   * @param encryptionKeyUrl - EncryptionKeyUrl to encrypt the displayName.
+   * @param groupType - Type of the group to create.
    */
   public async createContactGroup(
     displayName: string,
@@ -577,8 +578,6 @@ export class ContactsClient implements IContacts {
 
   /**
    * Deletes a contact group.
-   * @ignore
-   *
    * @param groupId - GroupId of the group to delete.
    */
   public async deleteContactGroup(groupId: string) {
@@ -622,7 +621,7 @@ export class ContactsClient implements IContacts {
 
   /**
    * Creates a custom contact.
-   * @ignore
+   * @param contactInfo - Contact object to create.
    */
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
@@ -727,7 +726,7 @@ export class ContactsClient implements IContacts {
 
   /**
    * Delete a contact.
-   * @ignore
+   * @param contactId - ContactId of the contact to delete.
    */
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {

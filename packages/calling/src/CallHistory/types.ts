@@ -28,6 +28,11 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * ```javascript
    * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
    * ```
+   *
+   * @param days - Number of days to fetch the call history data.
+   * @param limit - Number of records to be fetched.
+   * @param sort - Sort the records in ascending or descending order.
+   * @param sortBy - Sort the records by start time or end time.
    */
   getCallHistoryData(
     days: number,
