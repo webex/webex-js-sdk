@@ -1,8 +1,16 @@
 import {Mutex} from 'async-mutex';
 import {v4 as uuid} from 'uuid';
-import {IDeviceInfo, MobiusDeviceId, MobiusStatus, ServiceIndicator} from '../../common/types';
+import {
+  CallDetails,
+  CallDirection,
+  CorrelationId,
+  IDeviceInfo,
+  MobiusDeviceId,
+  MobiusStatus,
+  ServiceIndicator,
+} from '../../common/types';
 import {ILine, LINE_EVENTS, LineEventTypes, LineStatus} from './types';
-import {LINE_FILE} from '../constants';
+import {LINE_FILE, VALID_PHONE} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
@@ -13,6 +21,10 @@ import {LineError} from '../../Errors/catalog/LineError';
 import {LOGGER} from '../../Logger/types';
 import {validateServiceData} from '../../common';
 import SDKConnector from '../../SDKConnector';
+import {LINE_EVENT_KEYS} from '../../Events/types';
+import {ICall, ICallManager} from '../calling/types';
+import {getCallManager} from '../calling/callManager';
+import {ERROR_TYPE} from '../../Errors/types';
 
 export default class Line extends Eventing<LineEventTypes> implements ILine {
   #webex: WebexSDK;
@@ -56,6 +68,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   public voicePortalNumber?: number;
 
   public voicePortalExtension?: number;
+
+  private callManager: ICallManager;
 
   #primaryMobiusUris: string[];
 
@@ -106,6 +120,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
     this.registration.setStatus(MobiusStatus.DEFAULT);
     log.setLogger(logLevel, LINE_FILE);
+
+    this.callManager = getCallManager(this.#webex, serviceData.indicator);
+
+    this.incomingCallListener();
   }
 
   /**
@@ -119,6 +137,9 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
       await this.registration.triggerRegistration();
     });
+    if (this.mobiusDeviceId) {
+      this.callManager.updateLine(this.mobiusDeviceId, this);
+    }
   }
 
   /**
@@ -204,4 +225,71 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    */
   public getDeviceId = (): MobiusDeviceId | undefined =>
     this.registration.getDeviceInfo().device?.deviceId;
+
+  /**
+   * @param dest -.
+   */
+  public makeCall = (dest: CallDetails): ICall | undefined => {
+    let call;
+
+    if (dest) {
+      const match = dest.address.match(VALID_PHONE);
+
+      if (match && match[0].length === dest.address.length) {
+        const sanitizedNumber = dest.address
+          .replace(/[^[*+]\d#]/gi, '')
+          .replace(/\s+/gi, '')
+          .replace(/-/gi, '');
+        const formattedDest = {
+          type: dest.type,
+          address: `tel:${sanitizedNumber}`,
+        };
+
+        call = this.callManager.createCall(
+          formattedDest,
+          CallDirection.OUTBOUND,
+          this.registration.getDeviceInfo().device?.deviceId as string,
+          this.lineId
+        );
+        log.log(`New call created, callId: ${call.getCallId()}`, {});
+      } else {
+        log.warn('Invalid phone number detected', {});
+
+        const err = new LineError(
+          'An invalid phone number was detected. Check the number and try again.',
+          {},
+          ERROR_TYPE.CALL_ERROR,
+          LineStatus.ACTIVE
+        );
+
+        this.emit(LINE_EVENTS.ERROR, err);
+      }
+
+      return call;
+    }
+
+    return undefined;
+  };
+
+  /**
+   * An Incoming Call listener.
+   */
+  private incomingCallListener() {
+    const logContext = {
+      file: LINE_FILE,
+      method: this.incomingCallListener.name,
+    };
+    log.log('Listening for incoming calls... ', logContext);
+    this.callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
+      this.emit(LINE_EVENTS.INCOMING_CALL, callObj);
+    });
+  }
+
+  /**
+   * @param callId -.
+   * @param correlationId -.
+   */
+  public getCall = (correlationId: CorrelationId): ICall => {
+    return this.callManager.getCall(correlationId);
+  };
 }

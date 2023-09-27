@@ -1,14 +1,14 @@
+import {Mutex} from 'async-mutex';
 import {LOGGER} from '../Logger/types';
-import {getTestUtilsWebex, getMockRequestTemplate, getMockDeviceInfo} from '../common/testUtil';
 import {
-  CallDirection,
-  CallType,
-  MobiusStatus,
-  ServiceIndicator,
-  WebexRequestPayload,
-} from '../common/types';
+  getTestUtilsWebex,
+  getMockRequestTemplate,
+  getMockDeviceInfo,
+  getMobiusDiscoveryResponse,
+} from '../common/testUtil';
+import {CallType, MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
 /* eslint-disable dot-notation */
-import {CallSessionEvent, EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
 import {createClient} from './CallingClient';
 import {ICallingClient} from './types';
@@ -23,7 +23,7 @@ import {
   SPARK_USER_AGENT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
-import {ILine} from './line/types';
+import {ILine, LineStatus} from './line/types';
 import {
   ipPayload,
   regionBody,
@@ -34,6 +34,10 @@ import {
   uri,
   myIP,
 } from './callingClientFixtures';
+import Line from './line';
+import {filterMobiusUris} from '../common/Utils';
+import {URL} from './registration/registerFixtures';
+import {ICall} from './calling/types';
 
 describe('CallingClient Tests', () => {
   // Common initializers
@@ -571,10 +575,31 @@ describe('CallingClient Tests', () => {
 
   // Calling related test cases
   describe('Calling tests', () => {
-    let callingClient: ICallingClient;
+    const mutex = new Mutex();
+    const userId = webex.internal.device.userId;
+    const clientDeviceUri = webex.internal.device.url;
+    const mobiusUris = filterMobiusUris(getMobiusDiscoveryResponse(), URL);
+    const primaryMobiusUris = jest.fn(() => mobiusUris.primary);
+    const backupMobiusUris = jest.fn(() => mobiusUris.backup);
+
+    let callingClient;
+    let line: Line;
 
     beforeAll(async () => {
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient = await createClient(webex);
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        LineStatus.ACTIVE,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO
+      );
+      const calls = Object.values(callManager.getActiveCalls());
+      calls.forEach((call) => {
+        call.end();
+      });
     });
 
     afterAll(() => {
@@ -588,85 +613,60 @@ describe('CallingClient Tests', () => {
       );
     });
 
-    it('Return a successful call object while making call', () => {
-      const call = callingClient.makeCall({address: '5003', type: CallType.URI});
-
-      expect(call).toBeTruthy();
-      expect(callingClient.getCall(call ? call.getCorrelationId() : '')).toBe(call);
-      expect(call ? call['direction'] : undefined).toStrictEqual(CallDirection.OUTBOUND);
-      call?.end();
+    it('returns undefined when there is no connected call', () => {
+      line.register();
+      line.makeCall({address: '123456', type: CallType.URI});
+      expect(callingClient.getConnectedCall()).toEqual(undefined);
     });
 
-    it('Return a successful call object while making call to FAC codes', () => {
-      const call = callingClient.makeCall({address: '*25', type: CallType.URI});
+    it('returns the connected call', () => {
+      line.register();
+      const mockCall = line.makeCall({address: '1234', type: CallType.URI});
+      const mockCall2 = line.makeCall({address: '5678', type: CallType.URI});
+      // Connected call
+      mockCall['connected'] = true;
+      mockCall['earlyMedia'] = false;
+      mockCall['callStateMachine'].state.value = 'S_CALL_ESTABLISHED';
 
-      expect(call).toBeTruthy();
-      expect(call ? call['direction'] : undefined).toStrictEqual(CallDirection.OUTBOUND);
-      call?.end();
+      // Held call
+      mockCall2['connected'] = true;
+      mockCall2['held'] = true;
+      mockCall2['earlyMedia'] = false;
+      mockCall2['callStateMachine'].state.value = 'S_CALL_HOLD';
+
+      const mockActiveCalls: Record<string, ICall> = {
+        mockCorrelationId: mockCall as ICall,
+        mockCorrelationId2: mockCall2 as ICall,
+      };
+
+      jest.spyOn(callManager, 'getActiveCalls').mockReturnValue(mockActiveCalls);
+      expect(callingClient.getConnectedCall()).toEqual(mockCall);
     });
+    it('returns all active calls', () => {
+      callingClient.lineDict = {
+        mockDeviceId: {lineId: 'mockLineId'} as ILine,
+        mockDeviceId2: {lineId: 'mockLineId2'} as ILine,
+      };
 
-    it('Remove spaces from dialled number while making call', () => {
-      const call = callingClient.makeCall({address: '+91 123 456 7890', type: CallType.URI});
+      const mockCall = line.makeCall({address: '1234', type: CallType.URI});
+      const mockCall2 = line.makeCall({address: '5678', type: CallType.URI});
+      const mockCall3 = line.makeCall({address: '9101', type: CallType.URI});
 
-      expect(call).toBeTruthy();
-      expect(call ? call['direction'] : undefined).toStrictEqual(CallDirection.OUTBOUND);
-      expect(call ? call['destination']['address'] : undefined).toStrictEqual('tel:+911234567890');
-      call?.end();
-    });
+      mockCall.lineId = 'mockLineId';
+      mockCall2.lineId = 'mockLineId2';
+      mockCall3.lineId = 'mockLineId2';
 
-    it('Remove hyphen from dialled number while making call', () => {
-      const call = callingClient.makeCall({address: '123-456-7890', type: CallType.URI});
+      const mockActiveCalls: Record<string, ICall> = {
+        mockCorrelationId: mockCall as ICall,
+        mockCorrelationId2: mockCall2 as ICall,
+        mockCorrelationId3: mockCall3 as ICall,
+      };
 
-      expect(call).toBeTruthy();
-      expect(call ? call['direction'] : undefined).toStrictEqual(CallDirection.OUTBOUND);
-      expect(call ? call['destination']['address'] : undefined).toStrictEqual('tel:1234567890');
-      call?.end();
-    });
-
-    it('attempt to create call with incorrect number format 1', (done) => {
-      // There may be other listeners , which may create race
-      callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-      const createCallSpy = jest.spyOn(callManager, 'createCall');
-
-      callingClient.on(EVENT_KEYS.ERROR, (error) => {
-        expect(error.message).toBe(
-          'An invalid phone number was detected. Check the number and try again.'
-        );
-        done();
+      jest.spyOn(callManager, 'getActiveCalls').mockReturnValue(mockActiveCalls);
+      expect(callingClient.getActiveCalls()).toEqual({
+        mockLineId: [mockCall],
+        mockLineId2: [mockCall2, mockCall3],
       });
-      try {
-        const call = callingClient.makeCall({address: 'select#$@^^', type: CallType.URI});
-
-        expect(call).toBeUndefined();
-        expect(createCallSpy).toBeCalledTimes(0);
-      } catch (error) {
-        done(error);
-      }
-      expect.assertions(3);
-    });
-
-    it('attempt to create call with incorrect number format 2', (done) => {
-      expect.assertions(3);
-      // There may be other listeners , which may create race
-      callingClient.removeAllListeners(EVENT_KEYS.ERROR);
-      const createCallSpy = jest.spyOn(callManager, 'createCall');
-
-      callingClient.on(EVENT_KEYS.ERROR, (error) => {
-        expect(error.message).toBe(
-          'An invalid phone number was detected. Check the number and try again.'
-        );
-        done();
-      });
-
-      try {
-        const call = callingClient.makeCall({address: '+1@8883332505', type: CallType.URI});
-
-        expect(call).toBeUndefined();
-        expect(createCallSpy).toBeCalledTimes(0);
-      } catch (error) {
-        done(error);
-      }
-      expect.assertions(3);
     });
   });
 
@@ -685,7 +685,7 @@ describe('CallingClient Tests', () => {
 
     it('verify the recent user session event ', (done) => {
       expect.assertions(2);
-      callingClient.on(EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
         expect(event.data).toEqual(MOCK_SESSION_EVENT.data);
         done();
       });
@@ -698,7 +698,7 @@ describe('CallingClient Tests', () => {
 
     it('drop the recent user session if there is no webex calling type', (done) => {
       expect.assertions(2);
-      callingClient.on(EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, (event: CallSessionEvent) => {
         expect(event.data.userSessions.userSessions.length).toEqual(1);
         done();
       });

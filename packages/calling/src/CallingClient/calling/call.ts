@@ -46,10 +46,10 @@ import {
 import SDKConnector from '../../SDKConnector';
 import {Eventing} from '../../Events/impl';
 import {
+  CALL_EVENT_KEYS,
   CallerIdInfo,
   CallEvent,
   CallEventTypes,
-  EVENT_KEYS,
   MEDIA_CONNECTION_EVENT_KEYS,
   MOBIUS_MIDCALL_STATE,
   RoapEvent,
@@ -102,6 +102,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private correlationId: CorrelationId;
 
   private deviceId: string;
+
+  public lineId: string;
 
   private disconnectReason: DisconnectReason;
 
@@ -193,6 +195,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
+    lineId: string,
     deleteCb: DeleteRecordCallBack,
     indicator: ServiceIndicator
   ) {
@@ -202,6 +205,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.sdkConnector = SDKConnector;
     this.deviceId = deviceId;
     this.serviceIndicator = indicator;
+    this.lineId = lineId;
 
     /* istanbul ignore else */
     if (!this.sdkConnector.getWebex()) {
@@ -235,7 +239,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         callerId: this.callerInfo,
       };
 
-      this.emit(EVENT_KEYS.CALLER_ID, emitObj);
+      this.emit(CALL_EVENT_KEYS.CALLER_ID, emitObj);
     });
     this.remoteRoapMessage = null;
     this.disconnectReason = {code: DisconnectCode.NORMAL, cause: DisconnectCause.NORMAL};
@@ -924,7 +928,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       handleCallErrors(
         (error: CallError) => {
-          this.emit(EVENT_KEYS.CALL_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_UNKNOWN', data: errData});
         },
@@ -980,7 +984,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             ERROR_LAYER.CALL_CONTROL
           );
 
-          this.emit(EVENT_KEYS.HOLD_ERROR, callError);
+          this.emit(CALL_EVENT_KEYS.HOLD_ERROR, callError);
           this.submitCallErrorMetric(callError);
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
@@ -993,7 +997,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       handleCallErrors(
         (error: CallError) => {
-          this.emit(EVENT_KEYS.HOLD_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.HOLD_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
         },
@@ -1049,7 +1053,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             ERROR_LAYER.CALL_CONTROL
           );
 
-          this.emit(EVENT_KEYS.RESUME_ERROR, callError);
+          this.emit(CALL_EVENT_KEYS.RESUME_ERROR, callError);
           this.submitCallErrorMetric(callError);
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
@@ -1062,7 +1066,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       handleCallErrors(
         (error: CallError) => {
-          this.emit(EVENT_KEYS.RESUME_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.RESUME_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
         },
@@ -1109,7 +1113,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.startCallerIdResolution(data.callerId);
     }
-    this.emit(EVENT_KEYS.PROGRESS, this.correlationId);
+    this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
   }
 
   /**
@@ -1180,7 +1184,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       handleCallErrors(
         (error: CallError) => {
-          this.emit(EVENT_KEYS.CALL_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_UNKNOWN', data: errData});
         },
@@ -1206,7 +1210,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       file: CALL_FILE,
       method: this.handleIncomingCallConnect.name,
     });
-    this.emit(EVENT_KEYS.CONNECT, this.correlationId);
+    this.emit(CALL_EVENT_KEYS.CONNECT, this.correlationId);
 
     /* In case of Early Media , media negotiations would have already started
      * So we can directly go to call established state */
@@ -1258,7 +1262,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       handleCallErrors(
         (error: CallError) => {
-          this.emit(EVENT_KEYS.CALL_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_UNKNOWN', data: errData});
         },
@@ -1317,7 +1321,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
 
-    this.emit(EVENT_KEYS.DISCONNECT, this.correlationId);
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
   }
 
   /**
@@ -1372,7 +1376,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: this.handleCallEstablished.name,
     });
 
-    this.emit(EVENT_KEYS.ESTABLISHED, this.correlationId);
+    this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
     /* Reset Early dialog parameters */
     this.earlyMedia = false;
@@ -1412,7 +1416,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
         handleCallErrors(
           (callError: CallError) => {
-            this.emit(EVENT_KEYS.CALL_ERROR, callError);
+            this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
             this.submitCallErrorMetric(callError);
           },
           ERROR_LAYER.CALL_CONTROL,
@@ -1507,7 +1511,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     return (error: CallError) => {
       switch (this.callStateMachine.state.value) {
         case 'S_CALL_HOLD':
-          this.emit(EVENT_KEYS.HOLD_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.HOLD_ERROR, error);
           if (this.supplementaryServicesTimer) {
             clearTimeout(this.supplementaryServicesTimer);
             this.supplementaryServicesTimer = undefined;
@@ -1517,13 +1521,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           return;
         case 'S_CALL_RESUME':
-          this.emit(EVENT_KEYS.RESUME_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.RESUME_ERROR, error);
           this.submitCallErrorMetric(error);
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
 
           return;
         default:
-          this.emit(EVENT_KEYS.CALL_ERROR, error);
+          this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
           this.submitCallErrorMetric(error);
           /* Disconnect call if it's not a midcall case */
           /* istanbul ignore else */
@@ -1670,7 +1674,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
         handleCallErrors(
           (error: CallError) => {
-            this.emit(EVENT_KEYS.CALL_ERROR, error);
+            this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
             this.submitCallErrorMetric(error);
           },
           ERROR_LAYER.MEDIA,
@@ -2208,7 +2212,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
         handleCallErrors(
           (error: CallError) => {
-            this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
+            this.emit(CALL_EVENT_KEYS.TRANSFER_ERROR, error);
             this.submitCallErrorMetric(error, TRANSFER_ACTION.BLIND);
           },
           ERROR_LAYER.CALL_CONTROL,
@@ -2253,7 +2257,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
         handleCallErrors(
           (error: CallError) => {
-            this.emit(EVENT_KEYS.TRANSFER_ERROR, error);
+            this.emit(CALL_EVENT_KEYS.TRANSFER_ERROR, error);
             this.submitCallErrorMetric(error, TRANSFER_ACTION.CONSULT);
           },
           ERROR_LAYER.CALL_CONTROL,
@@ -2398,7 +2402,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
-        this.emit(EVENT_KEYS.REMOTE_MEDIA, e.track);
+        this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
     });
   }
@@ -2508,7 +2512,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               method: 'handleMidCallEvent',
             });
 
-            this.emit(EVENT_KEYS.HELD, this.correlationId);
+            this.emit(CALL_EVENT_KEYS.HELD, this.correlationId);
 
             this.held = true;
 
@@ -2526,7 +2530,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               method: 'handleMidCallEvent',
             });
 
-            this.emit(EVENT_KEYS.RESUMED, this.correlationId);
+            this.emit(CALL_EVENT_KEYS.RESUMED, this.correlationId);
 
             this.held = false;
 
@@ -2663,6 +2667,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
  * @param dest -.
  * @param dir -.
  * @param deviceId -.
+ * @param lineId -.
  * @param serverCb
  * @param deleteCb
  * @param indicator - Service Indicator.
@@ -2673,6 +2678,7 @@ export const createCall = (
   dest: CallDetails,
   dir: CallDirection,
   deviceId: string,
+  lineId: string,
   deleteCb: DeleteRecordCallBack,
   indicator: ServiceIndicator
-): ICall => new Call(activeUrl, webex, dest, dir, deviceId, deleteCb, indicator);
+): ICall => new Call(activeUrl, webex, dest, dir, deviceId, lineId, deleteCb, indicator);
