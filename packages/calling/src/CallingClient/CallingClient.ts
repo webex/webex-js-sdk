@@ -4,23 +4,18 @@
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
 import {filterMobiusUris, handleCallingClientErrors, validateServiceData} from '../common/Utils';
-import {ERROR_TYPE} from '../Errors/types';
 import {LOGGER, LogContext} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
 import {
-  EVENT_KEYS,
   CallingClientEventTypes,
   MOBIUS_EVENT_KEYS,
   CallSessionEvent,
   SessionType,
+  CALLING_CLIENT_EVENT_KEYS,
 } from '../Events/types';
 import {
-  MobiusStatus,
-  CallDirection,
-  CallDetails,
-  CorrelationId,
   ServiceIndicator,
   RegionInfo,
   ALLOWED_SERVICES,
@@ -35,7 +30,6 @@ import log from '../Logger';
 import {getCallManager} from './calling/callManager';
 import {
   CALLING_CLIENT_FILE,
-  VALID_PHONE,
   CALLS_CLEARED_HANDLER_UTIL,
   CALLING_USER_AGENT,
   CISCO_DEVICE_URL,
@@ -46,7 +40,6 @@ import {
   URL_ENDPOINT,
   NETWORK_FLAP_TIMEOUT,
 } from './constants';
-import {CallingClientError} from '../Errors';
 import Line from './line';
 import {ILine, LINE_EVENTS, LineStatus} from './line/types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
@@ -110,7 +103,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
 
-    this.incomingCallListener();
     this.registerCallsClearedListener();
   }
 
@@ -121,21 +113,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     /* Better to run the timer once rather than after every registration */
     this.detectNetworkChange();
-  }
-
-  /**
-   * An Incoming Call listener.
-   */
-  private incomingCallListener() {
-    const logContext = {
-      file: CALLING_CLIENT_FILE,
-      method: this.incomingCallListener.name,
-    };
-
-    log.log('Listening for incoming calls... ', logContext);
-    this.callManager.on(EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
-      this.emit(EVENT_KEYS.INCOMING_CALL, callObj);
-    });
   }
 
   /**
@@ -213,7 +190,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             METRIC_TYPE.BEHAVIORAL,
             clientError
           );
-          this.emit(EVENT_KEYS.ERROR, clientError);
+          this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
         },
         {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
       );
@@ -302,7 +279,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               METRIC_TYPE.BEHAVIORAL,
               clientError
             );
-            this.emit(EVENT_KEYS.ERROR, clientError);
+            this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
           },
           {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
         );
@@ -338,7 +315,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     };
 
     log.log('Registering listener for all calls cleared event', logContext);
-    this.callManager.on(EVENT_KEYS.ALL_CALLS_CLEARED, this.callsClearedHandler);
+    this.callManager.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, this.callsClearedHandler);
   }
 
   /**
@@ -376,61 +353,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * @param callId -.
-   * @param correlationId -.
-   */
-  public getCall = (correlationId: CorrelationId): ICall => {
-    return this.callManager.getCall(correlationId);
-  };
-
-  /**
-   * @param dest -.
-   */
-  public makeCall = (dest: CallDetails): ICall | undefined => {
-    let call;
-
-    // this is a temporary logic to get registration obj
-    // it will change once we have proper lineId and multiple lines as well
-    const {registration} = Object.values(this.lineDict)[0];
-
-    if (dest) {
-      const match = dest.address.match(VALID_PHONE);
-
-      if (match && match[0].length === dest.address.length) {
-        const sanitizedNumber = dest.address
-          .replace(/[^[*+]\d#]/gi, '')
-          .replace(/\s+/gi, '')
-          .replace(/-/gi, '');
-        const formattedDest = {
-          type: dest.type,
-          address: `tel:${sanitizedNumber}`,
-        };
-
-        call = this.callManager.createCall(
-          formattedDest,
-          CallDirection.OUTBOUND,
-          registration.getDeviceInfo().device?.deviceId as string
-        );
-        log.log(`New call created, callId: ${call.getCallId()}`, {});
-      } else {
-        log.warn('Invalid phone number detected', {});
-        const err = new CallingClientError(
-          'An invalid phone number was detected. Check the number and try again.',
-          {},
-          ERROR_TYPE.CALL_ERROR,
-          MobiusStatus.ACTIVE
-        );
-
-        this.emit(EVENT_KEYS.ERROR, err);
-      }
-
-      return call;
-    }
-
-    return undefined;
-  };
-
-  /**
    *
    */
   public getSDKConnector(): ISDKConnector {
@@ -458,7 +380,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               sessionArr.splice(i, 1);
             }
           }
-          this.emit(EVENT_KEYS.USER_SESSION_INFO, event as CallSessionEvent);
+          this.emit(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, event as CallSessionEvent);
         }
       }
     );
@@ -490,6 +412,38 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   public getLines(): Record<string, ILine> {
     return this.lineDict;
+  }
+
+  /**
+   * Retrieves call objects for all the active calls present in the client
+   */
+  public getActiveCalls(): Record<string, ICall[]> {
+    const activeCalls = {};
+    const calls = this.callManager.getActiveCalls();
+    Object.keys(calls).forEach((correlationId) => {
+      const call = calls[correlationId];
+      if (!activeCalls[call.lineId]) {
+        activeCalls[call.lineId] = [];
+      }
+      activeCalls[call.lineId].push(call);
+    });
+
+    return activeCalls;
+  }
+
+  /**
+   * Retrieves call object for the connected call in the client
+   */
+  public getConnectedCall(): ICall | undefined {
+    let connectCall;
+    const calls = this.callManager.getActiveCalls();
+    Object.keys(calls).forEach((correlationId) => {
+      if (calls[correlationId].isConnected() && !calls[correlationId].isHeld()) {
+        connectCall = calls[correlationId];
+      }
+    });
+
+    return connectCall;
   }
 }
 

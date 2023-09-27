@@ -308,13 +308,13 @@ function toggleDisplay(elementId, status) {
   }
 }
 
-const callNotifyEvent = new CustomEvent('callingClient:incoming_call', {
+const callNotifyEvent = new CustomEvent('line:incoming_call', {
   detail: {
     callObject: call,
   },
 });
 
-callListener.addEventListener('callingClient:incoming_call', (myEvent) => {
+callListener.addEventListener('line:incoming_call', (myEvent) => {
   console.log('Received incoming call');
   answerElm.disabled = false;
   const callerDisplay = myEvent.detail.callObject.getCallerInfo();
@@ -345,9 +345,9 @@ function createDevice() {
   });
 
   // Start listening for incoming calls
-  callingClient.on('callingClient:incoming_call', (callObj) => {
+  line.on('line:incoming_call', (callObj) => {
     call = callObj;
-    call.on('call:caller_id', (CallerIdEmitter) => {
+    call.on('caller_id', (CallerIdEmitter) => {
       callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc}, UserId: ${CallerIdEmitter.callerId.id}`;
       console.log(
         `callerId : Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.name}, Avatar: ${CallerIdEmitter.callerId.avatarSrc}, UserId: ${CallerIdEmitter.callerId.id}`
@@ -407,14 +407,14 @@ function muteUnmute() {
 function holdResume() {
   const elem = document.getElementById('hold_button');
 
-  call.on('call:held', (correlationId) => {
+  call.on('held', (correlationId) => {
     if (elem.value === 'Hold') {
       callDetailsElm.innerText = 'Call is held';
       elem.value = 'Resume';
     }
   });
 
-  call.on('call:resumed', (correlationId) => {
+  call.on('resumed', (correlationId) => {
     if (elem.value === 'Resume') {
       callDetailsElm.innerText = 'Call is Resumed';
       elem.value = 'Hold';
@@ -477,12 +477,13 @@ function createCall(e) {
 
   console.log(destination.value);
 
-  call = callingClient.makeCall({
+
+  call = line.makeCall({
     type: 'uri',
     address: destination.value,
   });
 
-  call.on('call:caller_id', (CallerIdEmitter) => {
+  call.on('caller_id', (CallerIdEmitter) => {
     callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc} , UserId: ${CallerIdEmitter.callerId.id}`;
     console.log(
       `callerId : Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc}, UserId: ${CallerIdEmitter.callerId.id}`
@@ -493,19 +494,19 @@ function createCall(e) {
     }
   });
 
-  call.on('call:progress', (correlationId) => {
+  call.on('progress', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Progress`;
   });
-  call.on('call:connect', (correlationId) => {
+  call.on('connect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Connect`;
   });
-  call.on('call:established', (correlationId) => {
+  call.on('established', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Established`;
     transferElm.disabled = false;
     outboundEndElm.disabled = false;
     makeCallBtn.disabled = true;
   });
-  call.on('call:disconnect', (correlationId) => {
+  call.on('disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
     makeCallBtn.disabled = false;
     endElm.disabled = true;
@@ -519,7 +520,7 @@ function createCall(e) {
     }
   });
 
-  call.on('call:remote_media', (track) => {
+  call.on('remote_media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
@@ -561,20 +562,20 @@ function commitTransfer() {
       address: digit,
     });
 
-    callTranferObj.on('call:remote_media', (track) => {
+    callTranferObj.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
 
       transferDetailsElm.innerText = `Got remote audio`;
     });
 
-    callTranferObj.on('call:established', (correlationId) => {
+    callTranferObj.on('established', (correlationId) => {
       transferDetailsElm.innerText = `${correlationId}: Transfer target connected`;
       endSecondElm.disabled = false;
       transferElm.innerHTML = 'Commit';
       transferElm.disabled = false;
     });
 
-    callTranferObj.on('call:disconnect', (correlationId) => {
+    callTranferObj.on('disconnect', (correlationId) => {
       endSecondElm.disabled = true;
       callTranferObj = null;
     });
@@ -595,7 +596,7 @@ function initiateTransfer() {
   if (!call.isHeld()) {
     call.doHoldResume();
 
-    call.on('call:held', (correlationId) => {
+    call.on('held', (correlationId) => {
       transferDetailsElm.innerText = `Placed call: ${call.getCorrelationId()} on hold`;
       commitTransfer();
     });
@@ -677,16 +678,16 @@ function answer() {
   answerElm.disabled = true;
 
   if (call) {
-    call.on('call:established', (correlationId) => {
+    call.on('established', (correlationId) => {
       callDetailsElm.innerText = `${correlationId}: Call Established`;
       console.log(` Call is Established: ${correlationId}`);
       endElm.disabled = false;
     });
-    call.on('call:disconnect', () => {
+    call.on('disconnect', () => {
       console.log(` Call is Disconnected: ${correlationId}`);
     });
 
-    call.on('call:remote_media', (track) => {
+    call.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 

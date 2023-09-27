@@ -1,7 +1,7 @@
 /* eslint-disable dot-notation */
 /* eslint-disable valid-jsdoc */
 import {CALL_MANAGER_FILE} from '../constants';
-import {CallEventTypes, EVENT_KEYS} from '../../Events/types';
+import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
 import {Eventing} from '../../Events/impl';
 import SDKConnector from '../../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
@@ -16,6 +16,7 @@ import {
 } from './types';
 import {createCall} from './call';
 import log from '../../Logger';
+import {ILine} from '../line/types';
 
 let callManager: ICallManager;
 
@@ -33,6 +34,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private serviceIndicator: ServiceIndicator;
 
+  private lineDict: Record<string, ILine>;
+
   /**
    * @param webex -.
    * @param indicator - Service Indicator.
@@ -44,7 +47,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
-
+    this.lineDict = {};
     this.webex = this.sdkConnector.getWebex();
     this.callCollection = {};
     this.activeMobiusUrl = '';
@@ -59,7 +62,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   public createCall = (
     destination: CallDetails,
     direction: CallDirection,
-    deviceId: string
+    deviceId: string,
+    lineId: string
   ): ICall => {
     log.log('Creating call object', {});
     const newCall = createCall(
@@ -68,6 +72,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       destination,
       direction,
       deviceId,
+      lineId,
       (correlationId: CorrelationId) => {
         delete this.callCollection[correlationId];
         const activeCalls = Object.keys(this.getActiveCalls()).length;
@@ -78,7 +83,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         );
         if (activeCalls === 0) {
           /* Notify CallingClient when all calls are cleared. */
-          this.emit(EVENT_KEYS.ALL_CALLS_CLEARED);
+          this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
         }
       },
       this.serviceIndicator
@@ -165,11 +170,12 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           /*  This means it's a new call ...
            *  Create an incoming call object and add to our records
            */
-
+          const lineId = this.getLineId(mobiusEvent.data.deviceId);
           newCall = this.createCall(
             {} as CallDetails,
             CallDirection.INBOUND,
-            mobiusEvent.data.deviceId
+            mobiusEvent.data.deviceId,
+            lineId
           );
           log.log(
             `New incoming call created with correlationId from Call Setup message: ${newCall.getCorrelationId()}`,
@@ -207,9 +213,9 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           });
           newCall.startCallerIdResolution(mobiusEvent.data.callerId);
         }
-        /* Signal CallingClient */
+        /* Signal Line */
 
-        this.emit(EVENT_KEYS.INCOMING_CALL, newCall);
+        this.emit(LINE_EVENT_KEYS.INCOMING_CALL, newCall);
 
         newCall.sendCallStateMachineEvt({type: 'E_RECV_CALL_SETUP', data: mobiusEvent.data});
 
@@ -260,10 +266,12 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           } else {
             /* If Call.Media arrived before Call.Setup , we create the Call Object here */
 
+            const lineId = this.getLineId(mobiusEvent.data.deviceId);
             activeCall = this.createCall(
               {} as CallDetails,
               CallDirection.INBOUND,
-              mobiusEvent.data.deviceId
+              mobiusEvent.data.deviceId,
+              lineId
             );
             log.log(
               `New incoming call created with correlationId from ROAP Message: ${activeCall.getCorrelationId()}`,
@@ -421,6 +429,20 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   public getActiveCalls = (): Record<string, ICall> => {
     return this.callCollection;
   };
+
+  /**
+   * Adds line instance to lineDict
+   */
+  public updateLine(deviceId: string, line: ILine) {
+    this.lineDict[deviceId] = line;
+  }
+
+  /**
+   * Retrieves line id
+   */
+  private getLineId(deviceId: string) {
+    return this.lineDict[deviceId].lineId;
+  }
 }
 
 /**

@@ -7,7 +7,7 @@ import {SORT, SORT_BY, WebexRequestPayload} from '../common/types';
 import {CallHistory, createCallHistoryClient} from './CallHistory';
 import {ICallHistory} from './types';
 import {sortedCallHistory, mockCallHistoryBody, MOCK_SESSION_EVENT} from './callHistoryFixtures';
-import {CallSessionEvent, EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {COMMON_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 
 const webex = getTestUtilsWebex();
 
@@ -82,10 +82,13 @@ describe('Call history tests', () => {
     });
 
     it('verify the recent user session event ', (done) => {
-      callHistory.on(EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, (event: CallSessionEvent) => {
-        expect(event.data).toEqual(MOCK_SESSION_EVENT.data);
-        done();
-      });
+      callHistory.on(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO,
+        (event: CallSessionEvent) => {
+          expect(event.data).toEqual(MOCK_SESSION_EVENT.data);
+          done();
+        }
+      );
 
       expect(mockOn.mock.calls[0][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE);
       const callSessionCallback = mockOn.mock.calls[0][1];

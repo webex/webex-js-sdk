@@ -4,7 +4,7 @@
 import * as MediaSDK from '@webex/internal-media-core';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
-import {CallEvent, EVENT_KEYS, RoapEvent, RoapMessage} from '../../Events/types';
+import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
 import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
@@ -34,6 +34,7 @@ const mockMediaSDK = MediaSDK as jest.Mocked<typeof MediaSDK>;
 
 const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
+const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
 
 // class MockMediaStream {
 //   private track;
@@ -156,6 +157,7 @@ describe('Call Tests', () => {
       dest,
       CallDirection.OUTBOUND,
       deviceId,
+      mockLineId,
       deleteCallFromCollection,
       defaultServiceIndicator
     );
@@ -185,7 +187,7 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
@@ -230,7 +232,7 @@ describe('Call Tests', () => {
       },
     };
 
-    const call = callManager.createCall(dest, CallDirection.INBOUND, deviceId);
+    const call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
 
     const response = await call['postMedia']({});
 
@@ -238,7 +240,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether callerId midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     call.handleMidCallEvent(dummyMidCallEvent);
     await waitForMsecs(50);
@@ -248,7 +250,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether call midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     dummyMidCallEvent.eventType = 'callState';
 
@@ -265,7 +267,7 @@ describe('Call Tests', () => {
   });
 
   it('check call stats for active call', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId);
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     let callRtpStats;
 
@@ -294,6 +296,7 @@ describe('Call Tests', () => {
       dest,
       CallDirection.OUTBOUND,
       deviceId,
+      mockLineId,
       deleteCallFromCollection,
       defaultServiceIndicator
     );
@@ -333,6 +336,7 @@ describe('Call Tests', () => {
       dest,
       CallDirection.OUTBOUND,
       deviceId,
+      mockLineId,
       deleteCallFromCollection,
       defaultServiceIndicator
     );
@@ -384,6 +388,7 @@ describe('State Machine handler tests', () => {
       dest,
       CallDirection.OUTBOUND,
       deviceId,
+      mockLineId,
       () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
@@ -442,7 +447,7 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     jest.spyOn(global, 'clearInterval');
 
-    call.on(EVENT_KEYS.CALL_ERROR, (errObj) => {
+    call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
       expect(errObj.type).toStrictEqual(ERROR_TYPE.FORBIDDEN_ERROR);
       expect(errObj.message).toStrictEqual(
         'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.'
@@ -1548,6 +1553,7 @@ describe('Supplementary Services tests', () => {
       dest,
       CallDirection.OUTBOUND,
       deviceId,
+      mockLineId,
       () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
@@ -1559,7 +1565,7 @@ describe('Supplementary Services tests', () => {
 
     /* Also supplementary services will start always from Call_Established state */
     call['callStateMachine'].state.value = 'S_CALL_ESTABLISHED';
-    call.removeAllListeners(EVENT_KEYS.CALL_ERROR);
+    call.removeAllListeners(CALL_EVENT_KEYS.CALL_ERROR);
 
     jest.clearAllTimers();
     jest.useFakeTimers();
@@ -1607,7 +1613,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = false;
 
-      call.on(EVENT_KEYS.HELD, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.HELD, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
 
@@ -1660,7 +1666,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = false;
 
-      call.on(EVENT_KEYS.HELD, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.HELD, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
 
@@ -1711,7 +1717,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = false;
 
-      call.on(EVENT_KEYS.HOLD_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.HOLD_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.SERVICE_UNAVAILABLE);
         expect(errObj.message).toStrictEqual(
           'An unknown error occurred. Wait a moment and try again.'
@@ -1747,7 +1753,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = false;
 
-      call.on(EVENT_KEYS.HOLD_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.HOLD_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.SERVICE_UNAVAILABLE);
         expect(errObj.message).toStrictEqual(
           'An unknown error occurred. Wait a moment and try again.'
@@ -1877,7 +1883,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = false;
 
-      call.on(EVENT_KEYS.HOLD_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.HOLD_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.TIMEOUT);
         expect(errObj.message).toStrictEqual(
           'An error occurred while placing the call on hold. Wait a moment and try again.'
@@ -1928,7 +1934,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = true;
 
-      call.on(EVENT_KEYS.RESUMED, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.RESUMED, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
 
@@ -1981,7 +1987,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = true;
 
-      call.on(EVENT_KEYS.RESUMED, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.RESUMED, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
 
@@ -2032,7 +2038,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = true;
 
-      call.on(EVENT_KEYS.RESUME_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.RESUME_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.SERVICE_UNAVAILABLE);
         expect(errObj.message).toStrictEqual(
           'An unknown error occurred. Wait a moment and try again.'
@@ -2069,7 +2075,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = true;
 
-      call.on(EVENT_KEYS.RESUME_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.RESUME_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.SERVICE_UNAVAILABLE);
         expect(errObj.message).toStrictEqual(
           'An unknown error occurred. Wait a moment and try again.'
@@ -2107,7 +2113,7 @@ describe('Supplementary Services tests', () => {
 
       call['held'] = true;
 
-      call.on(EVENT_KEYS.RESUME_ERROR, async (errObj) => {
+      call.on(CALL_EVENT_KEYS.RESUME_ERROR, async (errObj) => {
         expect(errObj.type).toStrictEqual(ERROR_TYPE.TIMEOUT);
         expect(errObj.message).toStrictEqual(
           'An error occurred while resuming the call. Wait a moment and try again.'
@@ -2168,6 +2174,7 @@ describe('Supplementary Services tests', () => {
         transfereeDest,
         CallDirection.OUTBOUND,
         deviceId,
+        mockLineId,
         () => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const dummy = 10;
@@ -2177,7 +2184,7 @@ describe('Supplementary Services tests', () => {
       secondCall['connected'] = true;
       secondCall['earlyMedia'] = false;
       secondCall['callStateMachine'].state.value = 'S_CALL_ESTABLISHED';
-      secondCall.removeAllListeners(EVENT_KEYS.CALL_ERROR);
+      secondCall.removeAllListeners(CALL_EVENT_KEYS.CALL_ERROR);
       secondCall['held'] = false;
     });
 
@@ -2193,10 +2200,10 @@ describe('Supplementary Services tests', () => {
       const infoSpy = jest.spyOn(log, 'info');
       const metricSpy = jest.spyOn(call['metricManager'], 'submitCallMetric');
 
-      call.on(EVENT_KEYS.DISCONNECT, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.DISCONNECT, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
-      secondCall.on(EVENT_KEYS.DISCONNECT, async (correlationId) => {
+      secondCall.on(CALL_EVENT_KEYS.DISCONNECT, async (correlationId) => {
         expect(correlationId).toStrictEqual(secondCall.getCorrelationId());
       });
 
@@ -2242,7 +2249,7 @@ describe('Supplementary Services tests', () => {
       const infoSpy = jest.spyOn(log, 'info');
       const metricSpy = jest.spyOn(call['metricManager'], 'submitCallMetric');
 
-      call.on(EVENT_KEYS.DISCONNECT, async (correlationId) => {
+      call.on(CALL_EVENT_KEYS.DISCONNECT, async (correlationId) => {
         expect(correlationId).toStrictEqual(call.getCorrelationId());
       });
 
@@ -2302,7 +2309,7 @@ describe('Supplementary Services tests', () => {
         'call'
       );
       /* check whether error event is being emitted by sdk */
-      expect(emitSpy).toBeCalledOnceWith(EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
+      expect(emitSpy).toBeCalledOnceWith(CALL_EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
       expect(warnSpy).toHaveBeenCalledWith(
         `Blind Transfer failed for correlationId ${call.getCorrelationId()}`,
         transferLoggingContext
@@ -2348,7 +2355,7 @@ describe('Supplementary Services tests', () => {
         'call'
       );
       /* check whether error event is being emitted by sdk */
-      expect(emitSpy).toHaveBeenCalledWith(EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
       expect(warnSpy).toHaveBeenCalledWith(
         `Consult Transfer failed for correlationId ${call.getCorrelationId()}`,
         transferLoggingContext
