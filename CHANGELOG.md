@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.221](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.220...v3.0.0-beta.221) (2023-09-28)
+
+
+### Features
+
+* **plugin-meetings:** don't use voip display hint ([#3112](https://github.com/webex/webex-js-sdk/issues/3112)) ([fa96bf4](https://github.com/webex/webex-js-sdk/commit/fa96bf482a52becc75e436d2b8bc6a055444101d))
+
 ## [3.0.0-beta.220](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.219...v3.0.0-beta.220) (2023-09-26)
 
 
