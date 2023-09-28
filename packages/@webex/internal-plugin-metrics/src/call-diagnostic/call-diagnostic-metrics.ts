@@ -479,28 +479,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       mediaConnections: meeting?.mediaConnections || mediaConnections,
     });
 
-    // check if we need to generate errors
-    const errors: ClientEvent['payload']['errors'] = [];
-
-    if (rawError) {
-      this.logger.log(
-        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-        'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Error detected, attempting to map and attach it to the event...',
-        name,
-        rawError
-      );
-
-      const generatedError = this.generateClientEventErrorPayload(rawError);
-      if (generatedError) {
-        errors.push(generatedError);
-      }
-      this.logger.log(
-        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-        'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Generated errors:',
-        generatedError
-      );
-    }
-
     // create client event object
     const clientEventObject: ClientEvent['payload'] = {
       name,
@@ -588,10 +566,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const errors: ClientEventPayloadError = [];
 
     if (rawError) {
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+        name,
+        rawError
+      );
+
       const generatedError = this.generateClientEventErrorPayload(rawError);
       if (generatedError) {
         errors.push(generatedError);
       }
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+        generatedError
+      );
     }
 
     // events that will most likely happen in join phase
@@ -632,7 +622,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-      'CallDiagnosticMetrics: @submitClientEvent',
+      'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
       name,
       payload,
       options
@@ -714,7 +704,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }): Promise<any> {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-      'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions',
+      'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
       name,
       payload,
       options

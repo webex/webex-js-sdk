@@ -190,13 +190,13 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`Metrics: @postPreLoginMetric. Request successful:`, res);
+        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful:`, res);
 
         return res;
       })
       .catch((err) => {
         // @ts-ignore
-        this.logger.error(`Metrics: @postPreLoginMetric. Request failed:`, err);
+        this.logger.error(`NewMetrics: @postPreLoginMetric. Request failed:`, err);
 
         return Promise.reject(err);
       });
@@ -209,18 +209,31 @@ class Metrics extends WebexPlugin {
    */
   public clientMetricsAliasUser(preLoginId: string) {
     // @ts-ignore
-    return this.webex.request({
-      method: 'POST',
-      api: 'metrics',
-      resource: 'clientmetrics',
-      headers: {
-        'x-prelogin-userid': preLoginId,
-      },
-      body: {},
-      qs: {
-        alias: true,
-      },
-    });
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'metrics',
+        resource: 'clientmetrics',
+        headers: {
+          'x-prelogin-userid': preLoginId,
+        },
+        body: {},
+        qs: {
+          alias: true,
+        },
+      })
+      .then((res) => {
+        // @ts-ignore
+        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful:`, res);
+
+        return res;
+      })
+      .catch((err) => {
+        // @ts-ignore
+        this.logger.error(`NewMetrics: @clientMetricsAliasUser. Request failed:`, err);
+
+        return Promise.reject(err);
+      });
   }
 
   /**
