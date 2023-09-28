@@ -1225,7 +1225,7 @@ async function startScreenShare() {
 
     localMedia.screenShare.audio = localShareAudioStream;
 
-    localMedia.screenShare.audio.on('stream-ended', () => {
+    localMedia.screenShare.audio?.on('stream-ended', () => {
       console.log('MeetingControls#startScreenShare() :: local share audio stream ended');
 
       localMedia.screenShare.audio = undefined;
