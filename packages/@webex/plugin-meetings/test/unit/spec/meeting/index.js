@@ -1684,6 +1684,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
           meeting.setMercuryListener = sinon.stub();
           meeting.locusInfo.onFullLocus = sinon.stub();
+          meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
           meeting.webex.meetings.reachability = {
             isAnyClusterReachable: sinon.stub().resolves(true),
             getIpVersion: () => IP_VERSION.unknown,
@@ -1854,7 +1855,7 @@ describe('plugin-meetings', () => {
               ],
               clientMediaPreferences: {
                 preferTranscoding: !meeting.isMultistream,
-                ipver: 0,
+                ipver: 0
               },
               respOnlySdp: true,
               usingResource: null,
@@ -1862,13 +1863,13 @@ describe('plugin-meetings', () => {
           });
         };
 
-        const checkMediaConnectionCreated = ({mediaConnectionConfig, localStreams, direction, remoteQualityLevel, expectedDebugId}) => {
+        const checkMediaConnectionCreated = ({mediaConnectionConfig, localStreams, direction, remoteQualityLevel, expectedDebugId, meetingId}) => {
           if (isMultistream) {
             const {iceServers} = mediaConnectionConfig;
 
-            assert.calledOnceWithExactly(multistreamRoapMediaConnectionConstructorStub, {
+            assert.calledOnceWithMatch(multistreamRoapMediaConnectionConstructorStub, {
               iceServers,
-            }, expectedDebugId);
+            }, meetingId);
 
             for(let type in localStreams){
               const stream = localStreams[type];
@@ -1926,6 +1927,7 @@ describe('plugin-meetings', () => {
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1954,7 +1956,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -1986,6 +1989,7 @@ describe('plugin-meetings', () => {
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
+            meetingId: meeting.id
           });
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
@@ -2013,7 +2017,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -2042,7 +2047,8 @@ describe('plugin-meetings', () => {
               screenShareVideo: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
-            expectedDebugId
+            expectedDebugId,
+            meetingId: meeting.id
           });
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
@@ -4391,7 +4397,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 5);
+          assert.equal(TriggerProxy.trigger.callCount, 6);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
