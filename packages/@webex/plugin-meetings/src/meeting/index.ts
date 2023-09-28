@@ -3057,12 +3057,7 @@ export default class Meeting extends StatelessWebexPlugin {
     let changed = false;
     changed = this.inMeetingActions.set({
       canUseVoip:
-        ((this.userDisplayHints !== undefined
-          ? ControlsOptionsUtil.hasHints({
-              requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
-              displayHints: this.userDisplayHints,
-            })
-          : this.meetingInfo?.supportVoIP === true) &&
+        (this.meetingInfo?.supportVoIP === true &&
           ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: this.selfUserPolicies,
