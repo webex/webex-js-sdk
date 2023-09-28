@@ -50,7 +50,7 @@ describe.only('internal-plugin-metrics', () => {
             submitClientMetrics: sinon.stub(),
           },
           newMetrics: {
-           postPreLoginMetric: sinon.stub(),
+            postPreLoginMetric: sinon.stub(),
           },
           device: {
             userId: 'userId',
@@ -633,20 +633,23 @@ describe.only('internal-plugin-metrics', () => {
         const testEvent = {name: 'client.alert.displayed', options: {meetingId: 'meetingId'}};
         sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
         sinon.stub(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'submitToCallDiagnosticsPreLogin');
         //@ts-ignore
         cd.submitClientEvent(testEvent);
         assert.calledWith(cd.submitToCallDiagnostics, testEvent);
+        assert.notCalled(cd.submitToCallDiagnosticsPreLogin);
       });
 
       it('should submit event to prelogin when preLoginId provided', () => {
         const testEvent = {name: 'client.alert.displayed', options: {preLoginId: 'preLoginId'}};
         sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
         sinon.stub(cd, 'submitToCallDiagnosticsPreLogin');
+        sinon.stub(cd, 'submitToCallDiagnostics');
         //@ts-ignore
         cd.submitClientEvent(testEvent);
         assert.calledWith(cd.submitToCallDiagnosticsPreLogin, testEvent);
+        assert.notCalled(cd.submitToCallDiagnostics);
       });
-
     });
 
     it('should send request to call diagnostic batcher', () => {
@@ -806,7 +809,7 @@ describe.only('internal-plugin-metrics', () => {
     });
 
     describe('#generateClientEventErrorPayload', () => {
-      const defaultExpectedRes =  {
+      const defaultExpectedRes = {
         category: 'expected',
         errorDescription: 'StartRecordingFailed',
         fatal: true,
@@ -815,7 +818,7 @@ describe.only('internal-plugin-metrics', () => {
         errorCode: 4029,
         serviceErrorCode: 2409005,
       };
-      
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
         const res = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
@@ -834,7 +837,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should generate media event error payload if rawError has a media error name', () => {
         checkNameError({name: 'PermissionDeniedError'}, true);
@@ -847,13 +850,13 @@ describe.only('internal-plugin-metrics', () => {
       const checkCodeError = (payload: any, expetedRes: any) => {
         const res = cd.generateClientEventErrorPayload(payload);
         assert.deepEqual(res, expetedRes);
-      }
+      };
       it('should generate event error payload correctly', () => {
-        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes)
+        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.code', () => {
-        checkCodeError({body: {code: 2409005}}, defaultExpectedRes)
+        checkCodeError({body: {code: 2409005}}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.reason.reasonCode', () => {
@@ -881,7 +884,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should return default new locus event error payload correctly if locus error is recognized', () => {
         checkLocusError({body: {errorCode: 2400000}}, true);
@@ -908,7 +911,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should return default meeting info lookup error payload if data.meetingInfo was found on error body', () => {
         checkMeetingInfoError({body: {data: {meetingInfo: 'something'}}}, true);
@@ -917,7 +920,6 @@ describe.only('internal-plugin-metrics', () => {
       it('should return default meeting info lookup error payload if body.url contains wbxappapi', () => {
         checkMeetingInfoError({body: {url: '1234567-wbxappapiabcdefg'}}, true);
       });
-
 
       it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
         checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
@@ -1063,23 +1065,27 @@ describe.only('internal-plugin-metrics', () => {
           type: ['diagnostic-event'],
         });
 
-        assert.calledWith(webex.internal.newMetrics.postPreLoginMetric, {
-          eventPayload: {
-            event: {
-              name: 'client.alert.displayed',
-              canProceed: true,
+        assert.calledWith(
+          webex.internal.newMetrics.postPreLoginMetric,
+          {
+            eventPayload: {
+              event: {
+                name: 'client.alert.displayed',
+                canProceed: true,
+              },
+              originTime: {
+                sent: now.toISOString(),
+                triggered: 'now',
+              },
+              origin: {
+                buildType: 'test',
+                networkType: 'unknown',
+              },
             },
-            originTime: {
-              sent: now.toISOString(),
-              triggered: 'now',
-            },
-            origin: {
-              buildType: 'test',
-              networkType: 'unknown',
-            },
+            type: ['diagnostic-event'],
           },
-          type: ['diagnostic-event'],
-        }, 'my-id');
+          'my-id'
+        );
       });
     });
   });
