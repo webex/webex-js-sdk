@@ -33,9 +33,7 @@ import {serviceErrorCodeHandler} from '../common/Utils';
 /**
  *
  * Client of contacts-service which stores encrypted custom contacts and org contacts.
- * Purpose of this contactsClient instance is to provide the APIs to fetch and update the contacts and groups from contacts-service.
- *
- * To access the APIs, instance of ContactsClient is required.
+ * The purpose of this contactsClient instance is to provide the APIs to fetch and update the contacts and groups from contacts-service.
  *
  * Example
  * ```javascript

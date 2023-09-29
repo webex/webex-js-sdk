@@ -17,10 +17,8 @@ import {CALL_SETTINGS_FILE} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
- * Purpose of the CallSettings Client instance is to provide the APIs to fetch and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
+ * The purpose of the `CallSettingsClient` instance is to provide the APIs to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
  * The appropriate calling backends is initialized according to the user entitlements while instantiating the CallSettings Client.
- *
- * To access the APIs, instance of CallSettings Client is required.
  *
  * Example
  * ```javascript
@@ -79,21 +77,21 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads call waiting setting at the backend.
+   * Reads call waiting setting in Webex.
    */
   public async getCallWaitingSetting() {
     return this.backendConnector.getCallWaitingSetting();
   }
 
   /**
-   * Reads DND setting at the backend.
+   * Reads DND setting in Webex.
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getDoNotDisturbSetting();
   }
 
   /**
-   * Updates DND setting at the backend.
+   * Updates DND setting in Webex.
    * @param enabled - true to enable DND, false to disable DND.
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
@@ -101,7 +99,7 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads Call Forward setting at the backend.
+   * Reads Call Forward setting in Webex.
    *
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
@@ -109,7 +107,7 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Updates Call Forward setting at the backend.
+   * Updates Call Forward setting in Webex.
    * @param callForwardingRequest - CallForwardSetting object.
    */
   public async setCallForwardSetting(
@@ -119,14 +117,14 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads Voicemail setting at the backend.
+   * Reads Voicemail setting in Webex.
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getVoicemailSetting();
   }
 
   /**
-   * Updates Voicemail setting at the backend.
+   * Updates Voicemail setting in Webex.
    * @param voicemailRequest - VoicemailSetting object.
    */
   public async setVoicemailSetting(
@@ -136,7 +134,7 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads the Call Forwarding Always settings at the backend.
+   * Reads the Call Forwarding Always settings in Webex.
    * This will also check if CFA is set to Voicemail.
    * If CFA is set to destination, that will take precedence.
    * @param directoryNumber - Directory number of the user.

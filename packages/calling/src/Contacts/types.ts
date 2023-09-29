@@ -70,7 +70,7 @@ export type ContactResponse = {
 
 /**
  * Interface for Contacts Module.
- * This contains the APIs that allows to fetch, create and update the contacts and groups.
+ * This includes the APIs that allows to fetch, create and update the contacts and groups.
  *
  */
 export interface IContacts {

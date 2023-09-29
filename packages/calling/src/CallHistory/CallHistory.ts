@@ -17,9 +17,7 @@ import {
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
- * Purpose of the CallHistory Client instance is to provide the APIs to fetch the recent Call History Records.
- *
- * To access the API, instance of CallHistory Client is required.
+ * The purpose of the `CallHistoryClient` instance is to provide the APIs for retrieving the recent Call History Records.
  *
  * Example
  * ```javascript

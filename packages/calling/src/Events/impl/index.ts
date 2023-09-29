@@ -14,8 +14,8 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
   /**
    * @event
    *
-   * @param event - TODO.
-   * @param args - TODO.
+   * @param event - Event that is going ot be emitted.
+   * @param args - Parameters that are emitted with the event.
    */
   emit<E extends keyof T>(event: E, ...args: Parameters<T[E]>): boolean {
     const timestamp = new Date().toUTCString();

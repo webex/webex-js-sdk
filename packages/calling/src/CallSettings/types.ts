@@ -92,7 +92,7 @@ export type CallSettingResponse = {
 
 /**
  * Interface for Call Settings Module.
- * This contains the APIs that allows to fetch and update the settings like CallWaiting, DND, CallForward, Voicemail etc.
+ * This includes the APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail etc.
  *
  * These APIs return a promise which resolves to the CallSettingResponse object.
  * This response object will have the status code, data and message and the data will have the callSetting object
@@ -165,7 +165,7 @@ export interface ICallSettings {
   getDoNotDisturbSetting(): Promise<CallSettingResponse>;
 
   /**
-   * This API is used to set DND to true or false based on paramter received.
+   * This API is used to set DND to true or false based on parameter received.
    *
    * Example
    * ```javascript

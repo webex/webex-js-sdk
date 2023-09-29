@@ -17,8 +17,8 @@ export type JanusResponseEvent = {
 };
 
 /**
- * Interface for CallHistory Client
- * This contains the APIs that helps to fetch the recent Call History Records.
+ * Interface for CallHistory Client.
+ * This includes the APIs that helps retrieve the recent Call History Records.
  */
 export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
   /**
