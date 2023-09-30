@@ -3305,6 +3305,24 @@ document.querySelectorAll('.collapsible').forEach((el) => {
     const sectionContentElement = parentElement.querySelector('.section-content');
 
     sectionContentElement.classList.toggle('collapsed');
+
+    const headerIconElement = parentElement.querySelector('.collapsible-icon');
+
+    if (headerIconElement.innerHTML === "─") {
+      headerIconElement.innerHTML = "+";
+    } else {
+      headerIconElement.innerHTML = "─";
+    }
+  });
+});
+
+document.querySelectorAll('.toggle-column').forEach((el) => {
+  el.addEventListener('click', (event) => {
+    if(event.target.id === 'column-1') {
+      document.querySelector('.column-2').classList.toggle('hidden');
+    } else {
+      document.querySelector('.column-1').classList.toggle('hidden');
+    }
   });
 });
 
