@@ -53,6 +53,7 @@ To consume the latest stable version of the Calling SDK one can use NPM or CDN.
   npm install @webex/calling
 ```
 (or)
+<<<<<<< HEAD
 
 ```javascript
   yarn add @webex/calling
@@ -72,3 +73,8 @@ To test Calling SDK API, use this Kitchen Sink app: https://webex.github.io/webe
 
 
 
+=======
+```shell 
+yarn add @webex/web-calling-sdk
+```
+>>>>>>> 400bd52f0 (feat(callingsdk): adding bnr feature)
