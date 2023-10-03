@@ -95,7 +95,7 @@ export type CallSettingResponse = {
  * This encompasses set of APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail and more.
 
  * These APIs return promises that resolve to a `CallSettingResponse` object, which contains a status code, data, and message.
- * The data field within this response object holds the callSetting object, which can take on different types depending on the specific API called.
+ * The data field within this response object holds the `callSetting` object, which can take on different types depending on the specific API called.
  *
  * Example
  * ```json
@@ -206,7 +206,8 @@ export interface ICallSettings {
 
   /**
    * This API is used to set voicemail.
-   *   Example
+   *
+   * Example
    * ```javascript
    * const voicemailResponse = await callSettings.setVoicemailSetting();
    * ```
@@ -217,9 +218,16 @@ export interface ICallSettings {
 
   /**
    * This API is used to fetch the call forward settings including the Voicemail.
-   * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
    *
-   * This parameter is only required for CCUC backend.
+   * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
+   * This parameter is only required for Cloud Connected Unified Communications(CCUC): https://www.cisco.com/c/en/us/products/unified-communications/webex-cloud-connected-uc/index.html backend.
+   *
+   * Example
+   * ```javascript
+   * const callForwardAlwaysResponse = await callSettings.setVoicemailSetting();
+   * ```
+   *
+   * The `callForwardAlwaysResponse` object will have callSetting object with the properties as mentioned in {@link CallForwardAlwaysSetting}.
    */
   getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse>;
 }

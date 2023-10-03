@@ -2,7 +2,12 @@
 import {CallHistory} from './CallHistory/CallHistory';
 import {ICallHistory} from './CallHistory/types';
 import {CallSettings} from './CallSettings/CallSettings';
-import {ICallSettings, CallForwardSetting, VoicemailSetting} from './CallSettings/types';
+import {
+  ICallSettings,
+  CallForwardSetting,
+  VoicemailSetting,
+  CallForwardAlwaysSetting,
+} from './CallSettings/types';
 import {CallingClient} from './CallingClient/CallingClient';
 import {ICallManager, ICall} from './CallingClient/calling/types';
 import {ILine} from './CallingClient/line/types';
@@ -30,4 +35,4 @@ export {
 export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail};
 
 // Types
-export {ContactGroup, Contact, CallForwardSetting, VoicemailSetting};
+export {ContactGroup, Contact, CallForwardSetting, CallForwardAlwaysSetting, VoicemailSetting};
