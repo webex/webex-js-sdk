@@ -261,7 +261,6 @@
                       <select name="createMeetingDest" id="createMeetingDest">
                         <option value="">Email</option>
                         <option value="">Person ID</option>
-                        <option value="">Room ID</option>
                         <option value="">SIP URI</option>
                         <option value="CONVERSATION_URL">Conversation URL</option>
                       </select>
@@ -270,6 +269,12 @@
                   </div>
                 </form>
               </div>
+
+              <!-- meetings / create meeting status error -->
+              <div class="u-mv">
+                <p id="display-meeting-status" class="webex-error"></p>
+              </div>
+
               <!-- meetings / active list -->
               <div class="u-mv">
                 <button id="meetings-list-collect" type="button" onclick="collectMeetings()">Sync Meetings</button>
