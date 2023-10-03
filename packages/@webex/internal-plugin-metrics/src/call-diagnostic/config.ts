@@ -4,6 +4,8 @@
 
 import {ClientEventError} from '../metrics.types';
 
+export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
+
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
 export const UNKNOWN_ERROR = 9999; // Unexpected error that is not a meetingInfo error, locus error or browser media error.
