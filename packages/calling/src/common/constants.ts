@@ -16,6 +16,7 @@ export const SETTINGS = 'settings';
 export const STATUS_CODE = 'statusCode';
 export const SUCCESS_MESSAGE = 'SUCCESS';
 export const SUCCESS_STATUS_CODE = 200;
+export const UNPROCESSABLE_CONTENT_CODE = 422;
 export const TIME = 'time';
 export const TOKEN = 'token';
 export const TRANSCRIPT = 'transcript';

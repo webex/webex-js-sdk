@@ -1,3 +1,5 @@
+import {FAILURE_MESSAGE, UNPROCESSABLE_CONTENT_CODE} from '../common/constants';
+
 export const bwToken = 'bwtoken';
 export const broadworksTokenType = {
   body: {
@@ -285,6 +287,42 @@ const MOCK_VOICEMAIL_FIFTH_MESSAGE = {
   },
 };
 
+export const getEmptyVoicemailListJsonBWRKS = {
+  statusCode: 200,
+  VoiceMessagingMessages: {
+    messageInfoList: {},
+  },
+};
+
+export const getInvalidVoicemailListJsonBWRKS = {
+  statusCode: 200,
+  VoiceMessagingMessages: {
+    messageInfoList: {
+      messageInfo: {},
+    },
+  },
+};
+
+export const getEmptyVoicemailListJsonWxC = {
+  statusCode: 200,
+  body: {
+    VoiceMessagingMessages: {
+      messageInfoList: {},
+    },
+  },
+};
+
+export const getInvalidVoicemailListJsonWxC = {
+  statusCode: 200,
+  body: {
+    VoiceMessagingMessages: {
+      messageInfoList: {
+        messageInfo: {},
+      },
+    },
+  },
+};
+
 export const getVoicemailListJsonBWRKS = {
   statusCode: 200,
   VoiceMessagingMessages: {
@@ -418,6 +456,22 @@ export const mockUCMVoicemailBody = {
   },
 };
 
+export const mockVoicemailContentResponse = {
+  statusCode: 200,
+  headers: {
+    mediatype: 'audio/wav',
+  },
+  body: voicemailContent,
+};
+
+export const voicemailEventProcessingPayload = {
+  data: {
+    messageId: '1234567890',
+    eventType: 'processing',
+    status: 'waiting',
+  },
+};
+
 export const getVoiceMailListJsonUCM = {
   statusCode: 200,
   body: {
@@ -444,6 +498,23 @@ export const getDescVoiceMailListJsonUCM = {
       ],
     },
   },
+};
+
+export const responseDetails422 = {
+  data: {error: '422 Exception has occurred'},
+  message: FAILURE_MESSAGE,
+  statusCode: UNPROCESSABLE_CONTENT_CODE,
+};
+
+export const responseDetails204 = {
+  data: {error: '204 Exception has occurred'},
+  message: FAILURE_MESSAGE,
+  statusCode: 204,
+};
+
+export const resolveContactArgs = {
+  name: {$: 'test'},
+  address: {$: 'test address'},
 };
 
 export const mockVoicemailTranscriptResponse = {

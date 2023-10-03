@@ -13,8 +13,12 @@ import {
   broadworksUserMessageId,
   getDescVoicemailListJsonBWRKS,
   getAscVoicemailListJsonBWRKS,
+  getEmptyVoicemailListJsonBWRKS,
+  getInvalidVoicemailListJsonBWRKS,
+  resolveContactArgs,
+  responseDetails422,
 } from './voicemailFixture';
-import {CallingPartyInfo, IBroadworksCallBackendConnector} from './types';
+import {IBroadworksCallBackendConnector} from './types';
 import {
   JSON_FORMAT,
   MARK_AS_READ,
@@ -23,6 +27,7 @@ import {
   NO_VOICEMAIL_STATUS_CODE,
 } from './constants';
 import * as utils from '../common/Utils';
+import {FAILURE_MESSAGE, UNPROCESSABLE_CONTENT_CODE} from '../common/constants';
 
 const webex = getTestUtilsWebex();
 
@@ -31,10 +36,13 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
   let getSortedVoicemailListSpy: jest.SpyInstance;
   let storeVoicemailListSpy: jest.SpyInstance;
   let fetchVoicemailListSpy: jest.SpyInstance;
+  const {messageId} = mockVoicemailBody.body.items[0];
 
   beforeAll(() => {
     webex.internal.device.features.entitlement.models = [{_values: {key: 'broadworks-connector'}}];
     broadworksBackendConnector = new BroadworksBackendConnector(webex, {level: LOGGER.INFO});
+    broadworksBackendConnector.getSDKConnector();
+    fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
   });
 
   describe('Voicemail failure test cases', () => {
@@ -42,16 +50,26 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
     beforeEach(() => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: UNPROCESSABLE_CONTENT_CODE,
+          ok: false,
+        })
+      ) as jest.Mock;
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
     });
 
     it('verify exception case for the mark read case when messageid is invalid', async () => {
       const response = await broadworksBackendConnector.voicemailMarkAsRead('dummy');
 
-      expect(response.message).toBe('FAILURE');
-      expect(response.statusCode).toBe(422);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
-          statusCode: NaN,
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
         },
         {
           file: 'BroadworksBackendConnector',
@@ -60,9 +78,90 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       );
     });
 
+    it('verify failure case for the mark read case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.voicemailMarkAsRead('dummy');
+
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'voicemailMarkAsRead',
+        }
+      );
+    });
+
+    it('verify failure case for the mark as unread case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.voicemailMarkAsUnread('dummy');
+
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'voicemailMarkAsUnread',
+        }
+      );
+    });
+
+    it('verify failure case for the delete voicemail case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.deleteVoicemail('dummy');
+
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+    });
+
+    it('verify failure case for the delete voicemail case when api response fails', async () => {
+      global.fetch.mockRejectedValueOnce('server is busy');
+
+      const response = await broadworksBackendConnector.deleteVoicemail(messageId.$);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: '',
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+    });
+
+    it('verify failure case for the voicemail content case when response is not ok', async () => {
+      const response = await broadworksBackendConnector.getVoicemailContent('dummy');
+
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(response.statusCode).toBe(UNPROCESSABLE_CONTENT_CODE);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'getVoicemailContent',
+        }
+      );
+    });
+
     it('verify failed case when token is empty', async () => {
       const failurePayload = {
-        message: 'FAILURE',
+        message: FAILURE_MESSAGE,
         status: 401,
       };
       const voiceMailPayload = <WebexRequestPayload>failurePayload;
@@ -71,7 +170,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       webex.request.mockRejectedValue(voiceMailPayload);
       const response = await broadworksBackendConnector.init();
 
-      expect(response.message).toBe('FAILURE');
+      expect(response.message).toBe(FAILURE_MESSAGE);
       expect(response.statusCode).toBe(401);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
@@ -86,7 +185,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
     it('verify failed case when token is invalid', async () => {
       const failurePayload = {
-        message: 'FAILURE',
+        message: FAILURE_MESSAGE,
         status: 401,
       };
       const voiceMailPayload = <WebexRequestPayload>failurePayload;
@@ -95,7 +194,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       webex.request.mockRejectedValue(voiceMailPayload);
       const response = await broadworksBackendConnector.init();
 
-      expect(response.message).toBe('FAILURE');
+      expect(response.message).toBe(FAILURE_MESSAGE);
       expect(response.statusCode).toBe(401);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
@@ -106,6 +205,13 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'getUserId',
         }
       );
+    });
+
+    it('verify no response case when token have invalid userid', async () => {
+      broadworksBackendConnector['bwtoken'] = 'bwtoken.eyJhbGciOiJIUzI1NiJ9';
+      const response = await broadworksBackendConnector.init();
+
+      expect(response).toBeUndefined();
     });
 
     it('verify no change in xsi url received without ep version', async () => {
@@ -122,13 +228,40 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         voiceMailPayload.body.devices[0].settings.broadworksXsiActionsUrl
       );
     });
+
+    it('verify failure case for voicemail list fetch', async () => {
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: UNPROCESSABLE_CONTENT_CODE,
+        },
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'getVoicemailList',
+        }
+      );
+    });
+
+    it('verify failure case for voicemail list fetch when api request fails', async () => {
+      global.fetch.mockRejectedValueOnce('server is busy');
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      expect(response).toStrictEqual(responseDetails422);
+      expect(fetchVoicemailListSpy).not.toBeCalled();
+    });
   });
 
   describe('Voicemail success tests for Broadworks', () => {
     beforeEach(() => {
       getSortedVoicemailListSpy = jest.spyOn(utils, 'getSortedVoicemailList');
       storeVoicemailListSpy = jest.spyOn(utils, 'storeVoicemailList');
-      fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
     });
 
     const success = 'SUCCESS';
@@ -306,8 +439,69 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       sessionStorage.removeItem(CONTEXT);
     });
 
+    it('verify empty voicemail listing data', async () => {
+      global.fetch.mockReturnValueOnce({
+        status: 200,
+        ok: true,
+        json: () => Promise.resolve(getEmptyVoicemailListJsonBWRKS),
+      });
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [],
+      };
+
+      const responseDetails = {
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(global.fetch).toBeCalledOnceWith(`${broadworksUserInfoUrl}${JSON_FORMAT}`, {
+        headers: {Authorization: `bearer ${bwToken}`},
+        method: 'GET',
+      });
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'BroadworksBackendConnector',
+        method: 'getVoicemailList',
+      });
+    });
+
+    it('verify empty voicemail listing data when response data is in invalid format', async () => {
+      global.fetch.mockReturnValueOnce({
+        status: 200,
+        ok: true,
+        json: () => Promise.resolve(getInvalidVoicemailListJsonBWRKS),
+      });
+
+      const response = await broadworksBackendConnector.getVoicemailList(0, 20, SORT.DESC, true);
+
+      const voicemailResponseInfo = {
+        voicemailList: [{}],
+      };
+
+      const responseDetails = {
+        statusCode: NO_VOICEMAIL_STATUS_CODE,
+        data: voicemailResponseInfo,
+        message: NO_VOICEMAIL_MSG,
+      };
+
+      expect(response).toStrictEqual(responseDetails);
+      expect(response.message).toBe(NO_VOICEMAIL_MSG);
+      expect(global.fetch).toBeCalledOnceWith(`${broadworksUserInfoUrl}${JSON_FORMAT}`, {
+        headers: {Authorization: `bearer ${bwToken}`},
+        method: 'GET',
+      });
+      expect(fetchVoicemailListSpy).toBeCalledOnceWith(CONTEXT, 0, 20, {
+        file: 'BroadworksBackendConnector',
+        method: 'getVoicemailList',
+      });
+    });
+
     it('verify successful voicemailMarkAsRead', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         data: {},
         statusCode: 200,
@@ -325,7 +519,6 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successful voicemailMarkAsUnread', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
       const responseDetails = {
         statusCode: 200,
         data: {},
@@ -343,8 +536,6 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successful deleteVoicemail', async () => {
-      const {messageId} = mockVoicemailBody.body.items[0];
-
       const response = await broadworksBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response.data).toStrictEqual({});
@@ -365,7 +556,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify resolution of contact to null', async () => {
-      const response = await broadworksBackendConnector.resolveContact({} as CallingPartyInfo);
+      const response = await broadworksBackendConnector.resolveContact(resolveContactArgs);
 
       expect(response).toBeNull();
     });

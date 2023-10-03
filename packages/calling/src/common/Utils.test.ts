@@ -36,7 +36,6 @@ import {
   ERROR_TYPE,
   DEVICE_ERROR_CODE,
 } from '../Errors/types';
-import {EVENT_KEYS} from '../Events/types';
 import {
   handleCallErrors,
   handleRegistrationErrors,
@@ -56,6 +55,7 @@ import {
   getDescVoicemailListJsonWXC,
 } from '../Voicemail/voicemailFixture';
 import {INFER_ID_CONSTANT} from './constants';
+import {CALL_EVENT_KEYS} from '../Events/types';
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
@@ -351,7 +351,7 @@ describe('Call Tests', () => {
   beforeEach(() => {
     jest.clearAllTimers();
     jest.useFakeTimers();
-    call.removeAllListeners(EVENT_KEYS.CALL_ERROR);
+    call.removeAllListeners(CALL_EVENT_KEYS.CALL_ERROR);
   });
 
   /**
@@ -786,7 +786,7 @@ describe('Call Tests', () => {
     };
 
     if (codeObj.cbExpected) {
-      call.on(EVENT_KEYS.CALL_ERROR, (errObj) => {
+      call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
         expect(errObj).toMatchObject(mockErrorEvent);
         done();
       });
@@ -796,7 +796,7 @@ describe('Call Tests', () => {
 
     handleCallErrors(
       (error: CallError) => {
-        call.emit(EVENT_KEYS.CALL_ERROR, error);
+        call.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
         cbTriggered = true;
       },
       codeObj.errorLayer,

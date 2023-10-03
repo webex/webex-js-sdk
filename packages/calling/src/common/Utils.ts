@@ -294,7 +294,7 @@ export async function handleRegistrationErrors(
 ): Promise<boolean> {
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, LineStatus.INACTIVE);
 
-  const errorCode = err.statusCode as number;
+  const errorCode = Number(err.statusCode);
   let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
@@ -361,7 +361,7 @@ export async function handleRegistrationErrors(
         return finalError;
       }
 
-      const code = errorBody.errorCode as number;
+      const code = Number(errorBody.errorCode);
       log.warn(`Error code found : ${code}`, loggerContext);
       switch (code) {
         case DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED: {
@@ -463,7 +463,7 @@ export async function handleCallingClientErrors(
 ): Promise<boolean> {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
 
-  const errorCode = err.statusCode as number;
+  const errorCode = Number(err.statusCode);
   const finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
@@ -517,7 +517,7 @@ export async function handleCallErrors(
   };
   const callError = createCallError('', loggerContext, ERROR_TYPE.DEFAULT, '', errorLayer);
 
-  const errorCode = err.statusCode as number;
+  const errorCode = Number(err.statusCode);
 
   log.warn(`Status code: ->${errorCode}`, loggerContext);
 
@@ -562,7 +562,7 @@ export async function handleCallErrors(
       /* Handle retry-after cases */
 
       if (err.headers && 'retry-after' in err.headers && retryCb) {
-        const retryInterval = err.headers['retry-after'] as unknown as number;
+        const retryInterval = Number(err.headers['retry-after'] as unknown);
 
         log.warn(`Retry Interval received: ${retryInterval}`, loggerContext);
         retryCb(retryInterval);
@@ -571,7 +571,7 @@ export async function handleCallErrors(
       }
 
       /* Handling various Error codes */
-      const code = errorBody.errorCode as number;
+      const code = Number(errorBody.errorCode);
 
       let message!: string;
 
@@ -686,7 +686,7 @@ export async function serviceErrorCodeHandler(
   err: WebexRequestPayload,
   loggerContext: LogContext
 ): Promise<JanusResponseEvent | VoicemailResponseEvent | CallSettingResponse | ContactResponse> {
-  const errorCode = err.statusCode as number;
+  const errorCode = Number(err.statusCode);
   const failureMessage = 'FAILURE';
 
   switch (errorCode) {
@@ -800,11 +800,11 @@ export async function serviceErrorCodeHandler(
     }
 
     default: {
-      log.warn(`422 Exception has occurred`, loggerContext);
+      log.warn(`${errorCode || 422} Exception has occurred`, loggerContext);
       const errorDetails = {
-        statusCode: 422,
+        statusCode: errorCode || 422,
         data: {
-          error: '422 Exception has occurred',
+          error: `${errorCode || 422} Exception has occurred`,
         },
         message: failureMessage,
       };

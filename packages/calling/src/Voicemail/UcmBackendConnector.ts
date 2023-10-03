@@ -11,7 +11,13 @@ import {
   CALLING_BACKEND,
 } from '../common/types';
 import {getVgActionEndpoint, serviceErrorCodeHandler} from '../common/Utils';
-import {SUCCESS_MESSAGE, USERS, CONTENT, UCM_CONNECTOR_FILE} from '../common/constants';
+import {
+  SUCCESS_MESSAGE,
+  USERS,
+  CONTENT,
+  UCM_CONNECTOR_FILE,
+  FAILURE_MESSAGE,
+} from '../common/constants';
 import log from '../Logger';
 import {API_V1, LIMIT, OFFSET, SORT_ORDER, VMGATEWAY, VOICEMAILS} from './constants';
 import {
@@ -50,6 +56,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     this.sdkConnector = SDKConnector;
+    /* istanbul ignore else */
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -132,6 +139,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         stringObj = {$: ''};
         stringObj.$ = msgInfoObj.MsgId;
         message.messageId = stringObj;
+        /* istanbul ignore else */
         if (msgInfoObj.Read === 'true') {
           message.read = {};
         }
@@ -152,7 +160,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {
           voicemailList: messageinfoArray,
         },
@@ -254,10 +262,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     });
     const contentInfo = response?.body as UcmVMContentResponse;
     const respHeaders = response.headers;
+    const statusCode = response.statusCode;
     const mediaType = respHeaders?.mediatype as string;
     const mediaContent = contentInfo as string;
     const responseDetails = {
-      statusCode: response.statusCode as number,
+      statusCode: Number(statusCode),
       data: {
         voicemailContent: {
           type: mediaType,
@@ -266,6 +275,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       },
       message: SUCCESS_MESSAGE,
     };
+
+    /* istanbul ignore else */
+    if (statusCode !== 200 && statusCode !== 202) {
+      responseDetails.message = FAILURE_MESSAGE;
+    }
 
     return responseDetails;
   }
@@ -293,7 +307,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -330,7 +344,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -364,7 +378,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };

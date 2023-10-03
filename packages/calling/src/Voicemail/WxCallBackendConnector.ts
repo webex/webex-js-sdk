@@ -249,7 +249,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       log.info(`Media type is  ${mediaType}`, loggerContext);
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {
           voicemailContent: {
             type: mediaType,
@@ -345,7 +345,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -379,7 +379,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -413,7 +413,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       });
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {},
         message: SUCCESS_MESSAGE,
       };
@@ -452,7 +452,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const transcript = xmlDOM.getElementsByTagName(TRANSCRIPT_CONTENT)[0];
 
       const responseDetails: VoicemailResponseEvent = {
-        statusCode: response.statusCode as number,
+        statusCode: Number(response.statusCode),
         data: {
           voicemailTranscript: transcript?.textContent,
         },

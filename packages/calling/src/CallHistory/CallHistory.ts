@@ -9,9 +9,9 @@ import {serviceErrorCodeHandler} from '../common/Utils';
 import {CALL_HISTORY_FILE, FROM_DATE, HISTORY, LIMIT, NUMBER_OF_DAYS} from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
+  COMMON_EVENT_KEYS,
   CallHistoryEventTypes,
   CallSessionEvent,
-  EVENT_KEYS,
   MOBIUS_EVENT_KEYS,
   UserSession,
 } from '../Events/types';
@@ -137,7 +137,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
       async (event?: CallSessionEvent) => {
         if (event && event.data.userSessions.userSessions) {
-          this.emit(EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
+          this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
         }
       }
     );
