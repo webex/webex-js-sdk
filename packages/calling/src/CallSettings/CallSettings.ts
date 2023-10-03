@@ -17,9 +17,18 @@ import {CALL_SETTINGS_FILE} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
- * Call Settings class which implements the public ICallSettings interface
- * This class will select appropriate calling backends according to the user
- * entitlements.
+ * `CallSettings` module is designed to offer a range of APIs for retrieving and updating settings such as Call Waiting, Do Not Disturb (DND), Call Forwarding, Voicemail, and more.
+ * These operations are tailored to work with various calling backends, providing flexibility and adaptability to different scenarios.
+ * The selection of the appropriate calling backend occurs during the instantiation of the CallSettings Client and is determined by the user's entitlements.
+ *
+ * This code snippet demonstrates how to create an instance of `CallSettings` using webex and logger.
+ *
+ * Example
+ * ```javascript
+ * const callSettings = createCallSettingsClient(webex, logger);
+ * ```
+ *
+ * @implements {ICallSettings}
  */
 export class CallSettings implements ICallSettings {
   private sdkConnector: ISDKConnector;
@@ -30,6 +39,9 @@ export class CallSettings implements ICallSettings {
 
   private backendConnector!: ICallSettings;
 
+  /**
+   * @ignore
+   */
   constructor(webex: WebexSDK, logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.sdkConnector = SDKConnector;
 
@@ -68,35 +80,38 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads call waiting setting at the backend.
+   * Reads call waiting setting in Webex.
    */
   public async getCallWaitingSetting() {
     return this.backendConnector.getCallWaitingSetting();
   }
 
   /**
-   * Reads DND setting at the backend.
+   * Reads DND setting in Webex.
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getDoNotDisturbSetting();
   }
 
   /**
-   * Updates DND setting at the backend.
+   * Updates DND setting in Webex.
+   * @param enabled - true to enable DND, false to disable DND.
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
     return this.backendConnector.setDoNotDisturbSetting(enabled);
   }
 
   /**
-   * Reads Call Forward setting at the backend.
+   * Reads Call Forward setting in Webex.
+   *
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getCallForwardSetting();
   }
 
   /**
-   * Updates Call Forward setting at the backend.
+   * Updates Call Forward setting in Webex.
+   * @param callForwardingRequest - CallForwardSetting object.
    */
   public async setCallForwardSetting(
     callForwardingRequest: CallForwardSetting
@@ -105,14 +120,15 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads Voicemail setting at the backend.
+   * Reads Voicemail setting in Webex.
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
     return this.backendConnector.getVoicemailSetting();
   }
 
   /**
-   * Updates Voicemail setting at the backend.
+   * Updates Voicemail setting in Webex.
+   * @param voicemailRequest - VoicemailSetting object.
    */
   public async setVoicemailSetting(
     voicemailRequest: VoicemailSetting
@@ -121,9 +137,10 @@ export class CallSettings implements ICallSettings {
   }
 
   /**
-   * Reads the Call Forwarding Always settings at the backend.
+   * Reads the Call Forwarding Always settings in Webex.
    * This will also check if CFA is set to Voicemail.
    * If CFA is set to destination, that will take precedence.
+   * @param directoryNumber - Directory number of the user.
    */
   public async getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse> {
     return this.backendConnector.getCallForwardAlwaysSetting(directoryNumber);
@@ -131,6 +148,10 @@ export class CallSettings implements ICallSettings {
 }
 
 /**
+ * Creates an instance of CallSettings Client.
+ *
+ * @param {WebexSDK} webex - An instance of the Webex SDK.
+ * @param {LoggerInterface} logger - An instance implementing LoggerInterface used to set the log level for the module.
  */
 export const createCallSettingsClient = (
   webex: WebexSDK,

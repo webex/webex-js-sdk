@@ -12,8 +12,10 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
   new <T extends EventMap>(): TypedEmitter<T>;
 })<T> {
   /**
-   * @param event - TODO.
-   * @param args - TODO.
+   * @event
+   *
+   * @param event - Event that is going ot be emitted.
+   * @param args - Parameters that are emitted with the event.
    */
   emit<E extends keyof T>(event: E, ...args: Parameters<T[E]>): boolean {
     const timestamp = new Date().toUTCString();
@@ -33,6 +35,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
 
   /**
    * .
+   * @event
    *
    * @param event - Event to listen to.
    * @param listener - Callback for event.
@@ -43,6 +46,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
 
   /**
    * .
+   * @event
    *
    * @param event - Event to remove listener on.
    * @param listener - Callback for event.

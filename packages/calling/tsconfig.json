@@ -71,16 +71,17 @@
   },
   "typedocOptions": {
     "entryPoints": [
-      "./src"
+      "./src/api.ts"
     ],
-    "out": "docs",
     "sort": [
       "source-order"
     ],
+    "name": "Calling SDK (@webex/calling)",
+    "disableSources": "true",
     "entryPointStrategy": "expand",
-    "includeVersion": "true",
     "excludeExternals": "true",
     "excludePrivate": "true",
+    "hideGenerator": "true",
   },
   "include": [
     "src/**/*.ts",

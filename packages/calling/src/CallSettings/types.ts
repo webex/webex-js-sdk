@@ -90,15 +90,146 @@ export type CallSettingResponse = {
   message: string | null;
 };
 
+/**
+ * Interface for Call Settings Module.
+ * This encompasses set of APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail and more.
+
+ * These APIs return promises that resolve to a `CallSettingResponse` object, which contains a status code, data, and message.
+ * The data field within this response object holds the `callSetting` object, which can take on different types depending on the specific API called.
+ *
+ * Example
+ * ```json
+ * {
+ *  statusCode: 200,
+ *    data: {
+ *      callSetting: ToggleSetting | CallForwardSetting | VoicemailSetting | CallForwardAlwaysSetting
+ *    },
+ *  message: 'SUCCESS'| 'FAILURE' | null
+ * }
+ * ```
+ */
 export interface ICallSettings {
-  getCallWaitingSetting: () => Promise<CallSettingResponse>;
-  getDoNotDisturbSetting: () => Promise<CallSettingResponse>;
-  setDoNotDisturbSetting: (flag: boolean) => Promise<CallSettingResponse>;
-  getCallForwardSetting: () => Promise<CallSettingResponse>;
-  setCallForwardSetting: (request: CallForwardSetting) => Promise<CallSettingResponse>;
-  getVoicemailSetting: () => Promise<CallSettingResponse>;
-  setVoicemailSetting: (request: VoicemailSetting) => Promise<CallSettingResponse>;
-  getCallForwardAlwaysSetting: (directoryNumber?: string) => Promise<CallSettingResponse>;
+  /**
+   * This API is used to fetch the call waiting setting.
+   *
+   * Example
+   * ```javascript
+   * const callWaitingResponse = await callSettings.getCallWaitingSetting();
+   * ```
+   *
+   * The callWaitingResponse object will have callSetting object with the properties as mentioned in `ToggleSetting`.
+   *
+   * Example - ToggleSetting
+   * ```json
+   * {
+   *  statusCode: 200,
+   *    data: {
+   *      callSetting: {
+   *        enabled: true,
+   *        ringSplashEnabled: true
+   *      },
+   *    },
+   *  message: null
+   * }
+   * ```
+   */
+  getCallWaitingSetting(): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to fetch the do not disturb(DND) status.
+   *
+   * Example
+   * ```javascript
+   * const dndResponse = await callSettings.getDoNotDisturbSetting();
+   * ```
+   *
+   * The dndResponse object will have callSetting object with the properties as mentioned in `ToggleSetting`.
+   *
+   * Example - ToggleSetting
+   * ```json
+   * {
+   *  statusCode: 200,
+   *    data: {
+   *      callSetting: {
+   *        enabled: true,
+   *        ringSplashEnabled: true
+   *      },
+   *    },
+   *  message: null
+   * }
+   * ```
+   */
+  getDoNotDisturbSetting(): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to set DND to true or false based on parameter received.
+   *
+   * Example
+   * ```javascript
+   * const dndResponse = await callSettings.setDoNotDisturbSetting(true|false);
+   * ```
+   */
+  setDoNotDisturbSetting(flag: boolean): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to fetch the call forward setting.
+   *
+   *  Example
+   * ```javascript
+   * const callForwardResponse = await callSettings.getCallForwardSetting();
+   * ```
+   *
+   * The `callForwardResponse` object will have callSetting object with the properties as mentioned in {@link CallForwardSetting}.
+   */
+  getCallForwardSetting(): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to set the call forward setting.
+   * ```javascript
+   * const callForwardResponse = await callSettings.setCallForwardSetting(callForwardSetting);
+   * ```
+   *
+   * The `callForwardSetting` object will be populated with the properties as mentioned in {@link CallForwardSetting} and passed as a parameter to the API.
+   */
+  setCallForwardSetting(request: CallForwardSetting): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to fetch the voicemail.
+   *  Example
+   * ```javascript
+   * const voicemailResponse = await callSettings.getVoicemailSetting();
+   * ```
+   *
+   * The `voicemailResponse` object will have callSetting object with the properties as mentioned in {@link VoicemailSetting}.
+   */
+  getVoicemailSetting(): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to set voicemail.
+   *
+   * Example
+   * ```javascript
+   * const voicemailResponse = await callSettings.setVoicemailSetting();
+   * ```
+   *
+   * The `voicemailSetting` object will be populated with the properties as mentioned in {@link VoicemailSetting} and passed as a parameter to the API.
+   */
+  setVoicemailSetting(request: VoicemailSetting): Promise<CallSettingResponse>;
+
+  /**
+   * This API is used to fetch the call forward settings including the Voicemail.
+   *
+   * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
+   * This parameter is only required for Cloud Connected Unified Communications(CCUC): https://www.cisco.com/c/en/us/products/unified-communications/webex-cloud-connected-uc/index.html backend.
+   *
+   * Example
+   * ```javascript
+   * const callForwardAlwaysResponse = await callSettings.setVoicemailSetting();
+   * ```
+   *
+   * The `callForwardAlwaysResponse` object will have callSetting object with the properties as mentioned in {@link CallForwardAlwaysSetting}.
+   */
+  getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse>;
 }
 
 export type IWxCallBackendConnector = ICallSettings;
