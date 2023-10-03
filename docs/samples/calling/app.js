@@ -358,7 +358,7 @@ function createDevice() {
       }
     });
 
-    call.on('call:disconnect', () => {
+    call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
       makeCallBtn.disabled = false;
       endElm.disabled = true;
@@ -383,19 +383,19 @@ function createDevice() {
 function endCall() {
   call.end();
   callDetailsElm.innerText = `${call.getCorrelationId()}: Call Disconnected`;
-  imageElm.removeChild(img);
   outboundEndElm.disabled = true;
   makeCallBtn.disabled = false;
   endElm.disabled = true;
   muteElm.value = 'Mute';
+  imageElm.removeChild(img);
 }
 
 function endSecondCall() {
   callTranferObj.end();
   transferDetailsElm.innerText = `${callTranferObj.getCorrelationId()}: Call Disconnected`;
-  imageElm.removeChild(img);
   endSecondElm.disabled = true;
   muteElm.value = 'Mute';
+  imageElm.removeChild(img);
 }
 
 function muteUnmute() {
@@ -557,7 +557,7 @@ function commitTransfer() {
   transferElm.disabled = true;
 
   if (transferOptionsElm.options[transferOptionsElm.selectedIndex].text === 'Consult Transfer') {
-    callTranferObj = callingClient.makeCall({
+    callTranferObj = line.makeCall({
       type: 'uri',
       address: digit,
     });
