@@ -18,21 +18,22 @@ export type JanusResponseEvent = {
 
 /**
  * Interface for CallHistory Client.
- * This includes the APIs that helps retrieve the recent Call History Records.
+ * This encompasses a set of APIs designed to facilitate the retrieval of recent Call History Record.
  */
 export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
   /**
-   * This API is used to fetch the the recent Call History Records.
-   *
-   * Example
-   * ```javascript
-   * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
-   * ```
+   * This API `getCallHistoryData` is utilized to request and retrieve Call History Records based on specified parameters.
+   * It accepts the following input parameters:
    *
    * @param days - Number of days to fetch the call history data.
    * @param limit - Number of records to be fetched.
    * @param sort - Sort the records in ascending or descending order.
    * @param sortBy - Sort the records by start time or end time.
+   *
+   * Example
+   * ```javascript
+   * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
+   * ```
    */
   getCallHistoryData(
     days: number,

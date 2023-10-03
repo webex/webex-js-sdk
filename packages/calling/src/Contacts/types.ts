@@ -83,12 +83,8 @@ export interface IContacts {
    * ```
    *
    * The contactsResponse object will have the list of contacts and groups
-   * Each contact object will have properties as mentioned in Contact
-   * Each group object will have properties as mentioned in ContactGroup
-   *
-   * Example - Contact - https://github.com/webex/webex-js-sdk/wiki/Calling-Contacts#contact
-   *
-   * Example - ContactGroup - https://github.com/webex/webex-js-sdk/wiki/Calling-Contacts#contactgroup
+   * Each contact object will have properties as mentioned in {@link Contact}.
+   * Each group object will have properties as mentioned in {@link ContactGroup}.
    *
    */
   getContacts(): Promise<ContactResponse>;
@@ -101,9 +97,7 @@ export interface IContacts {
    * const contactGroup = await contactClient.createContactGroup(displayName, encryptionKeyUrl, groupType);
    * ```
    *
-   * The contactGroup object for the given display name will be created and returned as a response with the properties of ContactGroup.
-   *
-   * Example - ContactGroup - https://github.com/webex/webex-js-sdk/wiki/Calling-Contacts#contactgroup
+   * The ContactGroup object for the given display name will be created and returned as a response with the properties of {@link ContactGroup}.
    */
   createContactGroup(
     displayName: string,
@@ -124,6 +118,7 @@ export interface IContacts {
 
   /**
    * This API is responsible for creating a new contact.
+   *
    * Example
    * ```javascript
    * const contact = await contactClient.createContact(contactInfo);

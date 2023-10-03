@@ -92,11 +92,10 @@ export type CallSettingResponse = {
 
 /**
  * Interface for Call Settings Module.
- * This includes the APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail etc.
- *
- * These APIs return a promise which resolves to the CallSettingResponse object.
- * This response object will have the status code, data and message and the data will have the callSetting object
- * which can be of different types based on the API called.
+ * This encompasses set of APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail and more.
+
+ * These APIs return promises that resolve to a `CallSettingResponse object`, which contains a status code, data, and message.
+ * The data field within this response object holds the callSetting object, which can take on different types depending on the specific API called.
  *
  * Example
  * ```json
@@ -108,7 +107,6 @@ export type CallSettingResponse = {
  *  message: 'SUCCESS'| 'FAILURE' | null
  * }
  * ```
- *
  */
 export interface ICallSettings {
   /**
@@ -182,9 +180,7 @@ export interface ICallSettings {
    * const callForwardResponse = await callSettings.getCallForwardSetting();
    * ```
    *
-   * The callForwardResponse object will have callSetting object with the properties as mentioned in CallForwardSetting.
-   *
-   * Example - CallForwardSettings - https://github.com/webex/webex-js-sdk/wiki/Calling-Voicemail#callforwardsetting
+   * The callForwardResponse object will have callSetting object with the properties as mentioned in {@link CallForwardSetting}.
    */
   getCallForwardSetting(): Promise<CallSettingResponse>;
 
@@ -194,10 +190,7 @@ export interface ICallSettings {
    * const callForwardResponse = await callSettings.setCallForwardSetting(callForwardSetting);
    * ```
    *
-   * The callForwardSetting object will be populated with the properties as required and passed as a parameter to the API.
-   *
-   * Example - CallForwardSettings - https://github.com/webex/webex-js-sdk/wiki/Calling-Voicemail#callforwardsetting
-   *
+   * The CallForwardSetting object will be populated with the properties as mentioned in {@link CallForwardSetting} and passed as a parameter to the API.
    */
   setCallForwardSetting(request: CallForwardSetting): Promise<CallSettingResponse>;
 
@@ -208,9 +201,7 @@ export interface ICallSettings {
    * const voicemailResponse = await callSettings.getVoicemailSetting();
    * ```
    *
-   * The voicemailResponse object will have callSetting object with the properties as mentioned in VoicemailSetting.
-   *
-   * Example - VoicemailSetting - https://github.com/webex/webex-js-sdk/wiki/Calling-Voicemail#voicemailsetting
+   * The voicemailResponse object will have callSetting object with the properties as mentioned in {@link VoicemailSetting}.
    */
   getVoicemailSetting(): Promise<CallSettingResponse>;
 
@@ -221,16 +212,15 @@ export interface ICallSettings {
    * const voicemailResponse = await callSettings.setVoicemailSetting();
    * ```
    *
-   * The VoicemailSetting object will be populated with the properties as required and passed as a parameter to the API.
-   *
-   * Example - VoicemailSetting - https://github.com/webex/webex-js-sdk/wiki/Calling-Voicemail#voicemailsetting
+   * The VoicemailSetting object will be populated with the properties as mentioned in {@link VoicemailSetting} and passed as a parameter to the API.
    */
   setVoicemailSetting(request: VoicemailSetting): Promise<CallSettingResponse>;
 
   /**
    * This API is used to fetch the call forward settings including the Voicemail.
    * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
-   * This parameter is only required for CCUC backend
+   *
+   * This parameter is only required for CCUC backend.
    */
   getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse>;
 }

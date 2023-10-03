@@ -17,7 +17,9 @@ import {
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
- * The purpose of the `CallHistoryClient` instance is to provide the APIs for retrieving the recent Call History Records.
+ * `CallHistory` module is designed to facilitate the retrieval of Call History Records by providing a set of APIs.
+ *
+ * This code snippet demonstrates how to create an instance of CallHistoryClient using webex and logger.
  *
  * Example
  * ```javascript
@@ -142,7 +144,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 }
 /**
- * Function to create the CallHistory Client instance
+ * Creates a Call History client instance for accessing Call History APIs.
+ *
+ * @param {WebexSDK} webex - `Webex SDK` instance.
+ * @param {LoggerInterface} logger - An instance implementing LoggerInterface used to set the log level for the module.
  */
 export const createCallHistoryClient = (webex: WebexSDK, logger: LoggerInterface): ICallHistory =>
   new CallHistory(webex, logger);

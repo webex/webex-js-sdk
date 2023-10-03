@@ -17,8 +17,11 @@ import {CALL_SETTINGS_FILE} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
- * The purpose of the `CallSettingsClient` instance is to provide the APIs to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail etc. based on different calling backends.
- * The appropriate calling backends is initialized according to the user entitlements while instantiating the CallSettings Client.
+ * `CallSettings` module is designed to offer a range of APIs for retrieving and updating settings such as Call Waiting, Do Not Disturb (DND), Call Forwarding, Voicemail, and more.
+ * These operations are tailored to work with various calling backends, providing flexibility and adaptability to different scenarios.
+ * The selection of the appropriate calling backend occurs during the instantiation of the CallSettings Client and is determined by the user's entitlements.
+ *
+ * This code snippet demonstrates how to create an instance of CallSettingsClient using webex and logger.
  *
  * Example
  * ```javascript
@@ -146,6 +149,9 @@ export class CallSettings implements ICallSettings {
 
 /**
  * Creates an instance of CallSettings Client.
+ *
+ * @param {WebexSDK} webex - An instance of the Webex SDK.
+ * @param {LoggerInterface} logger - An instance implementing LoggerInterface used to set the log level for the module.
  */
 export const createCallSettingsClient = (
   webex: WebexSDK,

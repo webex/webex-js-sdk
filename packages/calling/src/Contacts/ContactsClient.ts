@@ -31,9 +31,9 @@ import {
 import {serviceErrorCodeHandler} from '../common/Utils';
 
 /**
+ * The `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
  *
- * Client of contacts-service which stores encrypted custom contacts and org contacts.
- * The purpose of this contactsClient instance is to provide the APIs to fetch and update the contacts and groups from contacts-service.
+ * This code snippet demonstrates how to create an instance of CallSettingsClient using webex and logger.
  *
  * Example
  * ```javascript
@@ -767,6 +767,9 @@ export class ContactsClient implements IContacts {
 
 /**
  * Creates a ContactsClient instance
+ *
+ * @param {WebexSDK} webex - `Webex SDK`instance.
+ * @param {LoggerInterface} logger - An instance implementing LoggerInterface used to set the log level for the module.
  */
 export const createContactsClient = (webex: WebexSDK, logger: LoggerInterface): IContacts =>
   new ContactsClient(webex, logger);
