@@ -70,8 +70,22 @@ export type ContactResponse = {
 
 /**
  * Interface for Contacts Module.
- * This includes the APIs that allows to fetch, create and update the contacts and groups.
+ * This encompasses a set of APIs that enable the fetching, creation, and updating of contacts and groups.
+ * These APIs return promises that resolve to a `ContactResponse` object, which contains a status code, data, and message.
+ * The data field within this response object holds the contacts and groups object.
  *
+ * Example - ContactResponse
+ *
+ * ```json
+ * {
+ *  statusCode: 200,
+ *  data: {
+ *    contacts: Contact[],
+ *    groups: ContactGroup[],
+ *  },
+ *  message: null
+ * }
+ * ````
  */
 export interface IContacts {
   /**
@@ -82,9 +96,9 @@ export interface IContacts {
    * const contactsResponse = await contactClient.getContacts();
    * ```
    *
-   * The contactsResponse object will have the list of contacts and groups
-   * Each contact object will have properties as mentioned in {@link Contact}.
-   * Each group object will have properties as mentioned in {@link ContactGroup}.
+   * The `ContactsResponse` object contains a comprehensive list of both contacts and groups for the user.
+   * Each `Contact` object within this list is defined by the properties detailed in the {@link Contact}.
+   * Each `ContactGroup` adheres to the properties specified in the {@link ContactGroup}.
    *
    */
   getContacts(): Promise<ContactResponse>;
@@ -97,7 +111,7 @@ export interface IContacts {
    * const contactGroup = await contactClient.createContactGroup(displayName, encryptionKeyUrl, groupType);
    * ```
    *
-   * The ContactGroup object for the given display name will be created and returned as a response with the properties of {@link ContactGroup}.
+   * The `ContactGroup` object for the given display name will be created and returned as a response with the properties of {@link ContactGroup}.
    */
   createContactGroup(
     displayName: string,
@@ -106,13 +120,14 @@ export interface IContacts {
   ): Promise<ContactResponse>;
 
   /**
-   * This API is used to delete a contact group whose gorupId is received.
+   * This API is used to delete a contact group whose groupId is received.
    *
    * Example
    * ```javascript
    * const response = await contactClient.deleteContactGroup(groupId);
    * ```
-   * The response received contains the status code and message based on the success or failure of the API call.
+   *
+   * The received response includes a status code and a message that reflect the success or failure of the API call
    */
   deleteContactGroup(groupId: string): Promise<ContactResponse>;
 
@@ -128,11 +143,13 @@ export interface IContacts {
 
   /**
    * This API is responsible for deleting an existing contact for the given contactId.
+   *
    * Example
    * ```javascript
    * const response = await contactClient.deleteContact(contactId);
    * ```
-   * The response received contains the status code and message based on the success or failure of the API call.
+   *
+   * The received response includes a status code and a message that reflect the success or failure of the API call
    */
   deleteContact(contactId: string): Promise<ContactResponse>;
 }

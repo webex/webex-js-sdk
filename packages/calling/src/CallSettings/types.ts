@@ -94,7 +94,7 @@ export type CallSettingResponse = {
  * Interface for Call Settings Module.
  * This encompasses set of APIs that allows to retrieve and update the settings like CallWaiting, DND, CallForward, Voicemail and more.
 
- * These APIs return promises that resolve to a `CallSettingResponse object`, which contains a status code, data, and message.
+ * These APIs return promises that resolve to a `CallSettingResponse` object, which contains a status code, data, and message.
  * The data field within this response object holds the callSetting object, which can take on different types depending on the specific API called.
  *
  * Example
@@ -117,7 +117,7 @@ export interface ICallSettings {
    * const callWaitingResponse = await callSettings.getCallWaitingSetting();
    * ```
    *
-   * The callWaitingResponse object will have callSetting object with the properties as mentioned in ToggleSetting.
+   * The callWaitingResponse object will have callSetting object with the properties as mentioned in `ToggleSetting`.
    *
    * Example - ToggleSetting
    * ```json
@@ -132,7 +132,6 @@ export interface ICallSettings {
    *  message: null
    * }
    * ```
-   *
    */
   getCallWaitingSetting(): Promise<CallSettingResponse>;
 
@@ -144,7 +143,7 @@ export interface ICallSettings {
    * const dndResponse = await callSettings.getDoNotDisturbSetting();
    * ```
    *
-   * The dndResponse object will have callSetting object with the properties as mentioned in ToggleSetting.
+   * The dndResponse object will have callSetting object with the properties as mentioned in `ToggleSetting`.
    *
    * Example - ToggleSetting
    * ```json
@@ -180,7 +179,7 @@ export interface ICallSettings {
    * const callForwardResponse = await callSettings.getCallForwardSetting();
    * ```
    *
-   * The callForwardResponse object will have callSetting object with the properties as mentioned in {@link CallForwardSetting}.
+   * The `callForwardResponse` object will have callSetting object with the properties as mentioned in {@link CallForwardSetting}.
    */
   getCallForwardSetting(): Promise<CallSettingResponse>;
 
@@ -190,7 +189,7 @@ export interface ICallSettings {
    * const callForwardResponse = await callSettings.setCallForwardSetting(callForwardSetting);
    * ```
    *
-   * The CallForwardSetting object will be populated with the properties as mentioned in {@link CallForwardSetting} and passed as a parameter to the API.
+   * The `callForwardSetting` object will be populated with the properties as mentioned in {@link CallForwardSetting} and passed as a parameter to the API.
    */
   setCallForwardSetting(request: CallForwardSetting): Promise<CallSettingResponse>;
 
@@ -201,7 +200,7 @@ export interface ICallSettings {
    * const voicemailResponse = await callSettings.getVoicemailSetting();
    * ```
    *
-   * The voicemailResponse object will have callSetting object with the properties as mentioned in {@link VoicemailSetting}.
+   * The `voicemailResponse` object will have callSetting object with the properties as mentioned in {@link VoicemailSetting}.
    */
   getVoicemailSetting(): Promise<CallSettingResponse>;
 
@@ -212,7 +211,7 @@ export interface ICallSettings {
    * const voicemailResponse = await callSettings.setVoicemailSetting();
    * ```
    *
-   * The VoicemailSetting object will be populated with the properties as mentioned in {@link VoicemailSetting} and passed as a parameter to the API.
+   * The `voicemailSetting` object will be populated with the properties as mentioned in {@link VoicemailSetting} and passed as a parameter to the API.
    */
   setVoicemailSetting(request: VoicemailSetting): Promise<CallSettingResponse>;
 

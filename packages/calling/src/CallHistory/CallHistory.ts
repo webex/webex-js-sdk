@@ -19,7 +19,7 @@ import {Eventing} from '../Events/impl';
 /**
  * `CallHistory` module is designed to facilitate the retrieval of Call History Records by providing a set of APIs.
  *
- * This code snippet demonstrates how to create an instance of CallHistoryClient using webex and logger.
+ * This code snippet demonstrates how to create an instance of `CallHistory` using webex and logger.
  *
  * Example
  * ```javascript

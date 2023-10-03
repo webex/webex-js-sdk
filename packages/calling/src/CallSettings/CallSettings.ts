@@ -21,7 +21,7 @@ import {UcmBackendConnector} from './UcmBackendConnector';
  * These operations are tailored to work with various calling backends, providing flexibility and adaptability to different scenarios.
  * The selection of the appropriate calling backend occurs during the instantiation of the CallSettings Client and is determined by the user's entitlements.
  *
- * This code snippet demonstrates how to create an instance of CallSettingsClient using webex and logger.
+ * This code snippet demonstrates how to create an instance of `CallSettings` using webex and logger.
  *
  * Example
  * ```javascript
