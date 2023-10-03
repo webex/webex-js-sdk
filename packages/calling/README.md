@@ -4,7 +4,6 @@ With the Webex Calling SDK, you can effortlessly integrate fundamental audio cal
 
 > [Introduction to the Webex Web Calling SDK](https://github.com/webex/webex-js-sdk/wiki/Introducing-the-Webex-Web-Calling-SDK)
 > [Quickstart guide](https://github.com/webex/webex-js-sdk/wiki/Quickstart-Guide-(Calling))
-> API guide - TBD
 
  
 ## Developing

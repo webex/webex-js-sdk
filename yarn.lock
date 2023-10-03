@@ -8001,6 +8001,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/ladon-ts@npm:^4.2.4":
+  version: 4.2.4
+  resolution: "@webex/ladon-ts@npm:4.2.4"
+  dependencies:
+    onnxruntime-web: ^1.15.1
+  checksum: 60715e517f5dc000bf8c1eb47c013de139f1a4c0cefc814c4667434ca83ba54f1638187345af9a78746ad4da06e3115164a6faed523c815506fffb05a43427c6
+  languageName: node
+  linkType: hard
+
 "@webex/legacy-tools@workspace:^, @webex/legacy-tools@workspace:packages/legacy/tools":
   version: 0.0.0-use.local
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
@@ -8081,7 +8090,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": ^2.11.5
+    "@webex/web-media-effects": ^2.12.0
     eslint: ^8.24.0
     sinon: ^9.2.4
   languageName: unknown
@@ -9015,15 +9024,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:^2.11.5":
-  version: 2.11.5
-  resolution: "@webex/web-media-effects@npm:2.11.5"
+"@webex/web-media-effects@npm:^2.12.0":
+  version: 2.12.0
+  resolution: "@webex/web-media-effects@npm:2.12.0"
   dependencies:
-    "@webex/ladon-ts": ^4.2.3
+    "@webex/ladon-ts": ^4.2.4
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^1.4.0
-  checksum: 0fd101b146e24414a720abde3032bf4f96343bad2b516eefd843ad04fb762e1a66bf8a578e42350f80aeab3f339004e0fbb00e2ea93678a3cd3169394f0e5880
+  checksum: 123428bfb71cea66e01a2208c37c06d048ac78b5c930ed886567f953f029a66f870600795a705516c7f0286125280e56afe1f14994ca6f59288c19d30e43f3f9
   languageName: node
   linkType: hard
 

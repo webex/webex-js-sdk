@@ -1,5 +1,10 @@
 /* eslint-disable valid-jsdoc */
-import {Event, LocalMicrophoneStream, RoapMediaConnection} from '@webex/internal-media-core';
+import {
+  Event,
+  LocalMicrophoneStream,
+  LocalStreamEventNames,
+  RoapMediaConnection,
+} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -1975,6 +1980,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.trackUpdateListener(localAudioStream);
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
@@ -1993,12 +1999,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+
     localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.trackUpdateListener(localAudioStream);
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
@@ -2392,6 +2400,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
+    });
+  }
+
+  private trackUpdateListener(localAudioStream: LocalMicrophoneStream) {
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
+      console.log('pkesari_Track change event received from call object: ', track);
+      this.mediaConnection.updateLocalTracks({audio: track});
     });
   }
 
