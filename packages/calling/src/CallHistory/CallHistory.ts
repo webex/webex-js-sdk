@@ -1,6 +1,5 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable valid-jsdoc */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
@@ -18,7 +17,16 @@ import {
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
+ * `CallHistory` module is designed to facilitate the retrieval of Call History Records by providing a set of APIs.
  *
+ * This code snippet demonstrates how to create an instance of `CallHistory` using webex and logger.
+ *
+ * Example
+ * ```javascript
+ * const callHistory = createCallHistoryClient(webex, logger);
+ * ```
+ *
+ * @implements {ICallHistory}
  */
 export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICallHistory {
   private sdkConnector: ISDKConnector;
@@ -37,10 +45,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   private userSessions: UserSession[] | undefined;
 
   /**
-   * Creation of a webex object with SDK connector.
-   *
-   * @param webex - WebexSDK.
-   * @param logger -.
+   * @ignore
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     super();
@@ -56,12 +61,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
   /**
    * Function to display the Janus API response.
-   *
-   * @param days - NUMBER_OF_DAYS.
-   * @param limit - LIMIT.
-   * @param sort - (ASC | DESC).
-   * @param sortBy - (startTime | endTime).
-   * @returns (user session response | error response).
+   * @param days - Number of days to fetch the call history data.
+   * @param limit - Number of records to be fetched.
+   * @param sort - Sort the records in ascending or descending order.
+   * @param sortBy - Sort the records by start time or end time.
    */
   public async getCallHistoryData(
     days: number = NUMBER_OF_DAYS,
@@ -127,15 +130,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   /**
-   * SDK connector function.
-   *
-   * @returns SdkConnector.
-   */
-  public getSDKConnector(): ISDKConnector {
-    return this.sdkConnector;
-  }
-
-  /**
    *
    */
   private registerSessionsListener() {
@@ -150,8 +144,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 }
 /**
- * @param webex -.
- * @param logger -.
+ * Creates a `CallHistory` client instance for accessing Call History APIs.
+ *
+ * @param {WebexSDK} webex - `Webex SDK` instance.
+ * @param {LoggerInterface} logger - An instance implementing LoggerInterface used to set the log level for the module.
  */
 export const createCallHistoryClient = (webex: WebexSDK, logger: LoggerInterface): ICallHistory =>
   new CallHistory(webex, logger);
