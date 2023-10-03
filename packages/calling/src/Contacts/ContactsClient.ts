@@ -33,7 +33,7 @@ import {serviceErrorCodeHandler} from '../common/Utils';
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
  *
- * This code snippet demonstrates how to create an instance of CallSettingsClient using webex and logger.
+ * This code snippet demonstrates how to create an instance of `ContactClient` using webex and logger.
  *
  * Example
  * ```javascript
