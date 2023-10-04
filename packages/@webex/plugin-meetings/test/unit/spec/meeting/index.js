@@ -4524,7 +4524,7 @@ describe('plugin-meetings', () => {
               payload: {
                 canProceed: false,
               },
-              options: {showToUser: true, rawError: error, meetingId: meeting.id},
+              options: {rawError: error, meetingId: meeting.id},
             });
           };
 
