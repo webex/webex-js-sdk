@@ -612,21 +612,24 @@ function initiateTransfer() {
 
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+
   localAudioElem.srcObject = localAudioStream.outputStream;
   makeCallBtn.disabled = false;
 }
 
 async function addNoiseReductionEffect() {
-  effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+  effect = await localAudioStream.getEffect('background-noise-removal');
 
-  await localAudioStream.addEffect('background-noise-removal', effect);
+  if (!effect) {
+    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+
+    await localAudioStream.addEffect('background-noise-removal', effect);
+  }
 
   await effect.enable();
 }
 
 async function removeNoiseReductionEffect() {
-  await localAudioStream.disposeEffect('background-noise-removal', effect);
-
   await effect.disable();
 }
 
