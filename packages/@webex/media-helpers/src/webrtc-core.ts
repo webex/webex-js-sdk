@@ -23,6 +23,7 @@ export {
   LocalStreamEventNames,
   StreamEventNames,
   RemoteStream,
+  type VideoContentHint,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
