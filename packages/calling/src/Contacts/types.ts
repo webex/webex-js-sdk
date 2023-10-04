@@ -13,27 +13,81 @@ export type AddressType = {
   zipCode?: string;
 };
 
+/**
+ * `Contact` object is used to represent a contact.
+ */
 export type Contact = {
+  /**
+   * This represents the complete address of the contact.
+   */
   addressInfo?: AddressType;
+  /**
+   * This represents the URL of the avatar of the contact.
+   */
   avatarURL?: string;
+  /**
+   * This represents the domain of the avatar of the contact.
+   */
   avatarUrlDomain?: string;
+  /**
+   * This represents the company name of the contact.
+   */
   companyName?: string;
+  /**
+   * Unique identifier of the contact.
+   */
   contactId?: string;
+  /**
+   * Indicates the type of the contact, can be `CLOUD` or `CUSTOM`.
+   */
   contactType: ContactType;
+  /**
+   * Department of the contact in the company if it's a corporate contact.
+   */
   department?: string;
+  /**
+   * This represents the display name of the contact.
+   */
   displayName?: string;
+  /**
+   * This represents the array of different email addresses of the contact.
+   */
   emails?: ContactDetail[];
+  /**
+   * This is encrypted key url of the contact used for encryption.
+   */
   encryptionKeyUrl: string;
+  /**
+   * This represents the first name of the contact.
+   */
   firstName?: string;
+  /**
+   * Array of different groups and it's details available for the user
+   */
   groups: string[];
   kmsResourceObjectUrl?: string;
+  /**
+   * This represents the last name of the contact.
+   */
   lastName?: string;
+  /**
+   * This represents the manager of the contact.
+   */
   manager?: string;
+  /**
+   *
+   */
   ownerId?: string;
+  /**
+   * This represents the array of different phone numbers of the contact.
+   */
   phoneNumbers?: ContactDetail[];
   primaryContactMethod?: string;
   schemas?: string;
   sipAddresses?: ContactDetail[];
+  /**
+   * This represents the title of the contact.
+   */
   title?: string;
 };
 
@@ -43,10 +97,25 @@ export enum GroupType {
 }
 
 export type ContactGroup = {
+  /**
+   * Name of the contact group.
+   */
   displayName: string;
+  /**
+   * Encrypted key url used for encryption.
+   */
   encryptionKeyUrl: string;
+  /**
+   * Unique identifier of the contact group.
+   */
   groupId: string;
+  /**
+   * Type of the contact group, can be `NORMAL` or `EXTERNAL`.
+   */
   groupType: GroupType;
+  /**
+   * String array containing details of the contacts in each group.
+   */
   members?: string[];
   ownerId?: string;
 };
