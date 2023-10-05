@@ -613,6 +613,10 @@ function initiateTransfer() {
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
 
+  localAudioStream.on('output-track-change', (track) => {
+    console.log('Effect has been added to the stream: ', localAudioStream.getEffect('background-noise-removal'));
+  });
+
   localAudioElem.srcObject = localAudioStream.outputStream;
   makeCallBtn.disabled = false;
 }
@@ -630,7 +634,10 @@ async function addNoiseReductionEffect() {
 }
 
 async function removeNoiseReductionEffect() {
-  await effect.disable();
+  effect = await localAudioStream.getEffect('background-noise-removal');
+  if (!effect) {
+    await effect.disable();
+  }
 }
 
 // Listen for submit on create meeting
