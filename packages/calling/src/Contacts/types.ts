@@ -65,6 +65,9 @@ export type Contact = {
    * Array of different groups and it's details available for the user
    */
   groups: string[];
+  /**
+   *
+   */
   kmsResourceObjectUrl?: string;
   /**
    * This represents the last name of the contact.
@@ -75,18 +78,27 @@ export type Contact = {
    */
   manager?: string;
   /**
-   *
+   * Userd ID of the user who has the contact.
    */
   ownerId?: string;
   /**
    * This represents the array of different phone numbers of the contact.
    */
   phoneNumbers?: ContactDetail[];
+  /**
+   * Primary contact method as set by the contact.
+   */
   primaryContactMethod?: string;
+  /**
+   *
+   */
   schemas?: string;
+  /**
+   *
+   */
   sipAddresses?: ContactDetail[];
   /**
-   * This represents the title of the contact.
+   * This represents the job title of the contact.
    */
   title?: string;
 };
@@ -96,6 +108,9 @@ export enum GroupType {
   EXTERNAL = 'EXTERNAL',
 }
 
+/**
+ * `ContactGroup` object is used to represent a contact group.
+ */
 export type ContactGroup = {
   /**
    * Name of the contact group.
@@ -117,6 +132,9 @@ export type ContactGroup = {
    * String array containing details of the contacts in each group.
    */
   members?: string[];
+  /**
+   * User ID of the user who owns the contact group.
+   */
   ownerId?: string;
 };
 

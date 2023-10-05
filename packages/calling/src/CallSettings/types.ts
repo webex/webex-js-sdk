@@ -9,6 +9,9 @@ export type ToggleSetting = {
   ringSplashEnabled?: boolean;
 };
 
+/**
+ * `CallForwardAlwaysSetting` object used for Call forwarding APIs in case of always forwarding.
+ */
 export type CallForwardAlwaysSetting = {
   /**
    * This indicates if the call forward always is enabled or disabled.
@@ -19,8 +22,8 @@ export type CallForwardAlwaysSetting = {
    */
   ringReminderEnabled?: boolean;
   /**
-   * This property indicates the enabled or disabled state of sending incoming calls to destination number's voicemail when the destination is an
-   * internal phone number and that number has the voicemail service enabled.
+   * This property signifies whether incoming calls are directed to the voicemail of the destination number,
+   * provided that the destination is an internal phone number with an enabled voicemail service.
    */
   destinationVoicemailEnabled?: boolean;
   /**
@@ -30,14 +33,17 @@ export type CallForwardAlwaysSetting = {
   destination?: string;
 };
 
+/**
+ * `CallForwardSetting` object used within the callSetting object for Call forwarding APIs
+ */
 export type CallForwardSetting = {
   callForwarding: {
     /**
-     * Object to set properties to enable/disable call forward to a destination of your choice for all the incoming calls.
+     * Object to configure properties to enable/disable call forward to a destination of your choice for all the incoming calls.
      */
     always: CallForwardAlwaysSetting;
     /**
-     * Object to set properties to enable/disable call forward to a destination of your choice when the user's line is busy.
+     * Object to configure properties to enable/disable call forwarding to a destination of your choice when the user's line is busy.
      */
     busy: {
       /**
@@ -45,18 +51,18 @@ export type CallForwardSetting = {
        */
       enabled: boolean;
       /**
-       * This property indicates the enabled or disabled state of sending incoming calls to destination number's voicemail when the destination is an
-       * internal phone number and that number has the voicemail service enabled.
+       * This property signifies whether incoming calls are directed to the voicemail of the destination number when the user's line is busy,
+       * provided that the destination is an internal phone number with an enabled voicemail service.
        */
       destinationVoicemailEnabled?: boolean;
       /**
-       * Specify the destination number to which the call is forwarded when the call goes unanswered, if enabled.
-       * Destination is a phone number or a voicemail.
+       * Specify the destination number to which the call is forwarded in case of an unanswered call, if this feature is enabled.
+       * The destination can be either a phone number or a voicemail service.
        */
       destination?: string;
     };
     /**
-     * Object to set properties to enable/disable call forward to a destination of your choice when the call goes unanswered.
+     * Object to configure properties to enable/disable call forward to a destination of your choice in case the call goes unanswered.
      */
     noAnswer: {
       /**
@@ -72,19 +78,19 @@ export type CallForwardSetting = {
        */
       systemMaxNumberOfRings?: number;
       /**
-       * This property indicates the enabled or disabled state of sending incoming calls to destination number's voicemail when the destination is an
-       * internal phone number and that number has the voicemail service enabled.
+       * This property signifies whether incoming calls are directed to the voicemail of the destination number when the call goes unanswered,
+       * provided that the destination is an internal phone number with an enabled voicemail service.
        */
       destinationVoicemailEnabled?: boolean;
       /**
-       * If noAnswer is enabled, call is forwarded to the destination number specified here when the call goes unanswered.
-       * Destination is a phone number or a voicemail.
+       * If noAnswer is enabled, incoming calls are routed to the specified destination number in the event that the call remains unanswered.
+       * This destination can be either a phone number or a voicemail.
        */
       destination?: string;
     };
   };
   /**
-   * Object to set properties to enable/disable call forward to a destination of your choice when the user's line is not connected to the network.
+   * Object to configure properties to enable/disable call forward to a destination of your choice when the user's line is not connected to the network.
    */
   businessContinuity: {
     /**
@@ -92,27 +98,29 @@ export type CallForwardSetting = {
      */
     enabled: boolean;
     /**
-     * This property indicates the enabled or disabled state of sending incoming calls to destination number's voicemail when the destination is an
-     * internal phone number and that number has the voicemail service enabled.
+     * This property signifies whether incoming calls are directed to the voicemail of the destination number in case the user's line is not connected to the network,
+     * provided that the destination is an internal phone number with an enabled voicemail service.
      */
     destinationVoicemailEnabled?: boolean;
     /**
-     * Once the businessContinuity is enabled, the call is forwarded to the destination number specified here
-     * when the user's line is not connected to the network
-     * Destination can be a phone number or a voicemail.
+     * Once the "businessContinuity" feature is enabled, calls will be redirected to the specified destination number in case the user's line is not connected to the network.
+     * The designated destination can either be a phone number or a voicemail service.
      */
     destination?: string;
   };
 };
 
+/**
+ * `VoicemailSetting` object used within the callSetting object for Voicemail APIs
+ */
 export type VoicemailSetting = {
   /**
    * Boolean property to indicate if the voicemail is enabled/disabled for the user.
    */
   enabled: boolean;
   /**
-   * Object to set properties to enable/disable sending all calls to voicemail.
-   * This can only be set if voicemail is enabled.
+   * Object to configure properties for enabling/disabling the forwarding of all the incoming calls to voicemail.
+   * Please note that this setting can only be adjusted when voicemail is enabled.
    */
   sendAllCalls: {
     /**
@@ -121,8 +129,8 @@ export type VoicemailSetting = {
     enabled: boolean;
   };
   /**
-   * Object to set properties to enable/disable sending calls to voicemail if the user's line is busy.
-   * This can only be set if voicemail is enabled.
+   * Object to configure properties for enabling/disabling the forwarding of busy calls to voicemail.
+   * Please note that this setting can only be adjusted when voicemail is enabled.
    */
   sendBusyCalls: {
     /**
@@ -139,8 +147,8 @@ export type VoicemailSetting = {
     greetingUploaded?: boolean;
   };
   /**
-   * Object to set properties to enable/disable sending unanswered to voicemail.
-   * This can only be set if voicemail is enabled.
+   * Object to configure properties for enabling/disabling the forwarding of unanswered calls to voicemail.
+   * Please note that this setting can only be adjusted when voicemail is enabled.
    */
   sendUnansweredCalls: {
     /**
