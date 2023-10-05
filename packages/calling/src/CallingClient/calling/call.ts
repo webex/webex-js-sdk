@@ -1,4 +1,3 @@
-/* eslint-disable valid-jsdoc */
 import {
   Event,
   LocalMicrophoneStream,
@@ -7,7 +6,6 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
-import {LocalMicrophoneStreamEventNames} from '@webex/media-helpers';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
 import {
@@ -2413,9 +2411,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
-  /**
-   *
-   */
   private async delete(): Promise<MobiusCallResponse> {
     const disconnectMetrics = await this.getCallStats();
 
