@@ -92,6 +92,7 @@ let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let effect;
 
 const devicesById = {};
 const img = new Image();
@@ -611,8 +612,28 @@ function initiateTransfer() {
 
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+
   localAudioElem.srcObject = localAudioStream.outputStream;
   makeCallBtn.disabled = false;
+}
+
+async function addNoiseReductionEffect() {
+  effect = await localAudioStream.getEffect('background-noise-removal');
+
+  if (!effect) {
+    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+
+    await localAudioStream.addEffect('background-noise-removal', effect);
+  }
+
+  await effect.enable();
+}
+
+async function removeNoiseReductionEffect() {
+  effect = await localAudioStream.getEffect('background-noise-removal');
+  if (effect) {
+    await effect.disable();
+  }
 }
 
 // Listen for submit on create meeting
@@ -634,7 +655,7 @@ function clearMediaDeviceList() {
 }
 
 async function getMediaDevices() {
-  const cameras = await callingClient.mediaEngine.Media.getCameras();  
+  const cameras = await callingClient.mediaEngine.Media.getCameras();
   cameras.forEach((camera) => {
     populateSourceDevices(camera);
   });

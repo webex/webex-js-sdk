@@ -1,5 +1,9 @@
-/* eslint-disable valid-jsdoc */
-import {Event, LocalMicrophoneStream, RoapMediaConnection} from '@webex/internal-media-core';
+import {
+  Event,
+  LocalMicrophoneStream,
+  LocalStreamEventNames,
+  RoapMediaConnection,
+} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -1979,6 +1983,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.outputTrackUpdateListener(localAudioStream);
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
@@ -2003,6 +2008,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.outputTrackUpdateListener(localAudioStream);
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
@@ -2399,9 +2405,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
-  /**
-   *
-   */
+  private outputTrackUpdateListener(localAudioStream: LocalMicrophoneStream) {
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
+      this.mediaConnection.updateLocalTracks({audio: track});
+    });
+  }
+
   private async delete(): Promise<MobiusCallResponse> {
     const disconnectMetrics = await this.getCallStats();
 

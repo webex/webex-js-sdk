@@ -1,4 +1,4 @@
-import {createMicrophoneStream} from '@webex/media-helpers';
+import {NoiseReductionEffect, createMicrophoneStream} from '@webex/media-helpers';
 import {createCallSettingsClient} from './CallSettings/CallSettings';
 import {createContactsClient} from './Contacts/ContactsClient';
 import {createClient} from './CallingClient/CallingClient';
@@ -9,9 +9,10 @@ import Logger from './Logger';
 export {
   createClient,
   createCallHistoryClient,
+  createCallSettingsClient,
+  createContactsClient,
   createMicrophoneStream,
   createVoicemailClient,
-  createContactsClient,
-  createCallSettingsClient,
   Logger,
+  NoiseReductionEffect,
 };
