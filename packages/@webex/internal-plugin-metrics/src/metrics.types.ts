@@ -8,6 +8,11 @@ export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQ
 
 export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
+export type EnvironmentType = NonNullable<RawEvent['origin']['environment']>;
+export type ClientLaunchMethodType = NonNullable<
+  RawEvent['origin']['clientInfo']
+>['clientLaunchMethod'];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
@@ -15,8 +20,8 @@ export type SubmitClientEventOptions = {
   showToUser?: boolean;
   correlationId?: string;
   preLoginId?: string;
-  environment?: Event['origin']['environment'];
-  clientLaunchMethod?: Event['origin']['clientInfo']['clientLaunchMethod'];
+  environment?: EnvironmentType;
+  clientLaunchMethod?: ClientLaunchMethodType;
 };
 
 export type SubmitMQEOptions = {
@@ -92,11 +97,6 @@ export type ClientInfo = NonNullable<RawEvent['origin']['clientInfo']>;
 export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
-export type ClientLaunchMethodType = NonNullable<
-  RawEvent['origin']['clientInfo']
->['clientLaunchMethod'];
-
-export type EnvironmentType = NonNullable<RawEvent['origin']['environment']>;
 
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
 export type ClientEventLeaveReason = ClientEvent['payload']['leaveReason'];

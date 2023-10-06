@@ -164,7 +164,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
-          clientLaunchMethod: options?.clientLaunchMethod, // do we want something by default
+          clientLaunchMethod: options?.clientLaunchMethod,
         },
       };
 
@@ -178,6 +178,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.environment) {
         origin.environment = options.environment;
+      }
+
+      if (options?.clientLaunchMethod) {
+        origin.clientInfo.clientLaunchMethod = options.clientLaunchMethod;
       }
 
       return origin;
