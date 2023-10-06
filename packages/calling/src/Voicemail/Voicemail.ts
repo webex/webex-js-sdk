@@ -17,7 +17,14 @@ import {getMetricManager} from '../Metrics';
 import {VOICEMAIL_FILE} from './constants';
 
 /**
+ * `Voicemail` module is designed to facilitate the voicemail-related operations by providing a set of APIs.
  *
+ * This code snippet demonstrates how to create an instance of `Voicemail` using webex and logger .
+ *
+ * @example
+ * ```javascript
+ * const voicemailInstance = createVoicemailClient(webex, logger);
+ * ```
  */
 export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicemail {
   private sdkConnector: ISDKConnector;
@@ -31,6 +38,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   private metricManager: IMetricManager;
 
   /**
+   * @ignore
    * @param webex -.
    * @param logger -.
    */
@@ -115,12 +123,12 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   }
 
   /**
-   * Call voicemail class to fetch the voicemail lists.
+   * Retrieves a list of voicemails with optional pagination and sorting options.
    *
-   * @param sort - Sort voicemail list (ASC | DESC). TODO: Once we start implementing sorting.
    * @param offset - Number of records to skip.
-   * @param offsetLimit - Number of voicemail list to fetch from the offset.
-   * @param refresh - Refresh the list of voicemails from backend.
+   * @param offsetLimit - The limit on the number of voicemails to retrieve from the offset.
+   * @param sort - Sort voicemail list (ASC | DESC). TODO: Once we start implementing sorting.
+   * @param refresh - Set to `true` to force a refresh of voicemail data from backend (optional).
    * @returns Promise.
    */
   public async getVoicemailList(
@@ -142,10 +150,9 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   }
 
   /**
-   * Fetch the voicemail contents for the messageId.
+   * Retrieves the content of a voicemail message based on its messageId.
    *
-   * @param messageId - String result from the voicemail list.
-   * @returns Promise.
+   * @param messageId - The identifier of the voicemail message.
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.getVoicemailContent(messageId);
@@ -156,7 +163,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   }
 
   /**
-   * Fetches a quantitative summary of voicemails for a user.
+   * Retrieves a quantitative summary of voicemails for a user.
    *
    * @returns - A Promise that resolves with the data containing null or counters for newMessages, oldMessage, newUrgentMessages, oldUrgentMessages.
    */

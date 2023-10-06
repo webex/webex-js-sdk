@@ -46,7 +46,12 @@ import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/
 import {getMetricManager} from '../Metrics';
 
 /**
- *
+ * `CallingClient` module is designed to offer set of APIs that are related to doing line registration, calling functionalities on the SDK
+ * This code snippet demonstrates how to create an instance of `CallingClient` using webex and callingConfig .
+ * @example
+ * ```javascript
+ * const calling = createClient(webex, callingConfig);
+ * ```
  */
 export class CallingClient extends Eventing<CallingClientEventTypes> implements ICallingClient {
   private sdkConnector: ISDKConnector;
@@ -71,8 +76,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private lineDict: Record<string, ILine> = {};
 
   /**
-   * @param webex - A webex instance.
-   * @param config - Config to start the CallingClient with.
+   * @ignore
    */
   constructor(webex: WebexSDK, config?: CallingClientConfig) {
     super();

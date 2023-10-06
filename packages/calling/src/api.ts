@@ -17,7 +17,7 @@ import {ICallingClient} from './CallingClient/types';
 import {ContactsClient, createContactsClient} from './Contacts/ContactsClient';
 import {IContacts, Contact, ContactGroup} from './Contacts/types';
 import {Voicemail, createVoicemailClient} from './Voicemail/Voicemail';
-import {IVoicemail} from './Voicemail/types';
+import {IVoicemail, VoicemailResponseEvent} from './Voicemail/types';
 
 // Interfaces
 export {
@@ -35,7 +35,14 @@ export {
 export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail};
 
 // Types
-export {ContactGroup, Contact, CallForwardSetting, CallForwardAlwaysSetting, VoicemailSetting};
+export {
+  ContactGroup,
+  Contact,
+  CallForwardSetting,
+  CallForwardAlwaysSetting,
+  VoicemailSetting,
+  VoicemailResponseEvent,
+};
 
 // Methods
 export {
@@ -44,4 +51,4 @@ export {
   createClient,
   createContactsClient,
   createVoicemailClient,
-};
+}

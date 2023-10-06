@@ -33,7 +33,18 @@ export type CallingClientErrorEmitterCallback = (
  * `CallingClient` module is designed to offer set of APIs that are related to doing line registration, calling functionalities on the SDK
  */
 export interface ICallingClient extends Eventing<CallingClientEventTypes> {
-  // TODO: do we need this?
+  /**
+   * Represents the `mediaEngine for managing media-related operations within the CallingClient.
+   * The media engine provides access to audio and video devices such as cameras, microphones, and speakers within the media layer.
+   *
+   * @public
+   * @example
+   * ```
+   * const microphones = await callingClient.mediaEngine.Media.getMicrophones();
+   * const speakers = await callingClient.mediaEngine.Media.getSpeakers();
+   * const cameras = await callingClient.mediaEngine.Media.getCameras();
+   * ```
+   */
   mediaEngine: typeof Media;
   getSDKConnector(): ISDKConnector;
   getLoggingLevel(): LOGGER;
