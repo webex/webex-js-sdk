@@ -43,6 +43,33 @@ export type scimResponseBody = {
   Resources: Array<ResourceType>;
 };
 
+/**
+ * Represents the interface for fetching caller ID details.
+ */
 export interface ICallerId {
+  /**
+   * Fetches caller ID details based on the provided caller ID information.
+   *
+   * This method takes a {@link CallerIdInfo} object as input and performs caller ID
+   * resolution in the background, returning a {@link DisplayInformation} object
+   * containing intermediate name and number.
+   *
+   * @param callerId - Caller ID data passed to the method.
+   * @returns A collection of intermediate name and number as {@link DisplayInformation}.
+   *
+   * @remarks
+   * The `fetchCallerDetails` method is the main entrypoint for retrieving
+   * caller ID information. It initiates the caller ID resolution process
+   * based on the provided {@link CallerIdInfo} and returns the result as
+   * {@link DisplayInformation}.
+   *
+   * @example
+   * ```typescript
+   * const callerIdInfo: {@link CallerIdInfo} =
+   * const callerIdInfo: CallerIdInfo = { callerIdData };
+   * const displayInfo = callerIdInstance.fetchCallerDetails(callerIdInfo);
+   * console.log(`Name: ${displayInfo.name}, Number: ${displayInfo.number}`);
+   * ```
+   */
   fetchCallerDetails: (callerId: CallerIdInfo) => DisplayInformation;
 }

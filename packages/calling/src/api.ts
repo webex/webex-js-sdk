@@ -8,8 +8,9 @@ import {
   VoicemailSetting,
   CallForwardAlwaysSetting,
 } from './CallSettings/types';
+
 import {CallingClient, createClient} from './CallingClient/CallingClient';
-import {ICallManager, ICall} from './CallingClient/calling/types';
+import {ICall} from './CallingClient/calling/types';
 import {ILine} from './CallingClient/line/types';
 import {IRegistration} from './CallingClient/registration/types';
 import {ICallingClient} from './CallingClient/types';
@@ -22,7 +23,6 @@ import {IVoicemail} from './Voicemail/types';
 export {
   IRegistration,
   ILine,
-  ICallManager,
   ICall,
   ICallHistory,
   ICallSettings,

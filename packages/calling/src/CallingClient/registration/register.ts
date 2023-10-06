@@ -444,12 +444,17 @@ export class Registration implements IRegistration {
     }
   }
 
+  /**
+   * Retrieves information about the device as {@link IDeviceInfo}.
+   *
+   * @returns Information about the device.
+   */
   public getDeviceInfo(): IDeviceInfo {
     return this.deviceInfo;
   }
 
   /**
-   * .
+   * Checks if the device is currently registered.
    *
    * @returns True if this device is in registered state
    *          by checking if isRegistered state is set to
@@ -487,6 +492,12 @@ export class Registration implements IRegistration {
     }
   }
 
+  /**
+   * Handles connection restoration, optionally triggering a retry.
+   *
+   * @param retry - Set to `true` to trigger a retry after restoration.
+   * @returns A promise that resolves to `true` if the connection is restored, or `false` if it fails.
+   */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
