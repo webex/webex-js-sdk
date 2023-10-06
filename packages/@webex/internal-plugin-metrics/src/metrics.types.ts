@@ -12,7 +12,6 @@ export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
-  showToUser?: boolean;
   correlationId?: string;
   preLoginId?: string;
 };
