@@ -24,6 +24,7 @@ import {
   SubClientType,
   NetworkType,
   EnvironmentType,
+  NewEnvironmentType,
   ClientEvent,
   SubmitClientEventOptions,
   MediaQualityEvent,
@@ -55,6 +56,7 @@ type GetOriginOptions = {
   networkType?: NetworkType;
   clientLaunchMethod?: ClientLaunchMethodType;
   environment?: EnvironmentType;
+  newEnvironment?: NewEnvironmentType;
 };
 
 type GetIdentifiersOptions = {
@@ -164,7 +166,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
-          clientLaunchMethod: options?.clientLaunchMethod,
         },
       };
 
@@ -178,6 +179,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.environment) {
         origin.environment = options.environment;
+      }
+
+      if (options?.newEnvironment) {
+        origin.newEnvironment = options.newEnvironment;
       }
 
       if (options?.clientLaunchMethod) {
