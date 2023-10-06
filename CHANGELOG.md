@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.226](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.225...v3.0.0-beta.226) (2023-10-06)
+
+
+### Features
+
+* added IpNetworkDetector to webex.internal.device ([#3127](https://github.com/webex/webex-js-sdk/issues/3127)) ([44bbce8](https://github.com/webex/webex-js-sdk/commit/44bbce8aaa5a9780667ba504926f5baa9e5e00dc))
+
 ## [3.0.0-beta.225](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.224...v3.0.0-beta.225) (2023-10-06)
 
 
