@@ -158,15 +158,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getCallInitJoinReq() {
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
-      return this.getDiffBetweenTimestamps(
-        'internal.client.meeting.click.joinbutton',
-        'client.locus.join.request'
-      );
-    }
-
-    // for cross launch and guest flows
-    return this.precomputedLatencies.get('internal.call.init.join.req') || undefined;
+    return this.getDiffBetweenTimestamps(
+      'internal.client.interstitial-window.click.joinbutton',
+      'client.locus.join.request'
+    );
   }
 
   /**
