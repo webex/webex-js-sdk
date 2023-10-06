@@ -33,7 +33,7 @@
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
-    "deploy:npm": "npm publish"
+    "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
     "@types/platform": "1.3.4",
