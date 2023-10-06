@@ -108,7 +108,7 @@ describe('internal-plugin-metrics', () => {
 
         //@ts-ignore
         const res = cd.getOrigin(
-          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', clientLaunchMethod: 'url-handler'},
           fakeMeeting.id
         );
 
@@ -122,8 +122,37 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler'
           },
           environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('should build origin correctly and environment can be passed in options', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', clientLaunchMethod: 'url-handler', environment: 'test-env'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler'
+          },
+          environment: 'test-env',
           name: 'endpoint',
           networkType: 'unknown',
           userAgent,
@@ -146,6 +175,7 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
+            clientLaunchMethod: undefined,
           },
           name: 'endpoint',
           networkType: 'unknown',
@@ -174,6 +204,7 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
+            clientLaunchMethod: undefined,
           },
           environment: 'meeting_evn',
           name: 'endpoint',
@@ -1018,6 +1049,7 @@ describe('internal-plugin-metrics', () => {
                       os: getOSNameInternal() || 'unknown',
                       osVersion: getOSVersion(),
                       subClientType: 'WEB_APP',
+                      clientLaunchMethod: undefined,
                     },
                     environment: 'meeting_evn',
                     name: 'endpoint',
