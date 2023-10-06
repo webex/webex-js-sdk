@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.225](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.224...v3.0.0-beta.225) (2023-10-06)
+
+
+### Features
+
+* **ca:** remove show to user ([#3122](https://github.com/webex/webex-js-sdk/issues/3122)) ([76ce4e1](https://github.com/webex/webex-js-sdk/commit/76ce4e1208a950e86c7ba50bcabb7f99a9dbfc76))
+
 ## [3.0.0-beta.224](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.223...v3.0.0-beta.224) (2023-10-05)
 
 
