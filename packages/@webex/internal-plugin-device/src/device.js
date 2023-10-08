@@ -6,6 +6,7 @@ import {safeSetTimeout} from '@webex/common-timers';
 import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
+import IpNetworkDetector from './ipNetworkDetector';
 
 /**
  * Determine if the plugin should be initialized based on cached storage.
@@ -34,6 +35,12 @@ const Device = WebexPlugin.extend({
      * @type {FeaturesModel}
      */
     features: FeaturesModel,
+    /**
+     * Helper class for detecting what IP network version (ipv4, ipv6) we're on.
+     *
+     * @type {IpNetworkDetector}
+     */
+    ipNetworkDetector: IpNetworkDetector,
   },
 
   /**

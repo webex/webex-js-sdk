@@ -19,7 +19,6 @@ import {
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
-  RecursivePartial,
   Event,
   ClientType,
   SubClientType,
@@ -43,6 +42,7 @@ import {
   UNKNOWN_ERROR,
   BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
+  CALL_DIAGNOSTIC_LOG_IDENTIFIER,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -67,6 +67,7 @@ type GetIdentifiersOptions = {
 export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
+  private logger: any; // to avoid adding @ts-ignore everywhere
 
   /**
    * Constructor
@@ -74,6 +75,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   constructor(...args) {
     super(...args);
+    // @ts-ignore
+    this.logger = this.webex.logger;
     // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
   }
@@ -444,7 +447,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {meetingId, mediaConnections} = options;
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @prepareClientEvent. Creating in meeting event object.',
+      name
+    );
+    const {meetingId, mediaConnections, rawError} = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -506,6 +514,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
+      name
+    );
     const {correlationId} = options;
 
     // grab identifiers
@@ -553,10 +566,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const errors: ClientEventPayloadError = [];
 
     if (rawError) {
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+        name,
+        rawError
+      );
+
       const generatedError = this.generateClientEventErrorPayload(rawError);
       if (generatedError) {
         errors.push(generatedError);
       }
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+        generatedError
+      );
     }
 
     // events that will most likely happen in join phase
@@ -595,7 +620,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }) {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+      name,
+      payload,
+      options
+    );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
+
+    if (options?.preLoginId) {
+      return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
+    }
 
     return this.submitToCallDiagnostics(diagnosticEvent);
   }
@@ -612,8 +648,41 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       type: ['diagnostic-event'],
     };
 
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+      finalEvent
+    );
+
     return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
+
+  /**
+   * Pre login events are not batched. We make the request directly.
+   * @param event
+   * @param preLoginId
+   * @returns
+   */
+  public submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
+    // build metrics-a event type
+    // @ts-ignore
+    const diagnosticEvent = prepareDiagnosticMetricItem(this.webex, {
+      eventPayload: event,
+      type: ['diagnostic-event'],
+    });
+
+    // append sent timestamp
+    diagnosticEvent.eventPayload.originTime.sent = new Date().toISOString();
+
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Sending the request:`,
+      diagnosticEvent
+    );
+
+    // @ts-ignore
+    return this.webex.internal.newMetrics.postPreLoginMetric(diagnosticEvent, preLoginId);
+  };
 
   /**
    * Builds a request options object to later be passed to fetch().
@@ -633,6 +702,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }): Promise<any> {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
+      name,
+      payload,
+      options
+    );
+
     const clientEvent = this.prepareClientEvent({name, payload, options});
 
     // build metrics-a event type

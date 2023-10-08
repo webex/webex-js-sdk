@@ -3057,12 +3057,7 @@ export default class Meeting extends StatelessWebexPlugin {
     let changed = false;
     changed = this.inMeetingActions.set({
       canUseVoip:
-        ((this.userDisplayHints !== undefined
-          ? ControlsOptionsUtil.hasHints({
-              requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
-              displayHints: this.userDisplayHints,
-            })
-          : this.meetingInfo?.supportVoIP === true) &&
+        (this.meetingInfo?.supportVoIP === true &&
           ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: this.selfUserPolicies,
@@ -4459,7 +4454,7 @@ export default class Meeting extends StatelessWebexPlugin {
           payload: {
             identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
           },
-          options: {meetingId: this.id, rawError: error, showToUser: true},
+          options: {meetingId: this.id, rawError: error},
         });
 
         // TODO:  change this to error codes and pre defined dictionary
@@ -4832,7 +4827,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     } else if (
       error instanceof Errors.SdpOfferHandlingError ||
@@ -4846,7 +4841,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
@@ -4858,7 +4853,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     }
   };
@@ -5286,6 +5281,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex,
       this.id,
+      this.correlationId,
       {
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,

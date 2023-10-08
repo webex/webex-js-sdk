@@ -1266,6 +1266,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({turnServerInfo: undefined})
           );
           assert.calledOnce(meeting.setMercuryListener);
@@ -1338,6 +1339,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -1593,6 +1595,7 @@ describe('plugin-meetings', () => {
             meeting.getMediaConnectionDebugId(),
             webex,
             meeting.id,
+            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -4521,7 +4524,7 @@ describe('plugin-meetings', () => {
               payload: {
                 canProceed: false,
               },
-              options: {showToUser: true, rawError: error, meetingId: meeting.id},
+              options: {rawError: error, meetingId: meeting.id},
             });
           };
 
@@ -6236,27 +6239,7 @@ describe('plugin-meetings', () => {
           }
         );
 
-        it('canUseVoip is enabled based on locus info when the conditions are met', () => {
-          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
-          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
-          meeting.meetingInfo.supportVoIP = false;
-
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is disabled based on locus info when the required display hints are missing', () => {
-          meeting.userDisplayHints = [];
-          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is disabled based on locus info when the required policies are missing', () => {
+        it('canUseVoip is disabled when the required policies are missing', () => {
           meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
           meeting.selfUserPolicies = {};
           meeting.meetingInfo.supportVoIP = true;
@@ -6268,6 +6251,16 @@ describe('plugin-meetings', () => {
 
         it('canUseVoip is enabled based on api info when the conditions are met', () => {
           meeting.userDisplayHints = undefined;
+          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
+          meeting.meetingInfo.supportVoIP = true;
+
+          meeting.updateMeetingActions();
+
+          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
+        });
+
+        it('canUseVoip is enabled based on api info when the conditions are met - no display hints', () => {
+          meeting.userDisplayHints = [];
           meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
           meeting.meetingInfo.supportVoIP = true;
 
@@ -6419,6 +6412,7 @@ describe('plugin-meetings', () => {
           meeting.selfUserPolicies = {a: true};
           const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
           meeting.userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
+          meeting.meetingInfo.supportVoIP = true;
 
           meeting.updateMeetingActions();
 
@@ -6528,10 +6522,6 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.VOIP_IS_ENABLED],
             displayHints: userDisplayHints,
           });
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {

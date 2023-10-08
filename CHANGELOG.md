@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.226](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.225...v3.0.0-beta.226) (2023-10-06)
+
+
+### Features
+
+* added IpNetworkDetector to webex.internal.device ([#3127](https://github.com/webex/webex-js-sdk/issues/3127)) ([44bbce8](https://github.com/webex/webex-js-sdk/commit/44bbce8aaa5a9780667ba504926f5baa9e5e00dc))
+
+## [3.0.0-beta.225](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.224...v3.0.0-beta.225) (2023-10-06)
+
+
+### Features
+
+* **ca:** remove show to user ([#3122](https://github.com/webex/webex-js-sdk/issues/3122)) ([76ce4e1](https://github.com/webex/webex-js-sdk/commit/76ce4e1208a950e86c7ba50bcabb7f99a9dbfc76))
+
+## [3.0.0-beta.224](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.223...v3.0.0-beta.224) (2023-10-05)
+
+
+### Bug Fixes
+
+* update internal media core to 1.39.3 ([#3126](https://github.com/webex/webex-js-sdk/issues/3126)) ([5260716](https://github.com/webex/webex-js-sdk/commit/526071630af036fc0126d9ee588343cd3bcac825))
+
+## [3.0.0-beta.223](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.222...v3.0.0-beta.223) (2023-10-03)
+
+
+### Features
+
+* **ca:** add pre-login and more logs ([#3114](https://github.com/webex/webex-js-sdk/issues/3114)) ([03f98e5](https://github.com/webex/webex-js-sdk/commit/03f98e58ae8ee24847516c897fe6f3a89cf57cfa))
+
+## [3.0.0-beta.222](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.221...v3.0.0-beta.222) (2023-09-28)
+
+
+### Bug Fixes
+
+* update internal-media-core to 1.39.2 ([#3113](https://github.com/webex/webex-js-sdk/issues/3113)) ([68ac432](https://github.com/webex/webex-js-sdk/commit/68ac432504c403f8d4dfd95ffe7de33e756d3f06))
+
+## [3.0.0-beta.221](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.220...v3.0.0-beta.221) (2023-09-28)
+
+
+### Features
+
+* **plugin-meetings:** don't use voip display hint ([#3112](https://github.com/webex/webex-js-sdk/issues/3112)) ([fa96bf4](https://github.com/webex/webex-js-sdk/commit/fa96bf482a52becc75e436d2b8bc6a055444101d))
+
+## [3.0.0-beta.220](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.219...v3.0.0-beta.220) (2023-09-26)
+
+
+### Bug Fixes
+
+* add correct correlation id to rtcmetrics ([#3109](https://github.com/webex/webex-js-sdk/issues/3109)) ([5ccc748](https://github.com/webex/webex-js-sdk/commit/5ccc748c9d5e1929fc7a158038eb725d2a441239))
+* improve error logging for xhr ([#3110](https://github.com/webex/webex-js-sdk/issues/3110)) ([539f12c](https://github.com/webex/webex-js-sdk/commit/539f12c2a03a74db0d95162ececc73667abf4d0e))
+
 ## [3.0.0-beta.219](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.218...v3.0.0-beta.219) (2023-09-25)
 
 

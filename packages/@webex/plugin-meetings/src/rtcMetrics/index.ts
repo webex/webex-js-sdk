@@ -1,4 +1,3 @@
-import uuid from 'uuid';
 import RTC_METRICS from './constants';
 
 /**
@@ -23,13 +22,14 @@ export default class RtcMetrics {
    *
    * @param {object} webex - The main `webex` object.
    * @param {string} meetingId - The meeting id.
+   * @param {string} correlationId - The correlation id.
    */
-  constructor(webex, meetingId) {
+  constructor(webex, meetingId, correlationId) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.
     this.intervalId = window.setInterval(this.checkMetrics.bind(this), 30 * 1000);
     this.meetingId = meetingId;
     this.webex = webex;
-    this.correlationId = uuid.v4();
+    this.correlationId = correlationId;
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
     setTimeout(this.checkMetrics.bind(this), 5 * 1000);
   }

@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-metrics",
-  "version": "3.0.0-beta.219",
+  "version": "3.0.0-beta.226",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^6.0.1",
+    "@webex/event-dictionary-ts": "^1.0.1237",
     "sinon": "^9.2.4"
   },
   "scripts": {

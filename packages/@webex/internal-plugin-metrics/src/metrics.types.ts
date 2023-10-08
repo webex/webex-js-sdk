@@ -1,6 +1,8 @@
-import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
-import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
-import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/generated-types-temp/MediaQualityEvent';
+import {
+  ClientEvent as RawClientEvent,
+  Event as RawEvent,
+  MediaQualityEvent as RawMediaQualityEvent,
+} from '@webex/event-dictionary-ts';
 
 export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
 
@@ -10,8 +12,8 @@ export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
-  showToUser?: boolean;
   correlationId?: string;
+  preLoginId?: string;
 };
 
 export type SubmitMQEOptions = {
