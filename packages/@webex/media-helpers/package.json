@@ -1,6 +1,5 @@
 {
   "name": "@webex/media-helpers",
-  "version": "3.0.0-beta.187",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
@@ -19,7 +18,8 @@
     "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
     "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint 'src/**/*.ts' --fix",
-    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha"
+    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha",
+    "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
     "@webex/babel-config-legacy": "workspace:^",
@@ -28,7 +28,7 @@
     "@webex/jest-config-legacy": "workspace:^",
     "@webex/legacy-tools": "workspace:^",
     "@webex/ts-events": "^1.1.0",
-    "@webex/web-media-effects": "^2.11.5"
+    "@webex/web-media-effects": "^2.12.0"
   },
   "browserify": {
     "transform": [

@@ -95,6 +95,10 @@ class Calling extends EventEmitter {
   static get createMicrophoneStream() {
     return WebexCalling.createMicrophoneStream;
   }
+
+  static createNoiseReductionEffect(authToken) {
+    return new WebexCalling.NoiseReductionEffect({authToken});
+  }
 }
 
 const createCalling = async ({webex, webexConfig, callingConfig}) => {

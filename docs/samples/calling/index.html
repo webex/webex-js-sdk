@@ -49,7 +49,7 @@
                     <br><br>
                     <strong>Note:</strong> Please update these before <mark>calling.init()</mark> if want to use different values.
                   </p>
-                  
+
                   <div class="u-mv">
                     <select name="Service Indicator" id="ServiceIndicator" class="ServiceData">
                       <option value="" disabled selected hidden>Choose Service ...</option>
@@ -119,8 +119,14 @@
               <button id="sd-get-media-streams" type="button" onclick="getMediaStreams()"
                 class="btn-code">getMediaStreams()</button>
             </div>
+            <div class="u-mv">
+              <button id="sd-add-bnr" type="button" onclick="addNoiseReductionEffect()"
+              class="btn-code">Enable BNR()</button>
+              <button id="sd-add-bnr" type="button" onclick="removeNoiseReductionEffect()"
+              class="btn-code">Disable BNR()</button>
+            </div>
           </fieldset>
-          
+
             <form id="call-create">
               <fieldset>
                 <legend>Outgoing Call</legend>

@@ -173,6 +173,10 @@ jobs:
           path: '**/dist'
           key: dist-${{ env.rid }}
 
+      - name: Add NPM token to .yarnrc.yml file
+        run: |
+          echo "npmAuthToken: ${{ env.token }}" >> ~/.yarnrc.yml
+
       - name: Synchronize Packages
         run: |
           yarn

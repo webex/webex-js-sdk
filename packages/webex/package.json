@@ -4,13 +4,11 @@
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-    "Andrew Holsted <holsted@cisco.com>",
     "Arun Ganeshan <arungane@cisco.com>",
     "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-    "Ian W. Remmel (https://www.ianwremmel.com)",
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Moriah Maney <momaney@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>"
+    "Kesava Krishnan Madavan <kmadavan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>",
+    "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
   "main": "dist/index.js",
   "exports": {
@@ -46,7 +44,7 @@
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style:todo": "eslint ./src/**/*.*",
     "test:unit:todo": "webex-legacy-tools test --unit --runner jest",
-    "deploy:npm": "echo yarn npm publish"
+    "deploy:npm": "yarn npm publish"
   },
   "devDependencies": {
     "@webex/babel-config-legacy": "workspace:^",
