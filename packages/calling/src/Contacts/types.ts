@@ -1,3 +1,4 @@
+import {ISDKConnector} from 'SDKConnector/types';
 import {ContactDetail} from '../common/types';
 
 export enum ContactType {
@@ -175,6 +176,7 @@ export type ContactResponse = {
  * ````
  */
 export interface IContacts {
+  getSDKConnector: () => ISDKConnector;
   /**
    * This API is used to fetch the list of contacts and groups for a user.
    *
