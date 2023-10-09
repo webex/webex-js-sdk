@@ -130,6 +130,63 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly with newEnvironment and createLaunchMethod', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', newEnvironment: 'test-new-env', clientLaunchMethod: 'url-handler'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler',
+          },
+          environment: 'meeting_evn',
+          newEnvironment: 'test-new-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('should build origin correctly and environment can be passed in options', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', clientLaunchMethod: 'url-handler', environment: 'test-env'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler'
+          },
+          environment: 'test-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 

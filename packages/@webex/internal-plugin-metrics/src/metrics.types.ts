@@ -8,12 +8,23 @@ export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQ
 
 export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
+export type EnvironmentType = NonNullable<RawEvent['origin']['environment']>;
+
+export type NewEnvironmentType = NonNullable<RawEvent['origin']['newEnvironment']>;
+
+export type ClientLaunchMethodType = NonNullable<
+  RawEvent['origin']['clientInfo']
+>['clientLaunchMethod'];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
   correlationId?: string;
   preLoginId?: string;
+  environment?: EnvironmentType;
+  newEnvironmentType?: NewEnvironmentType;
+  clientLaunchMethod?: ClientLaunchMethodType;
 };
 
 export type SubmitMQEOptions = {
