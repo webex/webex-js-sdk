@@ -39,7 +39,7 @@ export interface ILine {
   clientDeviceUri: string;
 
   /**
-   * The identifier of the line.
+   * The unique identifier of the line.
    */
   lineId: string;
 
@@ -126,14 +126,12 @@ export interface ILine {
   /**
    * Retrieves the active Mobius server URL associated with the line.
    *
-   * @returns The active Mobius server URL.
    */
   getActiveMobiusUrl(): string;
 
   /**
    * Retrieves the registration status of the line as {@link MobiusStatus}.
    *
-   * @returns The registration status.
    */
   getRegistrationStatus(): MobiusStatus;
 
@@ -141,7 +139,6 @@ export interface ILine {
    * Retrieves the device identifier associated with the line as {@link MobiusDeviceId},
    * or `undefined` if no device is associated.
    *
-   * @returns The device identifier or `undefined`.
    */
   getDeviceId(): MobiusDeviceId | undefined;
 
@@ -151,6 +148,12 @@ export interface ILine {
    * @param event - The line event to emit.
    * @param deviceInfo - Additional device information (optional).
    * @param lineError - Information about line-related errors (optional).
+   *
+   * @example
+   * ```typescript
+   * line.lineEmitter(LINE_EVENTS.UNREGISTERED);
+   * ```
+   * @ignore
    */
   lineEmitter: (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => void;
 
@@ -158,7 +161,12 @@ export interface ILine {
    * Initiates a call to the specified destination.
    *
    * @param dest - The call details including destination information.
-   * @returns The created call object as {@link ICall}, or `undefined` if the call cannot be initiated.
+   *
+   * @example
+   * ```typescript
+   * const callDetails : CallDetails = {type: 'uri', address: 'example@webex.com'};
+   * const callObj: ICall = line.makeCall(callDetails);
+   * ```
    */
   makeCall(dest: CallDetails): ICall | undefined;
 
@@ -166,7 +174,10 @@ export interface ILine {
    * Retrieves a call object based on the provided correlation identifier.
    *
    * @param correlationId - The correlation identifier of the call.
-   * @returns The call object as {@link ICall}.
+   * @example
+   * ```typescript
+   * const callObj: ICall = line.getCall(correlationId);
+   * ```
    */
   getCall(correlationId: CorrelationId): ICall;
 }

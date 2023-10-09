@@ -71,35 +71,70 @@ export type VoicemailResponseEvent = {
 };
 
 /**
- * Represents an interface for managing voicemail-related operations.
+ * Interface for Voicemail Module.
+ * This encompasses set of APIs that allows to retrieve and update the voicemail like voicemail list, summary, mark as read/unread and voicemail transcript.
+
+ * These APIs return promises that resolve to a `VoicemailResponseEvent` object, which contains a status code, data, and message.
+ * The data field within this response object holds various object, which can take on different types depending on the specific API called.
+ *
+ * @example
+ * Successful responses will be populated as shown below:
+ * ```json
+ * {
+ *    statusCode: 200,
+ *    data: {
+ *      voicemailTranscript: "Example"
+ *    },
+ *    message: 'SUCCESS'
+ * }
+ * ```
+ * 
+ * Failure responses will be populated as shown below:
+ * ```json
+ * {
+ *    statusCode: 503,
+ *    data: {
+ *        error: "Failure reason"
+ *    },
+ *    message: 'FAILURE'
+ * }
+ * 
  */
 export interface IVoicemail {
   /**
    * Retrieves the SDK connector associated with the Calling SDK.
-   *
-   * @returns The SDK connector as {@link ISDKConnector}.
+   * @ignore
    */
   getSDKConnector(): ISDKConnector;
 
   /**
    * Initializes the voicemail service and returns a voicemail response event.
    *
-   * @returns A voicemail response event as {@link VoicemailResponseEvent}.
    */
   init(): VoicemailResponseEvent;
 
   /**
    * Retrieves a list of voicemails with optional pagination and sorting options.
+   * Received data can be accessed through `data.voicemailList`
    *
    * @param offset - The offset for pagination. Number of records to skip.
    * @param offsetLimit - The limit on the number of voicemails to retrieve from the offset.
    * @param sort - Sort voicemail list (eg. ASC | DESC).
    * @param refresh - Set to `true` to force a refresh of voicemail data from backend (optional).
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent}.
+   *
    * @example
    * ```typescript
-   * const voicemailList = await voicemailInstance.getVoicemailList(0, 10, SORT.ASC);
-   * console.log(voicemailList);
+   * const voicemailResponse = await voicemailInstance.getVoicemailList(0, 10, SORT.ASC);
+   * ```
+   * The `voicemailResponse` object will have `voicemailList` object as properties in data attribute.
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    data: {
+   *        voicemailList: [messages]
+   *    }
+   * }
    * ```
    */
   getVoicemailList(
@@ -111,31 +146,51 @@ export interface IVoicemail {
 
   /**
    * Retrieves the content of a voicemail message based on its messageId.
+   * Received data can be accessed through `data.voicemailContent`
    *
    * @param messageId - The identifier of the voicemail message.
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent}.
+   * @example
    * ```typescript
    * const messageId = 'Y2lzY29zcGFyazovL3VzL01FU1NBR0UvNTc3OTQ2NjItNDA5OS00NDQ3LWI';
-   * const vmResponse = await voicemailInstance.getVoicemailContent(messageId);
-   * console.log(vmResponse.voicemailContent);
+   * const voicemailResponse = await voicemailInstance.getVoicemailContent(messageId);
+   * ```
+   * The `voicemailResponse` object will have `voicemailContent` object as properties in data attribute.
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    data: {
+   *        voicemailContent: {
+   *          type: 'message',
+   *          content: 'something'
+   *        }
+   *    }
+   * }
+   * ```
    */
   getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent>;
 
   /**
    * Retrieves a quantitative summary of voicemails for a user.
+   * Received data can be accessed through `data.voicemailSummary`
    *
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent},
-   *          or `null` if there is no voicemail summary available.
    * @example
    * ```
-   * const vmResponse = await voicemailInstance.getVoicemailSummary();
-   * console.log(vmResponse.voicemailSummary);
-   * //
+   * const voicemailResponse = await voicemailInstance.getVoicemailSummary();
+   * ```
+   * The `voicemailResponse` object will have `voicemailSummary` object as properties in data attribute.
+   *
+   * ```json
    * {
-   *    newMessages: 1,
-   *    oldMessage: 7,
-   *    newUrgentMessages: 0,
-   *    oldUrgentMessages: 0
+   *    statusCode: 200,
+   *    data: {
+   *        voicemailSummary: {
+   *          newMessages: 1,
+   *          oldMessage: 7,
+   *          newUrgentMessages: 0,
+   *          oldUrgentMessages: 0
+   *        }
+   *    }
    * }
    * ```
    */
@@ -143,50 +198,99 @@ export interface IVoicemail {
 
   /**
    * Marks a voicemail message as read based on its message identifier.
+   * Note: Response will have a `statusCode` and `message`. But `data` attribute is not returned in the response unless it is
+   * an error response in that case   `data` will have `error` attribute.
    *
    * @param messageId - The identifier of the voicemail message to mark as read.
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent}.
    * ```typescript
    * const messageId = 'Y2lzY29zcGFyazovL3VzL01FU1NBR0UvNTc3OTQ2NjItNDA5OS00NDQ3LWI';
-   * await voicemailInstance.voicemailMarkAsRead(messageId);
+   * const voicemailResponse = await voicemailInstance.voicemailMarkAsRead(messageId);
    * ```
+   * The `voicemailResponse` object will be populated as below:
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    message: "SUCCESS"
+   * }
+   * ```
+   * The `voicemailResponse` object will be populated as below in case of error response:
+   *
+   * ```json
+   * {
+   *    statusCode: 404,
+   *    message: "FAILURE"
+   *    data: {
+   *      error: "Failure reason"
+   *    }
+   * }
    */
   voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent>;
 
   /**
    * Marks a voicemail message as unread based on its message identifier.
+   * Note: Response will have a `statusCode` and `message`. But `data` attribute is not returned in the response unless it is
+   * an error response in that case   `data` will have `error` attribute.
    *
    * @param messageId - The identifier of the voicemail message to mark as unread.
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent}.
+   * @example
    * ```typescript
    * const messageId = 'Y2lzY29zcGFyazovL3VzL01FU1NBR0UvNTc3OTQ2NjItNDA5OS00NDQ3LWI';
-   * await voicemailInstance.voicemailMarkAsUnread(messageId);
+   * const voicemailResponse = await voicemailInstance.voicemailMarkAsUnread(messageId);
+   * ```
+   * The `voicemailResponse` object will be populated as below:
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    message: "SUCCESS"
+   * }
    * ```
    */
   voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent>;
 
   /**
    * Deletes a voicemail message based on its message identifier.
+   * Note: Response will have a `statusCode` and `message`. But `data` attribute is not returned in the response unless it is
+   * an error response in that case   `data` will have `error` attribute.
    *
    * @param messageId - The identifier of the voicemail message to delete.
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent}.
+   * @example
    * ```typescript
    * const messageId = 'Y2lzY29zcGFyazovL3VzL01FU1NBR0UvNTc3OTQ2NjItNDA5OS00NDQ3LWI';
-   * await voicemailInstance.deleteVoicemail(messageId);
+   * const voicemailResponse = await voicemailInstance.deleteVoicemail(messageId);
+   * ```
+   * The `voicemailResponse` object will be populated as below:
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    message: "SUCCESS"
+   * }
    * ```
    */
   deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent>;
 
   /**
    * Retrieves the transcript of a voicemail message based on its message identifier.
+   * Received data can be accessed through `data.voicemailTranscript`
    *
    * @param messageId - The identifier of the voicemail message.
-   * @returns A promise that resolves to a voicemail response event as {@link VoicemailResponseEvent},
-   *          or `null` if there is no voicemail transcript available.
+   *
+   * @example
    * ```typescript
    * const messageId = 'Y2lzY29zcGFyazovL3VzL01FU1NBR0UvNTc3OTQ2NjItNDA5OS00NDQ3LWI';
    * const voicemailResponse = await voicemailInstance.getVMTranscript(messageId);
-   * console.log(voicemailResponse.voicemailTranscript);
+   * ```
+   * The `voicemailResponse` object will have `voicemailTranscript` object as properties in data attribute.
+   *
+   * ```json
+   * {
+   *    statusCode: 200,
+   *    data: {
+   *        voicemailTranscript: 'Here is your transcript.'
+   *    }
+   * }
    * ```
    */
   getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null>;
@@ -195,13 +299,11 @@ export interface IVoicemail {
    * Resolves contact information based on calling party information.
    *
    * @param callingPartyInfo - The calling party information for contact resolution.
-   * @returns A promise that resolves to contact information as {@link DisplayInformation},
-   *          or `null` if contact resolution is unsuccessful.
-   *  * @example
+   *
+   * @example
    * ```typescript
    * const callingPartyInfo = { userId: "Y2lzY29zcGFyazovL3VzL1BFT1BMRS8wZmVh" };
    * const contactInfo = await voicemailInstance.resolveContact(callingPartyInfo);
-   * console.log(contactInfo);
    * ```
    */
   resolveContact(callingPartyInfo: CallingPartyInfo): Promise<DisplayInformation | null>;

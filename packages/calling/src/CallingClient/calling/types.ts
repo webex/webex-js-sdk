@@ -205,30 +205,26 @@ export type CallRtpStats = {
  */
 export interface ICall extends Eventing<CallEventTypes> {
   /**
-   * Gets the identifier of the line associated with this call.
+   * Fetches the identifier of the line associated with this call.
    *
-   * @returns The line identifier.
    */
   lineId: string;
 
   /**
-   * Gets the unique call identifier.
+   * Fetches the unique call identifier.
    *
-   * @returns The call identifier.
    */
   getCallId(): string;
 
   /**
-   * Gets the correlation identifier for this call.
+   * Fetches the correlation identifier for this call.
    *
-   * @returns The correlation identifier.
    */
   getCorrelationId(): string;
 
   /**
-   * Gets the direction of the call (e.g., inbound or outbound).
+   * Fetches the direction of the call (e.g., inbound or outbound).
    *
-   * @returns The {@link CallDirection}.
    */
   getDirection(): CallDirection;
 
@@ -256,35 +252,31 @@ export interface ICall extends Eventing<CallEventTypes> {
   sendMediaStateMachineEvt(event: RoapEvent): void;
 
   /**
-   * Gets the reason for disconnecting the call.
+   * Fetches the reason for disconnecting the call.
    *
-   * @returns The disconnect reason.
    */
   getDisconnectReason(): DisconnectReason;
 
   /**
-   * Ends the call.
+   * Disconnects the call.
    */
   end(): void;
 
   /**
    * Checks if the call is muted.
    *
-   * @returns True if the call is muted; otherwise, false.
    */
   isMuted(): boolean;
 
   /**
    * Checks if the call is connected.
    *
-   * @returns True if the call is connected; otherwise, false.
    */
   isConnected(): boolean;
 
   /**
    * Checks if the call is on hold.
    *
-   * @returns True if the call is on hold; otherwise, false.
    */
   isHeld(): boolean;
 
@@ -301,9 +293,8 @@ export interface ICall extends Eventing<CallEventTypes> {
   mute(localAudioStream: LocalMicrophoneStream): void;
 
   /**
-   * Gets caller information associated with the call.
+   * Fetches the caller information associated with the call.
    *
-   * @returns The caller's information as {@link DisplayInformation}.
    */
   getCallerInfo(): DisplayInformation;
 
@@ -379,9 +370,8 @@ export interface ICall extends Eventing<CallEventTypes> {
   ): void;
 
   /**
-   * Gets information related to the call's Broadworks correlationId.
+   * Fetches the information related to the call's Broadworks correlationId.
    *
-   * @returns The Broadworks correlation information or undefined if not available.
    */
   getBroadworksCorrelationInfo(): string | undefined;
 
@@ -393,9 +383,8 @@ export interface ICall extends Eventing<CallEventTypes> {
   setBroadworksCorrelationInfo(broadworksCorrelationInfo: string): void;
 
   /**
-   * Gets RTP (Real-time Transport Protocol) statistics for the call.
+   * Fetches the RTP (Real-time Transport Protocol) statistics for the call.
    *
-   * @returns A promise that resolves to the RTP statistics for the call.
    */
   getCallRtpStats(): Promise<CallRtpStats>;
 }
@@ -416,7 +405,6 @@ export interface ICallManager extends Eventing<CallEventTypes> {
    * @param direction - The direction of the call (e.g., incoming or outgoing).
    * @param deviceId - The unique identifier of the device associated with the call.
    * @param lineId - The identifier of the line to which the call belongs.
-   * @returns The created call object as {@link ICall}.
    */
   createCall(
     destination: CallDetails,
@@ -429,7 +417,6 @@ export interface ICallManager extends Eventing<CallEventTypes> {
    * Retrieves a call based on its unique call identifier.
    *
    * @param correlationId - The unique identifier for the call at client
-   * @returns The call object as {@link ICall}, or `undefined` if the call is not found.
    */
   getCall(correlationId: CorrelationId): ICall;
 
@@ -444,7 +431,6 @@ export interface ICallManager extends Eventing<CallEventTypes> {
    * Retrieves a dictionary of active calls, where each key is a call identifier
    * and the corresponding value is the call object.
    *
-   * @returns A dictionary of active calls as {@link Record<string, ICall>}.
    */
   getActiveCalls(): Record<string, ICall>;
 

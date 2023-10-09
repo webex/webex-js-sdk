@@ -21,7 +21,7 @@ import {Eventing} from '../Events/impl';
  *
  * This code snippet demonstrates how to create an instance of `CallHistory` using webex and logger.
  *
- * Example
+ * @example
  * ```javascript
  * const callHistory = createCallHistoryClient(webex, logger);
  * ```

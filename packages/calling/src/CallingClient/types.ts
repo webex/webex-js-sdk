@@ -46,64 +46,73 @@ export interface ICallingClient extends Eventing<CallingClientEventTypes> {
    * ```
    */
   mediaEngine: typeof Media;
+
+  /**
+   * @ignore
+   */
   getSDKConnector(): ISDKConnector;
+
+  /**
+   * @ignore
+   */
   getLoggingLevel(): LOGGER;
 
   /**
    * Retrieves details of the line object(s) belonging to a user.
    *
-   * @returns A dictionary where each key is a line identifier and the corresponding
-   *          value is the {@link ILine} object associated with that identifier.
+   * This method gathers all the {@link ILine}  objects and organizes them into a dictionary
+   * where keys represent `lineId`s and values are arrays of {@link ILine} objects registered with
+   * the `callingClient`
    *
    * @example
    * ```typescript
    * const lines = callingClient.getLines();
-   * // {
-   * //   'lineId1': lineObj1,
-   * //   'lineId2': lineObj2,
-   * // }
+   * ```
+   * The `lines` response object will have `lineId` as its key and
+   * a list {@link ILine} objects as it's value.
+   * ```
+   * {
+   *   'lineId1': lineObj1,
+   *   'lineId2': lineObj2,
+   * }
+   * ```
    */
   getLines(): Record<string, ILine>;
 
   /**
    * Retrieves a dictionary of active calls grouped by `lineId`.
    *
-   * This method gathers active call objects and organizes them into a dictionary
-   * where keys represent `lineId`s and values are arrays of active calls associated
+   * This method gathers active {@link ICall}  objects and organizes them into a dictionary
+   * where keys represent `lineId`s and values are arrays of {@link ICall} objects of active calls associated
    * with each line.
-   *
-   * @returns A dictionary where each key is a `lineId` and the corresponding value
-   *          is an array of {@link ICall} objects that are active and associated with that line.
    *
    * @example
    * ```typescript
    * const activeCalls = callingClient.getActiveCalls();
-   * // {
-   * //   'line1': [call1, call2],
-   * //   'line2': [call3],
-   * // }
+   * ```
+   * The `activeCalls` response object will have `lineId` as its key and
+   * a list {@link ICall} objects as it's value.
+   *
+   * ```
+   * {
+   *   'line1': [call1, call2],
+   *   'line2': [call3],
+   * }
    * ```
    */
   getActiveCalls(): Record<string, ICall[]>;
 
   /**
-   * Retrieves the call object for the currently connected call in the client.
+   * Retrieves the {@link ICall} object for the currently connected call in the client.
    *
    * This method iterates through active call objects and returns the call
    * that is currently connected (not on hold).
    *
-   * @returns The {@link ICall} object for the connected call, or undefined if no connected
-   *          call is found.
-   *
    * @example
    * ```typescript
-   * const connectedCall = callingClient.getConnectedCall();
-   * if (connectedCall) {
-   *   console.log(`Connected call ID: ${connectedCall.callId}`);
-   * } else {
-   *   console.log('No connected calls.');
-   * }
+   * const connectedCall : ICall = callingClient.getConnectedCall();
    * ```
+   * The `connectedCall` object will be the Call object of the connected call with the client
    */
   getConnectedCall(): ICall | undefined;
 }

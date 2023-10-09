@@ -1965,7 +1965,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   /**
-   * Answers the call using the provided local audio stream.
+   * Answers the call with the provided local audio stream.
    *
    * @param localAudioStream - The local audio stream for the call.
    */

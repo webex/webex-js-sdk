@@ -55,7 +55,6 @@ export interface ICallerId {
    * containing intermediate name and number.
    *
    * @param callerId - Caller ID data passed to the method.
-   * @returns A collection of intermediate name and number as {@link DisplayInformation}.
    *
    * @remarks
    * The `fetchCallerDetails` method is the main entrypoint for retrieving
@@ -65,7 +64,6 @@ export interface ICallerId {
    *
    * @example
    * ```typescript
-   * const callerIdInfo: {@link CallerIdInfo} =
    * const callerIdInfo: CallerIdInfo = { callerIdData };
    * const displayInfo = callerIdInstance.fetchCallerDetails(callerIdInfo);
    * console.log(`Name: ${displayInfo.name}, Number: ${displayInfo.number}`);

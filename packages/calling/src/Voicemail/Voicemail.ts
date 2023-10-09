@@ -21,7 +21,7 @@ import {VOICEMAIL_FILE} from './constants';
  *
  * This code snippet demonstrates how to create an instance of `Voicemail` using webex and logger .
  *
- * @example
+ * Example:
  * ```javascript
  * const voicemailInstance = createVoicemailClient(webex, logger);
  * ```
@@ -39,8 +39,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 
   /**
    * @ignore
-   * @param webex -.
-   * @param logger -.
    */
   constructor(webex: WebexSDK, public logger: LoggerInterface) {
     super();
@@ -58,7 +56,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   /**
    * Voicemail connector initialization.
    *
-   * @returns Response.
    */
   public init() {
     const response = this.backendConnector.init();
@@ -127,9 +124,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    *
    * @param offset - Number of records to skip.
    * @param offsetLimit - The limit on the number of voicemails to retrieve from the offset.
-   * @param sort - Sort voicemail list (ASC | DESC). TODO: Once we start implementing sorting.
+   * @param sort - Sort voicemail list (ASC | DESC).
    * @param refresh - Set to `true` to force a refresh of voicemail data from backend (optional).
-   * @returns Promise.
    */
   public async getVoicemailList(
     offset: number,
@@ -165,7 +161,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   /**
    * Retrieves a quantitative summary of voicemails for a user.
    *
-   * @returns - A Promise that resolves with the data containing null or counters for newMessages, oldMessage, newUrgentMessages, oldUrgentMessages.
    */
   public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
     const response = await this.backendConnector.getVoicemailSummary();
@@ -182,7 +177,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Fetch voicemail read message status for the messageId.
    *
    * @param messageId -string result from the voicemail list.
-   * @returns Promise.
    */
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.voicemailMarkAsRead(messageId);
@@ -196,7 +190,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Fetch voicemail unread status for the messageId.
    *
    * @param messageId -string result from the voicemail list.
-   * @returns Promise.
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.voicemailMarkAsUnread(messageId);
@@ -210,7 +203,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Fetch voicemail delete status for the messageId.
    *
    * @param messageId -string result from the voicemail list.
-   * @returns Promise.
    */
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const response = await this.backendConnector.deleteVoicemail(messageId);
@@ -224,7 +216,6 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Fetch the voicemail transcripts for the messageId.
    *
    * @param messageId - MessageId for which we need the transcript.
-   * @returns Promise.
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null> {
     const response = await this.backendConnector.getVMTranscript(messageId);
@@ -247,8 +238,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 
   /**
    * SDK connector function.
-   *
-   * @returns SdkConnector.
+   * @ignore
    */
   public getSDKConnector(): ISDKConnector {
     return this.sdkConnector;
@@ -256,8 +246,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 }
 
 /**
- * @param webex -.
- * @param logger -.
+ * @param webex - webex instance
+ * @param logger - logger instance
  */
 export const createVoicemailClient = (webex: WebexSDK, logger: LoggerInterface): IVoicemail =>
   new Voicemail(webex, logger);

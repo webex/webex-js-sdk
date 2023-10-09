@@ -24,14 +24,12 @@ export interface IRegistration {
   /**
    * Triggers the registration process with the given list of servers
    * Registration is attempted with primary and backup until it succeeds or the list is exhausted
-   * @returns A promise that resolves when registration is complete.
    */
   triggerRegistration(): Promise<void>;
 
   /**
    * Checks if the device is currently registered.
    *
-   * @returns `true` if the device is registered; otherwise, `false`.
    */
   isDeviceRegistered(): boolean;
 
@@ -45,14 +43,12 @@ export interface IRegistration {
   /**
    * Retrieves the current registration status.
    *
-   * @returns The current registration status.
    */
   getStatus(): MobiusStatus;
 
   /**
    * Retrieves information about the device as {@link IDeviceInfo}.
    *
-   * @returns Information about the device.
    */
   getDeviceInfo(): IDeviceInfo;
 
@@ -76,7 +72,6 @@ export interface IRegistration {
   /**
    * Retrieves the active Mobius server URL.
    *
-   * @returns The active Mobius server URL.
    */
   getActiveMobiusUrl(): string;
 
@@ -84,22 +79,20 @@ export interface IRegistration {
    * Attempts to reconnect after a connection failure.
    *
    * @param caller - The caller's identifier for reconnection.
-   * @returns A promise that resolves when reconnection is successful.
    */
   reconnectOnFailure(caller: string): Promise<void>;
 
   /**
    * Checks if a reconnection attempt is pending.
    *
-   * @returns `true` if a reconnection attempt is pending; otherwise, `false`.
    */
   isReconnectPending(): boolean;
 
   /**
-   * Handles connection restoration, optionally triggering a retry.
+   * Restores the connection and attempts refreshing existing registration with server.
+   * Allows retry if not restored in the first attempt.
    *
    * @param retry - Set to `true` to trigger a retry after restoration.
-   * @returns A promise that resolves to `true` if the connection is restored, or `false` if it fails.
    */
   handleConnectionRestoration(retry: boolean): Promise<boolean>;
 }

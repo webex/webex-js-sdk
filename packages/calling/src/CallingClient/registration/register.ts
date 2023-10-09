@@ -76,11 +76,6 @@ export class Registration implements IRegistration {
   private reconnectPending = false;
 
   /**
-   * @param webex - A webex instance.
-   * @param serviceData - indicates whether the backend service is calling or contactcentre
-   * @param mutex - mutex which is used to run any registration scenario exclusively
-   * @param lineEmitter - Line emitter for registration related events
-   * @param logLevel - log level option for registration module
    */
   constructor(
     webex: WebexSDK,
@@ -128,8 +123,6 @@ export class Registration implements IRegistration {
   /**
    *  Implementation of sending keepalive.
    *
-   * @param url - Entire device url.
-   * @returns Promise<boolean>.
    */
   private async postKeepAlive(url: string) {
     return <WebexRequestPayload>this.webex.request({
@@ -146,9 +139,6 @@ export class Registration implements IRegistration {
   /**
    * Implementation of delete device.
    *
-   * @param url -.
-   * @param deviceId -.
-   * @param deviceUrl -.
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     const response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
@@ -169,7 +159,6 @@ export class Registration implements IRegistration {
   /**
    * Implementation of POST request for device registration.
    *
-   * @param url - backend service url for registration
    */
   private async postRegistration(url: string) {
     const deviceInfo = {
@@ -193,7 +182,6 @@ export class Registration implements IRegistration {
   /**
    * Re-attempts registration with the mobius url it was last registered
    * to, that mobius url is expected to be updated already in this.activeMobiusUrl.
-   * @param caller - Caller of this method.
    */
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
     let abort = false;
@@ -235,7 +223,6 @@ export class Registration implements IRegistration {
    * Calculates and returns a random interval value using input argument
    * attempt as the variable factor.
    *
-   * @param attempt - Number of times registration has been
    *                  attempted already.
    */
   private getRegRetryInterval(attempt = 1): number {
@@ -256,8 +243,6 @@ export class Registration implements IRegistration {
    * Once the time taken since the beginning of retry attempt exceeds the
    * retry threshold, it switches over to backup mobius servers.
    *
-   * @param attempt - Number of times registration has been attempted already.
-   * @param timeElapsed - Time elapsed since the first registration attempt.
    */
   private async startFailoverTimer(attempt = 1, timeElapsed = 0) {
     const loggerContext = {
@@ -371,7 +356,6 @@ export class Registration implements IRegistration {
   /**
    * Starts failback timer with the interval value received.
    *
-   * @param intervalInSeconds - Failback timer interval value in seconds.
    */
   private startFailbackTimer(intervalInSeconds: number) {
     this.failbackTimer = setTimeout(
@@ -431,7 +415,6 @@ export class Registration implements IRegistration {
    * if received in registration response from a primary mobius
    * server.
    *
-   * @param deviceInfo - Line info.
    */
   private setIntervalValues(deviceInfo: IDeviceInfo) {
     if (this.primaryMobiusUris.indexOf(this.activeMobiusUrl) !== -1) {
@@ -447,7 +430,6 @@ export class Registration implements IRegistration {
   /**
    * Retrieves information about the device as {@link IDeviceInfo}.
    *
-   * @returns Information about the device.
    */
   public getDeviceInfo(): IDeviceInfo {
     return this.deviceInfo;
@@ -456,7 +438,6 @@ export class Registration implements IRegistration {
   /**
    * Checks if the device is currently registered.
    *
-   * @returns True if this device is in registered state
    *          by checking if isRegistered state is set to
    *          ACTIVE, else false.
    */
@@ -476,7 +457,6 @@ export class Registration implements IRegistration {
    * Start fresh registration cycle with the mobius
    * server list already present.
    *
-   * @param caller - Caller of this method.
    */
   private async restartRegistration(caller: string) {
     /*
@@ -493,10 +473,9 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * Handles connection restoration, optionally triggering a retry.
+   * Restores the connection and attempts refreshing existing registration with server.
+   * Allows retry if not restored in the first attempt.
    *
-   * @param retry - Set to `true` to trigger a retry after restoration.
-   * @returns A promise that resolves to `true` if the connection is restored, or `false` if it fails.
    */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
     await this.mutex.runExclusive(async () => {
@@ -593,9 +572,6 @@ export class Registration implements IRegistration {
    * argument one by one until registration either succeeds with
    * one or all of them are tried.
    *
-   * @param caller - Caller of this method.
-   * @param servers - List of mobius server urls to try.
-   * @returns Promise resolving to a boolean carrying true if registration
    *          attempt has hit a final error and a retry should not be scheduled
    *          else false.
    */
@@ -696,11 +672,6 @@ export class Registration implements IRegistration {
   /**
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
-   * @param keepAliveRetryCount
-   * @param url
-   * @param logContext
-   * @param interval
-   * @returns
    */
   private startKeepaliveTimer(url: string, interval: number) {
     let keepAliveRetryCount = 0;
@@ -793,7 +764,6 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * @returns The value of instance variable registerRetry.
    *          Indicates whether the calling client is in a mode
    *          to retry registration.
    */
@@ -805,7 +775,6 @@ export class Registration implements IRegistration {
    * Sets the received value in instance variable
    * registerRetry for registration retry cases.
    *
-   * @param value - for registerRetry
    */
   private setRegRetry(value: boolean) {
     this.registerRetry = value;
@@ -814,9 +783,6 @@ export class Registration implements IRegistration {
   /**
    * Restores the deviceInfo object in callingClient when receiving a 403 with error code 101.
    *
-   * @param callingClient - Instance of CallingClient.
-   * @param restoreData - Data from Mobius with existing device information.
-   * @returns Boolean.
    */
   private getExistingDevice(restoreData: IDeviceInfo) {
     if (restoreData.devices && restoreData.devices.length > 0) {
@@ -848,7 +814,6 @@ export class Registration implements IRegistration {
    * invoked again on receiving all calls cleared event from
    * callManager.
    *
-   * @param caller - Caller of this method.
    */
   public async reconnectOnFailure(caller: string) {
     this.reconnectPending = false;
@@ -870,12 +835,7 @@ export class Registration implements IRegistration {
   }
 }
 
-/**
- * @param webex - A webex instance.
- * @param serviceData - indicates whether the backend service is calling or contactcentre
- * @param mutex - mutex which is used to run any registration scenario exclusively
- * @param lineEmitter - Line emitter for registration related events
- * @param logLevel - log level option for registration module
+/*
  */
 export const createRegistration = (
   webex: WebexSDK,

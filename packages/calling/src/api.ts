@@ -12,7 +12,6 @@ import {
 import {CallingClient, createClient} from './CallingClient/CallingClient';
 import {ICall} from './CallingClient/calling/types';
 import {ILine} from './CallingClient/line/types';
-import {IRegistration} from './CallingClient/registration/types';
 import {ICallingClient} from './CallingClient/types';
 import {ContactsClient, createContactsClient} from './Contacts/ContactsClient';
 import {IContacts, Contact, ContactGroup} from './Contacts/types';
@@ -20,16 +19,7 @@ import {Voicemail, createVoicemailClient} from './Voicemail/Voicemail';
 import {IVoicemail, VoicemailResponseEvent} from './Voicemail/types';
 
 // Interfaces
-export {
-  IRegistration,
-  ILine,
-  ICall,
-  ICallHistory,
-  ICallSettings,
-  ICallingClient,
-  IContacts,
-  IVoicemail,
-};
+export {ILine, ICall, ICallHistory, ICallSettings, ICallingClient, IContacts, IVoicemail};
 
 // Classes
 export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail};
