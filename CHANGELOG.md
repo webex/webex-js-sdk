@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.227](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.226...v3.0.0-beta.227) (2023-10-09)
+
+
+### Features
+
+* **prejoin:** added env and launch method ([#3129](https://github.com/webex/webex-js-sdk/issues/3129)) ([3f27e54](https://github.com/webex/webex-js-sdk/commit/3f27e54e5147b6305815d9cd27ae31c267574c40))
+
 ## [3.0.0-beta.226](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.225...v3.0.0-beta.226) (2023-10-06)
 
 
