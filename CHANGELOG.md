@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.228](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.227...v3.0.0-beta.228) (2023-10-09)
+
+
+### Features
+
+* **ca:** fix formula for call init join rq ([#3132](https://github.com/webex/webex-js-sdk/issues/3132)) ([c649cd7](https://github.com/webex/webex-js-sdk/commit/c649cd738b64c63002c95de699e680324914d4f2))
+
 ## [3.0.0-beta.227](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.226...v3.0.0-beta.227) (2023-10-09)
 
 
