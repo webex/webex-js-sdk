@@ -190,6 +190,9 @@ jobs:
       - name: Increment Package Versions
         run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
 
+      - name: Build all packages locally
+        run: yarn run build:local
+
       - name: Build a webex UMD
         run: yarn run build:script
 
