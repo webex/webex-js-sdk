@@ -3,7 +3,11 @@
  */
 /* globals navigator */
 
-import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
+import {
+  RoapMediaConnection,
+  MultistreamRoapMediaConnection,
+  type MultistreamConnectionConfig,
+} from '@webex/internal-media-core';
 import {
   LocalStream,
   LocalCameraStream,
@@ -20,12 +24,7 @@ import RtcMetrics from '../rtcMetrics';
 
 const {isBrowser} = BrowserDetection();
 
-// TODO: Export MultiStreamConnectionConfig and update here: SPARK-458871
-type MultistreamConnectionConfig = ConstructorParameters<typeof MultistreamRoapMediaConnection>[0];
-
-export type BundlePolicy = ConstructorParameters<
-  typeof MultistreamRoapMediaConnection
->[0]['bundlePolicy'];
+export type BundlePolicy = MultistreamConnectionConfig['bundlePolicy'];
 
 /**
  * MediaDirection

@@ -27,6 +27,7 @@ export {
   FacingMode,
   DisplaySurface,
   PresetCameraConstraints,
+  type VideoContentHint,
 } from '@webex/media-helpers';
 
 export default Meetings;
