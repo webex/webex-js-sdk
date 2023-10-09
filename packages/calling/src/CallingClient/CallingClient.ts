@@ -142,7 +142,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         retry = true;
       }
 
-      if (retry && this.webex.internal.mercury.connected) {
+      if (retry && this.webex.internal.mercury.connected && line.mobiusDeviceId) {
         retry = await line.registration.handleConnectionRestoration(retry);
       }
     }, NETWORK_FLAP_TIMEOUT);

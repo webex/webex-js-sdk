@@ -509,6 +509,47 @@ describe('CallingClient Tests', () => {
       expect(registerSpy).not.toBeCalled();
     });
 
+    it('Simulate a network flap before initial registration is done should not trigger re-verify registration: Restore Failure', async () => {
+      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+
+      reg.deregister();
+      line.mobiusDeviceId = undefined;
+      reg.setActiveMobiusUrl(undefined);
+
+      jest.clearAllMocks();
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toBeCalledWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+
+      expect(logSpy).not.toBeCalledWith(
+        'Mercury connection is up again, Re-registering with Mobius',
+        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      );
+
+      /*
+       * When initial registration is not done, network flap
+       * will not trigger de-registration/registration
+       */
+      expect(webex.request).not.toBeCalled();
+      expect(restoreSpy).not.toBeCalled();
+      expect(registerSpy).not.toBeCalled();
+    });
+
     it('Simulate a network flap with 1 active call', async () => {
       expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
 
