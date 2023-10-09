@@ -3085,13 +3085,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/long@npm:^4.0.1":
-  version: 4.0.2
-  resolution: "@types/long@npm:4.0.2"
-  checksum: b6e4c16ca43a11f229cf2d54697404e791f48ac9107fb1052b8dec92e730f54ebfe6773d68fe7d27531d9b75de1aafce0fbac206cea0ef13bb1b97f5436d90cf
-  languageName: node
-  linkType: hard
-
 "@types/mdast@npm:^3.0.0":
   version: 3.0.10
   resolution: "@types/mdast@npm:3.0.10"
@@ -4702,24 +4695,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ladon-ts@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@webex/ladon-ts@npm:4.0.0"
-  dependencies:
-    onnxruntime-web: "npm:^1.13.1"
-  checksum: 35fb82c72ccf142c071662cddb666777d704582c6539e92c7d13aef6fc13cca737b0144603c45409367622e4ecbe28a09894fe747479427f378eb0e9868c7024
-  languageName: node
-  linkType: hard
-
-"@webex/ladon-ts@npm:^4.2.4":
-  version: 4.2.4
-  resolution: "@webex/ladon-ts@npm:4.2.4"
-  dependencies:
-    onnxruntime-web: "npm:^1.15.1"
-  checksum: ceaee957b9eca91008830b3451f889f95417829401bbf0dae8891582774fa3c9fac8e1d3d0e98f7a69540bcb6553abb26265911cca16c6aa8897ad760cf6c092
-  languageName: node
-  linkType: hard
-
 "@webex/ladon-ts@npm:^4.2.4":
   version: 4.2.4
   resolution: "@webex/ladon-ts@npm:4.2.4"
@@ -4737,7 +4712,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
-    "@webex/web-media-effects": "npm:^2.13.0"
+    "@webex/web-media-effects": "npm:^2.13.1"
     sinon: "npm:^9.2.4"
   languageName: unknown
   linkType: soft
@@ -5321,15 +5296,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:^2.13.0":
-  version: 2.13.0
-  resolution: "@webex/web-media-effects@npm:2.13.0"
+"@webex/web-media-effects@npm:^2.13.1":
+  version: 2.13.1
+  resolution: "@webex/web-media-effects@npm:2.13.1"
   dependencies:
     "@webex/ladon-ts": "npm:^4.2.4"
     events: "npm:^3.3.0"
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^1.4.0"
-  checksum: 77c876acd3fa5bcce2befff00bd7d64c6af06db221d95b00905204d2bb67460afd286ce37a9d2cd3ecdec9e0b912f930a07bc51f08c050aad74b497bb0c8a54f
+  checksum: efa3e9c715a93a1991123401da3c29aa921900f5e112413311ebdd4cadf86af64508f7c23d09674ec534be995910010c26811baeb2ef26dcde222e911031f24b
   languageName: node
   linkType: hard
 
@@ -15860,13 +15835,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "long@npm:4.0.0"
-  checksum: fc6d1bf0f251ec045c1004cb3a15be1dd6da11d8232cbfd63a4e7c5becd6d269ecac2e2f267114328280b20cdb00af435bd9a3d7b3af824484b59a635b9d52ab
-  languageName: node
-  linkType: hard
-
 "long@npm:^5.0.0, long@npm:^5.2.3":
   version: 5.2.3
   resolution: "long@npm:5.2.3"
@@ -17855,22 +17823,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"onnx-proto@npm:^4.0.4":
-  version: 4.0.4
-  resolution: "onnx-proto@npm:4.0.4"
-  dependencies:
-    protobufjs: "npm:^6.8.8"
-  checksum: b3a52ef433b4dc51f8ade46fda2a9997ae184366ae7791c37bd8824410e184afdadd3baab8ee6488ae602ed671edb6cb59b6a067a83c55cfbc9d9011a5b4c554
-  languageName: node
-  linkType: hard
-
-"onnxruntime-common@npm:~1.15.0":
-  version: 1.15.0
-  resolution: "onnxruntime-common@npm:1.15.0"
-  checksum: 2647e37fa4aa9c17eb3d4d8df70773389ad2a77ae4df30ef4ab2e4d7c1b4062034b9ff278672501a22d9dfad77d7402a6bf92ecaa087157b2ca998b7680f7f37
-  languageName: node
-  linkType: hard
-
 "onnxruntime-common@npm:~1.16.1":
   version: 1.16.1
   resolution: "onnxruntime-common@npm:1.16.1"
@@ -18952,30 +18904,6 @@ __metadata:
   version: 1.2.4
   resolution: "proto-list@npm:1.2.4"
   checksum: 36a4a77fb1642d5c5edfd77612c2fe67bf8bbc61336e9708342c27115159cc444604714356b778b0cd43c113e420b64a44873cdfefb6827261bd5a93088a1e4e
-  languageName: node
-  linkType: hard
-
-"protobufjs@npm:^6.8.8":
-  version: 6.11.3
-  resolution: "protobufjs@npm:6.11.3"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.2"
-    "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
-    "@protobufjs/eventemitter": "npm:^1.1.0"
-    "@protobufjs/fetch": "npm:^1.1.0"
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
-    "@protobufjs/path": "npm:^1.1.2"
-    "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/long": "npm:^4.0.1"
-    "@types/node": "npm:>=13.7.0"
-    long: "npm:^4.0.0"
-  bin:
-    pbjs: bin/pbjs
-    pbts: bin/pbts
-  checksum: 5a7a343bc1f4029022433690e9a1734a89a80fc441b580ddc8486262417b7755bddafd637a88c0f8105e594e361a02218508df67caf1ac9c18bbca82e6ab60ee
   languageName: node
   linkType: hard
 

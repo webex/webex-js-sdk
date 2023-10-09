@@ -117,6 +117,10 @@
             <form id="streams">
               <fieldset>
                 <legend>Streams</legend>
+                <p class="note">
+                  NOTE: Can start audio/video without a meeting(or click Get Media Streams after joining meeting) and play around with effects.
+                  Audio/video streams will persist after leaving a meeting as well and can be used in another meeting.
+                </p>
                 <div class="video-section">
                   <div class="flex" style="gap: 0.5rem;">
                     <fieldset>
@@ -143,6 +147,13 @@
                     <div class="u-mb">
                       <button id="ts-load-camera" type="button" onclick="loadCamera()" class="btn-code">Load
                         Camera</button>
+                    </div>
+                    <div class="u-mb">
+                      <select name="mode" id="mode-type">
+                        <option value="BLUR" selected="selected">Blur</option>
+                        <option value="IMAGE">Image</option>
+                        <option value="VIDEO">Video</option>
+                      </select>
                     </div>
                     <div class="u-mb">
                       <button id="ts-enable-VBG" type="button" onclick="handleVbg()" class="btn-code">Enable
@@ -182,6 +193,10 @@
           <form id="streams">
             <fieldset>
               <legend>Local Screenshare</legend>
+              <p class="note">
+                NOTE: Start screenshare without a meeting and join meeting with a screenshare.
+                If started after joining a meeting then click Publish in meeting also.
+              </p>
               <div class="screenshare-section">
                 <fieldset>
                   <legend>Screenshare Video</legend>

@@ -5420,6 +5420,8 @@ export default class Meeting extends StatelessWebexPlugin {
     let turnDiscoverySkippedReason;
     let turnServerUsed = false;
 
+    LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
+
     if (this.meetingState !== FULL_STATE.ACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }

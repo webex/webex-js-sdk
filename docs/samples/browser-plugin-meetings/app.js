@@ -261,6 +261,10 @@ const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
+const BNR = 'BNR';
+const VBG = 'VBG';
+const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
+const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
 
@@ -660,15 +664,14 @@ const remoteVideoResElm = document.getElementById('remote-video-resolution');
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
-const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
 
 const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
 const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
-const publishShareBtn = document.getElementById('ts-publish-screenshare');
-const unpublishShareBtn = document.getElementById('ts-unpublish-screenshare');
-const stopShareBtn = document.getElementById('ts-stop-screenshare');
+const publishShareBtn = document.querySelector('#ts-publish-screenshare');
+const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
+const stopShareBtn = document.querySelector('#ts-stop-screenshare');
 
 /**
  * Enables and disables the UI elements specific to multistream or transcoded connections
@@ -1041,7 +1044,7 @@ async function loadCamera(constraints) {
     localMedia.cameraStream = await webex.meetings.mediaHelpers.createCameraStream(videoConstraints);
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
-    toggleVbgBtn.innerText = "Enable VBG";
+    handleEffectsButton(toggleVbgBtn, VBG);
     loadCameraBtn.disabled = true;
     console.log('MeetingControls#loadCamera() :: Successfully got camera stream:', localMedia.cameraStream);
   }
@@ -1052,38 +1055,41 @@ async function loadCamera(constraints) {
 }
 
 async function handleVbg() {
+  let effect;
   try {
-    let effect;
-    if (toggleVbgBtn.innerText === "Enable VBG") {
+    effect = await localMedia.cameraStream.getEffect("virtual-background");
+    const modeBtn = document.getElementById('mode-type');
+    modeBtn.disabled = true;
+
+    if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
 
-      handleLoadingEffects(toggleVbgBtn, true);
-
-      effect = await localMedia.cameraStream.getEffect("virtual-background");
-
       if (!effect) {
-        effect = await webex.meetings.createVirtualBackgroundEffect();
+        effect = await webex.meetings.createVirtualBackgroundEffect({
+          "mode": modeBtn.value,
+          "bgImageUrl": blurVBGImageUrl,
+          "bgVideoUrl": blurVBGVideoUrl
+        });
+        handleEffectsButton(toggleVbgBtn, VBG, effect);
         await localMedia.cameraStream.addEffect("virtual-background", effect);
-        meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
       }
 
       await effect.enable();
 
-      handleLoadingEffects(toggleVbgBtn, false, "Disable VBG");
+      handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
     else {
       console.log('MeetingControls#handleVbg() :: disabling virtual background from local camera stream');
 
-      effect = await localMedia.cameraStream.getEffect("virtual-background");
       await effect.disable();
-      toggleVbgBtn.innerText = "Enable VBG";
+      handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully disabled virtual background from local camera stream');
     }
   }
   catch (e) {
     console.log('MeetingControls#handleVbg() :: Error applying background effect!');
-    handleLoadingEffects(toggleVbgBtn, false, "Enable VBG");
+    handleEffectsButton(toggleVbgBtn, VBG, effect);
     throw e;
   }
 }
@@ -1097,7 +1103,7 @@ async function loadMicrophone(constraints) {
     localMedia.microphoneStream = await webex.meetings.mediaHelpers.createMicrophoneStream(audioConstraints);
 
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
-    toggleBNRBtn.innerText = "Enable BNR";
+    handleEffectsButton(toggleBNRBtn, BNR);
     loadMicrophoneBtn.disabled = true;
     console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
   }
@@ -1108,44 +1114,54 @@ async function loadMicrophone(constraints) {
 }
 
 async function handleBNR() {
+  let effect;
   try {
-    let effect;
-    if (toggleBNRBtn.innerText === "Enable BNR") {
+    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    if (!effect?.isEnabled) {
       console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
-
-      handleLoadingEffects(toggleBNRBtn, true);
-
-      effect = await localMedia.microphoneStream.getEffect("noise-reduction");
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect();
+        handleEffectsButton(toggleBNRBtn, BNR, effect);
         await localMedia.microphoneStream.addEffect("noise-reduction", effect);
-        meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
       }
 
       await effect.enable();
-
-      handleLoadingEffects(toggleBNRBtn, false, "Disable BNR");
+      handleEffectsButton(toggleBNRBtn, BNR, effect);
       console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+
     }
     else {
       console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
 
-      effect = await localMedia.microphoneStream.getEffect("noise-reduction");
-      await effect.disable();
-      toggleBNRBtn.innerText = "Enable BNR"
+      await effect.enable();
+      handleEffectsButton(toggleBNRBtn, BNR, effect);
       console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
     }
   }
   catch (e) {
     console.log('MeetingControls#handleVbg() :: Error applying noise reduction effect!');
-    handleLoadingEffects(toggleBNRBtn, false, "Enable BNR");
+    handleEffectsButton(toggleBNRBtn, BNR, effect);
     throw e;
   }
 }
 
-function handleLoadingEffects(btn, disable, title = "Applying Effect...") {
-  btn.disabled = disable;
+function handleEffectsButton(btn, type, effect) {
+  let disabled = false;
+  let title;
+
+  if(!effect) {
+    title = `Enable ${type}`;
+  } else if(!effect.isLoaded) {
+    disabled = true;
+    title = "Applying Effect...";
+  } else if(effect.isEnabled) {
+    title = `Disable ${type}`
+  } else {
+    title = `Enable ${type}`
+  }
+
+  btn.disabled = disabled;
   btn.innerText = title;
 }
 
@@ -1290,14 +1306,7 @@ function setAudioOutputDevice() {
 }
 
 function toggleSendAudio() {
-  const meeting = getCurrentMeeting();
-
   console.log('MeetingControls#toggleSendAudio()');
-  if (!meeting) {
-    console.log('MeetingControls#toggleSendAudio() :: no valid meeting object!');
-
-    return;
-  }
 
   if (localMedia.microphoneStream) {
     const newMuteValue = !localMedia.microphoneStream.muted;
@@ -1310,14 +1319,7 @@ function toggleSendAudio() {
 }
 
 function toggleSendVideo() {
-  const meeting = getCurrentMeeting();
-
   console.log('MeetingControls#toggleSendVideo()');
-  if (!meeting) {
-    console.log('MeetingControls#toggleSendVideo() :: no valid meeting object!');
-
-    return;
-  }
 
   if (localMedia.cameraStream) {
     const newMuteValue = !localMedia.cameraStream.muted;
@@ -1327,16 +1329,6 @@ function toggleSendVideo() {
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
     return;
   }
-}
-
-function toggleBNR() {
-  const meeting = getCurrentMeeting();
-
-  if (!meeting) {
-    return;
-  }
-
-  console.log('BNR not supported');
 }
 
 async function startScreenShare() {
