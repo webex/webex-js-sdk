@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.59.4](https://github.com/webex/webex-js-sdk/compare/v2.59.3...v2.59.4) (2023-10-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** enable adhoc and unified space meeting by default  ([#3137](https://github.com/webex/webex-js-sdk/issues/3137)) ([36c6022](https://github.com/webex/webex-js-sdk/commit/36c602292fbe5155fea3d2ef938c99e43443a2bc))
+
 ### [2.59.3](https://github.com/webex/webex-js-sdk/compare/v2.59.2...v2.59.3) (2023-09-06)
 
 
