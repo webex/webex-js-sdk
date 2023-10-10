@@ -60,6 +60,7 @@ import MeetingCollection from './collection';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
 import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
+import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 
 let mediaLogger;
 
@@ -1037,7 +1038,7 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * Create a meeting.
-   * @param {string} destination - sipURL, spaceId, phonenumber, or locus object}
+   * @param {string} destination - sipURL, phonenumber, or locus object}
    * @param {string} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
@@ -1064,9 +1065,12 @@ export default class Meetings extends WebexPlugin {
         .fetchInfoOptions(destination, type)
         // Catch a failure to fetch info options.
         .catch((error) => {
-          LoggerProxy.logger.info(
-            `Meetings:index#create --> INFO, unable to determine info options: ${error.message}`
+          LoggerProxy.logger.error(
+            `Meetings:index#create --> ERROR, unable to determine info options: ${error.message}`
           );
+          if (error instanceof SpaceIDDeprecatedError) {
+            throw new SpaceIDDeprecatedError();
+          }
         })
         .then((options: any = {}) => {
           // Normalize the destination.
@@ -1284,7 +1288,7 @@ export default class Meetings extends WebexPlugin {
     //
     // Our job is to determine the appropriate one
     // and its corresponding service so that developers
-    // need only sipURL or spaceID to get a meeting
+    // need only sipURL to get a meeting
     // and its ID, but have the option to use createWithType()
     // and specify those types to get meetingInfo
   }

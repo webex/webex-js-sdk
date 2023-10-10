@@ -233,7 +233,7 @@ MeetingInfoUtil.generateOptions = async (from) => {
     }
   } else {
     throw new ParameterError(
-      'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.'
+      'MeetingInfo is fetched with the meeting link, SIP URI, phone number, Hydra people ID, or a conversation URL.'
     );
   }
 

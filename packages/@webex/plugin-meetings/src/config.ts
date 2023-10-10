@@ -86,8 +86,8 @@ export default {
     installedOrgID: undefined,
     experimental: {
       enableMediaNegotiatedEvent: false,
-      enableUnifiedMeetings: false,
-      enableAdhocMeetings: false,
+      enableUnifiedMeetings: true,
+      enableAdhocMeetings: true,
       enableTurnDiscovery: true,
     },
     degradationPreferences: {
