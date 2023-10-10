@@ -54,7 +54,7 @@
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
     "deps:generate": "node ./tooling/dep2.js",
-    "samples:build": "node ./tooling/index.js build --only-samples && yarn workspace @webex/calling run build:docs",
+    "samples:build": "node ./tooling/index.js build --only-samples && yarn workspace @webex/calling run build:src && yarn workspace @webex/calling run build:docs",
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
     "samples:test": "NODE_ENV=test npx wdio run wdio.conf.js",
