@@ -159,4 +159,12 @@ export default class SendSlotManager {
       `SendSlotsManager->deleteCodecParameters#Deleted the following codec parameters -> ${parameters} for ${mediaType}`
     );
   }
+
+  /**
+   * This method is used to reset the SendSlotsManager by deleting all the sendSlots
+   * @returns {undefined}
+   */
+  public reset(): void {
+    this.slots.clear();
+  }
 }
