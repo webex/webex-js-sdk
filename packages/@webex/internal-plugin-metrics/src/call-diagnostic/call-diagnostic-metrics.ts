@@ -450,7 +450,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @prepareClientEvent. Creating in meeting event object.',
-      name
+      `name: ${name}`
     );
     const {meetingId, mediaConnections, rawError} = options;
 
@@ -460,7 +460,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (!meeting) {
       console.warn(
         'Attempt to send client event but no meeting was found...',
-        `event: ${name}, meetingId: ${meetingId}`
+        `name: ${name}, meetingId: ${meetingId}`
       );
       // @ts-ignore
       this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
@@ -517,7 +517,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
-      name
+      `name: ${name}`
     );
     const {correlationId} = options;
 
@@ -569,8 +569,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
-        name,
-        rawError
+        `name: ${name}`,
+        `rawError: ${JSON.stringify(rawError)}`
       );
 
       const generatedError = this.generateClientEventErrorPayload(rawError);
@@ -580,7 +580,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-        generatedError
+        `generatedError: ${JSON.stringify(generatedError)}`
       );
     }
 
@@ -623,9 +623,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
-      name,
-      payload,
-      options
+      `name: ${name}`,
+      `payload: ${JSON.stringify(payload)}`,
+      `options: ${JSON.stringify(options)}`
     );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
 
@@ -651,7 +651,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
-      finalEvent
+      `finalEvent: ${JSON.stringify(finalEvent)}`
     );
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
@@ -677,7 +677,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       `CallDiagnosticMetrics: @submitToCallDiagnosticsPreLogin. Sending the request:`,
-      diagnosticEvent
+      `diagnosticEvent: ${JSON.stringify(diagnosticEvent)}`
     );
 
     // @ts-ignore
@@ -705,9 +705,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
-      name,
-      payload,
-      options
+      `name: ${name}`,
+      `payload: ${JSON.stringify(payload)}`,
+      `options: ${JSON.stringify(options)}`
     );
 
     const clientEvent = this.prepareClientEvent({name, payload, options});

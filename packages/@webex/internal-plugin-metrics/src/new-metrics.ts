@@ -190,13 +190,19 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful:`, res);
+        this.webex.logger.log(
+          `NewMetrics: @postPreLoginMetric. Request successful:`,
+          `res: ${JSON.stringify(res)}}`
+        );
 
         return res;
       })
       .catch((err) => {
         // @ts-ignore
-        this.logger.error(`NewMetrics: @postPreLoginMetric. Request failed:`, err);
+        this.logger.error(
+          `NewMetrics: @postPreLoginMetric. Request failed:`,
+          `err: ${JSON.stringify(err)}}`
+        );
 
         return Promise.reject(err);
       });
@@ -224,13 +230,19 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful:`, res);
+        this.webex.logger.log(
+          `NewMetrics: @clientMetricsAliasUser. Request successful:`,
+          `res: ${JSON.stringify(res)}}`
+        );
 
         return res;
       })
       .catch((err) => {
         // @ts-ignore
-        this.logger.error(`NewMetrics: @clientMetricsAliasUser. Request failed:`, err);
+        this.logger.error(
+          `NewMetrics: @clientMetricsAliasUser. Request failed:`,
+          `err: ${JSON.stringify(err)}}`
+        );
 
         return Promise.reject(err);
       });
