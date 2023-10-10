@@ -1,6 +1,6 @@
 {
   "name": "@webex/media-helpers",
-  "description": "",
+  "description": "Package that provides helper functions for media related activities.",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
   "devMain": "src/index.ts",
@@ -22,11 +22,7 @@
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
-    "@webex/babel-config-legacy": "workspace:^",
-    "@webex/eslint-config-legacy": "workspace:^",
     "@webex/internal-media-core": "^2.0.0",
-    "@webex/jest-config-legacy": "workspace:^",
-    "@webex/legacy-tools": "workspace:^",
     "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "^2.13.1"
   },
@@ -38,6 +34,10 @@
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.22.11",
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
     "eslint": "^8.24.0",
