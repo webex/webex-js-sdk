@@ -88,8 +88,8 @@ export default {
     enableExtmap: false,
     experimental: {
       enableMediaNegotiatedEvent: false,
-      enableUnifiedMeetings: false,
-      enableAdhocMeetings: false,
+      enableUnifiedMeetings: true,
+      enableAdhocMeetings: true,
       enableTurnDiscovery: true,
     },
   },
