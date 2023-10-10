@@ -449,7 +449,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
 /**
  * @param webex - A webex instance.
- * @param config - Config to start the CallingClient with..
+ * @param config - Config to start the CallingClient with.
  */
 export const createClient = async (
   webex: WebexSDK,

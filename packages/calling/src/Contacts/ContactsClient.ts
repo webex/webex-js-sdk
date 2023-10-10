@@ -1,4 +1,3 @@
-/* eslint-disable valid-jsdoc */
 /* eslint-disable no-await-in-loop */
 import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload, ContactDetail} from '../common/types';
@@ -39,8 +38,6 @@ import {serviceErrorCodeHandler} from '../common/Utils';
  * ```javascript
  * const contactClient = createContactsClient(webex, logger);
  * ```
- *
- * @implements {IContacts}
  */
 export class ContactsClient implements IContacts {
   private sdkConnector: ISDKConnector;
@@ -762,6 +759,13 @@ export class ContactsClient implements IContacts {
 
       return errorStatus;
     }
+  }
+
+  /**
+   * @ignore
+   */
+  public getSDKConnector(): ISDKConnector {
+    return this.sdkConnector;
   }
 }
 

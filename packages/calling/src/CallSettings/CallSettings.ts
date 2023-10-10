@@ -27,8 +27,6 @@ import {UcmBackendConnector} from './UcmBackendConnector';
  * ```javascript
  * const callSettings = createCallSettingsClient(webex, logger);
  * ```
- *
- * @implements {ICallSettings}
  */
 export class CallSettings implements ICallSettings {
   private sdkConnector: ISDKConnector;
