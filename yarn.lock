@@ -4753,7 +4753,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/commons@npm:^1.6.0, @sinonjs/commons@npm:^1.7.0, @sinonjs/commons@npm:^1.8.1, @sinonjs/commons@npm:^1.8.3":
+"@sinonjs/commons@npm:^1.7.0":
   version: 1.8.6
   resolution: "@sinonjs/commons@npm:1.8.6"
   dependencies:
@@ -4771,6 +4771,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@sinonjs/commons@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@sinonjs/commons@npm:3.0.0"
+  dependencies:
+    type-detect: 4.0.8
+  checksum: b4b5b73d4df4560fb8c0c7b38c7ad4aeabedd362f3373859d804c988c725889cde33550e4bcc7cd316a30f5152a2d1d43db71b6d0c38f5feef71fd8d016763f8
+  languageName: node
+  linkType: hard
+
 "@sinonjs/fake-timers@npm:^10.0.2":
   version: 10.0.2
   resolution: "@sinonjs/fake-timers@npm:10.0.2"
@@ -4780,7 +4789,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/fake-timers@npm:^6.0.0, @sinonjs/fake-timers@npm:^6.0.1":
+"@sinonjs/fake-timers@npm:^10.3.0":
+  version: 10.3.0
+  resolution: "@sinonjs/fake-timers@npm:10.3.0"
+  dependencies:
+    "@sinonjs/commons": ^3.0.0
+  checksum: 614d30cb4d5201550c940945d44c9e0b6d64a888ff2cd5b357f95ad6721070d6b8839cd10e15b76bf5e14af0bcc1d8f9ec00d49a46318f1f669a4bec1d7f3148
+  languageName: node
+  linkType: hard
+
+"@sinonjs/fake-timers@npm:^6.0.1":
   version: 6.0.1
   resolution: "@sinonjs/fake-timers@npm:6.0.1"
   dependencies:
@@ -4789,7 +4807,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/fake-timers@npm:^8.0.1, @sinonjs/fake-timers@npm:^8.1.0":
+"@sinonjs/fake-timers@npm:^8.0.1":
   version: 8.1.0
   resolution: "@sinonjs/fake-timers@npm:8.1.0"
   dependencies:
@@ -4798,25 +4816,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/samsam@npm:^5.3.1":
-  version: 5.3.1
-  resolution: "@sinonjs/samsam@npm:5.3.1"
+"@sinonjs/samsam@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "@sinonjs/samsam@npm:8.0.0"
   dependencies:
-    "@sinonjs/commons": ^1.6.0
+    "@sinonjs/commons": ^2.0.0
     lodash.get: ^4.4.2
     type-detect: ^4.0.8
-  checksum: 1c2c49d51b1840775980e9496707d68b936f443896f92e48150c4f7713d14904e576740e52660b602f8a53b665bd5f149c5c733758030758427ddb1621090279
-  languageName: node
-  linkType: hard
-
-"@sinonjs/samsam@npm:^6.0.2":
-  version: 6.1.3
-  resolution: "@sinonjs/samsam@npm:6.1.3"
-  dependencies:
-    "@sinonjs/commons": ^1.6.0
-    lodash.get: ^4.4.2
-    type-detect: ^4.0.8
-  checksum: d533e8792af00879d78dd181822e8b00bb8a81671f2fbcf1c5257a59649b21d881ba7ddc42aaf09690d7325c8a6dcc7a1a341591a379742b54e4eb25b273417a
+  checksum: 95e40d0bb9f7288e27c379bee1b03c3dc51e7e78b9d5ea6aef66a690da7e81efc4715145b561b449cefc5361a171791e3ce30fb1a46ab247d4c0766024c60a60
   languageName: node
   linkType: hard
 
@@ -7056,7 +7063,7 @@ __metadata:
     rollup-plugin-polyfill-node: 0.8.0
     rollup-plugin-terser: 7.0.2
     rollup-plugin-typescript2: 0.31.2
-    sinon: 12.0.1
+    sinon: 16.1.0
     ts-jest: 27.1.4
     typed-emitter: 2.1.0
     typedoc: 0.23.26
@@ -7107,7 +7114,7 @@ __metadata:
     ampersand-events: ^2.0.2
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7152,7 +7159,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     urlsafe-base64: ^1.0.0
   languageName: unknown
   linkType: soft
@@ -7259,7 +7266,7 @@ __metadata:
     mime: ^2.4.4
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7291,7 +7298,7 @@ __metadata:
     qs: ^6.7.3
     request: ^2.88.0
     safe-buffer: ^5.2.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     xtend: ^4.0.2
   languageName: unknown
   linkType: soft
@@ -7353,7 +7360,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7383,7 +7390,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7409,7 +7416,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7441,7 +7448,7 @@ __metadata:
     lodash: ^4.17.21
     node-scr: ^0.3.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7471,7 +7478,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7518,7 +7525,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7555,7 +7562,7 @@ __metadata:
     pkijs: ^2.1.84
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
     valid-url: ^1.0.9
   languageName: unknown
@@ -7582,7 +7589,7 @@ __metadata:
     lodash: ^4.17.21
     mocha: ^10.2.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7626,7 +7633,7 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7677,7 +7684,7 @@ __metadata:
     bowser: ^2.11.0
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7708,7 +7715,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
     ws: ^8.2.2
   languageName: unknown
@@ -7733,7 +7740,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7756,7 +7763,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7788,7 +7795,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -7863,7 +7870,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7887,7 +7894,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -7912,7 +7919,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -8092,7 +8099,7 @@ __metadata:
     "@webex/ts-events": ^1.1.0
     "@webex/web-media-effects": ^2.13.1
     eslint: ^8.24.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8184,7 +8191,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -8214,7 +8221,7 @@ __metadata:
     jose: ^4.13.1
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -8239,7 +8246,7 @@ __metadata:
     eslint: ^8.24.0
     jsonwebtoken: ^9.0.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -8309,7 +8316,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8353,7 +8360,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sdp-transform: ^2.12.0
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     typescript: ^4.7.4
     uuid: ^3.3.2
     webrtc-adapter: ^7.7.0
@@ -8385,7 +8392,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8415,7 +8422,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8437,7 +8444,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8466,7 +8473,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8490,7 +8497,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8515,7 +8522,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8538,7 +8545,7 @@ __metadata:
     "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8740,7 +8747,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8818,7 +8825,7 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:^"
     eslint: ^8.24.0
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -8839,7 +8846,7 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
   languageName: unknown
   linkType: soft
 
@@ -9081,7 +9088,7 @@ __metadata:
     jsonwebtoken: ^9.0.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     uuid: ^3.3.2
   languageName: unknown
   linkType: soft
@@ -13970,7 +13977,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff@npm:^4.0.1, diff@npm:^4.0.2":
+"diff@npm:^4.0.1":
   version: 4.0.2
   resolution: "diff@npm:4.0.2"
   checksum: f2c09b0ce4e6b301c221addd83bf3f454c0bc00caa3dd837cf6c127d6edf7223aa2bbe3b688feea110b7f262adbfc845b757c44c8a9f8c0c5b15d8fa9ce9d20d
@@ -23724,20 +23731,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nise@npm:^4.0.4":
-  version: 4.1.0
-  resolution: "nise@npm:4.1.0"
-  dependencies:
-    "@sinonjs/commons": ^1.7.0
-    "@sinonjs/fake-timers": ^6.0.0
-    "@sinonjs/text-encoding": ^0.7.1
-    just-extend: ^4.0.2
-    path-to-regexp: ^1.7.0
-  checksum: b2ea1c96a41c392adf746509904af565ebd667ad4e40267f6d73be3648f04267945624ba0ce6a991b779f3ae246181f71975152b93b4dafee1f62886fa897c32
-  languageName: node
-  linkType: hard
-
-"nise@npm:^5.1.0":
+"nise@npm:^5.1.4":
   version: 5.1.4
   resolution: "nise@npm:5.1.4"
   dependencies:
@@ -27550,31 +27544,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sinon@npm:12.0.1":
-  version: 12.0.1
-  resolution: "sinon@npm:12.0.1"
+"sinon@npm:16.1.0, sinon@npm:^16.1.0":
+  version: 16.1.0
+  resolution: "sinon@npm:16.1.0"
   dependencies:
-    "@sinonjs/commons": ^1.8.3
-    "@sinonjs/fake-timers": ^8.1.0
-    "@sinonjs/samsam": ^6.0.2
-    diff: ^5.0.0
-    nise: ^5.1.0
+    "@sinonjs/commons": ^3.0.0
+    "@sinonjs/fake-timers": ^10.3.0
+    "@sinonjs/samsam": ^8.0.0
+    diff: ^5.1.0
+    nise: ^5.1.4
     supports-color: ^7.2.0
-  checksum: a264310c28df43e923a6e223c719953b7bd829b8e2fee7fe8b40154647e350b6bb4c18009be6f193e50892687f8e8c5d987d666fc3f6e4e78a9f807211ea365f
-  languageName: node
-  linkType: hard
-
-"sinon@npm:^9.2.4":
-  version: 9.2.4
-  resolution: "sinon@npm:9.2.4"
-  dependencies:
-    "@sinonjs/commons": ^1.8.1
-    "@sinonjs/fake-timers": ^6.0.1
-    "@sinonjs/samsam": ^5.3.1
-    diff: ^4.0.2
-    nise: ^4.0.4
-    supports-color: ^7.1.0
-  checksum: 34b881886daa4b491bb9147ccad43d662f58b45a1b6f1e8b26a405ad77041108306fac3648646335f00f702897f0ba12282588ab64de470f48f1a7678e08dc65
+  checksum: b3f910e9b3d28f1241b28ac9d384f45c673b64ecfabf7ca2b94c964036118bd4166a2315f2ec2379a85745a7d4840384514aca416bbf189508a9d7fb55b9d5a8
   languageName: node
   linkType: hard
 
@@ -30839,7 +30819,7 @@ __metadata:
     rimraf: ^2.6.3
     serve-handler: ^6.1.3
     shelljs: ^0.8.5
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     standard-version: ^9.1.1
     terser-webpack-plugin: ^4.2.3
     ts-jest: ^29.0.3
@@ -30896,7 +30876,7 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
     lodash: ^4.17.21
-    sinon: ^9.2.4
+    sinon: ^16.1.0
     webex: "workspace:^"
   languageName: unknown
   linkType: soft

@@ -57,7 +57,7 @@
     "@webex/test-helper-mocha": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
-    "sinon": "^9.2.4",
+    "sinon": "^16.1.0",
     "webex": "workspace:^"
   },
   "dependencies": {
