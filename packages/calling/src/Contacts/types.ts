@@ -1,4 +1,4 @@
-import {ISDKConnector} from 'SDKConnector/types';
+import {ISDKConnector} from '../SDKConnector/types';
 import {ContactDetail} from '../common/types';
 
 export enum ContactType {
@@ -67,7 +67,7 @@ export type Contact = {
    */
   groups: string[];
   /**
-   *
+   * The kms resource object url used to generate the encryption key.
    */
   kmsResourceObjectUrl?: string;
   /**
@@ -91,11 +91,11 @@ export type Contact = {
    */
   primaryContactMethod?: string;
   /**
-   *
+   * This represents the schema of the contact.
    */
   schemas?: string;
   /**
-   *
+   * This represents the array of different sip addresses of the contact.
    */
   sipAddresses?: ContactDetail[];
   /**

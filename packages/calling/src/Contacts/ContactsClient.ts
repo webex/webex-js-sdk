@@ -38,8 +38,6 @@ import {serviceErrorCodeHandler} from '../common/Utils';
  * ```javascript
  * const contactClient = createContactsClient(webex, logger);
  * ```
- *
- * @implements {IContacts}
  */
 export class ContactsClient implements IContacts {
   private sdkConnector: ISDKConnector;

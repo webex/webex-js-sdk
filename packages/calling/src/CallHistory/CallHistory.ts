@@ -25,8 +25,6 @@ import {Eventing} from '../Events/impl';
  * ```javascript
  * const callHistory = createCallHistoryClient(webex, logger);
  * ```
- *
- * @implements {ICallHistory}
  */
 export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICallHistory {
   private sdkConnector: ISDKConnector;
