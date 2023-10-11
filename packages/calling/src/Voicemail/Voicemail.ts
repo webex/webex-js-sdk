@@ -17,9 +17,9 @@ import {getMetricManager} from '../Metrics';
 import {VOICEMAIL_FILE} from './constants';
 
 /**
- * `Voicemail` module is designed to facilitate the voicemail-related operations by providing a set of APIs.
+ * The `Voicemail` module is designed to simplify voicemail-related operations by offering a set of APIs.
  *
- * This code snippet demonstrates how to create an instance of `Voicemail` using webex and logger .
+ * The following code snippet demonstrates how to create an instance of `Voicemail` using a `webex` instance and a logger:
  *
  * Example:
  * ```javascript

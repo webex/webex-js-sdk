@@ -71,14 +71,14 @@ export type VoicemailResponseEvent = {
 };
 
 /**
- * Interface for Voicemail Module.
- * This encompasses set of APIs that allows to retrieve and update the voicemail like voicemail list, summary, mark as read/unread and voicemail transcript.
-
- * These APIs return promises that resolve to a `VoicemailResponseEvent` object, which contains a status code, data, and message.
- * The data field within this response object holds various object, which can take on different types depending on the specific API called.
+ * Interface for the Voicemail Module.
+ * This interface provides a set of APIs for retrieving and updating voicemail, including operations such as retrieving voicemail lists, messages count summary, marking as read/unread, and accessing voicemail transcripts.
+ *
+ * These APIs return promises that resolve to a `VoicemailResponseEvent` object, which includes a status code, data, and message.
+ * The data field within this response object may contain various objects, with different types depending on the specific API used.
  *
  * @example
- * Successful responses will be populated as shown below:
+ * A successful response will be structured as follows:
  * ```json
  * {
  *    statusCode: 200,
@@ -88,8 +88,8 @@ export type VoicemailResponseEvent = {
  *    message: 'SUCCESS'
  * }
  * ```
- * 
- * Failure responses will be populated as shown below:
+
+ * A failure response will be structured as follows:
  * ```json
  * {
  *    statusCode: 503,
@@ -98,7 +98,7 @@ export type VoicemailResponseEvent = {
  *    },
  *    message: 'FAILURE'
  * }
- * 
+ * ```
  */
 export interface IVoicemail {
   /**

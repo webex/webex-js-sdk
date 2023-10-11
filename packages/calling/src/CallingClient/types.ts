@@ -29,8 +29,13 @@ export type CallingClientErrorEmitterCallback = (
 ) => void;
 
 /**
- * Interface for `CallingClient` module.
- * `CallingClient` module is designed to offer set of APIs that are related to doing line registration, calling functionalities on the SDK
+ * An interface for the `CallingClient` module.
+ * The `CallingClient` module is designed to provide a set of APIs related to line registration and calling functionalities within the SDK.
+ *
+ * @example
+ * ```javascript
+ * const callingClient = createClient(webex, callingConfig);
+ * ```
  */
 export interface ICallingClient extends Eventing<CallingClientEventTypes> {
   /**

@@ -46,13 +46,16 @@ import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/
 import {getMetricManager} from '../Metrics';
 
 /**
- * `CallingClient` module is designed to offer set of APIs that are related to doing line registration, calling functionalities on the SDK
- * This code snippet demonstrates how to create an instance of `CallingClient` using webex instance and callingConfig .
+ * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
+ *
+ * The following code snippet demonstrates how to create an instance of `CallingClient` using a `webex` instance and `callingConfig`:
+ *
  * @example
  * ```javascript
  * const callingClient = createClient(webex, callingConfig);
  * ```
  */
+
 export class CallingClient extends Eventing<CallingClientEventTypes> implements ICallingClient {
   private sdkConnector: ISDKConnector;
 
@@ -122,6 +125,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * This method should be called once to initialize the `callingClient`.
    *
    * @returns A promise that resolves when the initialization is complete.
+   * @ignore
    */
   public async init() {
     await this.getMobiusServers();
