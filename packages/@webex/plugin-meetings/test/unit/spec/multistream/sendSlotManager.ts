@@ -213,4 +213,30 @@ describe('SendSlotsManager', () => {
             });
         });
     });
+
+    describe('reset', () => {
+        let mediaConnection;
+
+        beforeEach(() => {
+            mediaConnection = {
+                createSendSlot: sinon.stub().returns({}),
+            } as MultistreamRoapMediaConnection;
+        });
+
+        it('should reset the send slot manager', () => {
+            const AudioSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.AudioMain);
+            const VideoSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
+            const AudioSlidesSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.AudioSlides);
+            const VideoSlidesSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoSlides);
+            expect(sendSlotsManager.getSlot(MediaType.AudioMain)).to.equal(AudioSlot);
+            expect(sendSlotsManager.getSlot(MediaType.VideoMain)).to.equal(VideoSlot);
+            expect(sendSlotsManager.getSlot(MediaType.AudioSlides)).to.equal(AudioSlidesSlot);
+            expect(sendSlotsManager.getSlot(MediaType.VideoSlides)).to.equal(VideoSlidesSlot);
+            sendSlotsManager.reset();
+            expect(() => sendSlotsManager.getSlot(MediaType.AudioMain)).to.throw();
+            expect(() => sendSlotsManager.getSlot(MediaType.VideoMain)).to.throw();
+            expect(() => sendSlotsManager.getSlot(MediaType.AudioSlides)).to.throw();
+            expect(() => sendSlotsManager.getSlot(MediaType.VideoSlides)).to.throw();
+        });
+    });
 });
