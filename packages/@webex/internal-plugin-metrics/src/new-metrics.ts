@@ -193,7 +193,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.webex.logger.log(
           `NewMetrics: @postPreLoginMetric. Request successful:`,
-          `res: ${JSON.stringify(res)}}`
+          `res: ${JSON.stringify(res)}`
         );
 
         return res;
@@ -202,7 +202,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.logger.error(
           `NewMetrics: @postPreLoginMetric. Request failed:`,
-          `err: ${generateCommonErrorMetadata(err)}}`
+          `err: ${generateCommonErrorMetadata(err)}`
         );
 
         return Promise.reject(err);
@@ -233,7 +233,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.webex.logger.log(
           `NewMetrics: @clientMetricsAliasUser. Request successful:`,
-          `res: ${JSON.stringify(res)}}`
+          `res: ${JSON.stringify(res)}`
         );
 
         return res;
@@ -242,7 +242,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.logger.error(
           `NewMetrics: @clientMetricsAliasUser. Request failed:`,
-          `err: ${generateCommonErrorMetadata(err)}}`
+          `err: ${generateCommonErrorMetadata(err)}`
         );
 
         return Promise.reject(err);

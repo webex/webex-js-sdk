@@ -450,7 +450,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-      'CallDiagnosticMetrics: @prepareClientEvent. Creating in meeting event object.',
+      'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
       `name: ${name}`
     );
     const {meetingId, mediaConnections} = options;

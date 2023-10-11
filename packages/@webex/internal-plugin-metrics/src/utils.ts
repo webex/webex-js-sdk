@@ -6,11 +6,11 @@
  */
 export const generateCommonErrorMetadata = (error) => {
   if (error instanceof Error) {
-    return {
+    return JSON.stringify({
       message: error?.message,
       name: error?.name,
       stack: error?.stack,
-    };
+    });
   }
 
   return error;
