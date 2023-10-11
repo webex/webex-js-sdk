@@ -3,7 +3,7 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {config} from '@webex/internal-plugin-metrics';
+import {config, Utils} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
@@ -262,44 +262,53 @@ describe('plugin-metrics', () => {
       describe('when the request fails', () => {
         it('does not clear the queue', async () => {
           // avoid setting .sent timestamp
-          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest = (q) => Promise.resolve(q);
-          webex.request = sinon.stub().returns(Promise.reject("error"));
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
+            (q) => Promise.resolve(q);
+
+          const err = new Error('error');
+          webex.request = sinon.stub().returns(Promise.reject(err));
 
           webex.logger.error = sinon.stub();
           webex.logger.log = sinon.stub();
+          sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError');
 
-          const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({event: 'my.event'})
+          const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({
+            event: 'my.event',
+          });
 
-          return promiseTick(50)
-          .then(() => assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 1))
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const loggerLogCalls = webex.logger.log.getCalls();
+          await flushPromises();
+          clock.tick(config.metrics.batcherWait);
 
-            assert.deepEqual(loggerLogCalls[0].args, [
-              "call-diagnostic-events -> ",
-              "CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request",
-              `finalEvent: {"eventPayload":{"event":"my.event"},"type":["diagnostic-event"]}`
-            ])
-            assert.deepEqual(loggerLogCalls[1].args, [
-              "call-diagnostic-events -> ",
-              "CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Sending the request:",
-              `payload: [{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]`
-            ]);
+          let error;
 
-          })
-          .then(() => promise).catch((err) =>{
-            console.log(err)
-            assert.deepEqual(err, "error")
-            assert.calledOnceWithExactly(
-              webex.logger.error,
-              "call-diagnostic-events -> ",
-              "CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Request failed:",
-              `error: "error"`
-            )
-            assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
-          })
+          // catch the expected error and store it
+          await promise.catch((e) => {
+            error = e;
+          });
+
+          const loggerLogCalls = webex.logger.log.getCalls();
+
+          assert.deepEqual(loggerLogCalls[0].args, [
+            'call-diagnostic-events -> ',
+            'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+            `finalEvent: {"eventPayload":{"event":"my.event"},"type":["diagnostic-event"]}`,
+          ]);
+          assert.deepEqual(loggerLogCalls[1].args, [
+            'call-diagnostic-events -> ',
+            'CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Sending the request:',
+            `payload: [{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]`,
+          ]);
+
+          // check that promise was rejected with the original error of the webex.request
+          assert.deepEqual(err, error);
+
+          assert.calledOnceWithExactly(
+            webex.logger.error,
+            'call-diagnostic-events -> ',
+            'CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Request failed:',
+            `error: formattedError`
+          );
+          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         });
       });
     });
