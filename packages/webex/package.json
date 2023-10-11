@@ -42,8 +42,8 @@
     "test": "yarn test:style && yarn test:unit && yarn test:integration",
     "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
-    "test:style:todo": "eslint ./src/**/*.*",
-    "test:unit:todo": "webex-legacy-tools test --unit --runner jest",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"
   },
   "devDependencies": {
@@ -57,6 +57,7 @@
     "@webex/test-helper-mocha": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
+    "eslint": "^8.24.0",
     "sinon": "^9.2.4",
     "webex": "workspace:^"
   },
