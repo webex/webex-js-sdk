@@ -18,6 +18,7 @@ import {
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
+import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -201,7 +202,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.logger.error(
           `NewMetrics: @postPreLoginMetric. Request failed:`,
-          `err: ${JSON.stringify(err)}}`
+          `err: ${generateCommonErrorMetadata(err)}}`
         );
 
         return Promise.reject(err);
@@ -241,7 +242,7 @@ class Metrics extends WebexPlugin {
         // @ts-ignore
         this.logger.error(
           `NewMetrics: @clientMetricsAliasUser. Request failed:`,
-          `err: ${JSON.stringify(err)}}`
+          `err: ${generateCommonErrorMetadata(err)}}`
         );
 
         return Promise.reject(err);

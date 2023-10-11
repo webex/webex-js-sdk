@@ -44,6 +44,7 @@ import {
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
 } from './config';
+import {generateCommonErrorMetadata} from '../utils';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -452,7 +453,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       'CallDiagnosticMetrics: @prepareClientEvent. Creating in meeting event object.',
       `name: ${name}`
     );
-    const {meetingId, mediaConnections, rawError} = options;
+    const {meetingId, mediaConnections} = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -570,7 +571,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
         `name: ${name}`,
-        `rawError: ${JSON.stringify(rawError)}`
+        `rawError: ${generateCommonErrorMetadata(rawError)}`
       );
 
       const generatedError = this.generateClientEventErrorPayload(rawError);

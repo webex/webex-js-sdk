@@ -6,14 +6,33 @@ import {assert} from '@webex/test-helper-chai';
 import {config} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
+import FakeTimers from '@sinonjs/fake-timers';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 const flushPromises = () => new Promise(setImmediate);
+
+function promiseTick(count) {
+  let promise = Promise.resolve();
+
+  while (count > 1) {
+    promise = promise.then(() => promiseTick(1));
+    count -= 1;
+  }
+
+  return promise;
+}
+
 
 describe('plugin-metrics', () => {
   describe('CallDiagnosticEventsBatcher', () => {
     let webex;
+    let clock;
+    let now;
+
 
     beforeEach(() => {
+      now = new Date();
+      clock = FakeTimers.install({now});
+
       //@ts-ignore
       webex = new MockWebex({
         children: {
@@ -31,6 +50,7 @@ describe('plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
+      clock.uninstall();
     });
 
     describe('#request()', () => {
@@ -237,6 +257,50 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.videoSetupDelay, undefined);
           assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
         })
+      });
+
+      describe('when the request fails', () => {
+        it('does not clear the queue', async () => {
+          // avoid setting .sent timestamp
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest = (q) => Promise.resolve(q);
+          webex.request = sinon.stub().returns(Promise.reject("error"));
+
+          webex.logger.error = sinon.stub();
+          webex.logger.log = sinon.stub();
+
+          const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({event: 'my.event'})
+
+          return promiseTick(50)
+          .then(() => assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 1))
+          .then(() => clock.tick(config.metrics.batcherWait))
+          .then(() => {
+            assert.calledOnce(webex.request);
+            const loggerLogCalls = webex.logger.log.getCalls();
+
+            assert.deepEqual(loggerLogCalls[0].args, [
+              "call-diagnostic-events -> ",
+              "CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request",
+              `finalEvent: {"eventPayload":{"event":"my.event"},"type":["diagnostic-event"]}`
+            ])
+            assert.deepEqual(loggerLogCalls[1].args, [
+              "call-diagnostic-events -> ",
+              "CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Sending the request:",
+              `payload: [{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]`
+            ]);
+
+          })
+          .then(() => promise).catch((err) =>{
+            console.log(err)
+            assert.deepEqual(err, "error")
+            assert.calledOnceWithExactly(
+              webex.logger.error,
+              "call-diagnostic-events -> ",
+              "CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-9. Request failed:",
+              `error: "error"`
+            )
+            assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          })
+        });
       });
     });
   });

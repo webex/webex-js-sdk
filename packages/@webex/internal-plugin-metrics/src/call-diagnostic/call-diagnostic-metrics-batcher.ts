@@ -5,6 +5,7 @@ import {uniqueId} from 'lodash';
 import Batcher from '../batcher';
 import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
 import {CALL_DIAGNOSTIC_LOG_IDENTIFIER} from './config';
+import {generateCommonErrorMetadata} from '../utils';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -68,7 +69,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         this.webex.logger.error(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request failed:`,
-          `error: ${JSON.stringify(err)}`
+          `error: ${generateCommonErrorMetadata(err)}`
         );
 
         return Promise.reject(err);
