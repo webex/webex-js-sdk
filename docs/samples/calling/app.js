@@ -660,7 +660,7 @@ async function getMediaDevices() {
     populateSourceDevices(camera);
   });
 
-  const microphones = await callingClient.mediaEngine.Media .getMicrophones();
+  const microphones = await callingClient.mediaEngine.Media.getMicrophones();
   microphones.forEach((microphone) => {
     populateSourceDevices(microphone);
   });

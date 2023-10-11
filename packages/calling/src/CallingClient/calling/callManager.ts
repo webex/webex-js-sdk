@@ -408,17 +408,6 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   /**
    * @param correlationId -.
    */
-  public endCall = (correlationId: CorrelationId) => {
-    const call = this.getCall(correlationId);
-
-    if (call) {
-      call.end();
-    }
-  };
-
-  /**
-   * @param correlationId -.
-   */
   public getCall = (correlationId: CorrelationId): ICall => {
     return this.callCollection[correlationId];
   };
