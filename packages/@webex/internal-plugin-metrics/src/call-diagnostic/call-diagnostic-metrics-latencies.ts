@@ -148,7 +148,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getShowInterstitialTime() {
     return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.launched',
+      'client.interstitial-window.start-launch',
       'internal.client.interstitial-window.click.joinbutton'
     );
   }

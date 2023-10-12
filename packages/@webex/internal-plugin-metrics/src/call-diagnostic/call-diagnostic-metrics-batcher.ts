@@ -5,6 +5,7 @@ import {uniqueId} from 'lodash';
 import Batcher from '../batcher';
 import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
 import {CALL_DIAGNOSTIC_LOG_IDENTIFIER} from './config';
+import {generateCommonErrorMetadata} from '../utils';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -43,7 +44,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     this.webex.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Sending the request:`,
-      payload
+      `payload: ${JSON.stringify(payload)}`
     );
 
     return this.webex
@@ -59,7 +60,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         this.webex.logger.log(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful:`,
-          res
+          `response: ${JSON.stringify(res)}`
         );
 
         return res;
@@ -68,7 +69,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         this.webex.logger.error(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request failed:`,
-          err
+          `error: ${generateCommonErrorMetadata(err)}`
         );
 
         return Promise.reject(err);
