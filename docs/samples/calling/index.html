@@ -37,8 +37,6 @@
                     require token with spark:calls_write scope.</p>
                   <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
-                  <button id="access-token-save" class="btn-code" type="submit">calling.init()</button>
-                  <pre id="access-token-status">Not initialized</pre>
                 </div>
 
                 <fieldset>
@@ -47,7 +45,7 @@
                   <p class="text-color" style="margin-top: 0; padding: 0;">
                     Following options allow to set the type of registration, service domain (e.g. cisco.webex.com), server region (e.g. east) and the country (e.g. us).
                     <br><br>
-                    <strong>Note:</strong> Please update these before <mark>calling.init()</mark> if want to use different values.
+                    <strong>Note:</strong> Please update these before <mark>Initialize Calling</mark> if want to use different values.
                   </p>
 
                   <div class="u-mv">
@@ -61,6 +59,8 @@
                   <input id="region" name="region" value="Region" type="string">
                   <input id="country" name="country" value="Country" type="string">
                 </fieldset>
+                <button id="access-token-save" class="btn-code" type="submit">Initialize Calling</button>
+                <pre id="access-token-status">Not initialized</pre>
               </fieldset>
             </form>
             <!-- authentication-registration -->
