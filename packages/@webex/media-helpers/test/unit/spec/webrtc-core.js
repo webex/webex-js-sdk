@@ -71,6 +71,10 @@ describe('media-helpers', () => {
           await stream.setMuted(false);
         });
 
+        it('returns a reasonable length string from JSON.stringify()', () => {
+          assert.isBelow(JSON.stringify(stream).length, 200);
+        })
+
         describe('#setServerMuted', () => {
           afterEach(() => {
             sinon.restore();
