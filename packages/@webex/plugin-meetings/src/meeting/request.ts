@@ -384,10 +384,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   /**
    * Sends a requests to get the latest locus DTO, it might be a full Locus or a delta, depending on the url provided
    * @param {Object} options
-   * @param {String} options.locusUrl sync url to get ht elatest locus delta
+   * @param {String} options.url sync url to get hte latest locus delta
+   * @param {String} options.syncDebug locus sync debug information
    * @returns {Promise}
    */
-  getLocusDTO(options: {url: string}) {
+  getLocusDTO(options: {url: string; syncDebug?: string}) {
     const {url} = options;
 
     if (url) {
@@ -395,6 +396,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       return this.request({
         method: HTTP_VERBS.GET,
         uri: url,
+        qs: {sync_debug: options.syncDebug},
       }).catch((err) => {
         LoggerProxy.logger.error(
           `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
