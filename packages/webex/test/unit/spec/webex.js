@@ -9,8 +9,6 @@ describe('webex', () => {
   describe('Webex', () => {
     describe('.version', () => {
       it('exists', () => {
-        console.log('process env: ', process.env);
-        console.log('Webex object: ', Webex);
         assert.property(Webex, 'version');
         assert.equal(Webex.version, String(process.env.version));
       });
