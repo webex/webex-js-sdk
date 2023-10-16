@@ -1,4 +1,3 @@
-/* eslint-disable valid-jsdoc */
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {ERROR_CODE} from '../../Errors/types';
@@ -16,7 +15,7 @@ import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
   IDeviceInfo,
-  MobiusStatus,
+  RegistrationStatus,
   ServiceData,
   WebexRequestPayload,
 } from '../../common/types';
@@ -57,7 +56,7 @@ export class Registration implements IRegistration {
   private serviceData: ServiceData;
 
   private failback429RetryAttempts: number;
-  private registrationStatus: MobiusStatus;
+  private registrationStatus: RegistrationStatus;
   private failbackTimer?: NodeJS.Timer;
   private activeMobiusUrl!: string;
 
@@ -96,7 +95,7 @@ export class Registration implements IRegistration {
     }
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
-    this.registrationStatus = MobiusStatus.DEFAULT;
+    this.registrationStatus = RegistrationStatus.INACTIVE;
     this.failback429RetryAttempts = 0;
     log.setLogger(logLevel, REGISTRATION_FILE);
     this.rehomingIntervalMin = DEFAULT_REHOMING_INTERVAL_MIN;
@@ -456,14 +455,14 @@ export class Registration implements IRegistration {
    *          ACTIVE, else false.
    */
   public isDeviceRegistered(): boolean {
-    return this.registrationStatus === MobiusStatus.ACTIVE;
+    return this.registrationStatus === RegistrationStatus.ACTIVE;
   }
 
-  public getStatus(): MobiusStatus {
+  public getStatus(): RegistrationStatus {
     return this.registrationStatus;
   }
 
-  public setStatus(value: MobiusStatus) {
+  public setStatus(value: RegistrationStatus) {
     this.registrationStatus = value;
   }
 
@@ -605,7 +604,7 @@ export class Registration implements IRegistration {
     for (const url of servers) {
       try {
         abort = false;
-        this.registrationStatus = MobiusStatus.DEFAULT;
+        this.registrationStatus = RegistrationStatus.INACTIVE;
         this.lineEmitter(LINE_EVENTS.CONNECTING);
         log.log(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
@@ -616,7 +615,7 @@ export class Registration implements IRegistration {
 
         this.deviceInfo = resp.body as IDeviceInfo;
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
-        this.registrationStatus = MobiusStatus.ACTIVE;
+        this.registrationStatus = RegistrationStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
@@ -654,7 +653,7 @@ export class Registration implements IRegistration {
           {method: this.attemptRegistrationWithServers.name, file: REGISTRATION_FILE},
           this.restoreRegistrationCallBack()
         );
-        if (this.registrationStatus === MobiusStatus.ACTIVE) {
+        if (this.registrationStatus === RegistrationStatus.ACTIVE) {
           log.info(
             `[${caller}] : Device is already restored, active mobius url: ${this.activeMobiusUrl}`,
             {
@@ -734,7 +733,7 @@ export class Registration implements IRegistration {
             );
 
             if (abort || keepAliveRetryCount >= 5) {
-              this.setStatus(MobiusStatus.DEFAULT);
+              this.setStatus(RegistrationStatus.INACTIVE);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
               this.lineEmitter(LINE_EVENTS.UNREGISTERED);
@@ -778,7 +777,7 @@ export class Registration implements IRegistration {
     }
 
     this.clearKeepaliveTimer();
-    this.setStatus(MobiusStatus.DEFAULT);
+    this.setStatus(RegistrationStatus.INACTIVE);
   }
 
   /**
@@ -821,7 +820,7 @@ export class Registration implements IRegistration {
 
       const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
       this.setActiveMobiusUrl(uri);
-      this.registrationStatus = MobiusStatus.ACTIVE;
+      this.registrationStatus = RegistrationStatus.ACTIVE;
 
       return true;
     }

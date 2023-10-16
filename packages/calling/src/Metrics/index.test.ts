@@ -5,7 +5,7 @@ import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
 import {VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
-import {MobiusStatus, ServiceIndicator} from '../common/types';
+import {RegistrationStatus, ServiceIndicator} from '../common/types';
 import log from '../Logger';
 import {createCallError} from '../Errors/catalog/CallError';
 
@@ -67,7 +67,12 @@ describe('CALLING: Metric tests', () => {
     it('submit registration failure metric', () => {
       metricManager.setDeviceInfo(mockDeviceInfo);
 
-      const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
+      const clientError = createClientError(
+        '',
+        {},
+        ERROR_TYPE.DEFAULT,
+        RegistrationStatus.INACTIVE
+      );
       const err = <ErrorObject>{};
 
       err.context = {};

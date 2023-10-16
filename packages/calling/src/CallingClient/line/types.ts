@@ -5,14 +5,9 @@ import {
   CorrelationId,
   IDeviceInfo,
   MobiusDeviceId,
-  MobiusStatus,
+  RegistrationStatus,
 } from '../../common/types';
 import {ICall} from '../calling/types';
-
-export enum LineStatus {
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-}
 
 export enum LINE_EVENTS {
   CONNECTING = 'connecting',
@@ -28,7 +23,7 @@ export interface ILine {
   userId: string;
   clientDeviceUri: string;
   lineId: string;
-  status: LineStatus;
+  status: RegistrationStatus;
   mobiusDeviceId?: string;
   phoneNumber?: string;
   extension?: string;
@@ -45,7 +40,7 @@ export interface ILine {
   register: () => void;
   deregister: () => void;
   getActiveMobiusUrl: () => string;
-  getRegistrationStatus: () => MobiusStatus;
+  getRegistrationStatus: () => RegistrationStatus;
   getDeviceId: () => MobiusDeviceId | undefined;
   lineEmitter: (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => void;
   makeCall: (dest: CallDetails) => ICall | undefined;

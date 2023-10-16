@@ -6,7 +6,7 @@ import {
   getMockDeviceInfo,
   getMobiusDiscoveryResponse,
 } from '../common/testUtil';
-import {CallType, MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
+import {CallType, RegistrationStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
@@ -23,7 +23,7 @@ import {
   SPARK_USER_AGENT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
-import {ILine, LineStatus} from './line/types';
+import {ILine} from './line/types';
 import {
   ipPayload,
   regionBody,
@@ -371,7 +371,7 @@ describe('CallingClient Tests', () => {
       line = Object.values(callingClient.lineDict)[0] as ILine;
       reg = line.registration;
 
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
       await line.register();
 
       deRegSpy = jest.spyOn(line.registration, 'deregister');
@@ -390,7 +390,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('detect a network flap in mercury connection', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = false;
@@ -426,7 +426,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 500,
@@ -471,7 +471,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap before initial registration is done', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       reg.deregister();
       reg.setActiveMobiusUrl(undefined);
@@ -510,7 +510,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap before initial registration is done should not trigger re-verify registration: Restore Failure', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       reg.deregister();
       line.mobiusDeviceId = undefined;
@@ -551,7 +551,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap with 1 active call', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /** create a new call */
       reg.callManager.createCall();
@@ -631,7 +631,7 @@ describe('CallingClient Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        LineStatus.ACTIVE,
+        RegistrationStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),

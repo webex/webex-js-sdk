@@ -23,6 +23,7 @@ import {
   IpInfo,
   MobiusServers,
   WebexRequestPayload,
+  RegistrationStatus,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -41,7 +42,7 @@ import {
   NETWORK_FLAP_TIMEOUT,
 } from './constants';
 import Line from './line';
-import {ILine, LINE_EVENTS, LineStatus} from './line/types';
+import {ILine, LINE_EVENTS} from './line/types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 
@@ -142,7 +143,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         retry = true;
       }
 
-      if (retry && this.webex.internal.mercury.connected && line.mobiusDeviceId) {
+      if (
+        retry &&
+        this.webex.internal.mercury.connected &&
+        line.status === RegistrationStatus.INACTIVE
+      ) {
         retry = await line.registration.handleConnectionRestoration(retry);
       }
     }, NETWORK_FLAP_TIMEOUT);
@@ -394,7 +399,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
-      LineStatus.INACTIVE,
+      RegistrationStatus.INACTIVE,
       this.mutex,
       this.primaryMobiusUris,
       this.backupMobiusUris,

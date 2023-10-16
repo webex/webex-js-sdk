@@ -1,4 +1,4 @@
-import {IDeviceInfo, MobiusStatus} from '../../common/types';
+import {IDeviceInfo, RegistrationStatus} from '../../common/types';
 
 export type Header = {
   [key: string]: string;
@@ -13,8 +13,8 @@ export interface IRegistration {
   setMobiusServers: (primaryMobiusUris: string[], backupMobiusUris: string[]) => void;
   triggerRegistration: () => Promise<void>;
   isDeviceRegistered: () => boolean;
-  setStatus: (value: MobiusStatus) => void;
-  getStatus: () => MobiusStatus;
+  setStatus: (value: RegistrationStatus) => void;
+  getStatus: () => RegistrationStatus;
   getDeviceInfo: () => IDeviceInfo;
   clearKeepaliveTimer: () => void;
   deregister: () => void;

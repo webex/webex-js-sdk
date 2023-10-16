@@ -183,6 +183,7 @@ describe('Call Tests', () => {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
+      on: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -285,6 +286,7 @@ describe('Call Tests', () => {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
+      on: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -325,6 +327,7 @@ describe('Call Tests', () => {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
+      on: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
