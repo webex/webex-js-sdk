@@ -4,16 +4,14 @@
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
-import {version} from 'webex/package';
 
 describe('webex', () => {
   describe('Webex', () => {
     describe('.version', () => {
       it('exists', () => {
+        console.log('process env version: ', process.env.version);
         assert.property(Webex, 'version');
-        console.log(Webex.version);
-        console.log(version);
-        assert.equal(Webex.version, "undefined");
+        assert.equal(Webex.version, String(process.env.version));
       });
     });
 
@@ -21,10 +19,8 @@ describe('webex', () => {
       it('exists', () => {
         const webex = new Webex();
 
-        console.log(webex.version);
-        console.log(version);
         assert.property(webex, 'version');
-        assert.equal(webex.version, "undefined");
+        assert.equal(webex.version, String(process.env.version));
       });
     });
 
