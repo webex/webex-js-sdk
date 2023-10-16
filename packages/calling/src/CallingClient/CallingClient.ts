@@ -47,8 +47,16 @@ import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/
 import {getMetricManager} from '../Metrics';
 
 /**
+ * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
  *
+ * The following code snippet demonstrates how to create an instance of `CallingClient` using a `webex` instance and `callingConfig`:
+ *
+ * @example
+ * ```javascript
+ * const callingClient = createClient(webex, callingConfig);
+ * ```
  */
+
 export class CallingClient extends Eventing<CallingClientEventTypes> implements ICallingClient {
   private sdkConnector: ISDKConnector;
 
@@ -71,8 +79,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private lineDict: Record<string, ILine> = {};
 
   /**
-   * @param webex - A webex instance.
-   * @param config - Config to start the CallingClient with.
+   * @ignore
    */
   constructor(webex: WebexSDK, config?: CallingClientConfig) {
     super();
@@ -108,6 +115,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   // async calls required to run after constructor
+
+  /**
+   * Initializes the `CallingClient` by performing the following steps:
+   *
+   * 1. Retrieves list of servers.
+   * 2. Creates a line.
+   * 3. Sets up network change detection.
+   *
+   * This method should be called once to initialize the `callingClient`.
+   *
+   * @returns A promise that resolves when the initialization is complete.
+   * @ignore
+   */
   public async init() {
     await this.getMobiusServers();
     await this.createLine();
@@ -350,23 +370,20 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   /**
    * To get the current log Level.
-   *
-   * @returns - Log level.
+   * @ignore
    */
   public getLoggingLevel(): LOGGER {
     return log.getLogLevel();
   }
 
   /**
-   *
+   *  To return the `sdkConnector` instance that was used during sdk initialisation.
+   * @ignore
    */
   public getSDKConnector(): ISDKConnector {
     return this.sdkConnector;
   }
 
-  /**
-   *
-   */
   private registerSessionsListener() {
     this.sdkConnector.registerListener<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
@@ -411,9 +428,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * Retrieves details of all the line objects belonging to a User
+   * Retrieves details of all the Line objects belonging to a User
    * NOTE: currently multiple lines are not supported
-   * so this API will return a single line object
    */
   public getLines(): Record<string, ILine> {
     return this.lineDict;
@@ -442,6 +458,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public getConnectedCall(): ICall | undefined {
     let connectCall;
     const calls = this.callManager.getActiveCalls();
+
     Object.keys(calls).forEach((correlationId) => {
       if (calls[correlationId].isConnected() && !calls[correlationId].isHeld()) {
         connectCall = calls[correlationId];
@@ -453,8 +470,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 }
 
 /**
+ * Create the `CallingClient` instance using the `webex` object and callingSdk `config`
  * @param webex - A webex instance.
- * @param config - Config to start the CallingClient with..
+ * @param config - Config to start the CallingClient with.
  */
 export const createClient = async (
   webex: WebexSDK,

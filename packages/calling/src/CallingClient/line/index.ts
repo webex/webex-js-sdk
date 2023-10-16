@@ -227,7 +227,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.registration.getDeviceInfo().device?.deviceId;
 
   /**
-   * @param dest -.
+   * Initiates a call to the specified destination.
+   * @param dest - The call details including destination information.
    */
   public makeCall = (dest: CallDetails): ICall | undefined => {
     let call;

@@ -30,7 +30,7 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * @param sort - Sort the records in ascending or descending order.
    * @param sortBy - Sort the records by start time or end time.
    *
-   * Example
+   * @example
    * ```javascript
    * const callHistoryResponse = await callHistory.getCallHistoryData(days, limit, sort, sortBy);
    * ```

@@ -107,8 +107,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   }
 
   /**
+   * @ignore
    * SDK connector function.
-   *
    * @returns SdkConnector.
    */
   public getSDKConnector(): ISDKConnector {

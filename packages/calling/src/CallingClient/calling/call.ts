@@ -179,14 +179,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   /**
-   * @param activeUrl
-   * @param webex -.
-   * @param destination -.
-   * @param direction -.
-   * @param deviceId -.
-   * @param serverCb
-   * @param deleteCb
-   * @param indicator - Service Indicator.
+   * @ignore
    */
   constructor(
     activeUrl: string,
@@ -1972,8 +1965,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   /**
-   * @param settings
-   * @param settings.localAudioTrack
+   * Answers the call with the provided local audio stream.
+   *
+   * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];

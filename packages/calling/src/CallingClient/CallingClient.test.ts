@@ -513,8 +513,9 @@ describe('CallingClient Tests', () => {
       expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       reg.deregister();
-      line.mobiusDeviceId = undefined;
       reg.setActiveMobiusUrl(undefined);
+
+      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
 
       jest.clearAllMocks();
 
