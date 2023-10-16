@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.231](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.230...v3.0.0-beta.231) (2023-10-16)
+
+
+### Features
+
+* **ca:** prelogin fixes ([#3151](https://github.com/webex/webex-js-sdk/issues/3151)) ([928e3bf](https://github.com/webex/webex-js-sdk/commit/928e3bf41e7716818f31df3195f6baebf77eaf08))
+
 ## [3.0.0-beta.230](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.229...v3.0.0-beta.230) (2023-10-12)
 
 
