@@ -477,8 +477,8 @@ function createCall(e) {
   const {destination} = createCallForm.elements;
 
   console.log(destination.value);
-
-
+  makeCallBtn.disabled = true;
+  outboundEndElm.disabled = false
   call = line.makeCall({
     type: 'uri',
     address: destination.value,
@@ -504,8 +504,6 @@ function createCall(e) {
   call.on('established', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Established`;
     transferElm.disabled = false;
-    outboundEndElm.disabled = false;
-    makeCallBtn.disabled = true;
   });
   call.on('disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
@@ -660,7 +658,7 @@ async function getMediaDevices() {
     populateSourceDevices(camera);
   });
 
-  const microphones = await callingClient.mediaEngine.Media .getMicrophones();
+  const microphones = await callingClient.mediaEngine.Media.getMicrophones();
   microphones.forEach((microphone) => {
     populateSourceDevices(microphone);
   });

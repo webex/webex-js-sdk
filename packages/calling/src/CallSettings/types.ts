@@ -267,7 +267,7 @@ export type CallSettingResponse = {
  * These APIs return promises that resolve to a `CallSettingResponse` object, which contains a status code, data, and message.
  * The data field within this response object holds the `callSetting` object, which can take on different types depending on the specific API called.
  *
- * Example
+ * @example
  * ```json
  * {
  *  statusCode: 200,
@@ -282,14 +282,15 @@ export interface ICallSettings {
   /**
    * This API is used to fetch the call waiting setting.
    *
-   * Example
+   * @example
    * ```javascript
    * const callWaitingResponse = await callSettings.getCallWaitingSetting();
    * ```
    *
    * The callWaitingResponse object will have callSetting object with the properties as mentioned in `ToggleSetting`.
    *
-   * Example - ToggleSetting
+   * @example
+   * ToggleSetting:
    * ```json
    * {
    *  statusCode: 200,
@@ -308,7 +309,7 @@ export interface ICallSettings {
   /**
    * This API is used to fetch the do not disturb(DND) status.
    *
-   * Example
+   * @example
    * ```javascript
    * const dndResponse = await callSettings.getDoNotDisturbSetting();
    * ```
@@ -334,7 +335,7 @@ export interface ICallSettings {
   /**
    * This API is used to set DND to true or false based on parameter received.
    *
-   * Example
+   * @example
    * ```javascript
    * const dndResponse = await callSettings.setDoNotDisturbSetting(true|false);
    * ```
@@ -344,7 +345,7 @@ export interface ICallSettings {
   /**
    * This API is used to fetch the call forward setting.
    *
-   *  Example
+   *  @example
    * ```javascript
    * const callForwardResponse = await callSettings.getCallForwardSetting();
    * ```
@@ -365,7 +366,7 @@ export interface ICallSettings {
 
   /**
    * This API is used to fetch the voicemail.
-   *  Example
+   *  @example
    * ```javascript
    * const voicemailResponse = await callSettings.getVoicemailSetting();
    * ```
@@ -377,7 +378,7 @@ export interface ICallSettings {
   /**
    * This API is used to set voicemail.
    *
-   * Example
+   * @example
    * ```javascript
    * const voicemailResponse = await callSettings.setVoicemailSetting();
    * ```
@@ -392,7 +393,7 @@ export interface ICallSettings {
    * @param directoryNumber - Directory number for which the call forward always setting is to be fetched.
    * This parameter is only required for Cloud Connected Unified Communications(CCUC): https://www.cisco.com/c/en/us/products/unified-communications/webex-cloud-connected-uc/index.html backend.
    *
-   * Example
+   * @example
    * ```javascript
    * const callForwardAlwaysResponse = await callSettings.setVoicemailSetting();
    * ```
