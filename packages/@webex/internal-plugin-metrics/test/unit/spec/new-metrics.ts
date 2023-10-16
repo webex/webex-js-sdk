@@ -150,7 +150,7 @@ describe('internal-plugin-metrics', () => {
           api: 'metrics',
           resource: 'clientmetrics-prelogin',
           headers: { 'x-prelogin-userid': 'my-id', authorization: false },
-          body: {event: 'test'},
+          body: {metrics: [{event: 'test'}]},
         });
         assert.calledWith(
           webex.logger.log,

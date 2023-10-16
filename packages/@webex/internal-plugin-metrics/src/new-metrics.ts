@@ -187,7 +187,9 @@ class Metrics extends WebexPlugin {
           authorization: false,
           'x-prelogin-userid': preLoginId,
         },
-        body: payload,
+        body: {
+          metrics: [payload],
+        },
       })
       .then((res) => {
         // @ts-ignore

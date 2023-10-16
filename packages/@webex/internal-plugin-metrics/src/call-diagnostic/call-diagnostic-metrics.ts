@@ -738,14 +738,25 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       type: ['diagnostic-event'],
     });
 
-    // @ts-ignore
-    return this.webex.prepareFetchOptions({
+    const request = {
       method: 'POST',
       service: 'metrics',
       resource: 'clientmetrics',
       body: {
         metrics: [diagnosticEvent],
       },
-    });
+      headers: {},
+    };
+
+    if (options.preLoginId) {
+      request.headers = {
+        authorization: false,
+        'x-prelogin-userid': options.preLoginId,
+      };
+      request.resource = 'clientmetrics-prelogin';
+    }
+
+    // @ts-ignore
+    return this.webex.prepareFetchOptions(request);
   }
 }
