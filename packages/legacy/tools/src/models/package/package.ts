@@ -59,6 +59,7 @@ class Package {
       typescript,
     } = config;
 
+    console.log('pkesari_Build function from package.ts, config: ', config);
     const inputPath = path.join(this.data.packageRoot, source);
 
     const javascriptFileCollector = javascript
@@ -79,6 +80,7 @@ class Package {
           packageRoot: this.data.packageRoot,
         }));
 
+        console.log('pkesari_files returned from Package file');
         return Promise.all(files.map((file) => file.build({
           destination,
           generateSourceMap: !!generateSourceMaps,

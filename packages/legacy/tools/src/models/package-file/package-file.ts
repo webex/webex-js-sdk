@@ -47,8 +47,10 @@ class PackageFile {
   public build({ destination, generateSourceMap }: { destination: string, generateSourceMap: boolean }): Promise<this> {
     const { directory, location, packageRoot } = this.config;
 
+    console.log('pkesari_In build function from package file, conig: ', this.config);
     return PackageFile.transform({ location: path.join(packageRoot, directory, location) })
       .then(({ code, map }) => {
+        console.log('pkesari_In build function from package file, code, map: ', code, map);
         const outputPath = path.join(packageRoot, destination, location).replace('.ts', '.js');
 
         const mutatedCode = generateSourceMap
@@ -81,6 +83,7 @@ class PackageFile {
    * @returns - The results of the transformed file.
    */
   protected static transform({ location }: { location: string }): Promise<BabelFileResult> {
+    console.log('pkesari_In transform function, location: ', location);
     return transformFileAsync(location) as Promise<BabelFileResult>;
   }
 

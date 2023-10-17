@@ -40,6 +40,7 @@ const build: CommandsCommand<PackageBuildConfig> = {
    * @returns - Promise that resolves once the process is complete.
    */
   handler: (options: PackageBuildConfig) => {
+    console.log('pkesari_Creating package instance');
     const pack = new Package();
 
     return pack.build(options)

@@ -10,6 +10,7 @@ const t = require('@babel/types');
  * @returns {Object}
  */
 module.exports = function injectPackageVersion() {
+  console.log('pkesari_Version getting injected');
   const version = 'modern';
 
   return {
@@ -20,7 +21,9 @@ module.exports = function injectPackageVersion() {
        * @returns {void}
        */
       CallExpression(path) {
+        console.log('pkesari_fist if');
         if (t.isMemberExpression(path.get('callee'))) {
+          console.log('pkesari_CallExpression path: ', path);
           if (
             path.node.callee.object.name === 'WebexPlugin' &&
             path.node.callee.property.name === 'extend'
@@ -31,7 +34,9 @@ module.exports = function injectPackageVersion() {
               false
             );
 
+            console.log('pkesari_def before visited flag check: ', def, visited);
             if (!visited) {
+              console.log('pkesari_Pushing version to def.properties: ', def.properties, version);
               def.properties.push(
                 t.objectProperty(t.identifier('version'), t.stringLiteral(version))
               );
@@ -47,6 +52,8 @@ module.exports = function injectPackageVersion() {
        */
       Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
+          console.log('pkesari_replacing version in path: ', path);
+          console.log('pkesari_version as per this file: ', version);
           path.replaceWithSourceString(`\`${version}\``);
         }
       },
