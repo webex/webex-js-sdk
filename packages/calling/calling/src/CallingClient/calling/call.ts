@@ -1796,14 +1796,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     try {
-      const ssrc = sdp.match(/^a=ssrc.*/gim);
+      // const ssrc = sdp.match(/^a=ssrc.*/gim);
       const ufrag = sdp.match(/^a=ice-ufrag.*/gim);
       const pwd = sdp.match(/^a=ice-pwd.*/gim);
       const fingerprint = sdp.match(/^a=fingerprint.*/gim);
       const candidates = sdp.match(/^a=candidate.*/gim);
       const videoPortMatch = sdp.match(/^m=video (?:\d+)/gim);
       if (pwd && pwd.length > 1) return sdp;
-      let ssrcS = '';
+      // let ssrcS = '';
       let ufragS = '';
       let pwdS = '';
       let fingerprintS = '';
@@ -1814,7 +1814,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         if (videoPortS && videoPortS.length) videoPort = parseInt(videoPortS[0], 10);
       }
       if (!videoPort) return sdp;
-      if (ssrc && ssrc.length) ssrcS = `${ssrc[0]}\r\n`;
+      // if (ssrc && ssrc.length) ssrcS = `${ssrc[0]}\r\n`;
       if (ufrag && ufrag.length) ufragS = `${ufrag[0]}\r\n`;
       if (pwd && pwd.length) pwdS = `${pwd[0]}\r\n`;
       if (fingerprint && fingerprint.length) fingerprintS = `${fingerprint[0]}\r\n`;
@@ -1825,7 +1825,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }
       }
       sdp += `${
-        ssrcS + ufragS + pwdS + fingerprintS + candidatesS
+        // ssrcS + ufragS + pwdS + fingerprintS + candidatesS
+        ufragS + pwdS + fingerprintS + candidatesS
       }a=rtcp-mux\r\na=setup:passive\r\n`;
     } catch (e) {
       log.info(`Error: ${e}`, {
