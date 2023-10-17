@@ -22,7 +22,6 @@ module.exports = function injectPackageVersion() {
        */
       CallExpression(path) {
         if (t.isMemberExpression(path.get('callee'))) {
-          console.log('pkesari_CallExpression path');
           if (
             path.node.callee.object.name === 'WebexPlugin' &&
             path.node.callee.property.name === 'extend'
@@ -51,7 +50,7 @@ module.exports = function injectPackageVersion() {
        */
       Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
-          console.log('pkesari_replacing version in path: ', path);
+          console.log('pkesari_replacing version in path');
           console.log('pkesari_version as per this file: ', version);
           path.replaceWithSourceString(`\`${version}\``);
         }
