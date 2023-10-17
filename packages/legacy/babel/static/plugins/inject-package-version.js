@@ -10,7 +10,6 @@ const t = require('@babel/types');
  * @returns {Object}
  */
 module.exports = function injectPackageVersion() {
-  console.log('pkesari_Version getting injected');
   const version = 'modern';
 
   return {
@@ -32,9 +31,7 @@ module.exports = function injectPackageVersion() {
               false
             );
 
-            console.log('pkesari_def before visited flag check: ', def, visited);
             if (!visited) {
-              console.log('pkesari_Pushing version to def.properties: ', def.properties, version);
               def.properties.push(
                 t.objectProperty(t.identifier('version'), t.stringLiteral(version))
               );
@@ -50,8 +47,6 @@ module.exports = function injectPackageVersion() {
        */
       Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
-          console.log('pkesari_replacing version in path');
-          console.log('pkesari_version as per this file: ', version);
           path.replaceWithSourceString(`\`${version}\``);
         }
       },
