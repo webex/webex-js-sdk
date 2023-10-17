@@ -370,3 +370,7 @@ legend {
   background-color: rgb(255 255 255);
   padding: 0.3rem;
 }
+
+.webex-error {
+  color: #de3434;
+}

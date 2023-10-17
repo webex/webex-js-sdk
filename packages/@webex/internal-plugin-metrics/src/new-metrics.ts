@@ -18,6 +18,7 @@ import {
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
+import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -186,17 +187,25 @@ class Metrics extends WebexPlugin {
           authorization: false,
           'x-prelogin-userid': preLoginId,
         },
-        body: payload,
+        body: {
+          metrics: [payload],
+        },
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful:`, res);
+        this.webex.logger.log(
+          `NewMetrics: @postPreLoginMetric. Request successful:`,
+          `res: ${JSON.stringify(res)}`
+        );
 
         return res;
       })
       .catch((err) => {
         // @ts-ignore
-        this.logger.error(`NewMetrics: @postPreLoginMetric. Request failed:`, err);
+        this.logger.error(
+          `NewMetrics: @postPreLoginMetric. Request failed:`,
+          `err: ${generateCommonErrorMetadata(err)}`
+        );
 
         return Promise.reject(err);
       });
@@ -224,13 +233,19 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful:`, res);
+        this.webex.logger.log(
+          `NewMetrics: @clientMetricsAliasUser. Request successful:`,
+          `res: ${JSON.stringify(res)}`
+        );
 
         return res;
       })
       .catch((err) => {
         // @ts-ignore
-        this.logger.error(`NewMetrics: @clientMetricsAliasUser. Request failed:`, err);
+        this.logger.error(
+          `NewMetrics: @clientMetricsAliasUser. Request failed:`,
+          `err: ${generateCommonErrorMetadata(err)}`
+        );
 
         return Promise.reject(err);
       });

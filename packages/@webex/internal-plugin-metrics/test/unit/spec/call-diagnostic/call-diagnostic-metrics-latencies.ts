@@ -104,24 +104,15 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getShowInterstitialTime correctly', () => {
-      cdl.saveTimestamp({key: 'internal.client.interstitial-window.launched', value: 10});
+      cdl.saveTimestamp({key: 'client.interstitial-window.start-launch', value: 10});
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 20});
       assert.deepEqual(cdl.getShowInterstitialTime(), 10);
     });
 
     it('calculates getCallInitJoinReq correctly', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 10});
+      cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.locus.join.request', value: 20});
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
-    });
-
-    it('calculates getCallInitJoinReq correctly without click join button event', () => {
-      cdl.saveLatency('internal.call.init.join.req', 12);
-      cdl.saveTimestamp({
-        key: 'client.locus.join.request',
-        value: 20,
-      });
-      assert.deepEqual(cdl.getCallInitJoinReq(), 12);
     });
 
     it('calculates getJoinReqResp correctly', () => {

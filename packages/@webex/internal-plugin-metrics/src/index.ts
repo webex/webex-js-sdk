@@ -9,6 +9,7 @@ import {registerInternalPlugin} from '@webex/webex-core';
 import Metrics from './metrics';
 import config from './config';
 import NewMetrics from './new-metrics';
+import * as Utils from './utils';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -29,7 +30,7 @@ registerInternalPlugin('newMetrics', NewMetrics, {
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics};
+export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics, Utils};
 export type {
   ClientEvent,
   ClientEventLeaveReason,
