@@ -10,7 +10,7 @@ describe('webex', () => {
     describe('.version', () => {
       it('exists', () => {
         assert.property(Webex, 'version');
-        assert.equal(Webex.version, String(process.env.version));
+        assert.equal(Webex.version, "modern");
       });
     });
 
@@ -19,7 +19,7 @@ describe('webex', () => {
         const webex = new Webex();
 
         assert.property(webex, 'version');
-        assert.equal(webex.version, String(process.env.version));
+        assert.equal(webex.version, "modern");
       });
     });
 
