@@ -21,9 +21,8 @@ module.exports = function injectPackageVersion() {
        * @returns {void}
        */
       CallExpression(path) {
-        console.log('pkesari_fist if');
         if (t.isMemberExpression(path.get('callee'))) {
-          console.log('pkesari_CallExpression path: ', path);
+          console.log('pkesari_CallExpression path');
           if (
             path.node.callee.object.name === 'WebexPlugin' &&
             path.node.callee.property.name === 'extend'

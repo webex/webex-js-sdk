@@ -50,7 +50,7 @@ class PackageFile {
     console.log('pkesari_In build function from package file, conig: ', this.config);
     return PackageFile.transform({ location: path.join(packageRoot, directory, location) })
       .then(({ code, map }) => {
-        console.log('pkesari_In build function from package file, code, map: ', code, map);
+        console.log('pkesari_In build function from package file, map: ', map);
         const outputPath = path.join(packageRoot, destination, location).replace('.ts', '.js');
 
         const mutatedCode = generateSourceMap
