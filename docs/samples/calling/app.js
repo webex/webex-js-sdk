@@ -86,6 +86,7 @@ let call;
 let callTranferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let localVideoStream;
 
 const devicesById = {};
 const img = new Image();
@@ -473,6 +474,7 @@ function createCall(e) {
   call.on('call:established', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Established`;
     transferElm.disabled = false;
+    addPlayIfPausedEvents(htmlMediaElements);
   });
   call.on('call:disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
@@ -488,7 +490,13 @@ function createCall(e) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
 
-  call.dial(localAudioStream);
+  call.on('call:remote_video', (track) => {
+    let remoteVideo = document.getElementById('remote-video');
+    remoteVideo.srcObject = new MediaStream([track]);
+    remoteVideo.play();
+  });
+
+  call.dial(localAudioStream, localVideoStream);
 }
 
 function sendDTMF() {
@@ -576,6 +584,9 @@ function initiateTransfer() {
 async function getMediaStreams() {
   localAudioStream  = await Calling.createMicrophoneStream({audio: true});
   localAudioElem.srcObject = localAudioStream.outputStream;
+
+  localVideoStream  = await Calling.createCameraStream({video: true});
+  localVideoElem.srcObject = localVideoStream.outputStream;
 }
 
 // Listen for submit on create meeting
@@ -655,7 +666,12 @@ function answer() {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
     });
 
-    call.answer(localAudioStream);
+    call.on('call:remote_video', (track) => {
+      document.getElementById('remote-video').srcObject = new MediaStream([track]);
+      addPlayIfPausedEvents(htmlMediaElements);
+    });
+
+    call.answer(localAudioStream, localVideoStream);
   }
 }
 

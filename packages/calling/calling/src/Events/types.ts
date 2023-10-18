@@ -18,6 +18,7 @@ export enum EVENT_KEYS {
   OUTGOING_CALL = 'callingClient:outgoing_call',
   PROGRESS = 'call:progress',
   REMOTE_MEDIA = 'call:remote_media',
+  REMOTE_VIDEO = 'call:remote_video',
   RESUME_ERROR = 'call:resume_error',
   RESUMED = 'call:resumed',
   TRANSFER_ERROR = 'call:transfer_error',
@@ -171,6 +172,7 @@ export type CallEventTypes = {
   [EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
   [EVENT_KEYS.PROGRESS]: (callId: CallId) => void;
   [EVENT_KEYS.REMOTE_MEDIA]: (track: MediaStreamTrack) => void;
+  [EVENT_KEYS.REMOTE_VIDEO]: (track: MediaStreamTrack) => void;
   [EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
   [EVENT_KEYS.RESUMED]: (callId: CallId) => void;
   [EVENT_KEYS.TRANSFER_ERROR]: (error: CallError) => void;

@@ -1,5 +1,10 @@
 /* eslint-disable valid-jsdoc */
-import {Event, LocalMicrophoneStream, RoapMediaConnection} from '@webex/internal-media-core';
+import {
+  Event,
+  LocalCameraStream,
+  LocalMicrophoneStream,
+  RoapMediaConnection,
+} from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
@@ -1785,6 +1790,58 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  private copyLinesFromAudioToVideo(sdp?: string) {
+    if (!sdp) {
+      return sdp;
+    }
+
+    try {
+      // const ssrc = sdp.match(/^a=ssrc.*/gim);
+      const ufrag = sdp.match(/^a=ice-ufrag.*/gim);
+      const pwd = sdp.match(/^a=ice-pwd.*/gim);
+      const fingerprint = sdp.match(/^a=fingerprint.*/gim);
+      const candidates = sdp.match(/^a=candidate.*/gim);
+      const videoPortMatch = sdp.match(/^m=video (?:\d+)/gim);
+      if (pwd && pwd.length > 1) return sdp;
+      // let ssrcS = '';
+      let ufragS = '';
+      let pwdS = '';
+      let fingerprintS = '';
+      let candidatesS = '';
+      let videoPort = 0;
+      if (videoPortMatch && videoPortMatch.length) {
+        const videoPortS = videoPortMatch[0].match(/\d+/);
+        if (videoPortS && videoPortS.length) videoPort = parseInt(videoPortS[0], 10);
+      }
+      if (!videoPort) return sdp;
+      // if (ssrc && ssrc.length) ssrcS = `${ssrc[0]}\r\n`;
+      if (ufrag && ufrag.length) ufragS = `${ufrag[0]}\r\n`;
+      if (pwd && pwd.length) pwdS = `${pwd[0]}\r\n`;
+      if (fingerprint && fingerprint.length) fingerprintS = `${fingerprint[0]}\r\n`;
+      if (candidates) {
+        for (let i = 0; i < candidates.length; i += 1) {
+          const p = videoPort + i;
+          candidatesS += `${candidates[i].replace(/(\d+) typ/im, `${p} typ`)}\r\n`;
+        }
+      }
+      sdp += `${
+        // ssrcS + ufragS + pwdS + fingerprintS + candidatesS
+        ufragS + pwdS + fingerprintS + candidatesS
+      }a=rtcp-mux\r\na=setup:passive\r\n`;
+    } catch (e) {
+      log.info(`Error: ${e}`, {
+        file: CALL_FILE,
+        method: this.copyLinesFromAudioToVideo.name,
+      });
+    }
+    log.info(`Video SDP: ${sdp}`, {
+      file: CALL_FILE,
+      method: this.copyLinesFromAudioToVideo.name,
+    });
+
+    return sdp;
+  }
+
   /**
    * Handle Incoming Roap Offer events.
    *
@@ -1798,6 +1855,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
 
     const message = event.data as RoapMessage;
+    message.sdp = this.copyLinesFromAudioToVideo(message.sdp);
 
     this.remoteRoapMessage = message;
     if (!this.mediaConnection) {
@@ -1845,6 +1903,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.remoteRoapMessage = message;
     message.seq = this.seq;
+    message.sdp = this.copyLinesFromAudioToVideo(message.sdp);
     /* istanbul ignore else */
     if (this.mediaConnection) {
       this.mediaConnection.roapMessageReceived(message);
@@ -1859,21 +1918,25 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack - MediaStreamTrack.
    * @param settings.debugId - String.
    */
-  private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string) {
+  private initMediaConnection(
+    localAudioTrack: MediaStreamTrack,
+    localVideoTrack: MediaStreamTrack,
+    debugId?: string
+  ) {
     const mediaConnection = new RoapMediaConnection(
       {
         skipInactiveTransceivers: true,
         iceServers: [],
         sdpMunging: {
-          convertPort9to0: true,
+          convertPort9to0: false,
           addContentSlides: false,
         },
       },
       {
-        localTracks: {audio: localAudioTrack},
+        localTracks: {audio: localAudioTrack, video: localVideoTrack},
         direction: {
           audio: 'sendrecv',
-          video: 'inactive',
+          video: 'sendrecv',
           screenShareVideo: 'inactive',
         },
       },
@@ -1954,12 +2017,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async answer(localAudioStream: LocalMicrophoneStream) {
+  public async answer(
+    localAudioStream: LocalMicrophoneStream,
+    localVideoStream: LocalCameraStream
+  ) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    localAudioTrack.enabled = true;
+    // localAudioTrack.enabled = true;
+
+    const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
+    // localVideoTrack.enabled = true;
 
     if (!this.mediaConnection) {
-      this.initMediaConnection(localAudioTrack);
+      this.initMediaConnection(localAudioTrack, localVideoTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }
@@ -1978,12 +2047,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings
    * @param settings.localAudioTrack
    */
-  public async dial(localAudioStream: LocalMicrophoneStream) {
+  public async dial(localAudioStream: LocalMicrophoneStream, localVideoStream: LocalCameraStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    localAudioTrack.enabled = true;
+    // localAudioTrack.enabled = true;
+
+    const localVideoTrack = localVideoStream.outputStream.getVideoTracks()[0];
+    // localVideoTrack.enabled = true;
 
     if (!this.mediaConnection) {
-      this.initMediaConnection(localAudioTrack);
+      this.initMediaConnection(localAudioTrack, localVideoTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
     }
@@ -2338,12 +2410,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
-            const sdpVideoPortZero = event.roapMessage.sdp.replace(
-              /^m=(video) (?:\d+) /gim,
-              'm=$1 0 '
-            );
+            // const sdpVideoPortZero = event.roapMessage.sdp.replace(
+            //   /^m=(video) (?:\d+) /gim,
+            //   'm=$1 0 '
+            // );
 
-            event.roapMessage.sdp = sdpVideoPortZero;
+            // event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
             this.sendCallStateMachineEvt({type: 'E_SEND_CALL_SETUP', data: event.roapMessage});
             break;
@@ -2378,6 +2450,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(EVENT_KEYS.REMOTE_MEDIA, e.track);
+      } else {
+        log.info(`Emitting Remote Video event for track type : ${e.type} ${e.track}`, {
+          file: CALL_FILE,
+          method: 'mediaTrackListener',
+        });
+        this.emit(EVENT_KEYS.REMOTE_VIDEO, e.track);
       }
     });
   }

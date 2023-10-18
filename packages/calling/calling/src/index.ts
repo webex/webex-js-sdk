@@ -1,4 +1,4 @@
-import {createMicrophoneStream} from '@webex/media-helpers';
+import {createMicrophoneStream, createCameraStream} from '@webex/media-helpers';
 import {createCallSettingsClient} from './CallSettings/CallSettings';
 import {createContactsClient} from './Contacts/ContactsClient';
 import {createClient} from './CallingClient/CallingClient';
@@ -9,6 +9,7 @@ import Logger from './Logger';
 export {
   createClient,
   createCallHistoryClient,
+  createCameraStream,
   createMicrophoneStream,
   createVoicemailClient,
   createContactsClient,
