@@ -1117,10 +1117,14 @@ function setVideoInputDevice() {
   const {video} = getAudioVideoInput();
 
   if (meeting) {
+    const isMuted = localMedia.cameraStream?.muted;
     localMedia.cameraStream?.stop();
 
     return getUserMedia({video})
-      .then(() => meeting.publishStreams({camera: localMedia.cameraStream}));
+      .then(() => {
+        localMedia.cameraStream.setMuted(!!isMuted);
+        meeting.publishStreams({camera: localMedia.cameraStream});
+      });
   }
   else {
     console.log('MeetingControls#setVideoInputDevice() :: no valid meeting object!');
@@ -1132,10 +1136,14 @@ function setAudioInputDevice() {
   const {audio} = getAudioVideoInput();
 
   if (meeting) {
+    const isMuted = localMedia.microphoneStream?.muted;
     localMedia.microphoneStream?.stop();
 
     return getUserMedia({audio})
-      .then(() => meeting.publishStreams({microphone: localMedia.microphoneStream}));
+      .then(() => {
+        localMedia.microphoneStream.setMuted(!!isMuted);
+        meeting.publishStreams({microphone: localMedia.microphoneStream});
+      });
   }
   else {
     console.log('MeetingControls#setAudioInputDevice() :: no valid meeting object!');
