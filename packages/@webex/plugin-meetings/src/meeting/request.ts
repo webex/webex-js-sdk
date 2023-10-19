@@ -216,13 +216,16 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       url = `${locusUrl}/${PARTICIPANT}`;
     } else if (inviteeAddress || meetingNumber) {
       try {
-        // @ts-ignore
-        await this.webex.internal.services.waitForCatalog('postauth');
+        let clusterUrl;
 
-        const clusterUrl = locusClusterUrl
-          ? `https://${locusClusterUrl}/locus/api/v1`
-          : // @ts-ignore
-            this.webex.internal.services.get('locus');
+        if (locusClusterUrl) {
+          clusterUrl = `https://${locusClusterUrl}/locus/api/v1`;
+        } else {
+          // @ts-ignore
+          await this.webex.internal.services.waitForCatalog('postauth');
+          // @ts-ignore
+          clusterUrl = this.webex.internal.services.get('locus');
+        }
 
         url = `${clusterUrl}/${LOCI}/${CALL}`;
         body.invitee = {
