@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.232](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.231...v3.0.0-beta.232) (2023-10-19)
+
+
+### Features
+
+* **plugin-meetings:** use locus cluster url to avoid the redirect ([#3152](https://github.com/webex/webex-js-sdk/issues/3152)) ([ccd1511](https://github.com/webex/webex-js-sdk/commit/ccd15113cd55d926cdeabaf00ef1edd9914f19dc))
+
 ## [3.0.0-beta.231](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.230...v3.0.0-beta.231) (2023-10-16)
 
 
