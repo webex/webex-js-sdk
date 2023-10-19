@@ -4,9 +4,27 @@
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
+import sinon from 'sinon';
 
 describe('webex', () => {
+  const fakeServices =  {
+    _serviceUrls: {
+      mobius: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1',
+      identity: 'https://identity-b-us.webex.com',
+      janus: 'https://janus-intb.ciscospark.com/janus/api/v1',
+      wdm: 'https://wdm-a.wbx2.com/wdm/api/v1',
+      broadworksIdpProxy: 'https://broadworks-idp-proxy-a.wbx2.com/broadworks-idp-proxy/api/v1',
+      hydra: 'https://hydra-a.wbx2.com/v1/',
+      mercuryApi: 'https://mercury-api-intb.ciscospark.com/v1',
+      'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
+      contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
+      directorySearch: 'https://directory-search-a.wbx2.com/direcory-search/api/v1/',
+    },
+    fetchClientRegionInfo: jest.fn(),
+  }
+
   describe('Webex', () => {
+
     describe('.version', () => {
       it('exists', () => {
         assert.property(Webex, 'version');
@@ -17,6 +35,20 @@ describe('webex', () => {
     describe('#version', () => {
       it('exists', () => {
         const webex = new Webex();
+
+        const servicesGetStub = sinon.stub(webex.internal.services, 'get');
+        servicesGetStub.withArgs('wdm').returns(true);
+
+        const waitForCatalogStub = sinon.stub(webex.internal.services, 'waitForCatalog');
+        waitForCatalogStub.withArgs('postauth', 10).resolves();
+
+        const waitForServiceStub = sinon.stub(webex.internal.services, 'waitForService');
+        waitForServiceStub.withArgs({name: 'wdm'}).resolves('https://wdm-a.wbx2.com/wdm/api/v1');
+        waitForServiceStub.withArgs({name: 'u2c'}).resolves('https://u2c.gov.ciscospark.com/u2c/api/v1');
+
+        webex.canAuthorize = true;
+        const getUserTokenStub = sinon.stub(webex.internal.credentials, 'getUserToken');
+        getUserTokenStub.withArgs('spark:all').resolves('token');
 
         assert.property(webex, 'version');
         assert.equal(webex.version, "modern");
