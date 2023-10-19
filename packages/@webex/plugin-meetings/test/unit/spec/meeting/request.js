@@ -237,6 +237,29 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.invitee.address, 'sipUrl');
       });
 
+      it('sends uses the locusClusterUrl if available', async () => {
+        const deviceUrl = 'deviceUrl';
+        const correlationId = 'random-uuid';
+        const roapMessage = 'roap-message';
+        const inviteeAddress = 'sipUrl';
+        const locusClusterUrl = 'locusClusterUrl';
+
+        await meetingsRequest.joinMeeting({
+          deviceUrl,
+          correlationId,
+          roapMessage,
+          locusClusterUrl,
+          inviteeAddress,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'POST');
+        assert.equal(
+          requestParams.uri,
+          'https://locusClusterUrl/locus/api/v1/loci/call?alternateRedirect=true'
+        );
+      });
+
       it('adds deviceCapabilities to request when breakouts are supported', async () => {
         await meetingsRequest.joinMeeting({
           breakoutsSupported: true,

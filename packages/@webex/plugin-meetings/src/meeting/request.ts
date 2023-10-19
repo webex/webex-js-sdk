@@ -108,6 +108,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     sipUri: string;
     deviceUrl: string;
     locusUrl: string;
+    locusClusterUrl: string;
     resourceId: string;
     correlationId: string;
     ensureConversation: boolean;
@@ -133,6 +134,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       permissionToken,
       deviceUrl,
       locusUrl,
+      locusClusterUrl,
       resourceId,
       correlationId,
       ensureConversation,
@@ -214,10 +216,18 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       url = `${locusUrl}/${PARTICIPANT}`;
     } else if (inviteeAddress || meetingNumber) {
       try {
-        // @ts-ignore
-        await this.webex.internal.services.waitForCatalog('postauth');
-        // @ts-ignore
-        url = `${this.webex.internal.services.get('locus')}/${LOCI}/${CALL}`;
+        let clusterUrl;
+
+        if (locusClusterUrl) {
+          clusterUrl = `https://${locusClusterUrl}/locus/api/v1`;
+        } else {
+          // @ts-ignore
+          await this.webex.internal.services.waitForCatalog('postauth');
+          // @ts-ignore
+          clusterUrl = this.webex.internal.services.get('locus');
+        }
+
+        url = `${clusterUrl}/${LOCI}/${CALL}`;
         body.invitee = {
           address: inviteeAddress || `wbxmn:${meetingNumber}`,
         };

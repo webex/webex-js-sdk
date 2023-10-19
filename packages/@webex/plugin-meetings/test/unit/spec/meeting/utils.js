@@ -519,6 +519,26 @@ describe('plugin-meetings', () => {
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
       });
+
+      it('should pass in the locusClusterUrl from meetingInfo', async () => {
+        const meeting = {
+          meetingInfo: {
+            locusClusterUrl: 'locusClusterUrl',
+          },
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {});
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
+      });
     });
 
     describe('joinMeetingOptions', () => {
