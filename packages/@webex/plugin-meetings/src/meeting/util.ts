@@ -112,6 +112,7 @@ const MeetingUtil = {
         meetingNumber: meeting.meetingNumber,
         deviceUrl: meeting.deviceUrl,
         locusUrl: meeting.locusUrl,
+        locusClusterUrl: meeting.meetingInfo?.locusClusterUrl,
         correlationId: meeting.correlationId,
         roapMessage: options.roapMessage,
         permissionToken: meeting.permissionToken,
