@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.233](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.232...v3.0.0-beta.233) (2023-10-19)
+
+
+### Features
+
+* **ca:** add temporary flag for buildType ([#3153](https://github.com/webex/webex-js-sdk/issues/3153)) ([f3aa45b](https://github.com/webex/webex-js-sdk/commit/f3aa45ba6ef7a333acae340619ff41f1af1cba8d))
+
 ## [3.0.0-beta.232](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.231...v3.0.0-beta.232) (2023-10-19)
 
 
