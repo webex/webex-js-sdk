@@ -1,8 +1,11 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 
+import {uniqueId} from 'lodash';
 import Batcher from '../batcher';
 import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
+import {CALL_DIAGNOSTIC_LOG_IDENTIFIER} from './config';
+import {generateCommonErrorMetadata} from '../utils';
 
 const CallDiagnosticEventsBatcher = Batcher.extend({
   namespace: 'Metrics',
@@ -37,14 +40,40 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
    * @returns
    */
   submitHttpRequest(payload) {
-    return this.webex.request({
-      method: 'POST',
-      service: 'metrics',
-      resource: 'clientmetrics',
-      body: {
-        metrics: payload,
-      },
-    });
+    const batchId = uniqueId('call-diagnostic-metrics-batch-');
+    this.webex.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Sending the request:`,
+      `payload: ${JSON.stringify(payload)}`
+    );
+
+    return this.webex
+      .request({
+        method: 'POST',
+        service: 'metrics',
+        resource: 'clientmetrics',
+        body: {
+          metrics: payload,
+        },
+      })
+      .then((res) => {
+        this.webex.logger.log(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful:`,
+          `response: ${JSON.stringify(res)}`
+        );
+
+        return res;
+      })
+      .catch((err) => {
+        this.webex.logger.error(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request failed:`,
+          `error: ${generateCommonErrorMetadata(err)}`
+        );
+
+        return Promise.reject(err);
+      });
   },
 });
 

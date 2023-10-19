@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.231](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.230...v3.0.0-beta.231) (2023-10-16)
+
+
+### Features
+
+* **ca:** prelogin fixes ([#3151](https://github.com/webex/webex-js-sdk/issues/3151)) ([928e3bf](https://github.com/webex/webex-js-sdk/commit/928e3bf41e7716818f31df3195f6baebf77eaf08))
+
+## [3.0.0-beta.230](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.229...v3.0.0-beta.230) (2023-10-12)
+
+
+### Features
+
+* **ca:** fix logs, refactor formula ([#3144](https://github.com/webex/webex-js-sdk/issues/3144)) ([9b9427f](https://github.com/webex/webex-js-sdk/commit/9b9427fb66225adfc37b5cece47bb6d5687aa8fa))
+
+## [3.0.0-beta.229](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.228...v3.0.0-beta.229) (2023-10-10)
+
+
+### Features
+
+* **meetings:** space id depreciation code change ([#3118](https://github.com/webex/webex-js-sdk/issues/3118)) ([5968fdc](https://github.com/webex/webex-js-sdk/commit/5968fdcff7bb54cf5e5ad217e1ba6f0091910192))
+
+## [3.0.0-beta.228](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.227...v3.0.0-beta.228) (2023-10-09)
+
+
+### Features
+
+* **ca:** fix formula for call init join rq ([#3132](https://github.com/webex/webex-js-sdk/issues/3132)) ([c649cd7](https://github.com/webex/webex-js-sdk/commit/c649cd738b64c63002c95de699e680324914d4f2))
+
+## [3.0.0-beta.227](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.226...v3.0.0-beta.227) (2023-10-09)
+
+
+### Features
+
+* **prejoin:** added env and launch method ([#3129](https://github.com/webex/webex-js-sdk/issues/3129)) ([3f27e54](https://github.com/webex/webex-js-sdk/commit/3f27e54e5147b6305815d9cd27ae31c267574c40))
+
+## [3.0.0-beta.226](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.225...v3.0.0-beta.226) (2023-10-06)
+
+
+### Features
+
+* added IpNetworkDetector to webex.internal.device ([#3127](https://github.com/webex/webex-js-sdk/issues/3127)) ([44bbce8](https://github.com/webex/webex-js-sdk/commit/44bbce8aaa5a9780667ba504926f5baa9e5e00dc))
+
+## [3.0.0-beta.225](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.224...v3.0.0-beta.225) (2023-10-06)
+
+
+### Features
+
+* **ca:** remove show to user ([#3122](https://github.com/webex/webex-js-sdk/issues/3122)) ([76ce4e1](https://github.com/webex/webex-js-sdk/commit/76ce4e1208a950e86c7ba50bcabb7f99a9dbfc76))
+
+## [3.0.0-beta.224](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.223...v3.0.0-beta.224) (2023-10-05)
+
+
+### Bug Fixes
+
+* update internal media core to 1.39.3 ([#3126](https://github.com/webex/webex-js-sdk/issues/3126)) ([5260716](https://github.com/webex/webex-js-sdk/commit/526071630af036fc0126d9ee588343cd3bcac825))
+
+## [3.0.0-beta.223](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.222...v3.0.0-beta.223) (2023-10-03)
+
+
+### Features
+
+* **ca:** add pre-login and more logs ([#3114](https://github.com/webex/webex-js-sdk/issues/3114)) ([03f98e5](https://github.com/webex/webex-js-sdk/commit/03f98e58ae8ee24847516c897fe6f3a89cf57cfa))
+
 ## [3.0.0-beta.222](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.221...v3.0.0-beta.222) (2023-09-28)
 
 

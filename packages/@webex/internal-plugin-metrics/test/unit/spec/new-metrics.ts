@@ -2,6 +2,7 @@ import {assert} from '@webex/test-helper-chai';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
+import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
   describe('new-metrics', () => {
@@ -18,6 +19,11 @@ describe('internal-plugin-metrics', () => {
             get: sinon.stub(),
           },
         },
+        request: sinon.stub().resolves({}),
+        logger: {
+          log: sinon.stub(),
+          error: sinon.stub(),
+        }
       });
 
       webex.emit('ready');
@@ -26,10 +32,16 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.clientMetricsAliasUser = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.postPreLoginMetric = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
         sinon.stub();
       webex.setTimingsAndFetch = sinon.stub();
     });
+
+    afterEach(() => {
+      sinon.restore();
+    })
 
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({
@@ -94,6 +106,73 @@ describe('internal-plugin-metrics', () => {
       assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp);
       assert.calledOnce(webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps);
     });
+
+    describe('#clientMetricsAliasUser', () => {
+      it('aliases the user correctly', async () => {
+        webex.request.resolves({response: 'abc'});
+        await webex.internal.newMetrics.clientMetricsAliasUser('my-id');
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          api: 'metrics',
+          resource: 'clientmetrics',
+          headers: { 'x-prelogin-userid': 'my-id' },
+          body: {},
+          qs: { alias: true }
+        });
+        assert.calledWith(
+          webex.logger.log,
+          'NewMetrics: @clientMetricsAliasUser. Request successful:',
+          'res: {"response":"abc"}'
+        );
+      });
+
+      it('handles failed request correctly', async () => {
+        webex.request.rejects(new Error("test error"));
+        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError')
+        try {
+          await webex.internal.newMetrics.clientMetricsAliasUser({event: 'test'}, 'my-id');
+        } catch (err) {
+          assert.calledWith(
+            webex.logger.error,
+            'NewMetrics: @clientMetricsAliasUser. Request failed:',
+            `err: formattedError`
+          );
+        }
+      });
+    });
+
+    describe('#postPreLoginMetric', () => {
+      it('sends the request correctly', async () => {
+        webex.request.resolves({response: 'abc'});
+        await webex.internal.newMetrics.postPreLoginMetric({event: 'test'}, 'my-id');
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          api: 'metrics',
+          resource: 'clientmetrics-prelogin',
+          headers: { 'x-prelogin-userid': 'my-id', authorization: false },
+          body: {metrics: [{event: 'test'}]},
+        });
+        assert.calledWith(
+          webex.logger.log,
+          'NewMetrics: @postPreLoginMetric. Request successful:',
+          'res: {"response":"abc"}'
+        );
+      });
+
+      it('handles failed request correctly', async () => {
+        webex.request.rejects(new Error("test error"));
+        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError')
+        try {
+          await webex.internal.newMetrics.postPreLoginMetric({event: 'test'}, 'my-id');
+        } catch (err) {
+          assert.calledWith(
+            webex.logger.error,
+            'NewMetrics: @postPreLoginMetric. Request failed:',
+            `err: formattedError`
+          );
+        }
+      });
+    })
 
     describe('#buildClientEventFetchRequestOptions', () => {
       it('builds client event fetch options successfully', () => {

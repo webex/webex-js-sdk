@@ -7,6 +7,7 @@ import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.
 import {BrowserDetection} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
+import {omit} from 'lodash';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -16,7 +17,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe.only('internal-plugin-metrics', () => {
+describe('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -49,7 +50,9 @@ describe.only('internal-plugin-metrics', () => {
           metrics: {
             submitClientMetrics: sinon.stub(),
           },
-          newMetrics: {},
+          newMetrics: {
+            postPreLoginMetric: sinon.stub(),
+          },
           device: {
             userId: 'userId',
             url: 'deviceUrl',
@@ -78,6 +81,11 @@ describe.only('internal-plugin-metrics', () => {
           isUnverifiedGuest: false,
         },
         prepareFetchOptions: sinon.stub().callsFake((opts: any) => ({...opts, foo: 'bar'})),
+        request: sinon.stub().resolves({body: {}}),
+        logger: {
+          log: sinon.stub(),
+          error: sinon.stub(),
+        },
       };
 
       webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -123,6 +131,63 @@ describe.only('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly with newEnvironment and createLaunchMethod', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', newEnvironment: 'test-new-env', clientLaunchMethod: 'url-handler'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler',
+          },
+          environment: 'meeting_evn',
+          newEnvironment: 'test-new-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('should build origin correctly and environment can be passed in options', () => {
+        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', clientLaunchMethod: 'url-handler', environment: 'test-env'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler'
+          },
+          environment: 'test-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
 
@@ -160,10 +225,10 @@ describe.only('internal-plugin-metrics', () => {
             browser: getBrowserName(),
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
-            "clientVersion": "43.9.0.1234",
-            "localNetworkPrefix": "1.3.4.0",
-            "majorVersion": 43,
-            "minorVersion": 9,
+            clientVersion: '43.9.0.1234',
+            localNetworkPrefix: '1.3.4.0',
+            majorVersion: 43,
+            minorVersion: 9,
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
@@ -173,7 +238,7 @@ describe.only('internal-plugin-metrics', () => {
           networkType: 'unknown',
           userAgent,
         });
-      })
+      });
     });
 
     describe('#getIdentifiers', () => {
@@ -341,6 +406,28 @@ describe.only('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
+          `name: client.alert.displayed`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1"},"eventData":{"webClientDomain":"whatever"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
+
       });
 
       it('should submit client event successfully with correlationId', () => {
@@ -410,6 +497,30 @@ describe.only('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
+          `name: client.alert.displayed`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url"},"eventData":{"webClientDomain":"whatever"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
+
+
       });
 
       it('it should include errors if provided with meetingId', () => {
@@ -475,6 +586,41 @@ describe.only('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+          `name: client.alert.displayed`,
+          `rawError: ${options.rawError}`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`
+        ])
+
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
+          `name: client.alert.displayed`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[4].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1"},"errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}],"eventData":{"webClientDomain":"whatever"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
       });
 
       it('it should include errors if provided with correlationId', () => {
@@ -533,6 +679,42 @@ describe.only('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+          `name: client.alert.displayed`,
+          `rawError: ${options.rawError}`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`
+        ])
+
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
+          `name: client.alert.displayed`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[4].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}],"canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url"},"eventData":{"webClientDomain":"whatever"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
       });
 
       it('should include errors in payload if provided via payload', () => {
@@ -620,6 +802,28 @@ describe.only('internal-plugin-metrics', () => {
             fields: {meetingId: 'meetingId', name: 'client.alert.displayed'},
           }
         );
+      });
+
+      it('should submit client to diagnostic when no preLoginId provided', () => {
+        const testEvent = {name: 'client.alert.displayed', options: {meetingId: 'meetingId'}};
+        sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
+        sinon.stub(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'submitToCallDiagnosticsPreLogin');
+        //@ts-ignore
+        cd.submitClientEvent(testEvent);
+        assert.calledWith(cd.submitToCallDiagnostics, testEvent);
+        assert.notCalled(cd.submitToCallDiagnosticsPreLogin);
+      });
+
+      it('should submit event to prelogin when preLoginId provided', () => {
+        const testEvent = {name: 'client.alert.displayed', options: {preLoginId: 'preLoginId'}};
+        sinon.stub(cd, 'prepareClientEvent').returns(testEvent);
+        sinon.stub(cd, 'submitToCallDiagnosticsPreLogin');
+        sinon.stub(cd, 'submitToCallDiagnostics');
+        //@ts-ignore
+        cd.submitClientEvent(testEvent);
+        assert.calledWith(cd.submitToCallDiagnosticsPreLogin, testEvent);
+        assert.notCalled(cd.submitToCallDiagnostics);
       });
     });
 
@@ -752,6 +956,7 @@ describe.only('internal-plugin-metrics', () => {
         );
       });
     });
+
     describe('#getErrorPayloadForClientErrorCode', () => {
       it('it should grab the payload for client error code correctly', () => {
         const res = cd.getErrorPayloadForClientErrorCode({
@@ -779,7 +984,7 @@ describe.only('internal-plugin-metrics', () => {
     });
 
     describe('#generateClientEventErrorPayload', () => {
-      const defaultExpectedRes =  {
+      const defaultExpectedRes = {
         category: 'expected',
         errorDescription: 'StartRecordingFailed',
         fatal: true,
@@ -788,7 +993,7 @@ describe.only('internal-plugin-metrics', () => {
         errorCode: 4029,
         serviceErrorCode: 2409005,
       };
-      
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
         const res = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
@@ -807,7 +1012,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should generate media event error payload if rawError has a media error name', () => {
         checkNameError({name: 'PermissionDeniedError'}, true);
@@ -820,13 +1025,13 @@ describe.only('internal-plugin-metrics', () => {
       const checkCodeError = (payload: any, expetedRes: any) => {
         const res = cd.generateClientEventErrorPayload(payload);
         assert.deepEqual(res, expetedRes);
-      }
+      };
       it('should generate event error payload correctly', () => {
-        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes)
+        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.code', () => {
-        checkCodeError({body: {code: 2409005}}, defaultExpectedRes)
+        checkCodeError({body: {code: 2409005}}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.reason.reasonCode', () => {
@@ -854,7 +1059,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should return default new locus event error payload correctly if locus error is recognized', () => {
         checkLocusError({body: {errorCode: 2400000}}, true);
@@ -881,7 +1086,7 @@ describe.only('internal-plugin-metrics', () => {
         } else {
           assert.notDeepEqual(res, expectedResult);
         }
-      }
+      };
 
       it('should return default meeting info lookup error payload if data.meetingInfo was found on error body', () => {
         checkMeetingInfoError({body: {data: {meetingInfo: 'something'}}}, true);
@@ -890,7 +1095,6 @@ describe.only('internal-plugin-metrics', () => {
       it('should return default meeting info lookup error payload if body.url contains wbxappapi', () => {
         checkMeetingInfoError({body: {url: '1234567-wbxappapiabcdefg'}}, true);
       });
-
 
       it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
         checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
@@ -929,86 +1133,170 @@ describe.only('internal-plugin-metrics', () => {
       it('returns false if converged architecture is not enabled', () => {
         fakeMeeting.meetingInfo = {enableConvergedArchitecture: false};
         assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), false);
-
       });
       it('returns undefined if converged architecture is not defined', () => {
         fakeMeeting.meetingInfo = {};
-        assert.deepEqual(cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}), undefined);
+        assert.deepEqual(
+          cd.getIsConvergedArchitectureEnabled({meetingId: fakeMeeting.id}),
+          undefined
+        );
       });
-    })
+    });
 
     describe('#buildClientEventFetchRequestOptions', () => {
-      it('returns expected options', async () => {
-        const options = {
-          meetingId: fakeMeeting.id,
-        };
+      [undefined, 'myPreLoginId'].forEach((preLoginId) => {
+        it('returns expected options without preLoginId', async () => {
+          const options = {
+            meetingId: fakeMeeting.id,
+            preLoginId
+          };
 
-        const triggered = new Date();
-        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
-          name: 'client.exit.app',
-          payload: {trigger: 'user-interaction', canProceed: false},
-          options,
-        });
+          const triggered = new Date();
+          const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+            name: 'client.exit.app',
+            payload: { trigger: 'user-interaction', canProceed: false },
+            options,
+          });
 
-        assert.deepEqual(fetchOptions, {
-          body: {
-            metrics: [
-              {
-                eventPayload: {
-                  event: {
-                    canProceed: false,
-                    eventData: {
-                      webClientDomain: 'whatever',
+          assert.deepEqual(fetchOptions.body, {
+              metrics: [
+                {
+                  eventPayload: {
+                    event: {
+                      canProceed: false,
+                      eventData: {
+                        webClientDomain: 'whatever',
+                      },
+                      identifiers: {
+                        correlationId: 'correlationId',
+                        deviceId: 'deviceUrl',
+                        locusId: 'url',
+                        locusStartTime: 'lastActive',
+                        locusUrl: 'locus/url',
+                        orgId: 'orgId',
+                        userId: 'userId',
+                      },
+                      loginType: 'login-ci',
+                      name: 'client.exit.app',
+                      trigger: 'user-interaction',
+                      userType: 'host',
+                      isConvergedArchitectureEnabled: undefined,
                     },
-                    identifiers: {
-                      correlationId: 'correlationId',
-                      deviceId: 'deviceUrl',
-                      locusId: 'url',
-                      locusStartTime: 'lastActive',
-                      locusUrl: 'locus/url',
-                      orgId: 'orgId',
-                      userId: 'userId',
+                    eventId: 'my-fake-id',
+                    origin: {
+                      buildType: 'test',
+                      clientInfo: {
+                        clientType: 'TEAMS_CLIENT',
+                        clientVersion: 'webex-js-sdk/webex-version',
+                        localNetworkPrefix:
+                          Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
+                          undefined,
+                        os: getOSNameInternal() || 'unknown',
+                        osVersion: getOSVersion(),
+                        subClientType: 'WEB_APP',
+                      },
+                      environment: 'meeting_evn',
+                      name: 'endpoint',
+                      networkType: 'unknown',
+                      userAgent,
                     },
-                    loginType: 'login-ci',
-                    name: 'client.exit.app',
-                    trigger: 'user-interaction',
-                    userType: 'host',
-                    isConvergedArchitectureEnabled: undefined,
-                  },
-                  eventId: 'my-fake-id',
-                  origin: {
-                    buildType: 'test',
-                    clientInfo: {
-                      clientType: 'TEAMS_CLIENT',
-                      clientVersion: 'webex-js-sdk/webex-version',
-                      localNetworkPrefix:
-                        Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
-                        undefined,
-                      os: getOSNameInternal() || 'unknown',
-                      osVersion: getOSVersion(),
-                      subClientType: 'WEB_APP',
+                    originTime: {
+                      sent: 'not_defined_yet',
+                      triggered: triggered.toISOString(),
                     },
-                    environment: 'meeting_evn',
-                    name: 'endpoint',
-                    networkType: 'unknown',
-                    userAgent,
+                    senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
+                    version: 1,
                   },
-                  originTime: {
-                    sent: 'not_defined_yet',
-                    triggered: triggered.toISOString(),
-                  },
-                  senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
-                  version: 1,
+                  type: ['diagnostic-event'],
                 },
-                type: ['diagnostic-event'],
-              },
-            ],
-          },
-          foo: 'bar',
-          method: 'POST',
-          resource: 'clientmetrics',
-          service: 'metrics',
+              ],
+          });
+
+          const rest = omit(fetchOptions, 'body');
+
+          if (preLoginId) {
+            assert.deepEqual(rest, {
+              foo: 'bar',
+              method: 'POST',
+              resource: 'clientmetrics-prelogin',
+              service: 'metrics',
+              headers: {
+                authorization: false,
+                'x-prelogin-userid': preLoginId,
+              }
+            })
+          } else {
+            assert.deepEqual(rest, {
+              foo: 'bar',
+              method: 'POST',
+              resource: 'clientmetrics',
+              service: 'metrics',
+              headers: {}
+            })
+          }
+
+          const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+          assert.deepEqual(webexLoggerLogCalls[0].args, [
+            'call-diagnostic-events -> ',
+            'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
+            `name: client.exit.app`,
+            `payload: {"trigger":"user-interaction","canProceed":false}`,
+            `options: ${JSON.stringify(options)}`,
+          ]);
+
+          assert.deepEqual(webexLoggerLogCalls[1].args, [
+            'call-diagnostic-events -> ',
+            'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
+            `name: client.exit.app`
+          ]);
         });
+      });
+    });
+
+    describe('#submitToCallDiagnosticsPreLogin', async () => {
+      it('should call webex.request with expected options', async () => {
+        sinon.spy(Utils, 'prepareDiagnosticMetricItem');
+        await cd.submitToCallDiagnosticsPreLogin(
+          {
+            //@ts-ignore
+            event: {name: 'client.alert.displayed', canProceed: true},
+            //@ts-ignore
+            originTime: {triggered: 'now'},
+          },
+          'my-id'
+        );
+
+        assert.calledWith(Utils.prepareDiagnosticMetricItem, webex, {
+          eventPayload: {
+            event: {name: 'client.alert.displayed', canProceed: true},
+            originTime: {triggered: 'now', sent: now.toISOString()},
+            origin: {buildType: 'test', networkType: 'unknown'},
+          },
+          type: ['diagnostic-event'],
+        });
+
+        assert.calledWith(
+          webex.internal.newMetrics.postPreLoginMetric,
+          {
+            eventPayload: {
+              event: {
+                name: 'client.alert.displayed',
+                canProceed: true,
+              },
+              originTime: {
+                sent: now.toISOString(),
+                triggered: 'now',
+              },
+              origin: {
+                buildType: 'test',
+                networkType: 'unknown',
+              },
+            },
+            type: ['diagnostic-event'],
+          },
+          'my-id'
+        );
       });
     });
   });

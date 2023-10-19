@@ -1,17 +1,30 @@
-import {ClientEvent as RawClientEvent} from './call-diagnostic/generated-types-temp/ClientEvent';
-import {Event as RawEvent} from './call-diagnostic/generated-types-temp/Event';
-import {MediaQualityEvent as RawMediaQualityEvent} from './call-diagnostic/generated-types-temp/MediaQualityEvent';
+import {
+  ClientEvent as RawClientEvent,
+  Event as RawEvent,
+  MediaQualityEvent as RawMediaQualityEvent,
+} from '@webex/event-dictionary-ts';
 
 export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
 
 export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
+export type EnvironmentType = NonNullable<RawEvent['origin']['environment']>;
+
+export type NewEnvironmentType = NonNullable<RawEvent['origin']['newEnvironment']>;
+
+export type ClientLaunchMethodType = NonNullable<
+  RawEvent['origin']['clientInfo']
+>['clientLaunchMethod'];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
-  showToUser?: boolean;
   correlationId?: string;
+  preLoginId?: string;
+  environment?: EnvironmentType;
+  newEnvironmentType?: NewEnvironmentType;
+  clientLaunchMethod?: ClientLaunchMethodType;
 };
 
 export type SubmitMQEOptions = {
@@ -25,7 +38,6 @@ export type InternalEvent = {
     | 'internal.client.meetinginfo.request'
     | 'internal.client.meetinginfo.response'
     | 'internal.reset.join.latencies'
-    | 'internal.client.interstitial-window.launched'
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
     | 'internal.client.meeting.interstitial-window.showed'

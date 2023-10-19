@@ -259,6 +259,8 @@ const meetingsJoinCaptchaElm = document.querySelector('#meetings-join-captcha-in
 const passwordCaptchaStatusElm = document.querySelector('#password-captcha-status');
 const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
+const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
+const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 
 let selectedMeetingId = null;
 
@@ -349,8 +351,13 @@ function createMeeting(e) {
   webex.meetings.create(value, type)
     .then((meeting) => {
       createMeetingDestinationElm.value = '';
+      displayMeetingStatusElm.innerHTML = '';
       generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
       refreshMeetings();
+    }).catch((error) => {
+      if(error.code === 30105){
+        displayMeetingStatusElm.innerHTML = spaceIDError;
+      }
     });
 
   return false;

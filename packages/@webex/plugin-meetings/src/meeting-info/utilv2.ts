@@ -28,8 +28,11 @@ import {
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
+import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 
 const MeetingInfoUtil: any = {};
+const meetingInfoError =
+  'MeetingInfo is fetched with the meeting link, SIP URI, phone number, Hydra people ID, or a conversation URL.';
 
 MeetingInfoUtil.getParsedUrl = (link) => {
   try {
@@ -191,27 +194,14 @@ MeetingInfoUtil.getDestinationType = async (from) => {
       return Promise.resolve(options);
     });
   } else if (hydraId.room) {
-    options.type = _CONVERSATION_URL_;
-    try {
-      await webex.internal.services.waitForCatalog('postauth');
-
-      const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
-        cluster: hydraId.cluster,
-        id: hydraId.destination,
-      });
-
-      options.destination = conversationUrl;
-    } catch (e) {
-      LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
-      throw e;
-    }
+    LoggerProxy.logger.error(
+      `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.`
+    );
+    // Error code 30105 added as Space ID deprecated as of beta, Please refer migration guide.
+    throw new SpaceIDDeprecatedError();
   } else {
-    LoggerProxy.logger.warn(
-      "Meeting-info:util#getDestinationType --> ('MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url."
-    );
-    throw new ParameterError(
-      'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.'
-    );
+    LoggerProxy.logger.warn(`Meeting-info:util#getDestinationType --> ${meetingInfoError}`);
+    throw new ParameterError(`${meetingInfoError}`);
   }
 
   return Promise.resolve(options);

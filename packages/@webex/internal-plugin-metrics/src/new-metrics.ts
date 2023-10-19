@@ -18,6 +18,7 @@ import {
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
+import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -166,6 +167,88 @@ class Metrics extends WebexPlugin {
     });
 
     return this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
+  }
+
+  /**
+   * Submit a pre-login metric to clientmetrics
+   * @public
+   * @param payload
+   * @param preLoginId - pre-login ID of user
+   * @returns
+   */
+  public postPreLoginMetric(payload: any, preLoginId: string): Promise<any> {
+    // @ts-ignore
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'metrics',
+        resource: 'clientmetrics-prelogin',
+        headers: {
+          authorization: false,
+          'x-prelogin-userid': preLoginId,
+        },
+        body: {
+          metrics: [payload],
+        },
+      })
+      .then((res) => {
+        // @ts-ignore
+        this.webex.logger.log(
+          `NewMetrics: @postPreLoginMetric. Request successful:`,
+          `res: ${JSON.stringify(res)}`
+        );
+
+        return res;
+      })
+      .catch((err) => {
+        // @ts-ignore
+        this.logger.error(
+          `NewMetrics: @postPreLoginMetric. Request failed:`,
+          `err: ${generateCommonErrorMetadata(err)}`
+        );
+
+        return Promise.reject(err);
+      });
+  }
+
+  /**
+   * Issue request to alias a user's pre-login ID with their CI UUID
+   * @param {string} preLoginId
+   * @returns {Object} HttpResponse object
+   */
+  public clientMetricsAliasUser(preLoginId: string) {
+    // @ts-ignore
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'metrics',
+        resource: 'clientmetrics',
+        headers: {
+          'x-prelogin-userid': preLoginId,
+        },
+        body: {},
+        qs: {
+          alias: true,
+        },
+      })
+      .then((res) => {
+        // @ts-ignore
+        this.webex.logger.log(
+          `NewMetrics: @clientMetricsAliasUser. Request successful:`,
+          `res: ${JSON.stringify(res)}`
+        );
+
+        return res;
+      })
+      .catch((err) => {
+        // @ts-ignore
+        this.logger.error(
+          `NewMetrics: @clientMetricsAliasUser. Request failed:`,
+          `err: ${generateCommonErrorMetadata(err)}`
+        );
+
+        return Promise.reject(err);
+      });
   }
 
   /**

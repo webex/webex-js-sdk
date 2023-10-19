@@ -4506,7 +4506,7 @@ export default class Meeting extends StatelessWebexPlugin {
           payload: {
             identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
           },
-          options: {meetingId: this.id, rawError: error, showToUser: true},
+          options: {meetingId: this.id, rawError: error},
         });
 
         // TODO:  change this to error codes and pre defined dictionary
@@ -4879,7 +4879,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     } else if (
       error instanceof Errors.SdpOfferHandlingError ||
@@ -4893,7 +4893,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
@@ -4905,7 +4905,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload: {
           canProceed: false,
         },
-        options: {meetingId: this.id, rawError: error, showToUser: true},
+        options: {meetingId: this.id, rawError: error},
       });
     }
   };

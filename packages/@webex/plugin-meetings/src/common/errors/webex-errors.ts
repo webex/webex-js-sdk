@@ -108,6 +108,27 @@ export {UserInLobbyError};
 WebExMeetingsErrors[UserInLobbyError.CODE] = UserInLobbyError;
 
 /**
+ * @class SpaceIDDeprecatedError
+ * @classdesc Raised whenever the user passes Space ID as destination for create meeting.
+ * @extends WebexMeetingsError
+ * @property {number} code - 30105
+ * @property {string} message - Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.'
+ */
+class SpaceIDDeprecatedError extends WebexMeetingsError {
+  static CODE = 30105;
+
+  constructor() {
+    super(
+      SpaceIDDeprecatedError.CODE,
+      'Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.'
+    );
+  }
+}
+
+export {SpaceIDDeprecatedError};
+WebExMeetingsErrors[SpaceIDDeprecatedError.CODE] = SpaceIDDeprecatedError;
+
+/**
  * @class IceGatheringFailed
  * @classdesc Raised whenever ice gathering fails.
  * @extends WebexMeetingsError
