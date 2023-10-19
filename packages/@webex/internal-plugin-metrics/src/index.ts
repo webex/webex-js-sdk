@@ -20,6 +20,7 @@ import {
   SubmitMQE,
 } from './metrics.types';
 import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
+import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.util';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -30,7 +31,7 @@ registerInternalPlugin('newMetrics', NewMetrics, {
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics, Utils};
+export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics, Utils, CallDiagnosticUtils};
 export type {
   ClientEvent,
   ClientEventLeaveReason,
