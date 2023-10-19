@@ -1,6 +1,10 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {
+
+import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
+import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
+
+const  {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
@@ -9,8 +13,7 @@ import {
   isMeetingInfoServiceError,
   prepareDiagnosticMetricItem,
   setMetricTimings,
-} from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
+} = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
   describe('clearEmptyKeysRecursively', () => {
@@ -135,18 +138,24 @@ describe('internal-plugin-metrics', () => {
     });
 
     [
-      ['https://localhost', 'test'],
-      ['https://127.0.0.1', 'test'],
-      ['https://web.webex.com', 'prod'],
-    ].forEach(([webClientDomain, expected]) => {
+      ['https://localhost', undefined, 'test'],
+      ['https://127.0.0.1', undefined, 'test'],
+      ['https://web.webex.com', undefined, 'prod'],
+      ['https://web.webex.com', true, 'test'],
+    ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webClientDomain), expected);
+        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
       assert.deepEqual(getBuildType('production'), 'test');
+    });
+
+    it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
+      process.env.NODE_ENV = 'production';
+      assert.deepEqual(getBuildType('my.domain', true), 'test');
     });
   });
 
@@ -272,6 +281,22 @@ describe('internal-plugin-metrics', () => {
         check(eventName as string, expectedEvent);
       });
     });
+
+    it('calls getBuildType correctly', () => {
+      const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
+      const markAsTestEvent = true;
+      const webClientDomain = 'https://web.webex.com';
+
+      // just submit any event
+      prepareDiagnosticMetricItem(webex, {
+        eventPayload: {
+          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}}
+        },
+        type: ['diagnostic-event'],
+      });
+
+      assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
+    })
   });
 
   describe('setMetricTimings', async () => {
