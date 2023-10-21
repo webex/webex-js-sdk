@@ -136,6 +136,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
       await this.registration.triggerRegistration();
+      this.status = this.registration.getStatus();
     });
     if (this.mobiusDeviceId) {
       this.callManager.updateLine(this.mobiusDeviceId, this);
@@ -189,6 +190,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       case LINE_EVENTS.UNREGISTERED:
       case LINE_EVENTS.RECONNECTED:
       case LINE_EVENTS.RECONNECTING:
+        this.status = this.registration.getStatus();
         this.emit(event);
         break;
       case LINE_EVENTS.ERROR:

@@ -166,7 +166,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       if (
         retry &&
         this.webex.internal.mercury.connected &&
-        line.status === RegistrationStatus.INACTIVE
+        line.status !== RegistrationStatus.IDLE
       ) {
         retry = await line.registration.handleConnectionRestoration(retry);
       }
@@ -416,7 +416,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
-      RegistrationStatus.INACTIVE,
+      RegistrationStatus.IDLE,
       this.mutex,
       this.primaryMobiusUris,
       this.backupMobiusUris,

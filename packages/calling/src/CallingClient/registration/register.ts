@@ -90,7 +90,7 @@ export class Registration implements IRegistration {
     }
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
-    this.registrationStatus = RegistrationStatus.INACTIVE;
+    this.registrationStatus = RegistrationStatus.IDLE;
     this.failback429RetryAttempts = 0;
     log.setLogger(logLevel, REGISTRATION_FILE);
     this.rehomingIntervalMin = DEFAULT_REHOMING_INTERVAL_MIN;
@@ -150,6 +150,7 @@ export class Registration implements IRegistration {
       },
     });
 
+    this.setStatus(RegistrationStatus.INACTIVE);
     this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
     return <WebexRequestPayload>response.json();

@@ -156,6 +156,7 @@ describe('Line Tests', () => {
       expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
     });
   });
+
   describe('Line calling tests', () => {
     let line;
 
