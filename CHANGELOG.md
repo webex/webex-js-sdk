@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.235](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.234...v3.0.0-beta.235) (2023-10-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** do not sync meetings if unverified guest ([#3156](https://github.com/webex/webex-js-sdk/issues/3156)) ([6317c75](https://github.com/webex/webex-js-sdk/commit/6317c75dcb1b02d0a90a964313f32b6922434bf6))
+
 ## [3.0.0-beta.234](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.233...v3.0.0-beta.234) (2023-10-23)
 
 
