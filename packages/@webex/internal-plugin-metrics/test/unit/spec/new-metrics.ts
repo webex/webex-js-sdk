@@ -5,6 +5,40 @@ import sinon from 'sinon';
 import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
+
+  describe('check submitClientEvent when webex is not ready', () => {
+    let webex;
+    //@ts-ignore
+    webex = new MockWebex({
+      children: {
+        newMetrics: NewMetrics,
+      },
+      meetings: {
+        meetingCollection: {
+          get: sinon.stub(),
+        },
+      },
+      request: sinon.stub().resolves({}),
+      logger: {
+        log: sinon.stub(),
+        error: sinon.stub(),
+      }
+    });
+
+    it('checks the log', () => {
+      webex.internal.newMetrics.submitClientEvent({
+        name: 'client.alert.displayed',
+        options: {
+          meetingId: '123',
+        },
+      });
+      assert.calledWith(
+        webex.logger.log,
+        'NewMetrics: @submitClientEvent. Attempted to submit before webex.ready. Event name: client.alert.displayed'
+      );
+    });
+  });
+  
   describe('new-metrics', () => {
     let webex;
 
@@ -61,6 +95,7 @@ describe('internal-plugin-metrics', () => {
         options: {meetingId: '123'},
       });
     });
+
 
     it('submits MQE successfully', () => {
       webex.internal.newMetrics.submitMQE({
