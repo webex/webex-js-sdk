@@ -87,9 +87,10 @@ export default class LocusInfo extends EventsScope {
    * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
    *
    * @param {Meeting} meeting
+   * @param {Locus} locus
    * @returns {undefined}
    */
-  private doLocusSync(meeting: any) {
+  private doLocusSync(meeting: any, locus: any) {
     let isDelta;
     let url;
 
@@ -107,9 +108,11 @@ export default class LocusInfo extends EventsScope {
       } DTO)`
     );
 
+    const syncDebug = this.getSyncDebug(locus);
+
     // return value ignored on purpose
     meeting.meetingRequest
-      .getLocusDTO({url})
+      .getLocusDTO({url, syncDebug})
       .then((res) => {
         if (isDelta) {
           if (!isEmpty(res.body)) {
@@ -149,7 +152,7 @@ export default class LocusInfo extends EventsScope {
         // do nothing
         break;
       case DESYNC:
-        this.doLocusSync(meeting);
+        this.doLocusSync(meeting, locus);
         break;
       default:
         LoggerProxy.logger.info(
@@ -1655,5 +1658,45 @@ export default class LocusInfo extends EventsScope {
    */
   clearMainSessionLocusCache() {
     this.mainSessionLocusCache = null;
+  }
+
+  /**
+   * Construct the sync debug string for locus call
+   * https://sqbu-github.cisco.com/gist/dangard2/4169734cfc499b6f488b263749b9c16d
+   *
+   * @param {Locus} locus locus delta object
+   * @returns {string} sync debug fields
+   * @memberof LocusInfo
+   * @private
+   */
+  private getSyncDebug(locus: {
+    baseSequence?: {entries: number[]};
+    sequence?: {entries: number[]};
+  }): string {
+    if (!locus) return undefined;
+
+    const isDefined = (value?: number[]) => {
+      if (value === undefined) return 'undef';
+      if (value.length === 0) return 'empty';
+
+      return 'def';
+    };
+
+    const cmpSeq = (a, b) => {
+      return LocusDeltaParser.extractComparisonState(LocusDeltaParser.compareSequence(a, b));
+    };
+
+    const baseSeq = locus.baseSequence;
+    const workingSeq = this.locusParser.workingCopy.sequence;
+    const targetSeq = locus.sequence;
+
+    return [
+      isDefined(baseSeq?.entries), //    base sequence defined
+      isDefined(workingSeq?.entries), // working sequence defined
+      isDefined(targetSeq?.entries), //  target sequence defined
+      cmpSeq(baseSeq, workingSeq), //    base compared with working sequence
+      cmpSeq(workingSeq, targetSeq), //  working compared with target sequence
+      cmpSeq(baseSeq, targetSeq), //     base compared with target sequence
+    ].join(',');
   }
 }
