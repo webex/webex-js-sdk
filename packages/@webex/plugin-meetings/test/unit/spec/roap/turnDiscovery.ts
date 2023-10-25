@@ -73,7 +73,8 @@ describe('TurnDiscovery', () => {
     await testUtils.flushPromises();
 
     assert.calledOnce(mockRoapRequest.sendRoap);
-    assert.calledWith(mockRoapRequest.sendRoap, {
+
+    const expectedSendRoapArgs: any = {
       roapMessage: {
         messageType,
         version: '2',
@@ -83,8 +84,13 @@ describe('TurnDiscovery', () => {
       mediaId: expectedMediaId,
       meetingId: testMeeting.id,
       locusMediaRequest: testMeeting.locusMediaRequest,
-      ipVersion: 0,
-    });
+    };
+
+    if (messageType === 'TURN_DISCOVERY_REQUEST') {
+      expectedSendRoapArgs.ipVersion = 0;
+    }
+    
+    assert.calledWith(mockRoapRequest.sendRoap, expectedSendRoapArgs);
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {
       // check also that we've applied the media connections from the response

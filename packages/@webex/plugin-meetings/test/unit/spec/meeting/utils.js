@@ -339,7 +339,6 @@ describe('plugin-meetings', () => {
           selfUrl: 'self url',
           sequence: {},
           type: 'LocalMute',
-          ipVersion: 0,
         });
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {

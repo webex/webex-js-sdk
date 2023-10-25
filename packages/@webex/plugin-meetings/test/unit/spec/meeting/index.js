@@ -1828,7 +1828,7 @@ describe('plugin-meetings', () => {
                 ],
                 clientMediaPreferences: {
                   preferTranscoding: !meeting.isMultistream,
-                  ipver: 0,
+                  ipver: undefined
                 },
                 respOnlySdp: true,
                 usingResource: null,

@@ -72,7 +72,6 @@ const MeetingUtil = {
           audioMuted,
           videoMuted,
         },
-        ipVersion: meeting.getWebexObject().meetings.reachability.getIpVersion(),
       })
       .then((response) => {
         // @ts-ignore
