@@ -6,6 +6,7 @@ import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
+import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -984,23 +985,54 @@ describe('plugin-meetings', () => {
     });
 
     describe('getIpVersion', () => {
+      let isBrowserStub;
+      beforeEach(() => {
+        isBrowserStub = sinon.stub().returns(false);
+
+        sinon.stub(BrowserDetectionModule, 'default').returns({
+          isBrowser: isBrowserStub,
+        });
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
       [
-        { supportsIpV4: undefined, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
-        { supportsIpV4: undefined, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
-        { supportsIpV4: undefined, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
-        { supportsIpV4: true, supportsIpV6: undefined, expectedOutput: IP_VERSION.only_ipv4},
-        { supportsIpV4: true, supportsIpV6: true, expectedOutput: IP_VERSION.ipv4_and_ipv6},
-        { supportsIpV4: true, supportsIpV6: false, expectedOutput: IP_VERSION.only_ipv4},
-        { supportsIpV4: false, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
-        { supportsIpV4: false, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
-        { supportsIpV4: false, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
-      ].forEach(({supportsIpV4, supportsIpV6, expectedOutput}) =>
+        {supportsIpV4: undefined, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: undefined, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
+        {supportsIpV4: undefined, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: true, supportsIpV6: undefined, expectedOutput: IP_VERSION.only_ipv4},
+        {supportsIpV4: true, supportsIpV6: true, expectedOutput: IP_VERSION.ipv4_and_ipv6},
+        {supportsIpV4: true, supportsIpV6: false, expectedOutput: IP_VERSION.only_ipv4},
+        {supportsIpV4: false, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: false, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
+        {supportsIpV4: false, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
+      ].forEach(({supportsIpV4, supportsIpV6, expectedOutput}) => {
         it(`returns ${expectedOutput} when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6}`, () => {
-          sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4').get(() => supportsIpV4);
-          sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6').get(() => supportsIpV6);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
 
           assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
-      }));
+        });
+
+        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} and browser is firefox`, () => {
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
+
+          isBrowserStub.callsFake((name) => name === 'firefox');
+
+          assert.equal(MeetingUtil.getIpVersion(webex), undefined);
+        });
+      });
     });
   });
 });

@@ -14,6 +14,7 @@ import {
   EVENT_TRIGGERS,
   IP_VERSION,
 } from '../constants';
+import BrowserDetection from '../common/browser-detection';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -93,13 +94,20 @@ const MeetingUtil = {
 
   /**
    * Returns the current state of knowledge about whether we are on an ipv4-only or ipv6-only or mixed (ipv4 and ipv6) network.
-   * The return value matches the possible values expected by the backend APIs.
+   * The return value matches the possible values of "ipver" parameter used by the backend APIs.
    *
    * @param {Object} webex webex instance
-   * @returns {IP_VERSION} ipver value to be passed to the backend APIs
+   * @returns {IP_VERSION|undefined} ipver value to be passed to the backend APIs or undefined if we should not pass any value to the backend
    */
-  getIpVersion(webex: any): IP_VERSION {
+  getIpVersion(webex: any): IP_VERSION | undefined {
     const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
+
+    if (BrowserDetection().isBrowser('firefox')) {
+      // our ipv6 solution relies on FQDN ICE candidates, but Firefox doesn't support them,
+      // see https://bugzilla.mozilla.org/show_bug.cgi?id=1713128
+      // so for Firefox we don't want the backend to activate the "ipv6 feature"
+      return undefined;
+    }
 
     if (supportsIpV4 && supportsIpV6) {
       return IP_VERSION.ipv4_and_ipv6;
