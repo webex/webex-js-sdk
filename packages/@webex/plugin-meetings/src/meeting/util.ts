@@ -12,6 +12,7 @@ import {
   FULL_STATE,
   SELF_POLICY,
   EVENT_TRIGGERS,
+  IP_VERSION,
 } from '../constants';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
@@ -90,6 +91,31 @@ const MeetingUtil = {
 
   isPinOrGuest: (err) => err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode),
 
+  /**
+   * Returns the current state of knowledge about whether we are on an ipv4-only or ipv6-only or mixed (ipv4 and ipv6) network.
+   * The return value matches the possible values expected by the backend APIs.
+   *
+   * @param {Object} webex webex instance
+   * @returns {IP_VERSION} ipver value to be passed to the backend APIs
+   */
+  getIpVersion(webex: any): IP_VERSION {
+    const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
+
+    if (supportsIpV4 && supportsIpV6) {
+      return IP_VERSION.ipv4_and_ipv6;
+    }
+
+    if (supportsIpV4) {
+      return IP_VERSION.only_ipv4;
+    }
+
+    if (supportsIpV6) {
+      return IP_VERSION.only_ipv6;
+    }
+
+    return IP_VERSION.unknown;
+  },
+
   joinMeeting: (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
@@ -125,7 +151,7 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
-        ipVersion: meeting.getWebexObject().meetings.reachability.getIpVersion(),
+        ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
       })
       .then((res) => {
         // @ts-ignore

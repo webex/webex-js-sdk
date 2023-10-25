@@ -5,6 +5,7 @@ import TurnDiscovery from '@webex/plugin-meetings/src/roap/turnDiscovery';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
+import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 
 import testUtils from '../../../utils/testUtils';
 import { IP_VERSION } from '../../../../src/constants';
@@ -24,6 +25,7 @@ describe('TurnDiscovery', () => {
     clock = sinon.useFakeTimers();
 
     sinon.stub(Metrics, 'sendBehavioralMetric');
+    sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
     mockRoapRequest = {
       sendRoap: sinon.fake.resolves({mediaConnections: FAKE_MEDIA_CONNECTIONS_FROM_LOCUS}),
@@ -53,7 +55,6 @@ describe('TurnDiscovery', () => {
       updateMediaConnections: sinon.stub(),
       webex: {meetings: {reachability: {
         isAnyClusterReachable: () => Promise.resolve(false),
-        getIpVersion: () => IP_VERSION.unknown,
       }}},
       isMultistream: false,
       locusMediaRequest: { fake: true },
