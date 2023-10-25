@@ -80,7 +80,13 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
+import {
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  TRANSFER_ACTION,
+  MEDIA_EFFECT_ACTION,
+} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {SERVICES_ENDPOINT} from '../../common/constants';
 
@@ -1970,6 +1976,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
+    const effect = localAudioStream.getEffect('background-noise-removal');
+    console.log('pkesari_Local stream received: ', localAudioStream);
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
@@ -1988,6 +1996,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         {file: CALL_FILE, method: 'answer'}
       );
     }
+
+    if (effect && effect.isEnabled) {
+      console.log('pkesari_BNR is enabled, sending metric');
+      this.metricManager.submitMediaMetric(
+        METRIC_EVENT.MEDIA,
+        MEDIA_EFFECT_ACTION.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        this.callId,
+        this.correlationId,
+        this.localRoapMessage.sdp,
+        this.remoteRoapMessage?.sdp,
+        undefined
+      );
+    }
   }
 
   /**
@@ -1995,6 +2017,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
+    const effect = localAudioStream.getEffect('background-noise-removal');
+    console.log('pkesari_Local stream received: ', localAudioStream);
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
@@ -2011,6 +2035,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       log.warn(
         `Call cannot be dialed because the state is already : ${this.mediaStateMachine.state.value}`,
         {file: CALL_FILE, method: 'dial'}
+      );
+    }
+
+    if (effect && effect.isEnabled) {
+      console.log('pkesari_BNR is enabled, sending metric');
+      this.metricManager.submitMediaMetric(
+        METRIC_EVENT.MEDIA,
+        MEDIA_EFFECT_ACTION.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        this.callId,
+        this.correlationId,
+        this.localRoapMessage.sdp,
+        this.remoteRoapMessage?.sdp,
+        undefined
       );
     }
   }
@@ -2400,8 +2438,39 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   private outputTrackUpdateListener(localAudioStream: LocalMicrophoneStream) {
+    let effect;
     localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
       this.mediaConnection.updateLocalTracks({audio: track});
+      effect = localAudioStream.getEffect('background-noise-removal');
+      console.log('pkesari_Effect on the stream: ', effect);
+      console.log('pkesari_Effect is enabled: ', effect?.isEnabled);
+      if (effect && effect.isEnabled) {
+        console.log('pkesari_Sending metrics for enabling BNR');
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_ENABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          this.localRoapMessage.sdp,
+          this.remoteRoapMessage?.sdp,
+          undefined
+        );
+      } else if (effect && !effect.isEnabled) {
+        console.log('pkesari_Sending metrics for disabling BNR');
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_DISABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          this.localRoapMessage.sdp,
+          this.remoteRoapMessage?.sdp,
+          undefined
+        );
+      } else {
+        console.log('Effect not found');
+      }
     });
   }
 

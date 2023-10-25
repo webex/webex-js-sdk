@@ -85,6 +85,7 @@ const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
+const bnrButton = document.getElementById('bnr_button');
 
 let base64;
 let audio64;
@@ -615,22 +616,27 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-async function addNoiseReductionEffect() {
+async function toggleNoiseReductionEffect() {
   effect = await localAudioStream.getEffect('background-noise-removal');
 
   if (!effect) {
     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
 
     await localAudioStream.addEffect('background-noise-removal', effect);
-  }
-
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
-  if (effect) {
-    await effect.disable();
+    await effect.enable();
+    console.log('pkesari_Created new effect and enabling it: ', effect.isEnabled);
+    bnrButton.innerHTML = 'Disable BNR()';
+  } else {
+    console.log('pkesari_Effect is present and is enabled: ', effect.isEnabled);
+    if (effect.isEnabled) {
+      await effect.disable();
+      console.log('pkesari_Disabling effect: ', effect.isEnabled);
+      bnrButton.innerHTML = 'Enable BNR()';
+    } else {
+      await effect.enable();
+      console.log('pkesari_Enabling effect: ', effect.isEnabled);
+      bnrButton.innerHTML = 'Disable BNR()';
+    }
   }
 }
 

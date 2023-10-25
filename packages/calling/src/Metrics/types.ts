@@ -39,6 +39,11 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
+export enum MEDIA_EFFECT_ACTION {
+  BNR_ENABLED = 'bnr_enabled',
+  BNR_DISABLED = 'bnr_disabled',
+}
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
   submitRegistrationMetric: (
