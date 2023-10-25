@@ -267,6 +267,7 @@ const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_ima
 const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
+let currentMediaSettings = {};
 
 function setSelectedMeetingId(e) {
   selectedMeetingId = e.target.value;
@@ -700,11 +701,18 @@ function updateMultistreamUI() {
   }
 }
 
-function getMediaSettings() {
+function getMediaSettings(compareLastSettings = false) {
   const settings = {};
 
   toggleSourcesMediaDirection.forEach((options) => {
-    settings[options.value] = options.checked;
+    if (compareLastSettings) {
+      if (currentMediaSettings[options.value] !== options.checked) {
+        settings[options.value] = options.checked;
+        currentMediaSettings[options.value] = options.checked;
+      }
+    } else {
+      settings[options.value] = options.checked;
+    }
   });
 
   settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
@@ -1263,17 +1271,12 @@ function getMediaDevices() {
 async function updateMedia() {
   const meeting = getCurrentMeeting();
 
-  mediaSettings = getMediaSettings();
+  mediaSettings = getMediaSettings(true);
 
   if (!meeting) {
     console.log('MeetingStreams#updateMedia() :: no valid meeting object!');
   }
 
-  if (isMultistream) {
-    // changing these 2 dynamically is not supported currently for multistream (WCME limitation)
-    delete mediaSettings.videoEnabled;
-    delete mediaSettings.receiveShare;
-  }
   console.log(`MeetingStreams#updateMedia() :: calling updateMedia(${JSON.stringify(mediaSettings)}`);
   await meeting.updateMedia(mediaSettings);
 }
@@ -2365,6 +2368,8 @@ function addMedia() {
     preferLiveVideoElm.value = 'Enable';
   }
 
+  currentMediaSettings = getMediaSettings();
+
   // addMedia using the default RemoteMediaManagerConfig
   meeting.addMedia({
     localStreams: {
@@ -2375,8 +2380,8 @@ function addMedia() {
         video: localMedia.screenShare?.video
       }
     },
-    ...getMediaSettings()
-    }
+    ...currentMediaSettings
+  }
   ).then(() => {
     // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
     // if someone started sharing before our page was loaded,
