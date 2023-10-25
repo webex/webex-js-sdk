@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.236](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.235...v3.0.0-beta.236) (2023-10-25)
+
+
+### Bug Fixes
+
+* only sending ipver when it's really needed ([#3162](https://github.com/webex/webex-js-sdk/issues/3162)) ([3264967](https://github.com/webex/webex-js-sdk/commit/3264967136cadaa4cb416a270a61f0cb1e361599))
+
 ## [3.0.0-beta.235](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.234...v3.0.0-beta.235) (2023-10-23)
 
 
