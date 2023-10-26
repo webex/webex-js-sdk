@@ -269,6 +269,14 @@ function makeWebex(options) {
       },
       registered: true,
       register: sinon.stub().returns(Promise.resolve()),
+      ipNetworkDetector: {
+        get supportsIpV4() {
+          return true;
+        },
+        get supportsIpV6() {
+          return true;
+        },
+      },
     },
     feature: {
       setFeature: sinon.stub().returns(Promise.resolve(false)),
