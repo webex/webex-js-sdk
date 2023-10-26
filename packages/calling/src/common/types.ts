@@ -15,7 +15,6 @@ export enum HTTP_METHODS {
 }
 
 export enum RegistrationStatus {
-  IDLE = 'idle',
   ACTIVE = 'active',
   INACTIVE = 'inactive',
 }

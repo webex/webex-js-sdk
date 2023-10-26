@@ -90,7 +90,7 @@ export class Registration implements IRegistration {
     }
     this.webex = this.sdkConnector.getWebex();
     this.userId = this.webex.internal.device.userId;
-    this.registrationStatus = RegistrationStatus.IDLE;
+    this.registrationStatus = RegistrationStatus.INACTIVE;
     this.failback429RetryAttempts = 0;
     log.setLogger(logLevel, REGISTRATION_FILE);
     this.rehomingIntervalMin = DEFAULT_REHOMING_INTERVAL_MIN;
@@ -140,20 +140,25 @@ export class Registration implements IRegistration {
    *
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
-    const response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
-      method: HTTP_METHODS.DELETE,
-      headers: {
-        [CISCO_DEVICE_URL]: deviceUrl,
-        Authorization: await this.webex.credentials.getUserToken(),
-        trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-      },
-    });
+    let response;
+    try {
+      response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
+        method: HTTP_METHODS.DELETE,
+        headers: {
+          [CISCO_DEVICE_URL]: deviceUrl,
+          Authorization: await this.webex.credentials.getUserToken(),
+          trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+    } catch (error) {
+      log.warn(`Delete failed with Mobius`, {});
+    }
 
     this.setStatus(RegistrationStatus.INACTIVE);
     this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
-    return <WebexRequestPayload>response.json();
+    return <WebexRequestPayload>response?.json();
   }
 
   /**
@@ -481,7 +486,7 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.info('Mercury connection is up again, Re-registering with Mobius', {
+        log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
           method: this.handleConnectionRestoration.name,
         });

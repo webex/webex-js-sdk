@@ -49,8 +49,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public extension?: string;
 
-  public status: RegistrationStatus;
-
   public sipAddresses?: string[];
 
   public voicemail?: string;
@@ -78,7 +76,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   constructor(
     userId: string,
     clientDeviceUri: string,
-    status: RegistrationStatus,
     mutex: Mutex,
     primaryMobiusUris: string[],
     backupMobiusUris: string[],
@@ -92,7 +89,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.lineId = uuid();
     this.userId = userId;
     this.clientDeviceUri = clientDeviceUri;
-    this.status = status;
     this.phoneNumber = phoneNumber;
     this.extension = extension;
     this.voicemail = voicemail;
@@ -136,7 +132,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
       await this.registration.triggerRegistration();
-      this.status = this.registration.getStatus();
     });
     if (this.mobiusDeviceId) {
       this.callManager.updateLine(this.mobiusDeviceId, this);
@@ -190,7 +185,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       case LINE_EVENTS.UNREGISTERED:
       case LINE_EVENTS.RECONNECTED:
       case LINE_EVENTS.RECONNECTING:
-        this.status = this.registration.getStatus();
         this.emit(event);
         break;
       case LINE_EVENTS.ERROR:
@@ -220,7 +214,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   /**
    * Gets registration status
    */
-  public getRegistrationStatus = (): RegistrationStatus => this.registration.getStatus();
+  public getStatus = (): RegistrationStatus => this.registration.getStatus();
 
   /**
    * Gets device id

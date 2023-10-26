@@ -39,11 +39,6 @@ export interface ILine {
   lineId: string;
 
   /**
-   * The current status of the line as {@link RegistrationStatus}.
-   */
-  status: RegistrationStatus;
-
-  /**
    * The optional Mobius device identifier associated with the line.
    */
   mobiusDeviceId?: string;
@@ -128,7 +123,7 @@ export interface ILine {
    * Retrieves the registration status of the line as {@link MobiusStatus}.
    *
    */
-  getRegistrationStatus(): RegistrationStatus;
+  getStatus(): RegistrationStatus;
 
   /**
    * Retrieves the device identifier associated with the line as {@link MobiusDeviceId},

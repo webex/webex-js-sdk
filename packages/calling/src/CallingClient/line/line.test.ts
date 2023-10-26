@@ -57,7 +57,6 @@ describe('Line Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        RegistrationStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),
@@ -83,7 +82,7 @@ describe('Line Tests', () => {
         expect.anything(),
         LOGGER.INFO
       );
-      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       await line.register();
 
       expect(webex.request).toBeCalledOnceWith({
@@ -98,7 +97,7 @@ describe('Line Tests', () => {
       });
       expect(handleErrorSpy).not.toBeCalled();
 
-      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
@@ -129,11 +128,11 @@ describe('Line Tests', () => {
         );
       });
 
-      expect(line.getRegistrationStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toBe(RegistrationStatus.INACTIVE);
       line.register();
       await utils.waitForMsecs(20);
 
-      expect(line.getRegistrationStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(handleErrorSpy).toBeCalledOnceWith(
         expect.anything(),
         expect.anything(),
@@ -148,12 +147,12 @@ describe('Line Tests', () => {
     it('verify successful de-registration cases', async () => {
       webex.request.mockReturnValueOnce(registrationPayload);
 
-      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       await line.register();
-      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       await line.deregister();
-      expect(line.getRegistrationStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
     });
   });
 
@@ -164,7 +163,6 @@ describe('Line Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        RegistrationStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),
