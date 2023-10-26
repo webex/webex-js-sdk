@@ -262,6 +262,9 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
+      - run: sudo apt-get update
+      - browser-tools/install-chrome:
+          chrome-version: "114.0.5735.90" # https://github.com/CircleCI-Public/browser-tools-orb/issues/75
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - restore_node_modules
