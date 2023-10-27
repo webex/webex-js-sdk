@@ -477,6 +477,41 @@ describe('CallingClient Tests', () => {
       expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
     });
 
+    it('Simulate a network flap before initial registration is done', async () => {
+      reg.setStatus(RegistrationStatus.IDLE);
+
+      /* Set mercury connection to be down and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = false;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      /* We should be detecting the network flap */
+      expect(warnSpy).toBeCalledOnceWith(
+        'Network has flapped, waiting for mercury connection to be up',
+        {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
+      );
+
+      /* Set mercury connection to be up and execute a delay of 2.5 seconds */
+      webex.internal.mercury.connected = true;
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
+
+      await flushPromises();
+
+      /* We should be detecting the network recovery */
+      expect(logSpy).not.toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
+
+      /*
+       * When initial registration is not done, network flap
+       * will not trigger de-registration/registration
+       */
+      expect(handleConnectionRestoreSpy).not.toBeCalledOnceWith();
+    });
+
     it('Simulate a network flap with 1 active call', async () => {
       expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
