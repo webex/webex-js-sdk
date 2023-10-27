@@ -13,7 +13,9 @@ import {
   SELF_POLICY,
   EVENT_TRIGGERS,
   LOCAL_SHARE_ERRORS,
+  IP_VERSION,
 } from '../constants';
+import BrowserDetection from '../common/browser-detection';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -91,6 +93,38 @@ const MeetingUtil = {
 
   isPinOrGuest: (err) => err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode),
 
+  /**
+   * Returns the current state of knowledge about whether we are on an ipv4-only or ipv6-only or mixed (ipv4 and ipv6) network.
+   * The return value matches the possible values of "ipver" parameter used by the backend APIs.
+   *
+   * @param {Object} webex webex instance
+   * @returns {IP_VERSION|undefined} ipver value to be passed to the backend APIs or undefined if we should not pass any value to the backend
+   */
+  getIpVersion(webex: any): IP_VERSION | undefined {
+    const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
+
+    if (BrowserDetection().isBrowser('firefox')) {
+      // our ipv6 solution relies on FQDN ICE candidates, but Firefox doesn't support them,
+      // see https://bugzilla.mozilla.org/show_bug.cgi?id=1713128
+      // so for Firefox we don't want the backend to activate the "ipv6 feature"
+      return undefined;
+    }
+
+    if (supportsIpV4 && supportsIpV6) {
+      return IP_VERSION.ipv4_and_ipv6;
+    }
+
+    if (supportsIpV4) {
+      return IP_VERSION.only_ipv4;
+    }
+
+    if (supportsIpV6) {
+      return IP_VERSION.only_ipv6;
+    }
+
+    return IP_VERSION.unknown;
+  },
+
   joinMeeting: (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
@@ -126,7 +160,7 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
-        ipVersion: meeting.getWebexObject().meetings.reachability.getIpVersion(),
+        ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
       })
       .then((res) => {
         // @ts-ignore

@@ -1240,8 +1240,8 @@ export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
 /** the values for IP_VERSION are fixed and defined in Orpheus API */
 export const IP_VERSION = {
   unknown: 0,
-  only_ipv4: 4,
-  only_ipv6: 6,
+  only_ipv4: 4, // we know we have ipv4, we don't know or we don't have ipv6
+  only_ipv6: 6, // we know we have ipv6, we don't know or we don't have ipv4
   ipv4_and_ipv6: 1,
 } as const;
 

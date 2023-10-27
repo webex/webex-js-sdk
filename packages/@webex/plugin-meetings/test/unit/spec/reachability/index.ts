@@ -2,6 +2,8 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Reachability, {ICECandidateResult} from '@webex/plugin-meetings/src/reachability/';
+import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
 
 describe('isAnyClusterReachable', () => {
@@ -9,6 +11,12 @@ describe('isAnyClusterReachable', () => {
 
   beforeEach(() => {
     webex = new MockWebex();
+
+    sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   const checkIsClusterReachable = async (mockStorage: any, expectedValue: boolean) => {
@@ -251,12 +259,4 @@ describe('gatherReachability', () => {
       });
     });
   });
-
-  describe('getIpVersion', () => {
-    it('returns unknown', () => {
-      const reachability = new Reachability(webex);
-
-      assert.equal(reachability.getIpVersion(), IP_VERSION.unknown);
-    })
-  })
 });

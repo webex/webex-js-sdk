@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.237](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.236...v3.0.0-beta.237) (2023-10-26)
+
+
+### Features
+
+* moved getIpVersion() to meeting util and implemented it ([#3164](https://github.com/webex/webex-js-sdk/issues/3164)) ([37ad720](https://github.com/webex/webex-js-sdk/commit/37ad720439dda3779aad87d6558d31c38d44b939))
+
 ## [3.0.0-beta.236](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.235...v3.0.0-beta.236) (2023-10-25)
 
 

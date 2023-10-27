@@ -7,7 +7,9 @@
 import _ from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY, IP_VERSION} from '../constants';
+import MeetingUtil from '../meeting/util';
+
+import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
 
 import ReachabilityRequest from './request';
 
@@ -71,7 +73,7 @@ export default class Reachability {
     // Fetch clusters and measure latency
     try {
       const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
-        this.getIpVersion()
+        MeetingUtil.getIpVersion(this.webex)
       );
 
       // Perform Reachability Check
@@ -132,14 +134,6 @@ export default class Reachability {
     }
 
     return reachable;
-  }
-
-  /**
-   * Returns what we know about the IP version of the networks we're connected to.
-   * @returns {IP_VERSION}
-   */
-  getIpVersion(): IP_VERSION {
-    return IP_VERSION.unknown;
   }
 
   /**

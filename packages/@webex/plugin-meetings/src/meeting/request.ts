@@ -125,7 +125,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
-    ipVersion: IP_VERSION;
+    ipVersion?: IP_VERSION;
   }) {
     const {
       asResourceOccupant,

@@ -6,6 +6,8 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import Roap from '@webex/plugin-meetings/src/roap/';
 import Meeting from '@webex/plugin-meetings/src/meeting';
+import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+
 import { IP_VERSION } from '../../../../src/constants';
 
 describe('Roap', () => {
@@ -62,8 +64,10 @@ describe('Roap', () => {
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
-        webex: { meetings: { reachability: { isAnyClusterReachable: () => true, getIpVersion: () => IP_VERSION.unknown}}},
+        webex: { meetings: { reachability: { isAnyClusterReachable: () => true}}},
       };
+
+      sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
       meeting.setRoapSeq.resetHistory();
