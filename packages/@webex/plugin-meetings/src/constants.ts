@@ -1247,14 +1247,6 @@ export const IP_VERSION = {
 
 export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
 
-/* 
-No media session found for device: **NEW** 2048 - NoMediaForDevice
-Failed to request floor: 404 (null) could not find confluence id: **NEW** 4064 - ConfluenceIdInvalid
-Content share request is not allowed while whiteboard floor request is pending PUT: **NEW** 4065 - ContentShareDisabled
-Participant with participant id 831190c0-1b9b-3b00-9b4a-3ed24aded99b does not exist in Locus: **NEW** 4066 - ParticipantDoesNotExistInLocus
-Content share request is not allowed while whiteboard floor request is pending PUT: **NEW** 4067 - ShareRequestWhilePendingWhiteboardRequest
-*/
-
 export const LOCAL_SHARE_ERRORS = {
   DEVICE_NOT_JOINED: 'Floor requested but device not yet joined',
   UNDEFINED: 'undefined PUT',

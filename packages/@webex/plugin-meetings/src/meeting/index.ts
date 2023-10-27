@@ -6209,6 +6209,17 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
 
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.share.floor-grant.request',
+          payload: {
+            mediaType: 'share',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+
         return this.meetingRequest
           .changeMeetingFloor({
             disposition: FLOOR_ACTION.GRANTED,
