@@ -164,7 +164,7 @@ describe('Registration Tests', () => {
 
     global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-    expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+    expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
     await reg.triggerRegistration();
     expect(webex.request).toBeCalledTimes(2);
     expect(webex.request).toBeCalledWith({
@@ -197,7 +197,7 @@ describe('Registration Tests', () => {
         .mockRejectedValueOnce(failurePayload)
         .mockResolvedValueOnce(successPayload);
 
-      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
       await reg.triggerRegistration();
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
@@ -223,7 +223,7 @@ describe('Registration Tests', () => {
       // try the primary twice and register successfully with backup servers
       webex.request.mockRejectedValue(failurePayload);
 
-      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
       await reg.triggerRegistration();
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();

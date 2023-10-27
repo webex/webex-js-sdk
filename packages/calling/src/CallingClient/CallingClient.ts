@@ -157,18 +157,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           method: this.detectNetworkChange.name,
         });
 
-        line.lineEmitter(LINE_EVENTS.UNREGISTERED);
         line.registration.clearKeepaliveTimer();
 
         retry = true;
       }
 
-      if (
-        retry &&
-        this.webex.internal.mercury.connected &&
-        line.getStatus() !== RegistrationStatus.ACTIVE
-      ) {
-        retry = await line.registration.handleConnectionRestoration(retry);
+      if (retry && this.webex.internal.mercury.connected) {
+        if (line.getStatus() !== RegistrationStatus.IDLE) {
+          retry = await line.registration.handleConnectionRestoration(retry);
+        } else {
+          retry = false;
+        }
       }
     }, NETWORK_FLAP_TIMEOUT);
   }

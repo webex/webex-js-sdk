@@ -82,7 +82,7 @@ describe('Line Tests', () => {
         expect.anything(),
         LOGGER.INFO
       );
-      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
 
       expect(webex.request).toBeCalledOnceWith({
@@ -128,7 +128,7 @@ describe('Line Tests', () => {
         );
       });
 
-      expect(line.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toBe(RegistrationStatus.IDLE);
       line.register();
       await utils.waitForMsecs(20);
 
@@ -147,7 +147,7 @@ describe('Line Tests', () => {
     it('verify successful de-registration cases', async () => {
       webex.request.mockReturnValueOnce(registrationPayload);
 
-      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
       expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 

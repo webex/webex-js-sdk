@@ -114,7 +114,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       logLevel
     );
 
-    this.registration.setStatus(RegistrationStatus.INACTIVE);
+    this.registration.setStatus(RegistrationStatus.IDLE);
     log.setLogger(logLevel, LINE_FILE);
 
     this.callManager = getCallManager(this.#webex, serviceData.indicator);
@@ -127,7 +127,9 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    */
   public async register() {
     await this.#mutex.runExclusive(async () => {
-      this.registration.setStatus(RegistrationStatus.INACTIVE);
+      if (this.registration.getStatus() !== RegistrationStatus.IDLE) {
+        this.registration.setStatus(RegistrationStatus.INACTIVE);
+      }
       this.emit(LINE_EVENTS.CONNECTING);
 
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
