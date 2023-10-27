@@ -6085,6 +6085,17 @@ export default class Meeting extends StatelessWebexPlugin {
         body.resourceToken = resourceToken;
       }
 
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.share.floor-grant.request',
+        payload: {
+          mediaType: 'whiteboard',
+        },
+        options: {
+          meetingId: this.id,
+        },
+      });
+
       return this.meetingRequest
         .changeMeetingFloor(body)
         .then(() => {
@@ -6219,6 +6230,18 @@ export default class Meeting extends StatelessWebexPlugin {
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
               stack: error.stack,
+            });
+
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.share.floor-granted.local',
+              payload: {
+                mediaType: 'share',
+                errors: MeetingUtil.getChangeMeetingFloorErrorPayload(error.message),
+              },
+              options: {
+                meetingId: this.id,
+              },
             });
 
             this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
