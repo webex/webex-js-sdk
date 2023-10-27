@@ -746,7 +746,7 @@ const MeetingUtil = {
           ...errorPayload,
           fatal: true,
           category: 'expected',
-          errorCode: 4050,
+          errorCode: 4065,
         },
       ];
     }
@@ -756,7 +756,7 @@ const MeetingUtil = {
           ...errorPayload,
           fatal: true,
           category: 'expected',
-          errorCode: 4065,
+          errorCode: 4066,
         },
       ];
     }
@@ -766,7 +766,7 @@ const MeetingUtil = {
           ...errorPayload,
           fatal: true,
           category: 'expected',
-          errorCode: 4050,
+          errorCode: 4067,
         },
       ];
     }
