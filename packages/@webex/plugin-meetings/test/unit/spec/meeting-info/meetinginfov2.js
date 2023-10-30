@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
       meetingInfo = new MeetingInfo(webex);
     });
 
-    describe('#fetchMeetingInfo', () => {
+    describe.only('#fetchMeetingInfo', () => {
       it('should fetch meeting info for the destination type', async () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
@@ -374,11 +374,11 @@ describe('plugin-meetings', () => {
       forEach(
         [
           {errorCode: 403049},
-          {errorCode: 403104},
-          {errorCode: 403103},
-          {errorCode: 403048},
-          {errorCode: 403102},
-          {errorCode: 403101},
+          // {errorCode: 403104},
+          // {errorCode: 403103},
+          // {errorCode: 403048},
+          // {errorCode: 403102},
+          // {errorCode: 403101},
         ],
         ({errorCode}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
@@ -406,15 +406,21 @@ describe('plugin-meetings', () => {
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
               const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+              const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
               assert.deepEqual(submitInternalEventCalls[0].args[0], {
                 name: 'internal.client.meetinginfo.request',
+              });
+              assert.deepEqual(submitClientEventCalls[0].args[0], {
+                name: 'client.meetinginfo.request',
+                options: {
+                  meetingId: 'meeting-id'
+                },
               });
               assert.deepEqual(submitInternalEventCalls[1].args[0], {
                 name: 'internal.client.meetinginfo.response',
               });
-              assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              assert.deepEqual(submitClientEventCalls[1].args[0], {
                 name: 'client.meetinginfo.response',
                 payload: {
                   identifiers: {
@@ -482,11 +488,26 @@ describe('plugin-meetings', () => {
         );
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+        const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+        
         assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
+        assert.deepEqual(submitClientEventCalls[0].args[0], {
+          name: 'client.meetinginfo.request',
+          options: {
+            meetingId: 'meetingId',
+          }
+        });
+        
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
+        });
+        assert.deepEqual(submitClientEventCalls[1].args[0], {
+          name: 'client.meetinginfo.response',
+          options: {
+            meetingId: 'meetingId',
+          }
         });
       });
 

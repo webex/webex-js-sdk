@@ -340,6 +340,12 @@ export default class MeetingInfoV2 {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.request',
+        options: {
+          meetingId,
+        },
+      });
     }
 
     return this.webex
@@ -348,6 +354,12 @@ export default class MeetingInfoV2 {
         if (meetingId) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
+          });
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            options: {
+              meetingId,
+            },
           });
         }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
