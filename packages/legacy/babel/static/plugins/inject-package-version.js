@@ -17,7 +17,7 @@ module.exports = function injectPackageVersion() {
   if (fs.existsSync(packagePath)) {
     // eslint-disable-next-line import/no-dynamic-require, global-require
     const packageJSON = require(packagePath);
-    version = packageJSON.version || 'modern';
+    version = packageJSON.version || '0.0.0';
   }
 
   return {
