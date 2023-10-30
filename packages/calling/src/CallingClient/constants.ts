@@ -1,5 +1,5 @@
-export const VERSION = 'next';
-export const REPO_NAME = '@webex/calling';
+export const VERSION = 'beta';
+export const REPO_NAME = 'webex-calling';
 export const CALLING_USER_AGENT = `${REPO_NAME}/${VERSION}`;
 export const CALL_ENDPOINT_RESOURCE = 'call';
 export const CALL_STATUS_RESOURCE = 'status';

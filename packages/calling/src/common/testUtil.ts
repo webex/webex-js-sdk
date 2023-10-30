@@ -136,7 +136,7 @@ export const getMockRequestTemplate = () => {
     headers: {
       'cisco-device-url':
         'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
-      'spark-user-agent': 'web-calling-sdk/1.71.1 (web-calling)',
+      'spark-user-agent': 'webex-calling/beta',
     },
     service: 'mobius',
   };
