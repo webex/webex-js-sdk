@@ -65,7 +65,7 @@
     "release:dry-run": "standard-version --dry-run",
     "depcheck": "./tooling/depcheck.js",
     "postinstall": "patch-package && husky install",
-    "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run",
+    "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run build:src",
     "package-tools": "webex-package-tools"
   },
   "devDependencies": {
