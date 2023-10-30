@@ -374,11 +374,11 @@ describe('plugin-meetings', () => {
       forEach(
         [
           {errorCode: 403049},
-          // {errorCode: 403104},
-          // {errorCode: 403103},
-          // {errorCode: 403048},
-          // {errorCode: 403102},
-          // {errorCode: 403101},
+          {errorCode: 403104},
+          {errorCode: 403103},
+          {errorCode: 403048},
+          {errorCode: 403102},
+          {errorCode: 403101},
         ],
         ({errorCode}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
