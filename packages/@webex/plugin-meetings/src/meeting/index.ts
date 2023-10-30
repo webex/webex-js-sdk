@@ -3077,6 +3077,11 @@ export default class Meeting extends StatelessWebexPlugin {
         }) &&
           this.meetingInfo?.video?.supportHDV) ||
         !this.arePolicyRestrictionsSupported(),
+      enforceVirtualBackground:
+        ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND],
+          policies: this.selfUserPolicies,
+        }) || !this.arePolicyRestrictionsSupported(),
       supportHQV:
         (ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
