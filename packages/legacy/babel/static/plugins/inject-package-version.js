@@ -13,11 +13,11 @@ const pathPack = require('path');
  */
 module.exports = function injectPackageVersion() {
   const packagePath = pathPack.resolve(process.cwd(), 'package.json');
-  let version = '0.0.0';
+  let version;
   if (fs.existsSync(packagePath)) {
     // eslint-disable-next-line import/no-dynamic-require, global-require
     const packageJSON = require(packagePath);
-    version = packageJSON.version;
+    version = packageJSON.version || '0.0.0';
   }
 
   return {
