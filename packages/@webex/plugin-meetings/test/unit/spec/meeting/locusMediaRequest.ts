@@ -68,7 +68,6 @@ describe('LocusMediaRequest.send()', () => {
     mediaId: 'mediaId',
     selfUrl: 'fakeMeetingSelfUrl',
     muteOptions: {},
-    ipVersion: IP_VERSION.only_ipv6
   };
 
   const createExpectedLocalMuteBody = (expectedMute:{audioMuted: boolean, videoMuted: boolean}, sequence = undefined) => {
@@ -89,7 +88,7 @@ describe('LocusMediaRequest.send()', () => {
       ],
       clientMediaPreferences: {
         preferTranscoding: true,
-        ipver: 6,
+        ipver: undefined,
       },
     };
 

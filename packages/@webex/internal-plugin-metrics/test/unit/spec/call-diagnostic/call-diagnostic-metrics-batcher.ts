@@ -4,6 +4,7 @@
 
 import {assert} from '@webex/test-helper-chai';
 import {config, Utils} from '@webex/internal-plugin-metrics';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
@@ -347,5 +348,51 @@ describe('plugin-metrics', () => {
         });
       });
     });
+
+    describe('prepareItem', () => {
+      it('calls prepareDiagnosticMetricItem correctly', async () => {
+        // avoid setting .sent timestamp
+        webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
+        (q) => Promise.resolve(q);
+
+        const prepareItemSpy = sinon.spy(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher, 'prepareItem');
+        const prepareDiagnosticMetricItemSpy = sinon.spy(CallDiagnosticUtils, 'prepareDiagnosticMetricItem');
+
+        const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({
+          event: 'my.event',
+        });
+
+        await flushPromises();
+
+        clock.tick(config.metrics.batcherWait);
+
+        await promise;
+
+        const calls = prepareItemSpy.getCalls()[0];
+
+        // item also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
+        assert.deepEqual(calls.args[0].eventPayload, {
+          event: 'my.event',
+          origin: {buildType: 'test', networkType: 'unknown'},
+        });
+
+        assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
+
+
+        const prepareDiagnosticMetricItemCalls = prepareDiagnosticMetricItemSpy.getCalls()
+
+        // second argument (item) also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
+        assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[0], webex);
+        assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].eventPayload, {
+          event: 'my.event',
+          origin: {
+            buildType: 'test',
+            networkType: 'unknown',
+          },
+        });
+        assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);
+
+      })
+    })
   });
 });

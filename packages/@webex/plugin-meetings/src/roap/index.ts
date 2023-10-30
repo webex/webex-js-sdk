@@ -7,6 +7,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import RoapRequest from './request';
 import TurnDiscovery from './turnDiscovery';
 import Meeting from '../meeting';
+import MeetingUtil from '../meeting/util';
 
 /**
  * Roap options
@@ -100,7 +101,6 @@ export default class Roap extends StatelessWebexPlugin {
           mediaId: options.mediaId,
           meetingId: meeting.id,
           locusMediaRequest: meeting.locusMediaRequest,
-          ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
         })
         .then(() => {
           LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sent with seq ${options.seq}`);
@@ -135,7 +135,6 @@ export default class Roap extends StatelessWebexPlugin {
       mediaId: options.mediaId,
       meetingId: meeting.id,
       locusMediaRequest: meeting.locusMediaRequest,
-      ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
     });
   }
 
@@ -165,7 +164,6 @@ export default class Roap extends StatelessWebexPlugin {
         mediaId: options.mediaId,
         meetingId: meeting.id,
         locusMediaRequest: meeting.locusMediaRequest,
-        ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
       })
       .then(() => {
         LoggerProxy.logger.log(
@@ -204,7 +202,7 @@ export default class Roap extends StatelessWebexPlugin {
           meetingId: meeting.id,
           preferTranscoding: !meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
-          ipVersion: meeting.webex.meetings.reachability.getIpVersion(),
+          ipVersion: MeetingUtil.getIpVersion(meeting.webex),
         })
         .then(({locus, mediaConnections}) => {
           if (mediaConnections) {

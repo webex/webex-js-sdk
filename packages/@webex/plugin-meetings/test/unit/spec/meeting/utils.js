@@ -4,10 +4,9 @@ import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
-import Metrics from '@webex/plugin-meetings/src/metrics/index';
-import {SELF_POLICY} from '@webex/plugin-meetings/src/constants';
-import {DISPLAY_HINTS} from '@webex/plugin-meetings/src/constants';
+import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
+import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -339,7 +338,6 @@ describe('plugin-meetings', () => {
           selfUrl: 'self url',
           sequence: {},
           type: 'LocalMute',
-          ipVersion: 0,
         });
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
@@ -518,6 +516,26 @@ describe('plugin-meetings', () => {
 
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
+      });
+
+      it('should pass in the locusClusterUrl from meetingInfo', async () => {
+        const meeting = {
+          meetingInfo: {
+            locusClusterUrl: 'locusClusterUrl',
+          },
+          meetingRequest: {
+            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
+          },
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {});
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
       });
     });
 
@@ -963,6 +981,57 @@ describe('plugin-meetings', () => {
         const input = {foo: 'bar'};
         result = buildLocusDeltaRequestOptions(input);
         assert.equal(result, input);
+      });
+    });
+
+    describe('getIpVersion', () => {
+      let isBrowserStub;
+      beforeEach(() => {
+        isBrowserStub = sinon.stub().returns(false);
+
+        sinon.stub(BrowserDetectionModule, 'default').returns({
+          isBrowser: isBrowserStub,
+        });
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      [
+        {supportsIpV4: undefined, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: undefined, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
+        {supportsIpV4: undefined, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: true, supportsIpV6: undefined, expectedOutput: IP_VERSION.only_ipv4},
+        {supportsIpV4: true, supportsIpV6: true, expectedOutput: IP_VERSION.ipv4_and_ipv6},
+        {supportsIpV4: true, supportsIpV6: false, expectedOutput: IP_VERSION.only_ipv4},
+        {supportsIpV4: false, supportsIpV6: undefined, expectedOutput: IP_VERSION.unknown},
+        {supportsIpV4: false, supportsIpV6: true, expectedOutput: IP_VERSION.only_ipv6},
+        {supportsIpV4: false, supportsIpV6: false, expectedOutput: IP_VERSION.unknown},
+      ].forEach(({supportsIpV4, supportsIpV6, expectedOutput}) => {
+        it(`returns ${expectedOutput} when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6}`, () => {
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
+
+          assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
+        });
+
+        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} and browser is firefox`, () => {
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
+
+          isBrowserStub.callsFake((name) => name === 'firefox');
+
+          assert.equal(MeetingUtil.getIpVersion(webex), undefined);
+        });
       });
     });
   });

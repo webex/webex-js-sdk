@@ -1649,6 +1649,8 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             clock = sinon.useFakeTimers();
 
+            sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+
             meeting.deviceUrl = 'deviceUrl';
             meeting.config.deviceType = 'web';
             meeting.isMultistream = isMultistream;
@@ -1662,7 +1664,6 @@ describe('plugin-meetings', () => {
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.webex.meetings.reachability = {
               isAnyClusterReachable: sinon.stub().resolves(true),
-              getIpVersion: () => IP_VERSION.unknown,
             };
             meeting.roap.doTurnDiscovery = sinon
               .stub()
@@ -1739,6 +1740,7 @@ describe('plugin-meetings', () => {
 
           afterEach(() => {
             clock.restore();
+            sinon.restore();
           });
 
           // helper function that waits until all promises are resolved and any queued up /media requests to Locus are sent out
@@ -1828,7 +1830,7 @@ describe('plugin-meetings', () => {
                 ],
                 clientMediaPreferences: {
                   preferTranscoding: !meeting.isMultistream,
-                  ipver: 0,
+                  ipver: undefined
                 },
                 respOnlySdp: true,
                 usingResource: null,

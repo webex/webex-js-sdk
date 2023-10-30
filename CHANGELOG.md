@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.237](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.236...v3.0.0-beta.237) (2023-10-26)
+
+
+### Features
+
+* moved getIpVersion() to meeting util and implemented it ([#3164](https://github.com/webex/webex-js-sdk/issues/3164)) ([37ad720](https://github.com/webex/webex-js-sdk/commit/37ad720439dda3779aad87d6558d31c38d44b939))
+
+## [3.0.0-beta.236](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.235...v3.0.0-beta.236) (2023-10-25)
+
+
+### Bug Fixes
+
+* only sending ipver when it's really needed ([#3162](https://github.com/webex/webex-js-sdk/issues/3162)) ([3264967](https://github.com/webex/webex-js-sdk/commit/3264967136cadaa4cb416a270a61f0cb1e361599))
+
+## [3.0.0-beta.235](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.234...v3.0.0-beta.235) (2023-10-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** do not sync meetings if unverified guest ([#3156](https://github.com/webex/webex-js-sdk/issues/3156)) ([6317c75](https://github.com/webex/webex-js-sdk/commit/6317c75dcb1b02d0a90a964313f32b6922434bf6))
+
+## [3.0.0-beta.234](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.233...v3.0.0-beta.234) (2023-10-23)
+
+
+### Bug Fixes
+
+* **ca:** protecting against undefined ([#3154](https://github.com/webex/webex-js-sdk/issues/3154)) ([6fb2c76](https://github.com/webex/webex-js-sdk/commit/6fb2c762e710c7174bcc9da2b4224e706e51c77f))
+
+## [3.0.0-beta.233](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.232...v3.0.0-beta.233) (2023-10-19)
+
+
+### Features
+
+* **ca:** add temporary flag for buildType ([#3153](https://github.com/webex/webex-js-sdk/issues/3153)) ([f3aa45b](https://github.com/webex/webex-js-sdk/commit/f3aa45ba6ef7a333acae340619ff41f1af1cba8d))
+
+## [3.0.0-beta.232](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.231...v3.0.0-beta.232) (2023-10-19)
+
+
+### Features
+
+* **plugin-meetings:** use locus cluster url to avoid the redirect ([#3152](https://github.com/webex/webex-js-sdk/issues/3152)) ([ccd1511](https://github.com/webex/webex-js-sdk/commit/ccd15113cd55d926cdeabaf00ef1edd9914f19dc))
+
 ## [3.0.0-beta.231](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.230...v3.0.0-beta.231) (2023-10-16)
 
 
