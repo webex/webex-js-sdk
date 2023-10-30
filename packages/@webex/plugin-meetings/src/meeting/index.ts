@@ -5601,6 +5601,11 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           },
         });
+        LoggerProxy.logger.info(
+          `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+        );
+
+        this.remoteMediaManager?.logAllReceiveSlots();
       })
       .catch((error) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
@@ -5642,10 +5647,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.unsetPeerConnections();
           }
 
-          LoggerProxy.logger.error(
-            `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
-            error
-          );
+          LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
           // Upload logs on error while adding media
           Trigger.trigger(
