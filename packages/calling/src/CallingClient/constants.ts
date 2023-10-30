@@ -1,7 +1,6 @@
-export const VERSION = '1.71.1';
-export const REPO_NAME = 'web-calling-sdk';
-export const CALLING_FEATURE = 'web-calling';
-export const CALLING_USER_AGENT = `${REPO_NAME}/${VERSION} (${CALLING_FEATURE})`;
+export const VERSION = 'next';
+export const REPO_NAME = '@webex/calling';
+export const CALLING_USER_AGENT = `${REPO_NAME}/${VERSION}`;
 export const CALL_ENDPOINT_RESOURCE = 'call';
 export const CALL_STATUS_RESOURCE = 'status';
 export const CALLS_ENDPOINT_RESOURCE = 'calls';
