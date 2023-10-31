@@ -20,3 +20,12 @@ describe('getContentUrl', () => {
   });
 });
 
+describe('getDeviceUrlRequestingShare', () => {
+  it('getDeviceUrlRequestingShare return correct deviceUrl value', () => {
+    const stub = Sinon.stub(MediaSharesUtils, 'extractContentFloor').returns({ requester: {deviceUrl:'deviceUrlSharing'}});
+    const deviceUrlSharing = MediaSharesUtils.getDeviceUrlRequestingShare();
+    assert.equal(deviceUrlSharing,'deviceUrlSharing');
+    stub.restore();
+  });
+});
+
