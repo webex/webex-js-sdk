@@ -161,6 +161,14 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options?: SubmitClientEventOptions;
   }): Promise<any> {
+    if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitClientEvent. Attempted to submit before webex.ready. Event name: ${name}`
+      );
+
+      return Promise.resolve();
+    }
     this.callDiagnosticLatencies.saveTimestamp({
       key: name,
       options: {meetingId: options?.meetingId},

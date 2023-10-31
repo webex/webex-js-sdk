@@ -443,17 +443,19 @@ export default class ReconnectionManager {
       }
     }
 
-    try {
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
-      );
-      await this.webex.meetings.syncMeetings();
-    } catch (syncError) {
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
-        syncError
-      );
-      throw new NeedsRetryError(syncError);
+    if (!this.webex.credentials.isUnverifiedGuest) {
+      try {
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
+        );
+        await this.webex.meetings.syncMeetings();
+      } catch (syncError) {
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
+          syncError
+        );
+        throw new NeedsRetryError(syncError);
+      }
     }
 
     // TODO: try to improve this logic as the reconnection manager saves the instance of deleted meeting object

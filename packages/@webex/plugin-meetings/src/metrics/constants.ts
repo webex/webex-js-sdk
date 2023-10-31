@@ -40,6 +40,7 @@ const BEHAVIORAL_METRICS = {
   PEERCONNECTION_FAILURE: 'js_sdk_peerConnection_failures',
   INVALID_ICE_CANDIDATE: 'js_sdk_invalid_ice_candidate',
   UPLOAD_LOGS_FAILURE: 'js_sdk_upload_logs_failure',
+  UPLOAD_LOGS_SUCCESS: 'js_sdk_upload_logs_success',
   RECEIVE_TRANSCRIPTION_FAILURE: 'js_sdk_receive_transcription_failure',
   FETCH_MEETING_INFO_V1_SUCCESS: 'js_sdk_fetch_meeting_info_v1_success',
   FETCH_MEETING_INFO_V1_FAILURE: 'js_sdk_fetch_meeting_info_v1_failure',

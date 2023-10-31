@@ -33,7 +33,7 @@ class ReachabilityRequest {
    * @param {IP_VERSION} ipVersion information about current ip network we're on
    * @returns {Promise}
    */
-  getClusters = (ipVersion: IP_VERSION): Promise<{clusters: ClusterList; joinCookie: any}> =>
+  getClusters = (ipVersion?: IP_VERSION): Promise<{clusters: ClusterList; joinCookie: any}> =>
     this.webex
       .request({
         method: HTTP_VERBS.GET,

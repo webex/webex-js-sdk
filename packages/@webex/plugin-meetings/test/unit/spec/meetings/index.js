@@ -20,6 +20,7 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 
 import testUtils from '../../../utils/testUtils';
 import {
@@ -46,6 +47,8 @@ describe('plugin-meetings', () => {
     debug: () => {},
   };
 
+  let triggerProxyStub;
+
   beforeEach(() => {
     StaticConfig.set({
       bandwidth: {
@@ -57,7 +60,7 @@ describe('plugin-meetings', () => {
       verboseEvents: true,
       enable: false,
     });
-    sinon.stub(TriggerProxy, 'trigger').returns(true);
+    triggerProxyStub = sinon.stub(TriggerProxy, 'trigger').returns(true);
   });
 
   let webex;
@@ -2090,6 +2093,68 @@ describe('plugin-meetings', () => {
           }
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {locus: breakoutLocus, locusUrl: breakoutLocus.url});
+      });
+    });
+
+    describe('uploading of logs', () => {
+      let metricsSpy;
+      let meeting;
+
+      beforeEach(async () => {
+        webex.meetings.config.autoUploadLogs = true;
+        webex.meetings.loggerRequest.uploadLogs = sinon.stub().resolves();
+
+        sinon.stub(webex.meetings.meetingInfo, 'fetchInfoOptions').resolves({});
+        sinon.stub(webex.meetings.meetingInfo, 'fetchMeetingInfo').resolves({});
+
+        triggerProxyStub.restore();
+
+        metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
+
+        meeting = await webex.meetings.create('test');
+
+        meeting.locusId = 'locus id';
+        meeting.correlationId = 'correlation id';
+        meeting.locusInfo = {
+          fullState: { lastActive: 'last active'},
+          info: { webExMeetingId: 'meeting id'}
+        }
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      })
+
+      it('sends metrics on success', async () => {
+
+        await meeting.uploadLogs();
+
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(metricsSpy, 'js_sdk_upload_logs_success', {
+          callStart: 'last active',
+          correlationId: 'correlation id',
+          feedbackId: 'correlation id',
+          locusId: 'locus id',
+          meetingId: 'meeting id',
+        });
+      });
+
+      it('sends metrics on failure', async () => {
+        webex.meetings.loggerRequest.uploadLogs.rejects(new Error('fake error'));
+
+        await meeting.uploadLogs();
+
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(metricsSpy, 'js_sdk_upload_logs_failure', sinon.match({
+          callStart: 'last active',
+          correlationId: 'correlation id',
+          feedbackId: 'correlation id',
+          locusId: 'locus id',
+          meetingId: 'meeting id',
+          reason: 'fake error',
+        }));
       });
     });
   });

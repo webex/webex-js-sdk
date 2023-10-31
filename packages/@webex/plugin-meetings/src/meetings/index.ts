@@ -887,6 +887,7 @@ export default class Meetings extends WebexPlugin {
           'Meetings:index#uploadLogs --> Upload logs for meeting completed.',
           uploadResult
         );
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_SUCCESS, options);
         Trigger.trigger(
           this,
           {
@@ -921,8 +922,7 @@ export default class Meetings extends WebexPlugin {
         );
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_FAILURE, {
-          // @ts-ignore - seems like typo
-          meetingId: options.meetingsId,
+          ...options,
           reason: uploadError.message,
           stack: uploadError.stack,
           code: uploadError.code,

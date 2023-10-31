@@ -16,7 +16,7 @@ export type RoapRequest = {
   reachability: any;
   sequence?: any;
   joinCookie: any; // any, because this is opaque to the client, we pass whatever object we got from one backend component (Orpheus) to the other (Locus)
-  ipVersion: IP_VERSION;
+  ipVersion?: IP_VERSION;
 };
 
 export type LocalMuteRequest = {
@@ -28,7 +28,6 @@ export type LocalMuteRequest = {
     audioMuted?: boolean;
     videoMuted?: boolean;
   };
-  ipVersion: IP_VERSION;
 };
 
 export type Request = RoapRequest | LocalMuteRequest;
@@ -204,7 +203,7 @@ export class LocusMediaRequest extends WebexPlugin {
       correlationId: this.config.correlationId,
       clientMediaPreferences: {
         preferTranscoding: this.config.preferTranscoding,
-        ipver: request.ipVersion,
+        ipver: request.type === 'RoapMessage' ? request.ipVersion : undefined,
       },
     };
 

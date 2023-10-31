@@ -1674,6 +1674,8 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           clock = sinon.useFakeTimers();
 
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+
           meeting.deviceUrl = 'deviceUrl';
           meeting.config.deviceType = 'web';
           meeting.isMultistream = isMultistream;
@@ -1687,12 +1689,11 @@ describe('plugin-meetings', () => {
           meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
           meeting.webex.meetings.reachability = {
             isAnyClusterReachable: sinon.stub().resolves(true),
-            getIpVersion: () => IP_VERSION.unknown,
           };
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
-          
+
           StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
 
           // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
@@ -1768,6 +1769,7 @@ describe('plugin-meetings', () => {
 
         afterEach(() => {
           clock.restore();
+          sinon.restore();
         });
 
         // helper function that waits until all promises are resolved and any queued up /media requests to Locus are sent out
@@ -1855,7 +1857,7 @@ describe('plugin-meetings', () => {
               ],
               clientMediaPreferences: {
                 preferTranscoding: !meeting.isMultistream,
-                ipver: 0
+                ipver: undefined
               },
               respOnlySdp: true,
               usingResource: null,
@@ -1936,7 +1938,7 @@ describe('plugin-meetings', () => {
           // and that it was the only /media request that was sent
           assert.calledOnce(locusMediaRequestStub);
         });
-          
+
         it('addMedia() works correctly when media is enabled with streams to publish', async () => {
           await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
           await simulateRoapOffer();
@@ -2083,7 +2085,7 @@ describe('plugin-meetings', () => {
                 } else {
                   assert.notCalled(locusMediaRequestStub);
                 }
-                
+
                 if (isMultistream) {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream);
                 } else {

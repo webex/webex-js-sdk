@@ -63,6 +63,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {String} options.mediaId
    * @param {String} options.correlationId
    * @param {String} options.meetingId
+   * @param {IP_VERSION} options.ipVersion only required for offers
    * @returns {Promise} returns the response/failure of the request
    */
   async sendRoap(options: {
@@ -70,7 +71,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
     locusSelfUrl: string;
     mediaId: string;
     meetingId: string;
-    ipVersion: IP_VERSION;
+    ipVersion?: IP_VERSION;
     locusMediaRequest?: LocusMediaRequest;
   }) {
     const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest, ipVersion} = options;
