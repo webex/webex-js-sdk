@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.239](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.238...v3.0.0-beta.239) (2023-10-31)
+
+
+### Bug Fixes
+
+* improved logging of receive slots, muted local audio by default in the sample app ([#3172](https://github.com/webex/webex-js-sdk/issues/3172)) ([43ceefd](https://github.com/webex/webex-js-sdk/commit/43ceefdc96d28614ddb483d5ac3b8fe98b9b27e7))
+
 ## [3.0.0-beta.238](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.237...v3.0.0-beta.238) (2023-10-30)
 
 
