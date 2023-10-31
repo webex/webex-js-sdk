@@ -2557,7 +2557,6 @@ describe('plugin-meetings', () => {
         it('should have #requestScreenShareFloor', () => {
           assert.exists(meeting.requestScreenShareFloor);
         });
-        let sandbox;
 
         beforeEach(() => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
@@ -2566,12 +2565,10 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.shareVideoTrack = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
-          sandbox = sinon.createSandbox();
         });
 
         afterEach(() => {
-          sandbox.restore();
-          sandbox = null;
+          sinon.restore();
         });
 
         it('should send the share', async () => {
@@ -2593,11 +2590,12 @@ describe('plugin-meetings', () => {
             options: {meetingId: meeting.id},
           });
         });
+
         it('should submit expected metric on failure', async () => {
           const error = new Error('forced');
 
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.reject(error));
-          const getChangeMeetingFloorErrorPayloadSpy = sandbox
+          const getChangeMeetingFloorErrorPayloadSpy = sinon
             .stub(MeetingUtil, 'getChangeMeetingFloorErrorPayload')
             .returns('foo');
 
