@@ -1830,7 +1830,7 @@ describe('plugin-meetings', () => {
                 ],
                 clientMediaPreferences: {
                   preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined
+                  ipver: undefined,
                 },
                 respOnlySdp: true,
                 usingResource: null,
@@ -2557,6 +2557,8 @@ describe('plugin-meetings', () => {
         it('should have #requestScreenShareFloor', () => {
           assert.exists(meeting.requestScreenShareFloor);
         });
+        let sandbox;
+
         beforeEach(() => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
           meeting.locusInfo.self = {url: url1};
@@ -2564,13 +2566,53 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.shareVideoTrack = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
+          sandbox = sinon.createSandbox();
         });
+
+        afterEach(() => {
+          sandbox.restore();
+          sandbox = null;
+        });
+
         it('should send the share', async () => {
           const share = meeting.requestScreenShareFloor();
 
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+          // ensure the CA share metrics are submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.initiated',
+            payload: {mediaType: 'share'},
+            options: {meetingId: meeting.id},
+          });
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.floor-grant.request',
+            payload: {mediaType: 'share'},
+            options: {meetingId: meeting.id},
+          });
+        });
+        it('should submit expected metric on failure', async () => {
+          const error = new Error('forced');
+
+          meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.reject(error));
+          const getChangeMeetingFloorErrorPayloadSpy = sandbox
+            .stub(MeetingUtil, 'getChangeMeetingFloorErrorPayload')
+            .returns('foo');
+
+          await meeting.requestScreenShareFloor().catch((err) => {
+            assert.equal(err, error);
+          });
+
+          assert.calledWith(getChangeMeetingFloorErrorPayloadSpy, 'forced');
+
+          // ensure the expected CA share metric is submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.floor-granted.local',
+            payload: {mediaType: 'share', errors: 'foo'},
+            options: {meetingId: meeting.id},
+          });
         });
       });
 
@@ -5539,6 +5581,13 @@ describe('plugin-meetings', () => {
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+          // ensure the CA share metric is submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.initiated',
+            payload: {mediaType: 'whiteboard'},
+            options: {meetingId: meeting.id},
+          });
         });
         it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
           // change selfId so that it doesn't match the beneficiary id from meeting.locusInfo.mediaShares

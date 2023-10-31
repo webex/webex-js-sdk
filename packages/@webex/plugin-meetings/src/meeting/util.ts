@@ -693,7 +693,14 @@ const MeetingUtil = {
     );
   },
 
-  // New errors can be added to this function for handling in the future
+  /**
+   * Returns a CA-recognized error payload for the specified raw error message/reason.
+   *
+   * New errors can be added to this function for handling in the future
+   *
+   * @param {String} reason the raw error message
+   * @returns {Array<object>} an array of payload objects
+   */
   getChangeMeetingFloorErrorPayload: (reason: string) => {
     const errorPayload = {
       errorDescription: reason,
