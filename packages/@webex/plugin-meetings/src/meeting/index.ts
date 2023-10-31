@@ -523,6 +523,7 @@ export default class Meeting extends StatelessWebexPlugin {
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
   selfUserPolicies: any;
+  enforceVBGImagesURL: string;
   shareStatus: string;
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
@@ -3294,7 +3295,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   setSelfUserPolicies(permissionToken: string) {
-    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
+    const permission = jwt.decode(permissionToken)?.permission;
+
+    this.selfUserPolicies = permission?.userPolicies;
+    this.enforceVBGImagesURL = permission?.enforceVBGImagesURL;
   }
 
   /**
