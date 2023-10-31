@@ -2438,10 +2438,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
       this.mediaConnection.updateLocalTracks({audio: track});
       effect = localAudioStream.getEffect('background-noise-removal');
-      console.log('pkesari_Effect on the stream: ', effect);
-      console.log('pkesari_Effect is enabled: ', effect?.isEnabled);
       if (effect && effect.isEnabled) {
-        console.log('pkesari_Sending metrics for enabling BNR');
         this.metricManager.submitMediaMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_ENABLED,
@@ -2453,7 +2450,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           undefined
         );
       } else if (effect && !effect.isEnabled) {
-        console.log('pkesari_Sending metrics for disabling BNR');
         this.metricManager.submitMediaMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_DISABLED,
@@ -2464,8 +2460,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.remoteRoapMessage?.sdp,
           undefined
         );
-      } else {
-        console.log('Effect not found');
       }
     });
   }
