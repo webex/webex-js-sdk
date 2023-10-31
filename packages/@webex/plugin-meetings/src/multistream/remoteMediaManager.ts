@@ -745,25 +745,37 @@ export class RemoteMediaManager extends EventsScope {
     );
   }
 
+  /** logs main audio slots */
+  private logMainAudioReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logMainAudioReceiveSlots --> MAIN AUDIO receive slots: ${this.slots.audio
+        .map((slot) => slot.logString)
+        .join(', ')}`
+    );
+  }
+
+  /** logs slides video slots */
+  private logSlidesVideoReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logSlidesVideoReceiveSlots --> SLIDES VIDEO receive slot: ${this.slots.screenShare.video?.logString}`
+    );
+  }
+
+  /** logs slides audio slots */
+  private logSlidesAudioReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logSlidesAudioReceiveSlots --> SLIDES AUDIO receive slots: ${this.slots.screenShare.audio
+        .map((slot) => slot.logString)
+        .join(', ')}`
+    );
+  }
+
   /** Logs all current receive slots */
   public logAllReceiveSlots() {
-    LoggerProxy.logger.log(
-      `RemoteMediaManager#logAllReceiveSlots --> MAIN AUDIO receive slots: ${this.slots.audio
-        .map((slot) => slot.logString)
-        .join(', ')}`
-    );
-
     this.logMainVideoReceiveSlots();
-
-    LoggerProxy.logger.log(
-      `RemoteMediaManager#logAllReceiveSlots --> SLIDES VIDEO receive slot: ${this.slots.screenShare.video?.logString}`
-    );
-
-    LoggerProxy.logger.log(
-      `RemoteMediaManager#logAllReceiveSlots --> SLIDES AUDIO receive slots: ${this.slots.screenShare.audio
-        .map((slot) => slot.logString)
-        .join(', ')}`
-    );
+    this.logMainAudioReceiveSlots();
+    this.logSlidesVideoReceiveSlots();
+    this.logSlidesAudioReceiveSlots();
   }
 
   /**
