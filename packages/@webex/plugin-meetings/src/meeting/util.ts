@@ -783,7 +783,7 @@ const MeetingUtil = {
       {
         ...errorPayload,
         fatal: true,
-        category: 'expected',
+        category: 'signaling',
         errorCode: 1100,
       },
     ];

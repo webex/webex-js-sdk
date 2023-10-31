@@ -6088,17 +6088,6 @@ export default class Meeting extends StatelessWebexPlugin {
         body.resourceToken = resourceToken;
       }
 
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.share.floor-grant.request',
-        payload: {
-          mediaType: 'whiteboard',
-        },
-        options: {
-          meetingId: this.id,
-        },
-      });
-
       return this.meetingRequest
         .changeMeetingFloor(body)
         .then(() => {
