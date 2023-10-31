@@ -38,12 +38,26 @@ describe('plugin-meetings', () => {
         });
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+        const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
         assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
+        assert.deepEqual(submitClientEventCalls[0].args[0], {
+          name: 'client.meetinginfo.request',
+          options: {
+            meetingId: 'meetingId',
+          },
+        });
+
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
+        });
+        assert.deepEqual(submitClientEventCalls[1].args[0], {
+          name: 'client.meetinginfo.response',
+          options: {
+            meetingId: 'meetingId',
+          },
         });
       });
 
@@ -58,6 +72,7 @@ describe('plugin-meetings', () => {
         await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, null, null);
 
         assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
       });
 
       it('should send ca events when fails and if meetingId present', async () => {
@@ -89,12 +104,24 @@ describe('plugin-meetings', () => {
           );
         } catch (err) {
           const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+          const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
           assert.deepEqual(submitInternalEventCalls[0].args[0], {
             name: 'internal.client.meetinginfo.request',
           });
 
-          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+          assert.deepEqual(submitClientEventCalls[0].args[0], {
+            name: 'client.meetinginfo.request',
+            options: {
+              meetingId: 'meetingId',
+            },
+          });
+
+          assert.deepEqual(submitInternalEventCalls[1].args[0], {
+            name: 'internal.client.meetinginfo.response',
+          });
+
+          assert.deepEqual(submitClientEventCalls[1].args[0], {
             name: 'client.meetinginfo.response',
             payload: {
               identifiers: {
