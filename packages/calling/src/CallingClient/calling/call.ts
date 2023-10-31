@@ -1977,7 +1977,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
     const effect = localAudioStream.getEffect('background-noise-removal');
-    console.log('pkesari_Local stream received: ', localAudioStream);
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
@@ -1989,25 +1988,24 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
+      if (effect && effect.isEnabled) {
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_ENABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          this.localRoapMessage.sdp,
+          this.remoteRoapMessage?.sdp,
+          undefined
+        );
+      }
+
       this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
     } else {
       log.warn(
         `Call cannot be answered because the state is : ${this.callStateMachine.state.value}`,
         {file: CALL_FILE, method: 'answer'}
-      );
-    }
-
-    if (effect && effect.isEnabled) {
-      console.log('pkesari_BNR is enabled, sending metric');
-      this.metricManager.submitMediaMetric(
-        METRIC_EVENT.MEDIA,
-        MEDIA_EFFECT_ACTION.BNR_ENABLED,
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId,
-        this.localRoapMessage.sdp,
-        this.remoteRoapMessage?.sdp,
-        undefined
       );
     }
   }
@@ -2017,8 +2015,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
-    const effect = localAudioStream.getEffect('background-noise-removal');
-    console.log('pkesari_Local stream received: ', localAudioStream);
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
@@ -2030,25 +2026,25 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
+      const effect = localAudioStream.getEffect('background-noise-removal');
+      if (effect && effect.isEnabled) {
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_ENABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          this.localRoapMessage.sdp,
+          this.remoteRoapMessage?.sdp,
+          undefined
+        );
+      }
+
       this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER'});
     } else {
       log.warn(
         `Call cannot be dialed because the state is already : ${this.mediaStateMachine.state.value}`,
         {file: CALL_FILE, method: 'dial'}
-      );
-    }
-
-    if (effect && effect.isEnabled) {
-      console.log('pkesari_BNR is enabled, sending metric');
-      this.metricManager.submitMediaMetric(
-        METRIC_EVENT.MEDIA,
-        MEDIA_EFFECT_ACTION.BNR_ENABLED,
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId,
-        this.localRoapMessage.sdp,
-        this.remoteRoapMessage?.sdp,
-        undefined
       );
     }
   }

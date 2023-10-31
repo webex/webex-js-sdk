@@ -2,12 +2,13 @@
 /* eslint-disable dot-notation */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as MediaSDK from '@webex/internal-media-core';
+import EventEmitter from 'events';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
+import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE, MEDIA_EFFECT_ACTION} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -35,25 +36,6 @@ const mockMediaSDK = MediaSDK as jest.Mocked<typeof MediaSDK>;
 const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
-
-// class MockMediaStream {
-//   private track;
-
-//   constructor(track: any) {
-//     this.track = track;
-//   }
-// }
-
-// globalThis.MediaStream = MockMediaStream;
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
-//   return {} as MediaStream;
-// });
-
-// // Object.defineProperty(window, 'MediaStream', {
-// //   writable: true,
-// // });
 
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
@@ -110,6 +92,28 @@ describe('Call Tests', () => {
   const mockTrack = {
     enabled: false,
   } as MediaStreamTrack;
+
+  const mockEffect = {
+    isEnabled: true,
+  };
+
+  // class MockMediaStream extends EventEmitter {
+  //   public outputStream;
+
+  //   constructor() {
+  //     super();
+
+  //     this.outputStream = {
+  //       getAudioTrack: () => {
+  //         return mockTrack;
+  //       },
+  //     };
+  //   }
+
+  //   public getEffect = () => {
+  //     return mockEffect;
+  //   };
+  // }
 
   const roapMediaConnectionConfig = {
     skipInactiveTransceivers: true,
@@ -286,6 +290,9 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffect: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -302,6 +309,8 @@ describe('Call Tests', () => {
       defaultServiceIndicator
     );
 
+    const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+
     call.dial(localAudioStream);
 
     expect(mockTrack.enabled).toEqual(true);
@@ -311,6 +320,30 @@ describe('Call Tests', () => {
       expect.any(String)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+    expect(mediaMetricSpy.mock.calls).toEqual([
+      [
+        METRIC_EVENT.MEDIA,
+        MEDIA_EFFECT_ACTION.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        call.getCallId(),
+        call.getCorrelationId(),
+        undefined,
+        undefined,
+        undefined,
+      ],
+      [
+        METRIC_EVENT.MEDIA,
+        'S_SEND_ROAP_OFFER',
+        METRIC_TYPE.BEHAVIORAL,
+        call.getCallId(),
+        call.getCorrelationId(),
+        undefined,
+        undefined,
+        undefined,
+      ],
+    ]);
+
     /* Now change the state and recall to check for error */
     call['mediaStateMachine'].state.value = 'S_SEND_ROAP_OFFER';
     call.dial(localAudioStream);
@@ -327,6 +360,9 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffect: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -343,6 +379,8 @@ describe('Call Tests', () => {
       defaultServiceIndicator
     );
     /** Cannot answer in idle state */
+
+    const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
 
     call.answer(localAudioStream);
     expect(mockTrack.enabled).toEqual(true);
@@ -361,7 +399,92 @@ describe('Call Tests', () => {
     call['callStateMachine'].state.value = 'S_SEND_CALL_PROGRESS';
     call.answer(localAudioStream);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    expect(mediaMetricSpy.mock.calls).toEqual([
+      [
+        METRIC_EVENT.MEDIA,
+        'S_ROAP_IDLE',
+        METRIC_TYPE.BEHAVIORAL,
+        call.getCallId(),
+        call.getCorrelationId(),
+        undefined,
+        undefined,
+        undefined,
+      ],
+      [
+        METRIC_EVENT.MEDIA,
+        MEDIA_EFFECT_ACTION.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        call.getCallId(),
+        call.getCorrelationId(),
+        undefined,
+        undefined,
+        undefined,
+      ],
+    ]);
   });
+
+  // it.only('testing enabling/disabling the BNR on an active call', async () => {
+  //   // const mockStream = {
+  //   //   outputStream: {
+  //   //     getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+  //   //   },
+  //   //   getEffect: jest.fn().mockImplementation(() => {
+  //   //     return {};
+  //   //   }),
+  //   // };
+
+  //   const localAudioStream = new MockMediaStream() as unknown as MediaSDK.LocalMicrophoneStream;
+
+  //   const call = createCall(
+  //     activeUrl,
+  //     webex,
+  //     dest,
+  //     CallDirection.OUTBOUND,
+  //     deviceId,
+  //     mockLineId,
+  //     deleteCallFromCollection,
+  //     defaultServiceIndicator
+  //   );
+
+  //   call.dial(localAudioStream);
+
+  //   expect(mockTrack.enabled).toEqual(true);
+  //   expect(mockMediaSDK.RoapMediaConnection).toBeCalledOnceWith(
+  //     roapMediaConnectionConfig,
+  //     roapMediaConnectionOptions,
+  //     expect.any(String)
+  //   );
+  //   expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+  //   const onSpy = jest.spyOn(localAudioStream, 'on');
+  //   const mediaConnectionSpy = jest.spyOn(call['mediaConnection'], 'updateLocalTracks');
+  //   const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+
+  //   // const effect = new NoiseReductionEffect({authToken: webex.credentials.getUserToken()});
+  //   // await localAudioStream.addEffect('background-noise-removal', mockEffect as any);
+  //   // await effect.enable();
+
+  //   // expect(onSpy).toBeCalledOnceWith(
+  //   //   MediaSDK.LocalStreamEventNames.OutputTrackChange,
+  //   //   expect.any(Function)
+  //   // );
+
+  //   // const callback = onSpy.mock.calls[0][1];
+  //   // callback({track: mockTrack});
+  //   // localAudioStream.emit(MediaSDK.LocalStreamEventNames.OutputTrackChange, {track: mockTrack});
+  //   expect(mediaConnectionSpy).toBeCalledOnceWith();
+  //   expect(mediaMetricSpy).toBeCalledOnceWith(
+  //     METRIC_EVENT.MEDIA,
+  //     MEDIA_EFFECT_ACTION.BNR_ENABLED,
+  //     METRIC_TYPE.BEHAVIORAL,
+  //     call.getCallId(),
+  //     call.getCorrelationId(),
+  //     undefined,
+  //     undefined,
+  //     undefined
+  //   );
+  // });
 });
 
 describe('State Machine handler tests', () => {
