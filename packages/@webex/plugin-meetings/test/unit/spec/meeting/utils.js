@@ -11,7 +11,7 @@ import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/brows
 
 describe('plugin-meetings', () => {
   let webex;
-  describe.only('Meeting utils function', () => {
+  describe('Meeting utils function', () => {
     const sandbox = sinon.createSandbox();
     const meeting = {};
 
