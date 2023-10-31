@@ -5601,8 +5601,16 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           },
         });
+        LoggerProxy.logger.info(
+          `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+        );
+
+        // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
+        this.remoteMediaManager?.logAllReceiveSlots();
       })
       .catch((error) => {
+        LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
@@ -5641,11 +5649,6 @@ export default class Meeting extends StatelessWebexPlugin {
             this.closePeerConnections();
             this.unsetPeerConnections();
           }
-
-          LoggerProxy.logger.error(
-            `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
-            error
-          );
 
           // Upload logs on error while adding media
           Trigger.trigger(
