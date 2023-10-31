@@ -770,12 +770,12 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isTranscriptionSupported(), true);
         });
       });
-      describe('#receiveTranscription', () => {
+      describe('#startTranscription', () => {
         it('should invoke subscribe method to invoke the callback', () => {
           meeting.monitorTranscriptionSocketConnection = sinon.stub();
           meeting.initializeTranscription = sinon.stub();
 
-          meeting.receiveTranscription().then(() => {
+          meeting.startTranscription().then(() => {
             assert.equal(true, false);
             assert.calledOnce(meeting.initializeTranscription);
             assert.calledOnce(meeting.monitorTranscriptionSocketConnection);
@@ -786,7 +786,7 @@ describe('plugin-meetings', () => {
           meeting.request = sinon.stub().returns(Promise.reject());
 
           try {
-            await meeting.receiveTranscription();
+            await meeting.startTranscription();
           } catch (err) {
             assert(err, {});
           }
@@ -840,12 +840,12 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
           });
-          it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
+          it('should invoke `startTranscription()` if receiveTranscription is set to true', async () => {
             meeting.isTranscriptionSupported = sinon.stub().returns(true);
-            meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
+            meeting.startTranscription = sinon.stub().returns(Promise.resolve());
 
             await meeting.join({receiveTranscription: true});
-            assert.calledOnce(meeting.receiveTranscription);
+            assert.calledOnce(meeting.startTranscription);
           });
 
           it('should not create new correlation ID on join immediately after create', async () => {
@@ -3576,6 +3576,15 @@ describe('plugin-meetings', () => {
             'meeting:self:guestAdmitted',
             {payload: test1}
           );
+          done();
+        });
+        it('transcription should start when configured when guest admitted', (done) => {
+          meeting.isTranscriptionSupported = sinon.stub().returns(true);
+          meeting.receiveTranscription = sinon.stub().returns(true);
+          meeting.startTranscription = sinon.stub();
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+          assert.calledOnce(meeting.startTranscription);
           done();
         });
       });
