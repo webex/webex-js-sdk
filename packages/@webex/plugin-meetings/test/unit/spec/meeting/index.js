@@ -6813,6 +6813,13 @@ describe('plugin-meetings', () => {
             assert.exists(whiteboardShare.then);
             await whiteboardShare;
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+            // ensure the CA share metric is submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'whiteboard'},
+              options: {meetingId: meeting.id},
+            });
           });
         });
         describe('#stopWhiteboardShare', () => {
