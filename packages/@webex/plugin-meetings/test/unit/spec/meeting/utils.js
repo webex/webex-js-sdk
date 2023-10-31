@@ -1090,7 +1090,7 @@ describe('plugin-meetings', () => {
         {
           reason: 'some unknown reason',
           expected: {
-            category: 'expected',
+            category: 'signaling',
             errorCode: 1100,
           },
         },
