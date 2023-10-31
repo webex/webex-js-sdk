@@ -5579,13 +5579,6 @@ describe('plugin-meetings', () => {
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
-
-          // ensure the CA share metric is submitted
-          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-            name: 'client.share.initiated',
-            payload: {mediaType: 'whiteboard'},
-            options: {meetingId: meeting.id},
-          });
         });
         it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
           // change selfId so that it doesn't match the beneficiary id from meeting.locusInfo.mediaShares
@@ -6820,6 +6813,13 @@ describe('plugin-meetings', () => {
             assert.exists(whiteboardShare.then);
             await whiteboardShare;
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+            // ensure the CA share metric is submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'whiteboard'},
+              options: {meetingId: meeting.id},
+            });
           });
         });
         describe('#stopWhiteboardShare', () => {
