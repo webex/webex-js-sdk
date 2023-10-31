@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
       meetingInfo = new MeetingInfo(webex);
     });
 
-    describe.only('#fetchMeetingInfo', () => {
+    describe('#fetchMeetingInfo', () => {
       it('should fetch meeting info for the destination type', async () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
