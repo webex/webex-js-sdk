@@ -26,9 +26,9 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf packages/**/.coverage packages/**/dist packages/**/types",
+    "clean": "rimraf packages/**/dist packages/**/types",
     "prebuild": "yarn run clean",
-    "build:publish": "yarn workspaces foreach --parallel --verbose run build:src && yarn build:package",
+    "build:publish": "yarn build:package && yarn workspaces foreach --parallel --verbose run build:src",
     "build:local": "yarn workspaces foreach --parallel --verbose run build:src && yarn run samples:build",
     "build": "yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
     "build:tsc": "yarn workspace @webex/plugin-meetings run build && yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit",
@@ -65,7 +65,7 @@
     "release:dry-run": "standard-version --dry-run",
     "depcheck": "./tooling/depcheck.js",
     "postinstall": "patch-package && husky install",
-    "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run",
+    "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run build:src",
     "package-tools": "webex-package-tools"
   },
   "devDependencies": {
