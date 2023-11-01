@@ -5230,7 +5230,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.start',
-        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
+        payload: {
+          mediaType: data.type,
+        },
         options: {
           meetingId: this.id,
         },
@@ -5240,7 +5242,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.stop',
-        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
+        payload: {
+          mediaType: data.type,
+        },
         options: {
           meetingId: this.id,
         },
@@ -7127,24 +7131,14 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     let floorRequestNeeded = false;
-    if (tracks.screenShare?.video || (this.isMultistream && tracks.screenShare?.audio)) {
-      this.shareInstanceId = uuid.v4();
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.share.initiated',
-        payload: {
-          mediaType: 'share',
-          shareInstanceId: this.shareInstanceId,
-        },
-        options: {meetingId: this.id},
-      });
-      if (tracks.screenShare?.video) {
-        await this.setLocalShareVideoTrack(tracks.screenShare?.video);
-      }
+    if (tracks.screenShare?.video) {
+      await this.setLocalShareVideoTrack(tracks.screenShare?.video);
 
-      if (this.isMultistream && tracks.screenShare?.audio) {
-        await this.setLocalShareAudioTrack(tracks.screenShare.audio);
-      }
+      floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
+    }
+
+    if (this.isMultistream && tracks.screenShare?.audio) {
+      await this.setLocalShareAudioTrack(tracks.screenShare.audio);
 
       floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }
@@ -7162,6 +7156,17 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (floorRequestNeeded) {
+      this.shareInstanceId = uuid.v4();
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.share.initiated',
+        payload: {
+          mediaType: 'share',
+          shareInstanceId: this.shareInstanceId,
+        },
+        options: {meetingId: this.id},
+      });
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created

@@ -4079,6 +4079,13 @@ describe('plugin-meetings', () => {
           const checkScreenShareVideoPublished = (track) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
+              options: {meetingId: meeting.id},
+            });
+
             assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
             assert.equal(meeting.mediaProperties.shareVideoTrack, track);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
@@ -4086,6 +4093,13 @@ describe('plugin-meetings', () => {
 
           const checkScreenShareAudioPublished = (track) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
+
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
+              options: {meetingId: meeting.id},
+            });
 
             assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
             assert.equal(meeting.mediaProperties.shareAudioTrack, track);
@@ -4095,26 +4109,12 @@ describe('plugin-meetings', () => {
           it('requests screen share floor and publishes the screen share video track', async () => {
             await meeting.publishTracks({screenShare: {video: videoShareTrack}});
 
-            // ensure the CA share metrics are submitted
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.share.initiated',
-              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
-              options: {meetingId: meeting.id},
-            });
-
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
 
           it('requests screen share floor and publishes the screen share audio track', async () => {
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
-
-            // ensure the CA share metrics are submitted
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.share.initiated',
-              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
-              options: {meetingId: meeting.id},
-            });
 
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareAudioPublished(audioShareTrack);
@@ -4160,13 +4160,6 @@ describe('plugin-meetings', () => {
                 video: videoShareTrack,
                 audio: audioShareTrack,
               },
-            });
-
-            // ensure the CA share metrics are submitted
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.share.initiated',
-              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
-              options: {meetingId: meeting.id},
             });
 
             assert.callCount(meeting.mediaProperties.webrtcMediaConnection.publishTrack, 4);
