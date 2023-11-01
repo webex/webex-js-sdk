@@ -6194,15 +6194,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.share.initiated',
-          payload: {
-            mediaType: 'share',
-          },
-          options: {meetingId: this.id},
-        });
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.share.floor-grant.request',
           payload: {
             mediaType: 'share',
@@ -7119,15 +7110,22 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     let floorRequestNeeded = false;
+    if (tracks.screenShare?.video || (this.isMultistream && tracks.screenShare?.audio)) {
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.share.initiated',
+        payload: {
+          mediaType: 'share',
+        },
+        options: {meetingId: this.id},
+      });
+      if (tracks.screenShare?.video) {
+        await this.setLocalShareVideoTrack(tracks.screenShare?.video);
+      }
 
-    if (tracks.screenShare?.video) {
-      await this.setLocalShareVideoTrack(tracks.screenShare?.video);
-
-      floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
-    }
-
-    if (this.isMultistream && tracks.screenShare?.audio) {
-      await this.setLocalShareAudioTrack(tracks.screenShare.audio);
+      if (this.isMultistream && tracks.screenShare?.audio) {
+        await this.setLocalShareAudioTrack(tracks.screenShare.audio);
+      }
 
       floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }

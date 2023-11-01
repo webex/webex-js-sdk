@@ -2578,12 +2578,6 @@ describe('plugin-meetings', () => {
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
 
-          // ensure the CA share metrics are submitted
-          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-            name: 'client.share.initiated',
-            payload: {mediaType: 'share'},
-            options: {meetingId: meeting.id},
-          });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.share.floor-grant.request',
             payload: {mediaType: 'share'},
@@ -4100,12 +4094,26 @@ describe('plugin-meetings', () => {
           it('requests screen share floor and publishes the screen share video track', async () => {
             await meeting.publishTracks({screenShare: {video: videoShareTrack}});
 
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share'},
+              options: {meetingId: meeting.id},
+            });
+
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareVideoPublished(videoShareTrack);
           });
 
           it('requests screen share floor and publishes the screen share audio track', async () => {
             await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share'},
+              options: {meetingId: meeting.id},
+            });
 
             assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
             checkScreenShareAudioPublished(audioShareTrack);
@@ -4151,6 +4159,13 @@ describe('plugin-meetings', () => {
                 video: videoShareTrack,
                 audio: audioShareTrack,
               },
+            });
+
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share'},
+              options: {meetingId: meeting.id},
             });
 
             assert.callCount(meeting.mediaProperties.webrtcMediaConnection.publishTrack, 4);
