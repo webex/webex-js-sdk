@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.240](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.239...v3.0.0-beta.240) (2023-11-01)
+
+
+### Bug Fixes
+
+* **scripts:** build clean skip prebuild ([#3179](https://github.com/webex/webex-js-sdk/issues/3179)) ([595d566](https://github.com/webex/webex-js-sdk/commit/595d566f25b18e11fd9824e77a8459689509eb93))
+
 ## [3.0.0-beta.239](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.238...v3.0.0-beta.239) (2023-10-31)
 
 
