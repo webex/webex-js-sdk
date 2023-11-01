@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.241](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.240...v3.0.0-beta.241) (2023-11-01)
+
+
+### Bug Fixes
+
+* error is missing in client.ice.end event ([#3178](https://github.com/webex/webex-js-sdk/issues/3178)) ([e1dfc1c](https://github.com/webex/webex-js-sdk/commit/e1dfc1c10334fee9319b67d99df0d395bf18b7d4))
+
 ## [3.0.0-beta.240](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.239...v3.0.0-beta.240) (2023-11-01)
 
 
