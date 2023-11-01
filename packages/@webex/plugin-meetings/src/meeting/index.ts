@@ -5047,7 +5047,9 @@ export default class Meeting extends StatelessWebexPlugin {
             errors: [
               // @ts-ignore
               this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                {
+                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                }
               ),
             ],
           },
@@ -5566,7 +5568,9 @@ export default class Meeting extends StatelessWebexPlugin {
               errors: [
                 // @ts-ignore
                 this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                  CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                  {
+                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                  }
                 ),
               ],
             },

@@ -1374,9 +1374,10 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject if waitForMediaConnectionConnected() rejects', async () => {
-          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+          const FAKE_ERROR = {fatal: true};
+          const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
             .stub()
-            .returns({});
+            .returns(FAKE_ERROR);
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1390,14 +1391,14 @@ describe('plugin-meetings', () => {
               errorThrown = true;
             });
 
+          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
           assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
-
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
               icePhase: 'JOIN_MEETING_FINAL',
-              errors: [{}],
+              errors: [FAKE_ERROR],
             },
             options: {
               meetingId: meeting.id,
@@ -4488,20 +4489,22 @@ describe('plugin-meetings', () => {
 
         describe('submitClientEvent on connectionFailed', () => {
           it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
-            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
-              sinon.stub().returns({});
+            const FAKE_ERROR = {fatal: true};
+            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+              .stub()
+              .returns(FAKE_ERROR);
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
               state: 'Failed',
             });
+            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.end',
               payload: {
                 canProceed: false,
                 icePhase: 'IN_MEETING',
-                errors: [{}],
+                errors: [FAKE_ERROR],
               },
               options: {
                 meetingId: meeting.id,
