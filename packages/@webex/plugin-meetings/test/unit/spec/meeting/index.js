@@ -2565,6 +2565,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.shareVideoTrack = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
+          meeting.shareInstanceId = '1234-5678';
         });
 
         afterEach(() => {
@@ -2580,7 +2581,7 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.share.floor-grant.request',
-            payload: {mediaType: 'share'},
+            payload: {mediaType: 'share', shareInstanceId: '1234-5678'},
             options: {meetingId: meeting.id},
           });
         });
@@ -2602,7 +2603,7 @@ describe('plugin-meetings', () => {
           // ensure the expected CA share metric is submitted
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.share.floor-granted.local',
-            payload: {mediaType: 'share', errors: 'foo'},
+            payload: {mediaType: 'share', errors: 'foo', shareInstanceId: '1234-5678'},
             options: {meetingId: meeting.id},
           });
         });
@@ -4097,7 +4098,7 @@ describe('plugin-meetings', () => {
             // ensure the CA share metrics are submitted
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.share.initiated',
-              payload: {mediaType: 'share'},
+              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
               options: {meetingId: meeting.id},
             });
 
@@ -4111,7 +4112,7 @@ describe('plugin-meetings', () => {
             // ensure the CA share metrics are submitted
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.share.initiated',
-              payload: {mediaType: 'share'},
+              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
               options: {meetingId: meeting.id},
             });
 
@@ -4164,7 +4165,7 @@ describe('plugin-meetings', () => {
             // ensure the CA share metrics are submitted
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.share.initiated',
-              payload: {mediaType: 'share'},
+              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
               options: {meetingId: meeting.id},
             });
 

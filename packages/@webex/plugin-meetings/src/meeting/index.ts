@@ -554,6 +554,7 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
+  shareInstanceId: string;
 
   /**
    * @param {Object} attrs
@@ -1190,6 +1191,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.keepAliveTimerId = null;
 
+    /**
+     * id for tracking Share instances in Call Analyzer
+     * @instance
+     * @type {String}
+     * @private
+     * @memberof Meeting
+     */
+    this.shareInstanceId = null;
     /**
      * The class that helps to control recording functions: start, stop, pause, resume, etc
      * @instance
@@ -2249,6 +2258,8 @@ export default class Meeting extends StatelessWebexPlugin {
         switch (newShareStatus) {
           case SHARE_STATUS.REMOTE_SHARE_ACTIVE: {
             const sendStartedSharingRemote = () => {
+              this.shareInstanceId = contentShare.shareInstanceId;
+
               Trigger.trigger(
                 this,
                 {
@@ -2259,7 +2270,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 {
                   memberId: contentShare.beneficiaryId,
                   url: contentShare.url,
-                  shareInstanceId: contentShare.shareInstanceId,
+                  shareInstanceId: this.shareInstanceId,
                   annotationInfo: contentShare.annotation,
                 }
               );
@@ -2296,6 +2307,7 @@ export default class Meeting extends StatelessWebexPlugin {
               name: 'client.share.floor-granted.local',
               payload: {
                 mediaType: 'share',
+                shareInstanceId: this.shareInstanceId,
               },
               options: {meetingId: this.id},
             });
@@ -2338,6 +2350,8 @@ export default class Meeting extends StatelessWebexPlugin {
       } else if (newShareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE) {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
+        this.shareInstanceId = contentShare.shareInstanceId;
+
         Trigger.trigger(
           this,
           {
@@ -2348,7 +2362,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             memberId: contentShare.beneficiaryId,
             url: contentShare.url,
-            shareInstanceId: contentShare.shareInstanceId,
+            shareInstanceId: this.shareInstanceId,
             annotationInfo: contentShare.annotation,
           }
         );
@@ -5216,7 +5230,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.start',
-        payload: {mediaType: data.type},
+        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
         options: {
           meetingId: this.id,
         },
@@ -5226,7 +5240,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.stop',
-        payload: {mediaType: data.type},
+        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
         options: {
           meetingId: this.id,
         },
@@ -5245,7 +5259,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.start',
-        payload: {mediaType: data.type},
+        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
         options: {
           meetingId: this.id,
         },
@@ -5255,7 +5269,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.stop',
-        payload: {mediaType: data.type},
+        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
         options: {
           meetingId: this.id,
         },
@@ -6197,6 +6211,7 @@ export default class Meeting extends StatelessWebexPlugin {
           name: 'client.share.floor-grant.request',
           payload: {
             mediaType: 'share',
+            shareInstanceId: this.shareInstanceId,
           },
           options: {
             meetingId: this.id,
@@ -6232,6 +6247,7 @@ export default class Meeting extends StatelessWebexPlugin {
               payload: {
                 mediaType: 'share',
                 errors: MeetingUtil.getChangeMeetingFloorErrorPayload(error.message),
+                shareInstanceId: this.shareInstanceId,
               },
               options: {
                 meetingId: this.id,
@@ -6289,6 +6305,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.share.stopped',
         payload: {
           mediaType: 'share',
+          shareInstanceId: this.shareInstanceId,
         },
         options: {meetingId: this.id},
       });
@@ -7111,11 +7128,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     let floorRequestNeeded = false;
     if (tracks.screenShare?.video || (this.isMultistream && tracks.screenShare?.audio)) {
+      this.shareInstanceId = uuid.v4();
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.share.initiated',
         payload: {
           mediaType: 'share',
+          shareInstanceId: this.shareInstanceId,
         },
         options: {meetingId: this.id},
       });
