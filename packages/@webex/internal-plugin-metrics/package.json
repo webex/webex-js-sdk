@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^6.0.1",
+    "@webex/event-dictionary-ts": "^1.0.1237",
     "sinon": "^9.2.4"
   },
   "scripts": {
@@ -30,7 +31,6 @@
   "dependencies": {
     "@webex/common": "workspace:^",
     "@webex/common-timers": "workspace:^",
-    "@webex/event-dictionary-ts": "^1.0.1237",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-metrics": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
