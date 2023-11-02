@@ -701,6 +701,7 @@ function updateMultistreamUI() {
   }
 }
 
+// NOTE: remember to set currentMediaSettings after promises resolves in the case when below method is used
 function getMediaSettings(compareLastSettings = false) {
   const settings = {};
 
@@ -708,7 +709,6 @@ function getMediaSettings(compareLastSettings = false) {
     if (compareLastSettings) {
       if (currentMediaSettings[options.value] !== options.checked) {
         settings[options.value] = options.checked;
-        currentMediaSettings[options.value] = options.checked;
       }
     } else {
       settings[options.value] = options.checked;
@@ -721,6 +721,23 @@ function getMediaSettings(compareLastSettings = false) {
   return settings;
 }
 
+// reset will make all media toggles as default checked(in case of addMedia() failure as it is the initial case)
+function resetMediaSettingsToDefaults() {
+  toggleSourcesMediaDirection.forEach((options) => {
+    options.checked = true;
+  })
+}
+
+// in case add/update media function fails then we need to restore the previous media setting toggles
+function revertMediaSettings(changedMediaSettings) {
+  delete changedMediaSettings.allowMediaInLobby;
+  delete changedMediaSettings.bundlePolicy;
+
+  for (const setting in changedMediaSettings) {
+    let element = document.querySelector(`[value=${setting}]`);
+    element.checked = !element.checked;
+  };
+}
 
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
@@ -1270,15 +1287,21 @@ function getMediaDevices() {
 
 async function updateMedia() {
   const meeting = getCurrentMeeting();
-
-  mediaSettings = getMediaSettings(true);
+  const changedMediaSettings = getMediaSettings(true);
 
   if (!meeting) {
     console.log('MeetingStreams#updateMedia() :: no valid meeting object!');
   }
 
-  console.log(`MeetingStreams#updateMedia() :: calling updateMedia(${JSON.stringify(mediaSettings)}`);
-  await meeting.updateMedia(mediaSettings);
+  console.log(`MeetingStreams#updateMedia() :: calling updateMedia(${JSON.stringify(changedMediaSettings)}`);
+  return meeting.updateMedia(changedMediaSettings)
+    .then(() => {
+      currentMediaSettings = getMediaSettings();
+    })
+    .catch((error) => {
+      revertMediaSettings(changedMediaSettings);
+      console.error(error);
+    })
 }
 
 const getOptionValue = (select) => {
@@ -2368,8 +2391,6 @@ function addMedia() {
     preferLiveVideoElm.value = 'Enable';
   }
 
-  currentMediaSettings = getMediaSettings();
-
   // addMedia using the default RemoteMediaManagerConfig
   meeting.addMedia({
     localStreams: {
@@ -2380,7 +2401,7 @@ function addMedia() {
         video: localMedia.screenShare?.video
       }
     },
-    ...currentMediaSettings
+    ...getMediaSettings()
   }
   ).then(() => {
     // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
@@ -2395,10 +2416,16 @@ function addMedia() {
     // enabling screen share publish/unpublish buttons
     publishShareBtn.disabled = false;
     unpublishShareBtn.disabled = false;
+    
+    currentMediaSettings = getMediaSettings();
 
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
     console.log('MeetingStreams#addMedia() :: Error adding media!');
+
+    //resetting here as failure of addMedia call means every setting should be default checked
+    resetMediaSettingsToDefaults();
+
     console.error(error);
   });
 
