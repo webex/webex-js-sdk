@@ -129,8 +129,18 @@ export default class LocusInfo extends EventsScope {
 
           isDelta = false;
 
-          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl});
+          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
+            LoggerProxy.logger.info(
+              'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+            );
+            this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+            throw err;
+          });
         }
+        LoggerProxy.logger.info(
+          'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+        );
+        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
         throw e;
       })
       .then((res) => {
@@ -145,8 +155,6 @@ export default class LocusInfo extends EventsScope {
         } else {
           meeting.locusInfo.onFullLocus(res.body);
         }
-      })
-      .finally(() => {
         // Notify parser to resume processing delta events.
         // Any deltas in the queue that have now been superseded by this sync will simply be ignored
         this.locusParser.resume();

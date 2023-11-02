@@ -1884,53 +1884,111 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('applyLocusDeltaData first tries a delta sync on DESYNC action and if that fails, does a full locus sync', () => {
+      describe('edge cases for sync failing', () => {
         const {DESYNC} = LocusDeltaParser.loci;
         const fakeFullLocusDto = {id: 'fake full locus dto'};
-        const meeting = {
-          correlationId: 'correlation id',
-          meetingRequest: {
-            getLocusDTO: sandbox.stub(),
-          },
-          locusInfo: {
-            handleLocusDelta: sandbox.stub(),
-            onFullLocus: sandbox.stub(),
-          },
-          locusUrl: 'fullSyncUrl',
-        };
+        let meeting;
 
-        locusInfo.locusParser.workingCopy = {
-          syncUrl: 'deltaSyncUrl',
-        };
+        beforeEach(() => {
+          sinon.stub(locusInfo.locusParser, 'resume');
+          sinon.stub(webex.meetings, 'destroy');
 
-        meeting.meetingRequest.getLocusDTO.onCall(0).rejects(new Error('fake error'));
-        meeting.meetingRequest.getLocusDTO.onCall(1).resolves({body: fakeFullLocusDto});
+          meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub(),
+            },
+            locusInfo: {
+              handleLocusDelta: sandbox.stub(),
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'fullSyncUrl',
+          };
 
-        // Since we have a promise inside a function we want to test that's not returned,
-        // we will wait and stub it's last function to resolve this waiting promise.
-        return new Promise((resolve) => {
-          locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
-          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
-        }).then(() => {
-          assert.calledTwice(meeting.meetingRequest.getLocusDTO);
+          locusInfo.locusParser.workingCopy = {
+            syncUrl: 'deltaSyncUrl',
+          };
+        });
 
-          assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
-          assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [{url: 'fullSyncUrl'}]);
-          assert.calledWith(meeting.meetingRequest.getLocusDTO, {url: 'deltaSyncUrl'});
-          assert.calledWith(meeting.meetingRequest.getLocusDTO, {url: 'fullSyncUrl'});
+        it('applyLocusDeltaData gets full locus on DESYNC action if we do not have a syncUrl and destroys the meeting if that fails', () => {
+          meeting.meetingRequest.getLocusDTO.rejects(new Error('fake error'));
 
-          assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
-            correlationId: meeting.correlationId,
-            url: 'deltaSyncUrl',
-            reason: 'fake error',
-            errorName: 'Error',
-            stack: sinon.match.any,
-            code: sinon.match.any,
+          locusInfo.locusParser.workingCopy = {}; // no syncUrl
+
+          // Since we have a promise inside a function we want to test that's not returned,
+          // we will wait and stub it's last function to resolve this waiting promise.
+          return new Promise((resolve) => {
+            webex.meetings.destroy.callsFake(() => resolve());
+            locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+          }).then(() => {
+            assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'fullSyncUrl'});
+
+            assert.notCalled(meeting.locusInfo.handleLocusDelta);
+            assert.notCalled(meeting.locusInfo.onFullLocus);
+            assert.notCalled(locusInfo.locusParser.resume);
+
+            assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
           });
+        });
 
-          assert.notCalled(meeting.locusInfo.handleLocusDelta);
-          assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
-          assert.calledOnce(locusInfo.locusParser.resume);
+        it('applyLocusDeltaData first tries a delta sync on DESYNC action and if that fails, does a full locus sync', () => {
+          meeting.meetingRequest.getLocusDTO.onCall(0).rejects(new Error('fake error'));
+          meeting.meetingRequest.getLocusDTO.onCall(1).resolves({body: fakeFullLocusDto});
+
+          // Since we have a promise inside a function we want to test that's not returned,
+          // we will wait and stub it's last function to resolve this waiting promise.
+          return new Promise((resolve) => {
+            locusInfo.locusParser.resume.callsFake(() => resolve());
+            locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+          }).then(() => {
+            assert.calledTwice(meeting.meetingRequest.getLocusDTO);
+
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [{url: 'fullSyncUrl'}]);
+
+            assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
+              correlationId: meeting.correlationId,
+              url: 'deltaSyncUrl',
+              reason: 'fake error',
+              errorName: 'Error',
+              stack: sinon.match.any,
+              code: sinon.match.any,
+            });
+
+            assert.notCalled(meeting.locusInfo.handleLocusDelta);
+            assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
+            assert.calledOnce(locusInfo.locusParser.resume);
+          });
+        });
+
+        it('applyLocusDeltaData destroys the meeting if both delta sync and full sync fail', () => {
+          meeting.meetingRequest.getLocusDTO.rejects(new Error('fake error'));
+
+          // Since we have a promise inside a function we want to test that's not returned,
+          // we will wait and stub it's last function to resolve this waiting promise.
+          return new Promise((resolve) => {
+            webex.meetings.destroy.callsFake(() => resolve());
+            locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+          }).then(() => {
+            assert.calledTwice(meeting.meetingRequest.getLocusDTO);
+
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [{url: 'fullSyncUrl'}]);
+
+            assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
+              correlationId: meeting.correlationId,
+              url: 'deltaSyncUrl',
+              reason: 'fake error',
+              errorName: 'Error',
+              stack: sinon.match.any,
+              code: sinon.match.any,
+            });
+
+            assert.notCalled(meeting.locusInfo.handleLocusDelta);
+            assert.notCalled(meeting.locusInfo.onFullLocus);
+            assert.notCalled(locusInfo.locusParser.resume);
+
+            assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
+          });
         });
       });
 
