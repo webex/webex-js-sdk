@@ -5232,6 +5232,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.start',
         payload: {
           mediaType: data.type,
+          shareInstanceId: data.type === 'share' && this.shareInstanceId,
         },
         options: {
           meetingId: this.id,
@@ -5244,6 +5245,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.stop',
         payload: {
           mediaType: data.type,
+          shareInstanceId: data.type === 'share' && this.shareInstanceId,
         },
         options: {
           meetingId: this.id,
@@ -5263,7 +5265,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.start',
-        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' && this.shareInstanceId,
+        },
         options: {
           meetingId: this.id,
         },
@@ -5273,7 +5278,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.stop',
-        payload: {mediaType: data.type, shareInstanceId: this.shareInstanceId},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' && this.shareInstanceId,
+        },
         options: {
           meetingId: this.id,
         },
