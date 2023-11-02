@@ -152,7 +152,7 @@ describe('Line Tests', () => {
       expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       await line.deregister();
-      expect(line.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
     });
   });
 
