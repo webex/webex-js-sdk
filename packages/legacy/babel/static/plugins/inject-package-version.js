@@ -1,8 +1,10 @@
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 
 const t = require('@babel/types');
+const fs = require('fs');
+const pathPack = require('path');
 
 /**
  * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
@@ -10,7 +12,13 @@ const t = require('@babel/types');
  * @returns {Object}
  */
 module.exports = function injectPackageVersion() {
-  const version = 'modern';
+  const packagePath = pathPack.resolve(process.cwd(), 'package.json');
+  let version;
+  if (fs.existsSync(packagePath)) {
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    const packageJSON = require(packagePath);
+    version = packageJSON.version || '0.0.0';
+  }
 
   return {
     visitor: {
