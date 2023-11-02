@@ -127,9 +127,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    */
   public async register() {
     await this.#mutex.runExclusive(async () => {
-      if (this.registration.getStatus() !== RegistrationStatus.IDLE) {
-        this.registration.setStatus(RegistrationStatus.INACTIVE);
-      }
       this.emit(LINE_EVENTS.CONNECTING);
 
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
@@ -144,7 +141,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device  deregister.
    */
   public async deregister() {
-    this.registration.deregister();
+    await this.registration.deregister();
+    this.registration.setStatus(RegistrationStatus.IDLE);
   }
 
   /**
