@@ -23,6 +23,7 @@ import {CallError, createCallError} from '../../Errors/catalog/CallError';
 /* eslint-disable tsdoc/syntax */
 /* eslint-disable no-param-reassign */
 import {
+  BACKGROUND_NOISE_REMOVAL,
   CALL_ENDPOINT_RESOURCE,
   CALL_FILE,
   CALL_HOLD_SERVICE,
@@ -1976,7 +1977,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
-    const effect = localAudioStream.getEffect('background-noise-removal');
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     localAudioTrack.enabled = true;
 
@@ -1988,16 +1988,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
+      const effect = localAudioStream.getEffect(BACKGROUND_NOISE_REMOVAL);
       if (effect && effect.isEnabled) {
-        this.metricManager.submitMediaMetric(
+        this.metricManager.submitBNRMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_ENABLED,
           METRIC_TYPE.BEHAVIORAL,
           this.callId,
-          this.correlationId,
-          this.localRoapMessage.sdp,
-          this.remoteRoapMessage?.sdp,
-          undefined
+          this.correlationId
         );
       }
 
@@ -2026,17 +2024,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
-      const effect = localAudioStream.getEffect('background-noise-removal');
+      const effect = localAudioStream.getEffect(BACKGROUND_NOISE_REMOVAL);
       if (effect && effect.isEnabled) {
-        this.metricManager.submitMediaMetric(
+        this.metricManager.submitBNRMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_ENABLED,
           METRIC_TYPE.BEHAVIORAL,
           this.callId,
-          this.correlationId,
-          this.localRoapMessage.sdp,
-          this.remoteRoapMessage?.sdp,
-          undefined
+          this.correlationId
         );
       }
 
@@ -2437,28 +2432,22 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     let effect;
     localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
       this.mediaConnection.updateLocalTracks({audio: track});
-      effect = localAudioStream.getEffect('background-noise-removal');
+      effect = localAudioStream.getEffect(BACKGROUND_NOISE_REMOVAL);
       if (effect && effect.isEnabled) {
-        this.metricManager.submitMediaMetric(
+        this.metricManager.submitBNRMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_ENABLED,
           METRIC_TYPE.BEHAVIORAL,
           this.callId,
-          this.correlationId,
-          this.localRoapMessage.sdp,
-          this.remoteRoapMessage?.sdp,
-          undefined
+          this.correlationId
         );
       } else if (effect && !effect.isEnabled) {
-        this.metricManager.submitMediaMetric(
+        this.metricManager.submitBNRMetric(
           METRIC_EVENT.MEDIA,
           MEDIA_EFFECT_ACTION.BNR_DISABLED,
           METRIC_TYPE.BEHAVIORAL,
           this.callId,
-          this.correlationId,
-          this.localRoapMessage.sdp,
-          this.remoteRoapMessage?.sdp,
-          undefined
+          this.correlationId
         );
       }
     });

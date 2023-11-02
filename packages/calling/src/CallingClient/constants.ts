@@ -119,3 +119,4 @@ export const FAILOVER_UTIL = 'startFailoverTimer';
 export const NETWORK_CHANGE_DETECTION_UTIL = 'detectNetworkChange';
 export const CALLS_CLEARED_HANDLER_UTIL = 'callsClearedHandler';
 export const RECONNECT_UTIL = 'reconnectOnFailure';
+export const BACKGROUND_NOISE_REMOVAL = 'background-noise-removal';

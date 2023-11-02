@@ -52,6 +52,13 @@ export interface IMetricManager {
     type: METRIC_TYPE,
     error: LineError | CallingClientError | undefined
   ) => void;
+  submitBNRMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    callId: CallId,
+    correlationId: CorrelationId
+  ) => void;
   submitCallMetric: (
     name: METRIC_EVENT,
     metricAction: string,
