@@ -151,7 +151,7 @@ export default class MeetingInfoV2 {
     };
 
     return this.webex
-      .request(conversationUrl)
+      .request({uri: conversationUrl, qs: {includeParticipants: true}, disableTransform: true})
       .then(({body: conversation}) => {
         const body = {
           title: conversation.displayName,
