@@ -114,7 +114,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       logLevel
     );
 
-    this.registration.setStatus(RegistrationStatus.IDLE);
     log.setLogger(logLevel, LINE_FILE);
 
     this.callManager = getCallManager(this.#webex, serviceData.indicator);
