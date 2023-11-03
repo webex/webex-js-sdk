@@ -672,6 +672,10 @@ const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
 const stopShareBtn = document.querySelector('#ts-stop-screenshare');
+const toggleAudioButton = document.querySelector('#ts-toggle-audio');
+const stopVideoButton = document.querySelector('#ts-stop-video');
+const stopAudioButton = document.querySelector('#ts-stop-audio');
+const modeBtn = document.getElementById('mode-type');
 
 /**
  * Enables and disables the UI elements specific to multistream or transcoded connections
@@ -1044,8 +1048,21 @@ async function loadCamera(constraints) {
     localMedia.cameraStream = await webex.meetings.mediaHelpers.createCameraStream(videoConstraints);
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
+
+    localMedia.cameraStream.on('stream-ended', () => {
+      console.log('MeetingControls#loadCamera() :: local camera stream ended');
+
+      localMedia.cameraStream = undefined;
+      meetingStreamsLocalVideo.srcObject = null;
+      stopVideoButton.disabled = true;
+      loadCameraBtn.disabled = false;
+      modeBtn.disabled = false;
+      clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+    });
+
     handleEffectsButton(toggleVbgBtn, VBG);
     loadCameraBtn.disabled = true;
+    stopVideoButton.disabled = false;
     console.log('MeetingControls#loadCamera() :: Successfully got camera stream:', localMedia.cameraStream);
   }
   catch (e) {
@@ -1058,8 +1075,6 @@ async function handleVbg() {
   let effect;
   try {
     effect = await localMedia.cameraStream.getEffect("virtual-background");
-    const modeBtn = document.getElementById('mode-type');
-    modeBtn.disabled = true;
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1075,7 +1090,8 @@ async function handleVbg() {
       }
 
       await effect.enable();
-
+      modeBtn.disabled = true;
+      
       handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
@@ -1103,8 +1119,19 @@ async function loadMicrophone(constraints) {
     localMedia.microphoneStream = await webex.meetings.mediaHelpers.createMicrophoneStream(audioConstraints);
 
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
+
+    localMedia.microphoneStream.on('stream-ended', () => {
+      console.log('MeetingControls#loadMicrophone() :: local microphone stream ended');
+
+      localMedia.microphoneStream = undefined;
+      meetingStreamsLocalAudio.srcObject = null;
+      stopAudioButton.disabled = true;
+      loadMicrophoneBtn.disabled = false;
+    });
+
     handleEffectsButton(toggleBNRBtn, BNR);
     loadMicrophoneBtn.disabled = true;
+    stopAudioButton.disabled = false;
     console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
   }
   catch (e) {
@@ -1134,7 +1161,7 @@ async function handleBNR() {
     else {
       console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
 
-      await effect.enable();
+      await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
       console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
     }
@@ -1163,6 +1190,36 @@ function handleEffectsButton(btn, type, effect) {
 
   btn.disabled = disabled;
   btn.innerText = title;
+}
+
+async function stopVideo() {
+  console.log('MeetingControls#stopVideo()');
+  try {
+    if (localMedia.cameraStream) {
+      localMedia.cameraStream.stop();
+    }
+
+    console.log('MeetingControls#stopVideo() :: Successfully stopped video!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopVideo() :: Error stopping video!');
+    console.error(error);
+  }
+}
+
+async function stopAudio() {
+  console.log('MeetingControls#stopAudio()');
+  try {
+    if (localMedia.microphoneStream) {
+      localMedia.microphoneStream.stop();
+    }
+
+    console.log('MeetingControls#stopAudio() :: Successfully stopped audio!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopAudio() :: Error stopping audio!');
+    console.error(error);
+  }
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -1259,11 +1316,11 @@ function setVideoInputDevice() {
   if (meeting) {
     const isMuted = localMedia.cameraStream?.muted;
     localMedia.cameraStream?.stop();
-    localMedia.cameraStream = null;
 
     return getUserMedia({video})
       .then(() => {
         localMedia.cameraStream.setMuted(!!isMuted);
+        localVideoResolutionCheckInterval();
         meeting.publishStreams({camera: localMedia.cameraStream});
       });
   }
@@ -1279,7 +1336,6 @@ function setAudioInputDevice() {
   if (meeting) {
     const isMuted = localMedia.microphoneStream?.muted;
     localMedia.microphoneStream?.stop();
-    localMedia.microphoneStream = null;
 
     return getUserMedia({audio})
       .then(() => {
@@ -1305,6 +1361,11 @@ function setAudioOutputDevice() {
     });
 }
 
+function handleAudioButton(muteState) {
+  const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
+  toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
+}
+
 function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
@@ -1312,6 +1373,7 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
+    handleAudioButton(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -1358,7 +1420,7 @@ async function startScreenShare() {
     });
 
     meetingStreamsLocalShareVideo.srcObject = localShareVideoStream.outputStream;
-    meetingStreamsLocalShareAudio.srcObject = localShareAudioStream.outputStream;
+    meetingStreamsLocalShareAudio.srcObject = localShareAudioStream?.outputStream;
     stopShareBtn.disabled = false;
 
   }
@@ -2322,6 +2384,7 @@ function addMedia() {
     if (isMultistream && meeting.shareStatus === 'remote_share_active') {
       forceScreenShareViewLayout(meeting);
     }
+
     localVideoResolutionCheckInterval();
 
     // enabling screen share publish/unpublish buttons
