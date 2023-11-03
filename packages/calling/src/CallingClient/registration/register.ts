@@ -656,6 +656,7 @@ export class Registration implements IRegistration {
           break;
         }
         if (abort) {
+          this.setStatus(RegistrationStatus.INACTIVE);
           break;
         } else if (caller === this.executeFailback.name) {
           const error = body.statusCode;
