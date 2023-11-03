@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import {skipInNode, jenkinsOnly} from '@webex/test-helper-mocha';
 import {patterns} from '@webex/common';
 import MeetingInfoUtil from '@webex/plugin-meetings/dist/meeting-info/utilv2';
-import {createCameraTrack, createMicrophoneTrack} from '@webex/plugin-meetings';
+import {createCameraStream, createMicrophoneStream} from '@webex/plugin-meetings';
 
 import CMR from '../../utils/cmr';
 import testUtils from '../../utils/testUtils';
@@ -153,11 +153,11 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => testUtils.waitForStateChange(chris.meeting, 'JOINED')));
 
     it('Bob and Alice create local microphone and camera tracks', async () => {
-      localTracks.alice.microphone = await createMicrophoneTrack();
-      localTracks.alice.camera = await createCameraTrack();
+      localTracks.alice.microphone = await createMicrophoneStream();
+      localTracks.alice.camera = await createCameraStream();
 
-      localTracks.bob.microphone = await createMicrophoneTrack();
-      localTracks.bob.camera = await createCameraTrack();
+      localTracks.bob.microphone = await createMicrophoneStream();
+      localTracks.bob.camera = await createCameraStream();
     });
 
     it('Bob and Alice addsMedia', () =>
@@ -214,8 +214,8 @@ skipInNode(describe)('plugin-meetings', () => {
         )
         .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
         .then(async () => {
-          localTracks.guest.microphone = await createMicrophoneTrack();
-          localTracks.guest.camera = await createCameraTrack();
+          localTracks.guest.microphone = await createMicrophoneStream();
+          localTracks.guest.camera = await createCameraStream();
         })
         .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}))
         .catch((e) => {
@@ -474,8 +474,8 @@ skipInNode(describe)('plugin-meetings', () => {
             ])
               .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
               .then(async () => {
-                localTracks.guest.microphone = await createMicrophoneTrack();
-                localTracks.guest.camera = await createCameraTrack();
+                localTracks.guest.microphone = await createMicrophoneStream();
+                localTracks.guest.camera = await createCameraStream();
               })
               .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}));
           })
