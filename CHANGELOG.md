@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.243](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.242...v3.0.0-beta.243) (2023-11-03)
+
+
+### Bug Fixes
+
+* do a full Locus sync if a delta sync fails ([#3182](https://github.com/webex/webex-js-sdk/issues/3182)) ([9c1375b](https://github.com/webex/webex-js-sdk/commit/9c1375bf1f8aa1713520ff6c9454a297ffdb12a1))
+
 ## [3.0.0-beta.242](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.241...v3.0.0-beta.242) (2023-11-02)
 
 
