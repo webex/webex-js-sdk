@@ -71,8 +71,8 @@ export default class MeetingInfo {
    * @memberof MeetingInfo
    */
   private requestFetchInfo(options: any) {
-    const {meetingId} = options;
-    if (meetingId) {
+    const {meetingId, hasPrejoinStarted} = options;
+    if (meetingId && hasPrejoinStarted) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
@@ -87,7 +87,7 @@ export default class MeetingInfo {
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
       .then((info) => {
-        if (meetingId) {
+        if (meetingId && hasPrejoinStarted) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
@@ -108,21 +108,23 @@ export default class MeetingInfo {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
-        this.webex.internal.newMetrics.submitInternalEvent({
-          name: 'internal.client.meetinginfo.response',
-        });
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.meetinginfo.response',
-          payload: {
-            identifiers: {
-              meetingLookupUrl: error?.url,
+        if (meetingId && hasPrejoinStarted) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: error?.url,
+              },
             },
-          },
-          options: {
-            meetingId,
-            rawError: error,
-          },
-        });
+            options: {
+              meetingId,
+              rawError: error,
+            },
+          });
+        }
 
         return Promise.reject(error);
       });
@@ -169,7 +171,7 @@ export default class MeetingInfo {
     locusId = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     extraParams: object = {},
-    options: {meetingId?: string} = {}
+    options: {meetingId?: string; hasPrejoinStarted?: boolean} = {}
   ) {
     if (type === _PERSONAL_ROOM_ && !destination) {
       destination = this.webex.internal.device.userId;
@@ -178,7 +180,7 @@ export default class MeetingInfo {
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
       (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo({...infoOptions, meetingId: options.meetingId}).catch((error) => {
+        this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
           // if it failed the first time as meeting link
           if (infoOptions.type === _MEETING_LINK_) {
             // convert the meeting link to sip URI and retry

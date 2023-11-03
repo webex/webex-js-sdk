@@ -1287,10 +1287,12 @@ export default class Meeting extends StatelessWebexPlugin {
     password = null,
     captchaCode = null,
     extraParams = {},
+    hasPrejoinStarted = false,
   }: {
     password?: string;
     captchaCode?: string;
     extraParams?: Record<string, any>;
+    hasPrejoinStarted?: boolean;
   }) {
     // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
     if (this.fetchMeetingInfoTimeoutId) {
@@ -1326,7 +1328,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id}
+        {meetingId: this.id, hasPrejoinStarted}
       );
 
       this.parseMeetingInfo(info, this.destination);

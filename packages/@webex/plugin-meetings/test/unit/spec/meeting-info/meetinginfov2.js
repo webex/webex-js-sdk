@@ -373,14 +373,26 @@ describe('plugin-meetings', () => {
 
       forEach(
         [
+          {errorCode: 403049, hasPrejoinStarted: false},
+          {errorCode: 403049, hasPrejoinStarted: true},
           {errorCode: 403049},
+          {errorCode: 403104, hasPrejoinStarted: false},
+          {errorCode: 403104, hasPrejoinStarted: true},
           {errorCode: 403104},
+          {errorCode: 403103, hasPrejoinStarted: false},
+          {errorCode: 403103, hasPrejoinStarted: true},
           {errorCode: 403103},
+          {errorCode: 403048, hasPrejoinStarted: false},
+          {errorCode: 403048, hasPrejoinStarted: true},
           {errorCode: 403048},
+          {errorCode: 403102, hasPrejoinStarted: false},
+          {errorCode: 403102, hasPrejoinStarted: true},
           {errorCode: 403102},
+          {errorCode: 403101, hasPrejoinStarted: false},
+          {errorCode: 403101, hasPrejoinStarted: true},
           {errorCode: 403101},
         ],
-        ({errorCode}) => {
+        ({errorCode, hasPrejoinStarted}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
             const message = 'a message';
             const meetingInfoData = 'meeting info';
@@ -402,40 +414,45 @@ describe('plugin-meetings', () => {
                 null,
                 null,
                 {},
-                {meetingId: 'meeting-id'}
+                {meetingId: 'meeting-id', hasPrejoinStarted: hasPrejoinStarted}
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
               const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
               const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
-              assert.deepEqual(submitInternalEventCalls[0].args[0], {
-                name: 'internal.client.meetinginfo.request',
-              });
-              assert.deepEqual(submitClientEventCalls[0].args[0], {
-                name: 'client.meetinginfo.request',
-                options: {
-                  meetingId: 'meeting-id'
-                },
-              });
-              assert.deepEqual(submitInternalEventCalls[1].args[0], {
-                name: 'internal.client.meetinginfo.response',
-              });
-              assert.deepEqual(submitClientEventCalls[1].args[0], {
-                name: 'client.meetinginfo.response',
-                payload: {
-                  identifiers: {
-                    meetingLookupUrl: 'http://api-url.com',
+              if (hasPrejoinStarted) {
+                assert.deepEqual(submitInternalEventCalls[0].args[0], {
+                  name: 'internal.client.meetinginfo.request',
+                });
+                assert.deepEqual(submitClientEventCalls[0].args[0], {
+                  name: 'client.meetinginfo.request',
+                  options: {
+                    meetingId: 'meeting-id'
                   },
-                },
-                options: {
-                  meetingId: 'meeting-id',
-                  rawError: {
-                    statusCode: 403,
-                    body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
-                    url: 'http://api-url.com',
+                });
+                assert.deepEqual(submitInternalEventCalls[1].args[0], {
+                  name: 'internal.client.meetinginfo.response',
+                });
+                assert.deepEqual(submitClientEventCalls[1].args[0], {
+                  name: 'client.meetinginfo.response',
+                  payload: {
+                    identifiers: {
+                      meetingLookupUrl: 'http://api-url.com',
+                    },
                   },
-                },
-              });
+                  options: {
+                    meetingId: 'meeting-id',
+                    rawError: {
+                      statusCode: 403,
+                      body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+                      url: 'http://api-url.com',
+                    },
+                  },
+                });
+              } else {
+                assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+                assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+              }
 
               assert.instanceOf(err, MeetingInfoV2PolicyError);
               assert.deepEqual(err.message, `${message}, code=${errorCode}`);
@@ -452,7 +469,7 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it('should send internal CA metric if meetingId is provided', async () => {
+      it('should send internal CA metric if meetingId is provided and hasPrejoinStarted', async () => {
         const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
         const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
@@ -466,7 +483,7 @@ describe('plugin-meetings', () => {
           null,
           null,
           extraParams,
-          {meetingId: 'meetingId'}
+          {meetingId: 'meetingId', hasPrejoinStarted: true}
         );
 
         assert.calledWith(webex.request, {

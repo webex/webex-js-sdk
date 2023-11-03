@@ -279,9 +279,9 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string} = {}
+    options: {meetingId?: string; hasPrejoinStarted?: boolean} = {}
   ) {
-    const {meetingId} = options;
+    const {meetingId, hasPrejoinStarted} = options;
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -336,7 +336,7 @@ export default class MeetingInfoV2 {
       requestOptions.resource = 'meetingInfo';
     }
 
-    if (meetingId) {
+    if (meetingId && hasPrejoinStarted) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
@@ -351,7 +351,7 @@ export default class MeetingInfoV2 {
     return this.webex
       .request(requestOptions)
       .then((response) => {
-        if (meetingId) {
+        if (meetingId && hasPrejoinStarted) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
@@ -367,7 +367,7 @@ export default class MeetingInfoV2 {
         return response;
       })
       .catch((err) => {
-        if (meetingId) {
+        if (meetingId && hasPrejoinStarted) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });

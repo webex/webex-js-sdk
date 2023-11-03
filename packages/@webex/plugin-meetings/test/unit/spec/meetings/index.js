@@ -1068,13 +1068,14 @@ describe('plugin-meetings', () => {
             destination,
             type,
             extraParams = {},
-            expectedMeetingData = {}
+            expectedMeetingData = {},
+            hasPrejoinStarted = false,
           ) => {
             assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
             assert.calledOnce(MeetingsUtil.getMeetingAddedType);
             assert.notCalled(setTimeoutSpy);
             assert.callCount(TriggerProxy.trigger, 5);
-            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfo, destination, type, null, null, undefined, undefined, extraParams, {meetingId: meeting.id});
+            assert.calledWith(webex.meetings.meetingInfo.fetchMeetingInfo, destination, type, null, null, undefined, undefined, extraParams, {meetingId: meeting.id, hasPrejoinStarted: hasPrejoinStarted});
             assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
 
             if (expectedMeetingData.permissionToken) {
@@ -1334,7 +1335,7 @@ describe('plugin-meetings', () => {
               correlationId: 'my-correlationId',
             };
 
-            checkCreateWithoutDelay(meeting, 'test destination', 'test type', {}, expectedMeetingData);
+            checkCreateWithoutDelay(meeting, 'test destination', 'test type', {}, expectedMeetingData, true);
           })
         });
 

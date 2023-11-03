@@ -1219,12 +1219,19 @@ export default class Meetings extends WebexPlugin {
 
       if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo({extraParams: infoExtraParams}),
+          () =>
+            meeting.fetchMeetingInfo({
+              extraParams: infoExtraParams,
+              hasPrejoinStarted: !!correlationId, // to determine if we should submit Call Analyzer events
+            }),
           waitingTime
         );
         meeting.parseMeetingInfo(undefined, destination);
       } else {
-        await meeting.fetchMeetingInfo({extraParams: infoExtraParams});
+        await meeting.fetchMeetingInfo({
+          extraParams: infoExtraParams,
+          hasPrejoinStarted: !!correlationId, // to determine if we should submit Call Analyzer events
+        });
       }
     } catch (err) {
       if (
