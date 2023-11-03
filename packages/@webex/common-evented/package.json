@@ -1,6 +1,6 @@
 {
   "name": "@webex/common-evented",
-  "version": "2.59.5",
+  "version": "2.59.6",
   "description": "Class property decorator the adds change events to properties",
   "license": "MIT",
   "main": "dist/index.js",

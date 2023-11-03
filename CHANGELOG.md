@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.59.6](https://github.com/webex/webex-js-sdk/compare/v2.59.5...v2.59.6) (2023-11-03)
+
+
+### Bug Fixes
+
+* **meetings:** pass encrypted title based on APPI API for conversation ([#3166](https://github.com/webex/webex-js-sdk/issues/3166)) ([080d786](https://github.com/webex/webex-js-sdk/commit/080d786626d98c18eb6c4abdb004c112811f0e12))
+
 ### [2.59.5](https://github.com/webex/webex-js-sdk/compare/v2.59.4...v2.59.5) (2023-11-03)
 
 
