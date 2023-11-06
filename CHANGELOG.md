@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.244](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.243...v3.0.0-beta.244) (2023-11-06)
+
+
+### Bug Fixes
+
+* **diagnostics:** Update metrics clientName with config.meetings.metrics.clientName ([#3187](https://github.com/webex/webex-js-sdk/issues/3187)) ([1d1b990](https://github.com/webex/webex-js-sdk/commit/1d1b9906b240e06e18d2a661406e0ec3a646ca48))
+
 ## [3.0.0-beta.243](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.242...v3.0.0-beta.243) (2023-11-03)
 
 
