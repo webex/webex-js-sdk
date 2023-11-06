@@ -151,7 +151,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         networkType: options?.networkType || 'unknown',
         userAgent: userAgentToString({
           // @ts-ignore
-          clientName: this.webex.meetings?.metrics?.clientName,
+          clientName: this.webex.meetings?.config?.metrics?.clientName,
           // @ts-ignore
           webexVersion: this.webex.version,
         }),
