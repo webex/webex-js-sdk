@@ -64,10 +64,8 @@ describe('internal-plugin-metrics', () => {
             metrics: {
               clientType: 'TEAMS_CLIENT',
               subClientType: 'WEB_APP',
+              clientName: 'Cantina'
             },
-          },
-          metrics: {
-            clientName: 'Cantina',
           },
           meetingCollection: {
             get: () => fakeMeeting,
