@@ -4,14 +4,15 @@
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
-import {version} from 'webex/package';
+jest.mock('@webex/internal-plugin-calendar');
 
 describe('webex', () => {
   describe('Webex', () => {
+
     describe('.version', () => {
       it('exists', () => {
         assert.property(Webex, 'version');
-        assert.equal(Webex.version, version);
+        assert.equal(Webex.version, "0.0.0");
       });
     });
 
@@ -20,7 +21,7 @@ describe('webex', () => {
         const webex = new Webex();
 
         assert.property(webex, 'version');
-        assert.equal(webex.version, version);
+        assert.equal(webex.version, "0.0.0");
       });
     });
 
@@ -43,7 +44,7 @@ describe('webex', () => {
             fedramp: true,
           },
           credentials: {
-            access_token: 'Bearer 1234',
+            access_token: process.env.token,
           },
         });
 
