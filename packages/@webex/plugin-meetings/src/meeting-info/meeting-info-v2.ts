@@ -279,9 +279,9 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; hasPrejoinStarted?: boolean} = {}
+    options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
-    const {meetingId, hasPrejoinStarted} = options;
+    const {meetingId, sendCAevents} = options;
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -336,53 +336,59 @@ export default class MeetingInfoV2 {
       requestOptions.resource = 'meetingInfo';
     }
 
-    if (meetingId && hasPrejoinStarted) {
+    if (meetingId) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.request',
-        options: {
-          meetingId,
-        },
-      });
+      if (sendCAevents) {
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.meetinginfo.request',
+          options: {
+            meetingId,
+          },
+        });
+      }
     }
 
     return this.webex
       .request(requestOptions)
       .then((response) => {
-        if (meetingId && hasPrejoinStarted) {
+        if (meetingId) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.meetinginfo.response',
-            options: {
-              meetingId,
-            },
-          });
+          if (sendCAevents) {
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.meetinginfo.response',
+              options: {
+                meetingId,
+              },
+            });
+          }
         }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
-        if (meetingId && hasPrejoinStarted) {
+        if (meetingId) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.meetinginfo.response',
-            payload: {
-              identifiers: {
-                meetingLookupUrl: err?.url,
+          if (sendCAevents) {
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.meetinginfo.response',
+              payload: {
+                identifiers: {
+                  meetingLookupUrl: err?.url,
+                },
               },
-            },
-            options: {
-              meetingId,
-              rawError: err,
-            },
-          });
+              options: {
+                meetingId,
+                rawError: err,
+              },
+            });
+          }
         }
 
         if (err?.statusCode === 403) {

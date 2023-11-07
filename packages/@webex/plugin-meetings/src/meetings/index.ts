@@ -1222,7 +1222,7 @@ export default class Meetings extends WebexPlugin {
           () =>
             meeting.fetchMeetingInfo({
               extraParams: infoExtraParams,
-              hasPrejoinStarted: !!correlationId, // to determine if we should submit Call Analyzer events
+              sendCAevents: !!correlationId, // to determine if we should submit Call Analyzer events
             }),
           waitingTime
         );
@@ -1230,7 +1230,7 @@ export default class Meetings extends WebexPlugin {
       } else {
         await meeting.fetchMeetingInfo({
           extraParams: infoExtraParams,
-          hasPrejoinStarted: !!correlationId, // to determine if we should submit Call Analyzer events
+          sendCAevents: !!correlationId, // to determine if we should submit Call Analyzer events
         });
       }
     } catch (err) {

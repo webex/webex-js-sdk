@@ -25,7 +25,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#fetchMeetingInfo', () => {
-      const checkResolvedFetchMeetingInfo = async ({meetingId, hasPrejoinStarted, shouldSendCAMetrics}) => {
+      const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
         const body = {meetingKey: '1234323'};
 
         sinon
@@ -35,26 +35,32 @@ describe('plugin-meetings', () => {
 
         await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, null, null, {
           meetingId,
-          hasPrejoinStarted,
+          sendCAevents,
         });
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
         const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-        if (shouldSendCAMetrics) {
+        if(shouldSendInternalCAMetrics) {
           assert.deepEqual(submitInternalEventCalls[0].args[0], {
             name: 'internal.client.meetinginfo.request',
           });
+
+          assert.deepEqual(submitInternalEventCalls[1].args[0], {
+            name: 'internal.client.meetinginfo.response',
+          });
+        } else {
+          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+        }
+
+        if (shouldSendCAMetrics) {
           assert.deepEqual(submitClientEventCalls[0].args[0], {
             name: 'client.meetinginfo.request',
             options: {
               meetingId,
             },
           });
-  
-          assert.deepEqual(submitInternalEventCalls[1].args[0], {
-            name: 'internal.client.meetinginfo.response',
-          });
+
           assert.deepEqual(submitClientEventCalls[1].args[0], {
             name: 'client.meetinginfo.response',
             options: {
@@ -62,27 +68,26 @@ describe('plugin-meetings', () => {
             },
           });
         } else {
-          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
           assert.notCalled(webex.internal.newMetrics.submitClientEvent);
         }
       }
-      it('should send ca events if meetingId present and', async () => {
-        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', hasPrejoinStarted: true, shouldSendCAMetrics: true});
+      it('should send ca events if meetingId present send CA events is authorized', async () => {
+        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true, shouldSendInternalCAMetrics: true});
       });
 
-      it('should not send ca events if meetingId not present', async () => {
-        checkResolvedFetchMeetingInfo({hasPrejoinStarted: true, shouldSendCAMetrics: false});
+      it('should not send ca events if meetingId not present even if CA events are authorized', async () => {
+        checkResolvedFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false});
       });
 
-      it('should not send ca events if prejoin has not started', async () => {
-        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false});
+      it('should not send ca events if CA events are not authorized', async () => {
+        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false, shouldSendInternalCAMetrics: true});
       });
 
-      it('should not send ca events if meeting id is not present and prejoin has not started', async () => {
-        checkResolvedFetchMeetingInfo({shouldSendCAMetrics: false});
+      it('should not send ca events if meeting id is not present and CA events are not authorized', async () => {
+        checkResolvedFetchMeetingInfo({shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false});
       });
 
-      const checkFailingFetchMeetingInfo = async ({meetingId, hasPrejoinStarted, shouldSendCAMetrics}) => {
+      const checkFailingFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
         const reject = {
           statusCode: 403,
           body: {message: 'msg', code: 403102, data: {meetingInfo: {}}},
@@ -107,27 +112,31 @@ describe('plugin-meetings', () => {
             null,
             {
               meetingId,
-              hasPrejoinStarted,
+              sendCAevents,
             }
           );
         } catch (err) {
           const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-          if(shouldSendCAMetrics) {
+          if(shouldSendInternalCAMetrics) {
             assert.deepEqual(submitInternalEventCalls[0].args[0], {
               name: 'internal.client.meetinginfo.request',
             });
-  
+
+            assert.deepEqual(submitInternalEventCalls[1].args[0], {
+              name: 'internal.client.meetinginfo.response',
+            });
+          } else {
+            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+          }
+
+          if(shouldSendCAMetrics) {  
             assert.deepEqual(submitClientEventCalls[0].args[0], {
               name: 'client.meetinginfo.request',
               options: {
                 meetingId: 'meetingId',
               },
-            });
-  
-            assert.deepEqual(submitInternalEventCalls[1].args[0], {
-              name: 'internal.client.meetinginfo.response',
             });
   
             assert.deepEqual(submitClientEventCalls[1].args[0], {
@@ -143,29 +152,28 @@ describe('plugin-meetings', () => {
               },
             });
           } else {
-            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           }
         }
       }
 
-      it('should send ca events when fails if meetingId present and hasPrejoinStarted', async () => {
-        checkFailingFetchMeetingInfo({meetingId: 'meetingId', hasPrejoinStarted: true, shouldSendCAMetrics: true})
+      it('should send ca events when fails if meetingId present and CA events are authorized', async () => {
+        checkFailingFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true, shouldSendInternalCAMetrics: true})
       });
 
-      it('should not send ca events when fails if meetingId present and hasPrejoin not started', async () => {
-        checkFailingFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false})
+      it('should not send ca events when fails if meetingId present and CA events are not authorized', async () => {
+        checkFailingFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false, shouldSendInternalCAMetrics: true})
       });
 
-      it('should not send ca events when fails if meetingId not present and hasPrejoinstarted', async () => {
-        checkFailingFetchMeetingInfo({hasPrejoinStarted: true, shouldSendCAMetrics: false})
+      it('should not send ca events when fails if meetingId not present even if CA events are authorized', async () => {
+        checkFailingFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false})
       });
 
-      it('should not send ca events when fails if meetingId not present and hasPrejoin not started', async () => {
-        checkFailingFetchMeetingInfo({shouldSendCAMetrics: false})
+      it('should not send ca events when fails if meetingId not present and CA events are not authorized', async () => {
+        checkFailingFetchMeetingInfo({shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false})
       });
 
-      const checkRetryFetchMeetingInfo = async ({meetingId, hasPrejoinStarted, shouldSendCAMetrics}) => {
+      const checkRetryFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
         const reject = {
           statusCode: 403,
           body: {message: 'msg', code: 403102, data: {meetingInfo: {}}},
@@ -190,7 +198,7 @@ describe('plugin-meetings', () => {
             null,
             {
               meetingId,
-              hasPrejoinStarted,
+              sendCAevents,
             }
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
@@ -198,17 +206,25 @@ describe('plugin-meetings', () => {
           let submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           let submitClientEventCalls = webex.internal.newMetrics.submitClientlEvent.getCalls();
 
-          if(shouldSendCAMetrics) {
+          if(shouldSendInternalCAMetrics) {
             assert.deepEqual(submitInternalEventCalls[0].args[0], {
               name: 'internal.client.meetinginfo.request',
             });
-  
-            assert.deepEqual(submitClientEventCalls[0].args[0], {
-              name: 'client.meetinginfo.request',
-            });
-  
+
             assert.deepEqual(submitInternalEventCalls[1].args[0], {
               name: 'internal.client.meetinginfo.response',
+            });
+
+            assert.deepEqual(submitInternalEventCalls[2].args[0], {
+              name: 'internal.client.meetinginfo.request',
+            });
+          } else {
+            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+          }
+
+          if(shouldSendCAMetrics) {
+            assert.deepEqual(submitClientEventCalls[0].args[0], {
+              name: 'client.meetinginfo.request',
             });
   
             assert.deepEqual(submitClientEventCalls[1].args[0], {
@@ -224,15 +240,10 @@ describe('plugin-meetings', () => {
               },
             });
   
-            assert.deepEqual(submitInternalEventCalls[2].args[0], {
-              name: 'internal.client.meetinginfo.request',
-            });
-  
             assert.deepEqual(submitClientEventCalls[2].args[0], {
               name: 'client.meetinginfo.request',
             });
           } else {
-            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           }
 
@@ -243,34 +254,37 @@ describe('plugin-meetings', () => {
           submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-          if(shouldSendCAMetrics) {
+          if(shouldSendInternalCAMetrics) {
             assert.deepEqual(submitInternalEventCalls[3].args[0], {
-              name: 'internal.client.meetinginfo.response',
-            });
-  
-            assert.deepEqual(submitClientEventCalls[3].args[0], {
               name: 'internal.client.meetinginfo.response',
             });
           } else {
             assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+          }
+
+          if(shouldSendCAMetrics) {
+            assert.deepEqual(submitClientEventCalls[3].args[0], {
+              name: 'internal.client.meetinginfo.response',
+            });
+          } else {
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           }
         }
       }
 
-      it('should send ca events when in the retry as well if meetingId present and hasPrejoinStarted', async () => {
-        checkRetryFetchMeetingInfo({meetingId: 'meetingId', hasPrejoinStarted: true, shouldSendCAMetrics: true})
+      it('should send ca events when in the retry as well if meetingId present and CA events are authorized', async () => {
+        checkRetryFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true})
       });
 
-      it('should not send ca events when in the retry as well if meetingId not present and hasPrejoinStarted', async () => {
-        checkRetryFetchMeetingInfo({hasPrejoinStarted: true, shouldSendCAMetrics: false})
+      it('should not send ca events when in the retry as well if meetingId not present and CA events are authorized', async () => {
+        checkRetryFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false})
       });
 
-      it('should not send ca events when in the retry as well if meetingId present and hasPrejoin not Started', async () => {
+      it('should not send ca events when in the retry as well if meetingId present and CA events are not authorized', async () => {
         checkRetryFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false})
       });
 
-      it('should not send ca events when in the retry as well if meetingId not present and hasPrejoin not Started', async () => {
+      it('should not send ca events when in the retry as well if meetingId not present and CA events are not authorized', async () => {
         checkRetryFetchMeetingInfo({shouldSendCAMetrics: false})
       });
     });

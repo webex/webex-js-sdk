@@ -71,32 +71,36 @@ export default class MeetingInfo {
    * @memberof MeetingInfo
    */
   private requestFetchInfo(options: any) {
-    const {meetingId, hasPrejoinStarted} = options;
-    if (meetingId && hasPrejoinStarted) {
+    const {meetingId, sendCAevents} = options;
+    if (meetingId) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.request',
-        options: {
-          meetingId,
-        },
-      });
+      if (sendCAevents) {
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.meetinginfo.request',
+          options: {
+            meetingId,
+          },
+        });
+      }
     }
 
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
       .then((info) => {
-        if (meetingId && hasPrejoinStarted) {
+        if (meetingId) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.meetinginfo.response',
-            options: {
-              meetingId,
-            },
-          });
+          if (sendCAevents) {
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.meetinginfo.response',
+              options: {
+                meetingId,
+              },
+            });
+          }
         }
         if (info && info.body) {
           this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
@@ -108,22 +112,24 @@ export default class MeetingInfo {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
-        if (meetingId && hasPrejoinStarted) {
+        if (meetingId) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.meetinginfo.response',
-            payload: {
-              identifiers: {
-                meetingLookupUrl: error?.url,
+          if (sendCAevents) {
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.meetinginfo.response',
+              payload: {
+                identifiers: {
+                  meetingLookupUrl: error?.url,
+                },
               },
-            },
-            options: {
-              meetingId,
-              rawError: error,
-            },
-          });
+              options: {
+                meetingId,
+                rawError: error,
+              },
+            });
+          }
         }
 
         return Promise.reject(error);
@@ -151,6 +157,12 @@ export default class MeetingInfo {
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
    * @param {String} [type] to match up with the destination value
+   * @param {String} [password] meeting password
+   * @param {Object} [captchaInfo] captcha code and id
+   * @param {String} [installedOrgID]
+   * @param {String} [locusId]
+   * @param {Object} [extraParams]
+   * @param {Boolean} [options] meeting Id and whether Call Analyzer events should be sent
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -171,7 +183,7 @@ export default class MeetingInfo {
     locusId = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     extraParams: object = {},
-    options: {meetingId?: string; hasPrejoinStarted?: boolean} = {}
+    options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
     if (type === _PERSONAL_ROOM_ && !destination) {
       destination = this.webex.internal.device.userId;
@@ -186,7 +198,7 @@ export default class MeetingInfo {
             // convert the meeting link to sip URI and retry
             return this.requestFetchInfo({
               ...this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_),
-              meetingId: options.meetingId,
+              ...options,
             });
           }
 

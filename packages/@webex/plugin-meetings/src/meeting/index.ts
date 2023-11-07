@@ -1279,6 +1279,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {Object} options
    * @param {String} [options.password] optional
    * @param {String} [options.captchaCode] optional
+   * @param {Boolean} [options.sendCAevents] optional - Whether to submit Call Analyzer events or not. Default: false.
    * @public
    * @memberof Meeting
    * @returns {Promise}
@@ -1287,12 +1288,12 @@ export default class Meeting extends StatelessWebexPlugin {
     password = null,
     captchaCode = null,
     extraParams = {},
-    hasPrejoinStarted = false,
+    sendCAevents = false,
   }: {
     password?: string;
     captchaCode?: string;
     extraParams?: Record<string, any>;
-    hasPrejoinStarted?: boolean;
+    sendCAevents?: boolean;
   }) {
     // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
     if (this.fetchMeetingInfoTimeoutId) {
@@ -1328,7 +1329,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id, hasPrejoinStarted}
+        {meetingId: this.id, sendCAevents}
       );
 
       this.parseMeetingInfo(info, this.destination);
@@ -1420,14 +1421,16 @@ export default class Meeting extends StatelessWebexPlugin {
    * password and captcha code were correct or not.
    * @param {String} password - this can be either a password or a host key, can be undefined if only captcha was required
    * @param {String} captchaCode - can be undefined if captcha was not required by the server
+   * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
    * @public
    * @memberof Meeting
    * @returns {Promise<{isPasswordValid: boolean, requiredCaptcha: boolean, failureReason: MEETING_INFO_FAILURE_REASON}>}
    */
-  public verifyPassword(password: string, captchaCode: string) {
+  public verifyPassword(password: string, captchaCode: string, sendCAevents = false) {
     return this.fetchMeetingInfo({
       password,
       captchaCode,
+      sendCAevents,
     })
       .then(() => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_SUCCESS);
