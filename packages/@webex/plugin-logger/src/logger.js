@@ -355,22 +355,18 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
           let cache = [];
           let returnItem;
           try {
-            returnItem = JSON.stringify(
-              item,
-              (_key, value) => {
-                if (typeof value === 'object' && value !== null) {
-                  if (cache.includes(value)) {
-                    // Circular reference found, discard key
-                    return undefined;
-                  }
-                  // Store value in our collection
-                  cache.push(value);
+            returnItem = JSON.stringify(item, (_key, value) => {
+              if (typeof value === 'object' && value !== null) {
+                if (cache.includes(value)) {
+                  // Circular reference found, discard key
+                  return undefined;
                 }
+                // Store value in our collection
+                cache.push(value);
+              }
 
-                return value;
-              },
-              2
-            );
+              return value;
+            });
           } catch (e) {
             returnItem = `Failed to stringify: ${item}`;
           }
