@@ -5872,12 +5872,15 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.UPDATE_MEDIA, options);
     }
 
-    if (
-      this.isMultistream &&
-      (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined)
-    ) {
+    if (this.isMultistream) {
+      if (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined) {
+        throw new Error(
+          'toggling shareAudioEnabled or shareVideoEnabled in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
+        );
+      }
+    } else if (shareAudioEnabled !== undefined) {
       throw new Error(
-        'toggling shareAudioEnabled or shareVideoEnabled in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
+        'toggling shareAudioEnabled in a transcoded meeting is not supported as of now'
       );
     }
 

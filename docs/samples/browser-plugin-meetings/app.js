@@ -267,6 +267,7 @@ const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_ima
 const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
+let currentMediaSettings = {};
 
 function setSelectedMeetingId(e) {
   selectedMeetingId = e.target.value;
@@ -700,11 +701,18 @@ function updateMultistreamUI() {
   }
 }
 
-function getMediaSettings() {
+// NOTE: remember to set currentMediaSettings after promises resolves in the case when below method is used
+function getMediaSettings(compareLastSettings = false) {
   const settings = {};
 
   toggleSourcesMediaDirection.forEach((options) => {
-    settings[options.value] = options.checked;
+    if (compareLastSettings) {
+      if (currentMediaSettings[options.value] !== options.checked) {
+        settings[options.value] = options.checked;
+      }
+    } else {
+      settings[options.value] = options.checked;
+    }
   });
 
   settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
@@ -713,6 +721,23 @@ function getMediaSettings() {
   return settings;
 }
 
+// reset will make all media toggles as default checked(in case of addMedia() failure as it is the initial case)
+function resetMediaSettingsToDefaults() {
+  toggleSourcesMediaDirection.forEach((options) => {
+    options.checked = true;
+  })
+}
+
+// in case add/update media function fails then we need to restore the previous media setting toggles
+function revertMediaSettings(changedMediaSettings) {
+  delete changedMediaSettings.allowMediaInLobby;
+  delete changedMediaSettings.bundlePolicy;
+
+  for (const setting in changedMediaSettings) {
+    let element = document.querySelector(`[value=${setting}]`);
+    element.checked = !element.checked;
+  };
+}
 
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
@@ -1262,20 +1287,21 @@ function getMediaDevices() {
 
 async function updateMedia() {
   const meeting = getCurrentMeeting();
-
-  mediaSettings = getMediaSettings();
+  const changedMediaSettings = getMediaSettings(true);
 
   if (!meeting) {
     console.log('MeetingStreams#updateMedia() :: no valid meeting object!');
   }
 
-  if (isMultistream) {
-    // changing these 2 dynamically is not supported currently for multistream (WCME limitation)
-    delete mediaSettings.videoEnabled;
-    delete mediaSettings.receiveShare;
-  }
-  console.log(`MeetingStreams#updateMedia() :: calling updateMedia(${JSON.stringify(mediaSettings)}`);
-  await meeting.updateMedia(mediaSettings);
+  console.log(`MeetingStreams#updateMedia() :: calling updateMedia(${JSON.stringify(changedMediaSettings)}`);
+  return meeting.updateMedia(changedMediaSettings)
+    .then(() => {
+      currentMediaSettings = getMediaSettings();
+    })
+    .catch((error) => {
+      revertMediaSettings(changedMediaSettings);
+      console.error(error);
+    })
 }
 
 const getOptionValue = (select) => {
@@ -2376,7 +2402,7 @@ function addMedia() {
       }
     },
     ...getMediaSettings()
-    }
+  }
   ).then(() => {
     // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
     // if someone started sharing before our page was loaded,
@@ -2390,10 +2416,16 @@ function addMedia() {
     // enabling screen share publish/unpublish buttons
     publishShareBtn.disabled = false;
     unpublishShareBtn.disabled = false;
+    
+    currentMediaSettings = getMediaSettings();
 
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
     console.log('MeetingStreams#addMedia() :: Error adding media!');
+
+    //resetting here as failure of addMedia call means every setting should be default checked
+    resetMediaSettingsToDefaults();
+
     console.error(error);
   });
 
