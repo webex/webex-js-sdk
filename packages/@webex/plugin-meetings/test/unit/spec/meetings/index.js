@@ -370,7 +370,7 @@ describe('plugin-meetings', () => {
 
           assert.exists(result);
           assert.instanceOf(result, VirtualBackgroundEffect);
-          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'options']);
           assert.deepEqual(result.options, {
             mode: 'BLUR',
             blurStrength: 'STRONG',
@@ -399,7 +399,7 @@ describe('plugin-meetings', () => {
 
           assert.exists(result);
           assert.instanceOf(result, VirtualBackgroundEffect);
-          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'isLoaded', 'options']);
+          assert.containsAllKeys(result, ['loadModel', 'isEnabled', 'options']);
           assert.deepEqual(result.options, {...effectOptions, authToken: "fake_token"});
           assert.exists(result.enable);
           assert.exists(result.disable);

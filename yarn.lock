@@ -3085,13 +3085,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/long@npm:^4.0.1":
-  version: 4.0.2
-  resolution: "@types/long@npm:4.0.2"
-  checksum: b6e4c16ca43a11f229cf2d54697404e791f48ac9107fb1052b8dec92e730f54ebfe6773d68fe7d27531d9b75de1aafce0fbac206cea0ef13bb1b97f5436d90cf
-  languageName: node
-  linkType: hard
-
 "@types/mdast@npm:^3.0.0":
   version: 3.0.10
   resolution: "@types/mdast@npm:3.0.10"
@@ -4702,15 +4695,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ladon-ts@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@webex/ladon-ts@npm:4.0.0"
-  dependencies:
-    onnxruntime-web: "npm:^1.13.1"
-  checksum: 35fb82c72ccf142c071662cddb666777d704582c6539e92c7d13aef6fc13cca737b0144603c45409367622e4ecbe28a09894fe747479427f378eb0e9868c7024
-  languageName: node
-  linkType: hard
-
 "@webex/ladon-ts@npm:^4.2.4":
   version: 4.2.4
   resolution: "@webex/ladon-ts@npm:4.2.4"
@@ -4728,7 +4712,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
-    "@webex/web-media-effects": "npm:^2.8.0"
+    "@webex/web-media-effects": "npm:^2.13.3"
     sinon: "npm:^9.2.4"
   languageName: unknown
   linkType: soft
@@ -5312,6 +5296,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/web-media-effects@npm:^2.13.3":
+  version: 2.13.3
+  resolution: "@webex/web-media-effects@npm:2.13.3"
+  dependencies:
+    "@webex/ladon-ts": "npm:^4.2.4"
+    events: "npm:^3.3.0"
+    js-logger: "npm:^1.6.1"
+    typed-emitter: "npm:^1.4.0"
+  checksum: 2575cebe58eb4f705767124f7b2883b04003fab8749849305772b673720579b95c95744cf9203b2b1dd22ea7a7cfe959e2f43b8876ea8cdb477ddfd87a6aa7fa
+  languageName: node
+  linkType: hard
+
 "@webex/web-media-effects@npm:^2.7.0":
   version: 2.13.2
   resolution: "@webex/web-media-effects@npm:2.13.2"
@@ -5321,18 +5317,6 @@ __metadata:
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^1.4.0"
   checksum: a3f34e4d15b8b60301979a3ea9c11117dbabf69a1db7cb6049d187876c0be80f1b4738daf8da53c70c98486de902da34da29ded09eda6832ce4b4d7f3ffa28e7
-  languageName: node
-  linkType: hard
-
-"@webex/web-media-effects@npm:^2.8.0":
-  version: 2.8.0
-  resolution: "@webex/web-media-effects@npm:2.8.0"
-  dependencies:
-    "@webex/ladon-ts": "npm:^4.0.0"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^1.4.0"
-  checksum: 8fa81dd66989d1150b506c79e2f62a1e44a96e88ef56d80ff5278b66c95145466d2f120ac070387b798e327d331d904e954f8297120fe40994972e1ea4387df9
   languageName: node
   linkType: hard
 
@@ -15851,13 +15835,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "long@npm:4.0.0"
-  checksum: fc6d1bf0f251ec045c1004cb3a15be1dd6da11d8232cbfd63a4e7c5becd6d269ecac2e2f267114328280b20cdb00af435bd9a3d7b3af824484b59a635b9d52ab
-  languageName: node
-  linkType: hard
-
 "long@npm:^5.0.0, long@npm:^5.2.3":
   version: 5.2.3
   resolution: "long@npm:5.2.3"
@@ -17846,40 +17823,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"onnx-proto@npm:^4.0.4":
-  version: 4.0.4
-  resolution: "onnx-proto@npm:4.0.4"
-  dependencies:
-    protobufjs: "npm:^6.8.8"
-  checksum: b3a52ef433b4dc51f8ade46fda2a9997ae184366ae7791c37bd8824410e184afdadd3baab8ee6488ae602ed671edb6cb59b6a067a83c55cfbc9d9011a5b4c554
-  languageName: node
-  linkType: hard
-
-"onnxruntime-common@npm:~1.15.0":
-  version: 1.15.0
-  resolution: "onnxruntime-common@npm:1.15.0"
-  checksum: 2647e37fa4aa9c17eb3d4d8df70773389ad2a77ae4df30ef4ab2e4d7c1b4062034b9ff278672501a22d9dfad77d7402a6bf92ecaa087157b2ca998b7680f7f37
-  languageName: node
-  linkType: hard
-
 "onnxruntime-common@npm:~1.16.1":
   version: 1.16.1
   resolution: "onnxruntime-common@npm:1.16.1"
   checksum: 2fa45d863c8db78b6acc00dfdb547c61589a49515a94745d2e6043dcff088f03aee3f4fb239f9aac55f9dc7c269c0eab2203d4ddcfa5048963fbc26c3595b434
-  languageName: node
-  linkType: hard
-
-"onnxruntime-web@npm:^1.13.1":
-  version: 1.15.0
-  resolution: "onnxruntime-web@npm:1.15.0"
-  dependencies:
-    flatbuffers: "npm:^1.12.0"
-    guid-typescript: "npm:^1.0.9"
-    long: "npm:^4.0.0"
-    onnx-proto: "npm:^4.0.4"
-    onnxruntime-common: "npm:~1.15.0"
-    platform: "npm:^1.3.6"
-  checksum: e2c3e414e7176fdef533a31249b4418ad74de5c21380b3a9911327a7202eaa7da9e4ba60436b22ce47d90d52f0858d0a5561e8fa88b36a837adb4f41be5fc8d3
   languageName: node
   linkType: hard
 
@@ -18957,30 +18904,6 @@ __metadata:
   version: 1.2.4
   resolution: "proto-list@npm:1.2.4"
   checksum: 36a4a77fb1642d5c5edfd77612c2fe67bf8bbc61336e9708342c27115159cc444604714356b778b0cd43c113e420b64a44873cdfefb6827261bd5a93088a1e4e
-  languageName: node
-  linkType: hard
-
-"protobufjs@npm:^6.8.8":
-  version: 6.11.3
-  resolution: "protobufjs@npm:6.11.3"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.2"
-    "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
-    "@protobufjs/eventemitter": "npm:^1.1.0"
-    "@protobufjs/fetch": "npm:^1.1.0"
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
-    "@protobufjs/path": "npm:^1.1.2"
-    "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/long": "npm:^4.0.1"
-    "@types/node": "npm:>=13.7.0"
-    long: "npm:^4.0.0"
-  bin:
-    pbjs: bin/pbjs
-    pbts: bin/pbts
-  checksum: 5a7a343bc1f4029022433690e9a1734a89a80fc441b580ddc8486262417b7755bddafd637a88c0f8105e594e361a02218508df67caf1ac9c18bbca82e6ab60ee
   languageName: node
   linkType: hard
 

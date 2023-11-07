@@ -261,6 +261,10 @@ const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
+const BNR = 'BNR';
+const VBG = 'VBG';
+const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
+const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
 
@@ -565,6 +569,9 @@ function leaveMeeting(meetingId) {
       breakoutHostOperation.innerHTML = '';
       breakoutTable.innerHTML = '';
       clearVideoResolutionCheckInterval(remoteVideoResElm, remoteVideoResolutionInterval);
+      // disabling screen share publish/unpublish buttons
+      publishShareBtn.disabled = true;
+      unpublishShareBtn.disabled = true;
     });
 }
 
@@ -657,9 +664,18 @@ const remoteVideoResElm = document.getElementById('remote-video-resolution');
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
-const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
 
-let bnrEnabled = false;
+const loadCameraBtn = document.querySelector('#ts-load-camera');
+const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
+const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
+const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const publishShareBtn = document.querySelector('#ts-publish-screenshare');
+const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
+const stopShareBtn = document.querySelector('#ts-stop-screenshare');
+const toggleAudioButton = document.querySelector('#ts-toggle-audio');
+const stopVideoButton = document.querySelector('#ts-stop-video');
+const stopAudioButton = document.querySelector('#ts-stop-audio');
+const modeBtn = document.getElementById('mode-type');
 
 /**
  * Enables and disables the UI elements specific to multistream or transcoded connections
@@ -710,9 +726,7 @@ const htmlMediaElements = [
 
 
 function cleanUpMedia() {
-  localMedia.microphoneStream = undefined;
-  localMedia.cameraStream = undefined;
-
+  // local streams can be used across meetings
   [
     meetingStreamsRemoteVideo,
     meetingStreamsRemoteShare,
@@ -992,12 +1006,7 @@ function handleStreamPublishedState(meeting) {
     }
 
     if (!isPublished) {
-      console.log(`MeetingControls#getUserMedia() :: ${debugString} stream unpublished, stopping it`);
-      stream.stop();
-      if(mediaType === 'VIDEO-MAIN') {
-        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
-      }
-      streamElm.srcObject = null;
+      console.log(`MeetingControls#getUserMedia() :: ${debugString} stream unpublished`);
     }
   });
 }
@@ -1010,31 +1019,207 @@ async function getUserMedia(constraints = {audio: true, video: true}) {
   if (!meeting) {
     console.log('MeetingControls#getUserMedia() :: no valid meeting object!');
 
-    return Promise.reject(new Error('No valid meeting object.'));
+    throw new Error('No valid meeting object.');
   }
 
-  if (constraints.audio) {
-    const audioConstraints = {...constraints.audio};
-
-    console.log('MeetingControls#getUserMedia() :: getting microphone stream with constraints: ', audioConstraints);
-    localMedia.microphoneStream = await webex.meetings.mediaHelpers.createMicrophoneStream(audioConstraints);
-
-    meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
+  if (localMedia.microphoneStream) {
+    console.log('MeetingControls#getUserMedia() :: microphone stream is already available');
+  }
+  else if (constraints.audio) {
+    await loadMicrophone(constraints.audio);
   }
 
-  if (constraints.video) {
-    const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...constraints.video};
+  if (localMedia.cameraStream) {
+    console.log('MeetingControls#getUserMedia() :: camera stream is already available');
+  }
+  else if (constraints.video) {
+    await loadCamera(constraints.video);
+  }
 
-    console.log('MeetingControls#getUserMedia() :: getting camera stream with constraints: ', videoConstraints);
+  console.log('MeetingControls#getUserMedia() :: following local streams are ready to use:', localMedia.microphoneStream, localMedia.cameraStream);
+}
+
+async function loadCamera(constraints) {
+  try {
+    console.log('MeetingControls#loadCamera() :: using webrtc-core local camera stream');
+    const videoConstraints = {...localMedia.videoConstraints[localVideoQuality[localResolutionInp.value]], ...constraints};
+
+    console.log('MeetingControls#loadCamera() :: getting camera stream with constraints: ', videoConstraints);
     localMedia.cameraStream = await webex.meetings.mediaHelpers.createCameraStream(videoConstraints);
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
+
+    localMedia.cameraStream.on('stream-ended', () => {
+      console.log('MeetingControls#loadCamera() :: local camera stream ended');
+
+      localMedia.cameraStream = undefined;
+      meetingStreamsLocalVideo.srcObject = null;
+      stopVideoButton.disabled = true;
+      loadCameraBtn.disabled = false;
+      modeBtn.disabled = false;
+      clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+    });
+
+    handleEffectsButton(toggleVbgBtn, VBG);
+    loadCameraBtn.disabled = true;
+    stopVideoButton.disabled = false;
+    console.log('MeetingControls#loadCamera() :: Successfully got camera stream:', localMedia.cameraStream);
+  }
+  catch (e) {
+    console.log('MeetingControls#loadCamera() :: Error getting camera stream!');
+    throw e;
+  }
+}
+
+async function handleVbg() {
+  let effect;
+  try {
+    effect = await localMedia.cameraStream.getEffect("virtual-background");
+
+    if (!effect?.isEnabled) {
+      console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
+
+      if (!effect) {
+        effect = await webex.meetings.createVirtualBackgroundEffect({
+          "mode": modeBtn.value,
+          "bgImageUrl": blurVBGImageUrl,
+          "bgVideoUrl": blurVBGVideoUrl
+        });
+        handleEffectsButton(toggleVbgBtn, VBG, effect);
+        await localMedia.cameraStream.addEffect("virtual-background", effect);
+      }
+
+      await effect.enable();
+      modeBtn.disabled = true;
+      
+      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
+    }
+    else {
+      console.log('MeetingControls#handleVbg() :: disabling virtual background from local camera stream');
+
+      await effect.disable();
+      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      console.log('MeetingControls#handleVbg() :: successfully disabled virtual background from local camera stream');
+    }
+  }
+  catch (e) {
+    console.log('MeetingControls#handleVbg() :: Error applying background effect!');
+    handleEffectsButton(toggleVbgBtn, VBG, effect);
+    throw e;
+  }
+}
+
+async function loadMicrophone(constraints) {
+  try {
+    console.log('MeetingControls#loadMicrophone() :: using webrtc-core local microphone stream');
+    const audioConstraints = {...constraints};
+
+    console.log('MeetingControls#loadMicrophone() :: getting microphone stream with constraints: ', audioConstraints);
+    localMedia.microphoneStream = await webex.meetings.mediaHelpers.createMicrophoneStream(audioConstraints);
+
+    meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
+
+    localMedia.microphoneStream.on('stream-ended', () => {
+      console.log('MeetingControls#loadMicrophone() :: local microphone stream ended');
+
+      localMedia.microphoneStream = undefined;
+      meetingStreamsLocalAudio.srcObject = null;
+      stopAudioButton.disabled = true;
+      loadMicrophoneBtn.disabled = false;
+    });
+
+    handleEffectsButton(toggleBNRBtn, BNR);
+    loadMicrophoneBtn.disabled = true;
+    stopAudioButton.disabled = false;
+    console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
+  }
+  catch (e) {
+    console.log('MeetingControls#loadMicrophone() :: Error getting microphone stream!');
+    throw e;
+  }
+}
+
+async function handleBNR() {
+  let effect;
+  try {
+    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    if (!effect?.isEnabled) {
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
+
+      if (!effect) {
+        effect = await webex.meetings.createNoiseReductionEffect();
+        handleEffectsButton(toggleBNRBtn, BNR, effect);
+        await localMedia.microphoneStream.addEffect("noise-reduction", effect);
+      }
+
+      await effect.enable();
+      handleEffectsButton(toggleBNRBtn, BNR, effect);
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+
+    }
+    else {
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
+
+      await effect.disable();
+      handleEffectsButton(toggleBNRBtn, BNR, effect);
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
+    }
+  }
+  catch (e) {
+    console.log('MeetingControls#handleVbg() :: Error applying noise reduction effect!');
+    handleEffectsButton(toggleBNRBtn, BNR, effect);
+    throw e;
+  }
+}
+
+function handleEffectsButton(btn, type, effect) {
+  let disabled = false;
+  let title;
+
+  if(!effect) {
+    title = `Enable ${type}`;
+  } else if(!effect.isLoaded) {
+    disabled = true;
+    title = "Applying Effect...";
+  } else if(effect.isEnabled) {
+    title = `Disable ${type}`
+  } else {
+    title = `Enable ${type}`
   }
 
-  localVideoResolutionCheckInterval();
-  
-  console.log('MeetingControls#getUserMedia() :: got following local streams:', localMedia.microphoneStream, localMedia.cameraStream);
-  return;
+  btn.disabled = disabled;
+  btn.innerText = title;
+}
+
+async function stopVideo() {
+  console.log('MeetingControls#stopVideo()');
+  try {
+    if (localMedia.cameraStream) {
+      localMedia.cameraStream.stop();
+    }
+
+    console.log('MeetingControls#stopVideo() :: Successfully stopped video!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopVideo() :: Error stopping video!');
+    console.error(error);
+  }
+}
+
+async function stopAudio() {
+  console.log('MeetingControls#stopAudio()');
+  try {
+    if (localMedia.microphoneStream) {
+      localMedia.microphoneStream.stop();
+    }
+
+    console.log('MeetingControls#stopAudio() :: Successfully stopped audio!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopAudio() :: Error stopping audio!');
+    console.error(error);
+  }
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -1112,7 +1297,12 @@ const getRadioValue = (name) => {
 };
 
 function getAudioVideoInput() {
-  const deviceId = (id) => ({deviceId: {exact: id}});
+  const deviceId = (id) => {
+    if (id === 'default')
+      return {deviceId: id};
+    else  
+      return {deviceId: {exact: id}}; 
+  };
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
   const videoInput = getOptionValue(sourceDevicesVideoInput) || 'default';
 
@@ -1130,6 +1320,7 @@ function setVideoInputDevice() {
     return getUserMedia({video})
       .then(() => {
         localMedia.cameraStream.setMuted(!!isMuted);
+        localVideoResolutionCheckInterval();
         meeting.publishStreams({camera: localMedia.cameraStream});
       });
   }
@@ -1170,20 +1361,19 @@ function setAudioOutputDevice() {
     });
 }
 
+function handleAudioButton(muteState) {
+  const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
+  toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
+}
+
 function toggleSendAudio() {
-  const meeting = getCurrentMeeting();
-
   console.log('MeetingControls#toggleSendAudio()');
-  if (!meeting) {
-    console.log('MeetingControls#toggleSendAudio() :: no valid meeting object!');
-
-    return;
-  }
 
   if (localMedia.microphoneStream) {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
+    handleAudioButton(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -1191,14 +1381,7 @@ function toggleSendAudio() {
 }
 
 function toggleSendVideo() {
-  const meeting = getCurrentMeeting();
-
   console.log('MeetingControls#toggleSendVideo()');
-  if (!meeting) {
-    console.log('MeetingControls#toggleSendVideo() :: no valid meeting object!');
-
-    return;
-  }
 
   if (localMedia.cameraStream) {
     const newMuteValue = !localMedia.cameraStream.muted;
@@ -1210,19 +1393,7 @@ function toggleSendVideo() {
   }
 }
 
-function toggleBNR() {
-  const meeting = getCurrentMeeting();
-
-  if (!meeting) {
-    return;
-  }
-
-  console.log('BNR not supported');
-}
-
 async function startScreenShare() {
-  const meeting = getCurrentMeeting();
-
   // Using async/await to make code more readable
   console.log('MeetingControls#startScreenShare()');
   try {
@@ -1236,6 +1407,7 @@ async function startScreenShare() {
 
       localMedia.screenShare.video = undefined;
       meetingStreamsLocalShareVideo.srcObject = null;
+      stopShareBtn.disabled = true;
     });
 
     localMedia.screenShare.audio = localShareAudioStream;
@@ -1248,16 +1420,9 @@ async function startScreenShare() {
     });
 
     meetingStreamsLocalShareVideo.srcObject = localShareVideoStream.outputStream;
+    meetingStreamsLocalShareAudio.srcObject = localShareAudioStream?.outputStream;
+    stopShareBtn.disabled = false;
 
-    console.log('MeetingControls#startScreenShare() :: publishing share video & audio stream');
-    await meeting.publishStreams({
-      screenShare: {
-        video: localShareVideoStream,
-        audio: localShareAudioStream,
-      }
-    });
-
-    console.log('MeetingControls#startScreenShare() :: Successfully started sharing!');
   }
   catch (error) {
     console.log('MeetingControls#startScreenShare() :: Error starting screen share!');
@@ -1265,10 +1430,37 @@ async function startScreenShare() {
   }
 }
 
-async function stopScreenShare() {
+async function publishScreenShare() {
+  const meeting = getCurrentMeeting();
+  const {screenShare} = localMedia;
+
+  if (!screenShare || !screenShare.video) {
+    console.log('MeetingControls#publishScreenShare() :: screen share stream not available!');
+
+    throw new Error('screen share stream not available');
+  }
+
+  try {
+    console.log('MeetingControls#publishScreenShare() :: publishing share stream');
+    await meeting.publishStreams({
+      screenShare: {
+        video: localMedia.screenShare.video,
+        audio: localMedia.screenShare.audio,
+      }
+    });
+
+    console.log('MeetingControls#publishScreenShare() :: Successfully started sharing in meeting!');
+  }
+  catch (error) {
+    console.log('MeetingControls#publishScreenShare() :: Error starting screen share in meeting!');
+    console.error(error);
+  }
+}
+
+async function unpublishScreenShare() {
   const meeting = getCurrentMeeting();
 
-  console.log('MeetingControls#stopScreenShare()');
+  console.log('MeetingControls#unpublishScreenShare()');
   try {
     const streamsToUnpublish = [];
 
@@ -1280,10 +1472,25 @@ async function stopScreenShare() {
     }
 
     if (streamsToUnpublish.length) {
-      localMedia.screenShare.audio?.stop();
-      localMedia.screenShare.video?.stop();
-
       await meeting.unpublishStreams(streamsToUnpublish);
+    }
+
+    console.log('MeetingControls#unpublishScreenShare() :: unpublished share stream!');
+  }
+  catch (error) {
+    console.log('MeetingControls#unpublishScreenShare() :: Error unpublishing share stream!');
+    console.error(error);
+  }
+}
+
+async function stopScreenShare() {
+  console.log('MeetingControls#stopScreenShare()');
+  try {
+    if (localMedia.screenShare.audio) {
+      localMedia.screenShare.audio?.stop();
+    }
+    if (localMedia.screenShare.video) {
+      localMedia.screenShare.video?.stop();
     }
 
     console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
@@ -2163,6 +2370,10 @@ function addMedia() {
     localStreams: {
       microphone: localMedia.microphoneStream,
       camera: localMedia.cameraStream,
+      screenShare: {
+        audio: localMedia.screenShare?.audio,
+        video: localMedia.screenShare?.video
+      }
     },
     ...getMediaSettings()
     }
@@ -2173,6 +2384,12 @@ function addMedia() {
     if (isMultistream && meeting.shareStatus === 'remote_share_active') {
       forceScreenShareViewLayout(meeting);
     }
+
+    localVideoResolutionCheckInterval();
+
+    // enabling screen share publish/unpublish buttons
+    publishShareBtn.disabled = false;
+    unpublishShareBtn.disabled = false;
 
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
