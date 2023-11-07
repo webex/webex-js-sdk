@@ -98,7 +98,7 @@ const ERROR_DESCRIPTIONS = {
   NO_MEDIA_FOUND: 'NoMediaFound',
   STREAM_ERROR_NO_MEDIA: 'StreamErrorNoMedia',
   CAMERA_PERMISSION_DENIED: 'CameraPermissionDenied',
-  POSSIBLE_LICENSE_FRAUD: 'PossibleLicenseFraud',
+  FRAUD_DETECTION: 'FraudDetection',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -579,7 +579,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     fatal: true,
   },
   12000: {
-    errorDescription: ERROR_DESCRIPTIONS.POSSIBLE_LICENSE_FRAUD,
+    errorDescription: ERROR_DESCRIPTIONS.FRAUD_DETECTION,
     category: 'expected',
     fatal: true,
     name: 'locus.response',

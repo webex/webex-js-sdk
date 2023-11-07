@@ -1120,7 +1120,7 @@ describe('internal-plugin-metrics', () => {
         const res = cd.generateClientEventErrorPayload({body: {errorCode: 2423012}});
         assert.deepEqual(res, {
           category: 'expected',
-          errorDescription: 'PossibleLicenseFraud',
+          errorDescription: 'FraudDetection',
           fatal: true,
           name: 'locus.response',
           shownToUser: true,
