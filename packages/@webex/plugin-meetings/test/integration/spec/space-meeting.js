@@ -13,7 +13,7 @@ require('dotenv').config();
 
 const webexTestUsers = require('../../utils/webex-test-users');
 
-let userSet, alice, bob, chris, guest;
+let alice, bob, chris, guest;
 
 const localTracks = {
   alice: {
@@ -32,24 +32,19 @@ const localTracks = {
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
+    integrationTestUtils.logTestsStartingAndEnding();
+
     let space = null;
 
     before(() =>
       webexTestUsers
         .generateTestUsers({
           count: 4,
+          names: ['alice', 'bob', 'chris', 'guest'],
           whistler: process.env.WHISTLER || process.env.JENKINS,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
-          guest = userSet[3];
-          alice.name = 'alice';
-          bob.name = 'bob';
-          chris.name = 'chris';
-          guest.name = 'guest';
+          ({alice, bob, chris, guest} = users);
         })
         .then(() =>
           Promise.all([testUtils.syncAndEndMeeting(alice), testUtils.syncAndEndMeeting(bob)])
@@ -65,7 +60,7 @@ skipInNode(describe)('plugin-meetings', () => {
         .then((conversation) => {
           assert.lengthOf(conversation.participants.items, 3);
           assert.lengthOf(conversation.activities.items, 1);
-          console.log('CONVERSATION', conversation);
+          console.log('CONVERSATION url:', conversation.url);
           space = conversation;
         })
         .then(async () => {
@@ -280,9 +275,13 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     it('check for meeting cleanup', () => {
-      console.log('Alice ', alice.webex.meetings.getAllMeetings());
-      console.log('Bob ', bob.webex.meetings.getAllMeetings());
-      console.log('Chris ', chris.webex.meetings.getAllMeetings());
+      const dumpMeetings = (debugText, user) => {
+        console.log(`${debugText}: ${JSON.stringify(Object.keys(user.webex.meetings.getAllMeetings()))}`);
+      }
+
+      dumpMeetings('Alice', alice);
+      dumpMeetings('Bob', bob);
+      dumpMeetings('Chris', chris);
       assert.notExists(
         alice.webex.meetings.getMeetingByType('correlationId', alice.meeting.correlationId),
         'alice meeting exists'
@@ -306,10 +305,7 @@ skipInNode(describe)('plugin-meetings', () => {
           whistler: true,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
+          ({alice, bob, chris} = users);
         })
         .then(() => testUtils.syncAndEndMeeting(alice))
         .then(() => CMR.reserve(alice.webex, false))
@@ -381,12 +377,7 @@ skipInNode(describe)('plugin-meetings', () => {
           whistler: true,
         })
         .then((users) => {
-          userSet = users;
-          alice = userSet[0];
-          bob = userSet[1];
-          chris = userSet[2];
-          alice.name = 'alice';
-          bob.name = 'bob';
+          ({alice, bob, chris} = users);
         })
         .then(() => testUtils.syncAndEndMeeting(alice))
         .then(() => CMR.reserve(alice.webex, true))

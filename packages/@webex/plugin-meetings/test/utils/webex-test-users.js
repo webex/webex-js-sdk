@@ -21,6 +21,16 @@ const generateTestUsers = (options = {}) => {
   options.config = options.config || {};
   options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
 
+  if (!options.names) {
+    return Promise.reject(new Error(`Test user names missing`));
+  }
+
+  if (options.names.length !== options.count) {
+    return Promise.reject(new Error(`Test user names list does not match the requested user count: ${options.names.length} !== ${options.count}`));
+  }
+
+  const namedUsers = {};
+
   return testUser.create(options)
     .then(async (userSet) => {
       if (userSet.length !== options.count) {
@@ -46,10 +56,21 @@ const generateTestUsers = (options = {}) => {
 
         user.webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
 
+        user.name = options.names.shift();
+        namedUsers[user.name] = user;
+
         userRegisterPromises.push(user.webex.meetings.register());
       });
 
-      return Promise.all(userRegisterPromises).then(() => userSet);
+      return Promise.all(userRegisterPromises).then(() => {
+        Object.values(namedUsers).forEach((user) => {
+          // SDK logger adds part of a device url as a prefix to all the logs in tests (see Logger.makeLoggerMethod),
+          // so we do a log here after device registration so that we can see the prefix for each test user.
+          // This makes it easier to analyze the test logs.
+          user.webex.logger.log(`==== Test user ${user.name} created.`);
+        });
+        return namedUsers;
+      });
     })
     .catch((error) => {
       console.error('#generateTestUsers=>ERROR', error);
