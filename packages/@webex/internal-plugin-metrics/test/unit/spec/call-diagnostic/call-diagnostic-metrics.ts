@@ -1170,57 +1170,57 @@ describe('internal-plugin-metrics', () => {
           });
 
           assert.deepEqual(fetchOptions.body, {
-            metrics: [
-              {
-                eventPayload: {
-                  event: {
-                    canProceed: false,
-                    eventData: {
-                      webClientDomain: 'whatever',
+              metrics: [
+                {
+                  eventPayload: {
+                    event: {
+                      canProceed: false,
+                      eventData: {
+                        webClientDomain: 'whatever',
+                      },
+                      identifiers: {
+                        correlationId: 'correlationId',
+                        deviceId: 'deviceUrl',
+                        locusId: 'url',
+                        locusStartTime: 'lastActive',
+                        locusUrl: 'locus/url',
+                        orgId: 'orgId',
+                        userId: 'userId',
+                      },
+                      loginType: 'login-ci',
+                      name: 'client.exit.app',
+                      trigger: 'user-interaction',
+                      userType: 'host',
+                      isConvergedArchitectureEnabled: undefined,
                     },
-                    identifiers: {
-                      correlationId: 'correlationId',
-                      deviceId: 'deviceUrl',
-                      locusId: 'url',
-                      locusStartTime: 'lastActive',
-                      locusUrl: 'locus/url',
-                      orgId: 'orgId',
-                      userId: 'userId',
+                    eventId: 'my-fake-id',
+                    origin: {
+                      buildType: 'test',
+                      clientInfo: {
+                        clientType: 'TEAMS_CLIENT',
+                        clientVersion: 'webex-js-sdk/webex-version',
+                        localNetworkPrefix:
+                          Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
+                          undefined,
+                        os: getOSNameInternal() || 'unknown',
+                        osVersion: getOSVersion(),
+                        subClientType: 'WEB_APP',
+                      },
+                      environment: 'meeting_evn',
+                      name: 'endpoint',
+                      networkType: 'unknown',
+                      userAgent,
                     },
-                    loginType: 'login-ci',
-                    name: 'client.exit.app',
-                    trigger: 'user-interaction',
-                    userType: 'host',
-                    isConvergedArchitectureEnabled: undefined,
-                  },
-                  eventId: 'my-fake-id',
-                  origin: {
-                    buildType: 'test',
-                    clientInfo: {
-                      clientType: 'TEAMS_CLIENT',
-                      clientVersion: 'webex-js-sdk/webex-version',
-                      localNetworkPrefix:
-                        Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
-                        undefined,
-                      os: getOSNameInternal() || 'unknown',
-                      osVersion: getOSVersion(),
-                      subClientType: 'WEB_APP',
+                    originTime: {
+                      sent: 'not_defined_yet',
+                      triggered: triggered.toISOString(),
                     },
-                    environment: 'meeting_evn',
-                    name: 'endpoint',
-                    networkType: 'unknown',
-                    userAgent,
+                    senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
+                    version: 1,
                   },
-                  originTime: {
-                    sent: 'not_defined_yet',
-                    triggered: triggered.toISOString(),
-                  },
-                  senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
-                  version: 1,
+                  type: ['diagnostic-event'],
                 },
-                type: ['diagnostic-event'],
-              },
-            ],
+              ],
           });
 
           const rest = omit(fetchOptions, 'body');
