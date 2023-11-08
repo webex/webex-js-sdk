@@ -1315,5 +1315,19 @@ describe('internal-plugin-metrics', () => {
         );
       });
     });
+
+    describe.only('#isServiceErrorExpected', () => {
+      it('returns true for code mapped to "expected"', () => {
+        assert.isTrue(cd.isServiceErrorExpected(2423012));
+      });
+
+      it('returns false for code mapped to "signaling"', () => {
+        assert.isFalse(cd.isServiceErrorExpected(400001));
+      });
+
+      it('returns false for unmapped code', () => {
+        assert.isFalse(cd.isServiceErrorExpected(999999));
+      });
+    });
   });
 });
