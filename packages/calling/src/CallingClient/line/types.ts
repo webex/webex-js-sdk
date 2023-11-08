@@ -5,14 +5,9 @@ import {
   CorrelationId,
   IDeviceInfo,
   MobiusDeviceId,
-  MobiusStatus,
+  RegistrationStatus,
 } from '../../common/types';
 import {ICall} from '../calling/types';
-
-export enum LineStatus {
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-}
 
 export enum LINE_EVENTS {
   CONNECTING = 'connecting',
@@ -42,11 +37,6 @@ export interface ILine {
    * The unique identifier of the line.
    */
   lineId: string;
-
-  /**
-   * The current status of the line as {@link LineStatus}.
-   */
-  status: LineStatus;
 
   /**
    * The optional Mobius device identifier associated with the line.
@@ -133,7 +123,7 @@ export interface ILine {
    * Retrieves the registration status of the line as {@link MobiusStatus}.
    *
    */
-  getRegistrationStatus(): MobiusStatus;
+  getStatus(): RegistrationStatus;
 
   /**
    * Retrieves the device identifier associated with the line as {@link MobiusDeviceId},

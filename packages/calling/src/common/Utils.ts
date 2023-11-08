@@ -1,6 +1,5 @@
 /* eslint-disable no-fallthrough */
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable valid-jsdoc */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
@@ -36,7 +35,7 @@ import {
   HTTP_METHODS,
   IDeviceInfo,
   MobiusServers,
-  MobiusStatus,
+  RegistrationStatus,
   SORT,
   ServiceData,
   ServiceIndicator,
@@ -120,7 +119,7 @@ import {scimResponseBody} from '../CallingClient/calling/CallerId/types';
 import SDKConnector from '../SDKConnector';
 import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
-import {LineErrorEmitterCallback, LineStatus} from '../CallingClient/line/types';
+import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
@@ -215,7 +214,7 @@ function updateLineErrorContext(
   errContext: ErrorContext,
   type: ERROR_TYPE,
   message: string,
-  status: LineStatus,
+  status: RegistrationStatus,
   lineError: LineError
 ) {
   const errObj = <LineErrorObject>{};
@@ -258,13 +257,13 @@ function updateErrorContext(
  * @param file - File name from where error got reported.
  */
 export function emitFinalFailure(emitterCb: LineErrorEmitterCallback, loggerContext: LogContext) {
-  const clientError = createLineError('', {}, ERROR_TYPE.DEFAULT, LineStatus.INACTIVE);
+  const clientError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   updateLineErrorContext(
     loggerContext,
     ERROR_TYPE.SERVICE_UNAVAILABLE,
     'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
-    LineStatus.INACTIVE,
+    RegistrationStatus.INACTIVE,
     clientError
   );
   emitterCb(clientError);
@@ -292,7 +291,7 @@ export async function handleRegistrationErrors(
   loggerContext: LogContext,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
-  const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, LineStatus.INACTIVE);
+  const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
   let finalError = false;
@@ -307,7 +306,7 @@ export async function handleRegistrationErrors(
         loggerContext,
         ERROR_TYPE.TOKEN_ERROR,
         'User is unauthorized due to an expired token. Sign out, then sign back in.',
-        LineStatus.INACTIVE,
+        RegistrationStatus.INACTIVE,
         lineError
       );
 
@@ -321,7 +320,7 @@ export async function handleRegistrationErrors(
         loggerContext,
         ERROR_TYPE.SERVER_ERROR,
         'An unknown error occurred while placing the request. Wait a moment and try again.',
-        LineStatus.INACTIVE,
+        RegistrationStatus.INACTIVE,
         lineError
       );
 
@@ -335,7 +334,7 @@ export async function handleRegistrationErrors(
         loggerContext,
         ERROR_TYPE.SERVICE_UNAVAILABLE,
         'An error occurred on the server while processing the request. Wait a moment and try again.',
-        LineStatus.INACTIVE,
+        RegistrationStatus.INACTIVE,
         lineError
       );
 
@@ -352,7 +351,7 @@ export async function handleRegistrationErrors(
           loggerContext,
           ERROR_TYPE.FORBIDDEN_ERROR,
           'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
-          LineStatus.INACTIVE,
+          RegistrationStatus.INACTIVE,
           lineError
         );
 
@@ -381,7 +380,7 @@ export async function handleRegistrationErrors(
             loggerContext,
             ERROR_TYPE.FORBIDDEN_ERROR,
             errorMessage,
-            LineStatus.INACTIVE,
+            RegistrationStatus.INACTIVE,
             lineError
           );
           log.warn(errorMessage, loggerContext);
@@ -395,7 +394,7 @@ export async function handleRegistrationErrors(
             loggerContext,
             ERROR_TYPE.FORBIDDEN_ERROR,
             errorMessage,
-            LineStatus.INACTIVE,
+            RegistrationStatus.INACTIVE,
             lineError
           );
           log.warn(errorMessage, loggerContext);
@@ -409,7 +408,7 @@ export async function handleRegistrationErrors(
             loggerContext,
             ERROR_TYPE.FORBIDDEN_ERROR,
             errorMessage,
-            LineStatus.INACTIVE,
+            RegistrationStatus.INACTIVE,
             lineError
           );
           log.warn(errorMessage, loggerContext);
@@ -426,7 +425,7 @@ export async function handleRegistrationErrors(
         loggerContext,
         ERROR_TYPE.NOT_FOUND,
         'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-        LineStatus.INACTIVE,
+        RegistrationStatus.INACTIVE,
         lineError
       );
       emitterCb(lineError, finalError);
@@ -438,7 +437,7 @@ export async function handleRegistrationErrors(
         loggerContext,
         ERROR_TYPE.DEFAULT,
         'Unknown error',
-        LineStatus.INACTIVE,
+        RegistrationStatus.INACTIVE,
         lineError
       );
       log.warn(`Unknown Error`, loggerContext);
@@ -461,7 +460,7 @@ export async function handleCallingClientErrors(
   emitterCb: CallingClientErrorEmitterCallback,
   loggerContext: LogContext
 ): Promise<boolean> {
-  const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, MobiusStatus.DEFAULT);
+  const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
   const finalError = false;
