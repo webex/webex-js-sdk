@@ -6,10 +6,10 @@ import {
   CorrelationId,
   IDeviceInfo,
   MobiusDeviceId,
-  MobiusStatus,
+  RegistrationStatus,
   ServiceIndicator,
 } from '../../common/types';
-import {ILine, LINE_EVENTS, LineEventTypes, LineStatus} from './types';
+import {ILine, LINE_EVENTS, LineEventTypes} from './types';
 import {LINE_FILE, VALID_PHONE} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
@@ -49,8 +49,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public extension?: string;
 
-  public status: LineStatus;
-
   public sipAddresses?: string[];
 
   public voicemail?: string;
@@ -78,7 +76,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   constructor(
     userId: string,
     clientDeviceUri: string,
-    status: LineStatus,
     mutex: Mutex,
     primaryMobiusUris: string[],
     backupMobiusUris: string[],
@@ -92,7 +89,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.lineId = uuid();
     this.userId = userId;
     this.clientDeviceUri = clientDeviceUri;
-    this.status = status;
     this.phoneNumber = phoneNumber;
     this.extension = extension;
     this.voicemail = voicemail;
@@ -118,7 +114,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       logLevel
     );
 
-    this.registration.setStatus(MobiusStatus.DEFAULT);
     log.setLogger(logLevel, LINE_FILE);
 
     this.callManager = getCallManager(this.#webex, serviceData.indicator);
@@ -131,7 +126,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    */
   public async register() {
     await this.#mutex.runExclusive(async () => {
-      this.registration.setStatus(MobiusStatus.DEFAULT);
       this.emit(LINE_EVENTS.CONNECTING);
 
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
@@ -146,7 +140,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device  deregister.
    */
   public async deregister() {
-    this.registration.deregister();
+    await this.registration.deregister();
+    this.registration.setStatus(RegistrationStatus.IDLE);
   }
 
   /**
@@ -218,7 +213,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   /**
    * Gets registration status
    */
-  public getRegistrationStatus = (): MobiusStatus => this.registration.getStatus();
+  public getStatus = (): RegistrationStatus => this.registration.getStatus();
 
   /**
    * Gets device id
@@ -260,7 +255,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
           'An invalid phone number was detected. Check the number and try again.',
           {},
           ERROR_TYPE.CALL_ERROR,
-          LineStatus.ACTIVE
+          RegistrationStatus.ACTIVE
         );
 
         this.emit(LINE_EVENTS.ERROR, err);

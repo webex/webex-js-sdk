@@ -11,11 +11,11 @@ import {
   CallDirection,
   CallType,
   MobiusServers,
-  MobiusStatus,
+  RegistrationStatus,
   ServiceIndicator,
   WebexRequestPayload,
 } from '../../common/types';
-import {LINE_EVENTS, LineStatus} from './types';
+import {LINE_EVENTS} from './types';
 import Line from '.';
 import * as utils from '../../common/Utils';
 import SDKConnector from '../../SDKConnector';
@@ -57,7 +57,6 @@ describe('Line Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        LineStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),
@@ -83,7 +82,7 @@ describe('Line Tests', () => {
         expect.anything(),
         LOGGER.INFO
       );
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
 
       expect(webex.request).toBeCalledOnceWith({
@@ -98,7 +97,7 @@ describe('Line Tests', () => {
       });
       expect(handleErrorSpy).not.toBeCalled();
 
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
@@ -129,11 +128,11 @@ describe('Line Tests', () => {
         );
       });
 
-      expect(line.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(line.getStatus()).toBe(RegistrationStatus.IDLE);
       line.register();
       await utils.waitForMsecs(20);
 
-      expect(line.getRegistrationStatus()).toBe(MobiusStatus.DEFAULT);
+      expect(line.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(handleErrorSpy).toBeCalledOnceWith(
         expect.anything(),
         expect.anything(),
@@ -148,14 +147,15 @@ describe('Line Tests', () => {
     it('verify successful de-registration cases', async () => {
       webex.request.mockReturnValueOnce(registrationPayload);
 
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       await line.deregister();
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
+      expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
     });
   });
+
   describe('Line calling tests', () => {
     let line;
 
@@ -163,7 +163,6 @@ describe('Line Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        LineStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),

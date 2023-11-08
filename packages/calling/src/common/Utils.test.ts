@@ -13,11 +13,11 @@ import {
   CallDirection,
   CallType,
   DecodeType,
-  MobiusStatus,
   ServiceIndicator,
   SORT,
   WebexRequestPayload,
   CALLING_BACKEND,
+  RegistrationStatus,
 } from './types';
 import log from '../Logger';
 import {
@@ -300,7 +300,7 @@ describe('Registration Tests', () => {
       mockErrorEvent.message,
       mockErrorEvent.context,
       mockErrorEvent.type,
-      MobiusStatus.ACTIVE
+      RegistrationStatus.ACTIVE
     );
 
     handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);

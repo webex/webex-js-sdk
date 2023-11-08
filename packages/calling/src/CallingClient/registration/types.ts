@@ -1,4 +1,4 @@
-import {IDeviceInfo, MobiusStatus} from '../../common/types';
+import {IDeviceInfo, RegistrationStatus} from '../../common/types';
 
 export type Header = {
   [key: string]: string;
@@ -38,13 +38,13 @@ export interface IRegistration {
    *
    * @param value - The registration status to set.
    */
-  setStatus(value: MobiusStatus): void;
+  setStatus(value: RegistrationStatus): void;
 
   /**
    * Retrieves the current registration status.
    *
    */
-  getStatus(): MobiusStatus;
+  getStatus(): RegistrationStatus;
 
   /**
    * Retrieves information about the device as {@link IDeviceInfo}.

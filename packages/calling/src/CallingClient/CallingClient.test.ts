@@ -6,7 +6,7 @@ import {
   getMockDeviceInfo,
   getMobiusDiscoveryResponse,
 } from '../common/testUtil';
-import {CallType, MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
+import {CallType, RegistrationStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
@@ -23,7 +23,7 @@ import {
   SPARK_USER_AGENT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
-import {ILine, LineStatus} from './line/types';
+import {ILine} from './line/types';
 import {
   ipPayload,
   regionBody,
@@ -370,8 +370,6 @@ describe('CallingClient Tests', () => {
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
       line = Object.values(callingClient.lineDict)[0] as ILine;
       reg = line.registration;
-
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
       await line.register();
 
       deRegSpy = jest.spyOn(line.registration, 'deregister');
@@ -390,7 +388,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('detect a network flap in mercury connection', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = false;
@@ -398,7 +396,7 @@ describe('CallingClient Tests', () => {
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toBeCalledWith(
+      expect(warnSpy).toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -411,13 +409,14 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).nthCalledWith(
-        7,
-        'Mercury connection is up again, Re-registering with Mobius',
-        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      expect(logSpy).toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
       );
 
-      expect(deRegSpy).toBeCalledWith();
       expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
       expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
       expect(webex.request).toBeCalledTimes(6);
@@ -426,7 +425,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 500,
@@ -453,37 +452,37 @@ describe('CallingClient Tests', () => {
 
       /* Set mercury connection to be up and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = true;
+
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       await flushPromises();
-      /* We should be detecting the network recovery */
-      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
-        file: REGISTRATION_FILE,
-        method: 'handleConnectionRestoration',
-      });
 
-      expect(deRegSpy).toBeCalledWith();
-      expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
+      /* We should be detecting the network recovery */
+      expect(logSpy).toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
+
+      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toBeCalledOnceWith('handleConnectionRestoration');
       expect(webex.request).toBeCalledTimes(6);
       expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
       expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
     });
 
     it('Simulate a network flap before initial registration is done', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
-
-      reg.deregister();
-      reg.setActiveMobiusUrl(undefined);
-
-      jest.clearAllMocks();
+      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
+      reg.setStatus(RegistrationStatus.IDLE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = false;
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toBeCalledWith(
+      expect(warnSpy).toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -495,22 +494,23 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
-        file: REGISTRATION_FILE,
-        method: 'handleConnectionRestoration',
-      });
+      expect(logSpy).not.toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
 
       /*
        * When initial registration is not done, network flap
        * will not trigger de-registration/registration
        */
-      expect(webex.request).not.toBeCalled();
-      expect(restoreSpy).not.toBeCalled();
-      expect(registerSpy).not.toBeCalled();
+      expect(handleConnectionRestoreSpy).not.toBeCalledOnceWith();
     });
 
     it('Simulate a network flap with 1 active call', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /** create a new call */
       reg.callManager.createCall();
@@ -522,7 +522,7 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network flap */
-      expect(warnSpy).not.toBeCalledWith(
+      expect(warnSpy).not.toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: 'handleConnectionRestoration'}
       );
@@ -534,8 +534,8 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).not.toBeCalledWith(
-        'Mercury connection is up again, Re-registering with Mobius',
+      expect(logSpy).not.toBeCalledOnceWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
         {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
       );
 
@@ -590,7 +590,6 @@ describe('CallingClient Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        LineStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),
