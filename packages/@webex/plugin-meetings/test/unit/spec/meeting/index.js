@@ -741,7 +741,7 @@ describe('plugin-meetings', () => {
           );
         });
       });
-      describe.skip('#join', () => {
+      describe('#join', () => {
         let sandbox = null;
         let setCorrelationIdSpy;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
@@ -828,7 +828,7 @@ describe('plugin-meetings', () => {
           it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
             meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
 
-            const join = meeting.join({correlationId: '123'});
+            const join = meeting.join();
 
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
