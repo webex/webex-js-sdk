@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.245](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.244...v3.0.0-beta.245) (2023-11-07)
+
+
+### Bug Fixes
+
+* **diagnostics:** make sure authorization token is not logged ([#3186](https://github.com/webex/webex-js-sdk/issues/3186)) ([fff68be](https://github.com/webex/webex-js-sdk/commit/fff68beb27c053cd28f06ac3d7a190e39d9964d1))
+
 ## [3.0.0-beta.244](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.243...v3.0.0-beta.244) (2023-11-06)
 
 
