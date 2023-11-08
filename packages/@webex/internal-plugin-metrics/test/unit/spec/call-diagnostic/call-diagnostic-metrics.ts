@@ -64,7 +64,7 @@ describe('internal-plugin-metrics', () => {
             metrics: {
               clientType: 'TEAMS_CLIENT',
               subClientType: 'WEB_APP',
-              clientName: 'Cantina',
+              clientName: 'Cantina'
             },
           },
           meetingCollection: {
