@@ -3589,6 +3589,38 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setupLocusControlsListener', () => {
+        it('transcription should start when meeting transcribe state is updated with active transcribing', (done) => {
+          const payload = {caption: true, transcribing: true};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = null;
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.calledOnce(meeting.startTranscription);
+          done();
+        })
+
+        it('transcription should stop when meeting transcribe state is updated with inactive transcribing', (done) => {
+          const payload = {caption: false, transcribing: false};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = {};
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.notCalled(meeting.startTranscription);
+          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            'meeting:receiveTranscription:stopped',
+            payload
+          );
+          done();
+        })
+      })
+
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
