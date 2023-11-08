@@ -134,12 +134,7 @@ describe('internal-plugin-metrics', () => {
 
         //@ts-ignore
         const res = cd.getOrigin(
-          {
-            subClientType: 'WEB_APP',
-            clientType: 'TEAMS_CLIENT',
-            newEnvironment: 'test-new-env',
-            clientLaunchMethod: 'url-handler',
-          },
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', newEnvironment: 'test-new-env', clientLaunchMethod: 'url-handler'},
           fakeMeeting.id
         );
 
@@ -168,12 +163,7 @@ describe('internal-plugin-metrics', () => {
 
         //@ts-ignore
         const res = cd.getOrigin(
-          {
-            subClientType: 'WEB_APP',
-            clientType: 'TEAMS_CLIENT',
-            clientLaunchMethod: 'url-handler',
-            environment: 'test-env',
-          },
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT', clientLaunchMethod: 'url-handler', environment: 'test-env'},
           fakeMeeting.id
         );
 
@@ -187,7 +177,7 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
             subClientType: 'WEB_APP',
-            clientLaunchMethod: 'url-handler',
+            clientLaunchMethod: 'url-handler'
           },
           environment: 'test-env',
           name: 'endpoint',
@@ -427,7 +417,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
-          `name: client.alert.displayed`,
+          `name: client.alert.displayed`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[2].args, [
@@ -435,6 +425,7 @@ describe('internal-plugin-metrics', () => {
           'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
           `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1"},"eventData":{"webClientDomain":"whatever"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
         ]);
+
       });
 
       it('should submit client event successfully with correlationId', () => {
@@ -518,7 +509,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
-          `name: client.alert.displayed`,
+          `name: client.alert.displayed`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[2].args, [
@@ -526,6 +517,8 @@ describe('internal-plugin-metrics', () => {
           'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
           `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url"},"eventData":{"webClientDomain":"whatever"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
         ]);
+
+
       });
 
       it('it should include errors if provided with meetingId', () => {
@@ -601,23 +594,24 @@ describe('internal-plugin-metrics', () => {
           `options: ${JSON.stringify(options)}`,
         ]);
 
+
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
           `name: client.alert.displayed`,
-          `rawError: ${options.rawError}`,
+          `rawError: ${options.rawError}`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
-        ]);
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`
+        ])
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
-          `name: client.alert.displayed`,
+          `name: client.alert.displayed`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[4].args, [
@@ -694,23 +688,24 @@ describe('internal-plugin-metrics', () => {
           `options: ${JSON.stringify(options)}`,
         ]);
 
+
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
           `name: client.alert.displayed`,
-          `rawError: ${options.rawError}`,
+          `rawError: ${options.rawError}`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
-        ]);
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`
+        ])
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
-          `name: client.alert.displayed`,
+          `name: client.alert.displayed`
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[4].args, [
@@ -1164,13 +1159,13 @@ describe('internal-plugin-metrics', () => {
         it('returns expected options without preLoginId', async () => {
           const options = {
             meetingId: fakeMeeting.id,
-            preLoginId,
+            preLoginId
           };
 
           const triggered = new Date();
           const fetchOptions = await cd.buildClientEventFetchRequestOptions({
             name: 'client.exit.app',
-            payload: {trigger: 'user-interaction', canProceed: false},
+            payload: { trigger: 'user-interaction', canProceed: false },
             options,
           });
 
@@ -1239,16 +1234,16 @@ describe('internal-plugin-metrics', () => {
               headers: {
                 authorization: false,
                 'x-prelogin-userid': preLoginId,
-              },
-            });
+              }
+            })
           } else {
             assert.deepEqual(rest, {
               foo: 'bar',
               method: 'POST',
               resource: 'clientmetrics',
               service: 'metrics',
-              headers: {},
-            });
+              headers: {}
+            })
           }
 
           const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -1264,7 +1259,7 @@ describe('internal-plugin-metrics', () => {
           assert.deepEqual(webexLoggerLogCalls[1].args, [
             'call-diagnostic-events -> ',
             'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
-            `name: client.exit.app`,
+            `name: client.exit.app`
           ]);
         });
       });
