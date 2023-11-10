@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.245](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.244...v3.0.0-beta.245) (2023-11-07)
+
+
+### Bug Fixes
+
+* **diagnostics:** make sure authorization token is not logged ([#3186](https://github.com/webex/webex-js-sdk/issues/3186)) ([fff68be](https://github.com/webex/webex-js-sdk/commit/fff68beb27c053cd28f06ac3d7a190e39d9964d1))
+
+## [3.0.0-beta.244](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.243...v3.0.0-beta.244) (2023-11-06)
+
+
+### Bug Fixes
+
+* **diagnostics:** Update metrics clientName with config.meetings.metrics.clientName ([#3187](https://github.com/webex/webex-js-sdk/issues/3187)) ([1d1b990](https://github.com/webex/webex-js-sdk/commit/1d1b9906b240e06e18d2a661406e0ec3a646ca48))
+
+## [3.0.0-beta.243](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.242...v3.0.0-beta.243) (2023-11-03)
+
+
+### Bug Fixes
+
+* do a full Locus sync if a delta sync fails ([#3182](https://github.com/webex/webex-js-sdk/issues/3182)) ([9c1375b](https://github.com/webex/webex-js-sdk/commit/9c1375bf1f8aa1713520ff6c9454a297ffdb12a1))
+
+## [3.0.0-beta.242](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.241...v3.0.0-beta.242) (2023-11-02)
+
+
+### Bug Fixes
+
+* upgrade event dictionary ([#3183](https://github.com/webex/webex-js-sdk/issues/3183)) ([55782c1](https://github.com/webex/webex-js-sdk/commit/55782c14bb81a866513661f6e949b7f341b3688e))
+
+## [3.0.0-beta.241](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.240...v3.0.0-beta.241) (2023-11-01)
+
+
+### Bug Fixes
+
+* error is missing in client.ice.end event ([#3178](https://github.com/webex/webex-js-sdk/issues/3178)) ([e1dfc1c](https://github.com/webex/webex-js-sdk/commit/e1dfc1c10334fee9319b67d99df0d395bf18b7d4))
+
+## [3.0.0-beta.240](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.239...v3.0.0-beta.240) (2023-11-01)
+
+
+### Bug Fixes
+
+* **scripts:** build clean skip prebuild ([#3179](https://github.com/webex/webex-js-sdk/issues/3179)) ([595d566](https://github.com/webex/webex-js-sdk/commit/595d566f25b18e11fd9824e77a8459689509eb93))
+
+## [3.0.0-beta.239](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.238...v3.0.0-beta.239) (2023-10-31)
+
+
+### Bug Fixes
+
+* improved logging of receive slots, muted local audio by default in the sample app ([#3172](https://github.com/webex/webex-js-sdk/issues/3172)) ([43ceefd](https://github.com/webex/webex-js-sdk/commit/43ceefdc96d28614ddb483d5ac3b8fe98b9b27e7))
+
 ## [3.0.0-beta.238](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.237...v3.0.0-beta.238) (2023-10-30)
 
 

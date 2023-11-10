@@ -44,7 +44,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     this.webex.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Sending the request:`,
-      `payload: ${JSON.stringify(payload)}`
+      'payload:',
+      payload
     );
 
     return this.webex
@@ -60,7 +61,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         this.webex.logger.log(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful:`,
-          `response: ${JSON.stringify(res)}`
+          `response:`,
+          res
         );
 
         return res;

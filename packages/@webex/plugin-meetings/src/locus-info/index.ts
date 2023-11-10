@@ -25,6 +25,8 @@ import ControlsUtils from './controlsUtils';
 import EmbeddedAppsUtils from './embeddedAppsUtils';
 import MediaSharesUtils from './mediaSharesUtils';
 import LocusDeltaParser from './parser';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
@@ -110,6 +112,37 @@ export default class LocusInfo extends EventsScope {
     // return value ignored on purpose
     meeting.meetingRequest
       .getLocusDTO({url})
+      .catch((e) => {
+        if (isDelta) {
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> delta sync failed, falling back to full sync'
+          );
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_DELTA_SYNC_FAILED, {
+            correlationId: meeting.correlationId,
+            url,
+            reason: e.message,
+            errorName: e.name,
+            stack: e.stack,
+            code: e.code,
+          });
+
+          isDelta = false;
+
+          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
+            LoggerProxy.logger.info(
+              'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+            );
+            this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+            throw err;
+          });
+        }
+        LoggerProxy.logger.info(
+          'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+        );
+        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        throw e;
+      })
       .then((res) => {
         if (isDelta) {
           if (!isEmpty(res.body)) {
@@ -122,8 +155,6 @@ export default class LocusInfo extends EventsScope {
         } else {
           meeting.locusInfo.onFullLocus(res.body);
         }
-      })
-      .finally(() => {
         // Notify parser to resume processing delta events.
         // Any deltas in the queue that have now been superseded by this sync will simply be ignored
         this.locusParser.resume();
