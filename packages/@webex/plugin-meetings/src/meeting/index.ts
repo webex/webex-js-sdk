@@ -7184,6 +7184,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Gets the time left in seconds till the permission token expires
+   * (from the time the function has been fired)
+   *
    * @returns {number} time left in seconds
    */
   public getPermissionTokenTimeLeftInSec(): number | undefined {
