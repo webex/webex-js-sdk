@@ -542,7 +542,8 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingJoinUrl: any;
   meetingNumber: any;
   meetingState: any;
-  permissionToken: any;
+  permissionToken: string;
+  permissionTokenTtl: number;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -3021,6 +3022,7 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
+      this.permissionTokenTtl = webexMeetingInfo?.permissionTokenTtl;
       this.setSelfUserPolicies(this.permissionToken);
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
@@ -7178,5 +7180,19 @@ export default class Meeting extends StatelessWebexPlugin {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }
     }
+  }
+
+  /**
+   * Gets the time left in seconds till the permission token expires
+   * @returns {number} time left in seconds
+   */
+  public getPermissionTokenTimeLeftInSec(): number | undefined {
+    if (!this.permissionTokenTtl) {
+      return undefined;
+    }
+
+    // substract current time from the expiration time
+    // (permissionTokenTtl is a epoch timestamp, not a time to live duration)
+    return (this.permissionTokenTtl - Date.now()) / 1000;
   }
 }
