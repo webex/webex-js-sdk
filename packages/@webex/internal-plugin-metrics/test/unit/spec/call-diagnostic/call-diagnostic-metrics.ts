@@ -1136,6 +1136,19 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+
+      it('should generate event error payload correctly for locus error 2423021', () => {
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2423021}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'LocusLobbyFullCMR',
+          fatal: true,
+          name: 'locus.response',
+          shownToUser: true,
+          serviceErrorCode: 2423021,
+          errorCode: 12001,
+        });
+      });
     });
 
     describe('#getCurLoginType', () => {
