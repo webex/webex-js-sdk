@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.246](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.245...v3.0.0-beta.246) (2023-11-14)
+
+
+### Features
+
+* **ca-metrics:** use correct error payload for 2423012 ([#3191](https://github.com/webex/webex-js-sdk/issues/3191)) ([dca711d](https://github.com/webex/webex-js-sdk/commit/dca711d4ed7df5d7b60ba6bedbf14a51f7481e80))
+
 ## [3.0.0-beta.245](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.244...v3.0.0-beta.245) (2023-11-07)
 
 
