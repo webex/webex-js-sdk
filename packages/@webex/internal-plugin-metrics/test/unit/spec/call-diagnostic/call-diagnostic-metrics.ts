@@ -1123,6 +1123,19 @@ describe('internal-plugin-metrics', () => {
           errorCode: 12000,
         });
       });
+      it('should generate event error payload correctly for locus error 2409062', () => {
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2409062}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'E2EENotSupported',
+          fatal: true,
+          name: 'locus.response',
+          shownToUser: true,
+          serviceErrorCode: 2409062,
+          errorCode: 12002,
+        });
+      });
+
     });
 
     describe('#getCurLoginType', () => {
@@ -1311,7 +1324,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.only('#isServiceErrorExpected', () => {
+    describe('#isServiceErrorExpected', () => {
       it('returns true for code mapped to "expected"', () => {
         assert.isTrue(cd.isServiceErrorExpected(2423012));
       });

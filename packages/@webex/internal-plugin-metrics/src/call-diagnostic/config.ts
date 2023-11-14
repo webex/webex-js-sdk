@@ -99,6 +99,7 @@ const ERROR_DESCRIPTIONS = {
   STREAM_ERROR_NO_MEDIA: 'StreamErrorNoMedia',
   CAMERA_PERMISSION_DENIED: 'CameraPermissionDenied',
   FRAUD_DETECTION: 'FraudDetection',
+  E2EE_NOT_SUPPORTED: 'E2EENotSupported',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -238,6 +239,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2405001: 4029,
   // LOCUS_RECORDING_NOT_ENABLED
   2409005: 4029,
+  // E2EE_NOT_SUPPORTED
+  2409062: 12002,
 
   // ---- U2C Sign in catalog ------
   // The user exists, but hasn't completed activation. Needs to visit Atlas for more processing.
@@ -580,6 +583,13 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   12000: {
     errorDescription: ERROR_DESCRIPTIONS.FRAUD_DETECTION,
+    category: 'expected',
+    fatal: true,
+    name: 'locus.response',
+    shownToUser: true,
+  },
+  12002: {
+    errorDescription: ERROR_DESCRIPTIONS.E2EE_NOT_SUPPORTED,
     category: 'expected',
     fatal: true,
     name: 'locus.response',
