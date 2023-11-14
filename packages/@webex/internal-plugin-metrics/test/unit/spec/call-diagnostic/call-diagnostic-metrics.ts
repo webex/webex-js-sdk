@@ -1110,6 +1110,19 @@ describe('internal-plugin-metrics', () => {
           errorCode: 9999,
         });
       });
+
+      it('should generate event error payload correctly for locus error 2423012', () => {
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2423012}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'FraudDetection',
+          fatal: true,
+          name: 'locus.response',
+          shownToUser: true,
+          serviceErrorCode: 2423012,
+          errorCode: 12000,
+        });
+      });
     });
 
     describe('#getCurLoginType', () => {
@@ -1295,6 +1308,20 @@ describe('internal-plugin-metrics', () => {
           },
           'my-id'
         );
+      });
+    });
+
+    describe.only('#isServiceErrorExpected', () => {
+      it('returns true for code mapped to "expected"', () => {
+        assert.isTrue(cd.isServiceErrorExpected(2423012));
+      });
+
+      it('returns false for code mapped to "signaling"', () => {
+        assert.isFalse(cd.isServiceErrorExpected(400001));
+      });
+
+      it('returns false for unmapped code', () => {
+        assert.isFalse(cd.isServiceErrorExpected(999999));
       });
     });
   });
