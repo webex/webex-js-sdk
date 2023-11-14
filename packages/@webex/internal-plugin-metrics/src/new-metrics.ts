@@ -303,6 +303,15 @@ class Metrics extends WebexPlugin {
     // @ts-ignore
     return this.webex.setTimingsAndFetch(setMetricTimings(options));
   }
+
+  /**
+   * Returns true if the specified serviceErrorCode maps to an expected error.
+   * @param {number} serviceErrorCode the service error code
+   * @returns {boolean}
+   */
+  public isServiceErrorExpected(serviceErrorCode: number): boolean {
+    return this.callDiagnosticMetrics.isServiceErrorExpected(serviceErrorCode);
+  }
 }
 
 export default Metrics;
