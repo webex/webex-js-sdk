@@ -7202,7 +7202,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
-    const permissionTokenExpValue = Number(this.permissionTokenPayload?.exp);
+    const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
 
     // using new Date instead of Date.now() to allow for accurate unit testing
     // https://github.com/sinonjs/fake-timers/issues/321

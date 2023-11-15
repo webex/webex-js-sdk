@@ -5683,7 +5683,7 @@ describe('plugin-meetings', () => {
             }
           };
 
-          sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+          const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
 
           const FAKE_MEETING_INFO = {
             body: {
@@ -5700,6 +5700,8 @@ describe('plugin-meetings', () => {
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
+          assert.calledOnce(jwtDecodeStub);
+
           const expectedInfoToParse = {
             conversationUrl: uuid1,
             locusUrl: url1,
@@ -8028,6 +8030,7 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       now = Date.now();
 
+      // mock `new Date()` with constant `now`
       clock = sinon.useFakeTimers(now);
     });
 
