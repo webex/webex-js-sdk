@@ -543,7 +543,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingNumber: any;
   meetingState: any;
   permissionToken: string;
-  permissionTokenTtl: number;
+  permissionTokenTtl: string;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -7193,8 +7193,12 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
-    // substract current time from the expiration time
+    const permissionTokenTtlValue = Number(this.permissionTokenTtl);
+    const now = new Date().getTime();
+
+    // substract current time from the permissionTokenTtl
     // (permissionTokenTtl is a epoch timestamp, not a time to live duration)
-    return (this.permissionTokenTtl - Date.now()) / 1000;
+
+    return (permissionTokenTtlValue - now) / 1000;
   }
 }

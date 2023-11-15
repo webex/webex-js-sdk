@@ -5672,7 +5672,7 @@ describe('plugin-meetings', () => {
               meetingNumber: '12345',
               permissionToken:
                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
-              permissionTokenTtl: 12345678,
+              permissionTokenTtl: '12345678',
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -5690,7 +5690,7 @@ describe('plugin-meetings', () => {
             selfUserPolicies: {a: true},
             permissionToken:
               'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
-            permissionTokenTtl: 12345678
+            permissionTokenTtl: '12345678'
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -8002,25 +8002,32 @@ describe('plugin-meetings', () => {
   });
 
   describe('#getPermissionTokenTimeLeftInSec', () => {
+    let now;
+    let clock;
+
+    beforeEach(() => {
+      now = Date.now();
+
+      clock = sinon.useFakeTimers(now);
+    });
+
+    afterEach(() => {
+      clock.restore();  
+    })
+
     it('should return undefined if permissionTokenTtl is undefined', () => { 
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
     });
 
     it('should return the expected positive permissionTokenTimeLeft', () => { 
-      const now = Date.now();
-      sinon.stub(Date, 'now').returns(now);
-
       // set permission token as now + 1 sec
-      meeting.permissionTokenTtl = now + 1000;
+      meeting.permissionTokenTtl = (now + 1000).toString();
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
     });
 
-     it('should return the expected negative permissionTokenTimeLeft', () => { 
-      const now = Date.now();
-      sinon.stub(Date, 'now').returns(now);
-
+    it('should return the expected negative permissionTokenTimeLeft', () => { 
       // set permission token as now - 1 sec
-      meeting.permissionTokenTtl = now - 1000;
+      meeting.permissionTokenTtl = (now - 1000).toString();
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
     });
   });
