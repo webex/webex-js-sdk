@@ -298,6 +298,12 @@ describe('webex-core', () => {
           formattedHM.map((item) => item.name)
         );
       });
+
+      it('has hostCatalog updated', () => {
+        services._formatReceivedHostmap(serviceHostmap);
+
+        assert.deepStrictEqual(services._hostCatalog, serviceHostmap.hostCatalog);
+      });
     });
 
     describe('#updateCredentialsConfig()', () => {
