@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.59.7](https://github.com/webex/webex-js-sdk/compare/v2.59.6...v2.59.7) (2023-11-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** start transcription when guest user is admitted ([#3195](https://github.com/webex/webex-js-sdk/issues/3195)) ([e4c31a0](https://github.com/webex/webex-js-sdk/commit/e4c31a082fa3ad0c3ad9930ede8ea0e854db0c65))
+
 ### [2.59.6](https://github.com/webex/webex-js-sdk/compare/v2.59.5...v2.59.6) (2023-11-03)
 
 

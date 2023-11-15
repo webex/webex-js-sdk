@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-authorization",
-  "version": "2.59.6",
+  "version": "2.59.7",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
