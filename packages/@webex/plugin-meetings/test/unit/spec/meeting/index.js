@@ -5563,29 +5563,40 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setPermissionTokenPayload', () => {
+        it('sets correctly', () => {
+          assert.notOk(meeting.permissionTokenPayload);
+
+          const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '1234'};
+          
+          const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+          
+          meeting.setPermissionTokenPayload();
+
+          assert.calledOnce(jwtDecodeStub);
+          assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
+        });
+      });
+
       describe('#setSelfUserPolicies', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {permission: {userPolicies: {a: true}}};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
+          meeting.setSelfUserPolicies();
 
-          meeting.setSelfUserPolicies(dummyToken);
-
-          assert.deepEqual(meeting.selfUserPolicies, {a: true});
+          assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
         });
 
         it('handles missing permission data', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
-
-          meeting.setSelfUserPolicies(dummyToken);
+          meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, undefined);
         });
@@ -5593,12 +5604,10 @@ describe('plugin-meetings', () => {
         it('handles missing policy data', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {permission: {}};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
-
-          meeting.setSelfUserPolicies(dummyToken);
+          meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, undefined);
         });
@@ -5657,13 +5666,25 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
-          assert.equal(meeting.permissionTokenTtl, expectedInfoToParse.permissionTokenTtl);
+          assert.equal(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
           assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
         };
 
         it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
           meeting.config.experimental = {enableMediaNegotiatedEvent: true};
           meeting.config.experimental.enableUnifiedMeetings = true;
+
+          const permissionTokenPayloadData = {
+            exp: '12345678',
+            permission: {
+              userPolicies: {
+                a: true
+              }
+            }
+          };
+
+          sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+
           const FAKE_MEETING_INFO = {
             body: {
               conversationUrl: uuid1,
@@ -5672,7 +5693,6 @@ describe('plugin-meetings', () => {
               meetingNumber: '12345',
               permissionToken:
                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
-              permissionTokenTtl: '12345678',
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -5690,7 +5710,7 @@ describe('plugin-meetings', () => {
             selfUserPolicies: {a: true},
             permissionToken:
               'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
-            permissionTokenTtl: '12345678'
+            permissionTokenPayload: permissionTokenPayloadData
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -8015,19 +8035,19 @@ describe('plugin-meetings', () => {
       clock.restore();  
     })
 
-    it('should return undefined if permissionTokenTtl is undefined', () => { 
+    it('should return undefined if exp is undefined', () => { 
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
     });
 
-    it('should return the expected positive permissionTokenTimeLeft', () => { 
+    it('should return the expected positive exp', () => { 
       // set permission token as now + 1 sec
-      meeting.permissionTokenTtl = (now + 1000).toString();
+      meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
     });
 
-    it('should return the expected negative permissionTokenTimeLeft', () => { 
+    it('should return the expected negative exp', () => { 
       // set permission token as now - 1 sec
-      meeting.permissionTokenTtl = (now - 1000).toString();
+      meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
     });
   });

@@ -543,7 +543,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingNumber: any;
   meetingState: any;
   permissionToken: string;
-  permissionTokenTtl: string;
+  permissionTokenPayload: any;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -3022,8 +3022,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
-      this.permissionTokenTtl = webexMeetingInfo?.permissionTokenTtl;
-      this.setSelfUserPolicies(this.permissionToken);
+      this.setPermissionTokenPayload(webexMeetingInfo?.permissionToken);
+      this.setSelfUserPolicies();
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
@@ -3287,11 +3287,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Sets the self user policies based on the contents of the permission token
+   * @returns {void}
+   */
+  setSelfUserPolicies() {
+    this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+  }
+
+  /**
+   * Sets the permission token payload on the class instance
+   *
    * @param {String} permissionToken
    * @returns {void}
    */
-  setSelfUserPolicies(permissionToken: string) {
-    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
+  public setPermissionTokenPayload(permissionToken: string) {
+    this.permissionTokenPayload = jwt.decode(permissionToken);
   }
 
   /**
@@ -7189,16 +7198,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {number} time left in seconds
    */
   public getPermissionTokenTimeLeftInSec(): number | undefined {
-    if (!this.permissionTokenTtl) {
+    if (!this.permissionTokenPayload) {
       return undefined;
     }
 
-    const permissionTokenTtlValue = Number(this.permissionTokenTtl);
+    const permissionTokenExpValue = Number(this.permissionTokenPayload?.exp);
+
+    // using new Date instead of Date.now() to allow for accurate unit testing
+    // https://github.com/sinonjs/fake-timers/issues/321
     const now = new Date().getTime();
 
-    // substract current time from the permissionTokenTtl
-    // (permissionTokenTtl is a epoch timestamp, not a time to live duration)
-
-    return (permissionTokenTtlValue - now) / 1000;
+    // substract current time from the permissionTokenExp
+    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
+    return (permissionTokenExpValue - now) / 1000;
   }
 }
