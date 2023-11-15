@@ -514,7 +514,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }),
     };
 
-    if (options?.rawError) {
+    if (options?.rawError?.message) {
       // @ts-ignore
       clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
     }
@@ -562,7 +562,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       loginType: this.getCurLoginType(),
     };
 
-    if (options?.rawError) {
+    if (options?.rawError?.message) {
       // @ts-ignore
       clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
     }
