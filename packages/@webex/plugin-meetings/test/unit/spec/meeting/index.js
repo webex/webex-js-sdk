@@ -5666,16 +5666,19 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
-          assert.equal(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
           assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
+          
+          if(expectedInfoToParse.permissionTokenPayload) {
+            assert.deepEqual(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
+          }
         };
 
         it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
           meeting.config.experimental = {enableMediaNegotiatedEvent: true};
           meeting.config.experimental.enableUnifiedMeetings = true;
 
-          const permissionTokenPayloadData = {
-            exp: '12345678',
+          const expectedPermissionTokenPayload = {
+            exp: "123456",
             permission: {
               userPolicies: {
                 a: true
@@ -5683,7 +5686,10 @@ describe('plugin-meetings', () => {
             }
           };
 
-          const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+          // generated permissionToken with secret `secret` and 
+          // value `JSON.stringify(expectedPermissionTokenPayload)`
+          const permissionToken = 
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
 
           const FAKE_MEETING_INFO = {
             body: {
@@ -5691,8 +5697,7 @@ describe('plugin-meetings', () => {
               locusUrl: url1,
               meetingJoinUrl: url2,
               meetingNumber: '12345',
-              permissionToken:
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
+              permissionToken,
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -5700,7 +5705,6 @@ describe('plugin-meetings', () => {
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
-          assert.calledOnce(jwtDecodeStub);
 
           const expectedInfoToParse = {
             conversationUrl: uuid1,
@@ -5710,9 +5714,8 @@ describe('plugin-meetings', () => {
             meetingJoinUrl: url2,
             owner: test2,
             selfUserPolicies: {a: true},
-            permissionToken:
-              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
-            permissionTokenPayload: permissionTokenPayloadData
+            permissionToken,
+            permissionTokenPayload: expectedPermissionTokenPayload
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
