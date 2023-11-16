@@ -89,18 +89,21 @@ export default class MeetingInfo {
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
       .then((info) => {
-        if (meetingId) {
+        if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          if (sendCAevents) {
-            this.webex.internal.newMetrics.submitClientEvent({
-              name: 'client.meetinginfo.response',
-              options: {
-                meetingId,
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: info?.url,
               },
-            });
-          }
+            },
+            options: {
+              meetingId,
+            },
+          });
         }
         if (info && info.body) {
           this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
@@ -112,24 +115,22 @@ export default class MeetingInfo {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
-        if (meetingId) {
+        if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          if (sendCAevents) {
-            this.webex.internal.newMetrics.submitClientEvent({
-              name: 'client.meetinginfo.response',
-              payload: {
-                identifiers: {
-                  meetingLookupUrl: error?.url,
-                },
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: error?.url,
               },
-              options: {
-                meetingId,
-                rawError: error,
-              },
-            });
-          }
+            },
+            options: {
+              meetingId,
+              rawError: error,
+            },
+          });
         }
 
         return Promise.reject(error);

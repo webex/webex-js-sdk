@@ -25,8 +25,8 @@ describe('plugin-meetings', () => {
     });
 
     describe('#fetchMeetingInfo', () => {
-      const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
-        const body = {meetingKey: '1234323'};
+      const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics}) => {
+        const body = {meetingKey: '1234323', url: 'url-123'};
 
         sinon
           .stub(MeetingInfoUtil, 'generateOptions')
@@ -41,19 +41,11 @@ describe('plugin-meetings', () => {
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
         const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-        if(shouldSendInternalCAMetrics) {
+        if (shouldSendCAMetrics) {
           assert.deepEqual(submitInternalEventCalls[0].args[0], {
             name: 'internal.client.meetinginfo.request',
           });
 
-          assert.deepEqual(submitInternalEventCalls[1].args[0], {
-            name: 'internal.client.meetinginfo.response',
-          });
-        } else {
-          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
-        }
-
-        if (shouldSendCAMetrics) {
           assert.deepEqual(submitClientEventCalls[0].args[0], {
             name: 'client.meetinginfo.request',
             options: {
@@ -61,33 +53,43 @@ describe('plugin-meetings', () => {
             },
           });
 
+          assert.deepEqual(submitInternalEventCalls[1].args[0], {
+            name: 'internal.client.meetinginfo.response',
+          });
+
           assert.deepEqual(submitClientEventCalls[1].args[0], {
             name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: 'url-123',
+              },
+            },
             options: {
               meetingId,
             },
           });
         } else {
+          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
           assert.notCalled(webex.internal.newMetrics.submitClientEvent);
         }
       }
-      it('should send ca events if meetingId present send CA events is authorized', async () => {
-        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true, shouldSendInternalCAMetrics: true});
+      it('should send ca events if meetingId present and send CA events is authorized', async () => {
+        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true});
       });
 
       it('should not send ca events if meetingId not present even if CA events are authorized', async () => {
-        checkResolvedFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false});
+        checkResolvedFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false});
       });
 
       it('should not send ca events if CA events are not authorized', async () => {
-        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false, shouldSendInternalCAMetrics: true});
+        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false});
       });
 
       it('should not send ca events if meeting id is not present and CA events are not authorized', async () => {
-        checkResolvedFetchMeetingInfo({shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false});
+        checkResolvedFetchMeetingInfo({shouldSendCAMetrics: false});
       });
 
-      const checkFailingFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
+      const checkFailingFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics}) => {
         const reject = {
           statusCode: 403,
           body: {message: 'msg', code: 403102, data: {meetingInfo: {}}},
@@ -119,24 +121,20 @@ describe('plugin-meetings', () => {
           const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-          if(shouldSendInternalCAMetrics) {
+          if(shouldSendCAMetrics) {  
             assert.deepEqual(submitInternalEventCalls[0].args[0], {
               name: 'internal.client.meetinginfo.request',
             });
 
-            assert.deepEqual(submitInternalEventCalls[1].args[0], {
-              name: 'internal.client.meetinginfo.response',
-            });
-          } else {
-            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
-          }
-
-          if(shouldSendCAMetrics) {  
             assert.deepEqual(submitClientEventCalls[0].args[0], {
               name: 'client.meetinginfo.request',
               options: {
                 meetingId: 'meetingId',
               },
+            });
+
+            assert.deepEqual(submitInternalEventCalls[1].args[0], {
+              name: 'internal.client.meetinginfo.response',
             });
   
             assert.deepEqual(submitClientEventCalls[1].args[0], {
@@ -152,28 +150,29 @@ describe('plugin-meetings', () => {
               },
             });
           } else {
+            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           }
         }
       }
 
       it('should send ca events when fails if meetingId present and CA events are authorized', async () => {
-        checkFailingFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true, shouldSendInternalCAMetrics: true})
+        checkFailingFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true})
       });
 
       it('should not send ca events when fails if meetingId present and CA events are not authorized', async () => {
-        checkFailingFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false, shouldSendInternalCAMetrics: true})
+        checkFailingFetchMeetingInfo({meetingId: 'meetingId', shouldSendCAMetrics: false})
       });
 
       it('should not send ca events when fails if meetingId not present even if CA events are authorized', async () => {
-        checkFailingFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false})
+        checkFailingFetchMeetingInfo({sendCAevents: true, shouldSendCAMetrics: false})
       });
 
       it('should not send ca events when fails if meetingId not present and CA events are not authorized', async () => {
-        checkFailingFetchMeetingInfo({shouldSendCAMetrics: false, shouldSendInternalCAMetrics: false})
+        checkFailingFetchMeetingInfo({shouldSendCAMetrics: false})
       });
 
-      const checkRetryFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, shouldSendInternalCAMetrics}) => {
+      const checkRetryFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics}) => {
         const reject = {
           statusCode: 403,
           body: {message: 'msg', code: 403102, data: {meetingInfo: {}}},
@@ -182,7 +181,7 @@ describe('plugin-meetings', () => {
 
         sinon
           .stub(MeetingInfoUtil, 'generateOptions')
-          .resolves({type: 'MEETING_LINK', destination: '123456'});
+          .resolves({type: 'MEETING_LINK', destination: '123456', url: 'success-url-123'});
         const requestStub = sinon
           .stub(MeetingInfoRequest.prototype, 'fetchMeetingInfo')
           .rejects(reject);
@@ -206,25 +205,17 @@ describe('plugin-meetings', () => {
           let submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           let submitClientEventCalls = webex.internal.newMetrics.submitClientlEvent.getCalls();
 
-          if(shouldSendInternalCAMetrics) {
+          if(shouldSendCAMetrics) {
             assert.deepEqual(submitInternalEventCalls[0].args[0], {
               name: 'internal.client.meetinginfo.request',
             });
 
-            assert.deepEqual(submitInternalEventCalls[1].args[0], {
-              name: 'internal.client.meetinginfo.response',
-            });
-
-            assert.deepEqual(submitInternalEventCalls[2].args[0], {
-              name: 'internal.client.meetinginfo.request',
-            });
-          } else {
-            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
-          }
-
-          if(shouldSendCAMetrics) {
             assert.deepEqual(submitClientEventCalls[0].args[0], {
               name: 'client.meetinginfo.request',
+            });
+
+            assert.deepEqual(submitInternalEventCalls[1].args[0], {
+              name: 'internal.client.meetinginfo.response',
             });
   
             assert.deepEqual(submitClientEventCalls[1].args[0], {
@@ -239,11 +230,21 @@ describe('plugin-meetings', () => {
                 rawError: err,
               },
             });
+
+            assert.deepEqual(submitInternalEventCalls[2].args[0], {
+              name: 'internal.client.meetinginfo.request',
+            });
   
             assert.deepEqual(submitClientEventCalls[2].args[0], {
               name: 'client.meetinginfo.request',
+              payload: {
+                identifiers: {
+                  meetingLookupUrl: 'success-url-123',
+                },
+              },
             });
           } else {
+            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           }
 

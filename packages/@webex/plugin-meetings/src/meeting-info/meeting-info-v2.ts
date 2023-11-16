@@ -336,59 +336,61 @@ export default class MeetingInfoV2 {
       requestOptions.resource = 'meetingInfo';
     }
 
-    if (meetingId) {
+    if (meetingId && sendCAevents) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
-      if (sendCAevents) {
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.meetinginfo.request',
-          options: {
-            meetingId,
-          },
-        });
-      }
+
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.request',
+        options: {
+          meetingId,
+        },
+      });
     }
 
     return this.webex
       .request(requestOptions)
       .then((response) => {
-        if (meetingId) {
+        if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          if (sendCAevents) {
-            this.webex.internal.newMetrics.submitClientEvent({
-              name: 'client.meetinginfo.response',
-              options: {
-                meetingId,
+
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: response?.url,
               },
-            });
-          }
+            },
+            options: {
+              meetingId,
+            },
+          });
         }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
         return response;
       })
       .catch((err) => {
-        if (meetingId) {
+        if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
-          if (sendCAevents) {
-            this.webex.internal.newMetrics.submitClientEvent({
-              name: 'client.meetinginfo.response',
-              payload: {
-                identifiers: {
-                  meetingLookupUrl: err?.url,
-                },
+
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: err?.url,
               },
-              options: {
-                meetingId,
-                rawError: err,
-              },
-            });
-          }
+            },
+            options: {
+              meetingId,
+              rawError: err,
+            },
+          });
         }
 
         if (err?.statusCode === 403) {
