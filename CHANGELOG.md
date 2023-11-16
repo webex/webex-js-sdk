@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.249](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.248...v3.0.0-beta.249) (2023-11-16)
+
+
+### Features
+
+* **plugin-meetings:** log the raw error message to CA ([#3199](https://github.com/webex/webex-js-sdk/issues/3199)) ([e2a8bfe](https://github.com/webex/webex-js-sdk/commit/e2a8bfe14f37c8da1ecacde865b43014a75ef517))
+
+## [3.0.0-beta.248](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.247...v3.0.0-beta.248) (2023-11-15)
+
+
+### Features
+
+* added getPermissionTokenTimeLeft function ([#3194](https://github.com/webex/webex-js-sdk/issues/3194)) ([f091a57](https://github.com/webex/webex-js-sdk/commit/f091a576eebf5fbe4c7f08ddf51b4a20559deae1))
+
+## [3.0.0-beta.247](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.246...v3.0.0-beta.247) (2023-11-14)
+
+
+### Features
+
+* **ca-metrics:** use correct error payload for 2409062 ([#3197](https://github.com/webex/webex-js-sdk/issues/3197)) ([b2c0428](https://github.com/webex/webex-js-sdk/commit/b2c0428af63545100831e1c29da234111db5d4a7))
+
 ## [3.0.0-beta.246](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.245...v3.0.0-beta.246) (2023-11-14)
 
 

@@ -621,7 +621,204 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
+      it('it send the raw error message if meetingId provided', () => {
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          rawError: new Error('bad times')
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        console.log(submitToCallDiagnosticsSpy.getCalls()[0].args[0].event.errors)
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              rawErrorMessage: 'bad times',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            errors: [
+              {
+                fatal: true,
+                shownToUser: false,
+                name: 'other',
+                category: 'other',
+                errorCode: 9999,
+                serviceErrorCode: 9999,
+                errorDescription: 'UnknownError',
+              },
+            ],
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+          `name: client.alert.displayed`,
+          `rawError: ${JSON.stringify({
+            message: options.rawError.message,
+            name: options.rawError.name,
+            stack: options.rawError.stack,
+          })}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
+          `name: client.alert.displayed`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[4].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1"},"errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}],"eventData":{"webClientDomain":"whatever","rawErrorMessage":"bad times"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
+      });
+
       it('it should include errors if provided with correlationId', () => {
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          correlationId: 'correlationId',
+          rawError: new Error('bad times'),
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              rawErrorMessage: 'bad times',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            errors: [
+              {
+                fatal: true,
+                shownToUser: false,
+                name: 'other',
+                category: 'other',
+                errorCode: 9999,
+                serviceErrorCode: 9999,
+                errorDescription: 'UnknownError',
+              },
+            ],
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+          `payload: undefined`,
+          `options: ${JSON.stringify(options)}`,
+        ]);
+
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
+          `name: client.alert.displayed`,
+          `rawError: ${JSON.stringify({
+            message: options.rawError.message,
+            name: options.rawError.name,
+            stack: options.rawError.stack,
+          })}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
+          `name: client.alert.displayed`
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[4].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}],"canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url"},"eventData":{"webClientDomain":"whatever","rawErrorMessage":"bad times"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+        ]);
+      });
+
+      it('it should send the raw error message if provided with correlationId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -688,24 +885,23 @@ describe('internal-plugin-metrics', () => {
           `options: ${JSON.stringify(options)}`,
         ]);
 
-
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Error detected, attempting to map and attach it to the event...',
           `name: client.alert.displayed`,
-          `rawError: ${options.rawError}`
+          `rawError: ${options.rawError}`,
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`
-        ])
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
+        ]);
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
-          `name: client.alert.displayed`
+          `name: client.alert.displayed`,
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[4].args, [
@@ -1123,6 +1319,19 @@ describe('internal-plugin-metrics', () => {
           errorCode: 12000,
         });
       });
+      it('should generate event error payload correctly for locus error 2409062', () => {
+        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2409062}});
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'E2EENotSupported',
+          fatal: true,
+          name: 'locus.response',
+          shownToUser: true,
+          serviceErrorCode: 2409062,
+          errorCode: 12002,
+        });
+      });
+
     });
 
     describe('#getCurLoginType', () => {
@@ -1311,7 +1520,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.only('#isServiceErrorExpected', () => {
+    describe('#isServiceErrorExpected', () => {
       it('returns true for code mapped to "expected"', () => {
         assert.isTrue(cd.isServiceErrorExpected(2423012));
       });
