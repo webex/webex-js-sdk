@@ -4338,23 +4338,6 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {meetingId: this.id},
     });
 
-    if (!isEmpty(this.meetingInfo)) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.request',
-        options: {meetingId: this.id},
-      });
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.response',
-        payload: {
-          identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
-        },
-        options: {meetingId: this.id},
-      });
-    }
-
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
     if (this.meetingFiniteStateMachine.state === MEETING_STATE_MACHINE.STATES.ENDED) {

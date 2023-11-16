@@ -824,75 +824,8 @@ describe('plugin-meetings', () => {
             sinon.assert.called(setCorrelationIdSpy);
             assert.equal(meeting.correlationId, '123');
           });
-
-          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
-            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
-
-            const join = meeting.join();
-
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
-              name: 'client.call.initiated',
-              payload: {
-                trigger: 'user-interaction',
-                isRoapCallEnabled: true,
-              },
-              options: {meetingId: meeting.id},
-            });
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0], {
-              name: 'client.meetinginfo.request',
-              options: {meetingId: meeting.id},
-            });
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(2).args[0], {
-              name: 'client.meetinginfo.response',
-              payload: {
-                identifiers: {meetingLookupUrl: 'url'},
-              },
-              options: {meetingId: meeting.id},
-            });
-          });
-
-          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
-            meeting.meetingInfo = {};
-
-            const join = meeting.join();
-
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-
-            assert.equal(
-              webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].name,
-              'client.call.initiated'
-            );
-          });
         });
+
         describe('failure', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.reject());
