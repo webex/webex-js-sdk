@@ -1043,6 +1043,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1052,7 +1053,8 @@ export default class Meetings extends WebexPlugin {
     type: string = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    correlationId: string = undefined
+    correlationId: string = undefined,
+    failOnMissingMeetingInfo = false
   ) {
     // TODO: type should be from a dictionary
 
@@ -1106,7 +1108,8 @@ export default class Meetings extends WebexPlugin {
               type,
               useRandomDelayForInfo,
               infoExtraParams,
-              correlationId
+              correlationId,
+              failOnMissingMeetingInfo
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1161,6 +1164,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {String} correlationId the optional specified correlationId
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1170,7 +1174,8 @@ export default class Meetings extends WebexPlugin {
     type: string = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    correlationId: string = undefined
+    correlationId: string = undefined,
+    failOnMissingMeetingInfo = false
   ) {
     const meeting = new Meeting(
       {
@@ -1232,10 +1237,18 @@ export default class Meetings extends WebexPlugin {
         !(err instanceof PasswordError) &&
         !(err instanceof PermissionError)
       ) {
-        // if there is no meeting info we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`
         );
+        if (failOnMissingMeetingInfo) {
+          LoggerProxy.logger.info(
+            `Meetings:index#createMeeting --> Destroying meeting due to missing meeting info.`
+          );
+          // @ts-ignore
+          this.destroy(meeting, MEETING_REMOVED_REASON.MISSING_MEETING_INFO);
+          throw new Error(err);
+        }
+        // if there is no meeting info and no error should be thrown then we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           'Meetings:index#createMeeting --> Info assuming this destination is a 1:1 or wireless share'
         );
