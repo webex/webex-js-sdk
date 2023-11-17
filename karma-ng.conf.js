@@ -157,7 +157,7 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true,
   };
 
-  if (process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
+  if (process.env.COVERAGE || process.env.CI) {
     cfg.junitReporter = {
       outputFile: `${packageName}.xml`,
       outputDir: 'reports/junit/karma',
