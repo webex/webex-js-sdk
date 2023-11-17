@@ -151,7 +151,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         networkType: options?.networkType || 'unknown',
         userAgent: userAgentToString({
           // @ts-ignore
-          clientName: this.webex.meetings?.metrics?.clientName,
+          clientName: this.webex.meetings?.config?.metrics?.clientName,
           // @ts-ignore
           webexVersion: this.webex.version,
         }),
@@ -514,6 +514,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }),
     };
 
+    if (options?.rawError?.message) {
+      // @ts-ignore
+      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
+    }
+
     return clientEventObject;
   }
 
@@ -556,6 +561,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       loginType: this.getCurLoginType(),
     };
+
+    if (options?.rawError?.message) {
+      // @ts-ignore
+      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
+    }
 
     return clientEventObject;
   }
@@ -758,5 +768,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // @ts-ignore
     return this.webex.prepareFetchOptions(request);
+  }
+
+  /**
+   * Returns true if the specified serviceErrorCode maps to an expected error.
+   * @param {number} serviceErrorCode the service error code
+   * @returns {boolean}
+   */
+  public isServiceErrorExpected(serviceErrorCode: number): boolean {
+    const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
+    const clientErrorPayload = CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD[clientErrorCode];
+
+    return clientErrorPayload?.category === 'expected';
   }
 }

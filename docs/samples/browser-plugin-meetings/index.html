@@ -16,16 +16,17 @@
       <div class="section-content">
         <fieldset>
           <legend>Multistream Remote Videos</legend>
-          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-share-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-share-audio" autoplay></audio>
           <div id="multistream-videos-container" class="multistream-videos-container">
           </div>
           <div class="multistream-buttons">
             <div class="stage-control-wrapper">
               <span>Choose Layout:</span>
-              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+              <select name="multistream-layout" id="multistream-layout" disabled
+                onchange="updateMultistreamVideoLayout()">
                 <option value="AllEqual">All Equal (max 9)</option>
                 <option value="OnePlusFive">One big plane + five small</option>
                 <option value="Single">Single video pane</option>
@@ -94,7 +95,8 @@
 
               <form id="credentials">
                 <p class="note">
-                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for access token
+                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
+                  access token
                 </p>
                 <div>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
@@ -118,7 +120,8 @@
               <fieldset>
                 <legend>Streams</legend>
                 <p class="note">
-                  NOTE: Can start audio/video without a meeting(or click Get Media Streams after joining meeting) and play around with effects.
+                  NOTE: Can start audio/video without a meeting(or click Get Media Streams after joining meeting) and
+                  play around with effects.
                   Audio/video streams will persist after leaving a meeting as well and can be used in another meeting.
                 </p>
                 <div class="video-section">
@@ -420,7 +423,8 @@
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
                   </span>
-                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value="" type="hidden">
+                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value=""
+                    type="hidden">
                 </div>
                 <div class="u-mt">
                   <button id="btn-verify-password" disabled onclick="verifyPassword()" class="btn-code">Verify
@@ -443,18 +447,14 @@
                   <!-- Media quality dropdown -->
                   <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
 
-                  <div >
+                  <div>
                     <!-- Local Media -->
                     <div class="u-mv flex flex--align-center">
                       <label class="media-button-label" for="local-resolution">Local Resolution</label>
                       <select name="local-resolution" id="local-resolution" class="media-select"></select>
 
-                      <button
-                        id="ts-set-local-meeting-quality"
-                        type="button"
-                        onclick="setLocalMeetingQuality()"
-                        class="btn-code media-button"
-                      >
+                      <button id="ts-set-local-meeting-quality" type="button" onclick="setLocalMeetingQuality()"
+                        class="btn-code media-button">
                         meeting.setLocalVideoQuality()
                       </button>
                     </div>
@@ -464,12 +464,8 @@
                       <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
                       <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
 
-                      <button
-                        id="ts-set-remote-meeting-quality"
-                        type="button"
-                        onclick="setRemoteMeetingQuality()"
-                        class="btn-code media-button"
-                      >
+                      <button id="ts-set-remote-meeting-quality" type="button" onclick="setRemoteMeetingQuality()"
+                        class="btn-code media-button">
                         meeting.setRemoteVideoQuality()
                       </button>
                     </div>
@@ -490,10 +486,12 @@
                     <input type="checkbox" name="ts-media-direction" value="videoEnabled" checked="">videoEnabled
                   </label>
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="shareAudioEnabled" checked="">shareAudioEnabled
+                    <input type="checkbox" name="ts-media-direction" value="shareAudioEnabled"
+                      checked="">shareAudioEnabled
                   </label>
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="shareVideoEnabled" checked="">shareVideoEnabled
+                    <input type="checkbox" name="ts-media-direction" value="shareVideoEnabled"
+                      checked="">shareVideoEnabled
                   </label>
                 </div>
               </div>
@@ -625,6 +623,52 @@
         <h2 class="collapsible">Meeting Streams</h2>
         <div class="section-content">
           <div class="video-section">
+            <div>
+              <div class="flex" style="gap: 0.5rem;">
+                <fieldset>
+                  <legend>Local Video</legend>
+                  <div class="video-container">
+                    <video id="local-video" class="video-el" muted="true" autoplay playsinline
+                      style="height: 200px;"></video>
+                    <span id="local-video-resolution" class="video-resolution"></span>
+                  </div>
+                </fieldset>
+
+                <fieldset style="display: flex; align-items: center;">
+                  <legend>Local Audio</legend>
+                  <audio id="local-audio" muted controls></audio>
+                </fieldset>
+              </div>
+              <div class="flex">
+                <!--mute-unmute audio -->
+                <div>
+                  <div class="u-mb">
+                    <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()">Toggle Audio</button>
+                  </div>
+                </div>
+
+                <!--mute-unmute-video -->
+                <div>
+                  <div class="u-mb">
+                    <button id="ts-toggle-video" type="button" onclick="toggleSendVideo()">Toggle Video</button>
+                  </div>
+                </div>
+
+                <!-- change background -->
+                <div>
+                  <div class="u-mb">
+                    <button id="ts-change-bg" type="button" onclick="">Change Background</button>
+                  </div>
+                </div>
+                <!-- BNR -->
+                <div>
+                  <div class="u-mb">
+                    <button id="ts-toggle-BNR" type="button" onclick="toggleBNR()">Enable BNR</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
@@ -653,6 +697,24 @@
                   </div>
                   <button type="submit" name="submit" id="layout-submit" onclick="changeLayout()">Submit</button>
                 </fieldset>
+              </fieldset>
+            </div>
+
+            <div>
+              <fieldset>
+                <legend>Local Screenshare Video</legend>
+                <video id="local-screenshare-video" autoplay playsinline></video>
+              </fieldset>
+              <fieldset>
+                <legend>Local Screenshare Audio</legend>
+                <audio id="local-screenshare-audio" muted controls></audio>
+              </fieldset>
+              <div class="btn-group">
+                <button id="ts-start-screenshare" type="button" onclick="startScreenShare()"
+                  class="btn-code">meeting.shareScreen()</button>
+                <button id="ts-stop-screenshare" type="button" onclick="stopScreenShare()"
+                  class="btn-code">meeting.stopShare()</button>
+              </div>
             </div>
 
             <div class="u-mt" id="remote-transcoded-screenshare-wrapper">

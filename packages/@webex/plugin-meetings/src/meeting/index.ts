@@ -544,7 +544,8 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingJoinUrl: any;
   meetingNumber: any;
   meetingState: any;
-  permissionToken: any;
+  permissionToken: string;
+  permissionTokenPayload: any;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -3024,7 +3025,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
-      this.setSelfUserPolicies(this.permissionToken);
+      this.setPermissionTokenPayload(webexMeetingInfo?.permissionToken);
+      this.setSelfUserPolicies();
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
@@ -3288,11 +3290,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Sets the self user policies based on the contents of the permission token
+   * @returns {void}
+   */
+  setSelfUserPolicies() {
+    this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+  }
+
+  /**
+   * Sets the permission token payload on the class instance
+   *
    * @param {String} permissionToken
    * @returns {void}
    */
-  setSelfUserPolicies(permissionToken: string) {
-    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
+  public setPermissionTokenPayload(permissionToken: string) {
+    this.permissionTokenPayload = jwt.decode(permissionToken);
   }
 
   /**
@@ -5100,7 +5111,9 @@ export default class Meeting extends StatelessWebexPlugin {
             errors: [
               // @ts-ignore
               this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                {
+                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                }
               ),
             ],
           },
@@ -5636,7 +5649,9 @@ export default class Meeting extends StatelessWebexPlugin {
               errors: [
                 // @ts-ignore
                 this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                  CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                  {
+                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                  }
                 ),
               ],
             },
@@ -5671,8 +5686,16 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           },
         });
+        LoggerProxy.logger.info(
+          `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+        );
+
+        // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
+        this.remoteMediaManager?.logAllReceiveSlots();
       })
       .catch((error) => {
+        LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
@@ -5711,11 +5734,6 @@ export default class Meeting extends StatelessWebexPlugin {
             this.closePeerConnections();
             this.unsetPeerConnections();
           }
-
-          LoggerProxy.logger.error(
-            `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
-            error
-          );
 
           // Upload logs on error while adding media
           Trigger.trigger(
@@ -7254,5 +7272,27 @@ export default class Meeting extends StatelessWebexPlugin {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }
     }
+  }
+
+  /**
+   * Gets the time left in seconds till the permission token expires
+   * (from the time the function has been fired)
+   *
+   * @returns {number} time left in seconds
+   */
+  public getPermissionTokenTimeLeftInSec(): number | undefined {
+    if (!this.permissionTokenPayload) {
+      return undefined;
+    }
+
+    const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
+
+    // using new Date instead of Date.now() to allow for accurate unit testing
+    // https://github.com/sinonjs/fake-timers/issues/321
+    const now = new Date().getTime();
+
+    // substract current time from the permissionTokenExp
+    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
+    return (permissionTokenExpValue - now) / 1000;
   }
 }

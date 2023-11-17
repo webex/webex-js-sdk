@@ -416,7 +416,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
         );
 
-        return err;
+        throw err;
       });
     }
 

@@ -1406,9 +1406,10 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject if waitForMediaConnectionConnected() rejects', async () => {
-          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+          const FAKE_ERROR = {fatal: true};
+          const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
             .stub()
-            .returns({});
+            .returns(FAKE_ERROR);
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1422,14 +1423,14 @@ describe('plugin-meetings', () => {
               errorThrown = true;
             });
 
+          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
           assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
-
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
               icePhase: 'JOIN_MEETING_FINAL',
-              errors: [{}],
+              errors: [FAKE_ERROR],
             },
             options: {
               meetingId: meeting.id,
@@ -4487,20 +4488,22 @@ describe('plugin-meetings', () => {
 
         describe('submitClientEvent on connectionFailed', () => {
           it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
-            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
-              sinon.stub().returns({});
+            const FAKE_ERROR = {fatal: true};
+            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+              .stub()
+              .returns(FAKE_ERROR);
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
               state: 'Failed',
             });
+            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.end',
               payload: {
                 canProceed: false,
                 icePhase: 'IN_MEETING',
-                errors: [{}],
+                errors: [FAKE_ERROR],
               },
               options: {
                 meetingId: meeting.id,
@@ -5559,29 +5562,40 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setPermissionTokenPayload', () => {
+        it('sets correctly', () => {
+          assert.notOk(meeting.permissionTokenPayload);
+
+          const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '1234'};
+          
+          const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+          
+          meeting.setPermissionTokenPayload();
+
+          assert.calledOnce(jwtDecodeStub);
+          assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
+        });
+      });
+
       describe('#setSelfUserPolicies', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {permission: {userPolicies: {a: true}}};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
+          meeting.setSelfUserPolicies();
 
-          meeting.setSelfUserPolicies(dummyToken);
-
-          assert.deepEqual(meeting.selfUserPolicies, {a: true});
+          assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
         });
 
         it('handles missing permission data', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
-
-          meeting.setSelfUserPolicies(dummyToken);
+          meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, undefined);
         });
@@ -5589,12 +5603,10 @@ describe('plugin-meetings', () => {
         it('handles missing policy data', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const dummyToken = 'some data';
           const policyData = {permission: {}};
+          meeting.permissionTokenPayload = policyData;
 
-          sinon.stub(jwt, 'decode').returns(policyData);
-
-          meeting.setSelfUserPolicies(dummyToken);
+          meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, undefined);
         });
@@ -5654,19 +5666,37 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
           assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
+          
+          if(expectedInfoToParse.permissionTokenPayload) {
+            assert.deepEqual(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
+          }
         };
 
         it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
           meeting.config.experimental = {enableMediaNegotiatedEvent: true};
           meeting.config.experimental.enableUnifiedMeetings = true;
+
+          const expectedPermissionTokenPayload = {
+            exp: "123456",
+            permission: {
+              userPolicies: {
+                a: true
+              }
+            }
+          };
+
+          // generated permissionToken with secret `secret` and 
+          // value `JSON.stringify(expectedPermissionTokenPayload)`
+          const permissionToken = 
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
+
           const FAKE_MEETING_INFO = {
             body: {
               conversationUrl: uuid1,
               locusUrl: url1,
               meetingJoinUrl: url2,
               meetingNumber: '12345',
-              permissionToken:
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
+              permissionToken,
               sipMeetingUri: test1,
               sipUrl: test1,
               owner: test2,
@@ -5674,6 +5704,7 @@ describe('plugin-meetings', () => {
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
+
           const expectedInfoToParse = {
             conversationUrl: uuid1,
             locusUrl: url1,
@@ -5682,8 +5713,8 @@ describe('plugin-meetings', () => {
             meetingJoinUrl: url2,
             owner: test2,
             selfUserPolicies: {a: true},
-            permissionToken:
-              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX0sImlhdCI6MTY4OTE2NDEwMn0.9uL_U7QUdYyMerrgHC_gCKOax2j_bz04u8Ikbv9KiXU',
+            permissionToken,
+            permissionTokenPayload: expectedPermissionTokenPayload
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -7991,6 +8022,38 @@ describe('plugin-meetings', () => {
         method: 'PUT',
         uri: `${url1}/participant/${uuid1}/leave`,
       });
+    });
+  });
+
+  describe('#getPermissionTokenTimeLeftInSec', () => {
+    let now;
+    let clock;
+
+    beforeEach(() => {
+      now = Date.now();
+
+      // mock `new Date()` with constant `now`
+      clock = sinon.useFakeTimers(now);
+    });
+
+    afterEach(() => {
+      clock.restore();  
+    })
+
+    it('should return undefined if exp is undefined', () => { 
+      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
+    });
+
+    it('should return the expected positive exp', () => { 
+      // set permission token as now + 1 sec
+      meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
+      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
+    });
+
+    it('should return the expected negative exp', () => { 
+      // set permission token as now - 1 sec
+      meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
+      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
     });
   });
 });

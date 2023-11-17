@@ -473,6 +473,8 @@ export class RemoteMediaManager extends EventsScope {
     if (!this.started) {
       throw new Error('setLayout() called before start()');
     }
+    LoggerProxy.logger.log(`RemoteMediaManager#setLayout --> new layout selected: ${layoutId}`);
+
     this.currentLayoutId = layoutId;
     this.currentLayout = cloneDeep(this.config.video.layouts[this.currentLayoutId]);
 
@@ -725,10 +727,12 @@ export class RemoteMediaManager extends EventsScope {
   /**
    * Logs the state of the receive slots
    */
-  private logReceieveSlots() {
+  private logMainVideoReceiveSlots() {
     let logMessage = '';
     forEach(this.receiveSlotAllocations.activeSpeaker, (group, groupName) => {
-      logMessage += `group: ${groupName}\n${group.slots.map((slot) => slot.logString).join(' ')}`;
+      logMessage += `\ngroup: ${groupName}\n${group.slots
+        .map((slot) => slot.logString)
+        .join(', ')}`;
     });
 
     logMessage += '\nreceiverSelected:\n';
@@ -737,8 +741,41 @@ export class RemoteMediaManager extends EventsScope {
     });
 
     LoggerProxy.logger.log(
-      `RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}\n${logMessage}`
+      `RemoteMediaManager#logMainVideoReceiveSlots --> MAIN VIDEO receive slots: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}${logMessage}`
     );
+  }
+
+  /** logs main audio slots */
+  private logMainAudioReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logMainAudioReceiveSlots --> MAIN AUDIO receive slots: ${this.slots.audio
+        .map((slot) => slot.logString)
+        .join(', ')}`
+    );
+  }
+
+  /** logs slides video slots */
+  private logSlidesVideoReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logSlidesVideoReceiveSlots --> SLIDES VIDEO receive slot: ${this.slots.screenShare.video?.logString}`
+    );
+  }
+
+  /** logs slides audio slots */
+  private logSlidesAudioReceiveSlots() {
+    LoggerProxy.logger.log(
+      `RemoteMediaManager#logSlidesAudioReceiveSlots --> SLIDES AUDIO receive slots: ${this.slots.screenShare.audio
+        .map((slot) => slot.logString)
+        .join(', ')}`
+    );
+  }
+
+  /** Logs all current receive slots */
+  public logAllReceiveSlots() {
+    this.logMainVideoReceiveSlots();
+    this.logMainAudioReceiveSlots();
+    this.logSlidesVideoReceiveSlots();
+    this.logSlidesAudioReceiveSlots();
   }
 
   /**
@@ -765,7 +802,7 @@ export class RemoteMediaManager extends EventsScope {
     // allocate receiver selected
     this.allocateSlotsToReceiverSelectedVideoPaneGroups();
 
-    this.logReceieveSlots();
+    this.logMainVideoReceiveSlots();
 
     // If this is the initial layout, there may be some "unused" slots left because of the preallocation
     // done in this.preallocateVideoReceiveSlots(), so release them now
