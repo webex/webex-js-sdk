@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@webex/internal-media-core": "1.39.3",
-    "@webex/web-media-effects": "^2.8.0"
+    "@webex/web-media-effects": "^2.13.6"
   },
   "browserify": {
     "transform": [
