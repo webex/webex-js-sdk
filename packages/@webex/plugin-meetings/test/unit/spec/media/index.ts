@@ -12,23 +12,21 @@ describe('createMediaConnection', () => {
   const fakeRoapMediaConnection = {
     id: 'roap media connection',
   };
-  const fakeAudioTrack = {
-    id: 'audio track',
-    underlyingTrack: 'underlying audio track',
+  const fakeTrack = {
+    id: 'any fake track'
+  }
+  const fakeAudioStream = {
+    outputTrack: fakeTrack,
   };
-  const fakeVideoTrack = {
-    id: 'video track',
-    underlyingTrack: 'underlying video track',
+  const fakeVideoStream = {
+    outputTrack: fakeTrack,
   };
-  const fakeShareVideoTrack = {
-    id: 'share video track',
-    underlyingTrack: 'underlying share video track',
+  const fakeShareVideoStream = {
+    outputTrack: fakeTrack,
   };
-  const fakeShareAudioTrack = {
-    id: 'share audio track',
-    underlyingTrack: 'underlying share audio track',
+  const fakeShareAudioStream = {
+    outputTrack: fakeTrack,
   };
-
   afterEach(() => {
     sinon.restore();
   });
@@ -53,8 +51,8 @@ describe('createMediaConnection', () => {
           receiveVideo: true,
           receiveShare: true,
         },
-        audioTrack: fakeAudioTrack,
-        videoTrack: fakeVideoTrack,
+        audioStream: fakeAudioStream,
+        videoStream: fakeVideoStream,
         shareVideoTrack: null,
         shareAudioTrack: null,
       },
@@ -95,9 +93,10 @@ describe('createMediaConnection', () => {
       },
       {
         localTracks: {
-          audio: fakeAudioTrack.underlyingTrack,
-          video: fakeVideoTrack.underlyingTrack,
+          audio: fakeTrack,
+          video: fakeTrack,
           screenShareVideo: undefined,
+          screenShareAudio: undefined,
         },
         direction: {
           audio: 'inactive',
@@ -144,50 +143,11 @@ describe('createMediaConnection', () => {
             credential: 'turn password',
           },
         ],
-        enableMainAudio: true,
-        enableMainVideo: true,
         bundlePolicy: 'max-bundle',
       },
       'meeting id'
     );
   });
-
-  forEach([
-    {sendAudio: true, receiveAudio: true, sendVideo: true, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: true, receiveAudio: false, sendVideo: true, receiveVideo: false, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: false, receiveAudio: true, sendVideo: false, receiveVideo: true, enableMainAudio: true, enableMainVideo: true,},
-    {sendAudio: false, receiveAudio: false, sendVideo: false, receiveVideo: false, enableMainAudio: false, enableMainVideo: false,},
-  ], ({sendAudio, sendVideo, receiveAudio, receiveVideo, enableMainAudio, enableMainVideo}) => {
-    it(`sets enableMainVideo to ${enableMainVideo} and enableMainAudio to ${enableMainAudio} when sendAudio: ${sendAudio} sendVideo: ${sendVideo} receiveAudio: ${receiveAudio} receiveVideo: ${receiveVideo}`, () => {
-      const multistreamRoapMediaConnectionConstructorStub = sinon
-        .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
-        .returns(fakeRoapMediaConnection);
-
-        Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', 'correlationId', {
-          mediaProperties: {
-            mediaDirection: {
-              sendAudio,
-              sendVideo,
-              sendShare: false,
-              receiveAudio,
-              receiveVideo,
-              receiveShare: true,
-            },
-          },
-        });
-        assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
-        assert.calledWith(
-          multistreamRoapMediaConnectionConstructorStub,
-          {
-            iceServers: [],
-            enableMainAudio,
-            enableMainVideo,
-          },
-          'meeting id'
-        );
-      });
-    }
-  );
 
   it('passes empty ICE servers array to MultistreamRoapMediaConnection if turnServerInfo is undefined (multistream enabled)', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
@@ -211,8 +171,6 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
-        enableMainAudio: true,
-        enableMainVideo: true,
       },
       'meeting id'
     );
@@ -240,8 +198,6 @@ describe('createMediaConnection', () => {
         multistreamRoapMediaConnectionConstructorStub,
         {
           iceServers: [],
-          enableMainAudio: true,
-          enableMainVideo: true,
         },
         'meeting id'
       );
@@ -268,10 +224,10 @@ describe('createMediaConnection', () => {
           receiveVideo: true,
           receiveShare: true,
         },
-        audioTrack: fakeAudioTrack,
-        videoTrack: null,
-        shareVideoTrack: fakeShareVideoTrack,
-        shareAudioTrack: fakeShareAudioTrack,
+        audioStream: fakeAudioStream,
+        videoStream: null,
+        shareVideoStream: fakeShareVideoStream,
+        shareAudioStream: fakeShareAudioStream,
       },
       remoteQualityLevel: 'HIGH',
       enableRtx: ENABLE_RTX,
@@ -300,9 +256,10 @@ describe('createMediaConnection', () => {
       },
       {
         localTracks: {
-          audio: fakeAudioTrack.underlyingTrack,
+          audio: fakeTrack,
           video: undefined,
-          screenShareVideo: fakeShareVideoTrack.underlyingTrack,
+          screenShareVideo: fakeTrack,
+          screenShareAudio: fakeTrack,
         },
         direction: {
           audio: 'sendrecv',
