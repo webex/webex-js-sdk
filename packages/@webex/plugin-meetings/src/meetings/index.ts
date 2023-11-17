@@ -1222,7 +1222,7 @@ export default class Meetings extends WebexPlugin {
           () =>
             meeting.fetchMeetingInfo({
               extraParams: infoExtraParams,
-              sendCAevents: !!correlationId, // to determine if we should submit Call Analyzer events
+              sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
             }),
           waitingTime
         );
@@ -1230,7 +1230,7 @@ export default class Meetings extends WebexPlugin {
       } else {
         await meeting.fetchMeetingInfo({
           extraParams: infoExtraParams,
-          sendCAevents: !!correlationId, // to determine if we should submit Call Analyzer events
+          sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
         });
       }
     } catch (err) {

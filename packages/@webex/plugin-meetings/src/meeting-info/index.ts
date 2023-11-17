@@ -72,18 +72,16 @@ export default class MeetingInfo {
    */
   private requestFetchInfo(options: any) {
     const {meetingId, sendCAevents} = options;
-    if (meetingId) {
+    if (meetingId && sendCAevents) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
-      if (sendCAevents) {
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.meetinginfo.request',
-          options: {
-            meetingId,
-          },
-        });
-      }
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.request',
+        options: {
+          meetingId,
+        },
+      });
     }
 
     return this.meetingInfoRequest
