@@ -139,7 +139,7 @@
                     <fieldset style="display: flex; align-items: center;">
                       <legend>Local Audio</legend>
                       <div class="audio-container">
-                        <audio id="local-audio" controls autoplay></audio>
+                        <audio id="local-audio" muted controls></audio>
                         <span id="local-audio-published-state" class="audio-published"></span>
                       </div>
                     </fieldset>
@@ -215,7 +215,7 @@
                 </fieldset>
                 <fieldset>
                   <legend>Screenshare Audio</legend>
-                  <audio id="local-screenshare-audio" controls autoplay></audio>
+                  <audio id="local-screenshare-audio" muted controls></audio>
                 </fieldset>
                 <div class="btn-group">
                   <button id="ts-start-screenshare" type="button" onclick="startScreenShare()" class="btn-code">
@@ -623,52 +623,6 @@
         <h2 class="collapsible">Meeting Streams</h2>
         <div class="section-content">
           <div class="video-section">
-            <div>
-              <div class="flex" style="gap: 0.5rem;">
-                <fieldset>
-                  <legend>Local Video</legend>
-                  <div class="video-container">
-                    <video id="local-video" class="video-el" muted="true" autoplay playsinline
-                      style="height: 200px;"></video>
-                    <span id="local-video-resolution" class="video-resolution"></span>
-                  </div>
-                </fieldset>
-
-                <fieldset style="display: flex; align-items: center;">
-                  <legend>Local Audio</legend>
-                  <audio id="local-audio" muted controls></audio>
-                </fieldset>
-              </div>
-              <div class="flex">
-                <!--mute-unmute audio -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()">Toggle Audio</button>
-                  </div>
-                </div>
-
-                <!--mute-unmute-video -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-video" type="button" onclick="toggleSendVideo()">Toggle Video</button>
-                  </div>
-                </div>
-
-                <!-- change background -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-change-bg" type="button" onclick="">Change Background</button>
-                  </div>
-                </div>
-                <!-- BNR -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-BNR" type="button" onclick="toggleBNR()">Enable BNR</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
@@ -698,23 +652,6 @@
                   <button type="submit" name="submit" id="layout-submit" onclick="changeLayout()">Submit</button>
                 </fieldset>
               </fieldset>
-            </div>
-
-            <div>
-              <fieldset>
-                <legend>Local Screenshare Video</legend>
-                <video id="local-screenshare-video" autoplay playsinline></video>
-              </fieldset>
-              <fieldset>
-                <legend>Local Screenshare Audio</legend>
-                <audio id="local-screenshare-audio" muted controls></audio>
-              </fieldset>
-              <div class="btn-group">
-                <button id="ts-start-screenshare" type="button" onclick="startScreenShare()"
-                  class="btn-code">meeting.shareScreen()</button>
-                <button id="ts-stop-screenshare" type="button" onclick="stopScreenShare()"
-                  class="btn-code">meeting.stopShare()</button>
-              </div>
             </div>
 
             <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
