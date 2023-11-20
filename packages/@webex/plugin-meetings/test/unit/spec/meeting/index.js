@@ -856,75 +856,8 @@ describe('plugin-meetings', () => {
             sinon.assert.called(setCorrelationIdSpy);
             assert.equal(meeting.correlationId, '123');
           });
-
-          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
-            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
-
-            const join = meeting.join();
-
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
-              name: 'client.call.initiated',
-              payload: {
-                trigger: 'user-interaction',
-                isRoapCallEnabled: true,
-              },
-              options: {meetingId: meeting.id},
-            });
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0], {
-              name: 'client.meetinginfo.request',
-              options: {meetingId: meeting.id},
-            });
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(2).args[0], {
-              name: 'client.meetinginfo.response',
-              payload: {
-                identifiers: {meetingLookupUrl: 'url'},
-              },
-              options: {meetingId: meeting.id},
-            });
-          });
-
-          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
-            meeting.meetingInfo = {};
-
-            const join = meeting.join();
-
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-
-            assert.equal(
-              webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].name,
-              'client.call.initiated'
-            );
-          });
         });
+
         describe('failure', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.reject());
@@ -3153,7 +3086,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusId = 'locus-id';
           meeting.id = 'meeting-id';
-          FAKE_OPTIONS = {meetingId: meeting.id};
+          FAKE_OPTIONS = {meetingId: meeting.id, sendCAevents: true};
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
@@ -3173,6 +3106,7 @@ describe('plugin-meetings', () => {
             password: FAKE_PASSWORD,
             captchaCode: FAKE_CAPTCHA_CODE,
             extraParams: FAKE_EXTRA_PARAMS,
+            sendCAevents: true,
           });
 
           assert.calledWith(
@@ -3224,7 +3158,7 @@ describe('plugin-meetings', () => {
           const clock = sinon.useFakeTimers();
           const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
-          await meeting.fetchMeetingInfo({});
+          await meeting.fetchMeetingInfo({sendCAevents: false});
 
           // clear timer
           assert.calledWith(clearTimeoutSpy, FAKE_TIMEOUT_FETCHMEETINGINFO_ID);
@@ -3241,7 +3175,7 @@ describe('plugin-meetings', () => {
             undefined,
             meeting.locusId,
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: false}
           );
 
           // parseMeeting info
@@ -3320,7 +3254,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({}), PasswordError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), PasswordError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3331,7 +3265,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3353,7 +3287,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({}), PermissionError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), PermissionError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3364,7 +3298,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3385,6 +3319,7 @@ describe('plugin-meetings', () => {
           await assert.isRejected(
             meeting.fetchMeetingInfo({
               password: 'aaa',
+              sendCAevents: true
             }),
             CaptchaError
           );
@@ -3398,7 +3333,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3430,6 +3365,7 @@ describe('plugin-meetings', () => {
             meeting.fetchMeetingInfo({
               password: 'aaa',
               captchaCode: 'bbb',
+              sendCAevents: true,
             }),
             CaptchaError
           );
@@ -3443,7 +3379,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3465,6 +3401,7 @@ describe('plugin-meetings', () => {
 
           await meeting.fetchMeetingInfo({
             password: 'aaa',
+            sendCAevents: true,
           });
 
           assert.calledWith(
@@ -3476,7 +3413,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {
@@ -3516,6 +3453,7 @@ describe('plugin-meetings', () => {
             meeting.fetchMeetingInfo({
               password: 'aaa',
               captchaCode: 'bbb',
+              sendCAevents: true,
             })
           );
 
@@ -3528,7 +3466,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3622,6 +3560,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.fetchMeetingInfo, {
             password: 'password',
             captchaCode: 'captcha id',
+            sendCAevents: false,
           });
         });
         it('handles PasswordError returned by fetchMeetingInfo', async () => {

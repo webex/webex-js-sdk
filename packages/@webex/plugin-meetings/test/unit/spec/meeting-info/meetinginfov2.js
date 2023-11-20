@@ -373,14 +373,26 @@ describe('plugin-meetings', () => {
 
       forEach(
         [
+          {errorCode: 403049, sendCAevents: false},
+          {errorCode: 403049, sendCAevents: true},
           {errorCode: 403049},
+          {errorCode: 403104, sendCAevents: false},
+          {errorCode: 403104, sendCAevents: true},
           {errorCode: 403104},
+          {errorCode: 403103, sendCAevents: false},
+          {errorCode: 403103, sendCAevents: true},
           {errorCode: 403103},
+          {errorCode: 403048, sendCAevents: false},
+          {errorCode: 403048, sendCAevents: true},
           {errorCode: 403048},
+          {errorCode: 403102, sendCAevents: false},
+          {errorCode: 403102, sendCAevents: true},
           {errorCode: 403102},
+          {errorCode: 403101, sendCAevents: false},
+          {errorCode: 403101, sendCAevents: true},
           {errorCode: 403101},
         ],
-        ({errorCode}) => {
+        ({errorCode, sendCAevents}) => {
           it(`should throw a MeetingInfoV2PolicyError for error code ${errorCode}`, async () => {
             const message = 'a message';
             const meetingInfoData = 'meeting info';
@@ -402,34 +414,48 @@ describe('plugin-meetings', () => {
                 null,
                 null,
                 {},
-                {meetingId: 'meeting-id'}
+                {meetingId: 'meeting-id', sendCAevents}
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              assert(webex.internal.newMetrics.submitClientEvent.calledOnce);
               const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
-              assert.deepEqual(submitInternalEventCalls[0].args[0], {
-                name: 'internal.client.meetinginfo.request',
-              });
-              assert.deepEqual(submitInternalEventCalls[1].args[0], {
-                name: 'internal.client.meetinginfo.response',
-              });
-              assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-                name: 'client.meetinginfo.response',
-                payload: {
-                  identifiers: {
-                    meetingLookupUrl: 'http://api-url.com',
+              const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+
+              if (sendCAevents) {
+                assert.deepEqual(submitInternalEventCalls[0].args[0], {
+                  name: 'internal.client.meetinginfo.request',
+                });
+
+                assert.deepEqual(submitClientEventCalls[0].args[0], {
+                  name: 'client.meetinginfo.request',
+                  options: {
+                    meetingId: 'meeting-id'
                   },
-                },
-                options: {
-                  meetingId: 'meeting-id',
-                  rawError: {
-                    statusCode: 403,
-                    body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
-                    url: 'http://api-url.com',
+                });
+
+                assert.deepEqual(submitInternalEventCalls[1].args[0], {
+                  name: 'internal.client.meetinginfo.response',
+                });
+                
+                assert.deepEqual(submitClientEventCalls[1].args[0], {
+                  name: 'client.meetinginfo.response',
+                  payload: {
+                    identifiers: {
+                      meetingLookupUrl: 'http://api-url.com',
+                    },
                   },
-                },
-              });
+                  options: {
+                    meetingId: 'meeting-id',
+                    rawError: {
+                      statusCode: 403,
+                      body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+                      url: 'http://api-url.com',
+                    },
+                  },
+                });
+              } else {
+                assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+              }
 
               assert.instanceOf(err, MeetingInfoV2PolicyError);
               assert.deepEqual(err.message, `${message}, code=${errorCode}`);
@@ -446,7 +472,86 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it('should send internal CA metric if meetingId is provided', async () => {
+      forEach(
+        [
+          {meetingId: '123', sendCAevents: true, shouldSendCAevents: true},
+          {sendCAevents: true, shouldSendCAevents: false},
+          {meetingId: '123', sendCAevents: false, shouldSendCAevents: false},
+          {shouldSendCAevents: false},
+        ],
+        ({meetingId, sendCAevents, shouldSendCAevents}) => {
+          it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
+            const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+            const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+    
+            webex.request.resolves(requestResponse);
+    
+            const result = await meetingInfo.fetchMeetingInfo(
+              '1234323',
+              _MEETING_ID_,
+              null,
+              null,
+              null,
+              null,
+              extraParams,
+              {meetingId, sendCAevents}
+            );
+    
+            assert.calledWith(webex.request, {
+              method: 'POST',
+              service: WBXAPPAPI_SERVICE,
+              resource: 'meetingInfo',
+              body: {
+                supportHostKey: true,
+                supportCountryList: true,
+                meetingKey: '1234323',
+                ...extraParams,
+              },
+            });
+            assert.deepEqual(result, requestResponse);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
+            );
+    
+            const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+            const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+
+            if(shouldSendCAevents) {
+              assert.deepEqual(submitInternalEventCalls[0].args[0], {
+                name: 'internal.client.meetinginfo.request',
+              });
+              assert.deepEqual(submitClientEventCalls[0].args[0], {
+                name: 'client.meetinginfo.request',
+                options: {
+                  meetingId,
+                }
+              });
+              
+              assert.deepEqual(submitInternalEventCalls[1].args[0], {
+                name: 'internal.client.meetinginfo.response',
+              });
+              assert.deepEqual(submitClientEventCalls[1].args[0], {
+                name: 'client.meetinginfo.response',
+                payload: {
+                  identifiers: {
+                    meetingLookupUrl: result?.url,
+                  },
+                },
+                options: {
+                  meetingId,
+                }
+              });
+            } else {
+              assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+              assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+            }
+          })
+        }
+      )
+
+      it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
         const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
         const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
@@ -460,7 +565,7 @@ describe('plugin-meetings', () => {
           null,
           null,
           extraParams,
-          {meetingId: 'meetingId'}
+          {meetingId: 'meetingId', sendCAevents: true}
         );
 
         assert.calledWith(webex.request, {
@@ -482,42 +587,71 @@ describe('plugin-meetings', () => {
         );
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+        const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+        
         assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
+        assert.deepEqual(submitClientEventCalls[0].args[0], {
+          name: 'client.meetinginfo.request',
+          options: {
+            meetingId: 'meetingId',
+          }
+        });
+        
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
         });
-      });
-
-      it('should not send CA metric if meetingId is not provided', async () => {
-        const message = 'a message';
-        const meetingInfoData = 'meeting info';
-
-        webex.request = sinon.stub().rejects({
-          statusCode: 403,
-          body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
-          url: 'http://api-url.com',
-        });
-        try {
-          await meetingInfo.fetchMeetingInfo(
-            '1234323',
-            _MEETING_ID_,
-            'abc',
-            {
-              id: '999',
-              code: 'aabbcc11',
+        assert.deepEqual(submitClientEventCalls[1].args[0], {
+          name: 'client.meetinginfo.response',
+          payload: {
+            identifiers: {
+              meetingLookupUrl: result?.url,
             },
-            null,
-            null,
-            undefined
-          );
-          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
-        } catch (err) {
-          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
-          assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
-        }
+          },
+          options: {
+            meetingId: 'meetingId',
+          }
+        });
       });
+
+      forEach(
+        [
+          {sendCAevents: true},
+          {sendCAevents: false},
+        ],
+        ({sendCAevents}) => {
+          it(`should not send CA metric if meetingId is not provided disregarding if sendCAevents is ${sendCAevents}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = 'meeting info';
+    
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
+              url: 'http://api-url.com',
+            });
+            try {
+              await meetingInfo.fetchMeetingInfo(
+                '1234323',
+                _MEETING_ID_,
+                'abc',
+                {
+                  id: '999',
+                  code: 'aabbcc11',
+                },
+                null,
+                null,
+                undefined,
+                {meetingId: undefined, sendCAevents}
+              );
+              assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+            } catch (err) {
+              assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+              assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+            }
+          });
+        }
+      );
 
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};
