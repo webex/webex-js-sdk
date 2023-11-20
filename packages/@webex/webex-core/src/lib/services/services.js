@@ -58,6 +58,8 @@ const Services = WebexPlugin.extend({
 
   _serviceUrls: null,
 
+  _hostCatalog: null,
+
   /**
    * Get the registry associated with this webex instance.
    *
@@ -164,6 +166,15 @@ const Services = WebexPlugin.extend({
    */
   _updateServiceUrls(serviceUrls) {
     this._serviceUrls = {...this._serviceUrls, ...serviceUrls};
+  },
+
+  /**
+   * saves the host catalog
+   * @param {Object} hostCatalog
+   * @returns {void}
+   */
+  _updateHostCatalog(hostCatalog) {
+    this._hostCatalog = {...this._hostCatalog, ...hostCatalog};
   },
 
   /**
@@ -671,6 +682,7 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap(serviceHostmap) {
+    this._updateHostCatalog(serviceHostmap.hostCatalog);
     // map the host catalog items to a formatted hostmap
     const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce((accumulator, key) => {
       if (serviceHostmap.hostCatalog[key].length === 0) {
@@ -959,6 +971,7 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
+
             return this.updateServices().catch(() =>
               this.logger.warn('services: cannot retrieve postauth catalog')
             );
