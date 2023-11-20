@@ -3,12 +3,17 @@
  */
 /* globals navigator */
 
-import {RoapMediaConnection, MultistreamRoapMediaConnection} from '@webex/internal-media-core';
 import {
-  LocalCameraTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalMicrophoneTrack,
+  RoapMediaConnection,
+  MultistreamRoapMediaConnection,
+  type MultistreamConnectionConfig,
+} from '@webex/internal-media-core';
+import {
+  LocalStream,
+  LocalCameraStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
@@ -19,11 +24,7 @@ import RtcMetrics from '../rtcMetrics';
 
 const {isBrowser} = BrowserDetection();
 
-type MultistreamConnectionConfig = ConstructorParameters<typeof MultistreamRoapMediaConnection>[0];
-
-export type BundlePolicy = ConstructorParameters<
-  typeof MultistreamRoapMediaConnection
->[0]['bundlePolicy'];
+export type BundlePolicy = MultistreamConnectionConfig['bundlePolicy'];
 
 /**
  * MediaDirection
@@ -132,10 +133,10 @@ Media.createMediaConnection = (
         sendVideo: boolean;
         sendShare: boolean;
       };
-      audioTrack?: LocalMicrophoneTrack;
-      videoTrack?: LocalCameraTrack;
-      shareVideoTrack?: LocalDisplayTrack;
-      shareAudioTrack?: LocalSystemAudioTrack;
+      audioStream?: LocalMicrophoneStream;
+      videoStream?: LocalCameraStream;
+      shareVideoStream?: LocalDisplayStream;
+      shareAudioStream?: LocalSystemAudioStream;
     };
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
@@ -170,10 +171,6 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
-      enableMainAudio:
-        mediaProperties.mediaDirection?.sendAudio || mediaProperties.mediaDirection?.receiveAudio,
-      enableMainVideo:
-        mediaProperties.mediaDirection?.sendVideo || mediaProperties.mediaDirection?.receiveVideo,
     };
 
     if (bundlePolicy) {
@@ -194,7 +191,8 @@ Media.createMediaConnection = (
     throw new Error('mediaProperties have to be provided for non-multistream media connections');
   }
 
-  const {mediaDirection, audioTrack, videoTrack, shareVideoTrack} = mediaProperties;
+  const {mediaDirection, audioStream, videoStream, shareVideoStream, shareAudioStream} =
+    mediaProperties;
 
   return new RoapMediaConnection(
     {
@@ -215,11 +213,13 @@ Media.createMediaConnection = (
       },
     },
     {
+      // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now SPARK-460530
       localTracks: {
-        audio: audioTrack?.underlyingTrack,
-        video: videoTrack?.underlyingTrack,
-        screenShareVideo: shareVideoTrack?.underlyingTrack,
-      },
+        audio: audioStream?.outputTrack,
+        video: videoStream?.outputTrack,
+        screenShareVideo: shareVideoStream?.outputTrack,
+        screenShareAudio: shareAudioStream?.outputTrack, // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
+      } as unknown,
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
         video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
@@ -384,23 +384,21 @@ Media.toggleStream = () => {};
 
 /**
  * Stop input stream
- * @param {MediaTrack} track A media stream
+ * @param {LocalStream} stream A local stream
  * @returns {null}
  */
-Media.stopTracks = (track: any) => {
-  if (!track) {
+Media.stopStream = (stream: LocalStream) => {
+  if (!stream) {
     return Promise.resolve();
   }
 
   return Promise.resolve().then(() => {
-    if (track && track.stop) {
-      try {
-        track.stop();
-      } catch (e) {
-        LoggerProxy.logger.error(
-          `Media:index#stopTracks --> Unable to stop the track with state ${track.readyState}, error: ${e}`
-        );
-      }
+    try {
+      stream.stop();
+    } catch (e) {
+      LoggerProxy.logger.error(
+        `Media:index#stopStream --> Unable to stop the stream with ready state of the output track => ${stream.outputTrack.readyState} & input track => ${stream.inputTrack.readyState}, error: ${e}`
+      );
     }
   });
 };

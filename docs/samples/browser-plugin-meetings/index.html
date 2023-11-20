@@ -16,16 +16,17 @@
       <div class="section-content">
         <fieldset>
           <legend>Multistream Remote Videos</legend>
-          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
-          <audio id="multistream-remote-share-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay></audio>
+          <audio id="multistream-remote-share-audio" autoplay></audio>
           <div id="multistream-videos-container" class="multistream-videos-container">
           </div>
           <div class="multistream-buttons">
             <div class="stage-control-wrapper">
               <span>Choose Layout:</span>
-              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+              <select name="multistream-layout" id="multistream-layout" disabled
+                onchange="updateMultistreamVideoLayout()">
                 <option value="AllEqual">All Equal (max 9)</option>
                 <option value="OnePlusFive">One big plane + five small</option>
                 <option value="Single">Single video pane</option>
@@ -35,14 +36,15 @@
             </div>
             <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
               <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
-              <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
+              <button id="add-to-stage" type="submit" onclick="addToStage()" class="btn-code">Add to stage</button>
             </div>
           </div>
-          <div><button id="get-stats" onclick="getStats()">Get stats</button> or CTRL+click on a video pane to see its stats.</div>
+          <div><button id="get-stats" onclick="getStats()" class="btn-code">Get stats</button> or CTRL+click on a video
+            pane to see its stats.</div>
           <div style="display: flex">
             <select name="remote-media-selector" id="remote-media-selector"></select>
             <input id="size-hint-input" />
-            <button id="size-hint" onclick="setSizeHint()">Set size hint</button>
+            <button id="size-hint" onclick="setSizeHint()" class="btn-code">Set size hint</button>
           </div>
           <div class="prefer-live-video">
             <span>Set Prefer Live Video:</span>
@@ -93,7 +95,8 @@
 
               <form id="credentials">
                 <p class="note">
-                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for access token
+                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
+                  access token
                 </p>
                 <div>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
@@ -104,12 +107,131 @@
 
               <form id="oauth" class="hidden">
                 <div>
-                  <button id="oauth-login-btn" type="submit">Login</button>
+                  <button id="oauth-login-btn" type="submit" class="btn-code">Login</button>
                   <p id="oauth-status" class="status-par">Not Logged In.</p>
                 </div>
               </form>
             </fieldset>
           </div>
+
+          <!-- Streams / effects -->
+          <div>
+            <form id="streams">
+              <fieldset>
+                <legend>Streams</legend>
+                <p class="note">
+                  NOTE: Can start audio/video without a meeting(or click Get Media Streams after joining meeting) and
+                  play around with effects.
+                  Audio/video streams will persist after leaving a meeting as well and can be used in another meeting.
+                </p>
+                <div class="video-section">
+                  <div class="flex" style="gap: 0.5rem;">
+                    <fieldset>
+                      <legend>Local Video</legend>
+                      <div class="video-container">
+                        <video id="local-video" class="video-el" muted="true" autoplay playsinline
+                          style="height: 250px;"></video>
+                        <span id="local-video-resolution" class="video-resolution"></span>
+                        <span id="local-video-published-state" class="video-published"></span>
+                      </div>
+                    </fieldset>
+
+                    <fieldset style="display: flex; align-items: center;">
+                      <legend>Local Audio</legend>
+                      <div class="audio-container">
+                        <audio id="local-audio" controls autoplay></audio>
+                        <span id="local-audio-published-state" class="audio-published"></span>
+                      </div>
+                    </fieldset>
+
+                  </div>
+                  <div class="flex">
+                    <!--enable virtual bg -->
+                    <div class="u-mb">
+                      <button id="ts-load-camera" type="button" onclick="loadCamera()" class="btn-code">Load
+                        Camera</button>
+                    </div>
+                    <div class="u-mb">
+                      <select name="mode" id="mode-type">
+                        <option value="BLUR" selected="selected">Blur</option>
+                        <option value="IMAGE">Image</option>
+                        <option value="VIDEO">Video</option>
+                      </select>
+                    </div>
+                    <div class="u-mb">
+                      <button id="ts-enable-VBG" type="button" onclick="handleVbg()" class="btn-code">Enable
+                        VBG</button>
+                    </div>
+                    <!--mute-unmute-video -->
+                    <div class="u-mb">
+                      <button id="ts-toggle-video" type="button" onclick="toggleSendVideo()" class="btn-code">Toggle
+                        Video</button>
+                    </div>
+                    <div class="u-mb">
+                      <button id="ts-stop-video" type="button" disabled onclick="stopVideo()" class="btn-code">Stop
+                        Video</button>
+                    </div>
+                  </div>
+
+
+                  <div class="flex">
+                    <!--enable noise reduction -->
+                    <div class="u-mb">
+                      <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load
+                        Microhone</button>
+                    </div>
+                    <div class="u-mb">
+                      <button id="ts-enable-BNR" type="button" onclick="handleBNR()" class="btn-code">Enable
+                        BNR</button>
+                    </div>
+                    <!--mute-unmute audio -->
+                    <div class="u-mb">
+                      <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()" class="btn-code">Mute
+                        Audio</button>
+                    </div>
+                    <div class="u-mb">
+                      <button id="ts-stop-audio" type="button" disabled onclick="stopAudio()" class="btn-code">Stop
+                        Audio</button>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+
+          <!-- local screen share -->
+
+          <form id="streams">
+            <fieldset>
+              <legend>Local Screenshare</legend>
+              <p class="note">
+                NOTE: Start screenshare without a meeting and join meeting with a screenshare.
+                If started after joining a meeting then click Publish in meeting also.
+              </p>
+              <div class="screenshare-section">
+                <fieldset>
+                  <legend>Screenshare Video</legend>
+                  <video id="local-screenshare-video" autoplay playsinline></video>
+                </fieldset>
+                <fieldset>
+                  <legend>Screenshare Audio</legend>
+                  <audio id="local-screenshare-audio" controls autoplay></audio>
+                </fieldset>
+                <div class="btn-group">
+                  <button id="ts-start-screenshare" type="button" onclick="startScreenShare()" class="btn-code">
+                    Share Screen</button>
+                  <button id="ts-publish-screenshare" type="button" disabled onclick="publishScreenShare()"
+                    class="btn-code">
+                    Publish in meeting</button>
+                  <button id="ts-unpublish-screenshare" type="button" disabled onclick="unpublishScreenShare()"
+                    class="btn-code">
+                    Unpublish in meeting</button>
+                  <button id="ts-stop-screenshare" type="button" disabled onclick="stopScreenShare()" class="btn-code">
+                    Stop share</button>
+                </div>
+              </div>
+            </fieldset>
+          </form>
 
           <!-- meeting / authentication-registration -->
           <div>
@@ -143,7 +265,8 @@
           <div>
             <fieldset>
               <legend>Pair WebEx Device</legend>
-              <button id="sd-pair-webex-device" type="button" onclick="toggleWebexDeviceSection()">Pair</button>
+              <button id="sd-pair-webex-device" type="button" onclick="toggleWebexDeviceSection()"
+                class="btn-code">Pair</button>
 
               <div id="webex-device-pairing-sec" class="hidden">
                 <form id="current-device">
@@ -264,7 +387,7 @@
                         <option value="">SIP URI</option>
                         <option value="CONVERSATION_URL">Conversation URL</option>
                       </select>
-                      <button id="create-meeting-action" type="submit">Create Meeting</button>
+                      <button id="create-meeting-action" type="submit" class="btn-code">Create Meeting</button>
                     </div>
                   </div>
                 </form>
@@ -277,7 +400,8 @@
 
               <!-- meetings / active list -->
               <div class="u-mv">
-                <button id="meetings-list-collect" type="button" onclick="collectMeetings()">Sync Meetings</button>
+                <button id="meetings-list-collect" type="button" onclick="collectMeetings()" class="btn-code">Sync
+                  Meetings</button>
                 <p id="meetings-list-msg" class="note">There are currently no meetings to display</p>
                 <div id="meetings-list" class="u-mv">
                 </div>
@@ -299,10 +423,12 @@
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
                   </span>
-                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value="" type="hidden">
+                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value=""
+                    type="hidden">
                 </div>
                 <div class="u-mt">
-                  <button id="btn-verify-password" disabled onclick="verifyPassword()">Verify Password</button>
+                  <button id="btn-verify-password" disabled onclick="verifyPassword()" class="btn-code">Verify
+                    Password</button>
                 </div>
                 <input id="meetings-join-moderator" type="checkbox">
                 <label for="meetings-join-moderator">Join as Moderator</label>
@@ -321,18 +447,14 @@
                   <!-- Media quality dropdown -->
                   <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
 
-                  <div >
+                  <div>
                     <!-- Local Media -->
                     <div class="u-mv flex flex--align-center">
                       <label class="media-button-label" for="local-resolution">Local Resolution</label>
                       <select name="local-resolution" id="local-resolution" class="media-select"></select>
 
-                      <button
-                        id="ts-set-local-meeting-quality"
-                        type="button"
-                        onclick="setLocalMeetingQuality()"
-                        class="btn-code media-button"
-                      >
+                      <button id="ts-set-local-meeting-quality" type="button" onclick="setLocalMeetingQuality()"
+                        class="btn-code media-button">
                         meeting.setLocalVideoQuality()
                       </button>
                     </div>
@@ -342,12 +464,8 @@
                       <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
                       <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
 
-                      <button
-                        id="ts-set-remote-meeting-quality"
-                        type="button"
-                        onclick="setRemoteMeetingQuality()"
-                        class="btn-code media-button"
-                      >
+                      <button id="ts-set-remote-meeting-quality" type="button" onclick="setRemoteMeetingQuality()"
+                        class="btn-code media-button">
                         meeting.setRemoteVideoQuality()
                       </button>
                     </div>
@@ -368,7 +486,12 @@
                     <input type="checkbox" name="ts-media-direction" value="videoEnabled" checked="">videoEnabled
                   </label>
                   <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveShare" checked="">receiveShare
+                    <input type="checkbox" name="ts-media-direction" value="shareAudioEnabled"
+                      checked="">shareAudioEnabled
+                  </label>
+                  <label>
+                    <input type="checkbox" name="ts-media-direction" value="shareVideoEnabled"
+                      checked="">shareVideoEnabled
                   </label>
                 </div>
               </div>
@@ -378,13 +501,15 @@
                   <div style="display: flex; flex-direction: column;">
                     <div>Advanced Join</div>
                     <div class="u-mt">
-                      <button style="width: 95%;" id="btn-join" onclick="joinMeeting()">Join Meeting</button>
+                      <button style="width: 95%;" id="btn-join" onclick="joinMeeting()" class="btn-code">Join
+                        Meeting</button>
                     </div>
                     <div>
-                      <button style="width: 95%;" id="btn-join" onclick="getUserMedia()">Get Media Streams</button>
+                      <button style="width: 95%;" id="btn-join" onclick="getUserMedia()" class="btn-code">Get Media
+                        Streams</button>
                     </div>
                     <div>
-                      <button style="width: 95%;" id="btn-join" onclick="addMedia()">Add Media</button>
+                      <button style="width: 95%;" id="btn-join" onclick="addMedia()" class="btn-code">Add Media</button>
                     </div>
                   </div>
                 </div>
@@ -393,7 +518,8 @@
                   <div style="display: flex; flex-direction: column;">
                     <div>Join With Media</div>
                     <div class="u-mt">
-                      <button id="btn-join-media" onclick="joinMeeting({withMedia: true})">Join with Media</button>
+                      <button id="btn-join-media" onclick="joinMeeting({withMedia: true})" class="btn-code">Join with
+                        Media</button>
                     </div>
                   </div>
                 </div>
@@ -402,7 +528,8 @@
                   <div style="display: flex; flex-direction: column;">
                     <div>Join With Device</div>
                     <div class="u-mt">
-                      <button id="btn-join-device" disabled onclick="joinMeeting({withDevice: true})">Join with Device</button>
+                      <button id="btn-join-device" disabled onclick="joinMeeting({withDevice: true})"
+                        class="btn-code">Join with Device</button>
                     </div>
                   </div>
                 </div>
@@ -416,27 +543,28 @@
             <fieldset id="meetingControlsDevices">
               <legend>Media Devices</legend>
               <div>
-                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get Devices</button>
-                <button id="update-media" type="button" onclick="updateMedia()">Update Media</button>
+                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()"
+                  class="btn-code">Get Devices</button>
+                <button id="update-media" type="button" onclick="updateMedia()" class="btn-code">Update Media</button>
               </div>
 
               <div>
                 <label class="context-info">Audio Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-audio-input-devices"></select>
-                  <button type="button" onclick="setAudioInputDevice()">Publish Audio</button>
+                  <button type="button" onclick="setAudioInputDevice()" class="btn-code">Publish Audio</button>
                   <label id="sd-audio-input-device-status"></label>
                 </div>
                 <label class="context-info">Video Input Device</label>
                 <div class="u-mv flex">
                   <select id="sd-video-input-devices"></select>
-                  <button type="button" onclick="setVideoInputDevice()">Publish Video</button>
+                  <button type="button" onclick="setVideoInputDevice()" class="btn-code">Publish Video</button>
                   <label id="sd-video-input-device-status"></label>
                 </div>
                 <label class="context-info">Audio Output Device</label>
                 <div class="u-mv flex">
                   <select id="sd-audio-output-devices"></select>
-                  <button type="button" onclick="setAudioOutputDevice()">Set SinkId</button>
+                  <button type="button" onclick="setAudioOutputDevice()" class="btn-code">Set SinkId</button>
                   <label id="sd-audio-output-device-status"></label>
                 </div>
               </div>
@@ -482,7 +610,7 @@
               (92e04d6f-8c70-4b9b-886f-9e11c13454f3)</h5>
           </div>
           <div>
-            <button id="meetings-leave" type="button" onclick="leaveMeeting()">Leave</button>
+            <button id="meetings-leave" type="button" onclick="leaveMeeting()" class="btn-code">Leave</button>
           </div>
         </div>
         <div class="section-content collapsed">
@@ -500,7 +628,8 @@
                 <fieldset>
                   <legend>Local Video</legend>
                   <div class="video-container">
-                    <video id="local-video" class="video-el" muted="true" autoplay playsinline style="height: 200px;"></video>
+                    <video id="local-video" class="video-el" muted="true" autoplay playsinline
+                      style="height: 200px;"></video>
                     <span id="local-video-resolution" class="video-resolution"></span>
                   </div>
                 </fieldset>

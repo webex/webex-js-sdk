@@ -100,6 +100,7 @@ const ERROR_DESCRIPTIONS = {
   CAMERA_PERMISSION_DENIED: 'CameraPermissionDenied',
   FRAUD_DETECTION: 'FraudDetection',
   E2EE_NOT_SUPPORTED: 'E2EENotSupported',
+  LOCUS_LOBBY_FULL_CMR: 'LocusLobbyFullCMR',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -195,6 +196,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2423018: 4005,
   // LOCUS_OWNER_CONCURRENT_ACTIVE_MEETING_LIMIT_EXCEEDED
   2423012: 12000,
+  // LOCUS_LOBBY_FULL_CMR
+  2423021: 12001,
   // LOCUS_REQUIRES_MODERATOR_ROLE
   2423007: 4006,
   // LOCUS_JOIN_RESTRICTED_USER_NOT_IN_ROOM
@@ -583,6 +586,13 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   12000: {
     errorDescription: ERROR_DESCRIPTIONS.FRAUD_DETECTION,
+    category: 'expected',
+    fatal: true,
+    name: 'locus.response',
+    shownToUser: true,
+  },
+  12001: {
+    errorDescription: ERROR_DESCRIPTIONS.LOCUS_LOBBY_FULL_CMR,
     category: 'expected',
     fatal: true,
     name: 'locus.response',

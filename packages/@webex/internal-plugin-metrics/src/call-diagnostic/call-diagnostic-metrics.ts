@@ -514,6 +514,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }),
     };
 
+    if (options?.rawError?.message) {
+      // @ts-ignore
+      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
+    }
+
     return clientEventObject;
   }
 
@@ -556,6 +561,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       loginType: this.getCurLoginType(),
     };
+
+    if (options?.rawError?.message) {
+      // @ts-ignore
+      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
+    }
 
     return clientEventObject;
   }

@@ -1,6 +1,6 @@
 {
   "name": "@webex/media-helpers",
-  "version": "3.0.0-beta.248",
+  "version": "3.0.0-beta.251",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
@@ -14,8 +14,9 @@
     "node": ">=16"
   },
   "dependencies": {
-    "@webex/internal-media-core": "1.39.3",
-    "@webex/web-media-effects": "^2.8.0"
+    "@webex/internal-media-core": "2.0.3",
+    "@webex/ts-events": "^1.1.0",
+    "@webex/web-media-effects": "^2.13.3"
   },
   "browserify": {
     "transform": [

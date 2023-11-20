@@ -3,7 +3,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
-import {createCameraTrack, createMicrophoneTrack} from '@webex/plugin-meetings';
+import {createCameraStream, createMicrophoneStream} from '@webex/plugin-meetings';
 
 import {MEDIA_SERVERS} from '../../utils/constants';
 import testUtils from '../../utils/testUtils';
@@ -153,14 +153,14 @@ skipInNode(describe)('plugin-meetings', () => {
       });
 
       it('users "alice", "bob", and "chris" create local tracks', async () => {
-        localTracks.alice.microphone = await createMicrophoneTrack();
-        localTracks.alice.camera = await createCameraTrack();
+        localTracks.alice.microphone = await createMicrophoneStream();
+        localTracks.alice.camera = await createCameraStream();
 
-        localTracks.bob.microphone = await createMicrophoneTrack();
-        localTracks.bob.camera = await createCameraTrack();
+        localTracks.bob.microphone = await createMicrophoneStream();
+        localTracks.bob.camera = await createCameraStream();
 
-        localTracks.chris.microphone = await createMicrophoneTrack();
-        localTracks.chris.camera = await createCameraTrack();
+        localTracks.chris.microphone = await createMicrophoneStream();
+        localTracks.chris.camera = await createCameraStream();
       });
 
       it('users "alice", "bob", and "chris" add media', async () => {
