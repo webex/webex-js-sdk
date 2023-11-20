@@ -3484,6 +3484,174 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#refreshPermissionToken', () => {
+        const FAKE_MEETING_INFO = {
+          conversationUrl: 'some_convo_url',
+          locusUrl: 'some_locus_url',
+          sipUrl: 'some_sip_url',
+          meetingNumber: '123456',
+          hostId: 'some_host_id',
+        };
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+        const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
+
+        beforeEach(() => {
+          meeting.locusId = 'locus-id';
+          meeting.id = 'meeting-id';
+          meeting.config.installedOrgID = 'fake-installed-org-id';
+          meeting.meetingInfo.permissionToken = FAKE_PERMISSION_TOKEN;
+          meeting.destination = 'meeting-destination';
+          meeting.destinationType = 'meeting-destination-type';
+          meeting.updateMeetingActions = sinon.stub().returns(undefined);
+          meeting.meetingInfoExtraParams = {
+            extraParam1: 'value1'
+          };
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+          };
+        });
+
+        it('resolves without doing anything if there is no permission token', async () => {
+          meeting.meetingInfo.permissionToken = undefined;
+
+          await meeting.refreshPermissionToken();
+
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
+          await meeting.refreshPermissionToken();
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-destination',
+            'meeting-destination-type',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
+          meeting.destination = 'some-convo-url';
+          meeting.destinationType = 'CONVERSATION_URL';
+          meeting.config.experimental = {enableAdhocMeetings: true};
+          meeting.meetingInfo.meetingJoinUrl = 'meeting-join-url';
+          meeting.webex.meetings.preferredWebexSite = 'preferredWebexSite';
+
+          await meeting.refreshPermissionToken();
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-join-url',
+            'MEETING_LINK',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {
+              extraParam1: 'value1',
+              permissionToken: FAKE_PERMISSION_TOKEN
+            },
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+        });
+
+        it('throws PermissionError if policy error is encountered', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+          });
+          assert.equal(meeting.meetingInfoFailureCode, 123456);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.POLICY);
+          assert.calledWith(meeting.updateMeetingActions);
+        });
+
+        it('throws PasswordError if password is required', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+          assert.calledWith(meeting.updateMeetingActions);
+        });
+
+        it('throws CaptchaError if captcha is required', async () => {
+          const FAKE_SDK_CAPTCHA_INFO = {
+            captchaId: 'FAKE_CAPTCHA_ID',
+            verificationImageURL: 'FAKE_CAPTCHA_IMAGE_URL',
+            verificationAudioURL: 'FAKE_CAPTCHA_AUDIO_URL',
+            refreshURL: 'FAKE_CAPTCHA_REFRESH_URL',
+          };
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(meeting.requiredCaptcha, FAKE_SDK_CAPTCHA_INFO);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+          assert.calledWith(meeting.updateMeetingActions);
+        });
+      });
+
       describe('#refreshCaptcha', () => {
         it('fails if no captcha required', async () => {
           assert.isRejected(meeting.refreshCaptcha(), Error);
