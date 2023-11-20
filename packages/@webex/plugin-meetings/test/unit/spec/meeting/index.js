@@ -38,7 +38,9 @@ import {
   RemoteTrackType,
   MediaType,
 } from '@webex/internal-media-core';
-import {LocalTrackEvents} from '@webex/media-helpers';
+import {
+  StreamEventNames,
+} from '@webex/media-helpers';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import * as MuteStateModule from '@webex/plugin-meetings/src/meeting/muteState';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
@@ -65,6 +67,7 @@ import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
+import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -431,6 +434,35 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.members.findMemberByCsi);
             assert.calledWith(meeting.members.findMemberByCsi, 123);
             assert.equal(memberId, undefined);
+          });
+        });
+
+        describe('creates SendSlot manager instance', () => {
+          let mockSendSlotManagerCtor;
+
+          beforeEach(() => {
+            mockSendSlotManagerCtor = sinon
+              .stub(SendSlotManagerModule,'default');
+
+            meeting = new Meeting(
+              {
+                userId: uuid1,
+                resource: uuid2,
+                deviceUrl: uuid3,
+                locus: {url: url1},
+                destination: testDestination,
+                destinationType: _MEETING_ID_,
+              },
+              {
+                parent: webex,
+              }
+            );
+
+            meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
+          });
+
+          it('calls SendSlotManager constructor', () => {
+            assert.calledOnce(mockSendSlotManagerCtor);
           });
         });
       });
@@ -1557,440 +1589,424 @@ describe('plugin-meetings', () => {
          to @webex/internal-media-core when addMedia, updateMedia, publishTracks, unpublishTracks are called
          in various combinations.
       */
-      [true, false].forEach((isMultistream) =>
-        describe(`addMedia/updateMedia semi-integration tests (${
-          isMultistream ? 'multistream' : 'transcoded'
-        })`, () => {
-          const webrtcAudioTrack = {
-            id: 'underlying audio track',
-            getSettings: sinon.stub().returns({deviceId: 'fake device id for audio track'}),
+      [true,false].forEach((isMultistream) =>
+      describe(`addMedia/updateMedia semi-integration tests (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
+        let fakeMicrophoneStream;
+        let fakeRoapMediaConnection;
+        let fakeMultistreamRoapMediaConnection;
+        let roapMediaConnectionConstructorStub;
+        let multistreamRoapMediaConnectionConstructorStub;
+        let locusMediaRequestStub; // stub for /media requests to Locus
+
+        const roapOfferMessage = {messageType: 'OFFER', sdp: 'sdp', seq: '1', tieBreaker: '123'};
+
+        let expectedMediaConnectionConfig;
+        let expectedDebugId;
+
+        let clock;
+
+        beforeEach(() => {
+          clock = sinon.useFakeTimers();
+
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+
+          meeting.deviceUrl = 'deviceUrl';
+          meeting.config.deviceType = 'web';
+          meeting.isMultistream = isMultistream;
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaId = 'fake media id';
+          meeting.selfUrl = 'selfUrl';
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+          meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
+          meeting.setMercuryListener = sinon.stub();
+          meeting.locusInfo.onFullLocus = sinon.stub();
+          meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
+          meeting.webex.meetings.reachability = {
+            isAnyClusterReachable: sinon.stub().resolves(true),
           };
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
 
-          let fakeMicrophoneTrack;
-          let fakeRoapMediaConnection;
-          let fakeMultistreamRoapMediaConnection;
-          let roapMediaConnectionConstructorStub;
-          let multistreamRoapMediaConnectionConstructorStub;
-          let locusMediaRequestStub; // stub for /media requests to Locus
+          StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
 
-          const roapOfferMessage = {messageType: 'OFFER', sdp: 'sdp', seq: '1', tieBreaker: '123'};
-
-          let expectedMediaConnectionConfig;
-          let expectedDebugId;
-
-          let clock;
-
-          beforeEach(() => {
-            clock = sinon.useFakeTimers();
-
-            sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
-
-            meeting.deviceUrl = 'deviceUrl';
-            meeting.config.deviceType = 'web';
-            meeting.isMultistream = isMultistream;
-            meeting.meetingState = 'ACTIVE';
-            meeting.mediaId = 'fake media id';
-            meeting.selfUrl = 'selfUrl';
-            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-            meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
-            meeting.setMercuryListener = sinon.stub();
-            meeting.locusInfo.onFullLocus = sinon.stub();
-            meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
-            meeting.webex.meetings.reachability = {
-              isAnyClusterReachable: sinon.stub().resolves(true),
-            };
-            meeting.roap.doTurnDiscovery = sinon
-              .stub()
-              .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
-
-            StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
-
-            // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
-            expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
-            expectedMediaConnectionConfig = {
-              iceServers: [{urls: undefined, username: '', credential: ''}],
-              skipInactiveTransceivers: false,
-              requireH264: true,
-              sdpMunging: {
-                convertPort9to0: false,
-                addContentSlides: true,
-                bandwidthLimits: {
-                  audio: StaticConfig.meetings.bandwidth.audio,
-                  video: StaticConfig.meetings.bandwidth.video,
-                },
-                startBitrate: StaticConfig.meetings.bandwidth.startBitrate,
-                periodicKeyframes: 20,
-                disableExtmap: !meeting.config.enableExtmap,
-                disableRtx: !meeting.config.enableRtx,
+          // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
+          expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
+          expectedMediaConnectionConfig = {
+            iceServers: [{urls: undefined, username: '', credential: ''}],
+            skipInactiveTransceivers: false,
+            requireH264: true,
+            sdpMunging: {
+              convertPort9to0: false,
+              addContentSlides: true,
+              bandwidthLimits: {
+                audio: StaticConfig.meetings.bandwidth.audio,
+                video: StaticConfig.meetings.bandwidth.video,
               },
-            };
-
-            // setup stubs
-            fakeMicrophoneTrack = {
-              id: 'fake mic',
-              on: sinon.stub(),
-              off: sinon.stub(),
-              setUnmuteAllowed: sinon.stub(),
-              setMuted: sinon.stub(),
-              setPublished: sinon.stub(),
-              muted: false,
-              underlyingTrack: webrtcAudioTrack,
-            };
-
-            fakeRoapMediaConnection = {
-              id: 'roap media connection',
-              close: sinon.stub(),
-              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
-              initiateOffer: sinon.stub().resolves({}),
-              update: sinon.stub().resolves({}),
-              on: sinon.stub(),
-            };
-
-            fakeMultistreamRoapMediaConnection = {
-              id: 'multistream roap media connection',
-              close: sinon.stub(),
-              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
-              initiateOffer: sinon.stub().resolves({}),
-              publishTrack: sinon.stub().resolves({}),
-              unpublishTrack: sinon.stub().resolves({}),
-              on: sinon.stub(),
-              requestMedia: sinon.stub(),
-              createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
-              enableMultistreamAudio: sinon.stub(),
-            };
-
-            roapMediaConnectionConstructorStub = sinon
-              .stub(internalMediaModule, 'RoapMediaConnection')
-              .returns(fakeRoapMediaConnection);
-
-            multistreamRoapMediaConnectionConstructorStub = sinon
-              .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
-              .returns(fakeMultistreamRoapMediaConnection);
-
-            locusMediaRequestStub = sinon
-              .stub(WebexPlugin.prototype, 'request')
-              .resolves({body: {locus: {fullState: {}}}});
-          });
-
-          afterEach(() => {
-            clock.restore();
-            sinon.restore();
-          });
-
-          // helper function that waits until all promises are resolved and any queued up /media requests to Locus are sent out
-          const stableState = async () => {
-            await testUtils.flushPromises();
-            clock.tick(1); // needed because LocusMediaRequest uses Lodash.defer()
+              startBitrate: StaticConfig.meetings.bandwidth.startBitrate,
+              periodicKeyframes: 20,
+              disableExtmap: !meeting.config.enableExtmap,
+              disableRtx: !meeting.config.enableRtx,
+            },
           };
 
-          const resetHistory = () => {
-            locusMediaRequestStub.resetHistory();
-            fakeRoapMediaConnection.update.resetHistory();
-            fakeMultistreamRoapMediaConnection.publishTrack.resetHistory();
-            fakeMultistreamRoapMediaConnection.unpublishTrack.resetHistory();
+          // setup stubs
+          fakeMicrophoneStream = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            getSettings: sinon.stub().returns({
+              deviceId: 'some device id'
+            }),
+            muted: false,
+            setUnmuteAllowed: sinon.stub(),
+            setMuted: sinon.stub(),
+            setServerMuted: sinon.stub(),
+            outputTrack: {
+              id: 'fake mic'
+            }
+          }
+
+          fakeRoapMediaConnection = {
+            id: 'roap media connection',
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            update: sinon.stub().resolves({}),
+            on: sinon.stub(),
           };
 
-          const getRoapListener = () => {
-            const roapMediaConnectionToCheck = isMultistream
-              ? fakeMultistreamRoapMediaConnection
-              : fakeRoapMediaConnection;
+          fakeMultistreamRoapMediaConnection = {
+            id: 'multistream roap media connection',
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+            requestMedia: sinon.stub(),
+            createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
+            createSendSlot: sinon.stub().returns({
+              publishStream: sinon.stub(),
+              unpublishStream: sinon.stub(),
+            }),
+            enableMultistreamAudio: sinon.stub(),
+          };
 
-            for (let idx = 0; idx < roapMediaConnectionToCheck.on.callCount; idx += 1) {
-              if (
-                roapMediaConnectionToCheck.on.getCall(idx).args[0] === Event.ROAP_MESSAGE_TO_SEND
-              ) {
-                return roapMediaConnectionToCheck.on.getCall(idx).args[1];
+          roapMediaConnectionConstructorStub = sinon
+            .stub(internalMediaModule, 'RoapMediaConnection')
+            .returns(fakeRoapMediaConnection);
+
+          multistreamRoapMediaConnectionConstructorStub = sinon
+            .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
+            .returns(fakeMultistreamRoapMediaConnection);
+
+          locusMediaRequestStub = sinon.stub(WebexPlugin.prototype, 'request').resolves({body: {locus: { fullState: {}}}});
+        });
+
+        afterEach(() => {
+          clock.restore();
+          sinon.restore();
+        });
+
+        // helper function that waits until all promises are resolved and any queued up /media requests to Locus are sent out
+        const stableState = async () => {
+          await testUtils.flushPromises();
+          clock.tick(1); // needed because LocusMediaRequest uses Lodash.defer()
+        }
+
+        const resetHistory = () => {
+          locusMediaRequestStub.resetHistory();
+          fakeRoapMediaConnection.update.resetHistory();
+          try{
+            meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream.resetHistory();
+          }
+          catch(e){}
+        };
+
+        const getRoapListener = () => {
+          const roapMediaConnectionToCheck = isMultistream ? fakeMultistreamRoapMediaConnection : fakeRoapMediaConnection;
+
+          for(let idx = 0; idx < roapMediaConnectionToCheck.on.callCount; idx+= 1) {
+            if (roapMediaConnectionToCheck.on.getCall(idx).args[0] === Event.ROAP_MESSAGE_TO_SEND) {
+              return roapMediaConnectionToCheck.on.getCall(idx).args[1];
+            }
+          };
+          assert.fail(
+            'listener for "roap:messageToSend" (Event.ROAP_MESSAGE_TO_SEND) was not registered'
+          );
+        };
+
+        // simulates a Roap offer being generated by the RoapMediaConnection
+        const simulateRoapOffer = async () => {
+          const roapListener = getRoapListener();
+
+          await roapListener({roapMessage: roapOfferMessage});
+          await stableState();
+        };
+
+        const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
+          const {sdp, seq, tieBreaker} = roapOfferMessage;
+
+          assert.calledWith(locusMediaRequestStub, {
+            method: 'PUT',
+            uri: `${meeting.selfUrl}/media`,
+            body: {
+              device: {
+                url: meeting.deviceUrl,
+                deviceType: meeting.config.deviceType,
+                regionCode: 'EU',
+                countryCode: 'UK',
+              },
+              correlationId: meeting.correlationId,
+              localMedias: [
+                {
+                  localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}"}}`,
+                  mediaId: 'fake media id',
+                },
+              ],
+              clientMediaPreferences: {
+                preferTranscoding: !meeting.isMultistream,
+                joinCookie: undefined,
+                ipver: 0,
+              },
+            },
+          });
+        };
+
+        const checkLocalMuteSentToLocus = ({audioMuted, videoMuted}) => {
+          assert.calledWith(locusMediaRequestStub, {
+            method: 'PUT',
+            uri: `${meeting.selfUrl}/media`,
+            body: {
+              device: {
+                url: meeting.deviceUrl,
+                deviceType: meeting.config.deviceType,
+                regionCode: 'EU',
+                countryCode: 'UK',
+              },
+              correlationId: meeting.correlationId,
+              localMedias: [
+                {
+                  localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted}}`,
+                  mediaId: 'fake media id',
+                },
+              ],
+              clientMediaPreferences: {
+                preferTranscoding: !meeting.isMultistream,
+                ipver: undefined
+              },
+              respOnlySdp: true,
+              usingResource: null,
+            },
+          });
+        };
+
+        const checkMediaConnectionCreated = ({mediaConnectionConfig, localStreams, direction, remoteQualityLevel, expectedDebugId, meetingId}) => {
+          if (isMultistream) {
+            const {iceServers} = mediaConnectionConfig;
+
+            assert.calledOnceWithMatch(multistreamRoapMediaConnectionConstructorStub, {
+              iceServers,
+            }, meetingId);
+
+            for(let type in localStreams){
+              const stream = localStreams[type];
+              if(stream !== undefined){
+                switch(type){
+                  case 'audio':
+                    assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, stream);
+                  break;
+                  case 'video':
+                    assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream, stream);
+                  break;
+                  case 'screenShareAudio':
+                    assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream, stream);
+                  break;
+                  case 'screenShareVideo':
+                    assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream, stream);
+                  break;
+                }
               }
             }
-            assert.fail(
-              'listener for "roap:messageToSend" (Event.ROAP_MESSAGE_TO_SEND) was not registered'
-            );
-          };
-
-          // simulates a Roap offer being generated by the RoapMediaConnection
-          const simulateRoapOffer = async () => {
-            const roapListener = getRoapListener();
-
-            await roapListener({roapMessage: roapOfferMessage});
-            await stableState();
-          };
-
-          const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
-            const {sdp, seq, tieBreaker} = roapOfferMessage;
-
-            assert.calledWith(locusMediaRequestStub, {
-              method: 'PUT',
-              uri: `${meeting.selfUrl}/media`,
-              body: {
-                device: {
-                  url: meeting.deviceUrl,
-                  deviceType: meeting.config.deviceType,
-                  regionCode: 'EU',
-                  countryCode: 'UK',
-                },
-                correlationId: meeting.correlationId,
-                localMedias: [
-                  {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}"}}`,
-                    mediaId: 'fake media id',
-                  },
-                ],
-                clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  joinCookie: undefined,
-                  ipver: 0,
-                },
-              },
-            });
-          };
-
-          const checkLocalMuteSentToLocus = ({audioMuted, videoMuted}) => {
-            assert.calledWith(locusMediaRequestStub, {
-              method: 'PUT',
-              uri: `${meeting.selfUrl}/media`,
-              body: {
-                device: {
-                  url: meeting.deviceUrl,
-                  deviceType: meeting.config.deviceType,
-                  regionCode: 'EU',
-                  countryCode: 'UK',
-                },
-                correlationId: meeting.correlationId,
-                localMedias: [
-                  {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted}}`,
-                    mediaId: 'fake media id',
-                  },
-                ],
-                clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined
-                },
-                respOnlySdp: true,
-                usingResource: null,
-              },
-            });
-          };
-
-          const checkMediaConnectionCreated = ({
-            mediaConnectionConfig,
-            localTracks,
-            direction,
-            remoteQualityLevel,
-            expectedDebugId,
-            meetingId,
-          }) => {
-            if (isMultistream) {
-              const {iceServers} = mediaConnectionConfig;
-
-              assert.calledOnceWithMatch(
-                multistreamRoapMediaConnectionConstructorStub,
-                {
-                  iceServers,
-                  enableMainAudio: direction.audio !== 'inactive',
-                  enableMainVideo: true,
-                },
-                meetingId
-              );
-
-              Object.values(localTracks).forEach((track) => {
-                if (track) {
-                  assert.calledOnceWithExactly(
-                    fakeMultistreamRoapMediaConnection.publishTrack,
-                    track
-                  );
-                }
-              });
-            } else {
-              assert.calledOnceWithExactly(
-                roapMediaConnectionConstructorStub,
-                mediaConnectionConfig,
-                {
-                  localTracks: {
-                    audio: localTracks.audio?.underlyingTrack,
-                    video: localTracks.video?.underlyingTrack,
-                    screenShareVideo: localTracks.screenShareVideo?.underlyingTrack,
-                  },
-                  direction,
-                  remoteQualityLevel,
-                },
-                expectedDebugId
-              );
-            }
-          };
-
-          it('addMedia() works correctly when media is enabled without tracks to publish', async () => {
-            await meeting.addMedia();
-            await simulateRoapOffer();
-
-            // check RoapMediaConnection was created correctly
-            checkMediaConnectionCreated({
-              mediaConnectionConfig: expectedMediaConnectionConfig,
-              localTracks: {
-                audio: undefined,
-                video: undefined,
-                screenShareVideo: undefined,
-                screenShareAudio: undefined,
-              },
-              direction: {
-                audio: 'sendrecv',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH',
-              expectedDebugId,
-              meetingId: meeting.id,
-            });
-
-            // and SDP offer was sent with the right audioMuted/videoMuted values
-            checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-            // and that it was the only /media request that was sent
-            assert.calledOnce(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is enabled with tracks to publish', async () => {
-            await meeting.addMedia({localTracks: {microphone: fakeMicrophoneTrack}});
-            await simulateRoapOffer();
-
-            // check RoapMediaConnection was created correctly
-            checkMediaConnectionCreated({
-              mediaConnectionConfig: expectedMediaConnectionConfig,
-              localTracks: {
-                audio: fakeMicrophoneTrack,
-                video: undefined,
-                screenShareVideo: undefined,
-                screenShareAudio: undefined,
-              },
-              direction: {
-                audio: 'sendrecv',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH',
-              expectedDebugId,
-              meetingId: meeting.id,
-            });
-
-            // and SDP offer was sent with the right audioMuted/videoMuted values
-            checkSdpOfferSent({audioMuted: false, videoMuted: true});
-
-            // and no other local mute requests were sent to Locus
-            assert.calledOnce(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is enabled with tracks to publish and track is muted', async () => {
-            fakeMicrophoneTrack.muted = true;
-
-            await meeting.addMedia({localTracks: {microphone: fakeMicrophoneTrack}});
-            await simulateRoapOffer();
-
-            // check RoapMediaConnection was created correctly
-            checkMediaConnectionCreated({
-              mediaConnectionConfig: expectedMediaConnectionConfig,
-              localTracks: {
-                audio: fakeMicrophoneTrack,
-                video: undefined,
-                screenShareVideo: undefined,
-                screenShareAudio: undefined,
-              },
-              direction: {
-                audio: 'sendrecv',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH',
-              expectedDebugId,
-              meetingId: meeting.id,
-            });
-
-            // and SDP offer was sent with the right audioMuted/videoMuted values
-            checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-            // and no other local mute requests were sent to Locus
-            assert.calledOnce(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is disabled with tracks to publish', async () => {
-            await meeting.addMedia({
-              localTracks: {microphone: fakeMicrophoneTrack},
-              audioEnabled: false,
-            });
-            await simulateRoapOffer();
-
-            // check RoapMediaConnection was created correctly
-            checkMediaConnectionCreated({
-              mediaConnectionConfig: expectedMediaConnectionConfig,
-              localTracks: {
-                audio: fakeMicrophoneTrack,
-                video: undefined,
-                screenShareVideo: undefined,
-                screenShareAudio: undefined,
-              },
-              direction: {
-                audio: 'inactive',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH',
-              expectedDebugId,
-              meetingId: meeting.id,
-            });
-
-            // and SDP offer was sent with the right audioMuted/videoMuted values
-            checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-            // and no other local mute requests were sent to Locus
-            assert.calledOnce(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is disabled with no tracks to publish', async () => {
-            await meeting.addMedia({audioEnabled: false});
-            await simulateRoapOffer();
-
-            // check RoapMediaConnection was created correctly
-            checkMediaConnectionCreated({
-              mediaConnectionConfig: expectedMediaConnectionConfig,
-              localTracks: {
-                audio: undefined,
-                video: undefined,
-                screenShareVideo: undefined,
-                screenShareAudio: undefined,
-              },
-              direction: {
-                audio: 'inactive',
-                video: 'sendrecv',
-                screenShareVideo: 'recvonly',
-              },
-              remoteQualityLevel: 'HIGH',
-              expectedDebugId,
-              meetingId: meeting.id,
-            });
-
-            // and SDP offer was sent with the right audioMuted/videoMuted values
-            checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-            // and no other local mute requests were sent to Locus
-            assert.calledOnce(locusMediaRequestStub);
-          });
-
-          describe('publishTracks()/unpublishTracks() calls', () => {
-            [
-              {mediaEnabled: true, expected: {direction: 'sendrecv', localMuteSentValue: false}},
+          } else {
+            assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, mediaConnectionConfig,
               {
-                mediaEnabled: false,
-                expected: {direction: 'inactive', localMuteSentValue: undefined},
+                localTracks: {
+                  audio: localStreams.audio?.outputTrack,
+                  video: localStreams.video?.outputTrack,
+                  screenShareVideo: localStreams.screenShareVideo?.outputTrack,
+                  screenShareAudio: localStreams.screenShareAudio?.outputTrack,
+                },
+                direction,
+                remoteQualityLevel,
               },
-            ].forEach(({mediaEnabled, expected}) => {
-              it(`first publishTracks() call while media is ${
-                mediaEnabled ? 'enabled' : 'disabled'
-              }`, async () => {
+              expectedDebugId
+            );
+          }
+        };
+
+        it('addMedia() works correctly when media is enabled without tracks to publish', async () => {
+          await meeting.addMedia();
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and that it was the only /media request that was sent
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when media is enabled with streams to publish', async () => {
+          await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: fakeMicrophoneStream,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: false, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when media is enabled with tracks to publish and track is muted', async () => {
+          fakeMicrophoneStream.muted = true;
+
+          await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: fakeMicrophoneStream,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when media is disabled with tracks to publish', async () => {
+          await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}, audioEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: fakeMicrophoneStream,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'inactive',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when media is disabled with no tracks to publish', async () => {
+          await meeting.addMedia({audioEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'inactive',
+              video: 'sendrecv',
+              screenShareVideo: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        describe('publishStreams()/unpublishStreams() calls', () => {
+          [
+            {mediaEnabled: true, expected: {direction: 'sendrecv', localMuteSentValue: false}},
+            {mediaEnabled: false, expected: {direction: 'inactive', localMuteSentValue: undefined}}
+          ]
+            .forEach(({mediaEnabled, expected}) => {
+              it(`first publishStreams() call while media is ${mediaEnabled ? 'enabled' : 'disabled'}`, async () => {
                 await meeting.addMedia({audioEnabled: mediaEnabled});
                 await simulateRoapOffer();
 
                 resetHistory();
 
-                await meeting.publishTracks({microphone: fakeMicrophoneTrack});
+                await meeting.publishStreams({microphone: fakeMicrophoneStream});
                 await stableState();
 
                 if (expected.localMuteSentValue !== undefined) {
@@ -2003,14 +2019,12 @@ describe('plugin-meetings', () => {
                 } else {
                   assert.notCalled(locusMediaRequestStub);
                 }
+
                 if (isMultistream) {
-                  assert.calledOnceWithExactly(
-                    fakeMultistreamRoapMediaConnection.publishTrack,
-                    fakeMicrophoneTrack
-                  );
+                  assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: {audio: webrtcAudioTrack, video: null, screenShareVideo: null},
+                    localTracks: { audio: fakeMicrophoneStream.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -2021,40 +2035,34 @@ describe('plugin-meetings', () => {
                 }
               });
 
-              it(`second publishTracks() call while media is ${
-                mediaEnabled ? 'enabled' : 'disabled'
-              }`, async () => {
+              it(`second publishStreams() call while media is ${mediaEnabled ? 'enabled' : 'disabled'}`, async () => {
                 await meeting.addMedia({audioEnabled: mediaEnabled});
                 await simulateRoapOffer();
-                await meeting.publishTracks({microphone: fakeMicrophoneTrack});
+                await meeting.publishStreams({microphone: fakeMicrophoneStream});
                 await stableState();
 
                 resetHistory();
 
-                const webrtcAudioTrack2 = {id: 'underlying audio track 2'};
-                const fakeMicrophoneTrack2 = {
-                  id: 'fake mic 2',
+                const fakeMicrophoneStream2 = {
                   on: sinon.stub(),
                   off: sinon.stub(),
+                  muted: false,
                   setUnmuteAllowed: sinon.stub(),
                   setMuted: sinon.stub(),
-                  setPublished: sinon.stub(),
-                  muted: false,
-                  underlyingTrack: webrtcAudioTrack2,
-                };
+                  outputTrack:{
+                    id: 'fake mic 2',
+                  }
+                }
 
-                await meeting.publishTracks({microphone: fakeMicrophoneTrack2});
+                await meeting.publishStreams({microphone: fakeMicrophoneStream2});
                 await stableState();
 
                 // only the roap media connection should be updated
                 if (isMultistream) {
-                  assert.calledOnceWithExactly(
-                    fakeMultistreamRoapMediaConnection.publishTrack,
-                    fakeMicrophoneTrack2
-                  );
+                  assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream2);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: {audio: webrtcAudioTrack2, video: null, screenShareVideo: null},
+                    localTracks: { audio: fakeMicrophoneStream2.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -2068,28 +2076,23 @@ describe('plugin-meetings', () => {
                 assert.notCalled(locusMediaRequestStub);
               });
 
-              it(`unpublishTracks() call while media is ${
-                mediaEnabled ? 'enabled' : 'disabled'
-              }`, async () => {
+              it(`unpublishStreams() call while media is ${mediaEnabled ? 'enabled' : 'disabled'}`, async () => {
                 await meeting.addMedia({audioEnabled: mediaEnabled});
                 await simulateRoapOffer();
-                await meeting.publishTracks({microphone: fakeMicrophoneTrack});
+                await meeting.publishStreams({microphone: fakeMicrophoneStream});
                 await stableState();
 
                 resetHistory();
 
-                await meeting.unpublishTracks([fakeMicrophoneTrack]);
+                await meeting.unpublishStreams([fakeMicrophoneStream]);
                 await stableState();
 
                 // the roap media connection should be updated
                 if (isMultistream) {
-                  assert.calledOnceWithExactly(
-                    fakeMultistreamRoapMediaConnection.unpublishTrack,
-                    fakeMicrophoneTrack
-                  );
+                  assert.calledOnce(meeting.sendSlotManager.getSlot(MediaType.AudioMain).unpublishStream);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: {audio: null, video: null, screenShareVideo: null},
+                    localTracks: { audio: null, video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -2112,155 +2115,152 @@ describe('plugin-meetings', () => {
                 }
               });
             });
+        });
+
+        describe('updateMedia()', () => {
+
+          const addMedia = async (enableMedia, stream) => {
+            await meeting.addMedia({audioEnabled: enableMedia, localStreams: {microphone: stream}});
+            await simulateRoapOffer();
+
+            resetHistory();
+          }
+
+          const checkAudioEnabled = (expectedStream, expectedDirection) => {
+            if (isMultistream) {
+              assert.equal(meeting.sendSlotManager.getSlot(MediaType.AudioMain).active, expectedDirection !== 'inactive');
+            } else {
+              assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
+                localTracks: { audio: expectedStream?.outputTrack ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
+                direction: {
+                  audio: expectedDirection,
+                  video: 'sendrecv',
+                  screenShareVideo: 'recvonly',
+                },
+                remoteQualityLevel: 'HIGH'
+              });
+            }
+          }
+
+          it('updateMedia() disables media when nothing is published', async () => {
+            await addMedia(true);
+
+            await meeting.updateMedia({audioEnabled: false});
+
+            // the roap media connection should be updated
+            checkAudioEnabled(null, 'inactive');
+
+            // and that would trigger a new offer so we simulate it happening
+            await simulateRoapOffer();
+
+            // check SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+            // and no other local mute requests were sent to Locus
+            assert.calledOnce(locusMediaRequestStub);
           });
 
-          describe('updateMedia()', () => {
-            const addMedia = async (enableMedia, track) => {
-              await meeting.addMedia({audioEnabled: enableMedia, localTracks: {microphone: track}});
-              await simulateRoapOffer();
+          it('updateMedia() enables media when nothing is published', async () => {
+            await addMedia(false);
 
-              resetHistory();
-            };
+            await meeting.updateMedia({audioEnabled: true});
 
-            const checkAudioEnabled = (expectedTrack, expectedDirection) => {
-              if (isMultistream) {
-                assert.calledOnceWithExactly(
-                  fakeMultistreamRoapMediaConnection.enableMultistreamAudio,
-                  expectedDirection !== 'inactive'
-                );
-              } else {
-                assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                  localTracks: {audio: expectedTrack, video: null, screenShareVideo: null},
-                  direction: {
-                    audio: expectedDirection,
-                    video: 'sendrecv',
-                    screenShareVideo: 'recvonly',
-                  },
-                  remoteQualityLevel: 'HIGH',
-                });
-              }
-            };
+            // the roap media connection should be updated
+            checkAudioEnabled(null, 'sendrecv');
 
-            it('updateMedia() disables media when nothing is published', async () => {
-              await addMedia(true);
+            // and that would trigger a new offer so we simulate it happening
+            await simulateRoapOffer();
 
-              await meeting.updateMedia({audioEnabled: false});
+            // check SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
 
-              // the roap media connection should be updated
-              checkAudioEnabled(null, 'inactive');
-
-              // and that would trigger a new offer so we simulate it happening
-              await simulateRoapOffer();
-
-              // check SDP offer was sent with the right audioMuted/videoMuted values
-              checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-              // and no other local mute requests were sent to Locus
-              assert.calledOnce(locusMediaRequestStub);
-            });
-
-            it('updateMedia() enables media when nothing is published', async () => {
-              await addMedia(false);
-
-              await meeting.updateMedia({audioEnabled: true});
-
-              // the roap media connection should be updated
-              checkAudioEnabled(null, 'sendrecv');
-
-              // and that would trigger a new offer so we simulate it happening
-              await simulateRoapOffer();
-
-              // check SDP offer was sent with the right audioMuted/videoMuted values
-              checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-              // and no other local mute requests were sent to Locus
-              assert.calledOnce(locusMediaRequestStub);
-            });
-
-            it('updateMedia() disables media when track is published', async () => {
-              await addMedia(true, fakeMicrophoneTrack);
-
-              await meeting.updateMedia({audioEnabled: false});
-              await stableState();
-
-              // the roap media connection should be updated
-              checkAudioEnabled(webrtcAudioTrack, 'inactive');
-
-              checkLocalMuteSentToLocus({audioMuted: true, videoMuted: true});
-
-              locusMediaRequestStub.resetHistory();
-
-              // and that would trigger a new offer so we simulate it happening
-              await simulateRoapOffer();
-
-              // check SDP offer was sent with the right audioMuted/videoMuted values
-              checkSdpOfferSent({audioMuted: true, videoMuted: true});
-
-              // and no other local mute requests were sent to Locus
-              assert.calledOnce(locusMediaRequestStub);
-            });
-
-            it('updateMedia() enables media when track is published', async () => {
-              await addMedia(false, fakeMicrophoneTrack);
-
-              await meeting.updateMedia({audioEnabled: true});
-              await stableState();
-
-              // the roap media connection should be updated
-              checkAudioEnabled(webrtcAudioTrack, 'sendrecv');
-
-              checkLocalMuteSentToLocus({audioMuted: false, videoMuted: true});
-
-              locusMediaRequestStub.resetHistory();
-
-              // and that would trigger a new offer so we simulate it happening
-              await simulateRoapOffer();
-
-              // check SDP offer was sent with the right audioMuted/videoMuted values
-              checkSdpOfferSent({audioMuted: false, videoMuted: true});
-
-              // and no other local mute requests were sent to Locus
-              assert.calledOnce(locusMediaRequestStub);
-            });
+            // and no other local mute requests were sent to Locus
+            assert.calledOnce(locusMediaRequestStub);
           });
 
-          [
-            {mute: true, title: 'muting a track before confluence is created'},
-            {mute: false, title: 'unmuting a track before confluence is created'},
-          ].forEach(({mute, title}) =>
-            it(title, async () => {
-              // initialize the microphone mute state to opposite of what we do in the test
-              fakeMicrophoneTrack.muted = !mute;
+          it('updateMedia() disables media when stream is published', async () => {
+            await addMedia(true, fakeMicrophoneStream);
 
-              await meeting.addMedia({localTracks: {microphone: fakeMicrophoneTrack}});
-              await stableState();
+            await meeting.updateMedia({audioEnabled: false});
+            await stableState();
 
-              resetHistory();
+            // the roap media connection should be updated
+            checkAudioEnabled(fakeMicrophoneStream, 'inactive');
 
-              assert.equal(fakeMicrophoneTrack.on.getCall(0).args[0], LocalTrackEvents.Muted);
-              const mutedListener = fakeMicrophoneTrack.on.getCall(0).args[1];
-              // simulate track being muted
-              mutedListener({trackState: {muted: mute}});
+            checkLocalMuteSentToLocus({audioMuted: true, videoMuted: true});
 
-              await stableState();
+            locusMediaRequestStub.resetHistory();
 
-              // nothing should happen
-              assert.notCalled(locusMediaRequestStub);
-              assert.notCalled(fakeRoapMediaConnection.update);
+            // and that would trigger a new offer so we simulate it happening
+            await simulateRoapOffer();
 
-              // now simulate roap offer
-              await simulateRoapOffer();
+            // check SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
 
-              // it should be sent with the right mute status
-              checkSdpOfferSent({audioMuted: mute, videoMuted: true});
+            // and no other local mute requests were sent to Locus
+            assert.calledOnce(locusMediaRequestStub);
+          });
 
-              // nothing else should happen
-              assert.calledOnce(locusMediaRequestStub);
-              assert.notCalled(fakeRoapMediaConnection.update);
-            })
-          );
-        })
-      );
+          it('updateMedia() enables media when stream is published', async () => {
+            await addMedia(false, fakeMicrophoneStream);
+
+            await meeting.updateMedia({audioEnabled: true});
+            await stableState();
+
+            // the roap media connection should be updated
+            checkAudioEnabled(fakeMicrophoneStream, 'sendrecv');
+
+            checkLocalMuteSentToLocus({audioMuted: false, videoMuted: true});
+
+            locusMediaRequestStub.resetHistory();
+
+            // and that would trigger a new offer so we simulate it happening
+            await simulateRoapOffer();
+
+            // check SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: false, videoMuted: true});
+
+            // and no other local mute requests were sent to Locus
+            assert.calledOnce(locusMediaRequestStub);
+          });
+        });
+
+        [
+          {mute: true, title: 'muting a track before confluence is created'},
+          {mute: false, title: 'unmuting a track before confluence is created'}
+        ].forEach(({mute, title}) =>
+          it(title, async () => {
+            // initialize the microphone mute state to opposite of what we do in the test
+            fakeMicrophoneStream.muted = !mute;
+
+            await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+            await stableState();
+
+            resetHistory();
+
+            assert.equal(fakeMicrophoneStream.on.getCall(0).args[0], StreamEventNames.MuteStateChange);
+            const mutedListener = fakeMicrophoneStream.on.getCall(0).args[1];
+            // simulate track being muted
+            mutedListener(mute);
+
+            await stableState();
+
+            // nothing should happen
+            assert.notCalled(locusMediaRequestStub);
+            assert.notCalled(fakeRoapMediaConnection.update);
+
+            // now simulate roap offer
+            await simulateRoapOffer();
+
+            // it should be sent with the right mute status
+            checkSdpOfferSent({audioMuted: mute, videoMuted: true});
+
+            // nothing else should happen
+            assert.calledOnce(locusMediaRequestStub);
+            assert.notCalled(fakeRoapMediaConnection.update);
+          })
+        );
+      }));
 
       describe('#acknowledge', () => {
         it('should have #acknowledge', () => {
@@ -2326,11 +2326,11 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(Promise.resolve({body: 'test'}));
           meeting.locusInfo.onFullLocus = sinon.stub().returns(true);
-          meeting.cleanupLocalTracks = sinon.stub().returns(Promise.resolve());
+          meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
           meeting.closeRemoteStream = sinon.stub().returns(Promise.resolve());
-          sandbox.stub(meeting, 'closeRemoteTracks').returns(Promise.resolve());
+          sandbox.stub(meeting, 'closeRemoteStreams').returns(Promise.resolve());
           meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
-          meeting.unsetRemoteTracks = sinon.stub();
+          meeting.unsetRemoteStreams = sinon.stub();
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
@@ -2350,10 +2350,10 @@ describe('plugin-meetings', () => {
           assert.exists(leave.then);
           await leave;
           assert.calledOnce(meeting.meetingRequest.leaveMeeting);
-          assert.calledOnce(meeting.cleanupLocalTracks);
-          assert.calledOnce(meeting.closeRemoteTracks);
+          assert.calledOnce(meeting.cleanupLocalStreams);
+          assert.calledOnce(meeting.closeRemoteStreams);
           assert.calledOnce(meeting.closePeerConnections);
-          assert.calledOnce(meeting.unsetRemoteTracks);
+          assert.calledOnce(meeting.unsetRemoteStreams);
           assert.calledOnce(meeting.unsetPeerConnections);
         });
 
@@ -2495,7 +2495,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
           meeting.locusInfo.self = {url: url1};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
-          meeting.mediaProperties.shareVideoTrack = {};
+          meeting.mediaProperties.shareVideoStream = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
         });
@@ -2553,16 +2553,17 @@ describe('plugin-meetings', () => {
       describe('#updateMedia', () => {
         let sandbox;
 
-        const createFakeLocalTrack = () => ({
-          underlyingTrack: {id: 'fake underlying track'},
+        const createFakeLocalStream = () => ({
+          outputTrack: {id: 'fake underlying track'},
         });
         beforeEach(() => {
           sandbox = sinon.createSandbox();
-          meeting.audio = {enable: sinon.stub()};
-          meeting.video = {enable: sinon.stub()};
-          meeting.mediaProperties.audioTrack = createFakeLocalTrack();
-          meeting.mediaProperties.videoTrack = createFakeLocalTrack();
-          meeting.mediaProperties.shareVideoTrack = createFakeLocalTrack();
+          meeting.audio = { enable: sinon.stub()};
+          meeting.video = { enable: sinon.stub()};
+          meeting.mediaProperties.audioStream = createFakeLocalStream();
+          meeting.mediaProperties.videoStream = createFakeLocalStream();
+          meeting.mediaProperties.shareVideoStream = createFakeLocalStream();
+          meeting.mediaProperties.shareAudioStream = createFakeLocalStream();
           meeting.mediaProperties.mediaDirection = {
             sendAudio: true,
             sendVideo: true,
@@ -2570,12 +2571,18 @@ describe('plugin-meetings', () => {
             receiveAudio: true,
             receiveVideo: true,
             receiveShare: true,
+          }
+          const fakeMultistreamRoapMediaConnection = {
+            createSendSlot: () => {}
           };
+          sinon.stub(fakeMultistreamRoapMediaConnection,'createSendSlot').returns({active: true});
+          meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection,MediaType.AudioMain);
         });
 
         afterEach(() => {
           sandbox.restore();
           sandbox = null;
+          sinon.restore();
         });
 
         forEach(
@@ -2592,8 +2599,8 @@ describe('plugin-meetings', () => {
 
               await meeting.updateMedia({audioEnabled});
 
-              assert.calledOnceWithExactly(
-                meeting.mediaProperties.webrtcMediaConnection.enableMultistreamAudio,
+              assert.equal(
+                meeting.sendSlotManager.getSlot(MediaType.AudioMain).active,
                 enableMultistreamAudio
               );
               assert.calledOnceWithExactly(meeting.audio.enable, meeting, enableMultistreamAudio);
@@ -2625,19 +2632,24 @@ describe('plugin-meetings', () => {
 
           // and check that update is called with the original args
           assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.update);
-          assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.update, {
-            localTracks: {
-              audio: meeting.mediaProperties.audioTrack.underlyingTrack,
-              video: meeting.mediaProperties.videoTrack.underlyingTrack,
-              screenShareVideo: meeting.mediaProperties.shareVideoTrack.underlyingTrack,
-            },
-            direction: {
-              audio: 'inactive',
-              video: 'inactive',
-              screenShareVideo: 'sendrecv',
-            },
-            remoteQualityLevel: 'HIGH',
-          });
+
+          assert.calledWith(
+            meeting.mediaProperties.webrtcMediaConnection.update,
+            {
+              localTracks: {
+                audio: meeting.mediaProperties.audioStream.outputTrack,
+                video: meeting.mediaProperties.videoStream.outputTrack,
+                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputTrack,
+                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputTrack,
+              },
+              direction: {
+                audio: 'inactive',
+                video: 'inactive',
+                screenShareVideo: 'sendrecv',
+              },
+              remoteQualityLevel: 'HIGH',
+            }
+          );
           assert.isTrue(myPromiseResolved);
         });
       });
@@ -2655,9 +2667,9 @@ describe('plugin-meetings', () => {
               receiveVideo: true,
             };
             meeting.mediaProperties.mediaDirection = mediaDirection;
-            meeting.mediaProperties.remoteVideoTrack = sinon
+            meeting.mediaProperties.remoteVideoStream = sinon
               .stub()
-              .returns({mockTrack: 'mockTrack'});
+              .returns({outputTrack: {id: 'some mock id'}});
 
             meeting.meetingRequest.changeVideoLayoutDebounced = sinon
               .stub()
@@ -2679,7 +2691,7 @@ describe('plugin-meetings', () => {
 
           it('should have receiveVideo true and remote video track should exist', () => {
             assert.equal(meeting.mediaProperties.mediaDirection.receiveVideo, true);
-            assert.exists(meeting.mediaProperties.remoteVideoTrack);
+            assert.exists(meeting.mediaProperties.remoteVideoStream);
           });
 
           it('has layoutType which exists in the list of allowed layoutTypes and should call meetingRequest changeVideoLayoutDebounced method', async () => {
@@ -2734,7 +2746,7 @@ describe('plugin-meetings', () => {
             });
 
             meeting.mediaProperties.mediaDirection.receiveShare = true;
-            meeting.mediaProperties.remoteShare = sinon.stub().returns({mockTrack: 'mockTrack'});
+            meeting.mediaProperties.remoteShareStream = sinon.stub().returns({mockTrack: 'mockTrack'});
 
             // now call it again with just content
             await meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 500, height: 600}});
@@ -2803,7 +2815,7 @@ describe('plugin-meetings', () => {
 
           it('does not call changeVideoLayoutDebounced if renderInfo content changes only very slightly', async () => {
             meeting.mediaProperties.mediaDirection.receiveShare = true;
-            meeting.mediaProperties.remoteShare = sinon.stub().returns({mockTrack: 'mockTrack'});
+            meeting.mediaProperties.remoteShareStream = sinon.stub().returns({mockTrack: 'mockTrack'});
 
             await meeting.changeVideoLayout(layoutTypeSingle, {
               main: {width: 500, height: 510},
@@ -2843,7 +2855,7 @@ describe('plugin-meetings', () => {
 
           it('rounds the width and height values to nearest integers', async () => {
             meeting.mediaProperties.mediaDirection.receiveShare = true;
-            meeting.mediaProperties.remoteShare = sinon.stub().returns({mockTrack: 'mockTrack'});
+            meeting.mediaProperties.remoteShareStream = sinon.stub().returns({mockTrack: 'mockTrack'});
 
             await meeting.changeVideoLayout(layoutTypeSingle, {
               main: {width: 500.5, height: 510.09},
@@ -3635,11 +3647,11 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(Promise.resolve({body: 'test'}));
           meeting.locusInfo.onFullLocus = sinon.stub().returns(true);
-          meeting.cleanupLocalTracks = sinon.stub().returns(Promise.resolve());
+          meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
           meeting.closeRemoteStream = sinon.stub().returns(Promise.resolve());
-          sandbox.stub(meeting, 'closeRemoteTracks').returns(Promise.resolve());
+          sandbox.stub(meeting, 'closeRemoteStreams').returns(Promise.resolve());
           meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
-          meeting.unsetRemoteTracks = sinon.stub();
+          meeting.unsetRemoteStreams = sinon.stub();
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
@@ -3659,10 +3671,10 @@ describe('plugin-meetings', () => {
           assert.exists(endMeetingForAll.then);
           await endMeetingForAll;
           assert.calledOnce(meeting?.meetingRequest?.endMeetingForAll);
-          assert.calledOnce(meeting?.cleanupLocalTracks);
-          assert.calledOnce(meeting?.closeRemoteTracks);
+          assert.calledOnce(meeting?.cleanupLocalStreams);
+          assert.calledOnce(meeting?.closeRemoteStreams);
           assert.calledOnce(meeting?.closePeerConnections);
-          assert.calledOnce(meeting?.unsetRemoteTracks);
+          assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
         });
       });
@@ -3672,7 +3684,7 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           sandbox = sinon.createSandbox();
-          sandbox.stub(meeting, 'cleanupLocalTracks');
+          sandbox.stub(meeting, 'cleanupLocalStreams');
 
           sandbox.stub(meeting.mediaProperties, 'setMediaDirection');
 
@@ -3751,7 +3763,7 @@ describe('plugin-meetings', () => {
 
           // beacuse we are calling callback so we need to wait
 
-          assert.called(meeting.cleanupLocalTracks);
+          assert.called(meeting.cleanupLocalStreams);
 
           // give queued Promise callbacks a chance to run
           await Promise.resolve();
@@ -3875,43 +3887,45 @@ describe('plugin-meetings', () => {
         });
       });
       describe('Local tracks publishing', () => {
-        let audioTrack;
-        let videoTrack;
-        let audioShareTrack;
-        let videoShareTrack;
-        let createMuteStateStub;
-        let LocalDisplayTrackConstructorStub;
-        let LocalMicrophoneTrackConstructorStub;
-        let LocalCameraTrackConstructorStub;
-        let fakeLocalDisplayTrack;
-        let fakeLocalMicrophoneTrack;
-        let fakeLocalCameraTrack;
+        let audioStream;
+        let videoStream;
+        let audioShareStream;
+        let videoShareStream;
+        let fakeMultistreamRoapMediaConnection;
 
         beforeEach(() => {
-          audioTrack = {
-            id: 'audio track',
-            getSettings: sinon.stub().returns({}),
+          audioStream = {
+            getSettings: sinon.stub().returns({
+              deviceId: 'some device id'
+            }),
             on: sinon.stub(),
             off: sinon.stub(),
-          };
-          videoTrack = {
-            id: 'video track',
-            getSettings: sinon.stub().returns({}),
+          }
+
+          videoStream = {
+            getSettings: sinon.stub().returns({
+              deviceId: 'some device id'
+            }),
             on: sinon.stub(),
             off: sinon.stub(),
-          };
-          audioShareTrack = {
-            id: 'share track',
+          }
+
+          audioShareStream = {
             on: sinon.stub(),
             off: sinon.stub(),
-            getSettings: sinon.stub(),
-          };
-          videoShareTrack = {
-            id: 'share track',
+            getSettings: sinon.stub().returns({
+              deviceId: 'some device id'
+            }),
+          }
+
+          videoShareStream = {
             on: sinon.stub(),
             off: sinon.stub(),
-            getSettings: sinon.stub().returns({}),
-          };
+            getSettings: sinon.stub().returns({
+              deviceId: 'some device id'
+            }),
+          }
+
           meeting.requestScreenShareFloor = sinon.stub().resolves({});
           meeting.releaseScreenShareFloor = sinon.stub().resolves({});
           meeting.mediaProperties.mediaDirection = {
@@ -3920,266 +3934,239 @@ describe('plugin-meetings', () => {
             sendShare: false,
           };
           meeting.isMultistream = true;
-          meeting.mediaProperties.webrtcMediaConnection = {
-            publishTrack: sinon.stub().resolves({}),
-            unpublishTrack: sinon.stub().resolves({}),
-          };
-          meeting.audio = {handleLocalTrackChange: sinon.stub()};
-          meeting.video = {handleLocalTrackChange: sinon.stub()};
-
-          const createFakeLocalTrack = (originalTrack) => ({
-            on: sinon.stub(),
-            off: sinon.stub(),
-            stop: sinon.stub(),
-            originalTrack,
-          });
-
-          // setup mock constructors for webrtc-core local track classes in such a way
-          // that they return the original track correctly (this is needed for unpublish() API tests)
-          LocalDisplayTrackConstructorStub = sinon
-            .stub(InternalMediaCoreModule, 'LocalDisplayTrack')
-            .callsFake((stream) => {
-              fakeLocalDisplayTrack = createFakeLocalTrack(stream.getTracks()[0]);
-              return fakeLocalDisplayTrack;
-            });
-          LocalMicrophoneTrackConstructorStub = sinon
-            .stub(InternalMediaCoreModule, 'LocalMicrophoneTrack')
-            .callsFake((stream) => {
-              fakeLocalMicrophoneTrack = createFakeLocalTrack(stream.getTracks()[0]);
-              return fakeLocalMicrophoneTrack;
-            });
-          LocalCameraTrackConstructorStub = sinon
-            .stub(InternalMediaCoreModule, 'LocalCameraTrack')
-            .callsFake((stream) => {
-              fakeLocalCameraTrack = createFakeLocalTrack(stream.getTracks()[0]);
-              return fakeLocalCameraTrack;
-            });
-
-          createMuteStateStub = sinon
-            .stub(MuteStateModule, 'createMuteState')
-            .returns({id: 'fake mute state instance'});
+          meeting.mediaProperties.webrtcMediaConnection = {};
+          meeting.audio = { handleLocalStreamChange: sinon.stub()};
+          meeting.video = { handleLocalStreamChange: sinon.stub()};
+          fakeMultistreamRoapMediaConnection = {
+            createSendSlot: () => {
+              return {
+                publishStream: sinon.stub(),
+                unpublishStream: sinon.stub(),
+              }
+            }
+          }
+          meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection, MediaType.VideoSlides);
+          meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection, MediaType.AudioSlides);
+          meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection, MediaType.AudioMain);
+          meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection, MediaType.VideoMain);
         });
-        describe('#publishTracks', () => {
+        afterEach(() => {
+          sinon.restore();
+        });
+        describe('#publishStreams', () => {
           it('fails if there is no media connection', async () => {
             meeting.mediaProperties.webrtcMediaConnection = undefined;
-            await assert.isRejected(meeting.publishTracks({audio: {id: 'some audio track'}}));
+            await assert.isRejected(meeting.publishStreams({audio: {id: 'some audio track'}}));
           });
 
-          const checkAudioPublished = (track) => {
-            assert.calledOnceWithExactly(meeting.audio.handleLocalTrackChange, meeting);
-            assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
-            assert.equal(meeting.mediaProperties.audioTrack, track);
+          const checkAudioPublished = (stream) => {
+            assert.calledOnceWithExactly(meeting.audio.handleLocalStreamChange, meeting);
+            assert.calledWith(
+              meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
+              stream
+            );
+            assert.equal(meeting.mediaProperties.audioStream, stream);
             // check that sendAudio hasn't been touched
             assert.equal(meeting.mediaProperties.mediaDirection.sendAudio, 'fake value');
           };
 
-          const checkVideoPublished = (track) => {
-            assert.calledOnceWithExactly(meeting.video.handleLocalTrackChange, meeting);
-            assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
-            assert.equal(meeting.mediaProperties.videoTrack, track);
+          const checkVideoPublished = (stream) => {
+            assert.calledOnceWithExactly(meeting.video.handleLocalStreamChange, meeting);
+            assert.calledWith(
+              meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
+              stream
+            );
+            assert.equal(meeting.mediaProperties.videoStream, stream);
             // check that sendVideo hasn't been touched
             assert.equal(meeting.mediaProperties.mediaDirection.sendVideo, 'fake value');
           };
 
-          const checkScreenShareVideoPublished = (track) => {
+          const checkScreenShareVideoPublished = (stream) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
-            assert.equal(meeting.mediaProperties.shareVideoTrack, track);
+            assert.calledWith(
+              meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
+              stream
+            );
+            assert.equal(meeting.mediaProperties.shareVideoStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
 
-          const checkScreenShareAudioPublished = (track) => {
+          const checkScreenShareAudioPublished = (stream) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.publishTrack, track);
-            assert.equal(meeting.mediaProperties.shareAudioTrack, track);
+            assert.calledWith(
+              meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
+              stream
+            );
+            assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
 
-          it('requests screen share floor and publishes the screen share video track', async () => {
-            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+          it('requests screen share floor and publishes the screen share video stream', async () => {
+            await meeting.publishStreams({screenShare: {video: videoShareStream}});
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkScreenShareVideoPublished(videoShareTrack);
+            checkScreenShareVideoPublished(videoShareStream);
           });
 
-          it('requests screen share floor and publishes the screen share audio track', async () => {
-            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+          it('requests screen share floor and publishes the screen share audio stream', async () => {
+            await meeting.publishStreams({screenShare: {audio: audioShareStream}});
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkScreenShareAudioPublished(audioShareTrack);
+            checkScreenShareAudioPublished(audioShareStream);
           });
 
-          it('does not request screen share floor when publishing video share track if already sharing audio', async () => {
-            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+          it('does not request screen share floor when publishing video share stream if already sharing audio', async () => {
+            await meeting.publishStreams({screenShare: {audio: audioShareStream}});
             assert.calledOnce(meeting.requestScreenShareFloor);
 
             meeting.requestScreenShareFloor.reset();
-            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+            await meeting.publishStreams({screenShare: {video: videoShareStream}});
             assert.notCalled(meeting.requestScreenShareFloor);
           });
 
-          it('does not request screen share floor when publishing audio share track if already sharing video', async () => {
-            await meeting.publishTracks({screenShare: {video: videoShareTrack}});
+          it('does not request screen share floor when publishing audio share stream if already sharing video', async () => {
+            await meeting.publishStreams({screenShare: {video: videoShareStream}});
             assert.calledOnce(meeting.requestScreenShareFloor);
 
             meeting.requestScreenShareFloor.reset();
-            await meeting.publishTracks({screenShare: {audio: audioShareTrack}});
+            await meeting.publishStreams({screenShare: {audio: audioShareStream}});
             assert.notCalled(meeting.requestScreenShareFloor);
           });
 
-          it('updates MuteState instance and publishes the track for main audio', async () => {
-            await meeting.publishTracks({microphone: audioTrack});
+          it('updates MuteState instance and publishes the stream for main audio', async () => {
+            await meeting.publishStreams({microphone: audioStream});
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkAudioPublished(audioTrack);
+            checkAudioPublished(audioStream);
           });
 
-          it('updates MuteState instance and publishes the track for main video', async () => {
-            await meeting.publishTracks({camera: videoTrack});
+          it('updates MuteState instance and publishes the stream for main video', async () => {
+            await meeting.publishStreams({camera: videoStream});
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.publishTrack);
-            checkVideoPublished(videoTrack);
+            checkVideoPublished(videoStream);
           });
 
           it('publishes audio, video and screen share together', async () => {
-            await meeting.publishTracks({
-              microphone: audioTrack,
-              camera: videoTrack,
+            await meeting.publishStreams({
+              microphone: audioStream,
+              camera: videoStream,
               screenShare: {
-                video: videoShareTrack,
-                audio: audioShareTrack,
+                video: videoShareStream,
+                audio: audioShareStream,
               },
             });
 
-            assert.callCount(meeting.mediaProperties.webrtcMediaConnection.publishTrack, 4);
-            checkAudioPublished(audioTrack);
-            checkVideoPublished(videoTrack);
-            checkScreenShareVideoPublished(videoShareTrack);
-            checkScreenShareAudioPublished(audioShareTrack);
+            checkAudioPublished(audioStream);
+            checkVideoPublished(videoStream);
+            checkScreenShareVideoPublished(videoShareStream);
+            checkScreenShareAudioPublished(audioShareStream);
           });
         });
 
-        describe('unpublishTracks', () => {
+        describe('unpublishStreams', () => {
           beforeEach(async () => {
-            await meeting.publishTracks({
-              microphone: audioTrack,
-              camera: videoTrack,
-              screenShare: {video: videoShareTrack, audio: audioShareTrack},
+            await meeting.publishStreams({
+              microphone: audioStream,
+              camera: videoStream,
+              screenShare: {video: videoShareStream, audio: audioShareStream},
             });
           });
 
           const checkAudioUnpublished = () => {
-            assert.calledWith(
-              meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              audioTrack
+            assert.calledOnce(
+              meeting.sendSlotManager.getSlot(MediaType.AudioMain).unpublishStream
             );
 
-            assert.equal(meeting.mediaProperties.audioTrack, null);
+            assert.equal(meeting.mediaProperties.audioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendAudio, 'fake value');
           };
 
           const checkVideoUnpublished = () => {
-            assert.calledWith(
-              meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              videoTrack
+            assert.calledOnce(
+              meeting.sendSlotManager.getSlot(MediaType.VideoMain).unpublishStream
             );
 
-            assert.equal(meeting.mediaProperties.videoTrack, null);
+            assert.equal(meeting.mediaProperties.videoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendVideo, 'fake value');
           };
 
-          // share direction will remain true if only one of the two share tracks are unpublished
+          // share direction will remain true if only one of the two share streams are unpublished
           const checkScreenShareVideoUnpublished = (shareDirection = true) => {
-            assert.calledWith(
-              meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              videoShareTrack
+            assert.calledOnce(
+              meeting.sendSlotManager.getSlot(MediaType.VideoSlides).unpublishStream
             );
 
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.equal(meeting.mediaProperties.shareVideoTrack, null);
+            assert.equal(meeting.mediaProperties.shareVideoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
           };
 
-          // share direction will remain true if only one of the two share tracks are unpublished
+          // share direction will remain true if only one of the two share streams are unpublished
           const checkScreenShareAudioUnpublished = (shareDirection = true) => {
-            assert.calledWith(
-              meeting.mediaProperties.webrtcMediaConnection.unpublishTrack,
-              audioShareTrack
+            assert.calledOnce(
+              meeting.sendSlotManager.getSlot(MediaType.AudioSlides).unpublishStream
             );
 
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.equal(meeting.mediaProperties.shareAudioTrack, null);
+            assert.equal(meeting.mediaProperties.shareAudioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
           };
 
           it('fails if there is no media connection', async () => {
             meeting.mediaProperties.webrtcMediaConnection = undefined;
             await assert.isRejected(
-              meeting.unpublishTracks([audioTrack, videoTrack, videoShareTrack, audioShareTrack])
+              meeting.unpublishStreams([audioStream, videoStream, videoShareStream, audioShareStream])
             );
           });
 
-          it('un-publishes the tracks correctly (all 4 together)', async () => {
-            await meeting.unpublishTracks([
-              audioTrack,
-              videoTrack,
-              videoShareTrack,
-              audioShareTrack,
-            ]);
+          it('un-publishes the streams correctly (all 4 together)', async () => {
+            await meeting.unpublishStreams([audioStream, videoStream, videoShareStream, audioShareStream]);
 
-            assert.equal(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack.callCount, 4);
             checkAudioUnpublished();
             checkVideoUnpublished();
             checkScreenShareVideoUnpublished(false);
             checkScreenShareAudioUnpublished(false);
           });
 
-          it('un-publishes the audio track correctly', async () => {
-            await meeting.unpublishTracks([audioTrack]);
+          it('un-publishes the audio stream correctly', async () => {
+            await meeting.unpublishStreams([audioStream]);
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkAudioUnpublished();
           });
 
-          it('un-publishes the video track correctly', async () => {
-            await meeting.unpublishTracks([videoTrack]);
+          it('un-publishes the video stream correctly', async () => {
+            await meeting.unpublishStreams([videoStream]);
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkVideoUnpublished();
           });
 
-          it('un-publishes the screen share video track correctly', async () => {
-            await meeting.unpublishTracks([videoShareTrack]);
+          it('un-publishes the screen share video stream correctly', async () => {
+            await meeting.unpublishStreams([videoShareStream]);
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkScreenShareVideoUnpublished();
           });
 
-          it('un-publishes the screen share audio track correctly', async () => {
-            await meeting.unpublishTracks([audioShareTrack]);
+          it('un-publishes the screen share audio stream correctly', async () => {
+            await meeting.unpublishStreams([audioShareStream]);
 
-            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.unpublishTrack);
             checkScreenShareAudioUnpublished();
           });
 
-          it('releases share floor and sets send direction to false when both screen share tracks are undefined', async () => {
-            await meeting.unpublishTracks([videoShareTrack, audioShareTrack]);
+          it('releases share floor and sets send direction to false when both screen share streams are undefined', async () => {
+            await meeting.unpublishStreams([videoShareStream, audioShareStream]);
 
             assert.calledOnce(meeting.releaseScreenShareFloor);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, false);
           });
 
           it('does not release share floor when audio is released and video still exists', async () => {
-            await meeting.unpublishTracks([audioShareTrack]);
+            await meeting.unpublishStreams([audioShareStream]);
             assert.notCalled(meeting.releaseScreenShareFloor);
           });
 
           it('does not release share floor when video is released and audio still exists', async () => {
-            await meeting.unpublishTracks([videoShareTrack]);
+            await meeting.unpublishStreams([videoShareStream]);
             assert.notCalled(meeting.releaseScreenShareFloor);
           });
         });
@@ -4189,60 +4176,68 @@ describe('plugin-meetings', () => {
     describe('#enableMusicMode', () => {
       beforeEach(() => {
         meeting.isMultistream = true;
-        meeting.mediaProperties.webrtcMediaConnection = {
-          setCodecParameters: sinon.stub().resolves({}),
-          deleteCodecParameters: sinon.stub().resolves({}),
+        const fakeMultistreamRoapMediaConnection = {
+          createSendSlot: () => {
+            return {
+              setCodecParameters: sinon.stub().resolves(),
+              deleteCodecParameters: sinon.stub().resolves(),
+            }
+          }
         };
+        meeting.sendSlotManager.createSlot(fakeMultistreamRoapMediaConnection, MediaType.AudioMain, false);
+        meeting.mediaProperties.webrtcMediaConnection = {};
       });
-      [{shouldEnableMusicMode: true}, {shouldEnableMusicMode: false}].forEach(
-        ({shouldEnableMusicMode}) => {
-          it(`fails if there is no media connection for shouldEnableMusicMode: ${shouldEnableMusicMode}`, async () => {
-            meeting.mediaProperties.webrtcMediaConnection = undefined;
-            await assert.isRejected(meeting.enableMusicMode(shouldEnableMusicMode));
-          });
-        }
-      );
+      afterEach(() => {
+        sinon.restore();
+      });
+      [
+        {shouldEnableMusicMode: true},
+        {shouldEnableMusicMode: false},
+      ].forEach(({shouldEnableMusicMode}) => {
+        it(`fails if there is no media connection for shouldEnableMusicMode: ${shouldEnableMusicMode}`, async () => {
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+          await assert.isRejected(meeting.enableMusicMode(shouldEnableMusicMode));
+        });
+      });
 
       it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
         await meeting.enableMusicMode(true);
-        assert.calledOnceWithExactly(
-          meeting.mediaProperties.webrtcMediaConnection.setCodecParameters,
-          MediaType.AudioMain,
-          {
-            maxaveragebitrate: '64000',
-            maxplaybackrate: '48000',
-          }
-        );
-        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters);
+        assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters, {
+          maxaveragebitrate: '64000',
+          maxplaybackrate: '48000',
+        });
+        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters);
       });
 
       it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
         await meeting.enableMusicMode(false);
-        assert.calledOnceWithExactly(
-          meeting.mediaProperties.webrtcMediaConnection.deleteCodecParameters,
-          MediaType.AudioMain,
-          ['maxaveragebitrate', 'maxplaybackrate']
-        );
-        assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.setCodecParameters);
+        assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters, [
+          'maxaveragebitrate',
+          'maxplaybackrate',
+        ]);
+        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters);
       });
     });
 
     describe('Public Event Triggers', () => {
       let sandbox;
-      const {ENDED} = CONSTANTS;
 
       beforeEach(() => {
-        const fakeMediaTrack = () => ({stop: () => {}, readyState: ENDED});
+        const fakeMediaStream = () => {
+          return {
+            id: 'fake stream'
+          }
+        };
 
         sandbox = sinon.createSandbox();
-        sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
-        sandbox.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'videoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'shareVideoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'shareAudioTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteAudioTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteVideoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteShare').value(fakeMediaTrack());
+        sandbox.stub(Media, 'stopStream').returns(Promise.resolve());
+        sandbox.stub(meeting.mediaProperties, 'audioStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'videoStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'shareVideoStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'shareAudioStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'remoteAudioStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'remoteVideoStream').value(fakeMediaStream());
+        sandbox.stub(meeting.mediaProperties, 'remoteShareStream').value(fakeMediaStream());
       });
       afterEach(() => {
         sandbox.restore();
@@ -4342,27 +4337,27 @@ describe('plugin-meetings', () => {
       });
       describe('#closeRemoteStream', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
-          await meeting.closeRemoteTracks();
+          await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 5);
+          assert.equal(TriggerProxy.trigger.callCount, 6);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
+            {file: 'meeting/index', function: 'closeRemoteStreams'},
             'media:stopped',
             {type: 'remoteAudio'}
           );
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
+            {file: 'meeting/index', function: 'closeRemoteStreams'},
             'media:stopped',
             {type: 'remoteVideo'}
           );
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
+            {file: 'meeting/index', function: 'closeRemoteStreams'},
             'media:stopped',
             {type: 'remoteShare'}
           );
@@ -4370,6 +4365,10 @@ describe('plugin-meetings', () => {
       });
       describe('#setupMediaConnectionListeners', () => {
         let eventListeners;
+        const fakeStream = {
+          id: 'stream',
+          getTracks: () => [{ id: 'track', addEventListener: sinon.stub() }]
+        };
 
         beforeEach(() => {
           eventListeners = {};
@@ -4380,7 +4379,7 @@ describe('plugin-meetings', () => {
               eventListeners[event] = listener;
             }),
           };
-          MediaUtil.createMediaStream.returns({id: 'stream'});
+          MediaUtil.createMediaStream.returns(fakeStream);
         });
 
         it('should register for all the correct RoapMediaConnection events', () => {
@@ -4402,7 +4401,7 @@ describe('plugin-meetings', () => {
           assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
             type: 'remoteAudio',
-            stream: {id: 'stream'},
+            stream: fakeStream,
           });
 
           eventListeners[Event.REMOTE_TRACK_ADDED]({
@@ -4412,7 +4411,7 @@ describe('plugin-meetings', () => {
           assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
             type: 'remoteVideo',
-            stream: {id: 'stream'},
+            stream: fakeStream,
           });
 
           eventListeners[Event.REMOTE_TRACK_ADDED]({
@@ -4422,7 +4421,7 @@ describe('plugin-meetings', () => {
           assert.equal(TriggerProxy.trigger.getCall(4).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(4).args[3], {
             type: 'remoteShare',
-            stream: {id: 'stream'},
+            stream: fakeStream,
           });
         });
 
@@ -5453,7 +5452,7 @@ describe('plugin-meetings', () => {
 
       beforeEach(() => {
         sandbox = sinon.createSandbox();
-        sandbox.stub(meeting.mediaProperties, 'unsetRemoteTracks').returns(Promise.resolve());
+        sandbox.stub(meeting.mediaProperties, 'unsetRemoteStreams').returns(Promise.resolve());
       });
 
       afterEach(() => {
@@ -5560,11 +5559,11 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#unsetRemoteTracks', () => {
-        it('should unset the remote tracks and return null', () => {
-          meeting.mediaProperties.unsetRemoteTracks = sinon.stub().returns(true);
-          meeting.unsetRemoteTracks();
-          assert.calledOnce(meeting.mediaProperties.unsetRemoteTracks);
+      describe('#unsetRemoteStreams', () => {
+        it('should unset the remote streams and return null', () => {
+          meeting.mediaProperties.unsetRemoteStreams = sinon.stub().returns(true);
+          meeting.unsetRemoteStreams();
+          assert.calledOnce(meeting.mediaProperties.unsetRemoteStreams);
         });
       });
       // TODO: remove

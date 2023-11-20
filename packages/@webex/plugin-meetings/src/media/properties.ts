@@ -1,10 +1,11 @@
 import {ConnectionState, Event} from '@webex/internal-media-core';
 
 import {
-  LocalCameraTrack,
-  LocalMicrophoneTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
+  LocalCameraStream,
+  LocalMicrophoneStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  RemoteStream,
 } from '@webex/media-helpers';
 
 import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
@@ -23,18 +24,18 @@ export type MediaDirection = {
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioTrack?: LocalMicrophoneTrack;
+  audioStream?: LocalMicrophoneStream;
   mediaDirection: MediaDirection;
   mediaSettings: any;
   webrtcMediaConnection: any;
-  remoteAudioTrack: any;
+  remoteAudioStream: RemoteStream;
   remoteQualityLevel: any;
-  remoteShare: any;
-  remoteVideoTrack: any;
-  shareVideoTrack?: LocalDisplayTrack;
-  shareAudioTrack?: LocalSystemAudioTrack;
+  remoteShareStream: RemoteStream;
+  remoteVideoStream: RemoteStream;
+  shareVideoStream?: LocalDisplayStream;
+  shareAudioStream?: LocalSystemAudioStream;
   videoDeviceId: any;
-  videoTrack?: LocalCameraTrack;
+  videoStream?: LocalCameraStream;
   namespace = MEETINGS;
 
   /**
@@ -51,13 +52,13 @@ export default class MediaProperties {
       sendVideo: false,
       sendShare: false,
     };
-    this.videoTrack = null;
-    this.audioTrack = null;
-    this.shareVideoTrack = null;
-    this.shareAudioTrack = null;
-    this.remoteShare = undefined;
-    this.remoteAudioTrack = undefined;
-    this.remoteVideoTrack = undefined;
+    this.videoStream = null;
+    this.audioStream = null;
+    this.shareVideoStream = null;
+    this.shareAudioStream = null;
+    this.remoteShareStream = undefined;
+    this.remoteAudioStream = undefined;
+    this.remoteVideoStream = undefined;
     this.remoteQualityLevel = QUALITY_LEVELS.HIGH;
     this.mediaSettings = {};
     this.videoDeviceId = null;
@@ -83,46 +84,46 @@ export default class MediaProperties {
     this.webrtcMediaConnection = mediaPeerConnection;
   }
 
-  setLocalVideoTrack(videoTrack?: LocalCameraTrack) {
-    this.videoTrack = videoTrack;
+  setLocalVideoStream(videoStream?: LocalCameraStream) {
+    this.videoStream = videoStream;
   }
 
-  setLocalAudioTrack(audioTrack?: LocalMicrophoneTrack) {
-    this.audioTrack = audioTrack;
+  setLocalAudioStream(audioStream?: LocalMicrophoneStream) {
+    this.audioStream = audioStream;
   }
 
-  setLocalShareVideoTrack(shareVideoTrack?: LocalDisplayTrack) {
-    this.shareVideoTrack = shareVideoTrack;
+  setLocalShareVideoStream(shareVideoStream?: LocalDisplayStream) {
+    this.shareVideoStream = shareVideoStream;
   }
 
-  setLocalShareAudioTrack(shareAudioTrack?: LocalSystemAudioTrack) {
-    this.shareAudioTrack = shareAudioTrack;
+  setLocalShareAudioStream(shareAudioStream?: LocalSystemAudioStream) {
+    this.shareAudioStream = shareAudioStream;
   }
 
   setRemoteQualityLevel(remoteQualityLevel) {
     this.remoteQualityLevel = remoteQualityLevel;
   }
 
-  setRemoteShare(remoteShare) {
-    this.remoteShare = remoteShare;
+  setRemoteShareStream(remoteShareStream: RemoteStream) {
+    this.remoteShareStream = remoteShareStream;
   }
 
   /**
-   * Sets the remote audio track
-   * @param {MediaTrack} remoteAudioTrack MediaTrack to save
+   * Sets the remote audio stream
+   * @param {RemoteStream} remoteAudioStream RemoteStream to save
    * @returns {void}
    */
-  setRemoteAudioTrack(remoteAudioTrack: any) {
-    this.remoteAudioTrack = remoteAudioTrack;
+  setRemoteAudioStream(remoteAudioStream: RemoteStream) {
+    this.remoteAudioStream = remoteAudioStream;
   }
 
   /**
-   * Sets the remote video track
-   * @param {MediaTrack} remoteVideoTrack MediaTrack to save
+   * Sets the remote video stream
+   * @param {RemoteStream} remoteVideoStream RemoteStream to save
    * @returns {void}
    */
-  setRemoteVideoTrack(remoteVideoTrack: any) {
-    this.remoteVideoTrack = remoteVideoTrack;
+  setRemoteVideoStream(remoteVideoStream: RemoteStream) {
+    this.remoteVideoStream = remoteVideoStream;
   }
 
   /**
@@ -143,29 +144,29 @@ export default class MediaProperties {
    * @returns {void}
    */
   unsetRemoteMedia() {
-    this.remoteAudioTrack = null;
-    this.remoteVideoTrack = null;
+    this.remoteAudioStream = null;
+    this.remoteVideoStream = null;
   }
 
-  unsetRemoteShare() {
-    this.remoteShare = null;
+  unsetRemoteShareStream() {
+    this.remoteShareStream = null;
   }
 
   /**
-   * Unsets all remote tracks
+   * Unsets all remote streams
    * @returns {void}
    */
-  unsetRemoteTracks() {
+  unsetRemoteStreams() {
     this.unsetRemoteMedia();
-    this.unsetRemoteShare();
+    this.unsetRemoteShareStream();
   }
 
   /**
-   * Returns if we have at least one local share track or not.
+   * Returns if we have at least one local share stream or not.
    * @returns {Boolean}
    */
-  hasLocalShareTrack() {
-    return !!(this.shareAudioTrack || this.shareVideoTrack);
+  hasLocalShareStream() {
+    return !!(this.shareAudioStream || this.shareVideoStream);
   }
 
   /**

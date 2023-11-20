@@ -36,7 +36,6 @@ button.btn--red {
 
 button.btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
-  margin: 0.2rem 0;
 }
 
 .container {
@@ -94,6 +93,12 @@ button.btn-code {
   flex-grow: 1;
 }
 
+.screenshare-section {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
 .status-par {
   padding: 0.5rem;
   background-color: #eeeeee;
@@ -129,7 +134,9 @@ button.btn-code {
   align-content: center;
 }
 
-.video-container {
+.video-container,
+.audio-container,
+.screenshare-container {
   position: relative;
   display: flex;
   justify-content: center;

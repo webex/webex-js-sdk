@@ -231,23 +231,23 @@ export default class ReconnectionManager {
   }
 
   /**
-   * Stop the local share track.
+   * Stop the local share stream.
    *
    * @param {string} reason a {@link SHARE_STOPPED_REASON}
    * @returns {undefined}
    * @private
    * @memberof ReconnectionManager
    */
-  private async stopLocalShareTrack(reason: string) {
-    await this.meeting.unpublishTracks([
-      this.meeting.mediaProperties.shareVideoTrack,
-      this.meeting.mediaProperties.shareAudioTrack,
+  private async stopLocalShareStream(reason: string) {
+    await this.meeting.unpublishStreams([
+      this.meeting.mediaProperties.shareVideoStream,
+      this.meeting.mediaProperties.shareAudioStream,
     ]);
     Trigger.trigger(
       this.meeting,
       {
         file: 'reconnection-manager/index',
-        function: 'stopLocalShareTrack',
+        function: 'stopLocalShareStream',
       },
       EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
       {
@@ -424,7 +424,7 @@ export default class ReconnectionManager {
     const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     if (wasSharing) {
-      await this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
+      await this.stopLocalShareStream(SHARE_STOPPED_REASON.MEDIA_RECONNECTION);
     }
 
     if (networkDisconnect) {
@@ -517,7 +517,7 @@ export default class ReconnectionManager {
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
 
       if (wasSharing) {
-        await this.stopLocalShareTrack(SHARE_STOPPED_REASON.MEETING_REJOIN);
+        await this.stopLocalShareStream(SHARE_STOPPED_REASON.MEETING_REJOIN);
       }
     } catch (joinError) {
       this.rejoinAttempts += 1;
