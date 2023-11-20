@@ -15,12 +15,15 @@ import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
 import {
+  API_V1,
   CALLING_CLIENT_FILE,
   DISCOVERY_URL,
+  IP_ENDPOINT,
   NETWORK_CHANGE_DETECTION_UTIL,
   NETWORK_FLAP_TIMEOUT,
   REGISTRATION_FILE,
   SPARK_USER_AGENT,
+  URL_ENDPOINT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
@@ -226,7 +229,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(1, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
       });
 
       expect(webex.request).nthCalledWith(2, {
@@ -241,7 +244,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(3, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
       });
     });
 
@@ -254,24 +257,38 @@ describe('CallingClient Tests', () => {
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+      expect(webex.request).nthCalledWith(1, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(2, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-ca-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(3, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(4, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
         file: CALLING_CLIENT_FILE,
         method: 'getMobiusServers',
       });
 
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
-        method: 'GET',
-      });
-
-      expect(callingClient.primaryMobiusUris).toEqual([uri]);
-
-      expect(webex.request).nthCalledWith(1, {
-        method: 'GET',
-        ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
-      });
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
 
       expect(warnSpy).toBeCalledWith(
         'Error in finding Mobius Servers. Will use the default URL.',
@@ -297,12 +314,14 @@ describe('CallingClient Tests', () => {
       });
       expect(webex.request).toBeCalledTimes(3);
 
-      expect(callingClient.primaryMobiusUris).toEqual([uri]);
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
 
       expect(webex.request).nthCalledWith(1, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
       });
 
       expect(webex.request).nthCalledWith(2, {
@@ -342,7 +361,7 @@ describe('CallingClient Tests', () => {
       });
       expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
-        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
         method: 'GET',
       });
       expect(handleErrorSpy).not.toBeCalled();
