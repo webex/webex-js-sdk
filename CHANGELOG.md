@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.253](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.252...v3.0.0-beta.253) (2023-11-21)
+
+
+### Bug Fixes
+
+* wrong merge conflict resolution from stream-classes branch ([#3206](https://github.com/webex/webex-js-sdk/issues/3206)) ([ad3e68c](https://github.com/webex/webex-js-sdk/commit/ad3e68c5f89208a663a29efe6daee9731b38e218))
+
 ## [3.0.0-beta.252](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.251...v3.0.0-beta.252) (2023-11-21)
 
 
