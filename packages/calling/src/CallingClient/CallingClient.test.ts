@@ -296,6 +296,117 @@ describe('CallingClient Tests', () => {
       );
     });
 
+    it('verifying entries of eu mobius clusters', async () => {
+      const mockEUServiceHosts = [
+        {
+          host: 'mobius-eu-central-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 5,
+          id: 'urn:TEAM:eu-central-1_k:mobius',
+        },
+        {
+          host: 'mobius-us-east-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 15,
+          id: 'urn:TEAM:eu-central-1_k:mobius',
+        },
+        {
+          host: 'mobius-ca-central-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 10,
+          id: 'urn:TEAM:eu-central-1_k:mobius',
+        },
+        {
+          host: 'mobius-ap-southeast-2.prod.infra.webex.com',
+          ttl: -1,
+          priority: 20,
+          id: 'urn:TEAM:eu-central-1_k:mobius',
+        },
+      ];
+      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
+      webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'] =
+        mockEUServiceHosts;
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toEqual(mockEUServiceHosts);
+    });
+
+    it('verifying entries of int mobius clusters', async () => {
+      const mockIntServiceHosts = [
+        {
+          host: 'mobius-us-east-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 5,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-ca-central-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 10,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-eu-central-1.prod.infra.webex.com',
+          ttl: -1,
+          priority: 15,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-ap-southeast-2.prod.infra.webex.com',
+          ttl: -1,
+          priority: 20,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+      ];
+      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
+      delete webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'];
+      webex.internal.services._hostCatalog['mobius-us-east-1.int.infra.webex.com'] =
+        mockIntServiceHosts;
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toEqual(mockIntServiceHosts);
+    });
+
+    it('verifying entries of int mobius clusters', async () => {
+      const mockEUIntServiceHosts = [
+        {
+          host: 'mobius-eu-central-1.int.infra.webex.com',
+          ttl: -1,
+          priority: 15,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-us-east-1.int.infra.webex.com',
+          ttl: -1,
+          priority: 5,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-ca-central-1.int.infra.webex.com',
+          ttl: -1,
+          priority: 10,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+        {
+          host: 'mobius-ap-southeast-2.int.infra.webex.com',
+          ttl: -1,
+          priority: 20,
+          id: 'urn:TEAM:us-east-2_a:mobius',
+        },
+      ];
+      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
+      delete webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'];
+      delete webex.internal.services._hostCatalog['mobius-us-east-1.int.infra.webex.com'];
+      webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'] =
+        mockEUIntServiceHosts;
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toEqual(mockEUIntServiceHosts);
+    });
+
     it('when region discovery succeeds but region based mobius url discovery fails', async () => {
       const failurePayload = {
         statusCode: 500,
