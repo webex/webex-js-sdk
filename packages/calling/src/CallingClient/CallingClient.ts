@@ -274,6 +274,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
+      this.mobiusHost = this.webex.internal.services._serviceUrls.mobius;
     } else {
       log.info('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -343,6 +344,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (useDefault) {
       log.warn('Error in finding Mobius Servers. Will use the default URL.', '' as LogContext);
+      this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
   }
