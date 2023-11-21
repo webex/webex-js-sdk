@@ -39,7 +39,7 @@ require('@babel/register')({
 const webpackConfig = require('./webpack.config')();
 
 const PORT = process.env.PORT || 8000;
-const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
+const CI = !!(process.env.JENKINS || process.env.CI || process.env.SAUCE);
 const LOCALHOST_ALIAS = CI
   ? process.env.LOCALHOST_ALIAS || 'local.localhost'
   : os.networkInterfaces().en0.find((elm) => elm.family === 'IPv4').address;

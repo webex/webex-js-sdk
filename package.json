@@ -40,7 +40,6 @@
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "node ./tooling/index.js build",
     "changelog:generate": "npx standard-changelog",
-    "circleci:local": "circleci local execute -c .circleci/github.config.yml",
     "lint": "yarn && yarn ws:tools build && yarn run --silent eslint .",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
     "lint:staged": "lint-staged",

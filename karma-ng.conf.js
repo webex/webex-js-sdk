@@ -7,13 +7,10 @@
 
 const path = require('path');
 
-const uuid = require('uuid');
 const {flatten} = require('lodash');
 
 const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
-
-const SAUCE = process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE;
 
 module.exports = function configureKarma(config) {
   config.set(makeConfig(process.env.PACKAGE));
@@ -36,7 +33,6 @@ function makeConfig(packageName, argv) {
       argv.os.map((os) => (os.includes(',') ? os.toLowerCase().split(',') : os.toLowerCase()))
     );
 
-  const pkg = require(`./packages/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
   const integrationTestPath = path.join(
@@ -157,7 +153,7 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true,
   };
 
-  if (process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
+  if (process.env.COVERAGE || process.env.CI) {
     cfg.junitReporter = {
       outputFile: `${packageName}.xml`,
       outputDir: 'reports/junit/karma',
@@ -168,34 +164,6 @@ function makeConfig(packageName, argv) {
     };
 
     cfg.reporters.push('junit');
-  }
-
-  if (SAUCE) {
-    cfg.transports = ['websocket', 'polling'];
-
-    cfg.sauceLabs = {
-      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${packageName}-${Date.now()}`,
-      testName: `${pkg.name || packageName} (karma)`,
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
-      recordScreenshots: true,
-      recordVideo: true,
-      public: 'team',
-      startConnect: true,
-      connectOptions: {
-        logfile: './sauce.log',
-        noSslBumpDomains: [
-          'idbroker.webex.com',
-          'idbrokerbts.webex.com',
-          '127.0.0.1',
-          'localhost',
-          '*.wbx2.com',
-          '*.ciscospark.com',
-        ],
-        tunnelDomains: ['127.0.0.1', 'localhost'],
-      },
-    };
-
-    cfg.reporters.push('saucelabs');
   }
 
   try {
