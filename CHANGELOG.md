@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.254](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.253...v3.0.0-beta.254) (2023-11-21)
+
+
+### Features
+
+* **plugin-meetings:** adding a new error code for users not invited to join locked meeting ([#3203](https://github.com/webex/webex-js-sdk/issues/3203)) ([eb5e244](https://github.com/webex/webex-js-sdk/commit/eb5e24406618083314237e508d2eb2701d7534db))
+
 ## [3.0.0-beta.253](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.252...v3.0.0-beta.253) (2023-11-21)
 
 
