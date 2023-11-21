@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.252](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.251...v3.0.0-beta.252) (2023-11-21)
+
+
+### Bug Fixes
+
+* update-web-media-effects-version ([#3205](https://github.com/webex/webex-js-sdk/issues/3205)) ([30e1d23](https://github.com/webex/webex-js-sdk/commit/30e1d235dab0280800f198bd0a4f6afaa68e6769))
+
 ## [3.0.0-beta.251](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.250...v3.0.0-beta.251) (2023-11-17)
 
 
