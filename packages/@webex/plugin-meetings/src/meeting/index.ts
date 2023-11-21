@@ -1398,10 +1398,15 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Refreshes the meeting info permission token (it's required for joining meetings)
    *
+   * @param {string} [reason] used for metrics and logging purposes (optional)
    * @returns {Promise}
    */
-  public async refreshPermissionToken(): Promise<void> {
+  public async refreshPermissionToken(reason?: string): Promise<void> {
     if (!this.meetingInfo?.permissionToken) {
+      LoggerProxy.logger.info(
+        `Meeting:index#refreshPermissionToken --> cannot refresh the permission token, because we don't have it (reason=${reason})`
+      );
+
       return;
     }
 
@@ -1417,15 +1422,43 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    await this.fetchMeetingInfoInternal({
-      destination,
+    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    LoggerProxy.logger.info(
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+      correlationId: this.correlationId,
+      timeLeft,
+      reason,
       destinationType,
-      extraParams: {
-        ...this.meetingInfoExtraParams,
-        permissionToken: this.meetingInfo.permissionToken,
-      },
-      sendCAevents: true, // because if we're refreshing the permissionToken, it means that user is intending to join that meeting, so we want CA events
     });
+
+    try {
+      await this.fetchMeetingInfoInternal({
+        destination,
+        destinationType,
+        extraParams: {
+          ...this.meetingInfoExtraParams,
+          permissionToken: this.meetingInfo.permissionToken,
+        },
+        sendCAevents: true, // because if we're refreshing the permissionToken, it means that user is intending to join that meeting, so we want CA events
+      });
+    } catch (error) {
+      LoggerProxy.logger.info(
+        'Meeting:index#refreshPermissionToken --> failed to refresh the permission token:',
+        error
+      );
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+        correlationId: this.correlationId,
+        reason: error.message,
+        stack: error.stack,
+      });
+
+      throw error;
+    }
   }
 
   /**

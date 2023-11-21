@@ -3494,6 +3494,7 @@ describe('plugin-meetings', () => {
         };
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
         const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
+        const FAKE_TTL = 13;
 
         beforeEach(() => {
           meeting.locusId = 'locus-id';
@@ -3503,6 +3504,7 @@ describe('plugin-meetings', () => {
           meeting.destination = 'meeting-destination';
           meeting.destinationType = 'meeting-destination-type';
           meeting.updateMeetingActions = sinon.stub().returns(undefined);
+          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TTL);
           meeting.meetingInfoExtraParams = {
             extraParam1: 'value1'
           };
@@ -3519,10 +3521,11 @@ describe('plugin-meetings', () => {
           await meeting.refreshPermissionToken();
 
           assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.notCalled(Metrics.sendBehavioralMetric);
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
-          await meeting.refreshPermissionToken();
+          await meeting.refreshPermissionToken('fake reason');
 
           assert.calledOnceWithExactly(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3550,6 +3553,15 @@ describe('plugin-meetings', () => {
             'meeting:meetingInfoAvailable'
           );
           assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: FAKE_TTL,
+              reason: 'fake reason',
+              destinationType: 'meeting-destination-type',
+            }
+          );
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
@@ -3559,7 +3571,7 @@ describe('plugin-meetings', () => {
           meeting.meetingInfo.meetingJoinUrl = 'meeting-join-url';
           meeting.webex.meetings.preferredWebexSite = 'preferredWebexSite';
 
-          await meeting.refreshPermissionToken();
+          await meeting.refreshPermissionToken('some reason');
 
           assert.calledOnceWithExactly(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3590,6 +3602,15 @@ describe('plugin-meetings', () => {
             'meeting:meetingInfoAvailable'
           );
           assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: FAKE_TTL,
+              reason: 'some reason',
+              destinationType: 'MEETING_LINK',
+            }
+          );
         });
 
         it('throws PermissionError if policy error is encountered', async () => {
@@ -3608,6 +3629,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingInfoFailureCode, 123456);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.POLICY);
           assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action.',
+              stack: sinon.match.any,
+            }
+          );
         });
 
         it('throws PasswordError if password is required', async () => {
@@ -3627,6 +3656,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Password is required, please use verifyPassword()',
+              stack: sinon.match.any,
+            }
+          );
         });
 
         it('throws CaptchaError if captcha is required', async () => {
@@ -3649,6 +3686,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, FAKE_SDK_CAPTCHA_INFO);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Captcha is required.',
+              stack: sinon.match.any,
+            }
+          );
         });
       });
 
