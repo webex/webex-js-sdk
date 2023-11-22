@@ -4553,39 +4553,13 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.join();
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
-        return join;
-      })
-      .then((join) => {
-        joinSuccess(join);
-        this.deferJoin = undefined;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
           correlation_id: this.correlationId,
         });
 
-        return join;
-      })
-      .then(async (join) => {
-        // @ts-ignore - config coming from registerPlugin
-        if (this.config.enableAutomaticLLM) {
-          await this.updateLLMConnection();
-        }
+        joinSuccess(join);
 
-        return join;
-      })
-      .then(async (join) => {
-        if (isBrowser) {
-          // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveTranscription || options.receiveTranscription) {
-            if (this.isTranscriptionSupported()) {
-              await this.receiveTranscription();
-              LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve transcription!');
-            }
-          }
-        } else {
-          LoggerProxy.logger.error(
-            'Meeting:index#join --> Receving transcription is not supported on this platform'
-          );
-        }
+        this.deferJoin = undefined;
 
         return join;
       })
@@ -4621,9 +4595,59 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         joinFailed(error);
+
         this.deferJoin = undefined;
 
         return Promise.reject(error);
+      })
+      .then((join) => {
+        // @ts-ignore - config coming from registerPlugin
+        if (this.config.enableAutomaticLLM) {
+          this.updateLLMConnection().catch((error) => {
+            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+              correlation_id: this.correlationId,
+              reason: error?.message,
+              stack: error.stack,
+            });
+          });
+        }
+
+        return join;
+      })
+      .then((join) => {
+        if (isBrowser) {
+          // @ts-ignore - config coming from registerPlugin
+          if (this.config.receiveTranscription || options.receiveTranscription) {
+            if (this.isTranscriptionSupported()) {
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Attempting to enabled to recieve transcription!'
+              );
+              this.receiveTranscription().catch((error) => {
+                LoggerProxy.logger.error(
+                  'Meeting:index#join --> Receive Transcription Failed',
+                  error
+                );
+
+                Metrics.sendBehavioralMetric(
+                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE,
+                  {
+                    correlation_id: this.correlationId,
+                    reason: error?.message,
+                    stack: error.stack,
+                  }
+                );
+              });
+            }
+          }
+        } else {
+          LoggerProxy.logger.error(
+            'Meeting:index#join --> Receving transcription is not supported on this platform'
+          );
+        }
+
+        return join;
       });
   }
 

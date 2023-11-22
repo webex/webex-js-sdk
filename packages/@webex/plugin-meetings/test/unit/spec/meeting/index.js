@@ -13,6 +13,7 @@ import {Credentials, Token, WebexPlugin} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
+import { Defer } from '@webex/common';
 import {
   FLOOR_ACTION,
   SHARE_STATUS,
@@ -95,6 +96,7 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {ANNOTATION_POLICY} from '../../../../src/annotation/constants';
+
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -818,27 +820,6 @@ describe('plugin-meetings', () => {
             assert.equal(result, joinMeetingResult);
           });
 
-          it('should call updateLLMConnection upon joining if config value is set', async () => {
-            meeting.config.enableAutomaticLLM = true;
-            await meeting.join();
-
-            assert.calledOnce(meeting.updateLLMConnection);
-          });
-
-          it('should not call updateLLMConnection upon joining if config value is not set', async () => {
-            await meeting.join();
-
-            assert.notCalled(meeting.updateLLMConnection);
-          });
-
-          it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
-            meeting.isTranscriptionSupported = sinon.stub().returns(true);
-            meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
-
-            await meeting.join({receiveTranscription: true});
-            assert.calledOnce(meeting.receiveTranscription);
-          });
-
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
             sinon.assert.notCalled(setCorrelationIdSpy);
@@ -937,6 +918,125 @@ describe('plugin-meetings', () => {
             });
           });
         });
+        describe('lmm and transcription decoupling', () => {
+          beforeEach(() => {
+            sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
+          });
+
+          describe('llm', () => {
+            it('makes sure that join does not wait for update llm connection promise', async () => {
+              const defer = new Defer();
+
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join();
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.resolve();
+            });
+
+            it('should call updateLLMConnection as part of joining if config value is set', async () => {
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().resolves();
+
+              await meeting.join();
+
+              assert.calledOnce(meeting.updateLLMConnection);
+            });
+
+            it('should not call updateLLMConnection as part of joining if config value is not set', async () => {
+              meeting.updateLLMConnection = sinon.stub().resolves();
+              await meeting.join();
+
+              assert.notCalled(meeting.updateLLMConnection);
+            });
+
+            it('handles catching error of llm connection later, and join still resolves', async () => {
+              const defer = new Defer();
+
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join();
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.reject(new Error("bad day", {cause: 'bad weather'}));
+
+              try {
+                await defer.promise;
+              } catch (err) {
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
+                  BEHAVIORAL_METRICS.JOIN_SUCCESS, {correlation_id: meeting.correlationId}
+                ])
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
+                  BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+                    correlation_id: meeting.correlationId,
+                    reason: err.message,
+                    stack: err.stack,
+                  }
+                ]);
+              }
+            });
+          });
+
+          describe('receive transcription', () => {
+            it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
+
+              await meeting.join({receiveTranscription: true});
+              assert.calledOnce(meeting.receiveTranscription);
+            });
+
+            it('make sure that join does not wait for setting up receive transcriptions', async () => {
+              const defer = new Defer();
+
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join({receiveTranscription: true});
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.resolve();
+            });
+
+            it('handles catching error of receiveTranscription(), and join still resolves', async () => {
+              const defer = new Defer();
+
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join({receiveTranscription: true});
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.reject(new Error("bad day", {cause: 'bad weather'}));
+
+              try {
+                await defer.promise;
+              } catch (err) {
+                console.log(Metrics.sendBehavioralMetric.getCalls())
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
+                  BEHAVIORAL_METRICS.JOIN_SUCCESS, {correlation_id: meeting.correlationId}
+                ])
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
+                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE, {
+                    correlation_id: meeting.correlationId,
+                    reason: err.message,
+                    stack: err.stack,
+                  }
+                ]);
+              }
+            })
+          })
+        })
       });
 
       describe('#addMedia', () => {
@@ -5719,9 +5819,9 @@ describe('plugin-meetings', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
           const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '1234'};
-          
+
           const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
-          
+
           meeting.setPermissionTokenPayload();
 
           assert.calledOnce(jwtDecodeStub);
@@ -5818,7 +5918,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
           assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
-          
+
           if(expectedInfoToParse.permissionTokenPayload) {
             assert.deepEqual(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
           }
@@ -5837,9 +5937,9 @@ describe('plugin-meetings', () => {
             }
           };
 
-          // generated permissionToken with secret `secret` and 
+          // generated permissionToken with secret `secret` and
           // value `JSON.stringify(expectedPermissionTokenPayload)`
-          const permissionToken = 
+          const permissionToken =
             'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
 
           const FAKE_MEETING_INFO = {
@@ -8189,20 +8289,20 @@ describe('plugin-meetings', () => {
     });
 
     afterEach(() => {
-      clock.restore();  
+      clock.restore();
     })
 
-    it('should return undefined if exp is undefined', () => { 
+    it('should return undefined if exp is undefined', () => {
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
     });
 
-    it('should return the expected positive exp', () => { 
+    it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
       meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
     });
 
-    it('should return the expected negative exp', () => { 
+    it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
       meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
