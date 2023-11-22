@@ -32,12 +32,12 @@ async function run(options, files) {
   const cfg = {
     diff: true,
     bail: options.bail,
-    retries: process.env.JENKINS || process.env.CIRCLECI || process.env.CI ? 1 : 0,
+    retries: process.env.JENKINS || process.env.CI ? 1 : 0,
     timeout: 30000,
     grep: new RegExp(options.grep.join('|')),
   };
 
-  if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
+  if (options.xunit || process.env.COVERAGE || process.env.CI) {
     cfg.reporter = 'mocha-junit-reporter';
     cfg.reporterOptions = {
       mochaFile: options.output,
