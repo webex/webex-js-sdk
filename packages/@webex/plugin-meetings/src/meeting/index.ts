@@ -62,8 +62,10 @@ import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CALL_,
+  _CONVERSATION_URL_,
   _INCOMING_,
   _JOIN_,
+  _MEETING_LINK_,
   AUDIO,
   CONTENT,
   DISPLAY_HINTS,
@@ -514,6 +516,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
+  meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -1279,54 +1282,26 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Fetches meeting information.
-   * @param {Object} options
-   * @param {String} [options.password] optional
-   * @param {String} [options.captchaCode] optional
-   * @param {Boolean} [options.sendCAevents] optional - Whether to submit Call Analyzer events or not. Default: false.
-   * @public
-   * @memberof Meeting
+   * Internal method for fetching meeting info
+   *
    * @returns {Promise}
    */
-  public async fetchMeetingInfo({
+  private async fetchMeetingInfoInternal({
+    destination,
+    destinationType,
     password = null,
     captchaCode = null,
     extraParams = {},
     sendCAevents = false,
-  }: {
-    password?: string;
-    captchaCode?: string;
-    extraParams?: Record<string, any>;
-    sendCAevents?: boolean;
-  }) {
-    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
-    if (this.fetchMeetingInfoTimeoutId) {
-      clearTimeout(this.fetchMeetingInfoTimeoutId);
-      this.fetchMeetingInfoTimeoutId = undefined;
-    }
-    if (captchaCode && !this.requiredCaptcha) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
-      );
-    }
-    if (
-      password &&
-      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
-      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
-    ) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with password when password was not required')
-      );
-    }
-
+  }): Promise<void> {
     try {
       const captchaInfo = captchaCode
         ? {code: captchaCode, id: this.requiredCaptcha.captchaId}
         : null;
 
       const info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
-        this.destination,
-        this.destinationType,
+        destination,
+        destinationType,
         password,
         captchaInfo,
         // @ts-ignore - config coming from registerPlugin
@@ -1418,6 +1393,125 @@ export default class Meeting extends StatelessWebexPlugin {
         throw err;
       }
     }
+  }
+
+  /**
+   * Refreshes the meeting info permission token (it's required for joining meetings)
+   *
+   * @param {string} [reason] used for metrics and logging purposes (optional)
+   * @returns {Promise}
+   */
+  public async refreshPermissionToken(reason?: string): Promise<void> {
+    if (!this.meetingInfo?.permissionToken) {
+      LoggerProxy.logger.info(
+        `Meeting:index#refreshPermissionToken --> cannot refresh the permission token, because we don't have it (reason=${reason})`
+      );
+
+      return;
+    }
+
+    const isStartingSpaceInstantV2Meeting =
+      this.destinationType === _CONVERSATION_URL_ &&
+      // @ts-ignore - config coming from registerPlugin
+      this.config.experimental.enableAdhocMeetings &&
+      // @ts-ignore
+      this.webex.meetings.preferredWebexSite;
+
+    const destination = isStartingSpaceInstantV2Meeting
+      ? this.meetingInfo.meetingJoinUrl
+      : this.destination;
+    const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
+
+    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    LoggerProxy.logger.info(
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+      correlationId: this.correlationId,
+      timeLeft,
+      reason,
+      destinationType,
+    });
+
+    try {
+      await this.fetchMeetingInfoInternal({
+        destination,
+        destinationType,
+        extraParams: {
+          ...this.meetingInfoExtraParams,
+          permissionToken: this.meetingInfo.permissionToken,
+        },
+        sendCAevents: true, // because if we're refreshing the permissionToken, it means that user is intending to join that meeting, so we want CA events
+      });
+    } catch (error) {
+      LoggerProxy.logger.info(
+        'Meeting:index#refreshPermissionToken --> failed to refresh the permission token:',
+        error
+      );
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+        correlationId: this.correlationId,
+        reason: error.message,
+        stack: error.stack,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches meeting information.
+   * @param {Object} options
+   * @param {String} [options.password] optional
+   * @param {String} [options.captchaCode] optional
+   * @param {Boolean} [options.sendCAevents] optional - Whether to submit Call Analyzer events or not. Default: false.
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  public async fetchMeetingInfo({
+    password = null,
+    captchaCode = null,
+    extraParams = {},
+    sendCAevents = false,
+  }: {
+    password?: string;
+    captchaCode?: string;
+    extraParams?: Record<string, any>;
+    sendCAevents?: boolean;
+  }) {
+    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
+    if (this.fetchMeetingInfoTimeoutId) {
+      clearTimeout(this.fetchMeetingInfoTimeoutId);
+      this.fetchMeetingInfoTimeoutId = undefined;
+    }
+    if (captchaCode && !this.requiredCaptcha) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
+      );
+    }
+    if (
+      password &&
+      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
+      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
+    ) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with password when password was not required')
+      );
+    }
+
+    this.meetingInfoExtraParams = cloneDeep(extraParams);
+
+    return this.fetchMeetingInfoInternal({
+      destination: this.destination,
+      destinationType: this.destinationType,
+      password,
+      captchaCode,
+      extraParams,
+      sendCAevents,
+    });
   }
 
   /**

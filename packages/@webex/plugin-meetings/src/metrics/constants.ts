@@ -57,6 +57,8 @@ const BEHAVIORAL_METRICS = {
   MEETING_INFO_POLICY_ERROR: 'js_sdk_meeting_info_policy_error',
   LOCUS_DELTA_SYNC_FAILED: 'js_sdk_locus_delta_sync_failed',
   LOCUS_DELTA_OUT_OF_ORDER: 'js_sdk_locus_delta_ooo',
+  PERMISSION_TOKEN_REFRESH: 'js_sdk_permission_token_refresh',
+  PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
 };
 
 export {BEHAVIORAL_METRICS as default};
