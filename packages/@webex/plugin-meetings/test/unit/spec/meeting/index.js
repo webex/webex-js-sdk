@@ -1623,6 +1623,7 @@ describe('plugin-meetings', () => {
           meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
           meeting.webex.meetings.reachability = {
             isAnyPublicClusterReachable: sinon.stub().resolves(true),
+            getReachabilityResults: sinon.stub().resolves(undefined),
           };
           meeting.roap.doTurnDiscovery = sinon
             .stub()

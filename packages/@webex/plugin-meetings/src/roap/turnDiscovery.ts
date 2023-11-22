@@ -225,8 +225,8 @@ export default class TurnDiscovery {
    * @returns {Promise<string>} Promise with empty string if reachability is not skipped or a reason if it is skipped
    */
   private async getSkipReason(meeting: Meeting): Promise<string> {
-    // @ts-ignore - fix type
     const isAnyPublicClusterReachable =
+      // @ts-ignore - fix type
       await meeting.webex.meetings.reachability.isAnyPublicClusterReachable();
 
     if (isAnyPublicClusterReachable) {

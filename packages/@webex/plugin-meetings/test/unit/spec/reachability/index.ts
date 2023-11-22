@@ -57,6 +57,63 @@ describe('isAnyPublicClusterReachable', () => {
   it('returns false when reachability.result item is not there', async () => {
     await checkIsClusterReachable(undefined, false);
   });
+
+  describe('ignores video mesh reachability', () => {
+    it('returns false if there are no public cluster results, only video mesh', async () => {
+      await checkIsClusterReachable({
+        x: {
+          udp: {reachable: 'true'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: true,
+        },
+        y: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: true,
+        }
+      }, false);
+    });
+
+    it('returns false if there public cluster reachability failed, only video mesh succeeded', async () => {
+      await checkIsClusterReachable({
+        x: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: true,
+        },
+        y: {
+          udp: {reachable: 'true'},
+          tcp: {reachable: 'false'},
+          isVideoMesh: true,
+        },
+        publicOne: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'false'},
+          isVideoMesh: false,
+        }
+      }, false);
+    });
+
+    it('returns true if there is at least 1 public cluster result, while video mesh is not reachable', async () => {
+      await checkIsClusterReachable({
+        x: {
+          udp: {reachable: 'true'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: true,
+        },
+        y: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: true,
+        },
+        publicOne: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true'},
+          isVideoMesh: false,
+        }
+      }, true);
+    });
+  })
 });
 
 describe('gatherReachability', () => {
@@ -177,16 +234,19 @@ describe('gatherReachability', () => {
           clusterId: 'id1',
           elapsed: '12312',
           publicIPs: ['1.1.1.1'],
+          isVideoMesh: true,
         },
         {
           clusterId: 'id2',
           elapsed: null,
           publicIPs: ['1.1.1.1'],
+          isVideoMesh: false,
         },
         {
           clusterId: 'id2',
           elapsed: '14123',
           publicIPs: undefined,
+          isVideoMesh: false,
         },
       ]);
 
@@ -203,6 +263,7 @@ describe('gatherReachability', () => {
             latencyInMilliseconds: '12312',
             reachable: 'true',
           },
+          isVideoMesh: true,
         },
         id2: {
           xtls: {
@@ -215,6 +276,7 @@ describe('gatherReachability', () => {
             latencyInMilliseconds: '14123',
             reachable: 'true',
           },
+          isVideoMesh: false,
         },
       });
     });
