@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.256](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.255...v3.0.0-beta.256) (2023-11-22)
+
+
+### Features
+
+* **meetings:** refactor public join method ([#3209](https://github.com/webex/webex-js-sdk/issues/3209)) ([99c939f](https://github.com/webex/webex-js-sdk/commit/99c939f7eab67a5ba02ca3038b0687d2a503d4e3))
+
 ## [3.0.0-beta.255](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.254...v3.0.0-beta.255) (2023-11-22)
 
 
