@@ -291,7 +291,7 @@ describe('CallingClient Tests', () => {
       ]);
 
       expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
         ''
       );
     });
@@ -445,7 +445,7 @@ describe('CallingClient Tests', () => {
       });
 
       expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
         ''
       );
     });

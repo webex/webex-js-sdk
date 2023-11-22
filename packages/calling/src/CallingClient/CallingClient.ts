@@ -343,7 +343,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
      */
 
     if (useDefault) {
-      log.warn('Error in finding Mobius Servers. Will use the default URL.', '' as LogContext);
+      log.warn(
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
+        '' as LogContext
+      );
       this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
