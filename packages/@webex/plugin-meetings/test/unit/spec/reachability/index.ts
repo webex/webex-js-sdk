@@ -6,7 +6,7 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
 
-describe('isAnyClusterReachable', () => {
+describe('isAnyPublicClusterReachable', () => {
   let webex;
 
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe('isAnyClusterReachable', () => {
     }
     const reachability = new Reachability(webex);
 
-    const result = await reachability.isAnyClusterReachable();
+    const result = await reachability.isAnyPublicClusterReachable();
 
     assert.equal(result, expectedValue);
   };

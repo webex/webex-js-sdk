@@ -226,9 +226,10 @@ export default class TurnDiscovery {
    */
   private async getSkipReason(meeting: Meeting): Promise<string> {
     // @ts-ignore - fix type
-    const isAnyClusterReachable = await meeting.webex.meetings.reachability.isAnyClusterReachable();
+    const isAnyPublicClusterReachable =
+      await meeting.webex.meetings.reachability.isAnyPublicClusterReachable();
 
-    if (isAnyClusterReachable) {
+    if (isAnyPublicClusterReachable) {
       LoggerProxy.logger.info(
         'Roap:turnDiscovery#getSkipReason --> reachability has not failed, skipping TURN discovery'
       );

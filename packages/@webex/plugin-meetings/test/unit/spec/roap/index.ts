@@ -64,7 +64,7 @@ describe('Roap', () => {
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
-        webex: { meetings: { reachability: { isAnyClusterReachable: () => true}}},
+        webex: { meetings: { reachability: { isAnyPublicClusterReachable: () => true}}},
       };
 
       sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);

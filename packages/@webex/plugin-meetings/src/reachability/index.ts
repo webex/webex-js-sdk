@@ -112,7 +112,7 @@ export default class Reachability {
    * @public
    * @memberof Reachability
    */
-  async isAnyClusterReachable() {
+  async isAnyPublicClusterReachable() {
     let reachable = false;
     // @ts-ignore
     const reachabilityData = await this.webex.boundedStorage
