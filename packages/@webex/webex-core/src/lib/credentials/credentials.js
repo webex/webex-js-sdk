@@ -8,12 +8,12 @@ import url from 'url';
 import jwt from 'jsonwebtoken';
 import {base64, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
-import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
+import {clone, cloneDeep, isObject, isEmpty, difference, without} from 'lodash';
 
 import WebexPlugin from '../webex-plugin';
 import {persist, waitForValue} from '../storage/decorators';
 
-import grantErrors from './grant-errors';
+import grantErrors, {OAuthError} from './grant-errors';
 import {filterScope, sortScope} from './scope';
 import Token from './token';
 import TokenCollection from './token-collection';
@@ -258,8 +258,26 @@ const Credentials = WebexPlugin.extend({
    * @returns {Promise<Token>}
    */
   downscope(scope) {
+    const superTokenScopeArr = this.supertoken.scope.split(' ');
+    const scopeArr = scope.split(' ');
+
+    const scopeDiff = difference(scopeArr, superTokenScopeArr);
+    const newScope = without(scopeArr, ...scopeDiff).join(' ');
+
+    // Remove not authorised scopes only when there is other scopes in the list, otherwise
+    // let fail the downscope and fallback to supertoken
+    if (scopeDiff.length > 0 && newScope.length > 0) {
+      this.logger.warn(
+        `credentials: ${scopeDiff} scope removed, because they are not in the supertoken scope`
+      );
+      scope = newScope;
+    }
+
     return this.supertoken.downscope(scope).catch((reason) => {
-      this.logger.trace(`credentials: failed to downscope supertoken to ${scope}`, reason);
+      this.logger.info(
+        `credentials: failed to downscope supertoken to ${scope}`,
+        reason.body ?? reason
+      );
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
 
       return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
@@ -528,9 +546,7 @@ const Credentials = WebexPlugin.extend({
         this.scheduleRefresh(this.supertoken.expires);
       })
       .catch((error) => {
-        const {InvalidRequestError} = grantErrors;
-
-        if (error instanceof InvalidRequestError) {
+        if (error instanceof OAuthError) {
           // Error: The refresh token provided is expired, revoked, malformed, or invalid. Hence emit an event to the client, an opportunity to logout.
           this.unset('supertoken');
           while (this.userTokens.models.length) {
