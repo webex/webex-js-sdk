@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.255](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.254...v3.0.0-beta.255) (2023-11-22)
+
+
+### Features
+
+* add API for renewal of the permission token ([#3210](https://github.com/webex/webex-js-sdk/issues/3210)) ([367eabd](https://github.com/webex/webex-js-sdk/commit/367eabd81724a1167c1eef38a3cc423ad2bc2c67))
+
 ## [3.0.0-beta.254](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.253...v3.0.0-beta.254) (2023-11-21)
 
 
