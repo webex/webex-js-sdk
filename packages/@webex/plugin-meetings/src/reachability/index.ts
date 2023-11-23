@@ -301,7 +301,7 @@ export default class Reachability {
     });
 
     return Promise.all(clusters)
-      .then(this.parseIceResultsToReachabilityResults)
+      .then(this.parseIceResultsToInternalReachabilityResults)
       .then((reachabilityLatencyResults) => {
         this.logUnreachableClusters();
 
@@ -472,7 +472,7 @@ export default class Reachability {
    * @protected
    * @memberof Reachability
    */
-  protected parseIceResultsToReachabilityResults(
+  protected parseIceResultsToInternalReachabilityResults(
     iceResults: Array<ICECandidateResult>
   ): InternalReachabilityResults {
     const reachabilityMap = {};

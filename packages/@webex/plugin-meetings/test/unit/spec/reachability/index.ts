@@ -217,8 +217,8 @@ describe('gatherReachability', () => {
     let testingClass: TestReachability;
 
     class TestReachability extends Reachability {
-      public testParseIceResultsToReachabilityResults(iceResults: Array<ICECandidateResult>) {
-        return this.parseIceResultsToReachabilityResults(iceResults);
+      public testParseIceResultsToInternalReachabilityResults(iceResults: Array<ICECandidateResult>) {
+        return this.parseIceResultsToInternalReachabilityResults(iceResults);
       }
       public testAddPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
         return this.addPublicIP(peerConnection, publicIP);
@@ -228,8 +228,8 @@ describe('gatherReachability', () => {
       testingClass = new TestReachability({webex});
     });
 
-    it('calls parseIceResultsToReachabilityResults correctly', () => {
-      const res = testingClass.testParseIceResultsToReachabilityResults([
+    it('calls parseIceResultsToInternalReachabilityResults correctly', () => {
+      const res = testingClass.testParseIceResultsToInternalReachabilityResults([
         {
           clusterId: 'id1',
           elapsed: '12312',
