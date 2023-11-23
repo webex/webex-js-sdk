@@ -4235,20 +4235,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.0.3":
-  version: 2.0.3
-  resolution: "@webex/internal-media-core@npm:2.0.3"
+"@webex/internal-media-core@npm:2.0.4":
+  version: 2.0.4
+  resolution: "@webex/internal-media-core@npm:2.0.4"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/ts-sdp": "npm:1.4.1"
-    "@webex/web-client-media-engine": "npm:^3.7.1"
+    "@webex/web-client-media-engine": "npm:3.8.1"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: a185870824ec6502268737e3a1e505b7a92112f3bea558c6df6a28d0e317d63c5f4429dc91b943837e4bfd3c793e9755cacfd09a2ba99e362086a6b825deebdf
+  checksum: 4b67b3a829c5c448fbdc56040e64af3b701fb825daa069dc04c3e8df36df4f0cf112073bea46395fa3bf1500855d5e49a33848c73f8aad5591248d583f7be18d
   languageName: node
   linkType: hard
 
@@ -4708,7 +4708,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:2.0.3"
+    "@webex/internal-media-core": "npm:2.0.4"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
@@ -4845,7 +4845,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:2.0.3"
+    "@webex/internal-media-core": "npm:2.0.4"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -5278,9 +5278,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:^3.7.1":
-  version: 3.7.2
-  resolution: "@webex/web-client-media-engine@npm:3.7.2"
+"@webex/web-client-media-engine@npm:3.8.1":
+  version: 3.8.1
+  resolution: "@webex/web-client-media-engine@npm:3.8.1"
   dependencies:
     "@webex/json-multistream": "npm:^2.1.1"
     "@webex/rtcstats": "npm:^1.1.0"
@@ -5292,7 +5292,7 @@ __metadata:
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
-  checksum: 84292d0ad1c5aa935188f4dea666cb0af9d4551b3843e1a1c8bc3c26af26f4bd8f939ee2a7f42f6ef8763a6fe26851b96d3aafce159f92e2f1bd1b704dc199cb
+  checksum: 03f2ca77f9fb6c09f78954d9a94cbb616ced637ab984530b2b3ce2f84ca1cd4a28647d1e8944590caa5965ed0b462be88ba22dea9dfd09e42bc509dd832760f2
   languageName: node
   linkType: hard
 
