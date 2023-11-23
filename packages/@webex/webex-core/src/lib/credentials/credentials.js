@@ -264,18 +264,20 @@ const Credentials = WebexPlugin.extend({
     const scopeDiff = difference(scopeArr, superTokenScopeArr);
     const newScope = without(scopeArr, ...scopeDiff).join(' ');
 
-    // Remove not authorised scopes only when there is other scopes in the list, otherwise
-    // let fail the downscope and fallback to supertoken
+    // Remove invalid scopes only when there is at least one valid scope in the list, otherwise
+    // let fail downscope with `invalid_scope` error and fallback to supertoken
     if (scopeDiff.length > 0 && newScope.length > 0) {
       this.logger.warn(
-        `credentials: ${scopeDiff} scope removed, because they are not in the supertoken scope`
+        `credentials: "${scopeDiff.join(
+          ' '
+        )}" scope(s) removed, because they are not in the supertoken scope`
       );
       scope = newScope;
     }
 
     return this.supertoken.downscope(scope).catch((reason) => {
       this.logger.info(
-        `credentials: failed to downscope supertoken to ${scope}`,
+        `credentials: failed to downscope supertoken to "${scope}"`,
         reason.body ?? reason
       );
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);

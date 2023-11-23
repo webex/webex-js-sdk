@@ -553,6 +553,66 @@ describe('webex-core', () => {
         });
       });
 
+      describe('when requested scope is not in the supertoken scope', () => {
+        it('removes the invalid scope form the scope list and add a warning to the logs', () => {
+          const webex = new MockWebex({
+            children: {
+              logger: Logger,
+            },
+          });
+          const credentials = new Credentials(undefined, {parent: webex});
+
+          webex.trigger('change:config');
+
+          credentials.supertoken = makeToken(webex, {
+            access_token: 'ST',
+            scope: 'scope1 scope2',
+          });
+
+          sinon.stub(credentials.supertoken, 'downscope').returns(Promise.resolve());
+          sinon.stub(credentials.logger, 'warn');
+
+          return credentials.getUserToken('invalidScope1 scope1 invalidScope2').then(() => {
+            assert.calledWith(credentials.supertoken.downscope, 'scope1');
+            assert.calledWith(
+              credentials.logger.warn,
+              'credentials: "invalidScope1 invalidScope2" scope(s) removed, because they are not in the supertoken scope'
+            );
+          });
+        });
+      });
+
+      describe('when only invalid scopes requested', () => {
+        it('does nothing and let handle the error in the token downscope', () => {
+          const downscopeError = {body: {error: 'invalid_scope'}};
+          const webex = new MockWebex({
+            children: {
+              logger: Logger,
+            },
+          });
+          const credentials = new Credentials(undefined, {parent: webex});
+
+          webex.trigger('change:config');
+
+          credentials.supertoken = makeToken(webex, {
+            access_token: 'ST',
+            scope: 'scope1 scope2',
+          });
+
+          sinon.stub(credentials.supertoken, 'downscope').returns(Promise.reject(downscopeError));
+          sinon.stub(credentials.logger, 'info');
+
+          return credentials.getUserToken('invalidScope1 invalidScope2').then(() => {
+            assert.calledWith(credentials.supertoken.downscope, 'invalidScope1 invalidScope2');
+            assert.calledWith(
+              credentials.logger.info,
+              'credentials: failed to downscope supertoken to "invalidScope1 invalidScope2"',
+              downscopeError.body
+            );
+          });
+        });
+      });
+
       describe('when no scope is specified', () => {
         it('resolves with a token containing all but the kms scopes', () => {
           const webex = new MockWebex();
