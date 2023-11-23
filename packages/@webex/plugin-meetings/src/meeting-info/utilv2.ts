@@ -195,7 +195,7 @@ MeetingInfoUtil.getDestinationType = async (from) => {
     });
   } else if (hydraId.room) {
     LoggerProxy.logger.error(
-      `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.`
+      `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.`
     );
     // Error code 30105 added as Space ID deprecated as of beta, Please refer migration guide.
     throw new SpaceIDDeprecatedError();

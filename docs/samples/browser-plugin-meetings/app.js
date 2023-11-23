@@ -260,7 +260,7 @@ const passwordCaptchaStatusElm = document.querySelector('#password-captcha-statu
 const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
-const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
+const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
 const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
