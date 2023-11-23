@@ -1246,7 +1246,7 @@ export default class Meetings extends WebexPlugin {
           );
           // @ts-ignore
           this.destroy(meeting, MEETING_REMOVED_REASON.MISSING_MEETING_INFO);
-          throw new Error(err);
+          throw new Error('meeting information not found');
         }
         // if there is no meeting info and no error should be thrown then we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(

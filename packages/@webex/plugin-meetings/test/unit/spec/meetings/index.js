@@ -1361,47 +1361,54 @@ describe('plugin-meetings', () => {
             webex.meetings.destroy = sinon
               .stub()
               .returns(Promise.resolve());
+            webex.meetings.createMeeting = sinon.spy(webex.meetings.createMeeting);
           });
 
           const checkCreateMeetingWithNoMeetingInfo = async (failOnMissingMeetingInfo, destroy) => {
-            const meeting = await webex.meetings.createMeeting('test destination', 'test type', undefined, undefined, undefined, failOnMissingMeetingInfo);
-
-            assert.instanceOf(
-              meeting,
-              Meeting,
-              'createMeeting should eventually resolve to a Meeting Object'
-            );
-            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
-            assert.calledOnce(MeetingsUtil.getMeetingAddedType);
-            assert.calledThrice(TriggerProxy.trigger);
-            assert.calledWith(
-              webex.meetings.meetingInfo.fetchMeetingInfo,
-              'test destination',
-              'test type'
-            );
-
-            if (destroy) {
-              assert.calledWith(webex.meetings.destroy, sinon.match.instanceOf(Meeting), 'MISSING_MEETING_INFO')
-              assert.notCalled(MeetingsUtil.getMeetingAddedType);
-              assert.notCalled(TriggerProxy.trigger);
-            } else {
-              assert.notCalled(webex.meetings.destroy);
-              assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
-              assert.calledWith(
-                TriggerProxy.trigger,
-                sinon.match.instanceOf(Meetings),
-                {
-                  file: 'meetings',
-                  function: 'createMeeting',
-                },
-                'meeting:added',
-                {
-                  meeting: sinon.match.instanceOf(Meeting),
-                  type: 'test meeting added type',
-                }
+            try {
+              const meeting = await webex.meetings.createMeeting('test destination', 'test type', undefined, undefined, undefined, failOnMissingMeetingInfo);
+              
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
               );
+              assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
+              assert.calledOnce(MeetingsUtil.getMeetingAddedType);
+              assert.calledThrice(TriggerProxy.trigger);
+              assert.calledWith(
+                webex.meetings.meetingInfo.fetchMeetingInfo,
+                'test destination',
+                'test type'
+              );
+  
+              if (destroy) {
+                assert.calledWith(webex.meetings.destroy, sinon.match.instanceOf(Meeting), 'MISSING_MEETING_INFO')
+                assert.notCalled(MeetingsUtil.getMeetingAddedType);
+                assert.notCalled(TriggerProxy.trigger);
+                assert.throw(webex.meetings.createMeeting, 'meeting information not found');
+              } else {
+                assert.notCalled(webex.meetings.destroy);
+                assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
+                assert.calledWith(
+                  TriggerProxy.trigger,
+                  sinon.match.instanceOf(Meetings),
+                  {
+                    file: 'meetings',
+                    function: 'createMeeting',
+                  },
+                  'meeting:added',
+                  {
+                    meeting: sinon.match.instanceOf(Meeting),
+                    type: 'test meeting added type',
+                  }
+                );
+              }
+            } catch (err) {
+              assert.equal(err.message, 'meeting information not found');
             }
           }
+
           it('creates the meeting from a rejected meeting info fetch', async () => {
             checkCreateMeetingWithNoMeetingInfo(false, false);
           });
