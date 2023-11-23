@@ -16,7 +16,7 @@ MediaSharesUtils.parse = (mediaShares: object) => {
         annotation: MediaSharesUtils.getContentAnnotation(mediaShares),
         url: MediaSharesUtils.getContentUrl(mediaShares),
         shareInstanceId: MediaSharesUtils.getShareInstanceId(mediaShares),
-        deviceUrlSharing: MediaSharesUtils.getDeviceUrlRequestingShare(mediaShares),
+        deviceUrlSharing: MediaSharesUtils.getContentBeneficiaryDeviceUrl(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
@@ -194,14 +194,14 @@ MediaSharesUtils.getShareInstanceId = (mediaShares: object) => {
  * @param {Object} mediaShares
  * @returns {Object}
  */
-MediaSharesUtils.getDeviceUrlRequestingShare = (mediaShares: object) => {
+MediaSharesUtils.getContentBeneficiaryDeviceUrl = (mediaShares: object) => {
   const contentFloor = MediaSharesUtils.extractContentFloor(mediaShares);
 
-  if (!contentFloor || !contentFloor.requester || !contentFloor.requester.deviceUrl) {
+  if (!contentFloor || !contentFloor.beneficiary || !contentFloor.beneficiary.deviceUrl) {
     return null;
   }
 
-  return contentFloor.requester.deviceUrl;
+  return contentFloor.beneficiary.deviceUrl;
 };
 
 /**
