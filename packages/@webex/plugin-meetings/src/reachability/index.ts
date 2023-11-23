@@ -4,7 +4,7 @@
 
 /* eslint-disable class-methods-use-this */
 /* globals window */
-import _ from 'lodash';
+import {uniq, mapValues, pick} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
@@ -143,11 +143,11 @@ export default class Reachability {
    *
    * @returns {any} reachability results that need to be sent to the backend
    */
-  async getReachabilityResults(): Promise<ReachabilityResults> {
-    let results;
+  async getReachabilityResults(): Promise<ReachabilityResults | undefined> {
+    let results: ReachabilityResults;
 
     // these are the only props that backend needs in the reachability results:
-    const reachabilityResultsProps = ['udp', 'tcp', 'xtls'];
+    const reachabilityResultsProps: Array<keyof ReachabilityResult> = ['udp', 'tcp', 'xtls'];
 
     try {
       // @ts-ignore
@@ -156,16 +156,9 @@ export default class Reachability {
         REACHABILITY.localStorageResult
       );
 
-      results = JSON.parse(resultsJson);
+      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
 
-      // remove any internal SDK data from the results, leave only the stuff that backend needs
-      Object.values(results).forEach((result) => {
-        Object.keys(result).forEach((prop) => {
-          if (!reachabilityResultsProps.includes(prop)) {
-            delete result[prop];
-          }
-        });
-      });
+      results = mapValues(internalResults, (result) => pick(result, reachabilityResultsProps));
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -217,7 +210,7 @@ export default class Reachability {
    * @memberof Reachability
    */
   private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = _.uniq(cluster.udp).map((url) => ({
+    const iceServers = uniq(cluster.udp).map((url) => ({
       username: '',
       credential: '',
       urls: [url],
