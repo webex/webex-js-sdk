@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-file",
-  "version": "3.0.0-beta.257",
+  "version": "3.0.0-beta.258",
   "description": "File helpers for writing isomorphicish mocha tests",
   "license": "MIT",
   "main": "dist/index.js",
