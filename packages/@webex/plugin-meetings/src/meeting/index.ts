@@ -4562,7 +4562,7 @@ export default class Meeting extends StatelessWebexPlugin {
           error instanceof PermissionError
         ) {
           // if refresh permission token requires captcha, password or permission, we are throwing the errors
-          // and bubbble it up to Cantina
+          // and bubble it up to Cantina
           throw error;
         }
       })
