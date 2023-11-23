@@ -97,6 +97,7 @@ import {
   SELF_ROLES,
   INTERPRETATION,
   SELF_POLICY,
+  MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -4548,7 +4549,26 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.isMultistream = !!options.enableMultistream;
 
-    return MeetingUtil.joinMeetingOptions(this, options)
+    return this.checkAndRefreshPermissionToken()
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          'Meeting:index#join --> Failed to refresh permission token:',
+          error
+        );
+
+        if (
+          error instanceof CaptchaError ||
+          error instanceof PasswordError ||
+          error instanceof PermissionError
+        ) {
+          // if refresh permission token requires captcha, password or permission, we are throwing the errors
+          // and bubbble it up to Cantina
+          throw error;
+        }
+      })
+      .then(() => {
+        return MeetingUtil.joinMeetingOptions(this, options);
+      })
       .then((join) => {
         this.meetingFiniteStateMachine.join();
         LoggerProxy.logger.log('Meeting:index#join --> Success');
@@ -7400,5 +7420,21 @@ export default class Meeting extends StatelessWebexPlugin {
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
     return (permissionTokenExpValue - now) / 1000;
+  }
+
+  /**
+   * Check if there is enough time left till the permission token expires
+   * If not - refresh the permission token
+   *
+   * @returns {Promise<void>}
+   */
+  public checkAndRefreshPermissionToken(): Promise<void> {
+    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    if (permissionTokenTimeLeft <= MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC) {
+      return this.refreshPermissionToken('ttl-join');
+    }
+
+    return Promise.resolve();
   }
 }
