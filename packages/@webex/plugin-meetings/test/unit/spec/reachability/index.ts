@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import Reachability, {ICECandidateResult} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {ICECandidateResult, ReachabilityResults} from '@webex/plugin-meetings/src/reachability/';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
@@ -320,5 +320,99 @@ describe('gatherReachability', () => {
         publicIPs: null,
       });
     });
+  });
+});
+
+describe('getReachabilityResults', () => {
+  let webex;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+
+    // sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  const runCheck = async (mockStorage: any, expectedResult: ReachabilityResults) => {
+    if (mockStorage) {
+      await webex.boundedStorage.put(
+        'Reachability',
+        'reachability.result',
+        JSON.stringify(mockStorage)
+      );
+    }
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.getReachabilityResults();
+
+    assert.deepEqual(result, expectedResult);
+  };
+
+  it('returns undefined if reading from local storage fails', async () => {
+    sinon.stub(webex.boundedStorage, 'get').rejects(new Error('fake error'));
+
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.getReachabilityResults();
+
+    assert.isUndefined(result);
+  });
+
+  it('returns results from local storage, stripping any internal data', async () => {
+    await runCheck(
+      // mock storage:
+      {
+        cluster1: {
+          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+        },
+        cluster2: {
+          udp: {reachable: 'true', latencyInMilliseconds: '200'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+        },
+        cluster3: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+          someOtherField: 'any value',
+        },
+        cluster4: {
+          udp: {reachable: 'false', latencyInMilliseconds: '300'},
+          tcp: {reachable: 'false', untested: 'true'},
+          xtls: {untested: 'true'},
+          someOtherField: 'any value',
+        },
+      },
+      // expected result (same as above, but with isVideoMesh and someOtherField stripped out):
+      {
+        cluster1: {
+          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+        },
+        cluster2: {
+          udp: {reachable: 'true', latencyInMilliseconds: '200'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+        },
+        cluster3: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+        },
+        cluster4: {
+          udp: {reachable: 'false', latencyInMilliseconds: '300'},
+          tcp: {reachable: 'false', untested: 'true'},
+          xtls: {untested: 'true'},
+        },
+      }
+    );
   });
 });

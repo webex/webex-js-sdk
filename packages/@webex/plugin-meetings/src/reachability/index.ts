@@ -19,8 +19,8 @@ const VIDEO_MESH_TIMEOUT = 1000;
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
   reachable: 'true' | 'false';
-  latencyInMilliseconds: string;
-  clientMediaIPs: string[];
+  latencyInMilliseconds?: string;
+  clientMediaIPs?: string[];
   untested?: 'true';
 };
 
@@ -139,6 +139,7 @@ export default class Reachability {
   }
 
   /**
+   * Reachability results as an object in the format that backend expects
    *
    * @returns {any} reachability results that need to be sent to the backend
    */
