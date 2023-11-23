@@ -1052,6 +1052,7 @@ describe('plugin-meetings', () => {
 
             it('should throw if permissionTokenRefresh fails with a captcha error', async () => { 
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new CaptchaError('bad captcha'));
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -1059,11 +1060,14 @@ describe('plugin-meetings', () => {
               } catch (error) {
                 assert.instanceOf(error, CaptchaError);
                 assert.equal(error.message, 'bad captcha');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
               }
             })
 
             it('should throw if permissionTokenRefresh fails with a password error', async () => { 
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PasswordError('bad password'));
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -1071,11 +1075,14 @@ describe('plugin-meetings', () => {
               } catch (error) {
                 assert.instanceOf(error, PasswordError);
                 assert.equal(error.message, 'bad password');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
               }
             })
 
             it('should throw if permissionTokenRefresh fails with a permission error', async () => { 
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PermissionError('bad permission'));
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -1083,6 +1090,8 @@ describe('plugin-meetings', () => {
               } catch (error) {
                 assert.instanceOf(error, PermissionError);
                 assert.equal(error.message, 'bad permission');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
               }
             })
           })

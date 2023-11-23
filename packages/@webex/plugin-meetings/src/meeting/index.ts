@@ -4438,7 +4438,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *             if joining as host on second loop, pass pin and pass moderator if joining as guest on second loop
    * Scenario D: Joining any other way (sip, pstn, conversationUrl, link just need to specify resourceId)
    */
-  public join(options: any = {}) {
+  public async join(options: any = {}) {
     // @ts-ignore - fix type
     if (!this.webex.meetings.registered) {
       const errorMessage = 'Meeting:index#join --> Device not registered';
@@ -4549,26 +4549,23 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.isMultistream = !!options.enableMultistream;
 
-    return this.checkAndRefreshPermissionToken()
-      .catch((error) => {
-        LoggerProxy.logger.error(
-          'Meeting:index#join --> Failed to refresh permission token:',
-          error
-        );
+    try {
+      await this.checkAndRefreshPermissionToken();
+    } catch (error) {
+      LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
 
-        if (
-          error instanceof CaptchaError ||
-          error instanceof PasswordError ||
-          error instanceof PermissionError
-        ) {
-          // if refresh permission token requires captcha, password or permission, we are throwing the errors
-          // and bubble it up to Cantina
-          throw error;
-        }
-      })
-      .then(() => {
-        return MeetingUtil.joinMeetingOptions(this, options);
-      })
+      if (
+        error instanceof CaptchaError ||
+        error instanceof PasswordError ||
+        error instanceof PermissionError
+      ) {
+        // if refresh permission token requires captcha, password or permission, we are throwing the errors
+        // and bubble it up to Cantina
+        return Promise.reject(error);
+      }
+    }
+
+    return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
         this.meetingFiniteStateMachine.join();
         LoggerProxy.logger.log('Meeting:index#join --> Success');
