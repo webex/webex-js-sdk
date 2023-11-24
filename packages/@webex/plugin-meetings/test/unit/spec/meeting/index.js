@@ -43,14 +43,12 @@ import {
   StreamEventNames,
 } from '@webex/media-helpers';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
-import * as MuteStateModule from '@webex/plugin-meetings/src/meeting/muteState';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Members from '@webex/plugin-meetings/src/members';
 import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
-import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/request';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
@@ -80,7 +78,6 @@ import {
   UserNotJoinedError,
   MeetingNotActiveError,
   UserInLobbyError,
-  NoMediaEstablishedYetError,
 } from '../../../../src/common/errors/webex-errors';
 import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-error';
 import ParameterError from '../../../../src/common/errors/parameter';
@@ -88,18 +85,13 @@ import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError from '../../../../src/common/errors/permission';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
-import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
-import {ANNOTATION_POLICY} from '../../../../src/annotation/constants';
 
-
-// Non-stubbed function
-const {getDisplayMedia} = Media;
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -227,6 +219,11 @@ describe('plugin-meetings', () => {
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
+    webex.meetings.reachability = {
+      isAnyPublicClusterReachable: sinon.stub().resolves(true),
+      getReachabilityResults: sinon.stub().resolves(undefined),
+      getReachabilityMetrics: sinon.stub().resolves({}),
+    };
     webex.internal.llm.on = sinon.stub();
     membersSpy = sinon.spy(MembersImport, 'default');
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
@@ -1099,8 +1096,15 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('should reset the statsAnalyzer to null if addMedia throws an error', async () => {
+        it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2'
+            }),
+          };
+
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
@@ -1124,6 +1128,8 @@ describe('plugin-meetings', () => {
             signalingState: 'unknown',
             connectionState: 'unknown',
             iceConnectionState: 'unknown',
+            someReachabilityMetric1: 'some value1',
+            someReachabilityMetric2: 'some value2',
           });
         });
 
@@ -1475,6 +1481,12 @@ describe('plugin-meetings', () => {
 
         it('should send ADD_MEDIA_SUCCESS metrics', async () => {
           meeting.meetingState = 'ACTIVE';
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2'
+            }),
+          };
           await meeting.addMedia({
             mediaSettings: {},
           });
@@ -1485,6 +1497,8 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             isMultistream: false,
+            someReachabilityMetric1: 'some value1',
+            someReachabilityMetric2: 'some value2'
           });
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
@@ -1721,10 +1735,6 @@ describe('plugin-meetings', () => {
           meeting.setMercuryListener = sinon.stub();
           meeting.locusInfo.onFullLocus = sinon.stub();
           meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
-          meeting.webex.meetings.reachability = {
-            isAnyPublicClusterReachable: sinon.stub().resolves(true),
-            getReachabilityResults: sinon.stub().resolves(undefined),
-          };
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
