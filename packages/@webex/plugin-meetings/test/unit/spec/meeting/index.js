@@ -29,6 +29,7 @@ import {
   DISPLAY_HINTS,
   SELF_POLICY,
   IP_VERSION,
+  ERROR_DICTIONARY,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -798,6 +799,7 @@ describe('plugin-meetings', () => {
           webex.meetings.registered = true;
           meeting.updateLLMConnection = sinon.stub();
         });
+
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
@@ -918,7 +920,7 @@ describe('plugin-meetings', () => {
             });
           });
         });
-        describe('lmm and transcription decoupling', () => {
+        describe('lmm, transcription & permissionTokenRefresh decoupling', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
           });
@@ -1021,7 +1023,6 @@ describe('plugin-meetings', () => {
               try {
                 await defer.promise;
               } catch (err) {
-                console.log(Metrics.sendBehavioralMetric.getCalls())
                 assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
                   BEHAVIORAL_METRICS.JOIN_SUCCESS, {correlation_id: meeting.correlationId}
                 ])
@@ -1033,6 +1034,76 @@ describe('plugin-meetings', () => {
                     stack: err.stack,
                   }
                 ]);
+              }
+            })
+          })
+
+          describe('refreshPermissionToken', () => { 
+            it('should continue if permissionTokenRefresh fails with a generic error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new Error('bad day'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+
+              try {
+                const result = await meeting.join();
+                assert.notCalled(stateMachineFailSpy);
+                assert.equal(result, joinMeetingResult);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+              } catch (error) {
+                assert.fail('join should not throw an Error');
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a captcha error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new CaptchaError('bad captcha'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Captcha Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, CaptchaError);
+                assert.equal(error.message, 'bad captcha');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a password error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PasswordError('bad password'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Password Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, PasswordError);
+                assert.equal(error.message, 'bad password');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a permission error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PermissionError('bad permission'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Permission Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, PermissionError);
+                assert.equal(error.message, 'bad permission');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
               }
             })
           })
@@ -8307,6 +8378,52 @@ describe('plugin-meetings', () => {
       // set permission token as now - 1 sec
       meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
+    });
+  });
+
+  describe('#checkAndRefreshPermissionToken', () => {
+    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.notCalled(meeting.refreshPermissionToken);
+      assert.equal(returnValue, undefined);
+    });
+
+    it('should fire refreshPermissionToken if time left is below 10sec', async() => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
+      assert.equal(returnValue, 'test return value');
+    });
+
+    it('should fire refreshPermissionToken if time left is equal 10sec', async () => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
+      assert.equal(returnValue, 'test return value');
+    });
+
+    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+      
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.notCalled(meeting.refreshPermissionToken);
+      assert.equal(returnValue, undefined);
     });
   });
 });

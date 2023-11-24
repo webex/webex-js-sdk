@@ -97,6 +97,8 @@ import {
   SELF_ROLES,
   INTERPRETATION,
   SELF_POLICY,
+  MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+  MEETING_PERMISSION_TOKEN_REFRESH_REASON,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -4437,7 +4439,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *             if joining as host on second loop, pass pin and pass moderator if joining as guest on second loop
    * Scenario D: Joining any other way (sip, pstn, conversationUrl, link just need to specify resourceId)
    */
-  public join(options: any = {}) {
+  public async join(options: any = {}) {
     // @ts-ignore - fix type
     if (!this.webex.meetings.registered) {
       const errorMessage = 'Meeting:index#join --> Device not registered';
@@ -4547,6 +4549,43 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     this.isMultistream = !!options.enableMultistream;
+
+    try {
+      // refresh the permission token if its about to expire in 10sec
+      await this.checkAndRefreshPermissionToken(
+        MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+        MEETING_PERMISSION_TOKEN_REFRESH_REASON
+      );
+    } catch (error) {
+      LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
+
+      if (
+        error instanceof CaptchaError ||
+        error instanceof PasswordError ||
+        error instanceof PermissionError
+      ) {
+        this.meetingFiniteStateMachine.fail(error);
+
+        // Upload logs on refreshpermissionToken refresh Failure
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join',
+          },
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          this
+        );
+
+        joinFailed(error);
+
+        this.deferJoin = undefined;
+
+        // if refresh permission token requires captcha, password or permission, we are throwing the errors
+        // and bubble it up to client
+        return Promise.reject(error);
+      }
+    }
 
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
@@ -7400,5 +7439,23 @@ export default class Meeting extends StatelessWebexPlugin {
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
     return (permissionTokenExpValue - now) / 1000;
+  }
+
+  /**
+   * Check if there is enough time left till the permission token expires
+   * If not - refresh the permission token
+   *
+   * @param {number} threshold - time in seconds
+   * @param {string} reason - reason for refreshing the permission token
+   * @returns {Promise<void>}
+   */
+  public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
+    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+      return this.refreshPermissionToken(reason);
+    }
+
+    return Promise.resolve();
   }
 }
