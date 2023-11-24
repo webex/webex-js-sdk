@@ -1045,6 +1045,7 @@ describe('plugin-meetings', () => {
               try {
                 const result = await meeting.join();
                 assert.equal(result, joinMeetingResult);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 10, 'ttl-join');
               } catch (error) {
                 assert.fail('join should not throw an Error');
               }
@@ -1058,6 +1059,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 assert.fail('join should have thrown a Captcha Error.');
               } catch (error) {
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 10, 'ttl-join');
                 assert.instanceOf(error, CaptchaError);
                 assert.equal(error.message, 'bad captcha');
                 // should not get to the end promise chain, which does do the join
@@ -1073,6 +1075,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 assert.fail('join should have thrown a Password Error.');
               } catch (error) {
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 10, 'ttl-join');
                 assert.instanceOf(error, PasswordError);
                 assert.equal(error.message, 'bad password');
                 // should not get to the end promise chain, which does do the join
@@ -1088,6 +1091,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 assert.fail('join should have thrown a Permission Error.');
               } catch (error) {
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 10, 'ttl-join');
                 assert.instanceOf(error, PermissionError);
                 assert.equal(error.message, 'bad permission');
                 // should not get to the end promise chain, which does do the join
@@ -8373,7 +8377,7 @@ describe('plugin-meetings', () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
-      const returnValue = await meeting.checkAndRefreshPermissionToken();
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
       assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
@@ -8384,7 +8388,7 @@ describe('plugin-meetings', () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
-      const returnValue = await meeting.checkAndRefreshPermissionToken();
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
       assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
@@ -8395,7 +8399,7 @@ describe('plugin-meetings', () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
-      const returnValue = await meeting.checkAndRefreshPermissionToken();
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
       
       assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
       assert.notCalled(meeting.refreshPermissionToken);

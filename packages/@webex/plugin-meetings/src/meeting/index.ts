@@ -4550,7 +4550,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.isMultistream = !!options.enableMultistream;
 
     try {
-      await this.checkAndRefreshPermissionToken();
+      // refresh the permission token if its about to expire in 10sec
+      await this.checkAndRefreshPermissionToken(
+        MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+        'ttl-join'
+      );
     } catch (error) {
       LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
 
@@ -7423,13 +7427,15 @@ export default class Meeting extends StatelessWebexPlugin {
    * Check if there is enough time left till the permission token expires
    * If not - refresh the permission token
    *
+   * @param {number} threshold - time in seconds
+   * @param {string} reason - reason for refreshing the permission token
    * @returns {Promise<void>}
    */
-  public checkAndRefreshPermissionToken(): Promise<void> {
+  public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
     const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
 
-    if (permissionTokenTimeLeft <= MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC) {
-      return this.refreshPermissionToken('ttl-join');
+    if (permissionTokenTimeLeft <= threshold) {
+      return this.refreshPermissionToken(reason);
     }
 
     return Promise.resolve();
