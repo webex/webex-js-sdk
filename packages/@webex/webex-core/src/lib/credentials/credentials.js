@@ -503,7 +503,8 @@ const Credentials = WebexPlugin.extend({
       .refresh()
       .catch((error) => {
         if (error instanceof OAuthError) {
-          // Error: The refresh token provided is expired, revoked, malformed, or invalid. Hence emit an event to the client, an opportunity to logout.
+          // Error: super token refresh failed with 400 status code.
+          // Hence emit an event to the client, an opportunity to logout.
           this.unset('supertoken');
           while (this.userTokens.models.length) {
             try {
