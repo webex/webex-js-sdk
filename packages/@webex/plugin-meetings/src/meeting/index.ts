@@ -98,6 +98,7 @@ import {
   INTERPRETATION,
   SELF_POLICY,
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+  MEETING_PERMISSION_TOKEN_REFRESH_REASON,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -4553,7 +4554,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // refresh the permission token if its about to expire in 10sec
       await this.checkAndRefreshPermissionToken(
         MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
-        'ttl-join'
+        MEETING_PERMISSION_TOKEN_REFRESH_REASON
       );
     } catch (error) {
       LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
@@ -4563,8 +4564,25 @@ export default class Meeting extends StatelessWebexPlugin {
         error instanceof PasswordError ||
         error instanceof PermissionError
       ) {
+        this.meetingFiniteStateMachine.fail(error);
+
+        // Upload logs on refreshpermissionToken refresh Failure
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join',
+          },
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          this
+        );
+
+        joinFailed(error);
+
+        this.deferJoin = undefined;
+
         // if refresh permission token requires captcha, password or permission, we are throwing the errors
-        // and bubble it up to Cantina
+        // and bubble it up to client
         return Promise.reject(error);
       }
     }
@@ -7434,7 +7452,7 @@ export default class Meeting extends StatelessWebexPlugin {
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
     const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
 
-    if (permissionTokenTimeLeft <= threshold) {
+    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
     }
 
