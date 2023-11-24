@@ -501,6 +501,22 @@ const Credentials = WebexPlugin.extend({
 
     return supertoken
       .refresh()
+      .catch((error) => {
+        if (error instanceof OAuthError) {
+          // Error: The refresh token provided is expired, revoked, malformed, or invalid. Hence emit an event to the client, an opportunity to logout.
+          this.unset('supertoken');
+          while (this.userTokens.models.length) {
+            try {
+              this.userTokens.remove(this.userTokens.models[0]);
+            } catch (err) {
+              this.logger.warn('credentials: failed to remove user token', err);
+            }
+          }
+          this.webex.trigger('client:InvalidRequestError');
+        }
+
+        return Promise.reject(error);
+      })
       .then((st) => {
         // clear refresh timer
         if (this.refreshTimer) {
@@ -542,22 +558,6 @@ const Credentials = WebexPlugin.extend({
       })
       .then(() => {
         this.scheduleRefresh(this.supertoken.expires);
-      })
-      .catch((error) => {
-        if (error instanceof OAuthError) {
-          // Error: The refresh token provided is expired, revoked, malformed, or invalid. Hence emit an event to the client, an opportunity to logout.
-          this.unset('supertoken');
-          while (this.userTokens.models.length) {
-            try {
-              this.userTokens.remove(this.userTokens.models[0]);
-            } catch (err) {
-              this.logger.warn('credentials: failed to remove user token', err);
-            }
-          }
-          this.webex.trigger('client:InvalidRequestError');
-        }
-
-        return Promise.reject(error);
       });
   },
 
