@@ -8,15 +8,16 @@ import url from 'url';
 import jwt from 'jsonwebtoken';
 import {base64, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
-import {clone, cloneDeep, isObject, isEmpty, difference, without} from 'lodash';
+import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
 
 import WebexPlugin from '../webex-plugin';
 import {persist, waitForValue} from '../storage/decorators';
 
 import grantErrors, {OAuthError} from './grant-errors';
-import {filterScope, sortScope} from './scope';
+import {filterScope, diffScopes, sortScope} from './scope';
 import Token from './token';
 import TokenCollection from './token-collection';
+import {METRICS} from '../constants';
 
 /**
  * @class
@@ -258,29 +259,13 @@ const Credentials = WebexPlugin.extend({
    * @returns {Promise<Token>}
    */
   downscope(scope) {
-    const superTokenScopeArr = this.supertoken.scope.split(' ');
-    const scopeArr = scope.split(' ');
-
-    const scopeDiff = difference(scopeArr, superTokenScopeArr);
-    const newScope = without(scopeArr, ...scopeDiff).join(' ');
-
-    // Remove invalid scopes only when there is at least one valid scope in the list, otherwise
-    // let fail downscope with `invalid_scope` error and fallback to supertoken
-    if (scopeDiff.length > 0 && newScope.length > 0) {
-      this.logger.warn(
-        `credentials: "${scopeDiff.join(
-          ' '
-        )}" scope(s) removed, because they are not in the supertoken scope`
-      );
-      scope = newScope;
-    }
-
     return this.supertoken.downscope(scope).catch((reason) => {
-      this.logger.info(
+      this.logger.warn(
         `credentials: failed to downscope supertoken to "${scope}"`,
         reason.body ?? reason
       );
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
+      this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED);
 
       return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
         parent: this,
@@ -361,12 +346,12 @@ const Credentials = WebexPlugin.extend({
       }
 
       if (!scope) {
-        scope = filterScope('spark:kms', this.config.scope);
+        scope = filterScope('spark:kms', this.supertoken.scope);
       }
 
       scope = sortScope(scope);
 
-      if (scope === sortScope(this.config.scope)) {
+      if (scope === sortScope(this.supertoken.scope)) {
         return Promise.resolve(this.supertoken);
       }
 
@@ -523,6 +508,17 @@ const Credentials = WebexPlugin.extend({
           this.unset('refreshTimer');
         }
         this.supertoken = st;
+
+        const invalidScopes = diffScopes(this.config.scope, st.scope);
+
+        if (invalidScopes !== '') {
+          this.logger.warn(
+            `credentials: "${invalidScopes}" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.`
+          );
+          this.webex.internal.metrics.submitClientMetrics(
+            METRICS.JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH
+          );
+        }
 
         return Promise.all(
           tokens.map((token) =>

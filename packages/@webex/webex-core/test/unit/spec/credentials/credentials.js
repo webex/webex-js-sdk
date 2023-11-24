@@ -11,6 +11,7 @@ import {inBrowser} from '@webex/common';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 import Logger from '@webex/plugin-logger';
+import Metrics, {config} from '@webex/internal-plugin-metrics';
 
 /* eslint camelcase: [0] */
 
@@ -445,7 +446,11 @@ describe('webex-core', () => {
         });
 
       it('schedules a refreshTimer', () => {
-        const webex = new MockWebex();
+        const webex = new MockWebex({
+          children: {
+            metrics: Metrics,
+          },
+        });
         const supertoken = makeToken(webex, {
           access_token: 'ST',
           refresh_token: 'RT',
@@ -458,6 +463,7 @@ describe('webex-core', () => {
         });
 
         sinon.stub(supertoken, 'refresh').returns(Promise.resolve(supertoken2));
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
         const credentials = new Credentials(supertoken, {parent: webex});
 
         webex.trigger('change:config');
@@ -492,7 +498,19 @@ describe('webex-core', () => {
     });
 
     describe('#getUserToken()', () => {
-      it('resolves with the supertoken if the supertoken matches the requested scopes');
+      it('resolves with the supertoken if the supertoken matches the requested scopes', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+        const st = makeToken(webex, {access_token: 'ST', scope: 'scope1'});
+
+        credentials.set({
+          supertoken: st,
+        });
+
+        return credentials.getUserToken('scope1').then((result) => assert.deepEqual(result, st));
+      });
 
       it('resolves with the token identified by the specified scopes', () => {
         const webex = new MockWebex();
@@ -518,6 +536,25 @@ describe('webex-core', () => {
           credentials.getUserToken('scope1').then((result) => assert.deepEqual(result, t1)),
           credentials.getUserToken('scope2').then((result) => assert.deepEqual(result, t2)),
         ]);
+      });
+
+      it('uses the supertoken.scope instead of the config.scope for downscope', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+        const st = makeToken(webex, {access_token: 'ST', scope: 'scope1 spark:kms'});
+
+        credentials.set({
+          supertoken: st,
+          scope: 'invalidScope scope1',
+        });
+
+        sinon.stub(credentials, 'downscope').returns(Promise.resolve());
+
+        return credentials.getUserToken().then(() => {
+          assert.calledWith(credentials.downscope, 'scope1');
+        });
       });
 
       describe('when no matching token is found', () => {
@@ -553,77 +590,17 @@ describe('webex-core', () => {
         });
       });
 
-      describe('when requested scope is not in the supertoken scope', () => {
-        it('removes the invalid scope form the scope list and add a warning to the logs', () => {
-          const webex = new MockWebex({
-            children: {
-              logger: Logger,
-            },
-          });
-          const credentials = new Credentials(undefined, {parent: webex});
-
-          webex.trigger('change:config');
-
-          credentials.supertoken = makeToken(webex, {
-            access_token: 'ST',
-            scope: 'scope1 scope2',
-          });
-
-          sinon.stub(credentials.supertoken, 'downscope').returns(Promise.resolve());
-          sinon.stub(credentials.logger, 'warn');
-
-          return credentials.getUserToken('invalidScope1 scope1 invalidScope2').then(() => {
-            assert.calledWith(credentials.supertoken.downscope, 'scope1');
-            assert.calledWith(
-              credentials.logger.warn,
-              'credentials: "invalidScope1 invalidScope2" scope(s) removed, because they are not in the supertoken scope'
-            );
-          });
-        });
-      });
-
-      describe('when only invalid scopes requested', () => {
-        it('does nothing and let handle the error in the token downscope', () => {
-          const downscopeError = {body: {error: 'invalid_scope'}};
-          const webex = new MockWebex({
-            children: {
-              logger: Logger,
-            },
-          });
-          const credentials = new Credentials(undefined, {parent: webex});
-
-          webex.trigger('change:config');
-
-          credentials.supertoken = makeToken(webex, {
-            access_token: 'ST',
-            scope: 'scope1 scope2',
-          });
-
-          sinon.stub(credentials.supertoken, 'downscope').returns(Promise.reject(downscopeError));
-          sinon.stub(credentials.logger, 'info');
-
-          return credentials.getUserToken('invalidScope1 invalidScope2').then(() => {
-            assert.calledWith(credentials.supertoken.downscope, 'invalidScope1 invalidScope2');
-            assert.calledWith(
-              credentials.logger.info,
-              'credentials: failed to downscope supertoken to "invalidScope1 invalidScope2"',
-              downscopeError.body
-            );
-          });
-        });
-      });
-
       describe('when no scope is specified', () => {
         it('resolves with a token containing all but the kms scopes', () => {
           const webex = new MockWebex();
 
-          webex.config.credentials.scope = 'scope1 spark:kms';
           const credentials = new Credentials(undefined, {parent: webex});
 
           webex.trigger('change:config');
 
           credentials.supertoken = makeToken(webex, {
             access_token: 'ST',
+            scope: 'scope1 spark:kms',
           });
 
           // const t2 = makeToken(webex, {
@@ -650,9 +627,11 @@ describe('webex-core', () => {
           const webex = new MockWebex({
             children: {
               logger: Logger,
+              metrics: Metrics,
             },
           });
 
+          webex.config.metrics = config.metrics;
           webex.config.credentials.scope = 'scope1 spark:kms';
           const credentials = new Credentials(undefined, {parent: webex});
 
@@ -666,6 +645,9 @@ describe('webex-core', () => {
             .stub(credentials.supertoken, 'downscope')
             .returns(Promise.reject(new Error('downscope failed')));
 
+          sinon.stub(credentials.logger, 'warn').callsFake(() => {});
+          sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
+
           const t1 = makeToken(webex, {
             access_token: 'AT1',
             scope: 'scope1',
@@ -675,14 +657,26 @@ describe('webex-core', () => {
             userTokens: [t1],
           });
 
-          return credentials
-            .getUserToken('scope2')
-            .then((t) => assert.equal(t.access_token, credentials.supertoken.access_token));
+          return credentials.getUserToken('scope2').then((t) => {
+            assert.equal(t.access_token, credentials.supertoken.access_token);
+            assert.calledWith(
+              credentials.logger.warn,
+              'credentials: failed to downscope supertoken to "scope2"'
+            );
+            assert.calledWith(
+              webex.internal.metrics.submitClientMetrics,
+              'JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED'
+            );
+          });
         });
       });
 
       it('is blocked while a token refresh is inflight', () => {
-        const webex = new MockWebex();
+        const webex = new MockWebex({
+          children: {
+            metrics: Metrics,
+          },
+        });
 
         webex.config.credentials.scope = 'scope1 spark:kms';
         const credentials = new Credentials(undefined, {parent: webex});
@@ -708,6 +702,7 @@ describe('webex-core', () => {
         const at2 = makeToken(webex, {access_token: 'ST2ATD'});
 
         sinon.stub(supertoken2, 'downscope').returns(Promise.resolve(at2));
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
 
         return Promise.all([
           credentials.refresh(),
@@ -838,7 +833,11 @@ describe('webex-core', () => {
 
     describe('#refresh()', () => {
       it('refreshes and downscopes the supertoken, and revokes previous tokens', () => {
-        const webex = new MockWebex();
+        const webex = new MockWebex({
+          children: {
+            metrics: Metrics,
+          },
+        });
         const credentials = new Credentials(undefined, {parent: webex});
 
         webex.trigger('change:config');
@@ -866,6 +865,7 @@ describe('webex-core', () => {
         sinon.stub(st, 'refresh').returns(Promise.resolve(st2));
         sinon.stub(t1, 'revoke').returns(Promise.resolve());
         sinon.spy(credentials, 'scheduleRefresh');
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
 
         credentials.set({
           supertoken: st,
@@ -885,7 +885,11 @@ describe('webex-core', () => {
       });
 
       it('refreshes and downscopes the supertoken even if revocation of previous token fails', () => {
-        const webex = new MockWebex();
+        const webex = new MockWebex({
+          children: {
+            metrics: Metrics,
+          },
+        });
         const credentials = new Credentials(undefined, {parent: webex});
 
         webex.trigger('change:config');
@@ -913,6 +917,7 @@ describe('webex-core', () => {
         sinon.stub(st, 'refresh').returns(Promise.resolve(st2));
         sinon.stub(t1, 'revoke').returns(Promise.reject());
         sinon.spy(credentials, 'scheduleRefresh');
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
 
         credentials.set({
           supertoken: st,
@@ -935,6 +940,7 @@ describe('webex-core', () => {
         const webex = new MockWebex({
           children: {
             logger: Logger,
+            metrics: Metrics,
           },
         });
         const credentials = new Credentials(undefined, {parent: webex});
@@ -943,9 +949,11 @@ describe('webex-core', () => {
         const st = makeToken(webex, {
           access_token: 'ST',
           refresh_token: 'RT',
+          scope: '',
         });
 
         sinon.stub(st, 'refresh').returns(Promise.resolve(makeToken(webex, {access_token: 'ST2'})));
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
 
         const t1 = makeToken(webex, {
           access_token: 'AT1',
@@ -961,7 +969,7 @@ describe('webex-core', () => {
       });
 
       it('allows #getUserToken() to be revoked, but #getUserToken() promises will not resolve until the suport token has been refreshed', () => {
-        const webex = new MockWebex();
+        const webex = new MockWebex({children: {metrics: Metrics}});
         const credentials = new Credentials(undefined, {parent: webex});
 
         webex.trigger('change:config');
@@ -987,6 +995,7 @@ describe('webex-core', () => {
 
         sinon.stub(st1, 'refresh').returns(Promise.resolve(st2));
         sinon.stub(st2, 'downscope').returns(Promise.resolve(t2));
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
 
         credentials.set({
           supertoken: st1,
@@ -1042,6 +1051,52 @@ describe('webex-core', () => {
             assert.called(credentials.unset);
             assert.calledWith(triggerSpy, sinon.match('client:InvalidRequestError'));
           });
+      });
+
+      it('log and call metrics when fetched supertoken scope mismatch with the configured scope', () => {
+        const webex = new MockWebex({
+          children: {
+            logger: Logger,
+            metrics: Metrics,
+          },
+        });
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+        const st = makeToken(webex, {
+          access_token: 'ST',
+          refresh_token: 'RT',
+        });
+
+        const st2 = makeToken(webex, {
+          access_token: 'ST2',
+          refresh_token: 'RT2',
+          scope: 'scope1',
+        });
+
+        credentials.set({
+          supertoken: st,
+          userTokens: [],
+        });
+        credentials.config.scope = 'scope1 invalidScope1 invalidScope2';
+
+        sinon.stub(st2, 'downscope').returns(Promise.resolve());
+        sinon.stub(st, 'refresh').returns(Promise.resolve(st2));
+        sinon.spy(credentials, 'scheduleRefresh');
+
+        sinon.stub(credentials.logger, 'warn').callsFake(() => {});
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
+
+        return credentials.refresh().then(() => {
+          assert.calledWith(
+            credentials.logger.warn,
+            'credentials: "invalidScope1 invalidScope2" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.'
+          );
+          assert.calledWith(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH'
+          );
+        });
       });
     });
 
