@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.260](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.259...v3.0.0-beta.260) (2023-11-24)
+
+
+### Bug Fixes
+
+* refresh permission token on meetingjoin ([#3214](https://github.com/webex/webex-js-sdk/issues/3214)) ([341ad97](https://github.com/webex/webex-js-sdk/commit/341ad978eb9d237d5c7815d762f04c80b0963ec6))
+
 ## [3.0.0-beta.259](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.258...v3.0.0-beta.259) (2023-11-23)
 
 
