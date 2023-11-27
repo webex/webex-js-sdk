@@ -2254,6 +2254,7 @@ export default class Meeting extends StatelessWebexPlugin {
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
         contentShare.disposition === previousContentShare?.disposition &&
+        contentShare.deviceUrlSharing === previousContentShare.deviceUrlSharing &&
         whiteboardShare.beneficiaryId === previousWhiteboardShare?.beneficiaryId &&
         whiteboardShare.disposition === previousWhiteboardShare?.disposition &&
         whiteboardShare.resourceUrl === previousWhiteboardShare?.resourceUrl
@@ -2276,10 +2277,20 @@ export default class Meeting extends StatelessWebexPlugin {
       // LOCAL - check if we started sharing content
       else if (
         this.selfId === contentShare.beneficiaryId &&
-        contentShare.disposition === FLOOR_ACTION.GRANTED
+        contentShare.disposition === FLOOR_ACTION.GRANTED &&
+        contentShare.deviceUrlSharing === this.deviceUrl
       ) {
         // CONTENT - sharing content local
         newShareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
+      }
+      // SAME USER REMOTE - check if same user started sharing content from another client
+      else if (
+        this.selfId === contentShare.beneficiaryId &&
+        contentShare.disposition === FLOOR_ACTION.GRANTED &&
+        contentShare.deviceUrlSharing !== this.deviceUrl
+      ) {
+        // CONTENT - same user sharing content remote
+        newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
       }
       // If we did not hit the cases above, no one is sharng content, so we check if we are sharing whiteboard
       // There is no concept of local/remote share for whiteboard
