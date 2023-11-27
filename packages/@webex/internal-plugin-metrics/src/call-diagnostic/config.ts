@@ -101,6 +101,7 @@ const ERROR_DESCRIPTIONS = {
   FRAUD_DETECTION: 'FraudDetection',
   E2EE_NOT_SUPPORTED: 'E2EENotSupported',
   LOCUS_LOBBY_FULL_CMR: 'LocusLobbyFullCMR',
+  USER_NOT_INVITED_TO_JOIN: 'UserNotInvitedToJoin',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -244,6 +245,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2409005: 4029,
   // E2EE_NOT_SUPPORTED
   2409062: 12002,
+  // LOCUS: ONLY_INVITED_USERS_CAN_ATTEND_THIS_MEETING
+  2423025: 12003,
 
   // ---- U2C Sign in catalog ------
   // The user exists, but hasn't completed activation. Needs to visit Atlas for more processing.
@@ -604,6 +607,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     fatal: true,
     name: 'locus.response',
     shownToUser: true,
+  },
+  12003: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_INVITED_TO_JOIN,
+    category: 'expected',
+    fatal: true,
   },
 };
 

@@ -112,7 +112,7 @@ WebExMeetingsErrors[UserInLobbyError.CODE] = UserInLobbyError;
  * @classdesc Raised whenever the user passes Space ID as destination for create meeting.
  * @extends WebexMeetingsError
  * @property {number} code - 30105
- * @property {string} message - Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.'
+ * @property {string} message - Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.'
  */
 class SpaceIDDeprecatedError extends WebexMeetingsError {
   static CODE = 30105;
@@ -120,7 +120,7 @@ class SpaceIDDeprecatedError extends WebexMeetingsError {
   constructor() {
     super(
       SpaceIDDeprecatedError.CODE,
-      'Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-guide-for-USM-meeting) to migrate to use the meeting ID or SIP address.'
+      'Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.'
     );
   }
 }

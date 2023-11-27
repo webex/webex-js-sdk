@@ -13,6 +13,7 @@ import {Credentials, Token, WebexPlugin} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
+import { Defer } from '@webex/common';
 import {
   FLOOR_ACTION,
   SHARE_STATUS,
@@ -28,6 +29,7 @@ import {
   DISPLAY_HINTS,
   SELF_POLICY,
   IP_VERSION,
+  ERROR_DICTIONARY,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -95,6 +97,7 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {ANNOTATION_POLICY} from '../../../../src/annotation/constants';
+
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -796,6 +799,7 @@ describe('plugin-meetings', () => {
           webex.meetings.registered = true;
           meeting.updateLLMConnection = sinon.stub();
         });
+
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
@@ -818,27 +822,6 @@ describe('plugin-meetings', () => {
             assert.equal(result, joinMeetingResult);
           });
 
-          it('should call updateLLMConnection upon joining if config value is set', async () => {
-            meeting.config.enableAutomaticLLM = true;
-            await meeting.join();
-
-            assert.calledOnce(meeting.updateLLMConnection);
-          });
-
-          it('should not call updateLLMConnection upon joining if config value is not set', async () => {
-            await meeting.join();
-
-            assert.notCalled(meeting.updateLLMConnection);
-          });
-
-          it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
-            meeting.isTranscriptionSupported = sinon.stub().returns(true);
-            meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
-
-            await meeting.join({receiveTranscription: true});
-            assert.calledOnce(meeting.receiveTranscription);
-          });
-
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
             sinon.assert.notCalled(setCorrelationIdSpy);
@@ -856,75 +839,8 @@ describe('plugin-meetings', () => {
             sinon.assert.called(setCorrelationIdSpy);
             assert.equal(meeting.correlationId, '123');
           });
-
-          it('should send Meeting Info CA events if meetingInfo is not empty', async () => {
-            meeting.meetingInfo = {info: 'info', meetingLookupUrl: 'url'};
-
-            const join = meeting.join();
-
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
-              name: 'client.call.initiated',
-              payload: {
-                trigger: 'user-interaction',
-                isRoapCallEnabled: true,
-              },
-              options: {meetingId: meeting.id},
-            });
-
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(1).args[0], {
-              name: 'client.meetinginfo.request',
-              options: {meetingId: meeting.id},
-            });
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(2).args[0], {
-              name: 'client.meetinginfo.response',
-              payload: {
-                identifiers: {meetingLookupUrl: 'url'},
-              },
-              options: {meetingId: meeting.id},
-            });
-          });
-
-          it('should not send Meeting Info CA events if meetingInfo is empty', async () => {
-            meeting.meetingInfo = {};
-
-            const join = meeting.join();
-
-            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
-              options: {meetingId: meeting.id},
-            });
-
-            assert.exists(join.then);
-            const result = await join;
-
-            assert.calledOnce(MeetingUtil.joinMeeting);
-            assert.calledOnce(meeting.setLocus);
-            assert.equal(result, joinMeetingResult);
-
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-
-            assert.equal(
-              webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].name,
-              'client.call.initiated'
-            );
-          });
         });
+
         describe('failure', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.reject());
@@ -1004,6 +920,194 @@ describe('plugin-meetings', () => {
             });
           });
         });
+        describe('lmm, transcription & permissionTokenRefresh decoupling', () => {
+          beforeEach(() => {
+            sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
+          });
+
+          describe('llm', () => {
+            it('makes sure that join does not wait for update llm connection promise', async () => {
+              const defer = new Defer();
+
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join();
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.resolve();
+            });
+
+            it('should call updateLLMConnection as part of joining if config value is set', async () => {
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().resolves();
+
+              await meeting.join();
+
+              assert.calledOnce(meeting.updateLLMConnection);
+            });
+
+            it('should not call updateLLMConnection as part of joining if config value is not set', async () => {
+              meeting.updateLLMConnection = sinon.stub().resolves();
+              await meeting.join();
+
+              assert.notCalled(meeting.updateLLMConnection);
+            });
+
+            it('handles catching error of llm connection later, and join still resolves', async () => {
+              const defer = new Defer();
+
+              meeting.config.enableAutomaticLLM = true;
+              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join();
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.reject(new Error("bad day", {cause: 'bad weather'}));
+
+              try {
+                await defer.promise;
+              } catch (err) {
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
+                  BEHAVIORAL_METRICS.JOIN_SUCCESS, {correlation_id: meeting.correlationId}
+                ])
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
+                  BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+                    correlation_id: meeting.correlationId,
+                    reason: err.message,
+                    stack: err.stack,
+                  }
+                ]);
+              }
+            });
+          });
+
+          describe('receive transcription', () => {
+            it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
+
+              await meeting.join({receiveTranscription: true});
+              assert.calledOnce(meeting.receiveTranscription);
+            });
+
+            it('make sure that join does not wait for setting up receive transcriptions', async () => {
+              const defer = new Defer();
+
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join({receiveTranscription: true});
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.resolve();
+            });
+
+            it('handles catching error of receiveTranscription(), and join still resolves', async () => {
+              const defer = new Defer();
+
+              meeting.isTranscriptionSupported = sinon.stub().returns(true);
+              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
+
+              const result = await meeting.join({receiveTranscription: true});
+
+              assert.equal(result, joinMeetingResult);
+
+              defer.reject(new Error("bad day", {cause: 'bad weather'}));
+
+              try {
+                await defer.promise;
+              } catch (err) {
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
+                  BEHAVIORAL_METRICS.JOIN_SUCCESS, {correlation_id: meeting.correlationId}
+                ])
+
+                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
+                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE, {
+                    correlation_id: meeting.correlationId,
+                    reason: err.message,
+                    stack: err.stack,
+                  }
+                ]);
+              }
+            })
+          })
+
+          describe('refreshPermissionToken', () => { 
+            it('should continue if permissionTokenRefresh fails with a generic error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new Error('bad day'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+
+              try {
+                const result = await meeting.join();
+                assert.notCalled(stateMachineFailSpy);
+                assert.equal(result, joinMeetingResult);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+              } catch (error) {
+                assert.fail('join should not throw an Error');
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a captcha error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new CaptchaError('bad captcha'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Captcha Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, CaptchaError);
+                assert.equal(error.message, 'bad captcha');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a password error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PasswordError('bad password'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Password Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, PasswordError);
+                assert.equal(error.message, 'bad password');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
+              }
+            })
+
+            it('should throw if permissionTokenRefresh fails with a permission error', async () => { 
+              meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PermissionError('bad permission'));
+              const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
+              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
+
+              try {
+                await meeting.join();
+                assert.fail('join should have thrown a Permission Error.');
+              } catch (error) {
+                assert.calledOnce(stateMachineFailSpy);
+                assert.calledOnceWithExactly(meeting.checkAndRefreshPermissionToken, 30, 'ttl-join');
+                assert.instanceOf(error, PermissionError);
+                assert.equal(error.message, 'bad permission');
+                // should not get to the end promise chain, which does do the join
+                assert.notCalled(joinMeetingOptionsSpy);
+              }
+            })
+          })
+        })
       });
 
       describe('#addMedia', () => {
@@ -1689,7 +1793,8 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.onFullLocus = sinon.stub();
           meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
           meeting.webex.meetings.reachability = {
-            isAnyClusterReachable: sinon.stub().resolves(true),
+            isAnyPublicClusterReachable: sinon.stub().resolves(true),
+            getReachabilityResults: sinon.stub().resolves(undefined),
           };
           meeting.roap.doTurnDiscovery = sinon
             .stub()
@@ -3153,7 +3258,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusId = 'locus-id';
           meeting.id = 'meeting-id';
-          FAKE_OPTIONS = {meetingId: meeting.id};
+          FAKE_OPTIONS = {meetingId: meeting.id, sendCAevents: true};
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
@@ -3173,6 +3278,7 @@ describe('plugin-meetings', () => {
             password: FAKE_PASSWORD,
             captchaCode: FAKE_CAPTCHA_CODE,
             extraParams: FAKE_EXTRA_PARAMS,
+            sendCAevents: true,
           });
 
           assert.calledWith(
@@ -3224,7 +3330,7 @@ describe('plugin-meetings', () => {
           const clock = sinon.useFakeTimers();
           const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
-          await meeting.fetchMeetingInfo({});
+          await meeting.fetchMeetingInfo({sendCAevents: false});
 
           // clear timer
           assert.calledWith(clearTimeoutSpy, FAKE_TIMEOUT_FETCHMEETINGINFO_ID);
@@ -3241,7 +3347,7 @@ describe('plugin-meetings', () => {
             undefined,
             meeting.locusId,
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: false}
           );
 
           // parseMeeting info
@@ -3320,7 +3426,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({}), PasswordError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), PasswordError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3331,7 +3437,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3353,7 +3459,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({}), PermissionError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), PermissionError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -3364,7 +3470,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3385,6 +3491,7 @@ describe('plugin-meetings', () => {
           await assert.isRejected(
             meeting.fetchMeetingInfo({
               password: 'aaa',
+              sendCAevents: true
             }),
             CaptchaError
           );
@@ -3398,7 +3505,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3430,6 +3537,7 @@ describe('plugin-meetings', () => {
             meeting.fetchMeetingInfo({
               password: 'aaa',
               captchaCode: 'bbb',
+              sendCAevents: true,
             }),
             CaptchaError
           );
@@ -3443,7 +3551,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -3465,6 +3573,7 @@ describe('plugin-meetings', () => {
 
           await meeting.fetchMeetingInfo({
             password: 'aaa',
+            sendCAevents: true,
           });
 
           assert.calledWith(
@@ -3476,7 +3585,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, {
@@ -3516,6 +3625,7 @@ describe('plugin-meetings', () => {
             meeting.fetchMeetingInfo({
               password: 'aaa',
               captchaCode: 'bbb',
+              sendCAevents: true,
             })
           );
 
@@ -3528,7 +3638,7 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id}
+            {meetingId: meeting.id, sendCAevents: true}
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -3543,6 +3653,219 @@ describe('plugin-meetings', () => {
             verificationAudioURL: refreshedCaptcha.verificationAudioURL,
             refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL, // refresh url doesn't change
           });
+        });
+      });
+
+      describe('#refreshPermissionToken', () => {
+        const FAKE_MEETING_INFO = {
+          conversationUrl: 'some_convo_url',
+          locusUrl: 'some_locus_url',
+          sipUrl: 'some_sip_url',
+          meetingNumber: '123456',
+          hostId: 'some_host_id',
+        };
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+        const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
+        const FAKE_TTL = 13;
+
+        beforeEach(() => {
+          meeting.locusId = 'locus-id';
+          meeting.id = 'meeting-id';
+          meeting.config.installedOrgID = 'fake-installed-org-id';
+          meeting.meetingInfo.permissionToken = FAKE_PERMISSION_TOKEN;
+          meeting.destination = 'meeting-destination';
+          meeting.destinationType = 'meeting-destination-type';
+          meeting.updateMeetingActions = sinon.stub().returns(undefined);
+          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TTL);
+          meeting.meetingInfoExtraParams = {
+            extraParam1: 'value1'
+          };
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .resolves({body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL}),
+          };
+        });
+
+        it('resolves without doing anything if there is no permission token', async () => {
+          meeting.meetingInfo.permissionToken = undefined;
+
+          await meeting.refreshPermissionToken();
+
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.notCalled(Metrics.sendBehavioralMetric);
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
+          await meeting.refreshPermissionToken('fake reason');
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-destination',
+            'meeting-destination-type',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: FAKE_TTL,
+              reason: 'fake reason',
+              destinationType: 'meeting-destination-type',
+            }
+          );
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
+          meeting.destination = 'some-convo-url';
+          meeting.destinationType = 'CONVERSATION_URL';
+          meeting.config.experimental = {enableAdhocMeetings: true};
+          meeting.meetingInfo.meetingJoinUrl = 'meeting-join-url';
+          meeting.webex.meetings.preferredWebexSite = 'preferredWebexSite';
+
+          await meeting.refreshPermissionToken('some reason');
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-join-url',
+            'MEETING_LINK',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {
+              extraParam1: 'value1',
+              permissionToken: FAKE_PERMISSION_TOKEN
+            },
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: FAKE_TTL,
+              reason: 'some reason',
+              destinationType: 'MEETING_LINK',
+            }
+          );
+        });
+
+        it('throws PermissionError if policy error is encountered', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PolicyError(123456, FAKE_MEETING_INFO, 'a message')),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+          });
+          assert.equal(meeting.meetingInfoFailureCode, 123456);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.POLICY);
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action.',
+              stack: sinon.match.any,
+            }
+          );
+        });
+
+        it('throws PasswordError if password is required', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Password is required, please use verifyPassword()',
+              stack: sinon.match.any,
+            }
+          );
+        });
+
+        it('throws CaptchaError if captcha is required', async () => {
+          const FAKE_SDK_CAPTCHA_INFO = {
+            captchaId: 'FAKE_CAPTCHA_ID',
+            verificationImageURL: 'FAKE_CAPTCHA_IMAGE_URL',
+            verificationAudioURL: 'FAKE_CAPTCHA_AUDIO_URL',
+            refreshURL: 'FAKE_CAPTCHA_REFRESH_URL',
+          };
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
+          };
+
+          await assert.isRejected(meeting.refreshPermissionToken());
+
+          assert.calledOnce(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(meeting.requiredCaptcha, FAKE_SDK_CAPTCHA_INFO);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+              correlationId: meeting.correlationId,
+              reason: 'Captcha is required.',
+              stack: sinon.match.any,
+            }
+          );
         });
       });
 
@@ -3622,6 +3945,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.fetchMeetingInfo, {
             password: 'password',
             captchaCode: 'captcha id',
+            sendCAevents: false,
           });
         });
         it('handles PasswordError returned by fetchMeetingInfo', async () => {
@@ -5567,9 +5891,9 @@ describe('plugin-meetings', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
           const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '1234'};
-          
+
           const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
-          
+
           meeting.setPermissionTokenPayload();
 
           assert.calledOnce(jwtDecodeStub);
@@ -5666,7 +5990,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.owner, expectedInfoToParse.owner);
           assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
           assert.deepEqual(meeting.selfUserPolicies, expectedInfoToParse.selfUserPolicies);
-          
+
           if(expectedInfoToParse.permissionTokenPayload) {
             assert.deepEqual(meeting.permissionTokenPayload, expectedInfoToParse.permissionTokenPayload);
           }
@@ -5685,9 +6009,9 @@ describe('plugin-meetings', () => {
             }
           };
 
-          // generated permissionToken with secret `secret` and 
+          // generated permissionToken with secret `secret` and
           // value `JSON.stringify(expectedPermissionTokenPayload)`
-          const permissionToken = 
+          const permissionToken =
             'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
 
           const FAKE_MEETING_INFO = {
@@ -8037,23 +8361,69 @@ describe('plugin-meetings', () => {
     });
 
     afterEach(() => {
-      clock.restore();  
+      clock.restore();
     })
 
-    it('should return undefined if exp is undefined', () => { 
+    it('should return undefined if exp is undefined', () => {
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
     });
 
-    it('should return the expected positive exp', () => { 
+    it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
       meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
     });
 
-    it('should return the expected negative exp', () => { 
+    it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
       meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
       assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
+    });
+  });
+
+  describe('#checkAndRefreshPermissionToken', () => {
+    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.notCalled(meeting.refreshPermissionToken);
+      assert.equal(returnValue, undefined);
+    });
+
+    it('should fire refreshPermissionToken if time left is below 10sec', async() => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
+      assert.equal(returnValue, 'test return value');
+    });
+
+    it('should fire refreshPermissionToken if time left is equal 10sec', async () => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
+      assert.equal(returnValue, 'test return value');
+    });
+
+    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => { 
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
+      meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
+
+      const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
+      
+      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.notCalled(meeting.refreshPermissionToken);
+      assert.equal(returnValue, undefined);
     });
   });
 });

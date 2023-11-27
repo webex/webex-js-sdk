@@ -1255,3 +1255,7 @@ export const IP_VERSION = {
 } as const;
 
 export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
+
+// constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
+export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
+export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';

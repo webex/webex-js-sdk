@@ -62,8 +62,10 @@ import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CALL_,
+  _CONVERSATION_URL_,
   _INCOMING_,
   _JOIN_,
+  _MEETING_LINK_,
   AUDIO,
   CONTENT,
   DISPLAY_HINTS,
@@ -95,6 +97,8 @@ import {
   SELF_ROLES,
   INTERPRETATION,
   SELF_POLICY,
+  MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+  MEETING_PERMISSION_TOKEN_REFRESH_REASON,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -514,6 +518,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
+  meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -1279,58 +1284,33 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Fetches meeting information.
-   * @param {Object} options
-   * @param {String} [options.password] optional
-   * @param {String} [options.captchaCode] optional
-   * @public
-   * @memberof Meeting
+   * Internal method for fetching meeting info
+   *
    * @returns {Promise}
    */
-  public async fetchMeetingInfo({
+  private async fetchMeetingInfoInternal({
+    destination,
+    destinationType,
     password = null,
     captchaCode = null,
     extraParams = {},
-  }: {
-    password?: string;
-    captchaCode?: string;
-    extraParams?: Record<string, any>;
-  }) {
-    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
-    if (this.fetchMeetingInfoTimeoutId) {
-      clearTimeout(this.fetchMeetingInfoTimeoutId);
-      this.fetchMeetingInfoTimeoutId = undefined;
-    }
-    if (captchaCode && !this.requiredCaptcha) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
-      );
-    }
-    if (
-      password &&
-      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
-      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
-    ) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with password when password was not required')
-      );
-    }
-
+    sendCAevents = false,
+  }): Promise<void> {
     try {
       const captchaInfo = captchaCode
         ? {code: captchaCode, id: this.requiredCaptcha.captchaId}
         : null;
 
       const info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
-        this.destination,
-        this.destinationType,
+        destination,
+        destinationType,
         password,
         captchaInfo,
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id}
+        {meetingId: this.id, sendCAevents}
       );
 
       this.parseMeetingInfo(info, this.destination);
@@ -1418,18 +1398,139 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Refreshes the meeting info permission token (it's required for joining meetings)
+   *
+   * @param {string} [reason] used for metrics and logging purposes (optional)
+   * @returns {Promise}
+   */
+  public async refreshPermissionToken(reason?: string): Promise<void> {
+    if (!this.meetingInfo?.permissionToken) {
+      LoggerProxy.logger.info(
+        `Meeting:index#refreshPermissionToken --> cannot refresh the permission token, because we don't have it (reason=${reason})`
+      );
+
+      return;
+    }
+
+    const isStartingSpaceInstantV2Meeting =
+      this.destinationType === _CONVERSATION_URL_ &&
+      // @ts-ignore - config coming from registerPlugin
+      this.config.experimental.enableAdhocMeetings &&
+      // @ts-ignore
+      this.webex.meetings.preferredWebexSite;
+
+    const destination = isStartingSpaceInstantV2Meeting
+      ? this.meetingInfo.meetingJoinUrl
+      : this.destination;
+    const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
+
+    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    LoggerProxy.logger.info(
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+      correlationId: this.correlationId,
+      timeLeft,
+      reason,
+      destinationType,
+    });
+
+    try {
+      await this.fetchMeetingInfoInternal({
+        destination,
+        destinationType,
+        extraParams: {
+          ...this.meetingInfoExtraParams,
+          permissionToken: this.meetingInfo.permissionToken,
+        },
+        sendCAevents: true, // because if we're refreshing the permissionToken, it means that user is intending to join that meeting, so we want CA events
+      });
+    } catch (error) {
+      LoggerProxy.logger.info(
+        'Meeting:index#refreshPermissionToken --> failed to refresh the permission token:',
+        error
+      );
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+        correlationId: this.correlationId,
+        reason: error.message,
+        stack: error.stack,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches meeting information.
+   * @param {Object} options
+   * @param {String} [options.password] optional
+   * @param {String} [options.captchaCode] optional
+   * @param {Boolean} [options.sendCAevents] optional - Whether to submit Call Analyzer events or not. Default: false.
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  public async fetchMeetingInfo({
+    password = null,
+    captchaCode = null,
+    extraParams = {},
+    sendCAevents = false,
+  }: {
+    password?: string;
+    captchaCode?: string;
+    extraParams?: Record<string, any>;
+    sendCAevents?: boolean;
+  }) {
+    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
+    if (this.fetchMeetingInfoTimeoutId) {
+      clearTimeout(this.fetchMeetingInfoTimeoutId);
+      this.fetchMeetingInfoTimeoutId = undefined;
+    }
+    if (captchaCode && !this.requiredCaptcha) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
+      );
+    }
+    if (
+      password &&
+      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
+      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
+    ) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with password when password was not required')
+      );
+    }
+
+    this.meetingInfoExtraParams = cloneDeep(extraParams);
+
+    return this.fetchMeetingInfoInternal({
+      destination: this.destination,
+      destinationType: this.destinationType,
+      password,
+      captchaCode,
+      extraParams,
+      sendCAevents,
+    });
+  }
+
+  /**
    * Checks if the supplied password/host key is correct. It returns a promise with information whether the
    * password and captcha code were correct or not.
    * @param {String} password - this can be either a password or a host key, can be undefined if only captcha was required
    * @param {String} captchaCode - can be undefined if captcha was not required by the server
+   * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
    * @public
    * @memberof Meeting
    * @returns {Promise<{isPasswordValid: boolean, requiredCaptcha: boolean, failureReason: MEETING_INFO_FAILURE_REASON}>}
    */
-  public verifyPassword(password: string, captchaCode: string) {
+  public verifyPassword(password: string, captchaCode: string, sendCAevents = false) {
     return this.fetchMeetingInfo({
       password,
       captchaCode,
+      sendCAevents,
     })
       .then(() => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_SUCCESS);
@@ -4338,7 +4439,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *             if joining as host on second loop, pass pin and pass moderator if joining as guest on second loop
    * Scenario D: Joining any other way (sip, pstn, conversationUrl, link just need to specify resourceId)
    */
-  public join(options: any = {}) {
+  public async join(options: any = {}) {
     // @ts-ignore - fix type
     if (!this.webex.meetings.registered) {
       const errorMessage = 'Meeting:index#join --> Device not registered';
@@ -4396,23 +4497,6 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {meetingId: this.id},
     });
 
-    if (!isEmpty(this.meetingInfo)) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.request',
-        options: {meetingId: this.id},
-      });
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.response',
-        payload: {
-          identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
-        },
-        options: {meetingId: this.id},
-      });
-    }
-
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
     if (this.meetingFiniteStateMachine.state === MEETING_STATE_MACHINE.STATES.ENDED) {
@@ -4466,44 +4550,55 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.isMultistream = !!options.enableMultistream;
 
+    try {
+      // refresh the permission token if its about to expire in 10sec
+      await this.checkAndRefreshPermissionToken(
+        MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+        MEETING_PERMISSION_TOKEN_REFRESH_REASON
+      );
+    } catch (error) {
+      LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
+
+      if (
+        error instanceof CaptchaError ||
+        error instanceof PasswordError ||
+        error instanceof PermissionError
+      ) {
+        this.meetingFiniteStateMachine.fail(error);
+
+        // Upload logs on refreshpermissionToken refresh Failure
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join',
+          },
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          this
+        );
+
+        joinFailed(error);
+
+        this.deferJoin = undefined;
+
+        // if refresh permission token requires captcha, password or permission, we are throwing the errors
+        // and bubble it up to client
+        return Promise.reject(error);
+      }
+    }
+
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
         this.meetingFiniteStateMachine.join();
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
-        return join;
-      })
-      .then((join) => {
-        joinSuccess(join);
-        this.deferJoin = undefined;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
           correlation_id: this.correlationId,
         });
 
-        return join;
-      })
-      .then(async (join) => {
-        // @ts-ignore - config coming from registerPlugin
-        if (this.config.enableAutomaticLLM) {
-          await this.updateLLMConnection();
-        }
+        joinSuccess(join);
 
-        return join;
-      })
-      .then(async (join) => {
-        if (isBrowser) {
-          // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveTranscription || options.receiveTranscription) {
-            if (this.isTranscriptionSupported()) {
-              await this.receiveTranscription();
-              LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve transcription!');
-            }
-          }
-        } else {
-          LoggerProxy.logger.error(
-            'Meeting:index#join --> Receving transcription is not supported on this platform'
-          );
-        }
+        this.deferJoin = undefined;
 
         return join;
       })
@@ -4539,9 +4634,59 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         joinFailed(error);
+
         this.deferJoin = undefined;
 
         return Promise.reject(error);
+      })
+      .then((join) => {
+        // @ts-ignore - config coming from registerPlugin
+        if (this.config.enableAutomaticLLM) {
+          this.updateLLMConnection().catch((error) => {
+            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+              correlation_id: this.correlationId,
+              reason: error?.message,
+              stack: error.stack,
+            });
+          });
+        }
+
+        return join;
+      })
+      .then((join) => {
+        if (isBrowser) {
+          // @ts-ignore - config coming from registerPlugin
+          if (this.config.receiveTranscription || options.receiveTranscription) {
+            if (this.isTranscriptionSupported()) {
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Attempting to enabled to recieve transcription!'
+              );
+              this.receiveTranscription().catch((error) => {
+                LoggerProxy.logger.error(
+                  'Meeting:index#join --> Receive Transcription Failed',
+                  error
+                );
+
+                Metrics.sendBehavioralMetric(
+                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE,
+                  {
+                    correlation_id: this.correlationId,
+                    reason: error?.message,
+                    stack: error.stack,
+                  }
+                );
+              });
+            }
+          }
+        } else {
+          LoggerProxy.logger.error(
+            'Meeting:index#join --> Receving transcription is not supported on this platform'
+          );
+        }
+
+        return join;
       });
   }
 
@@ -7294,5 +7439,23 @@ export default class Meeting extends StatelessWebexPlugin {
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
     return (permissionTokenExpValue - now) / 1000;
+  }
+
+  /**
+   * Check if there is enough time left till the permission token expires
+   * If not - refresh the permission token
+   *
+   * @param {number} threshold - time in seconds
+   * @param {string} reason - reason for refreshing the permission token
+   * @returns {Promise<void>}
+   */
+  public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
+    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+      return this.refreshPermissionToken(reason);
+    }
+
+    return Promise.resolve();
   }
 }

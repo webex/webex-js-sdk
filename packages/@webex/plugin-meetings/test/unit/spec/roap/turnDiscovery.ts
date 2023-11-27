@@ -54,7 +54,7 @@ describe('TurnDiscovery', () => {
       }),
       updateMediaConnections: sinon.stub(),
       webex: {meetings: {reachability: {
-        isAnyClusterReachable: () => Promise.resolve(false),
+        isAnyPublicClusterReachable: () => Promise.resolve(false),
       }}},
       isMultistream: false,
       locusMediaRequest: { fake: true },
@@ -257,8 +257,8 @@ describe('TurnDiscovery', () => {
     });
 
     it('resolves with undefined when cluster is reachable', async () => {
-      const prev = testMeeting.webex.meetings.reachability.isAnyClusterReachable;
-      testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => Promise.resolve(true);
+      const prev = testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable;
+      testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = () => Promise.resolve(true);
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
       const {turnServerInfo, turnDiscoverySkippedReason} = result;
@@ -267,7 +267,7 @@ describe('TurnDiscovery', () => {
       assert.equal(turnDiscoverySkippedReason, 'reachability');
       assert.notCalled(mockRoapRequest.sendRoap);
       assert.notCalled(Metrics.sendBehavioralMetric);
-      testMeeting.webex.meetings.reachability.isAnyClusterReachable = prev;
+      testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = prev;
     });
 
     it("resolves with undefined if we don't get a response within 10s", async () => {
@@ -379,15 +379,15 @@ describe('TurnDiscovery', () => {
 
   describe('isSkipped', () => {
     [
-      {enabledInConfig: true, isAnyClusterReachable: true, expectedIsSkipped: true},
-      {enabledInConfig: true, isAnyClusterReachable: false, expectedIsSkipped: false},
-      {enabledInConfig: false, isAnyClusterReachable: true, expectedIsSkipped: true},
-      {enabledInConfig: false, isAnyClusterReachable: false, expectedIsSkipped: true},
-    ].forEach(({enabledInConfig, isAnyClusterReachable, expectedIsSkipped}) => {
-      it(`returns ${expectedIsSkipped} when TURN discovery is ${enabledInConfig ? '' : 'not '} enabled in config and isAnyClusterReachable() returns ${isAnyClusterReachable ? 'true' : 'false'}`, async () => {
+      {enabledInConfig: true, isAnyPublicClusterReachable: true, expectedIsSkipped: true},
+      {enabledInConfig: true, isAnyPublicClusterReachable: false, expectedIsSkipped: false},
+      {enabledInConfig: false, isAnyPublicClusterReachable: true, expectedIsSkipped: true},
+      {enabledInConfig: false, isAnyPublicClusterReachable: false, expectedIsSkipped: true},
+    ].forEach(({enabledInConfig, isAnyPublicClusterReachable, expectedIsSkipped}) => {
+      it(`returns ${expectedIsSkipped} when TURN discovery is ${enabledInConfig ? '' : 'not '} enabled in config and isAnyPublicClusterReachable() returns ${isAnyPublicClusterReachable ? 'true' : 'false'}`, async () => {
         testMeeting.config.experimental.enableTurnDiscovery = enabledInConfig;
 
-        sinon.stub(testMeeting.webex.meetings.reachability, 'isAnyClusterReachable').resolves(isAnyClusterReachable);
+        sinon.stub(testMeeting.webex.meetings.reachability, 'isAnyPublicClusterReachable').resolves(isAnyPublicClusterReachable);
 
         const td = new TurnDiscovery(mockRoapRequest);
 
