@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.262](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.261...v3.0.0-beta.262) (2023-11-27)
+
+
+### Features
+
+* **meeting-info-fail:** destroy meeting on meeting info fail if flag is true ([#3200](https://github.com/webex/webex-js-sdk/issues/3200)) ([75bccb2](https://github.com/webex/webex-js-sdk/commit/75bccb220c3fa9f9df9d1af1c612d5ba67854c77))
+
 ## [3.0.0-beta.261](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.260...v3.0.0-beta.261) (2023-11-27)
 
 
