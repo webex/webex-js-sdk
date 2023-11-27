@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.263](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.262...v3.0.0-beta.263) (2023-11-27)
+
+
+### Bug Fixes
+
+* added metrics to addMedia success/failure metrics ([#3220](https://github.com/webex/webex-js-sdk/issues/3220)) ([083f32b](https://github.com/webex/webex-js-sdk/commit/083f32b02cae7ae32f5519163cb287d60a03bf69))
+
 ## [3.0.0-beta.262](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.261...v3.0.0-beta.262) (2023-11-27)
 
 
