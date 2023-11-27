@@ -361,6 +361,7 @@ export const EVENT_TRIGGERS = {
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
+  MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 };
 
 export const EVENT_TYPES = {
@@ -370,6 +371,7 @@ export const EVENT_TYPES = {
   REMOTE_AUDIO: 'remoteAudio',
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
+  REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
 };
 
@@ -386,6 +388,7 @@ export const MEETING_REMOVED_REASON = {
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
   NO_MEETINGS_TO_SYNC: 'NO_MEETINGS_TO_SYNC', // After the syncMeeting no meeting exists
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
+  LOCUS_DTO_SYNC_FAILED: 'LOCUS_DTO_SYNC_FAILED', // failed to get any Locus DTO for that meeting
 };
 
 // One one one calls ends for the following reasons
@@ -1246,3 +1249,7 @@ export const IP_VERSION = {
 } as const;
 
 export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
+
+// constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
+export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
+export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';

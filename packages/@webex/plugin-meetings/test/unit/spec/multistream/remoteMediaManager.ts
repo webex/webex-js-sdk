@@ -747,7 +747,11 @@ describe('RemoteMediaManager', () => {
 
       assert.calledWith(
         logger.log,
-        'RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=0, activeSpeaker=6, receiverSelected=4\ngroup: thumbnails\nfake video slot fake video slot fake video slot fake video slot fake video slot fake video slot\nreceiverSelected:\n stage-1: fake video slot\n stage-2: fake video slot\n stage-3: fake video slot\n stage-4: fake video slot\n'
+        'RemoteMediaManager#setLayout --> new layout selected: Stage'
+      );
+      assert.calledWith(
+        logger.log,
+        'RemoteMediaManager#logMainVideoReceiveSlots --> MAIN VIDEO receive slots: unused=0, activeSpeaker=6, receiverSelected=4\ngroup: thumbnails\nfake video slot, fake video slot, fake video slot, fake video slot, fake video slot, fake video slot\nreceiverSelected:\n stage-1: fake video slot\n stage-2: fake video slot\n stage-3: fake video slot\n stage-4: fake video slot\n'
       );
     });
 
@@ -769,7 +773,11 @@ describe('RemoteMediaManager', () => {
 
       assert.calledWith(
         logger.log,
-        'RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=0, activeSpeaker=9, receiverSelected=0\ngroup: main\nfake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot fake video slot\nreceiverSelected:\n'
+        'RemoteMediaManager#setLayout --> new layout selected: AllEqual'
+      );
+      assert.calledWith(
+        logger.log,
+        'RemoteMediaManager#logMainVideoReceiveSlots --> MAIN VIDEO receive slots: unused=0, activeSpeaker=9, receiverSelected=0\ngroup: main\nfake video slot, fake video slot, fake video slot, fake video slot, fake video slot, fake video slot, fake video slot, fake video slot, fake video slot\nreceiverSelected:\n'
       );
     });
 

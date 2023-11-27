@@ -49,7 +49,7 @@ class ReachabilityRequest {
         const {clusters, joinCookie} = res.body;
 
         Object.keys(clusters).forEach((key) => {
-          clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
+          clusters[key].isVideoMesh = !!res.body.clusterClasses?.hybridMedia?.includes(key);
         });
 
         LoggerProxy.logger.log(

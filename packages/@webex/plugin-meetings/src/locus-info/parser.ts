@@ -3,6 +3,9 @@ import {difference} from 'lodash';
 import SortedQueue from '../common/queue';
 import LoggerProxy from '../common/logs/logger-proxy';
 
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+
 const MAX_OOO_DELTA_COUNT = 5; // when we receive an out-of-order delta and the queue builds up to MAX_OOO_DELTA_COUNT, we do a sync with Locus
 const OOO_DELTA_WAIT_TIME = 10000; // [ms] minimum wait time before we do a sync if we get out-of-order deltas
 const OOO_DELTA_WAIT_TIME_RANDOM_DELAY = 5000; // [ms] max random delay added to OOO_DELTA_WAIT_TIME
@@ -293,6 +296,10 @@ export default class Parser {
           // the incoming locus has baseSequence from the future, so it is out-of-order,
           // we are missing 1 or more locus that should be in front of it, we need to wait for it
           comparison = WAIT;
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_DELTA_OUT_OF_ORDER, {
+            stack: new Error().stack,
+          });
         }
         break;
       default:

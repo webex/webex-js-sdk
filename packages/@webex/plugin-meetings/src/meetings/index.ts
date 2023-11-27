@@ -887,6 +887,7 @@ export default class Meetings extends WebexPlugin {
           'Meetings:index#uploadLogs --> Upload logs for meeting completed.',
           uploadResult
         );
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_SUCCESS, options);
         Trigger.trigger(
           this,
           {
@@ -921,8 +922,7 @@ export default class Meetings extends WebexPlugin {
         );
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_FAILURE, {
-          // @ts-ignore - seems like typo
-          meetingId: options.meetingsId,
+          ...options,
           reason: uploadError.message,
           stack: uploadError.stack,
           code: uploadError.code,
@@ -1219,12 +1219,19 @@ export default class Meetings extends WebexPlugin {
 
       if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo({extraParams: infoExtraParams}),
+          () =>
+            meeting.fetchMeetingInfo({
+              extraParams: infoExtraParams,
+              sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+            }),
           waitingTime
         );
         meeting.parseMeetingInfo(undefined, destination);
       } else {
-        await meeting.fetchMeetingInfo({extraParams: infoExtraParams});
+        await meeting.fetchMeetingInfo({
+          extraParams: infoExtraParams,
+          sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+        });
       }
     } catch (err) {
       if (

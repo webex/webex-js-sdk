@@ -201,10 +201,7 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(
-          `NewMetrics: @postPreLoginMetric. Request successful:`,
-          `res: ${JSON.stringify(res)}`
-        );
+        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful:`, res);
 
         return res;
       })
@@ -241,10 +238,7 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(
-          `NewMetrics: @clientMetricsAliasUser. Request successful:`,
-          `res: ${JSON.stringify(res)}`
-        );
+        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful:`, res);
 
         return res;
       })
@@ -308,6 +302,15 @@ class Metrics extends WebexPlugin {
   public setMetricTimingsAndFetch(options: any): Promise<any> {
     // @ts-ignore
     return this.webex.setTimingsAndFetch(setMetricTimings(options));
+  }
+
+  /**
+   * Returns true if the specified serviceErrorCode maps to an expected error.
+   * @param {number} serviceErrorCode the service error code
+   * @returns {boolean}
+   */
+  public isServiceErrorExpected(serviceErrorCode: number): boolean {
+    return this.callDiagnosticMetrics.isServiceErrorExpected(serviceErrorCode);
   }
 }
 

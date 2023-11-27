@@ -18,6 +18,8 @@ const BEHAVIORAL_METRICS = {
   GET_USER_MEDIA_FAILURE: 'js_sdk_get_user_media_failures',
   GET_DISPLAY_MEDIA_FAILURE: 'js_sdk_get_display_media_failures',
   JOIN_WITH_MEDIA_FAILURE: 'js_sdk_join_with_media_failures',
+  LLM_CONNECTION_AFTER_JOIN_FAILURE: 'js_sdk_llm_connection_after_join_failure',
+  RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE: 'js_sdk_receive_transcription_after_join_failure',
 
   DISCONNECT_DUE_TO_INACTIVITY: 'js_sdk_disconnect_due_to_inactivity',
   MEETING_MEDIA_INACTIVE: 'js_sdk_meeting_media_inactive',
@@ -40,6 +42,7 @@ const BEHAVIORAL_METRICS = {
   PEERCONNECTION_FAILURE: 'js_sdk_peerConnection_failures',
   INVALID_ICE_CANDIDATE: 'js_sdk_invalid_ice_candidate',
   UPLOAD_LOGS_FAILURE: 'js_sdk_upload_logs_failure',
+  UPLOAD_LOGS_SUCCESS: 'js_sdk_upload_logs_success',
   RECEIVE_TRANSCRIPTION_FAILURE: 'js_sdk_receive_transcription_failure',
   FETCH_MEETING_INFO_V1_SUCCESS: 'js_sdk_fetch_meeting_info_v1_success',
   FETCH_MEETING_INFO_V1_FAILURE: 'js_sdk_fetch_meeting_info_v1_failure',
@@ -54,6 +57,10 @@ const BEHAVIORAL_METRICS = {
   MOVE_FROM_FAILURE: 'js_sdk_move_from_failure',
   TURN_DISCOVERY_FAILURE: 'js_sdk_turn_discovery_failure',
   MEETING_INFO_POLICY_ERROR: 'js_sdk_meeting_info_policy_error',
+  LOCUS_DELTA_SYNC_FAILED: 'js_sdk_locus_delta_sync_failed',
+  LOCUS_DELTA_OUT_OF_ORDER: 'js_sdk_locus_delta_ooo',
+  PERMISSION_TOKEN_REFRESH: 'js_sdk_permission_token_refresh',
+  PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
 };
 
 export {BEHAVIORAL_METRICS as default};

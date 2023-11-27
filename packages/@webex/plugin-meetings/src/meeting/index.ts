@@ -20,13 +20,14 @@ import {
 
 import {
   getDevices,
-  LocalTrack,
-  LocalCameraTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalMicrophoneTrack,
-  LocalTrackEvents,
-  TrackMuteEvent,
+  LocalStream,
+  LocalCameraStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalMicrophoneStream,
+  LocalStreamEventNames,
+  StreamEventNames,
+  RemoteStream,
 } from '@webex/media-helpers';
 
 import {
@@ -61,12 +62,13 @@ import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CALL_,
+  _CONVERSATION_URL_,
   _INCOMING_,
   _JOIN_,
+  _MEETING_LINK_,
   AUDIO,
   CONTENT,
   DISPLAY_HINTS,
-  ENDED,
   EVENT_TRIGGERS,
   EVENT_TYPES,
   EVENTS,
@@ -95,6 +97,8 @@ import {
   SELF_ROLES,
   INTERPRETATION,
   SELF_POLICY,
+  MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+  MEETING_PERMISSION_TOKEN_REFRESH_REASON,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -105,6 +109,7 @@ import {
 } from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
+import SendSlotManager from '../multistream/sendSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 import {
   Configuration as RemoteMediaManagerConfiguration,
@@ -146,20 +151,21 @@ const logRequest = (request: any, {logText = ''}) => {
     });
 };
 
-export type LocalTracks = {
-  microphone?: LocalMicrophoneTrack;
-  camera?: LocalCameraTrack;
+export type LocalStreams = {
+  microphone?: LocalMicrophoneStream;
+  camera?: LocalCameraStream;
   screenShare?: {
-    audio?: LocalSystemAudioTrack;
-    video?: LocalDisplayTrack;
+    audio?: LocalSystemAudioStream;
+    video?: LocalDisplayStream;
   };
 };
 
 export type AddMediaOptions = {
-  localTracks?: LocalTracks;
+  localStreams?: LocalStreams;
   audioEnabled?: boolean; // if not specified, default value true is used
   videoEnabled?: boolean; // if not specified, default value true is used
-  receiveShare?: boolean; // if not specified, default value true is used
+  shareAudioEnabled?: boolean; // if not specified, default value true is used
+  shareVideoEnabled?: boolean; // if not specified, default value true is used
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
@@ -512,6 +518,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
+  meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus: string;
   passwordStatus: string;
@@ -542,18 +549,20 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingJoinUrl: any;
   meetingNumber: any;
   meetingState: any;
-  permissionToken: any;
+  permissionToken: string;
+  permissionTokenPayload: any;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
   state: any;
-  localAudioTrackMuteStateHandler: (event: TrackMuteEvent) => void;
-  localVideoTrackMuteStateHandler: (event: TrackMuteEvent) => void;
-  underlyingLocalTrackChangeHandler: () => void;
+  localAudioStreamMuteStateHandler: (muted: boolean) => void;
+  localVideoStreamMuteStateHandler: (muted: boolean) => void;
+  localOutputTrackChangeHandler: () => void;
   roles: any[];
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
+  private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
 
   /**
    * @param {Object} attrs
@@ -1225,19 +1234,19 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.remoteMediaManager = null;
 
-    this.localAudioTrackMuteStateHandler = (event) => {
-      this.audio.handleLocalTrackMuteStateChange(this, event.trackState.muted);
+    this.localAudioStreamMuteStateHandler = (muted: boolean) => {
+      this.audio.handleLocalStreamMuteStateChange(this, muted);
     };
 
-    this.localVideoTrackMuteStateHandler = (event) => {
-      this.video.handleLocalTrackMuteStateChange(this, event.trackState.muted);
+    this.localVideoStreamMuteStateHandler = (muted: boolean) => {
+      this.video.handleLocalStreamMuteStateChange(this, muted);
     };
 
-    // The handling of underlying track changes should be done inside
+    // The handling of output track changes should be done inside
     // @webex/internal-media-core, but for now we have to do it here, because
     // RoapMediaConnection has to use raw MediaStreamTracks in its API until
-    // the Calling SDK also moves to using webrtc-core tracks
-    this.underlyingLocalTrackChangeHandler = () => {
+    // the Calling SDK also moves to using webrtc-core streams
+    this.localOutputTrackChangeHandler = () => {
       if (!this.isMultistream) {
         this.updateTranscodedMediaConnection();
       }
@@ -1275,58 +1284,33 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Fetches meeting information.
-   * @param {Object} options
-   * @param {String} [options.password] optional
-   * @param {String} [options.captchaCode] optional
-   * @public
-   * @memberof Meeting
+   * Internal method for fetching meeting info
+   *
    * @returns {Promise}
    */
-  public async fetchMeetingInfo({
+  private async fetchMeetingInfoInternal({
+    destination,
+    destinationType,
     password = null,
     captchaCode = null,
     extraParams = {},
-  }: {
-    password?: string;
-    captchaCode?: string;
-    extraParams?: Record<string, any>;
-  }) {
-    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
-    if (this.fetchMeetingInfoTimeoutId) {
-      clearTimeout(this.fetchMeetingInfoTimeoutId);
-      this.fetchMeetingInfoTimeoutId = undefined;
-    }
-    if (captchaCode && !this.requiredCaptcha) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
-      );
-    }
-    if (
-      password &&
-      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
-      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
-    ) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with password when password was not required')
-      );
-    }
-
+    sendCAevents = false,
+  }): Promise<void> {
     try {
       const captchaInfo = captchaCode
         ? {code: captchaCode, id: this.requiredCaptcha.captchaId}
         : null;
 
       const info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
-        this.destination,
-        this.destinationType,
+        destination,
+        destinationType,
         password,
         captchaInfo,
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id}
+        {meetingId: this.id, sendCAevents}
       );
 
       this.parseMeetingInfo(info, this.destination);
@@ -1414,18 +1398,139 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Refreshes the meeting info permission token (it's required for joining meetings)
+   *
+   * @param {string} [reason] used for metrics and logging purposes (optional)
+   * @returns {Promise}
+   */
+  public async refreshPermissionToken(reason?: string): Promise<void> {
+    if (!this.meetingInfo?.permissionToken) {
+      LoggerProxy.logger.info(
+        `Meeting:index#refreshPermissionToken --> cannot refresh the permission token, because we don't have it (reason=${reason})`
+      );
+
+      return;
+    }
+
+    const isStartingSpaceInstantV2Meeting =
+      this.destinationType === _CONVERSATION_URL_ &&
+      // @ts-ignore - config coming from registerPlugin
+      this.config.experimental.enableAdhocMeetings &&
+      // @ts-ignore
+      this.webex.meetings.preferredWebexSite;
+
+    const destination = isStartingSpaceInstantV2Meeting
+      ? this.meetingInfo.meetingJoinUrl
+      : this.destination;
+    const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
+
+    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    LoggerProxy.logger.info(
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+      correlationId: this.correlationId,
+      timeLeft,
+      reason,
+      destinationType,
+    });
+
+    try {
+      await this.fetchMeetingInfoInternal({
+        destination,
+        destinationType,
+        extraParams: {
+          ...this.meetingInfoExtraParams,
+          permissionToken: this.meetingInfo.permissionToken,
+        },
+        sendCAevents: true, // because if we're refreshing the permissionToken, it means that user is intending to join that meeting, so we want CA events
+      });
+    } catch (error) {
+      LoggerProxy.logger.info(
+        'Meeting:index#refreshPermissionToken --> failed to refresh the permission token:',
+        error
+      );
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH_ERROR, {
+        correlationId: this.correlationId,
+        reason: error.message,
+        stack: error.stack,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches meeting information.
+   * @param {Object} options
+   * @param {String} [options.password] optional
+   * @param {String} [options.captchaCode] optional
+   * @param {Boolean} [options.sendCAevents] optional - Whether to submit Call Analyzer events or not. Default: false.
+   * @public
+   * @memberof Meeting
+   * @returns {Promise}
+   */
+  public async fetchMeetingInfo({
+    password = null,
+    captchaCode = null,
+    extraParams = {},
+    sendCAevents = false,
+  }: {
+    password?: string;
+    captchaCode?: string;
+    extraParams?: Record<string, any>;
+    sendCAevents?: boolean;
+  }) {
+    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
+    if (this.fetchMeetingInfoTimeoutId) {
+      clearTimeout(this.fetchMeetingInfoTimeoutId);
+      this.fetchMeetingInfoTimeoutId = undefined;
+    }
+    if (captchaCode && !this.requiredCaptcha) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
+      );
+    }
+    if (
+      password &&
+      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
+      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
+    ) {
+      return Promise.reject(
+        new Error('fetchMeetingInfo() called with password when password was not required')
+      );
+    }
+
+    this.meetingInfoExtraParams = cloneDeep(extraParams);
+
+    return this.fetchMeetingInfoInternal({
+      destination: this.destination,
+      destinationType: this.destinationType,
+      password,
+      captchaCode,
+      extraParams,
+      sendCAevents,
+    });
+  }
+
+  /**
    * Checks if the supplied password/host key is correct. It returns a promise with information whether the
    * password and captcha code were correct or not.
    * @param {String} password - this can be either a password or a host key, can be undefined if only captcha was required
    * @param {String} captchaCode - can be undefined if captcha was not required by the server
+   * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
    * @public
    * @memberof Meeting
    * @returns {Promise<{isPasswordValid: boolean, requiredCaptcha: boolean, failureReason: MEETING_INFO_FAILURE_REASON}>}
    */
-  public verifyPassword(password: string, captchaCode: string) {
+  public verifyPassword(password: string, captchaCode: string, sendCAevents = false) {
     return this.fetchMeetingInfo({
       password,
       captchaCode,
+      sendCAevents,
     })
       .then(() => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_SUCCESS);
@@ -2271,9 +2376,9 @@ export default class Meeting extends StatelessWebexPlugin {
                 this.mediaProperties.mediaDirection?.sendShare &&
                 oldShareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE
               ) {
-                await this.unpublishTracks([
-                  this.mediaProperties.shareVideoTrack,
-                  this.mediaProperties.shareAudioTrack,
+                await this.unpublishStreams([
+                  this.mediaProperties.shareVideoStream,
+                  this.mediaProperties.shareAudioStream,
                 ]);
               }
             } finally {
@@ -2777,11 +2882,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // TODO: Handle sharing and wireless sharing when meeting end
       if (this.wirelessShare) {
-        if (this.mediaProperties.shareVideoTrack) {
-          await this.setLocalShareVideoTrack(undefined);
+        if (this.mediaProperties.shareVideoStream) {
+          await this.setLocalShareVideoStream(undefined);
         }
-        if (this.mediaProperties.shareAudioTrack) {
-          await this.setLocalShareAudioTrack(undefined);
+        if (this.mediaProperties.shareAudioStream) {
+          await this.setLocalShareAudioStream(undefined);
         }
       }
       // when multiple WEB deviceType join with same user
@@ -3021,7 +3126,8 @@ export default class Meeting extends StatelessWebexPlugin {
         webexMeetingInfo?.hostId ||
         this.owner;
       this.permissionToken = webexMeetingInfo?.permissionToken;
-      this.setSelfUserPolicies(this.permissionToken);
+      this.setPermissionTokenPayload(webexMeetingInfo?.permissionToken);
+      this.setSelfUserPolicies();
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
     }
@@ -3285,11 +3391,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Sets the self user policies based on the contents of the permission token
+   * @returns {void}
+   */
+  setSelfUserPolicies() {
+    this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+  }
+
+  /**
+   * Sets the permission token payload on the class instance
+   *
    * @param {String} permissionToken
    * @returns {void}
    */
-  setSelfUserPolicies(permissionToken: string) {
-    this.selfUserPolicies = jwt.decode(permissionToken)?.permission?.userPolicies;
+  public setPermissionTokenPayload(permissionToken: string) {
+    this.permissionTokenPayload = jwt.decode(permissionToken);
   }
 
   /**
@@ -3354,11 +3469,11 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Removes remote audio, video and share tracks from class instance's mediaProperties
+   * Removes remote audio, video and share streams from class instance's mediaProperties
    * @returns {undefined}
    */
-  unsetRemoteTracks() {
-    this.mediaProperties.unsetRemoteTracks();
+  unsetRemoteStreams() {
+    this.mediaProperties.unsetRemoteStreams();
   }
 
   /**
@@ -3373,17 +3488,18 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.warn(
       'Meeting:index#closeRemoteStream --> [DEPRECATION WARNING]: closeRemoteStream has been deprecated after v1.89.3'
     );
-    this.closeRemoteTracks();
+    this.closeRemoteStreams();
   }
 
   /**
-   * Removes the remote tracks on the class instance and triggers an event
+   * Removes the remote streams on the class instance and triggers an event
    * to developers
    * @returns {undefined}
    * @memberof Meeting
    */
-  closeRemoteTracks() {
-    const {remoteAudioTrack, remoteVideoTrack, remoteShare} = this.mediaProperties;
+  closeRemoteStreams() {
+    const {remoteAudioStream, remoteVideoStream, remoteShareStream, shareAudioStream} =
+      this.mediaProperties;
 
     /**
      * Triggers an event to the developer
@@ -3397,7 +3513,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {
           file: 'meeting/index',
-          function: 'closeRemoteTracks',
+          function: 'closeRemoteStreams',
         },
         EVENT_TRIGGERS.MEDIA_STOPPED,
         {
@@ -3407,193 +3523,240 @@ export default class Meeting extends StatelessWebexPlugin {
     };
 
     /**
-     * Stops a media track and emits an event
-     * @param {MediaStreamTrack} track Media track to stop
-     * @param {string} type Media track type
+     * Stops a media stream and emits an event
+     * @param {RemoteStream} stream Media stream to stop
+     * @param {string} type Media stream type
      * @returns {Promise}
      * @inner
      */
     // eslint-disable-next-line arrow-body-style
-    const stopTrack = (track: MediaStreamTrack, type: string) => {
-      return Media.stopTracks(track).then(() => {
-        const isTrackStopped = track && track.readyState === ENDED;
-        const isWrongReadyState = track && !isTrackStopped;
-
-        if (isTrackStopped) {
-          triggerMediaStoppedEvent(type);
-        } else if (isWrongReadyState) {
-          LoggerProxy.logger.warn(
-            `Meeting:index#closeRemoteTracks --> Error: MediaStreamTrack.readyState is ${track.readyState} for ${type}`
-          );
-        }
+    const stopStream = (stream: RemoteStream, type: string) => {
+      return Media.stopStream(stream).then(() => {
+        triggerMediaStoppedEvent(type);
       });
     };
 
     return Promise.all([
-      stopTrack(remoteAudioTrack, EVENT_TYPES.REMOTE_AUDIO),
-      stopTrack(remoteVideoTrack, EVENT_TYPES.REMOTE_VIDEO),
-      stopTrack(remoteShare, EVENT_TYPES.REMOTE_SHARE),
+      stopStream(remoteAudioStream, EVENT_TYPES.REMOTE_AUDIO),
+      stopStream(remoteVideoStream, EVENT_TYPES.REMOTE_VIDEO),
+      stopStream(remoteShareStream, EVENT_TYPES.REMOTE_SHARE),
+      stopStream(shareAudioStream, EVENT_TYPES.REMOTE_SHARE_AUDIO),
     ]);
   }
 
   /**
-   * Stores the reference to a new microphone track, sets up the required event listeners
-   * on it, cleans up previous track, etc.
+   * Stores the reference to a new microphone stream, sets up the required event listeners
+   * on it, cleans up previous stream, etc.
    *
-   * @param {LocalMicrophoneTrack | null} localTrack local microphone track
+   * @param {LocalMicrophoneStream | null} localStream local microphone stream
    * @returns {Promise<void>}
    */
-  private async setLocalAudioTrack(localTrack?: LocalMicrophoneTrack) {
-    const oldTrack = this.mediaProperties.audioTrack;
+  private async setLocalAudioStream(localStream?: LocalMicrophoneStream) {
+    const oldStream = this.mediaProperties.audioStream;
 
-    oldTrack?.off(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
-    oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    oldStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
-    this.mediaProperties.setLocalAudioTrack(localTrack);
+    this.mediaProperties.setLocalAudioStream(localStream);
 
-    this.audio.handleLocalTrackChange(this);
+    this.audio.handleLocalStreamChange(this);
 
-    localTrack?.on(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
-    localTrack?.on(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    localStream?.on(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!this.isMultistream || !localTrack) {
-      // for multistream WCME automatically un-publishes the old track when we publish a new one
-      await this.unpublishTrack(oldTrack);
+    if (!this.isMultistream || !localStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.AudioMain, oldStream);
     }
-    await this.publishTrack(this.mediaProperties.audioTrack);
+    await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
   }
 
   /**
-   * Stores the reference to a new camera track, sets up the required event listeners
-   * on it, cleans up previous track, etc.
+   * Stores the reference to a new camera stream, sets up the required event listeners
+   * on it, cleans up previous stream, etc.
    *
-   * @param {LocalCameraTrack | null} localTrack local camera track
+   * @param {LocalCameraStream | null} localStream local camera stream
    * @returns {Promise<void>}
    */
-  private async setLocalVideoTrack(localTrack?: LocalCameraTrack) {
-    const oldTrack = this.mediaProperties.videoTrack;
+  private async setLocalVideoStream(localStream?: LocalCameraStream) {
+    const oldStream = this.mediaProperties.videoStream;
 
-    oldTrack?.off(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
-    oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    oldStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
-    this.mediaProperties.setLocalVideoTrack(localTrack);
+    this.mediaProperties.setLocalVideoStream(localStream);
 
-    this.video.handleLocalTrackChange(this);
+    this.video.handleLocalStreamChange(this);
 
-    localTrack?.on(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
-    localTrack?.on(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    localStream?.on(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    if (!this.isMultistream || !localTrack) {
-      // for multistream WCME automatically un-publishes the old track when we publish a new one
-      await this.unpublishTrack(oldTrack);
+    if (!this.isMultistream || !localStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.VideoMain, oldStream);
     }
-    await this.publishTrack(this.mediaProperties.videoTrack);
+    await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
   }
 
   /**
-   * Stores the reference to a new screen share video track, sets up the required event listeners
-   * on it, cleans up previous track, etc.
+   * Stores the reference to a new screen share stream, sets up the required event listeners
+   * on it, cleans up previous stream, etc.
+   * It also sends the floor grant/release request.
    *
-   * @param {LocalDisplayTrack | undefined} localDisplayTrack local camera track
+   * @param {LocalDisplayStream | undefined} localDisplayStream local display stream
    * @returns {Promise<void>}
    */
-  private async setLocalShareVideoTrack(localDisplayTrack?: LocalDisplayTrack) {
-    const oldTrack = this.mediaProperties.shareVideoTrack;
+  private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
+    const oldStream = this.mediaProperties.shareVideoStream;
 
-    oldTrack?.off(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
-    oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
+    oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    this.mediaProperties.setLocalShareVideoTrack(localDisplayTrack);
+    this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
-    localDisplayTrack?.on(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
-    localDisplayTrack?.on(
-      LocalTrackEvents.UnderlyingTrackChange,
-      this.underlyingLocalTrackChangeHandler
+    localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
+    localDisplayStream?.on(
+      LocalStreamEventNames.OutputTrackChange,
+      this.localOutputTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareStream();
 
-    if (!this.isMultistream || !localDisplayTrack) {
-      // for multistream WCME automatically un-publishes the old track when we publish a new one
-      await this.unpublishTrack(oldTrack);
+    if (!this.isMultistream || !localDisplayStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.VideoSlides, oldStream);
     }
-    await this.publishTrack(this.mediaProperties.shareVideoTrack);
+    await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
   }
 
   /**
-   * Stores the reference to a new screen share audio track, sets up the required event listeners
-   * on it, cleans up previous track, etc.
+   * Stores the reference to a new screen share audio stream, sets up the required event listeners
+   * on it, cleans up previous stream, etc.
    *
-   * @param {LocalSystemAudioTrack | undefined} localSystemAudioTrack local system audio track
+   * @param {LocalSystemAudioStream | undefined} localSystemAudioStream local system audio stream
    * @returns {Promise<void>}
    */
-  private async setLocalShareAudioTrack(localSystemAudioTrack?: LocalSystemAudioTrack) {
-    const oldTrack = this.mediaProperties.shareAudioTrack;
+  private async setLocalShareAudioStream(localSystemAudioStream?: LocalSystemAudioStream) {
+    const oldStream = this.mediaProperties.shareAudioStream;
 
-    oldTrack?.off(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
-    oldTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    oldStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
+    oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    this.mediaProperties.setLocalShareAudioTrack(localSystemAudioTrack);
+    this.mediaProperties.setLocalShareAudioStream(localSystemAudioStream);
 
-    localSystemAudioTrack?.on(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
-    localSystemAudioTrack?.on(
-      LocalTrackEvents.UnderlyingTrackChange,
-      this.underlyingLocalTrackChangeHandler
+    localSystemAudioStream?.on(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
+    localSystemAudioStream?.on(
+      LocalStreamEventNames.OutputTrackChange,
+      this.localOutputTrackChangeHandler
     );
 
-    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareTrack();
+    this.mediaProperties.mediaDirection.sendShare = this.mediaProperties.hasLocalShareStream();
 
-    if (!this.isMultistream || !localSystemAudioTrack) {
-      await this.unpublishTrack(oldTrack);
+    if (!this.isMultistream || !localSystemAudioStream) {
+      // for multistream WCME automatically un-publishes the old stream when we publish a new one
+      await this.unpublishStream(MediaType.AudioSlides, oldStream);
     }
-    await this.publishTrack(this.mediaProperties.shareAudioTrack);
+    await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
   }
 
   /**
-   * Removes references to local tracks. This function should be called
+   * Handles the local audio stream publish state change event
+   * @internal
+   * @param {Object} options parameters functionName, isPublished, mediaType and stream needed to trigger event
+   * @returns {undefined}
+   */
+  private emitPublishStateChangeEvent(options: {
+    functionName: string;
+    isPublished: boolean;
+    mediaType: MediaType;
+    stream: MediaStream;
+  }) {
+    const {functionName, isPublished, mediaType, stream} = options;
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: functionName,
+      },
+      EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
+      {
+        isPublished,
+        mediaType,
+        stream,
+      }
+    );
+  }
+
+  /**
+   * Removes references to local streams. This function should be called
    * on cleanup when we leave the meeting etc.
    *
    * @internal
    * @returns {void}
    */
-  public cleanupLocalTracks() {
-    const {audioTrack, videoTrack, shareVideoTrack, shareAudioTrack} = this.mediaProperties;
+  public cleanupLocalStreams() {
+    const {audioStream, videoStream, shareAudioStream, shareVideoStream} = this.mediaProperties;
 
-    audioTrack?.off(LocalTrackEvents.Muted, this.localAudioTrackMuteStateHandler);
-    audioTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    audioStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    audioStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    videoTrack?.off(LocalTrackEvents.Muted, this.localVideoTrackMuteStateHandler);
-    videoTrack?.off(LocalTrackEvents.UnderlyingTrackChange, this.underlyingLocalTrackChangeHandler);
+    videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    shareVideoTrack?.off(LocalTrackEvents.Ended, this.handleShareVideoTrackEnded);
-    shareVideoTrack?.off(
-      LocalTrackEvents.UnderlyingTrackChange,
-      this.underlyingLocalTrackChangeHandler
+    shareAudioStream?.off(StreamEventNames.MuteStateChange, this.handleShareAudioStreamEnded);
+    shareAudioStream?.off(
+      LocalStreamEventNames.OutputTrackChange,
+      this.localOutputTrackChangeHandler
+    );
+    shareVideoStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamEnded);
+    shareVideoStream?.off(
+      LocalStreamEventNames.OutputTrackChange,
+      this.localOutputTrackChangeHandler
     );
 
-    shareAudioTrack?.off(LocalTrackEvents.Ended, this.handleShareAudioTrackEnded);
-    shareAudioTrack?.off(
-      LocalTrackEvents.UnderlyingTrackChange,
-      this.underlyingLocalTrackChangeHandler
-    );
-
-    this.mediaProperties.setLocalAudioTrack(undefined);
-    this.mediaProperties.setLocalVideoTrack(undefined);
-    this.mediaProperties.setLocalShareVideoTrack(undefined);
-    this.mediaProperties.setLocalShareAudioTrack(undefined);
+    this.mediaProperties.setLocalAudioStream(undefined);
+    this.mediaProperties.setLocalVideoStream(undefined);
+    this.mediaProperties.setLocalShareAudioStream(undefined);
+    this.mediaProperties.setLocalShareVideoStream(undefined);
 
     this.mediaProperties.mediaDirection.sendAudio = false;
     this.mediaProperties.mediaDirection.sendVideo = false;
     this.mediaProperties.mediaDirection.sendShare = false;
 
-    // WCME doesn't unpublish tracks when multistream connection is closed, so we do it here
-    // (we have to do it for transcoded meetings anyway, so we might as well do for multistream too)
-    audioTrack?.setPublished(false);
-    videoTrack?.setPublished(false);
-    shareVideoTrack?.setPublished(false);
-    shareAudioTrack?.setPublished(false);
+    if (audioStream) {
+      this.emitPublishStateChangeEvent({
+        functionName: 'cleanupLocalStreams',
+        isPublished: false,
+        mediaType: MediaType.AudioMain,
+        stream: audioStream,
+      });
+    }
+    if (videoStream) {
+      this.emitPublishStateChangeEvent({
+        functionName: 'cleanupLocalStreams',
+        isPublished: false,
+        mediaType: MediaType.VideoMain,
+        stream: videoStream,
+      });
+    }
+    if (shareVideoStream) {
+      this.emitPublishStateChangeEvent({
+        functionName: 'cleanupLocalStreams',
+        isPublished: false,
+        mediaType: MediaType.VideoSlides,
+        stream: shareVideoStream,
+      });
+    }
+    if (shareAudioStream) {
+      this.emitPublishStateChangeEvent({
+        functionName: 'cleanupLocalStreams',
+        isPublished: false,
+        mediaType: MediaType.AudioSlides,
+        stream: shareAudioStream,
+      });
+    }
   }
 
   /**
@@ -3660,6 +3823,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
+      this.sendSlotManager.reset();
     }
 
     this.audio = null;
@@ -3733,7 +3897,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.audio
         .handleClientRequest(this, true)
         .then(() => {
-          MeetingUtil.handleAudioLogging(this.mediaProperties.audioTrack);
+          MeetingUtil.handleAudioLogging(this.mediaProperties.audioStream);
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.muted',
@@ -3783,7 +3947,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.audio
         .handleClientRequest(this, false)
         .then(() => {
-          MeetingUtil.handleAudioLogging(this.mediaProperties.audioTrack);
+          MeetingUtil.handleAudioLogging(this.mediaProperties.audioStream);
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.unmuted',
@@ -3832,7 +3996,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.video
         .handleClientRequest(this, true)
         .then(() => {
-          MeetingUtil.handleVideoLogging(this.mediaProperties.videoTrack);
+          MeetingUtil.handleVideoLogging(this.mediaProperties.videoStream);
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.muted',
@@ -3881,7 +4045,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.video
         .handleClientRequest(this, false)
         .then(() => {
-          MeetingUtil.handleVideoLogging(this.mediaProperties.videoTrack);
+          MeetingUtil.handleVideoLogging(this.mediaProperties.videoStream);
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.unmuted',
@@ -3917,7 +4081,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * joinWithMedia({
    *  joinOptions: {resourceId: 'resourceId' },
    *  mediaOptions: {
-   *    localTracks: { microphone: microphoneTrack, camera: cameraTrack }
+   *    localStreams: { microphone: microphoneStream, camera: cameraStream }
    *   }
    * })
    */
@@ -4275,7 +4439,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *             if joining as host on second loop, pass pin and pass moderator if joining as guest on second loop
    * Scenario D: Joining any other way (sip, pstn, conversationUrl, link just need to specify resourceId)
    */
-  public join(options: any = {}) {
+  public async join(options: any = {}) {
     // @ts-ignore - fix type
     if (!this.webex.meetings.registered) {
       const errorMessage = 'Meeting:index#join --> Device not registered';
@@ -4333,23 +4497,6 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {meetingId: this.id},
     });
 
-    if (!isEmpty(this.meetingInfo)) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.request',
-        options: {meetingId: this.id},
-      });
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.meetinginfo.response',
-        payload: {
-          identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
-        },
-        options: {meetingId: this.id},
-      });
-    }
-
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
     if (this.meetingFiniteStateMachine.state === MEETING_STATE_MACHINE.STATES.ENDED) {
@@ -4403,44 +4550,55 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.isMultistream = !!options.enableMultistream;
 
+    try {
+      // refresh the permission token if its about to expire in 10sec
+      await this.checkAndRefreshPermissionToken(
+        MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
+        MEETING_PERMISSION_TOKEN_REFRESH_REASON
+      );
+    } catch (error) {
+      LoggerProxy.logger.error('Meeting:index#join --> Failed to refresh permission token:', error);
+
+      if (
+        error instanceof CaptchaError ||
+        error instanceof PasswordError ||
+        error instanceof PermissionError
+      ) {
+        this.meetingFiniteStateMachine.fail(error);
+
+        // Upload logs on refreshpermissionToken refresh Failure
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join',
+          },
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          this
+        );
+
+        joinFailed(error);
+
+        this.deferJoin = undefined;
+
+        // if refresh permission token requires captcha, password or permission, we are throwing the errors
+        // and bubble it up to client
+        return Promise.reject(error);
+      }
+    }
+
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
         this.meetingFiniteStateMachine.join();
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
-        return join;
-      })
-      .then((join) => {
-        joinSuccess(join);
-        this.deferJoin = undefined;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
           correlation_id: this.correlationId,
         });
 
-        return join;
-      })
-      .then(async (join) => {
-        // @ts-ignore - config coming from registerPlugin
-        if (this.config.enableAutomaticLLM) {
-          await this.updateLLMConnection();
-        }
+        joinSuccess(join);
 
-        return join;
-      })
-      .then(async (join) => {
-        if (isBrowser) {
-          // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveTranscription || options.receiveTranscription) {
-            if (this.isTranscriptionSupported()) {
-              await this.receiveTranscription();
-              LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve transcription!');
-            }
-          }
-        } else {
-          LoggerProxy.logger.error(
-            'Meeting:index#join --> Receving transcription is not supported on this platform'
-          );
-        }
+        this.deferJoin = undefined;
 
         return join;
       })
@@ -4476,9 +4634,59 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         joinFailed(error);
+
         this.deferJoin = undefined;
 
         return Promise.reject(error);
+      })
+      .then((join) => {
+        // @ts-ignore - config coming from registerPlugin
+        if (this.config.enableAutomaticLLM) {
+          this.updateLLMConnection().catch((error) => {
+            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+              correlation_id: this.correlationId,
+              reason: error?.message,
+              stack: error.stack,
+            });
+          });
+        }
+
+        return join;
+      })
+      .then((join) => {
+        if (isBrowser) {
+          // @ts-ignore - config coming from registerPlugin
+          if (this.config.receiveTranscription || options.receiveTranscription) {
+            if (this.isTranscriptionSupported()) {
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Attempting to enabled to recieve transcription!'
+              );
+              this.receiveTranscription().catch((error) => {
+                LoggerProxy.logger.error(
+                  'Meeting:index#join --> Receive Transcription Failed',
+                  error
+                );
+
+                Metrics.sendBehavioralMetric(
+                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE,
+                  {
+                    correlation_id: this.correlationId,
+                    reason: error?.message,
+                    stack: error.stack,
+                  }
+                );
+              });
+            }
+          }
+        } else {
+          LoggerProxy.logger.error(
+            'Meeting:index#join --> Receving transcription is not supported on this platform'
+          );
+        }
+
+        return join;
       });
   }
 
@@ -4689,7 +4897,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.once(LOCUSINFO.EVENTS.SELF_OBSERVING, async () => {
-      // Clean up the camera , microphone track and re initiate it
+      // Clean up the camera , microphone stream and re initiate it
 
       try {
         if (this.screenShareFloorState === ScreenShareFloorStatus.GRANTED) {
@@ -4706,7 +4914,7 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        this.cleanupLocalTracks();
+        this.cleanupLocalStreams();
 
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
@@ -4988,46 +5196,47 @@ export default class Meeting extends StatelessWebexPlugin {
         )}`
       );
 
-      const mediaTrack = event.track;
+      if (event.track) {
+        const mediaTrack = event.track;
+        const remoteStream = new RemoteStream(MediaUtil.createMediaStream([mediaTrack]));
 
-      // eslint-disable-next-line @typescript-eslint/no-shadow
-      let eventType;
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        let eventType;
 
-      switch (event.type) {
-        case RemoteTrackType.AUDIO:
-          eventType = EVENT_TYPES.REMOTE_AUDIO;
-          this.mediaProperties.setRemoteAudioTrack(event.track);
-          break;
-        case RemoteTrackType.VIDEO:
-          eventType = EVENT_TYPES.REMOTE_VIDEO;
-          this.mediaProperties.setRemoteVideoTrack(event.track);
-          break;
-        case RemoteTrackType.SCREENSHARE_VIDEO:
-          if (event.track) {
+        switch (event.type) {
+          case RemoteTrackType.AUDIO:
+            eventType = EVENT_TYPES.REMOTE_AUDIO;
+            this.mediaProperties.setRemoteAudioStream(remoteStream);
+            break;
+          case RemoteTrackType.VIDEO:
+            eventType = EVENT_TYPES.REMOTE_VIDEO;
+            this.mediaProperties.setRemoteVideoStream(remoteStream);
+            break;
+          case RemoteTrackType.SCREENSHARE_VIDEO:
             eventType = EVENT_TYPES.REMOTE_SHARE;
-            this.mediaProperties.setRemoteShare(event.track);
+            this.mediaProperties.setRemoteShareStream(remoteStream);
+            break;
+          default: {
+            LoggerProxy.logger.log(
+              'Meeting:index#setupMediaConnectionListeners --> unexpected track'
+            );
           }
-          break;
-        default: {
-          LoggerProxy.logger.log(
-            'Meeting:index#setupMediaConnectionListeners --> unexpected track'
+        }
+
+        if (eventType && mediaTrack) {
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupRemoteTrackListener:Event.REMOTE_TRACK_ADDED',
+            },
+            EVENT_TRIGGERS.MEDIA_READY,
+            {
+              type: eventType,
+              stream: remoteStream.outputStream,
+            }
           );
         }
-      }
-
-      if (eventType && mediaTrack) {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setupRemoteTrackListener:Event.REMOTE_TRACK_ADDED',
-          },
-          EVENT_TRIGGERS.MEDIA_READY,
-          {
-            type: eventType,
-            stream: MediaUtil.createMediaStream([mediaTrack]),
-          }
-        );
       }
     });
 
@@ -5047,7 +5256,9 @@ export default class Meeting extends StatelessWebexPlugin {
             errors: [
               // @ts-ignore
               this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                {
+                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                }
               ),
             ],
           },
@@ -5114,7 +5325,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.ACTIVE_SPEAKERS_CHANGED, (msg) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.ACTIVE_SPEAKERS_CHANGED, (csis) => {
       Trigger.trigger(
         this,
         {
@@ -5123,8 +5334,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.ACTIVE_SPEAKER_CHANGED,
         {
-          seqNum: msg.seqNum,
-          memberIds: msg.csis
+          memberIds: csis
             // @ts-ignore
             .map((csi) => this.members.findMemberByCsi(csi)?.id)
             .filter((item) => item !== undefined),
@@ -5268,10 +5478,11 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Creates a webrtc media connection and publishes tracks to it
+   * Creates a webrtc media connection and publishes streams to it
    *
    * @param {Object} turnServerInfo TURN server information
    * @param {BundlePolicy} [bundlePolicy] Bundle policy settings
+   * @param {AddMediaOptions} [options] Options for enabling/disabling audio/video
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
@@ -5297,18 +5508,34 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.setMediaPeerConnection(mc);
     this.setupMediaConnectionListeners();
 
-    // publish the tracks
-    if (this.mediaProperties.audioTrack) {
-      await this.publishTrack(this.mediaProperties.audioTrack);
+    if (this.isMultistream) {
+      const [audioEnabled, videoEnabled, shareEnabled] = [
+        this.mediaProperties.mediaDirection.sendAudio ||
+          this.mediaProperties.mediaDirection.receiveAudio,
+        this.mediaProperties.mediaDirection.sendVideo ||
+          this.mediaProperties.mediaDirection.receiveVideo,
+        this.mediaProperties.mediaDirection.sendShare ||
+          this.mediaProperties.mediaDirection.receiveShare,
+      ];
+
+      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
     }
-    if (this.mediaProperties.videoTrack) {
-      await this.publishTrack(this.mediaProperties.videoTrack);
+
+    // publish the streams
+    if (this.mediaProperties.audioStream) {
+      await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
-    if (this.mediaProperties.shareVideoTrack) {
-      await this.publishTrack(this.mediaProperties.shareVideoTrack);
+    if (this.mediaProperties.videoStream) {
+      await this.publishStream(MediaType.VideoMain, this.mediaProperties.videoStream);
     }
-    if (this.isMultistream && this.mediaProperties.shareAudioTrack) {
-      await this.publishTrack(this.mediaProperties.shareAudioTrack);
+    if (this.mediaProperties.shareVideoStream) {
+      await this.publishStream(MediaType.VideoSlides, this.mediaProperties.shareVideoStream);
+    }
+    if (this.isMultistream && this.mediaProperties.shareAudioStream) {
+      await this.publishStream(MediaType.AudioSlides, this.mediaProperties.shareAudioStream);
     }
 
     return mc;
@@ -5362,10 +5589,11 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     const {
-      localTracks,
+      localStreams,
       audioEnabled = true,
       videoEnabled = true,
-      receiveShare = true,
+      shareAudioEnabled = true,
+      shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy,
       allowMediaInLobby,
@@ -5403,7 +5631,7 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {meetingId: this.id},
     });
 
-    // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any tracks are published
+    // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any streams are published
     // to avoid doing an extra SDP exchange when they are published for the first time
     this.mediaProperties.setMediaDirection({
       sendAudio: audioEnabled,
@@ -5411,7 +5639,7 @@ export default class Meeting extends StatelessWebexPlugin {
       sendShare: false,
       receiveAudio: audioEnabled,
       receiveVideo: videoEnabled,
-      receiveShare,
+      receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
     this.locusMediaRequest = new LocusMediaRequest(
@@ -5438,19 +5666,19 @@ export default class Meeting extends StatelessWebexPlugin {
     this.video = createMuteState(VIDEO, this, videoEnabled);
     const promises = [];
 
-    // setup all the references to local tracks in this.mediaProperties before creating media connection
+    // setup all the references to local streams in this.mediaProperties before creating media connection
     // and before TURN discovery, so that the correct mute state is sent with TURN discovery roap messages
-    if (localTracks?.microphone) {
-      promises.push(this.setLocalAudioTrack(localTracks.microphone));
+    if (localStreams?.microphone) {
+      promises.push(this.setLocalAudioStream(localStreams.microphone));
     }
-    if (localTracks?.camera) {
-      promises.push(this.setLocalVideoTrack(localTracks.camera));
+    if (localStreams?.camera) {
+      promises.push(this.setLocalVideoStream(localStreams.camera));
     }
-    if (localTracks?.screenShare?.video) {
-      promises.push(this.setLocalShareVideoTrack(localTracks.screenShare.video));
+    if (localStreams?.screenShare?.video) {
+      promises.push(this.setLocalShareVideoStream(localStreams.screenShare.video));
     }
-    if (this.isMultistream && localTracks?.screenShare?.audio) {
-      promises.push(this.setLocalShareAudioTrack(localTracks.screenShare.audio));
+    if (localStreams?.screenShare?.audio) {
+      promises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
     }
 
     return Promise.all(promises)
@@ -5566,7 +5794,9 @@ export default class Meeting extends StatelessWebexPlugin {
               errors: [
                 // @ts-ignore
                 this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                  CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE
+                  {
+                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                  }
                 ),
               ],
             },
@@ -5580,7 +5810,7 @@ export default class Meeting extends StatelessWebexPlugin {
         })
       )
       .then(() => {
-        if (this.mediaProperties.hasLocalShareTrack()) {
+        if (this.mediaProperties.hasLocalShareStream()) {
           return this.enqueueScreenShareFloorRequest();
         }
 
@@ -5601,8 +5831,16 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           },
         });
+        LoggerProxy.logger.info(
+          `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+        );
+
+        // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
+        this.remoteMediaManager?.logAllReceiveSlots();
       })
       .catch((error) => {
+        LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
@@ -5641,11 +5879,6 @@ export default class Meeting extends StatelessWebexPlugin {
             this.closePeerConnections();
             this.unsetPeerConnections();
           }
-
-          LoggerProxy.logger.error(
-            `${LOG_HEADER} Error adding media failed to initiate PC and send request, `,
-            error
-          );
 
           // Upload logs on error while adding media
           Trigger.trigger(
@@ -5787,11 +6020,12 @@ export default class Meeting extends StatelessWebexPlugin {
   public async updateMedia(options: {
     audioEnabled?: boolean;
     videoEnabled?: boolean;
-    receiveShare?: boolean;
+    shareAudioEnabled?: boolean;
+    shareVideoEnabled?: boolean;
   }) {
     this.checkMediaConnection();
 
-    const {audioEnabled, videoEnabled, receiveShare} = options;
+    const {audioEnabled, videoEnabled, shareAudioEnabled, shareVideoEnabled} = options;
 
     LoggerProxy.logger.log(
       `Meeting:index#updateMedia --> called with options=${JSON.stringify(options)}`
@@ -5802,40 +6036,40 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (this.isMultistream) {
-      if (videoEnabled !== undefined) {
+      if (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined) {
         throw new Error(
-          'enabling/disabling video in a meeting is not supported for multistream, it can only be done upfront when calling addMedia()'
+          'toggling shareAudioEnabled or shareVideoEnabled in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
         );
       }
-
-      if (receiveShare !== undefined) {
-        throw new Error(
-          'toggling receiveShare in a multistream meeting is not supported, to control receiving screen share call meeting.remoteMediaManager.setLayout() with appropriate layout'
-        );
-      }
+    } else if (shareAudioEnabled !== undefined) {
+      throw new Error(
+        'toggling shareAudioEnabled in a transcoded meeting is not supported as of now'
+      );
     }
 
     if (audioEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendAudio = audioEnabled;
       this.mediaProperties.mediaDirection.receiveAudio = audioEnabled;
       this.audio.enable(this, audioEnabled);
+      if (this.isMultistream) {
+        this.sendSlotManager.setActive(MediaType.AudioMain, audioEnabled);
+      }
     }
 
     if (videoEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendVideo = videoEnabled;
       this.mediaProperties.mediaDirection.receiveVideo = videoEnabled;
       this.video.enable(this, videoEnabled);
-    }
-
-    if (receiveShare !== undefined) {
-      this.mediaProperties.mediaDirection.receiveShare = receiveShare;
-    }
-
-    if (this.isMultistream) {
-      if (audioEnabled !== undefined) {
-        await this.mediaProperties.webrtcMediaConnection.enableMultistreamAudio(audioEnabled);
+      if (this.isMultistream) {
+        this.sendSlotManager.setActive(MediaType.VideoMain, videoEnabled);
       }
-    } else {
+    }
+
+    if (shareAudioEnabled !== undefined || shareVideoEnabled !== undefined) {
+      this.mediaProperties.mediaDirection.receiveShare = !!(shareAudioEnabled || shareVideoEnabled);
+    }
+
+    if (!this.isMultistream) {
       await this.updateTranscodedMediaConnection();
     }
 
@@ -6170,15 +6404,13 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private requestScreenShareFloor() {
     if (
-      !this.mediaProperties.hasLocalShareTrack() ||
+      !this.mediaProperties.hasLocalShareStream() ||
       !this.mediaProperties.mediaDirection.sendShare
     ) {
       LoggerProxy.logger.log(
-        `Meeting:index#requestScreenShareFloor --> NOT requesting floor, because we don't have the share track anymore (shareVideoTrack=${
-          this.mediaProperties.shareVideoTrack ? 'yes' : 'no'
-        }, shareAudioTrack=${this.mediaProperties.shareAudioTrack ? 'yes' : 'no'}, sendShare=${
-          this.mediaProperties.mediaDirection.sendShare
-        })`
+        `Meeting:index#requestScreenShareFloor --> NOT requesting floor, because we don't have the share stream anymore (shareStream=${
+          this.mediaProperties.shareVideoStream ? 'yes' : 'no'
+        }, sendShare=${this.mediaProperties.mediaDirection.sendShare})`
       );
       this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
 
@@ -6478,12 +6710,12 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {} as any
   ) {
     const {main, content} = renderInfo;
-    const {mediaDirection, remoteShare, remoteVideoTrack} = this.mediaProperties;
+    const {mediaDirection, remoteShareStream, remoteVideoStream} = this.mediaProperties;
 
     const layoutInfo = cloneDeep(this.lastVideoLayoutInfo);
 
     // TODO: We need a real time value for Audio, Video and Share send indicator
-    if (mediaDirection.receiveVideo !== true || !remoteVideoTrack) {
+    if (mediaDirection.receiveVideo !== true || !remoteVideoStream) {
       return this.rejectWithErrorLog(
         'Meeting:index#changeVideoLayout --> cannot change video layout, you are not recieving any video/share stream'
       );
@@ -6514,7 +6746,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (content) {
-      if (this.mediaProperties.mediaDirection.receiveShare && remoteShare) {
+      if (this.mediaProperties.mediaDirection.receiveShare && remoteShareStream) {
         const contentWidth = Math.round(content.width);
         const contentHeight = Math.round(content.height);
 
@@ -6612,23 +6844,22 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    * @returns {undefined}
    */
-  private handleShareAudioTrackEnded = async () => {
-    // current share audio track has ended, but there might be an active
-    // share video track. we only leave from wireless share if share has
-    // completely ended, which means no share audio or video tracks active
-    if (this.wirelessShare && !this.mediaProperties.shareVideoTrack) {
+  private handleShareAudioStreamEnded = async () => {
+    // current share audio stream has ended, but there might be an active
+    // share video stream. we only leave from wireless share if share has
+    // completely ended, which means no share audio or video streams active
+    if (this.wirelessShare && !this.mediaProperties.shareVideoStream) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
       try {
-        await this.unpublishTracks([this.mediaProperties.shareAudioTrack]);
+        await this.unpublishStreams([this.mediaProperties.shareAudioStream]);
       } catch (error) {
         LoggerProxy.logger.log(
-          'Meeting:index#handleShareAudioTrackEnded --> Error stopping share: ',
+          'Meeting:index#handleShareAudioStreamEnded --> Error stopping share: ',
           error
         );
       }
     }
-    this.triggerStoppedSharing();
   };
 
   /**
@@ -6637,18 +6868,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    * @returns {undefined}
    */
-  private handleShareVideoTrackEnded = async () => {
-    // current share video track has ended, but there might be an active
-    // share audio track. we only leave from wireless share if share has
-    // completely ended, which means no share audio or video tracks active
-    if (this.wirelessShare && !this.mediaProperties.shareAudioTrack) {
+  private handleShareVideoStreamEnded = async () => {
+    // current share video stream has ended, but there might be an active
+    // share audio stream. we only leave from wireless share if share has
+    // completely ended, which means no share audio or video streams active
+    if (this.wirelessShare && !this.mediaProperties.shareAudioStream) {
       this.leave({reason: MEETING_REMOVED_REASON.USER_ENDED_SHARE_STREAMS});
     } else {
       try {
-        await this.unpublishTracks([this.mediaProperties.shareVideoTrack]);
+        await this.unpublishStreams([this.mediaProperties.shareVideoStream]);
       } catch (error) {
         LoggerProxy.logger.log(
-          'Meeting:index#handleShareVideoTrackEnded --> Error stopping share: ',
+          'Meeting:index#handleShareVideoStreamEnded --> Error stopping share: ',
           error
         );
       }
@@ -6663,12 +6894,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private triggerStoppedSharing = () => {
-    if (!this.mediaProperties.hasLocalShareTrack()) {
+    if (!this.mediaProperties.hasLocalShareStream()) {
       Trigger.trigger(
         this,
         {
           file: 'meeting/index',
-          function: 'handleShareTrackEnded',
+          function: 'handleShareStreamEnded',
         },
         EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
         {
@@ -6711,11 +6942,11 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleMediaLogging(mediaProperties: {
-    audioTrack?: LocalMicrophoneTrack;
-    videoTrack?: LocalCameraTrack;
+    audioStream?: LocalMicrophoneStream;
+    videoStream?: LocalCameraStream;
   }) {
-    MeetingUtil.handleVideoLogging(mediaProperties.videoTrack);
-    MeetingUtil.handleAudioLogging(mediaProperties.audioTrack);
+    MeetingUtil.handleVideoLogging(mediaProperties.videoStream);
+    MeetingUtil.handleAudioLogging(mediaProperties.audioStream);
   }
 
   /**
@@ -6955,7 +7186,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Method to enable or disable the 'Music mode' effect on audio track
+   * Method to enable or disable the 'Music mode' effect on audio stream
    *
    * @param {boolean} shouldEnableMusicMode
    * @returns {Promise}
@@ -6968,12 +7199,12 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (shouldEnableMusicMode) {
-      await this.mediaProperties.webrtcMediaConnection.setCodecParameters(MediaType.AudioMain, {
+      await this.sendSlotManager.setCodecParameters(MediaType.AudioMain, {
         maxaveragebitrate: '64000',
         maxplaybackrate: '48000',
       });
     } else {
-      await this.mediaProperties.webrtcMediaConnection.deleteCodecParameters(MediaType.AudioMain, [
+      await this.sendSlotManager.deleteCodecParameters(MediaType.AudioMain, [
         'maxaveragebitrate',
         'maxplaybackrate',
       ]);
@@ -6995,10 +7226,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.mediaProperties.webrtcMediaConnection
       .update({
+        // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
         localTracks: {
-          audio: this.mediaProperties.audioTrack?.underlyingTrack || null,
-          video: this.mediaProperties.videoTrack?.underlyingTrack || null,
-          screenShareVideo: this.mediaProperties.shareVideoTrack?.underlyingTrack || null,
+          audio: this.mediaProperties.audioStream?.outputTrack || null,
+          video: this.mediaProperties.videoStream?.outputTrack || null,
+          screenShareVideo: this.mediaProperties.shareVideoStream?.outputTrack || null,
+          screenShareAudio: this.mediaProperties.shareAudioStream?.outputTrack || null,
         },
         direction: {
           audio: Media.getDirection(
@@ -7037,56 +7270,68 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Publishes a track.
+   * Publishes a stream.
    *
-   * @param {LocalTrack} track to publish
+   * @param {MediaType} mediaType of the stream
+   * @param {LocalStream} stream to publish
    * @returns {Promise}
    */
-  private async publishTrack(track?: LocalTrack) {
-    if (!track) {
+  private async publishStream(mediaType: MediaType, stream?: LocalStream) {
+    if (!stream) {
       return;
     }
 
     if (this.mediaProperties.webrtcMediaConnection) {
-      if (this.isMultistream) {
-        await this.mediaProperties.webrtcMediaConnection.publishTrack(track);
-      } else {
-        track.setPublished(true); // for multistream, this call is done by WCME
+      if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+        await this.sendSlotManager.publishStream(mediaType, stream);
       }
+
+      this.emitPublishStateChangeEvent({
+        isPublished: true,
+        mediaType,
+        stream,
+        functionName: 'publishStream',
+      });
     }
   }
 
   /**
-   * Un-publishes a track.
+   * Un-publishes a stream.
    *
-   * @param {LocalTrack} track to unpublish
+   * @param {MediaType} mediaType of the stream
+   * @param {LocalStream} stream to unpublish
    * @returns {Promise}
    */
-  private async unpublishTrack(track?: LocalTrack) {
-    if (!track) {
+  private async unpublishStream(mediaType: MediaType, stream?: LocalStream) {
+    if (!stream) {
       return;
     }
 
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      await this.mediaProperties.webrtcMediaConnection.unpublishTrack(track);
-    } else {
-      track.setPublished(false); // for multistream, this call is done by WCME
+      await this.sendSlotManager.unpublishStream(mediaType);
     }
+
+    this.emitPublishStateChangeEvent({
+      isPublished: false,
+      mediaType,
+      stream,
+      functionName: 'unpublishStream',
+    });
   }
 
   /**
-   * Publishes specified local tracks in the meeting
+   * Publishes specified local streams in the meeting
    *
-   * @param {Object} tracks
+   * @param {Object} streams
    * @returns {Promise}
    */
-  async publishTracks(tracks: LocalTracks): Promise<void> {
+  async publishStreams(streams: LocalStreams): Promise<void> {
     this.checkMediaConnection();
     if (
-      !tracks.microphone &&
-      !tracks.camera &&
-      !tracks.screenShare?.audio &&
-      !tracks.screenShare?.video
+      !streams.microphone &&
+      !streams.camera &&
+      !streams.screenShare?.audio &&
+      !streams.screenShare?.video
     ) {
       // nothing to do
       return;
@@ -7094,24 +7339,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
     let floorRequestNeeded = false;
 
-    if (tracks.screenShare?.video) {
-      await this.setLocalShareVideoTrack(tracks.screenShare?.video);
+    // Screenshare Audio is supported only in multi stream. So we check for screenshare audio presence only if it's a multi stream meeting
+    if (this.isMultistream && streams.screenShare?.audio) {
+      await this.setLocalShareAudioStream(streams.screenShare.audio);
 
       floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }
 
-    if (this.isMultistream && tracks.screenShare?.audio) {
-      await this.setLocalShareAudioTrack(tracks.screenShare.audio);
+    if (streams.screenShare?.video) {
+      await this.setLocalShareVideoStream(streams.screenShare?.video);
 
       floorRequestNeeded = this.screenShareFloorState === ScreenShareFloorStatus.RELEASED;
     }
 
-    if (tracks.microphone) {
-      await this.setLocalAudioTrack(tracks.microphone);
+    if (streams.microphone) {
+      await this.setLocalAudioStream(streams.microphone);
     }
 
-    if (tracks.camera) {
-      await this.setLocalVideoTrack(tracks.camera);
+    if (streams.camera) {
+      await this.setLocalVideoStream(streams.camera);
     }
 
     if (!this.isMultistream) {
@@ -7127,31 +7373,31 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Un-publishes specified local tracks in the meeting
+   * Un-publishes specified local streams in the meeting
    *
-   * @param {Array<MediaStreamTrack>} tracks
+   * @param {Array<LocalStream>} streams
    * @returns {Promise}
    */
-  async unpublishTracks(tracks: LocalTrack[]): Promise<void> {
+  async unpublishStreams(streams: LocalStream[]): Promise<void> {
     this.checkMediaConnection();
 
     const promises = [];
 
-    for (const track of tracks.filter((t) => !!t)) {
-      if (track === this.mediaProperties.shareVideoTrack) {
-        promises.push(this.setLocalShareVideoTrack(undefined));
+    for (const stream of streams.filter((t) => !!t)) {
+      if (stream === this.mediaProperties.shareAudioStream) {
+        promises.push(this.setLocalShareAudioStream(undefined));
       }
 
-      if (track === this.mediaProperties.shareAudioTrack) {
-        promises.push(this.setLocalShareAudioTrack(undefined));
+      if (stream === this.mediaProperties.shareVideoStream) {
+        promises.push(this.setLocalShareVideoStream(undefined));
       }
 
-      if (track === this.mediaProperties.audioTrack) {
-        promises.push(this.setLocalAudioTrack(undefined));
+      if (stream === this.mediaProperties.audioStream) {
+        promises.push(this.setLocalAudioStream(undefined));
       }
 
-      if (track === this.mediaProperties.videoTrack) {
-        promises.push(this.setLocalVideoTrack(undefined));
+      if (stream === this.mediaProperties.videoStream) {
+        promises.push(this.setLocalVideoStream(undefined));
       }
     }
 
@@ -7163,13 +7409,53 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // we're allowing for the SDK to support just audio share as well
     // so a share could be active with only video, only audio, or both
-    // we're only releasing the floor if both tracks have ended
-    if (!this.mediaProperties.hasLocalShareTrack()) {
+    // we're only releasing the floor if both streams have ended
+    if (!this.mediaProperties.hasLocalShareStream()) {
       try {
         this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
       } catch (e) {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }
     }
+  }
+
+  /**
+   * Gets the time left in seconds till the permission token expires
+   * (from the time the function has been fired)
+   *
+   * @returns {number} time left in seconds
+   */
+  public getPermissionTokenTimeLeftInSec(): number | undefined {
+    if (!this.permissionTokenPayload) {
+      return undefined;
+    }
+
+    const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
+
+    // using new Date instead of Date.now() to allow for accurate unit testing
+    // https://github.com/sinonjs/fake-timers/issues/321
+    const now = new Date().getTime();
+
+    // substract current time from the permissionTokenExp
+    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
+    return (permissionTokenExpValue - now) / 1000;
+  }
+
+  /**
+   * Check if there is enough time left till the permission token expires
+   * If not - refresh the permission token
+   *
+   * @param {number} threshold - time in seconds
+   * @param {string} reason - reason for refreshing the permission token
+   * @returns {Promise<void>}
+   */
+  public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
+    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+
+    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+      return this.refreshPermissionToken(reason);
+    }
+
+    return Promise.resolve();
   }
 }

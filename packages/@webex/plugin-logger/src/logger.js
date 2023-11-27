@@ -351,6 +351,29 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         if (item instanceof WebexHttpError) {
           return item.toString();
         }
+        if (typeof item === 'object') {
+          let cache = [];
+          let returnItem;
+          try {
+            returnItem = JSON.stringify(item, (_key, value) => {
+              if (typeof value === 'object' && value !== null) {
+                if (cache.includes(value)) {
+                  // Circular reference found, discard key
+                  return undefined;
+                }
+                // Store value in our collection
+                cache.push(value);
+              }
+
+              return value;
+            });
+          } catch (e) {
+            returnItem = `Failed to stringify: ${item}`;
+          }
+          cache = null;
+
+          return returnItem;
+        }
 
         return item;
       });

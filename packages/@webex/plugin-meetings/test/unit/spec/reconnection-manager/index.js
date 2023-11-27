@@ -184,7 +184,7 @@ describe('plugin-meetings', () => {
    * level causes testing errors in CI based around related files. Skipping this here until a solution
    * to this problem is generated.
    */
-  describe.skip('ReconnectionManager', () => {
+  describe('ReconnectionManager', () => {
     let reconnectionManager;
 
     beforeEach(() => {
@@ -277,10 +277,11 @@ describe('plugin-meetings', () => {
           assert.isTrue(reconnectionManager.iceState.disconnected);
         });
 
-        it('should return a promise that rejects after a duration', () => {
+        it('should return a promise that rejects after a duration', (done) => {
           reconnectionManager.iceState.timeoutDuration = 100;
 
-          return assert.isRejected(reconnectionManager.waitForIceReconnect());
+          assert.isRejected(reconnectionManager.waitForIceReconnect());
+          done();
         });
 
         it('should resolve return a resolved promise when triggered', () => {
