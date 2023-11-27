@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.264](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.263...v3.0.0-beta.264) (2023-11-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** screen share when shared by same user different client ([#3177](https://github.com/webex/webex-js-sdk/issues/3177)) ([a52eb2b](https://github.com/webex/webex-js-sdk/commit/a52eb2b863d44f816c3bd8742885dd39de18120b))
+
 ## [3.0.0-beta.263](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.262...v3.0.0-beta.263) (2023-11-27)
 
 
