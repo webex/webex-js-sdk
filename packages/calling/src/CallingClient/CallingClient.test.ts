@@ -15,7 +15,6 @@ import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
 import {
-  API_V1,
   CALLING_CLIENT_FILE,
   DISCOVERY_URL,
   IP_ENDPOINT,
@@ -34,19 +33,28 @@ import {
   primaryUrl,
   discoveryPayload,
   registrationPayload,
-  uri,
   myIP,
+  mockEUServiceHosts,
+  mockIntServiceHosts,
+  mockEUIntServiceHosts,
+  mockCatalogEU,
+  mockCatalogUSInt,
+  mockCatalogUS,
+  mockCatalogEUInt,
+  mockUSServiceHosts,
 } from './callingClientFixtures';
 import Line from './line';
 import {filterMobiusUris} from '../common/Utils';
 import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
+import {ServiceHost} from '../SDKConnector/types';
 
 describe('CallingClient Tests', () => {
   // Common initializers
 
   const handleErrorSpy = jest.spyOn(utils, 'handleCallingClientErrors');
   const webex = getTestUtilsWebex();
+  webex.internal.services['_hostCatalog'] = mockCatalogUS;
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);
 
@@ -296,117 +304,6 @@ describe('CallingClient Tests', () => {
       );
     });
 
-    it('verifying entries of eu mobius clusters', async () => {
-      const mockEUServiceHosts = [
-        {
-          host: 'mobius-eu-central-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 5,
-          id: 'urn:TEAM:eu-central-1_k:mobius',
-        },
-        {
-          host: 'mobius-us-east-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 15,
-          id: 'urn:TEAM:eu-central-1_k:mobius',
-        },
-        {
-          host: 'mobius-ca-central-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 10,
-          id: 'urn:TEAM:eu-central-1_k:mobius',
-        },
-        {
-          host: 'mobius-ap-southeast-2.prod.infra.webex.com',
-          ttl: -1,
-          priority: 20,
-          id: 'urn:TEAM:eu-central-1_k:mobius',
-        },
-      ];
-      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
-      webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'] =
-        mockEUServiceHosts;
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(callingClient['mobiusClusters']).toEqual(mockEUServiceHosts);
-    });
-
-    it('verifying entries of int mobius clusters', async () => {
-      const mockIntServiceHosts = [
-        {
-          host: 'mobius-us-east-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 5,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-ca-central-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 10,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-eu-central-1.prod.infra.webex.com',
-          ttl: -1,
-          priority: 15,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-ap-southeast-2.prod.infra.webex.com',
-          ttl: -1,
-          priority: 20,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-      ];
-      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
-      delete webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'];
-      webex.internal.services._hostCatalog['mobius-us-east-1.int.infra.webex.com'] =
-        mockIntServiceHosts;
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(callingClient['mobiusClusters']).toEqual(mockIntServiceHosts);
-    });
-
-    it('verifying entries of int mobius clusters', async () => {
-      const mockEUIntServiceHosts = [
-        {
-          host: 'mobius-eu-central-1.int.infra.webex.com',
-          ttl: -1,
-          priority: 15,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-us-east-1.int.infra.webex.com',
-          ttl: -1,
-          priority: 5,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-ca-central-1.int.infra.webex.com',
-          ttl: -1,
-          priority: 10,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-        {
-          host: 'mobius-ap-southeast-2.int.infra.webex.com',
-          ttl: -1,
-          priority: 20,
-          id: 'urn:TEAM:us-east-2_a:mobius',
-        },
-      ];
-      delete webex.internal.services._hostCatalog['mobius-us-east-1.prod.infra.webex.com'];
-      delete webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'];
-      delete webex.internal.services._hostCatalog['mobius-us-east-1.int.infra.webex.com'];
-      webex.internal.services._hostCatalog['mobius-eu-central-1.prod.infra.webex.com'] =
-        mockEUIntServiceHosts;
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(callingClient['mobiusClusters']).toEqual(mockEUIntServiceHosts);
-    });
-
     it('when region discovery succeeds but region based mobius url discovery fails', async () => {
       const failurePayload = {
         statusCode: 500,
@@ -476,6 +373,40 @@ describe('CallingClient Tests', () => {
         method: 'GET',
       });
       expect(handleErrorSpy).not.toBeCalled();
+    });
+  });
+
+  describe('Testing each cluster present withing host catalog', () => {
+    const mobiusCluster = [
+      'mobius-eu-central-1.prod.infra.webex.com',
+      'mobius-us-east-1.int.infra.webex.com',
+      'mobius-eu-central-1.int.infra.webex.com',
+    ];
+
+    const checkCluster = async (
+      mockServiceHosts: ServiceHost[],
+      mockCatalog: Record<string, ServiceHost[]>
+    ) => {
+      webex.internal.services._hostCatalog = mockCatalog;
+      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toStrictEqual(mockServiceHosts);
+    };
+
+    it.each(mobiusCluster)('%s', async (clusterName) => {
+      switch (clusterName) {
+        case 'mobius-eu-central-1.prod.infra.webex.com':
+          checkCluster(mockEUServiceHosts, mockCatalogEU);
+          break;
+        case 'mobius-us-east-1.int.infra.webex.com':
+          checkCluster(mockIntServiceHosts, mockCatalogUSInt);
+          break;
+        case 'mobius-eu-central-1.int.infra.webex.com':
+          checkCluster(mockEUIntServiceHosts, mockCatalogEUInt);
+          break;
+        default:
+          break;
+      }
     });
   });
 

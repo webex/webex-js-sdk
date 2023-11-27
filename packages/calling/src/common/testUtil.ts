@@ -7,6 +7,12 @@
 */
 import {MediaConnectionConfig} from '@webex/internal-media-core';
 import platform from 'platform';
+import {
+  mockEUIntServiceHosts,
+  mockEUServiceHosts,
+  mockIntServiceHosts,
+  mockUSServiceHosts,
+} from 'CallingClient/callingClientFixtures';
 import {MobiusServers} from './types';
 
 const MediaSDKMock = jest.createMockFromModule<typeof import('@webex/internal-media-core')>(
@@ -66,50 +72,7 @@ export function getTestUtilsWebex() {
       presence: jest.fn(),
       support: jest.fn(),
       services: {
-        _hostCatalog: {
-          'files-api.gov.ciscospark.com': [
-            {
-              host: 'files-api.gov.ciscospark.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:TEAM:us-east-2_a:files',
-            },
-          ],
-          'mercury-connection-partition0-r.wbx2.com': [
-            {
-              host: 'mercury-connection-partition0-r.wbx2.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:TEAM:us-west-2_r:mercuryConnectionPartition0',
-            },
-          ],
-          'mobius-us-east-1.prod.infra.webex.com': [
-            {
-              host: 'mobius-us-east-1.prod.infra.webex.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:TEAM:us-east-2_a:mobius',
-            },
-            {
-              host: 'mobius-ca-central-1.prod.infra.webex.com',
-              ttl: -1,
-              priority: 10,
-              id: 'urn:TEAM:us-east-2_a:mobius',
-            },
-            {
-              host: 'mobius-eu-central-1.prod.infra.webex.com',
-              ttl: -1,
-              priority: 15,
-              id: 'urn:TEAM:us-east-2_a:mobius',
-            },
-            {
-              host: 'mobius-ap-southeast-2.prod.infra.webex.com',
-              ttl: -1,
-              priority: 20,
-              id: 'urn:TEAM:us-east-2_a:mobius',
-            },
-          ],
-        },
+        _hostCatalog: {},
         _serviceUrls: {
           mobius: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1',
           identity: 'https://identity-b-us.webex.com',
