@@ -389,6 +389,7 @@ export const MEETING_REMOVED_REASON = {
   NO_MEETINGS_TO_SYNC: 'NO_MEETINGS_TO_SYNC', // After the syncMeeting no meeting exists
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
   LOCUS_DTO_SYNC_FAILED: 'LOCUS_DTO_SYNC_FAILED', // failed to get any Locus DTO for that meeting
+  MISSING_MEETING_INFO: 'MISSING_MEETING_INFO', // meeting info failed to be fetched
 };
 
 // One one one calls ends for the following reasons
@@ -484,6 +485,11 @@ export const ERROR_DICTIONARY = {
     NAME: 'BreakoutEditLockedError',
     MESSAGE: 'Edit lock token mismatch',
     CODE: 9,
+  },
+  NO_MEETING_INFO: {
+    NAME: 'NoMeetingInfo',
+    MESSAGE: 'No meeting info found for the meeting',
+    CODE: 10,
   },
 };
 
