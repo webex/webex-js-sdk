@@ -10,6 +10,9 @@
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/@webex/media-helpers"
   },
+  "scripts": {
+    "build:src": "yarn run -T tsc --declaration true --declarationDir ./dist"
+  },
   "engines": {
     "node": ">=16"
   },
