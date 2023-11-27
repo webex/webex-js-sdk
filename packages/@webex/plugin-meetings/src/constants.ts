@@ -486,6 +486,11 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Edit lock token mismatch',
     CODE: 9,
   },
+  NO_MEETING_INFO: {
+    NAME: 'NoMeetingInfo',
+    MESSAGE: 'No meeting info found for the meeting',
+    CODE: 10,
+  },
 };
 
 export const FLOOR_ACTION = {

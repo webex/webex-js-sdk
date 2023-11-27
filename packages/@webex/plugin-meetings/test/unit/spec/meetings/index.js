@@ -1404,8 +1404,8 @@ describe('plugin-meetings', () => {
                   }
                 );
               }
-            } catch (err) {
-              assert.equal(err.message, 'meeting information not found');
+            } catch (err) { 
+              assert.instanceOf(err, PermissionError);
             }
           }
 
