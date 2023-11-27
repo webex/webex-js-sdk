@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.261](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.260...v3.0.0-beta.261) (2023-11-27)
+
+
+### Bug Fixes
+
+* **media-helpers:** tsconfig for creating types setup ([#3218](https://github.com/webex/webex-js-sdk/issues/3218)) ([dff753d](https://github.com/webex/webex-js-sdk/commit/dff753d68502a85b60b6068a888ef7cdcd47593e))
+
 ## [3.0.0-beta.260](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.259...v3.0.0-beta.260) (2023-11-24)
 
 
