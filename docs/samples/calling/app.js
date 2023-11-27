@@ -799,6 +799,8 @@ function definedTable(callHistoryResponse) {
   <th>EndTime</th>
   <th>SessionType</th>
   <th>CallbackAddress</th>
+  <th>RedirectionReason</th>
+  <th>Forwarded by</th>
   </tr>`;
 
   callHistoryHeader.innerHTML += callHistHeaderHtml;
@@ -813,6 +815,8 @@ function definedTable(callHistoryResponse) {
     <td>${callHistoryResponse.data.userSessions[i].endTime}</td>
     <td>${callHistoryResponse.data.userSessions[i].sessionType}</td>
     <td>${callHistoryResponse.data.userSessions[i].other.callbackAddress}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.reason === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.reason}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.name === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.name}</td>
   </tr>`;
 
     callHistoryTable.innerHTML += callHistoryRow;
