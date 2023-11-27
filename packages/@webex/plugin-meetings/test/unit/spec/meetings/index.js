@@ -36,6 +36,7 @@ import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
+import NoMeetingInfoError from '../../../../src/common/errors/no-meeting-info';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -1405,7 +1406,7 @@ describe('plugin-meetings', () => {
                 );
               }
             } catch (err) { 
-              assert.instanceOf(err, PermissionError);
+              assert.instanceOf(err, NoMeetingInfoError);
             }
           }
 
