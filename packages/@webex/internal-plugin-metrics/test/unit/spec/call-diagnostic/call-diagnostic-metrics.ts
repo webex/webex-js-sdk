@@ -285,6 +285,23 @@ describe('internal-plugin-metrics', () => {
           })
         );
       });
+
+      it('should build identifiers correctly given preLoginId and no device userId available', () => {
+        webex.internal.device.userId = undefined;
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          preLoginId: 'preLoginId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: "correlationId",
+          locusUrl: "locus-url",
+          deviceId: 'deviceUrl',
+          orgId: 'orgId',
+          userId: 'preLoginId',
+        });
+      })
     });
 
     it('should prepare diagnostic event successfully', () => {
@@ -446,6 +463,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.calledWith(getIdentifiersSpy, {
           correlationId: 'correlationId',
+          preLoginId: undefined
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
