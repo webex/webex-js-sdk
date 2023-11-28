@@ -169,6 +169,18 @@ describe('plugin-meetings', () => {
         // simulate being already remote muted and locally unmuted
         meeting.remoteMuted = true;
         meeting.mediaProperties.audioStream.muted = false;
+        // create a new MuteState intance
+        audio = createMuteState(AUDIO, meeting, {sendAudio: true});
+
+        assert.isFalse(audio.isLocallyMuted());
+      });
+    });
+
+    describe('#handleClientRequest', () => {
+      it('disables/enables the local audio track when audio is muted/unmuted', async () => {
+        // mute
+        audio.handleClientRequest(meeting, true);
+        assert.calledWith(Media.setLocalTrack, false, meeting.mediaProperties.audioTrack);
 
         // create a new MuteState instance
         audio = createMuteState(AUDIO, meeting, true);

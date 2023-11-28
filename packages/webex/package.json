@@ -1,19 +1,23 @@
 {
   "name": "webex",
-  "version": "3.0.0-beta.261",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-    "Andrew Holsted <holsted@cisco.com>",
     "Arun Ganeshan <arungane@cisco.com>",
     "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-    "Ian W. Remmel (https://www.ianwremmel.com)",
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Moriah Maney <momaney@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>"
+    "Kesava Krishnan Madavan <kmadavan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>",
+    "Rajesh Kumar <rarajes2@cisco.com>",
+    "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
   "main": "dist/index.js",
+  "exports": {
+    "./calling": "./dist/calling.js",
+    ".": "./dist/index.js",
+    "./meetings": "./dist/meetings.js",
+    "./package": "./package.json"
+  },
   "devMain": "src/index.js",
   "repository": {
     "type": "git",
@@ -33,16 +37,35 @@
       "envify"
     ]
   },
+  "scripts": {
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "yarn test:style && yarn test:unit && yarn test:integration",
+    "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "deploy:npm": "yarn npm publish"
+  },
   "devDependencies": {
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "@webex/plugin-authorization": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-file": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
+    "eslint": "^8.24.0",
     "sinon": "^9.2.4",
     "webex": "workspace:^"
   },
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
+    "@babel/runtime-corejs2": "^7.14.8",
+    "@webex/calling": "workspace:^",
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",

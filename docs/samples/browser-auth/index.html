@@ -52,19 +52,32 @@
       <h2>Guest User Authentication</h2>
       <p>This sample demonstrates authenticating guest users in the browser with a JSON Web Token (jwt)</p>
       
-      <form id="credentials">
+      <form id="jwt-authorization">
         <fieldset>
           <legend>Credentials</legend>
           <input
-          id="jwt"
-          name="jwt"
-          placeholder="JSON Web Token"
+          id="issuer"
+          name="issuer"
+          placeholder="Guest Issuer Id"
+          type="text"
+          class="form-control w-50"
+          style="margin-bottom: 10px"
+          required>
+          <input
+          id="secret"
+          name="secret"
+          placeholder="Guest Issuer Secret"
+          type="text"
+          class="form-control w-50"
+          style="margin-bottom: 10px"
+          required>
+          <input
+          id="name"
+          name="name"
+          placeholder="Guest Display Name(Optional)"
           type="text"
           class="form-control w-50">
         </fieldset>
-      </form>
-      
-      <form id="jwt-authorization">
         <input id="jwt-authenticate-button" title="Authenticate" type="submit" value="Authenticate" class="btn btn-primary my-3">
       </form>
       

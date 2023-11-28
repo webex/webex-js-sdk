@@ -534,6 +534,7 @@ export default class Meeting extends StatelessWebexPlugin {
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
+  receiveTranscription: boolean;
   updateMediaConnections: (mediaConnections: any[]) => void;
   userDisplayHints: any;
   endCallInitJoinReq: any;
@@ -2078,8 +2079,8 @@ export default class Meeting extends StatelessWebexPlugin {
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIBE_UPDATED,
       ({caption, transcribing}) => {
         // @ts-ignore - config coming from registerPlugin
-        if (transcribing && this.transcription && this.config.receiveTranscription) {
-          this.receiveTranscription();
+        if (transcribing && !this.transcription && this.config.receiveTranscription) {
+          this.startTranscription();
         } else if (!transcribing && this.transcription) {
           Trigger.trigger(
             this,
@@ -2725,8 +2726,17 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
+      // @ts-ignore
+      if (!this.transcription && (this.config.receiveTranscription || this.receiveTranscription)) {
+        if (this.isTranscriptionSupported()) {
+          await this.startTranscription();
+          LoggerProxy.logger.info(
+            'Meeting:index#setUpLocusInfoSelfListener --> enabled to receive transcription for guest user!'
+          );
+        }
+      }
 
       if (payload) {
         Trigger.trigger(
@@ -4290,9 +4300,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @returns {Promise<void>} a promise to open the WebSocket connection
    */
-  private async receiveTranscription() {
+  private async startTranscription() {
     LoggerProxy.logger.info(
-      `Meeting:index#receiveTranscription -->
+      `Meeting:index#startTranscription -->
       Attempting to generate a web socket url.`
     );
 
@@ -4309,7 +4319,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
 
       LoggerProxy.logger.info(
-        `Meeting:index#receiveTranscription -->
+        `Meeting:index#startTranscription -->
         Generated web socket url succesfully.`
       );
 
@@ -4321,7 +4331,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       LoggerProxy.logger.info(
-        `Meeting:index#receiveTranscription -->
+        `Meeting:index#startTranscription -->
         opened LLM web socket connection successfully.`
       );
 
@@ -4348,7 +4358,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - fix type
       this.transcription.connect(this.webex.credentials.supertoken.access_token);
     } catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#receiveTranscription --> ${error}`);
+      LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
         correlation_id: this.correlationId,
         reason: error.message,
@@ -6723,8 +6733,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (layoutType) {
       if (!LAYOUT_TYPES.includes(layoutType)) {
-        this.rejectWithErrorLog(
-          'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
+        return this.rejectWithErrorLog(
+          'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType received.'
         );
       }
 

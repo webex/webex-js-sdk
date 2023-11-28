@@ -1,9 +1,7 @@
 import url from 'url';
 
-import {
-  // @ts-ignore
-  deconstructHydraId,
-} from '@webex/common';
+// @ts-ignore
+import {deconstructHydraId} from '@webex/common';
 
 import {
   _SIP_URI_,
@@ -162,7 +160,13 @@ MeetingInfoUtil.getDestinationType = async (from) => {
     };
   }
   const options: any = {};
-  const hydraId = MeetingInfoUtil.getHydraId(destination);
+  let hydraId;
+
+  if (webex && webex.config && webex.config.meetings && webex.config.meetings.disableHydraId) {
+    hydraId = null;
+  } else {
+    hydraId = MeetingInfoUtil.getHydraId(destination);
+  }
 
   if (MeetingInfoUtil.isMeetingLink(destination)) {
     LoggerProxy.logger.warn(
@@ -180,25 +184,40 @@ MeetingInfoUtil.getDestinationType = async (from) => {
   } else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
     options.type = _CONVERSATION_URL_;
     options.destination = destination;
-  } else if (hydraId.people) {
+  } else if (hydraId && hydraId.people) {
     options.type = _SIP_URI_;
 
-    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
-      options.destination = res;
+    return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then(
+      (res) => {
+        options.destination = res;
 
-      // Since hydra person ids require a unique case in which they are
-      // entirely converted to a SIP URI, we need to set a flag for detecting
-      // this type of destination.
-      options.wasHydraPerson = true;
+        // Since hydra person ids require a unique case in which they are
+        // entirely converted to a SIP URI, we need to set a flag for detecting
+        // this type of destination.
+        options.wasHydraPerson = true;
 
-      return Promise.resolve(options);
-    });
-  } else if (hydraId.room) {
-    LoggerProxy.logger.error(
-      `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.`
+        return Promise.resolve(options);
+      }
     );
-    // Error code 30105 added as Space ID deprecated as of beta, Please refer migration guide.
-    throw new SpaceIDDeprecatedError();
+  } else if (hydraId && hydraId.room) {
+    options.type = _CONVERSATION_URL_;
+    try {
+      await webex.internal.services.waitForCatalog('postauth');
+
+      const serviceUrl = webex.internal.services.getServiceUrlFromClusterId(
+        {
+          cluster: hydraId.cluster,
+        },
+        webex
+      );
+
+      options.destination = hydraId.destination
+        ? `${serviceUrl}/conversations/${hydraId.destination}`
+        : serviceUrl;
+    } catch (e) {
+      LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
+      throw e;
+    }
   } else {
     LoggerProxy.logger.warn(`Meeting-info:util#getDestinationType --> ${meetingInfoError}`);
     throw new ParameterError(`${meetingInfoError}`);

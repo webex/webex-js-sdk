@@ -204,27 +204,17 @@ export default class MeetingInfoV2 {
       return invitees;
     };
 
-    return this.webex.internal.conversation
-      .get({url: conversationUrl}, {includeParticipants: true, disableTransform: true})
-      .then((conversation) => {
-        const body: {
-          title: string;
-          spaceUrl: string;
-          keyUrl: string;
-          kroUrl: string;
-          invitees: any[];
-          installedOrgID?: string;
-        } = {
+    return this.webex
+      .request({uri: conversationUrl, qs: {includeParticipants: true}, disableTransform: true})
+      .then(({body: conversation}) => {
+        const body = {
           title: conversation.displayName,
           spaceUrl: conversation.url,
           keyUrl: conversation.encryptionKeyUrl,
           kroUrl: conversation.kmsResourceObjectUrl,
           invitees: getInvitees(conversation.participants?.items),
+          installedOrgID,
         };
-
-        if (installedOrgID) {
-          body.installedOrgID = installedOrgID;
-        }
 
         const uri = this.webex.meetings.preferredWebexSite
           ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`

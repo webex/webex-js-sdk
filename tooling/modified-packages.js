@@ -72,6 +72,8 @@ const modified = async (argv) => {
   changedPackages = changedPackages
     .filter((packageName) => !packageName.includes('samples'))
     .filter((packageName) => !packageName.includes('tooling'))
+    .filter((packageName) => !packageName.includes('config'))
+    .filter((packageName) => !packageName.includes('tools'))
     .filter((packageName) => !packageName.includes('bin-'))
     .filter((packageName) => !packageName.includes('test-helper-'))
     .filter((packageName) => !packageName.includes('eslint-config'))

@@ -1,0 +1,10 @@
+{
+  "extends": "@webex/typescript-config/static/index.json",
+  "compilerOptions": {
+    "outDir": "./dist/module",
+    "declarationDir": "./dist/types",
+  },
+  "include": [
+    "./src/**/*.ts"
+  ]
+}

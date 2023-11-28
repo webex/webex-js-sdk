@@ -11,10 +11,12 @@ tmp*.*
 
 _site
 .coverage
+**/coverage
 **/node_modules
 doc
 docker-env
 dist
+types
 html-report
 js-bin
 local/
@@ -38,8 +40,11 @@ tasks/selenium
 browsers.processed.js
 docs/samples/webex.min.js
 docs/samples/webex.min.js.map
+docs/samples/meetings.min.js
+docs/samples/meetings.min.js.map
+coverage
 
 # patch-package
 patches.hash
 bundle.js.map
-webex-server
+junit.xml

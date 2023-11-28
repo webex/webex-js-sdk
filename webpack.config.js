@@ -6,6 +6,7 @@ const glob = require('glob');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
+const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
 
 dotenv.config();
@@ -19,15 +20,36 @@ dotenv.config({path: '.env.default'});
  * @returns {object}
  */
 module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
-  entry:
-    env && env.NODE_ENV === 'development'
-      ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
-      : './packages/webex',
+  entry: {
+    webex: {
+      import:
+        env && env.NODE_ENV === 'development'
+          ? `${path.resolve(__dirname)}/packages/webex/src/index.js`
+          : './packages/webex',
+      library: {
+        name: 'Webex',
+        type: 'umd',
+      },
+    },
+    meetings: {
+      import: `${path.resolve(__dirname)}/packages/webex/src/meetings.js`,
+      library: {
+        name: 'Webex',
+        type: 'umd',
+      },
+    },
+    calling: {
+      import: `${path.resolve(__dirname)}/packages/webex/src/calling.js`,
+      library: {
+        name: 'Calling',
+        type: 'umd',
+        export: 'default',
+      },
+    },
+  },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
-    filename: 'webex.min.js',
-    library: 'Webex',
-    libraryTarget: 'umd',
+    filename: '[name].min.js',
     sourceMapFilename: '[file].map',
     path:
       env && env.umd
@@ -150,5 +172,16 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
             },
           }),
         ]),
+    new CircularDependencyPlugin({
+      // exclude detection of files based on a RegExp
+      exclude: /a\.js|node_modules/,
+      // add errors to webpack instead of warnings
+      failOnError: false,
+      // allow import cycles that include an asyncronous import,
+      // e.g. via import(/* webpackMode: "weak" */ './file.js')
+      allowAsyncCycles: false,
+      // set the current working directory for displaying module paths
+      cwd: process.cwd(),
+    }),
   ],
 });

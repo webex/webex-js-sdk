@@ -8,9 +8,7 @@ import Support from '@webex/internal-plugin-support';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 
-describe('plugin-support', function () {
-  this.timeout(20000);
-
+describe('plugin-support', () => {
   let webex;
 
   beforeEach(() => {

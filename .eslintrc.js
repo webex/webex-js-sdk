@@ -14,7 +14,14 @@ module.exports = {
     PACKAGE_VERSION: false,
     WebSocket: false,
   },
-  plugins: ['import', 'eslint-plugin-tsdoc', 'jest', 'prettier', 'chai-friendly'],
+  plugins: [
+    'import',
+    'eslint-plugin-tsdoc',
+    'jest',
+    'prettier',
+    'chai-friendly',
+    'inclusive-language',
+  ],
   extends: [
     'eslint:recommended',
     './eslintrules/index.js',
@@ -52,34 +59,7 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 'off',
         'lines-between-class-members': ['error', 'always', {exceptAfterSingleLine: true}],
         'tsdoc/syntax': 'off', // Todo: remove this before merging pr
-        'valid-jsdoc': [
-          'error',
-          {
-            prefer: {
-              arg: 'param',
-              argument: 'param',
-              return: 'returns',
-              virtual: 'abstract',
-              fires: 'emits',
-            },
-            requireParamDescription: false,
-            requireReturn: true,
-            requireReturnType: true,
-            requireReturnDescription: false,
-          },
-        ],
-        'require-jsdoc': [
-          'warn',
-          {
-            require: {
-              FunctionDeclaration: true,
-              MethodDefinition: true,
-              ClassDeclaration: true,
-              ArrowFunctionExpression: false,
-              FunctionExpression: true,
-            },
-          },
-        ],
+        'prefer-destructuring': ['error', {object: false, array: false}],
       },
     },
     {
@@ -272,6 +252,7 @@ module.exports = {
     'import/no-cycle': 1, // TODO: Fix this in a later PR
     'class-methods-use-this': 1, // TODO: Fix this in a later PR
     'import/no-extraneous-dependencies': 1, // TODO: Fix this in a later PR
+    'inclusive-language/use-inclusive-words': 'error',
   },
 
   settings: {
@@ -300,6 +281,7 @@ module.exports = {
     'webex-core.js',
     'ediscovery.js',
     'CHANGELOG.md',
+    '*.md',
     '*.json',
     '**/*.json',
     '*.lock',

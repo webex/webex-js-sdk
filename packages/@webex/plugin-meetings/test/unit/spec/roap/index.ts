@@ -113,6 +113,8 @@ describe('Roap', () => {
           roapMessage: expectedRoapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
           locusMediaRequest: meeting.locusMediaRequest,
         }));

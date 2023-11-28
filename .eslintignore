@@ -42,3 +42,5 @@ yarn.lock
 *.md
 *.json
 *.html
+packages/calling/calling/docs/
+jest.global.d.ts

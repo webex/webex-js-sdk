@@ -3,7 +3,8 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {readExifData, orient, updateImageOrientation} from '@webex/helper-image';
+import {readExifData, updateImageOrientation} from '@webex/helper-image';
+import {orient} from './../../../src/orient';
 import fileHelper from '@webex/test-helper-file';
 import sinon from 'sinon';
 import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
@@ -13,8 +14,8 @@ describe('helper-image', () => {
   xdescribe('readExifData()', () => {
     let buffer;
 
-    browserOnly(before)(() =>
-      fileHelper.fetch('/Portrait_7.jpg').then((resFile) => {
+    browserOnly(beforeAll)(() => fileHelper.fetch('/Portrait_7.jpg')
+      .then((resFile) => {
         /* global FileReader */
         const fileReader = new FileReader();
 
@@ -29,8 +30,8 @@ describe('helper-image', () => {
       })
     );
 
-    nodeOnly(before)(() =>
-      fileHelper.fetch('/Portrait_7.jpg').then((resFile) => {
+    nodeOnly(beforeAll)(() => fileHelper.fetch('/Portrait_7.jpg')
+      .then((resFile) => {
         buffer = resFile;
       })
     );
@@ -79,8 +80,8 @@ describe('helper-image', () => {
   browserOnly(describe)('updateImageOrientation()', () => {
     let file;
 
-    before(() =>
-      fileHelper.fetch('/Portrait_7.jpg').then((resFile) => {
+    beforeAll(() => fileHelper.fetch('/Portrait_7.jpg')
+      .then((resFile) => {
         file = resFile;
         file.displayName = 'Portrait_7.jpg';
         file.mimeType = 'image/jpeg';

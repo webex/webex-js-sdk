@@ -601,12 +601,12 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isTranscriptionSupported(), true);
         });
       });
-      describe('#receiveTranscription', () => {
+      describe('#startTranscription', () => {
         it('should invoke subscribe method to invoke the callback', () => {
           meeting.monitorTranscriptionSocketConnection = sinon.stub();
           meeting.initializeTranscription = sinon.stub();
 
-          meeting.receiveTranscription().then(() => {
+          meeting.startTranscription().then(() => {
             assert.equal(true, false);
             assert.calledOnce(meeting.initializeTranscription);
             assert.calledOnce(meeting.monitorTranscriptionSocketConnection);
@@ -617,7 +617,7 @@ describe('plugin-meetings', () => {
           meeting.request = sinon.stub().returns(Promise.reject());
 
           try {
-            await meeting.receiveTranscription();
+            await meeting.startTranscription();
           } catch (err) {
             assert(err, {});
           }
@@ -820,6 +820,13 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
+          });
+          it('should invoke `startTranscription()` if receiveTranscription is set to true', async () => {
+            meeting.isTranscriptionSupported = sinon.stub().returns(true);
+            meeting.startTranscription = sinon.stub().returns(Promise.resolve());
+
+            await meeting.join({receiveTranscription: true});
+            assert.calledOnce(meeting.startTranscription);
           });
 
           it('should not create new correlation ID on join immediately after create', async () => {
@@ -5321,6 +5328,16 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
+
+        it('transcription should start when configured when guest admitted', (done) => {
+          meeting.isTranscriptionSupported = sinon.stub().returns(true);
+          meeting.receiveTranscription = sinon.stub().returns(true);
+          meeting.startTranscription = sinon.stub();
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+          assert.calledOnce(meeting.startTranscription);
+          done();
+        });
       });
 
       describe('#setUpBreakoutsListener', () => {
@@ -5628,6 +5645,38 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setupLocusControlsListener', () => {
+        it('transcription should start when meeting transcribe state is updated with active transcribing', (done) => {
+          const payload = {caption: true, transcribing: true};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = null;
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.calledOnce(meeting.startTranscription);
+          done();
+        })
+
+        it('transcription should stop when meeting transcribe state is updated with inactive transcribing', (done) => {
+          const payload = {caption: false, transcribing: false};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = {};
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.notCalled(meeting.startTranscription);
+          assert.calledTwice(TriggerProxy.trigger);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            'meeting:receiveTranscription:stopped',
+            payload
+          );
+          done();
+        })
+      })
+
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
@@ -5717,7 +5766,6 @@ describe('plugin-meetings', () => {
           done();
         });
       });
-
       describe('#setUpLocusInfoMediaInactiveListener', () => {
         it('listens to disconnect due to un activity ', (done) => {
           TriggerProxy.trigger.reset();
@@ -6220,11 +6268,47 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setUpLocusInfoMeetingInfoListener', () => {
+        let inMeetingActionsSetSpy;
+        let canUserLockSpy;
+        let canUserUnlockSpy;
+        let canUserStartSpy;
+        let canUserStopSpy;
+        let canUserPauseSpy;
+        let canUserResumeSpy;
+        let canSetMuteOnEntrySpy;
+        let canUnsetMuteOnEntrySpy;
+        let canSetDisallowUnmuteSpy;
+        let canUnsetDisallowUnmuteSpy;
+        let canUserRaiseHandSpy;
+        let bothLeaveAndEndMeetingAvailableSpy;
+        let canUserLowerAllHandsSpy;
+        let canUserLowerSomeoneElsesHandSpy;
+        let waitingForOthersToJoinSpy;
         let locusInfoOnSpy;
         let handleDataChannelUrlChangeSpy;
         let updateMeetingActionsSpy;
 
         beforeEach(() => {
+          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
+          canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
+          canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
+          canUserStartSpy = sinon.spy(RecordingUtil, 'canUserStart');
+          canUserStopSpy = sinon.spy(RecordingUtil, 'canUserStop');
+          canUserPauseSpy = sinon.spy(RecordingUtil, 'canUserPause');
+          canUserResumeSpy = sinon.spy(RecordingUtil, 'canUserResume');
+          canSetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canSetMuteOnEntry');
+          canUnsetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canUnsetMuteOnEntry');
+          canSetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canSetDisallowUnmute');
+          canUnsetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canUnsetDisallowUnmute');
+          inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
+          canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
+          canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
+          bothLeaveAndEndMeetingAvailableSpy = sinon.spy(
+            MeetingUtil,
+            'bothLeaveAndEndMeetingAvailable'
+          );
+          canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
+          waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           updateMeetingActionsSpy = sinon.spy(meeting, 'updateMeetingActions');
@@ -6264,6 +6348,22 @@ describe('plugin-meetings', () => {
           const callback = locusInfoOnSpy.thirdCall.args[1];
 
           callback();
+
+          assert.calledWith(canUserLockSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserUnlockSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserStartSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
+          assert.calledWith(canSetMuteOnEntrySpy, payload.info.userDisplayHints);
+          assert.calledWith(canUnsetMuteOnEntrySpy, payload.info.userDisplayHints);
+          assert.calledWith(canSetDisallowUnmuteSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUnsetDisallowUnmuteSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
+          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
+          assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
 
           assert.calledWith(updateMeetingActionsSpy);
           assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);

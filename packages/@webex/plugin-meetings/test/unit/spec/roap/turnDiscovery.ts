@@ -83,6 +83,8 @@ describe('TurnDiscovery', () => {
       },
       locusSelfUrl: testMeeting.selfUrl,
       mediaId: expectedMediaId,
+      audioMuted: testMeeting.audio?.isLocallyMuted(),
+      videoMuted: testMeeting.video?.isLocallyMuted(),
       meetingId: testMeeting.id,
       locusMediaRequest: testMeeting.locusMediaRequest,
     };

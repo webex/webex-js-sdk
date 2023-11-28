@@ -11,6 +11,7 @@ import {base64, oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, isEmpty, omit} from 'lodash';
 import uuid from 'uuid';
+import * as jose from 'jose'
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const EMPTY_OBJECT_STRING = base64.encode(JSON.stringify({}));
@@ -227,6 +228,36 @@ const Authorization = WebexPlugin.extend({
   logout(options = {}) {
     if (!options.noRedirect) {
       this.webex.getWindow().location = this.webex.credentials.buildLogoutUrl(options);
+    }
+  },
+
+  /**
+   * Creates a jwt user token
+   * @param {object} options
+   * @param {String} options.issuer Guest Issuer ID
+   * @param {String} options.secretId Guest Secret ID
+   * @param {String} options.displayName Guest Display Name | optional
+   * @param {String} options.expiresIn
+   * @returns {Promise<object>}
+   */
+  async createJwt({issuer, secretId, displayName, expiresIn}) {
+    const secret = Buffer.from(secretId, 'base64');
+    const payload = {
+      "sub": `guest-user-${uuid()}`,
+      "iss": issuer,
+      "name": displayName || `Guest User - ${uuid()}`
+    };
+    const alg = 'HS256';
+
+    try {
+      const jwtToken = await new jose.SignJWT(payload)
+        .setProtectedHeader({alg})
+        .setExpirationTime(expiresIn)
+        .sign(secret);
+
+      return Promise.resolve({jwt: jwtToken});
+    } catch (e) {
+      return Promise.reject(e);
     }
   },
 

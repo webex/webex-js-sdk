@@ -94,25 +94,34 @@ function initializeJwtAuth() {
       // let's make sure we don't reload the page when we submit the form
       event.preventDefault();
 
-      const jwt = document.getElementById('jwt').value;
+      const jwtPayload = {
+        issuer: document.getElementById('issuer').value,
+        secretId: document.getElementById('secret').value,
+        displayName: document.getElementById('name').value,
+        expiresIn: "12h"
+      };
 
       jwtAuthenticateButton.disabled = true;
       // initiate the login sequence if not authenticated.
-      webex.authorization.requestAccessTokenFromJwt({jwt}).then(() => {
-        if (webex.canAuthorize) {
-          // Authorization is successful
+      webex.authorization.createJwt(jwtPayload)
+        .then(({jwt}) => {
+          webex.authorization.requestAccessTokenFromJwt({jwt})
+            .then(() => {
+              if (webex.canAuthorize) {
+                // Authorization is successful
 
-          // your app logic goes here
+                // your app logic goes here
 
-          // Change Authentication status to `Authenticated`
-          const authStatus = document.getElementById('jwt-authentication-status');
+                // Change Authentication status to `Authenticated`
+                const authStatus = document.getElementById('jwt-authentication-status');
 
-          authStatus.innerText = 'Authenticated';
-          authStatus.style = 'color: green';
-        }
-      })
+                authStatus.innerText = 'Authenticated';
+                authStatus.style = 'color: green';
+              }
+            })
+        })
         .catch((e) => {
-        // Do something with the auth error here
+          // Do something with the auth error here
           console.error(e);
           jwtAuthenticateButton.disabled = false;
         });

@@ -1,0 +1,486 @@
+name: Pull Request CI
+run-name: ${{ github.actor }} is running Pull Request CI
+
+on:
+  pull_request_target:
+    types: [opened, labeled, reopened, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  rid: ${{ github.run_id }}-${{ github.run_number }}
+  SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
+  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
+  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
+  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
+  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Labels
+        run: |
+          HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
+          FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
+
+          HAS_VALIDATED_LABEL=${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
+          VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
+
+          echo from base $FROM_BASE
+          echo validated $VALIDATED
+
+          if [[ $FROM_BASE == 1 || $VALIDATED == 1 ]]
+          then
+            echo 'pull request is validated, running tests'
+            exit 0
+          else
+            echo 'pull request is not validated, exiting'
+            exit 1
+          fi
+
+
+  initialize:
+    name: Initialize Project
+    needs: validate
+    runs-on: ubuntu-latest
+
+    outputs:
+      lock-hash: ${{ steps.lock-hash.outputs.hash }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Write Environment Variables
+        run: |
+          touch ./.env
+          echo "SKIP_FLAKY_TESTS=\"${{ secrets.SKIP_FLAKY_TESTS }}\"" >> ./.env
+          echo "WEBEX_APPID_ORGID=\"${{ secrets.WEBEX_APPID_ORGID }}\"" >> ./.env
+          echo "WEBEX_APPID_SECRET=\"${{ secrets.WEBEX_APPID_SECRET }}\"" >> ./.env
+          echo "WEBEX_CLIENT_ID=\"${{ secrets.WEBEX_CLIENT_ID }}\"" >> ./.env
+          echo "WEBEX_CLIENT_SECRET=\"${{ secrets.WEBEX_CLIENT_SECRET }}\"" >> ./.env
+
+      - name: Cache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - id: validate-dependencies
+        name: Validate Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - id: lock-hash
+        name: Store Lock Hash
+        run: echo "hash=$(echo ${{ hashFiles('./yarn.lock') }})" >> $GITHUB_OUTPUT
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Validate Lock Hash
+        run: |
+          PREV_HASH=${{ steps.lock-hash.outputs.hash }}
+          NEXT_HASH=${{ hashFiles('./yarn.lock') }}
+
+          VALIDATED=0; [ "$PREV_HASH" == "$NEXT_HASH" ] && VALIDATED=1
+
+          if [[ $VALIDATED == 1 ]]
+          then
+            echo 'lock file has been validated, proceeding'
+            exit 0
+          else
+            echo 'lock file has changed after initialization'
+            echo 'usually, updating and ammending the lock file in this pull request can resolve this issue'
+            exit 1
+          fi
+
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        if: steps.validate-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+  build:
+    name: Build Packages
+    needs: initialize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build
+        run: yarn workspaces foreach --parallel --verbose run build:src
+
+      - name: Cache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+
+  generate-package-matrix:
+    name: Determine Changed Packages
+    needs: build
+    runs-on: ubuntu-latest
+
+    outputs:
+      changed: ${{ steps.generate-package-matrix-changed.outputs.changed }}
+      recursive: ${{ steps.generate-package-matrix-recursive.outputs.recursive }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Update Main Branch
+        run: git fetch origin ${{ github.event.pull_request.base.ref }} --unshallow
+
+      - id: generate-package-matrix-recursive
+        name: Generate Package Matrix
+        run: echo "recursive=$(yarn package-tools list --private --recursive --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
+
+      - id: generate-package-matrix-changed
+        name: Generate Package Matrix
+        run: echo "changed=$(yarn package-tools list --private --since ${{ github.event.pull_request.base.sha }})" >> $GITHUB_OUTPUT
+
+      - name: Display Package Matrix
+        run: |
+          echo "changed packages - ${{ steps.generate-package-matrix-changed.outputs.changed}}"
+          echo "changed packages and dependents - ${{ steps.generate-package-matrix-recursive.outputs.recursive }}"
+
+
+  test-browser:
+    name: Test - Browser
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Browser
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
+
+
+  test-coverage:
+    name: Test - Coverage
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Coverage
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:coverage
+
+
+  test-integration:
+    name: Test - Integration
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Integration
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
+
+
+  test-style:
+    name: Test - Style
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Style
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:style
+
+  test-syntax:
+    name: Test - Syntax
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Syntax
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}'  run test:syntax
+
+
+  test-unit:
+    name: Test - Unit
+    needs: generate-package-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Environment Variables
+        uses: actions/cache@v3
+        with:
+          path: './.env'
+          key: env-${{ env.rid }}
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v3
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Test - Unit
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit

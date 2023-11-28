@@ -1,0 +1,25 @@
+{
+  "name": "@webex/jasmine-config",
+  "private": true,
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=3.0.0"
+  },
+  "type": "commonjs",
+  "main": "./static/index.js",
+  "files": [
+    "./static"
+  ],
+  "dependencies": {
+    "jasmine-spec-reporter": "^7.0.0"
+  },
+  "devDependencies": {
+    "@webex/eslint-config": "workspace:^",
+    "eslint": "^8.35.0"
+  },
+  "peerDependencies": {
+    "jasmine": "^4.5.0"
+  }
+}

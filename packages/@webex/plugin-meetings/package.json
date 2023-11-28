@@ -1,6 +1,5 @@
 {
   "name": "@webex/plugin-meetings",
-  "version": "3.0.0-beta.261",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -29,10 +28,24 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "deploy:npm": "yarn npm publish",
+    "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
+    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
+    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@types/jsdom": "^21",
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
     "@webex/plugin-meetings": "workspace:^",
+    "@webex/plugin-rooms": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
@@ -40,7 +53,10 @@
     "@webex/test-helper-test-users": "workspace:^",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
+    "eslint": "^8.24.0",
+    "jsdom": "19.0.0",
     "jsdom-global": "3.0.2",
+    "prettier": "^2.7.1",
     "sinon": "^9.2.4",
     "typed-emitter": "^2.1.0",
     "typescript": "^4.7.4"
@@ -58,6 +74,7 @@
     "@webex/media-helpers": "workspace:^",
     "@webex/plugin-people": "workspace:^",
     "@webex/plugin-rooms": "workspace:^",
+    "@webex/ts-sdp": "1.0.1",
     "@webex/webex-core": "workspace:^",
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",

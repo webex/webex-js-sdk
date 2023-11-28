@@ -14,5 +14,3 @@ enum Control {
 }
 
 export {Control, Setting};
-
-export default Setting;

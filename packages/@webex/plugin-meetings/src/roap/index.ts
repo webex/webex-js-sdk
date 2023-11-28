@@ -99,6 +99,8 @@ export default class Roap extends StatelessWebexPlugin {
           roapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: options.mediaId,
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
           meetingId: meeting.id,
           locusMediaRequest: meeting.locusMediaRequest,
         })
@@ -162,6 +164,8 @@ export default class Roap extends StatelessWebexPlugin {
         roapMessage,
         locusSelfUrl: meeting.selfUrl,
         mediaId: options.mediaId,
+        audioMuted: meeting.audio?.isLocallyMuted(),
+        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
         locusMediaRequest: meeting.locusMediaRequest,
       })
@@ -203,6 +207,8 @@ export default class Roap extends StatelessWebexPlugin {
           preferTranscoding: !meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
           ipVersion: MeetingUtil.getIpVersion(meeting.webex),
+          audioMuted: meeting.audio?.isLocallyMuted(),
+          videoMuted: meeting.video?.isLocallyMuted(),
         })
         .then(({locus, mediaConnections}) => {
           if (mediaConnections) {

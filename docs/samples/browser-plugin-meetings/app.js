@@ -39,6 +39,8 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
+const guestName = document.querySelector('#guest-name');
+const getGuestToken = document.querySelector('#get-guest-token');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -156,6 +158,8 @@ function initWebex(e) {
   integrationEnv.disabled = true;
   tokenElm.disabled = true;
   saveElm.disabled = true;
+  getGuestToken.disabled = true;
+  guestName.disable = true;
   authStatusElm.innerText = 'initializing...';
 
   webex = window.webex = Webex.init({
@@ -235,6 +239,24 @@ function unregister() {
         'Registered' :
         'Not Registered';
     });
+}
+
+
+async function getGuestAccessToken() {
+
+  await axios({
+    method: 'post',
+    url: 'https://2j1g168nf8.execute-api.us-east-1.amazonaws.com/dev/guest',
+    data: {
+      name: guestName.value
+    }
+  }).then(function (response) {
+    console.log("guest token response", response.data.body.token);
+    tokenElm.value = response.data.body.token
+  }).catch((e) =>{
+    console.error("Error fetching guest", e)
+  })
+
 }
 
 // Meetings Management Section --------------------------------------------------
@@ -761,6 +783,10 @@ function cleanUpMedia() {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
+      
+      if(elem.id === "local-video") {
+        clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
+      }
     }
   });
 }
@@ -3547,6 +3573,16 @@ function rejectMeeting() {
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
 window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  const meetingSdk = document.createElement('script');
+  meetingSdk.type = 'text/javascript';
+  if(params.get('meetings') !== null){
+    meetingSdk.src = '../meetings.min.js';
+  }
+  else{
+    meetingSdk.src = '../webex.min.js';
+  }
+  document.body.appendChild(meetingSdk);
   addPlayIfPausedEvents(htmlMediaElements);
   updateMultistreamUI();
 };

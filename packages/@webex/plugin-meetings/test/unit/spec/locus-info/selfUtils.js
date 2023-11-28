@@ -3,7 +3,7 @@ import Sinon from 'sinon';
 import {cloneDeep} from 'lodash';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 
-import {self} from './selfConstant';
+import {self} from './lib/selfConstant';
 
 describe('plugin-meetings', () => {
   describe('selfUtils', () => {

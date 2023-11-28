@@ -41,7 +41,7 @@ require('@babel/register')({
 const webpackConfig = require('./webpack.config')();
 
 const PORT = process.env.PORT || 8000;
-const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
+const CI = !!(process.env.JENKINS || process.env.CI || process.env.SAUCE);
 
 exports.config = {
   //

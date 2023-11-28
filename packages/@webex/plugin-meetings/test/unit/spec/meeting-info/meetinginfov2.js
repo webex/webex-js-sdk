@@ -787,12 +787,17 @@ describe('plugin-meetings', () => {
         const {invitee} = setup();
 
         const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation
+        });
+
+        await meetingInfo.createAdhocSpaceMeeting(conversationUrl);
 
         assert.calledWith(
-          webex.internal.conversation.get,
-          {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true}
-        );
+          webex.request,
+          {uri:conversationUrl, qs: {includeParticipants: true}, disableTransform: true}
+        )
 
         assert.calledWith(webex.request, {
           method: 'POST',

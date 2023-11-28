@@ -14,22 +14,25 @@ const {glob} = require('../../util/package');
 
 const {gatherFiles} = require('./common');
 const {test: mochaTest} = require('./mocha');
+const {test: jestTest} = require('./jest');
 const {test: karmaTest} = require('./karma');
 
 /* eslint-disable complexity */
 
-exports.testPackage = async function testPackage(options, packageName) {
+exports.testPackage = async function testPackage(options, packageName, onMocha) {
   // Move NODE_ENV override into the exported function since babel-node is processing everything above
   process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
-  const currentPackageString = `===== Testing ${packageName} =====`;
+  let currentPackageString = `===== Testing ${packageName} =====`;
+  if(options.node || options.unit)
+   currentPackageString = `===== Testing with ${onMocha ? 'Mocha' : 'Jest'} ${packageName} =====`;
 
   console.info(`\n${'='.repeat(currentPackageString.length)}`);
   console.info(currentPackageString);
   console.info(`${'='.repeat(currentPackageString.length)}\n`);
 
   if (options.node || options.unit) {
-    await runNodeSuite(options, packageName);
+    await runNodeSuite(options, packageName, onMocha);
   }
 
   if (options.browser || options.integration) {
@@ -46,7 +49,7 @@ exports.testPackage = async function testPackage(options, packageName) {
   }
 };
 
-async function runNodeSuite(options, packageName) {
+async function runNodeSuite(options, packageName, onMocha) {
   debug(`Running node suite for ${packageName}`);
   // gatherFiles obtaines absolute path of all files under unit test folder
   const files = await gatherFiles('unit', packageName);
@@ -59,9 +62,13 @@ async function runNodeSuite(options, packageName) {
 
   /**
    * mochaTest is imported from lib/test/mocha
-   * this method in turn creates mocha object and run tests
+   * jestTest is imported from lib/test/jest
+   * this method in turn creates mocha/jest object and run tests
+   * temporarily we are running "plugin-meetings" and "webex" on mocha and all other
+   * packages on jest and will migrate to complete jest once all test cases are fixed
    */
-  await mochaTest(options, packageName, 'node', files);
+  if (onMocha) await mochaTest(options, packageName, 'node', files);
+  else await jestTest(files);
 
   debug(`Finished node suite for ${packageName}`);
 }

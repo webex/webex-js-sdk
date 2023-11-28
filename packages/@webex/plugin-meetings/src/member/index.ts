@@ -260,7 +260,6 @@ export default class Member {
       audio: null,
       video: null,
     };
-
     // TODO: more participant types
     // such as native client, web client, is a device, what type of phone, etc
     this.processParticipant(participant);
