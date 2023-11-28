@@ -41,7 +41,6 @@ import {
   mockCatalogUSInt,
   mockCatalogUS,
   mockCatalogEUInt,
-  mockUSServiceHosts,
 } from './callingClientFixtures';
 import Line from './line';
 import {filterMobiusUris} from '../common/Utils';

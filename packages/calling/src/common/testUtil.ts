@@ -7,12 +7,6 @@
 */
 import {MediaConnectionConfig} from '@webex/internal-media-core';
 import platform from 'platform';
-import {
-  mockEUIntServiceHosts,
-  mockEUServiceHosts,
-  mockIntServiceHosts,
-  mockUSServiceHosts,
-} from 'CallingClient/callingClientFixtures';
 import {MobiusServers} from './types';
 
 const MediaSDKMock = jest.createMockFromModule<typeof import('@webex/internal-media-core')>(
