@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.265](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.264...v3.0.0-beta.265) (2023-11-29)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** bump event dictionary version ([#3216](https://github.com/webex/webex-js-sdk/issues/3216)) ([0ba9408](https://github.com/webex/webex-js-sdk/commit/0ba94087e75d454e72b4c35e5d08330c4c0c6a99))
+
 ## [3.0.0-beta.264](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.263...v3.0.0-beta.264) (2023-11-27)
 
 
