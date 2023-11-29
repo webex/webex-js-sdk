@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.264](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.263...v3.0.0-beta.264) (2023-11-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** screen share when shared by same user different client ([#3177](https://github.com/webex/webex-js-sdk/issues/3177)) ([a52eb2b](https://github.com/webex/webex-js-sdk/commit/a52eb2b863d44f816c3bd8742885dd39de18120b))
+
+## [3.0.0-beta.263](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.262...v3.0.0-beta.263) (2023-11-27)
+
+
+### Bug Fixes
+
+* added metrics to addMedia success/failure metrics ([#3220](https://github.com/webex/webex-js-sdk/issues/3220)) ([083f32b](https://github.com/webex/webex-js-sdk/commit/083f32b02cae7ae32f5519163cb287d60a03bf69))
+
+## [3.0.0-beta.262](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.261...v3.0.0-beta.262) (2023-11-27)
+
+
+### Features
+
+* **meeting-info-fail:** destroy meeting on meeting info fail if flag is true ([#3200](https://github.com/webex/webex-js-sdk/issues/3200)) ([75bccb2](https://github.com/webex/webex-js-sdk/commit/75bccb220c3fa9f9df9d1af1c612d5ba67854c77))
+
+## [3.0.0-beta.261](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.260...v3.0.0-beta.261) (2023-11-27)
+
+
+### Bug Fixes
+
+* **media-helpers:** tsconfig for creating types setup ([#3218](https://github.com/webex/webex-js-sdk/issues/3218)) ([dff753d](https://github.com/webex/webex-js-sdk/commit/dff753d68502a85b60b6068a888ef7cdcd47593e))
+
 ## [3.0.0-beta.260](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.259...v3.0.0-beta.260) (2023-11-24)
 
 

@@ -2254,6 +2254,7 @@ export default class Meeting extends StatelessWebexPlugin {
       if (
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
         contentShare.disposition === previousContentShare?.disposition &&
+        contentShare.deviceUrlSharing === previousContentShare.deviceUrlSharing &&
         whiteboardShare.beneficiaryId === previousWhiteboardShare?.beneficiaryId &&
         whiteboardShare.disposition === previousWhiteboardShare?.disposition &&
         whiteboardShare.resourceUrl === previousWhiteboardShare?.resourceUrl
@@ -2276,10 +2277,20 @@ export default class Meeting extends StatelessWebexPlugin {
       // LOCAL - check if we started sharing content
       else if (
         this.selfId === contentShare.beneficiaryId &&
-        contentShare.disposition === FLOOR_ACTION.GRANTED
+        contentShare.disposition === FLOOR_ACTION.GRANTED &&
+        contentShare.deviceUrlSharing === this.deviceUrl
       ) {
         // CONTENT - sharing content local
         newShareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
+      }
+      // SAME USER REMOTE - check if same user started sharing content from another client
+      else if (
+        this.selfId === contentShare.beneficiaryId &&
+        contentShare.disposition === FLOOR_ACTION.GRANTED &&
+        contentShare.deviceUrlSharing !== this.deviceUrl
+      ) {
+        // CONTENT - same user sharing content remote
+        newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
       }
       // If we did not hit the cases above, no one is sharng content, so we check if we are sharing whiteboard
       // There is no concept of local/remote share for whiteboard
@@ -5817,12 +5828,16 @@ export default class Meeting extends StatelessWebexPlugin {
         return Promise.resolve();
       })
       .then(() => this.mediaProperties.getCurrentConnectionType())
-      .then((connectionType) => {
+      .then(async (connectionType) => {
+        // @ts-ignore
+        const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
+
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
           correlation_id: this.correlationId,
           locus_id: this.locusUrl.split('/').pop(),
           connectionType,
           isMultistream: this.isMultistream,
+          ...reachabilityStats,
         });
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
@@ -5838,8 +5853,11 @@ export default class Meeting extends StatelessWebexPlugin {
         // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
         this.remoteMediaManager?.logAllReceiveSlots();
       })
-      .catch((error) => {
+      .catch(async (error) => {
         LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
+        // @ts-ignore
+        const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
           correlation_id: this.correlationId,
@@ -5865,38 +5883,37 @@ export default class Meeting extends StatelessWebexPlugin {
               ?.iceConnectionState ||
             this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
             'unknown',
+          ...reachabilityMetrics,
         });
 
         // Clean up stats analyzer, peer connection, and turn off listeners
-        const stopStatsAnalyzer = this.statsAnalyzer
-          ? this.statsAnalyzer.stopAnalyzer()
-          : Promise.resolve();
+        if (this.statsAnalyzer) {
+          await this.statsAnalyzer.stopAnalyzer();
+        }
 
-        return stopStatsAnalyzer.then(() => {
-          this.statsAnalyzer = null;
+        this.statsAnalyzer = null;
 
-          if (this.mediaProperties.webrtcMediaConnection) {
-            this.closePeerConnections();
-            this.unsetPeerConnections();
-          }
+        if (this.mediaProperties.webrtcMediaConnection) {
+          this.closePeerConnections();
+          this.unsetPeerConnections();
+        }
 
-          // Upload logs on error while adding media
-          Trigger.trigger(
-            this,
-            {
-              file: 'meeting/index',
-              function: 'addMedia',
-            },
-            EVENTS.REQUEST_UPLOAD_LOGS,
-            this
-          );
+        // Upload logs on error while adding media
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'addMedia',
+          },
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          this
+        );
 
-          if (error instanceof Errors.SdpError) {
-            this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
-          }
+        if (error instanceof Errors.SdpError) {
+          this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
+        }
 
-          throw error;
-        });
+        throw error;
       });
   }
 

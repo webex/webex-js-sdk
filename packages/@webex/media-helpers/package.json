@@ -1,6 +1,6 @@
 {
   "name": "@webex/media-helpers",
-  "version": "3.0.0-beta.260",
+  "version": "3.0.0-beta.264",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/@webex/media-helpers"
+  },
+  "scripts": {
+    "build:src": "yarn run -T tsc --declaration true --declarationDir ./dist"
   },
   "engines": {
     "node": ">=16"

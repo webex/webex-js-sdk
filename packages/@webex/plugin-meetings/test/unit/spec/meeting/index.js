@@ -44,14 +44,12 @@ import {
   StreamEventNames,
 } from '@webex/media-helpers';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
-import * as MuteStateModule from '@webex/plugin-meetings/src/meeting/muteState';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Members from '@webex/plugin-meetings/src/members';
 import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
-import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/request';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
@@ -81,7 +79,6 @@ import {
   UserNotJoinedError,
   MeetingNotActiveError,
   UserInLobbyError,
-  NoMediaEstablishedYetError,
 } from '../../../../src/common/errors/webex-errors';
 import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-error';
 import ParameterError from '../../../../src/common/errors/parameter';
@@ -89,18 +86,13 @@ import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError from '../../../../src/common/errors/permission';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
-import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
-import {ANNOTATION_POLICY} from '../../../../src/annotation/constants';
 
-
-// Non-stubbed function
-const {getDisplayMedia} = Media;
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -228,6 +220,11 @@ describe('plugin-meetings', () => {
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
+    webex.meetings.reachability = {
+      isAnyPublicClusterReachable: sinon.stub().resolves(true),
+      getReachabilityResults: sinon.stub().resolves(undefined),
+      getReachabilityMetrics: sinon.stub().resolves({}),
+    };
     webex.internal.llm.on = sinon.stub();
     membersSpy = sinon.spy(MembersImport, 'default');
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
@@ -1170,8 +1167,15 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('should reset the statsAnalyzer to null if addMedia throws an error', async () => {
+        it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2'
+            }),
+          };
+
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
@@ -1195,6 +1199,8 @@ describe('plugin-meetings', () => {
             signalingState: 'unknown',
             connectionState: 'unknown',
             iceConnectionState: 'unknown',
+            someReachabilityMetric1: 'some value1',
+            someReachabilityMetric2: 'some value2',
           });
         });
 
@@ -1546,6 +1552,12 @@ describe('plugin-meetings', () => {
 
         it('should send ADD_MEDIA_SUCCESS metrics', async () => {
           meeting.meetingState = 'ACTIVE';
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2'
+            }),
+          };
           await meeting.addMedia({
             mediaSettings: {},
           });
@@ -1556,6 +1568,8 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             isMultistream: false,
+            someReachabilityMetric1: 'some value1',
+            someReachabilityMetric2: 'some value2'
           });
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
@@ -1792,10 +1806,6 @@ describe('plugin-meetings', () => {
           meeting.setMercuryListener = sinon.stub();
           meeting.locusInfo.onFullLocus = sinon.stub();
           meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
-          meeting.webex.meetings.reachability = {
-            isAnyPublicClusterReachable: sinon.stub().resolves(true),
-            getReachabilityResults: sinon.stub().resolves(undefined),
-          };
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
@@ -7203,6 +7213,7 @@ describe('plugin-meetings', () => {
         describe('setUpLocusMediaSharesListener', () => {
           beforeEach(() => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
+            meeting.deviceUrl = 'my-web-url';
           });
 
           const USER_IDS = {
@@ -7218,13 +7229,23 @@ describe('plugin-meetings', () => {
               'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
+          const DEVICE_URL = {
+            LOCAL_WEB: 'my-web-url',
+            LOCAL_MAC: 'my-mac-url',
+            REMOTE_A: 'remote-user-A-url',
+            REMOTE_B: 'remote-user-B-url',
+          };
+
+
           const generateContent = (
             beneficiaryId = null,
             disposition = null,
+            deviceUrlSharing = null,
             annotation = undefined
           ) => ({
             beneficiaryId,
             disposition,
+            deviceUrlSharing
           });
           const generateWhiteboard = (
             beneficiaryId = null,
@@ -7242,7 +7263,8 @@ describe('plugin-meetings', () => {
             otherBeneficiaryId,
             annotation,
             url,
-            shareInstanceId
+            shareInstanceId,
+            deviceUrlSharing,
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -7275,6 +7297,7 @@ describe('plugin-meetings', () => {
                 newPayload.current.content = generateContent(
                   beneficiaryId,
                   FLOOR_ACTION.GRANTED,
+                  deviceUrlSharing,
                   annotation
                 );
 
@@ -7320,8 +7343,9 @@ describe('plugin-meetings', () => {
                       functionName: 'stopWhiteboardShare',
                     });
                   }
-
-                  if (beneficiaryId === USER_IDS.ME) {
+                  
+                  // Web client is sharing locally
+                  if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_LOCAL,
                       functionName: 'share',
@@ -7340,7 +7364,7 @@ describe('plugin-meetings', () => {
                   }
                 }
 
-                if (beneficiaryId === USER_IDS.ME) {
+                if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                   shareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
                 } else {
                   shareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
@@ -7423,7 +7447,7 @@ describe('plugin-meetings', () => {
               if (isContent) {
                 newPayload.current.content.disposition = FLOOR_ACTION.RELEASED;
 
-                if (beneficiaryId === USER_IDS.ME) {
+                if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
                     functionName: 'localShare',
@@ -7527,7 +7551,6 @@ describe('plugin-meetings', () => {
                 const {functionName, eventName, eventPayload} = share[idx];
                 const fileName =
                   functionName === 'remoteShare' ? 'meetings/index' : 'meeting/index';
-
                 assert.deepEqual(shareCallArgs[1], {
                   file: fileName,
                   function: functionName,
@@ -7686,7 +7709,7 @@ describe('plugin-meetings', () => {
                 true,
                 false,
                 USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
+                RESOURCE_URLS.WHITEBOARD_A,
               );
               const data2 = generateData(
                 data1.payload,
@@ -7695,7 +7718,7 @@ describe('plugin-meetings', () => {
                 USER_IDS.ME,
                 RESOURCE_URLS.WHITEBOARD_A,
                 true,
-                USER_IDS.ME
+                USER_IDS.ME,
               );
               const data3 = generateData(
                 data2.payload,
@@ -7704,9 +7727,13 @@ describe('plugin-meetings', () => {
                 USER_IDS.ME,
                 undefined,
                 true,
-                USER_IDS.ME
+                USER_IDS.ME,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.LOCAL_WEB,
               );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME, undefined, undefined, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
@@ -7735,7 +7762,11 @@ describe('plugin-meetings', () => {
                 USER_IDS.REMOTE_A,
                 undefined,
                 true,
-                USER_IDS.ME
+                USER_IDS.ME,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.REMOTE_A,
               );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
 
@@ -7766,9 +7797,13 @@ describe('plugin-meetings', () => {
                 USER_IDS.ME,
                 undefined,
                 true,
-                USER_IDS.REMOTE_A
+                USER_IDS.REMOTE_A,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.LOCAL_WEB,
               );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME, undefined, undefined, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
@@ -7797,7 +7832,11 @@ describe('plugin-meetings', () => {
                 USER_IDS.REMOTE_A,
                 undefined,
                 true,
-                USER_IDS.REMOTE_A
+                USER_IDS.REMOTE_A,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.REMOTE_A,
               );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
 
@@ -7828,7 +7867,11 @@ describe('plugin-meetings', () => {
                 USER_IDS.REMOTE_B,
                 undefined,
                 true,
-                USER_IDS.REMOTE_A
+                USER_IDS.REMOTE_A,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.REMOTE_B,
               );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_B);
 
@@ -7838,7 +7881,7 @@ describe('plugin-meetings', () => {
 
           describe('Desktop --> Whiteboard A', () => {
             it('Scenario #1: you share desktop and then share whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
               const data2 = generateData(
                 data1.payload,
                 true,
@@ -7852,7 +7895,7 @@ describe('plugin-meetings', () => {
             });
 
             it('Scenario #2: you share desktop and remote person A shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
               const data2 = generateData(
                 data1.payload,
                 true,
@@ -7866,21 +7909,7 @@ describe('plugin-meetings', () => {
             });
 
             it('Scenario #3: remote person A shares desktop and you share whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #4: remote person A shares desktop and then shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
               const data2 = generateData(
                 data1.payload,
                 true,
@@ -7893,8 +7922,8 @@ describe('plugin-meetings', () => {
               payloadTestHelper([data1, data2, data3]);
             });
 
-            it('Scenario #5: remote person A shares desktop and remote person B shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            it('Scenario #4: remote person A shares desktop and then shares whiteboard', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
               const data2 = generateData(
                 data1.payload,
                 true,
@@ -7906,29 +7935,43 @@ describe('plugin-meetings', () => {
 
               payloadTestHelper([data1, data2, data3]);
             });
+
+            it('Scenario #5: remote person A shares desktop and remote person B shares whiteboard', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_B,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
+              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_B);
+
+              payloadTestHelper([data1, data2, data3]);
+            });
           });
           describe('Desktop A --> Desktop B', () => {
-            it('Scenario #1: you share desktop A and then share desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+            it('Scenario #1: you share desktop using web client and then share using native client', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
+              const data2 = generateData(data1.payload, false, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_MAC);
+              const data4 = generateData(data3.payload, false, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_MAC);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
 
-            it('Scenario #2: you share desktop A and remote person A shares desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A);
+            it('Scenario #2: you share desktop using web client and remote person A shares desktop', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
+              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A) ;
+              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
             });
 
-            it('Scenario #3: remote person A shares desktop A and you share desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.ME);
+            it('Scenario #3: remote person A shares desktop and then you share desktop using web client', () => {
+              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
+              const data2 = generateData(data1.payload, true, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
+              const data3 = generateData(data2.payload, false, true, USER_IDS.ME, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.LOCAL_WEB);
 
               payloadTestHelper([data1, data2, data3]);
             });
@@ -7942,8 +7985,8 @@ describe('plugin-meetings', () => {
             });
 
             it('Scenario #5: remote person A shares desktop A and remote person B shares desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_B);
+              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_A);
+              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_B, undefined, false, undefined, undefined, undefined, undefined, DEVICE_URL.REMOTE_B);
               const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_B);
 
               payloadTestHelper([data1, data2, data3]);
