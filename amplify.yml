@@ -6,6 +6,7 @@ frontend:
         - yarn install --immutable
     build:
       commands:
+        - yarn package-tools sync --tag next
         - yarn run build:local
         - yarn run build:docs
   artifacts:
