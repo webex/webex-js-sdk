@@ -485,6 +485,7 @@ export default class Meeting extends StatelessWebexPlugin {
   resource: string;
   roap: Roap;
   roapSeq: number;
+  secondaryMediaConn: any;
   selfUrl?: string; // comes from Locus, initialized by updateMeetingObject()
   sipUri: string;
   type: string;
@@ -5106,6 +5107,7 @@ export default class Meeting extends StatelessWebexPlugin {
               seq: event.roapMessage.seq,
               mediaId: this.mediaId,
               correlationId: this.correlationId,
+              locusMediaRequest: this.locusMediaRequest,
             }),
             {
               logText: `${LOG_HEADER} Roap OK`,
@@ -5127,6 +5129,7 @@ export default class Meeting extends StatelessWebexPlugin {
               tieBreaker: event.roapMessage.tieBreaker,
               meeting: this, // or can pass meeting ID
               reconnect: this.reconnectionManager.isReconnectInProgress(),
+              locusMediaRequest: this.locusMediaRequest,
             }),
             {
               logText: `${LOG_HEADER} Roap Offer`,
@@ -5147,6 +5150,7 @@ export default class Meeting extends StatelessWebexPlugin {
               seq: event.roapMessage.seq,
               mediaId: this.mediaId,
               correlationId: this.correlationId,
+              locusMediaRequest: this.locusMediaRequest,
             }),
             {
               logText: `${LOG_HEADER} Roap Answer`,
@@ -5184,6 +5188,7 @@ export default class Meeting extends StatelessWebexPlugin {
               errorType: event.roapMessage.errorType,
               mediaId: this.mediaId,
               correlationId: this.correlationId,
+              locusMediaRequest: this.locusMediaRequest,
             }),
             {
               logText: `${LOG_HEADER} Roap Error (${event.roapMessage.errorType})`,
@@ -5396,6 +5401,117 @@ export default class Meeting extends StatelessWebexPlugin {
     );
   };
 
+  setupSecondaryMediaConnectionListeners = () => {
+    this.secondaryMediaConn.webrtcMediaConnection.on(Event.ROAP_STARTED, () => {
+      this.secondaryMediaConn.isRoapInProgress = true;
+    });
+
+    this.secondaryMediaConn.webrtcMediaConnection.on(Event.ROAP_DONE, () => {
+      this.secondaryMediaConn.isRoapInProgress = false;
+    });
+
+    this.secondaryMediaConn.webrtcMediaConnection.on(Event.ROAP_FAILURE, (error) => {
+      LoggerProxy.logger.error('ROAP_FAILURE: ', error);
+    });
+
+    this.secondaryMediaConn.webrtcMediaConnection.on(Event.ROAP_MESSAGE_TO_SEND, (event) => {
+      const LOG_HEADER = `Meeting:index#setupSecondaryMediaConnectionListeners.ROAP_MESSAGE_TO_SEND --> correlationId=${this.correlationId}`;
+
+      switch (event.roapMessage.messageType) {
+        case 'OK':
+          logRequest(
+            this.roap.sendRoapOK({
+              seq: event.roapMessage.seq,
+              mediaId: this.mediaId,
+              correlationId: this.correlationId,
+              locusMediaRequest: this.secondaryMediaConn.locusMediaRequest,
+            }),
+            {
+              logText: `${LOG_HEADER} Roap OK`,
+            }
+          );
+          break;
+
+        case 'OFFER':
+          logRequest(
+            this.roap.sendRoapMediaRequest({
+              sdp: event.roapMessage.sdp,
+              seq: event.roapMessage.seq,
+              tieBreaker: event.roapMessage.tieBreaker,
+              meeting: this, // or can pass meeting ID
+              reconnect: true, // this.reconnectionManager.isReconnectInProgress(),  todo: for now hardcoding it to force Locus to create a new confluence
+              locusMediaRequest: this.secondaryMediaConn.locusMediaRequest,
+            }),
+            {
+              logText: `${LOG_HEADER} Roap Offer`,
+            }
+          );
+          break;
+
+        case 'ANSWER':
+          logRequest(
+            this.roap.sendRoapAnswer({
+              sdp: event.roapMessage.sdp,
+              seq: event.roapMessage.seq,
+              mediaId: this.mediaId,
+              correlationId: this.correlationId,
+              locusMediaRequest: this.secondaryMediaConn.locusMediaRequest,
+            }),
+            {
+              logText: `${LOG_HEADER} Roap Answer`,
+            }
+          );
+          break;
+
+        case 'ERROR':
+          logRequest(
+            this.roap.sendRoapError({
+              seq: event.roapMessage.seq,
+              errorType: event.roapMessage.errorType,
+              mediaId: this.mediaId,
+              correlationId: this.correlationId,
+              locusMediaRequest: this.secondaryMediaConn.locusMediaRequest,
+            }),
+            {
+              logText: `${LOG_HEADER} Roap Error (${event.roapMessage.errorType})`,
+            }
+          );
+          break;
+
+        default:
+          LoggerProxy.logger.error(
+            `${LOG_HEADER} Unsupported message type: ${event.roapMessage.messageType}`
+          );
+          break;
+      }
+    });
+
+    // todo:media (only transcoded?) Event.REMOTE_TRACK_ADDED
+    // eslint-disable-next-line no-param-reassign
+
+    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+      LoggerProxy.logger.info(
+        `Meeting:index#setupSecondaryMediaConnectionListeners --> correlationId=${this.correlationId} connection state changed to ${event.state}`
+      );
+      switch (event.state) {
+        case ConnectionState.Connecting:
+          break;
+        case ConnectionState.Connected:
+          break;
+        case ConnectionState.Disconnected:
+          break;
+        case ConnectionState.Failed:
+          break;
+        default:
+          break;
+      }
+    });
+
+    // Event.ACTIVE_SPEAKERS_CHANGED
+    // Event.VIDEO_SOURCES_COUNT_CHANGED
+    // Event.AUDIO_SOURCES_COUNT_CHANGED
+  };
+
   /**
    * Registers for all required StatsAnalyzer events
    * @private
@@ -5576,6 +5692,126 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Creates a secondary media connection
+   *
+   * @returns {Promise}
+   */
+  async createSecondaryConnection() {
+    this.secondaryMediaConn = {
+      isRoapInProgress: false,
+      locusMediaRequest: null,
+      webrtcMediaConnection: null,
+    };
+    const LOG_HEADER = 'Meeting:index#createSecondaryConnection -->';
+
+    LoggerProxy.logger.info(`${LOG_HEADER} called`);
+
+    if (this.meetingState !== FULL_STATE.ACTIVE) {
+      return Promise.reject(new MeetingNotActiveError());
+    }
+
+    if (MeetingUtil.isUserInLeftState(this.locusInfo)) {
+      return Promise.reject(new UserNotJoinedError());
+    }
+
+    // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
+    // @ts-ignore - isUserUnadmitted coming from SelfUtil
+    if (this.isUserUnadmitted && !this.wirelessShare && !allowMediaInLobby) {
+      return Promise.reject(new UserInLobbyError());
+    }
+
+    try {
+      // todo: should we send any CA events?
+      this.secondaryMediaConn.locusMediaRequest = new LocusMediaRequest(
+        {
+          correlationId: this.correlationId,
+          device: {
+            url: this.deviceUrl,
+            // @ts-ignore
+            deviceType: this.config.deviceType,
+            // @ts-ignore
+            countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+            // @ts-ignore
+            regionCode: this.webex.meetings.geoHintInfo?.regionCode,
+          },
+          preferTranscoding: !this.isMultistream,
+          purpose: 'secondary',
+        },
+        {
+          // @ts-ignore
+          parent: this.webex,
+        }
+      );
+
+      // todo: createMuteState?
+
+      // todo:tls: what about turn discovery?
+      const turnServerInfo = undefined;
+
+      const bundlePolicy = 'max-bundle'; // todo
+
+      const mc = Media.createMediaConnection(
+        this.isMultistream,
+        'secondary',
+        // @ts-ignore
+        this.webex,
+        this.id,
+        this.correlationId,
+        {
+          mediaProperties: this.mediaProperties,
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+          // @ts-ignore - config coming from registerPlugin
+          enableRtx: this.config.enableRtx,
+          // @ts-ignore - config coming from registerPlugin
+          enableExtmap: this.config.enableExtmap,
+          turnServerInfo,
+          bundlePolicy,
+        }
+      );
+
+      this.secondaryMediaConn.webrtcMediaConnection = mc;
+      this.setupSecondaryMediaConnectionListeners();
+
+      // todo:media: sendslot manager, publishing of tracks
+
+      if (this.isMultistream) {
+        // todo:media: instantiate RemoteMediaManager if we want to see video etc
+      }
+
+      await mc.initiateOffer();
+
+      LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
+
+      // todo: statsanalyzer
+
+      await this.mediaProperties
+        .waitForMediaConnectionConnected(this.secondaryMediaConn.webrtcMediaConnection)
+        .catch(() => {
+          // todo: metric
+          throw new Error(
+            `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
+          );
+        });
+
+      // todo: success metrics
+      LoggerProxy.logger.info(`${LOG_HEADER} successfully established media connection`);
+
+      // todo:media: this.remoteMediaManager?.logAllReceiveSlots();
+      return undefined;
+    } catch (error) {
+      LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
+      // todo: metrics
+
+      this.secondaryMediaConn.webrtcMediaConnection.close();
+      this.secondaryMediaConn.webrtcMediaConnection = null;
+
+      // todo: upload logs?
+      throw error;
+    }
+  }
+
+  /**
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
@@ -5666,6 +5902,7 @@ export default class Meeting extends StatelessWebexPlugin {
           regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
+        purpose: 'primary',
       },
       {
         // @ts-ignore

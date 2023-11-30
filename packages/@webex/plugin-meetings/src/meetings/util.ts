@@ -51,19 +51,10 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
     if (meeting) {
       const {seq, messageType, tieBreaker, errorType, errorCause} = data.message;
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED, {
-        correlation_id: data.correlationId,
-        seq,
-        message_type: messageType,
-        error_type: errorType,
-        error_cause: errorCause,
-      });
-
-      if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
-        // turn discovery is not part of normal roap protocol and so we are not handling it
-        // through the usual roap state machine
-        meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message);
-      } else {
+      console.log(
+        `marcin: roap message from mercury: isSecondary:${meeting.secondaryMediaConn?.isRoapInProgress}`
+      );
+      if (meeting.secondaryMediaConn?.isRoapInProgress) {
         const roapMessage = {
           seq,
           messageType,
@@ -73,12 +64,39 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
           errorCause,
         };
 
-        const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+        // todo:tls turn discovery
 
-        meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
+        meeting.secondaryMediaConn.webrtcMediaConnection.roapMessageReceived(roapMessage);
+      } else {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED, {
+          correlation_id: data.correlationId,
+          seq,
+          message_type: messageType,
+          error_type: errorType,
+          error_cause: errorCause,
+        });
 
-        if (mediaServer) {
-          meeting.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+        if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
+          // turn discovery is not part of normal roap protocol and so we are not handling it
+          // through the usual roap state machine
+          meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message);
+        } else {
+          const roapMessage = {
+            seq,
+            messageType,
+            sdp: data.message.sdps?.length > 0 ? data.message.sdps[0] : undefined,
+            tieBreaker,
+            errorType,
+            errorCause,
+          };
+
+          const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+
+          meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
+
+          if (mediaServer) {
+            meeting.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+          }
         }
       }
     }

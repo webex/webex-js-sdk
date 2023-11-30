@@ -89,6 +89,7 @@ export type Config = {
   };
   correlationId: string;
   preferTranscoding: boolean;
+  purpose: 'primary' | 'secondary';
 };
 
 /**
@@ -204,6 +205,7 @@ export class LocusMediaRequest extends WebexPlugin {
       clientMediaPreferences: {
         preferTranscoding: this.config.preferTranscoding,
         ipver: request.type === 'RoapMessage' ? request.ipVersion : undefined,
+        purpose: this.config.purpose,
       },
     };
 
