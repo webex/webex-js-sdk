@@ -6,6 +6,7 @@ frontend:
         - yarn install --immutable
     build:
       commands:
+        - yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
         - yarn package-tools sync --tag next
         - yarn run build:local
         - yarn run build:docs
