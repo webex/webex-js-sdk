@@ -6,7 +6,7 @@ frontend:
         - yarn install --immutable
     build:
       commands:
-        - yarn run samples:build
+        - yarn run build:local
         - yarn run build:docs
   artifacts:
     baseDirectory: docs/
