@@ -3109,6 +3109,11 @@ export default class Meeting extends StatelessWebexPlugin {
       locusMeetingObject = typeof destination === 'object' ? destination : undefined;
     }
 
+    console.log('marcin: forcing converged! ', meetingInfo?.body.meetingInfo);
+    if (meetingInfo?.body) {
+      meetingInfo.body.enableConvergedArchitecture = true;
+    }
+
     // MeetingInfo will be undefined for 1:1 calls
     if (
       locusMeetingObject ||
