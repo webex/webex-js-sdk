@@ -1,5 +1,6 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {WebexHttpError} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -1292,6 +1293,26 @@ describe('internal-plugin-metrics', () => {
 
       it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
         checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
+      });
+
+      it('should return NetworkError code for a NetworkOrCORSERror', () => {
+        const res = cd.generateClientEventErrorPayload(
+          new WebexHttpError.NetworkOrCORSError({
+            url: 'https://example.com',
+            statusCode: 0,
+            body: {},
+            options: {headers: {}, url: 'https://example.com'},
+          })
+        );
+        assert.deepEqual(res, {
+          category: 'signaling',
+          errorDescription: 'NetworkError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1026,
+        });
       });
 
       it('should return unknown error otherwise', () => {
