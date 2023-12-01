@@ -446,10 +446,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     if (isNetworkError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+      const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
       });
+      payload.errorDescription = rawError.message;
+
+      return payload;
     }
 
     // otherwise return unkown error

@@ -1306,7 +1306,7 @@ describe('internal-plugin-metrics', () => {
         );
         assert.deepEqual(res, {
           category: 'signaling',
-          errorDescription: 'NetworkError',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
           fatal: true,
           name: 'other',
           shownToUser: false,
