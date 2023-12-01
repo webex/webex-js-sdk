@@ -60,4 +60,16 @@ export default class MeetingCollection extends Collection {
 
     return null;
   }
+
+  /**
+   * get a specific meeting searching for key
+   * @param {String} breakoutUrl
+   * @returns {Meeting} if found, else returns null
+   * @public
+   * @memberof MeetingCollection
+   */
+  public getActiveWebrtcMeeting() {
+    // @ts-ignore
+    return find(this.meetings, (meeting) => meeting.mediaProperties.webrtcMediaConnection);
+  }
 }
