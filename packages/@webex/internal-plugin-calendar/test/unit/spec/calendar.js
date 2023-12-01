@@ -338,8 +338,6 @@ describe('internal-plugin-calendar', () => {
           assert.calledWith(webex.request, {
             method: 'GET',
             uri,
-            service: 'calendar',
-            resource: `calendarEvents/${base64.encode(id)}/participants`,
           });
         });
       });

@@ -719,7 +719,6 @@ describe('Registration Tests', () => {
 
       const timer = reg.keepaliveTimer;
 
-      /* add a call to the callManager */
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
 
       /* send one keepalive */
