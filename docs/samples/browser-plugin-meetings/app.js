@@ -661,7 +661,7 @@ function cleanUpMedia(mediaElements) {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
-      
+
       if(elem.id === "local-video") {
         clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
       }
@@ -776,7 +776,22 @@ function startReceivingTranscription() {
     generalTranscriptionContent.innerHTML = '';
 
     meeting.on('meeting:receiveTranscription:started', (payload) => {
-      generalTranscriptionContent.innerHTML += `\n${JSON.stringify(payload)}`;
+      //generalTranscriptionContent.innerHTML += `\n${JSON.stringify(payload)}`;
+      /* GUN: Parse Json data and print only transcript data to console */
+      let obj = JSON.parse(JSON.stringify(payload));
+      console.log('GUN: Json parsed data ::', obj)
+      console.log('GUN: Transcription data ::', obj.transcription)
+      /* GUN:
+      *
+      * 1. Will try to exclude the previous sentence from the current oen and pass it to backend
+      * 2. Take the data of last 5 secs and take the latest transcription and pass it to backend
+      * {"id":"c8f49720-40b6-0dee-42bc-0071b62755cb","transcription":"Yeah, in Hindi it is like this","timestamp":1701247760504,"type":"transcript_interim_results"}
+      * {"id":"c8f49720-40b6-0dee-42bc-0071b62755cb","transcription":"Yeah, in Hindi it is like this, I think","timestamp":1701247762493,"type":"transcript_interim_results"}
+*     */
+      if (obj.type === "transcript_final_result") {
+        generalTranscriptionContent.innerHTML += `\n${obj.transcription}`;
+        getSignLanguageStream(obj.transcription);
+      }
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
@@ -855,6 +870,71 @@ function stopRecording() {
   }
 }
 
+/********************** SIGN-LANGUAGE CODE STARTS HERE ***************************/
+function getSignLanguageStream(transcriptData) {
+
+  if (receiveTranscriptionOption === false) {
+    console.error('Transcription not enabled!');
+    return;
+  }
+
+  /* Request data */
+  let data = new FormData();
+  data.append("sen", transcriptData);
+
+  let xhr = new XMLHttpRequest();
+  xhr.withCredentials = true;
+
+  xhr.open("POST", "http://127.0.0.1:8010/sign_language");
+  // WARNING: Cookies will be stripped away by the browser before sending the request.
+  //xhr.setRequestHeader("Cookie", "csrftoken=I7TAUqSbQLRdPx18SAmnCbkkD8t2xZBJ");
+  console.log('Send sign-lang request, data :: ', transcriptData);
+  xhr.send(data);
+
+  /* Response data */
+  xhr.onload = function() {
+    const response = JSON.parse(this.responseText);
+    console.log('Response received :: ', response);
+    play(response)
+  };
+}
+
+function play(videos) {
+  let videoSource = [];
+  let j;
+  for(j=0; j<videos.length ;j++) {
+    //videoSource[j] = "/Users/gunjang/Downloads/Downloads/Desktop/Desktop/MY-DATA/Hakathon2023/webex-js-sdk/docs/samples/browser-plugin-meetings/assets/" + videos[j] +".mp4";
+    videoSource[j] = "http://localhost:8010/static/" + videos[j] +".mp4";
+
+    console.log('GUN: VideoName:: ', videoSource[j])
+  }
+
+  let i = 0; // define i
+  let videoCount = videoSource.length;
+
+  function videoPlay(videoNum) {
+    document.getElementById("videoPlayer").setAttribute("src", videoSource[videoNum]);
+    document.getElementById("videoPlayer").load();
+    document.getElementById("videoPlayer").playbackRate = 2;
+    console.log('GUN: Playing video')
+    document.getElementById("videoPlayer").play();
+  }
+  document.getElementById('videoPlayer').addEventListener('ended', myHandler, false);
+
+  videoPlay(0); // play the video
+
+  function myHandler() {
+    i++;
+    if (i === videoCount) {
+      document.getElementById("videoPlayer").pause();
+    } else {
+      videoPlay(i);
+    }
+  }
+}
+
+/********************** SIGN-LANGUAGE CODE END HERE ***************************/
+
 function sendDtmfTones() {
   const meeting = getCurrentMeeting();
   const tones = generalControlsDtmfTones.value || '';
@@ -917,7 +997,7 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
       }
 
       localVideoResolutionCheckInterval();
-      
+
       return {localStream};
     })
     .catch((error) => {

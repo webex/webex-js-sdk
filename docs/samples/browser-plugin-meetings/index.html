@@ -248,7 +248,7 @@
                 <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
                 <div>
                   <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
+
                   <!-- refresh icon -->
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
@@ -267,7 +267,7 @@
               <div>
                 <fieldset>
                   <legend>Media Quality</legend>
-              
+
                   <!-- Media quality dropdown -->
                   <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
 
@@ -277,9 +277,9 @@
                       <label class="media-button-label" for="local-resolution">Local Resolution</label>
                       <select name="local-resolution" id="local-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-local-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-local-meeting-quality"
+                        type="button"
                         onclick="setLocalMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -292,9 +292,9 @@
                       <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
                       <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-remote-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-remote-meeting-quality"
+                        type="button"
                         onclick="setRemoteMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -302,7 +302,7 @@
                       </button>
                     </div>
                     <label id="ts-sending-quality-status"></label>
-                  </div>                  
+                  </div>
                 </fieldset>
               </div>
 
@@ -410,7 +410,7 @@
               </div>
             </fieldset>
           </div>
-        
+
           <!-- PMR management -->
           <div>
             <form id="pmr-management">
@@ -645,6 +645,19 @@
             </fieldset>
           </div>
 
+          <div>
+            <!-- GUN: meeting-controls / Sign Language -->
+            <fieldset id="meetingControlsSignLanguage">
+              <legend>Sign Language</legend>
+              <div class="sign-language">
+                <video id="videoPlayer" width="300" height="250"  preload="auto" autoplay>
+                  <source src="" type="video/mp4">
+                  Your browser does not support HTML5 video.
+                </video>
+              </div>
+            </fieldset>
+          </div>
+          
           <div>
             <!-- meeting-controls / tones -->
             <fieldset id="meetingControlsTones">
