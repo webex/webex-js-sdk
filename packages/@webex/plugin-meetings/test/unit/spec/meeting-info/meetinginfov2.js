@@ -481,7 +481,7 @@ describe('plugin-meetings', () => {
         ],
         ({meetingId, sendCAevents, shouldSendCAevents}) => {
           it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
-            const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+            const requestResponse = {statusCode: 200, body: {meetingKey: '1234323', meetingId: '123', confID: '321'}};
             const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
     
             webex.request.resolves(requestResponse);
@@ -537,6 +537,8 @@ describe('plugin-meetings', () => {
                 payload: {
                   identifiers: {
                     meetingLookupUrl: result?.url,
+                    globalMeetingId: requestResponse.body?.meetingId,
+                    webexConferenceIdStr: requestResponse.body?.confID,
                   },
                 },
                 options: {
@@ -552,7 +554,7 @@ describe('plugin-meetings', () => {
       )
 
       it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
-        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
+        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323', confID: '123', meetingId: '321'}};
         const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
         webex.request.resolves(requestResponse);
@@ -607,6 +609,8 @@ describe('plugin-meetings', () => {
           payload: {
             identifiers: {
               meetingLookupUrl: result?.url,
+              globalMeetingId: requestResponse.body?.meetingId,
+              webexConferenceIdStr: requestResponse.body?.confID,
             },
           },
           options: {

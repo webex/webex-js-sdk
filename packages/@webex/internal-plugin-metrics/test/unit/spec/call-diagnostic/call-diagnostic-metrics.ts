@@ -17,7 +17,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -261,6 +261,63 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has meetingInfo with a webexConferenceIdStr and globalMeetingId, and that should take precedence over the options passed to it', () => {        
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          webexConferenceIdStr: 'webexConferenceIdStr',
+          globalMeetingId: 'globalMeetingId',
+          meeting: {...fakeMeeting, meetingInfo: {...fakeMeeting.meetingInfo, confID: 'webexConferenceIdStr1', meetingId: 'globalMeetingId1'}},
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given webexConferenceIdStr', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          deviceId: 'deviceUrl',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      })
+
+      it('should build identifiers correctly given globalMeetingId', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          globalMeetingId: 'globalMeetingId1',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          globalMeetingId: 'globalMeetingId1',
+          deviceId: 'deviceUrl',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
       it('should build identifiers correctly given correlationId', () => {
         const res = cd.getIdentifiers({
           correlationId: 'correlationId',
@@ -295,7 +352,7 @@ describe('internal-plugin-metrics', () => {
       const res = cd.prepareDiagnosticEvent(
         {
           canProceed: false,
-          identifiers: {correlationId: 'id'},
+          identifiers: {correlationId: 'id', webexConferenceIdStr: 'webexConferenceIdStr1', globalMeetingId: 'globalMeetingId1'},
           name: 'client.alert.displayed',
         },
         options
@@ -308,6 +365,8 @@ describe('internal-plugin-metrics', () => {
           canProceed: false,
           identifiers: {
             correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
           },
           name: 'client.alert.displayed',
         },
@@ -344,6 +403,8 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(getIdentifiersSpy, {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -428,7 +489,7 @@ describe('internal-plugin-metrics', () => {
 
       });
 
-      it('should submit client event successfully with correlationId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr, and gloablMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -437,6 +498,8 @@ describe('internal-plugin-metrics', () => {
 
         const options = {
           correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
         };
 
         cd.submitClientEvent({
@@ -446,6 +509,8 @@ describe('internal-plugin-metrics', () => {
 
         assert.calledWith(getIdentifiersSpy, {
           correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -458,6 +523,8 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -476,6 +543,8 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -515,7 +584,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
-          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url"},"eventData":{"webClientDomain":"whatever"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus-url","webexConferenceIdStr":"webexConferenceIdStr1","globalMeetingId":"globalMeetingId1"},"eventData":{"webClientDomain":"whatever"},"loginType":"login-ci"}},"type":["diagnostic-event"]}`,
         ]);
 
 
@@ -527,6 +596,8 @@ describe('internal-plugin-metrics', () => {
 
         const options = {
           meetingId: fakeMeeting.id,
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           rawError: {
             body: {
@@ -548,6 +619,8 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -617,7 +690,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[4].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
-          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1"},"errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}],"eventData":{"webClientDomain":"whatever"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
+          `finalEvent: {"eventPayload":{"eventId":"my-fake-id","version":1,"origin":{"origin":"fake-origin"},"originTime":{"triggered":"${now.toISOString()}","sent":"not_defined_yet"},"senderCountryCode":"UK","event":{"name":"client.alert.displayed","canProceed":true,"identifiers":{"correlationId":"correlationId","userId":"userId","deviceId":"deviceUrl","orgId":"orgId","locusUrl":"locus/url","locusId":"url","locusStartTime":"lastActive","mediaAgentAlias":"alias","mediaAgentGroupId":"1","webexConferenceIdStr":"webexConferenceIdStr1","globalMeetingId":"globalMeetingId1"},"errors":[{"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}],"eventData":{"webClientDomain":"whatever"},"userType":"host","loginType":"login-ci"}},"type":["diagnostic-event"]}`,
         ]);
       });
 
@@ -1043,6 +1116,8 @@ describe('internal-plugin-metrics', () => {
         const options = {
           networkType: 'wifi' as const,
           meetingId: fakeMeeting.id,
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
         };
 
         cd.submitMQE({
@@ -1057,6 +1132,8 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(getIdentifiersSpy, {
           meeting: fakeMeeting,
           mediaConnections: undefined,
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
         });
         assert.notCalled(getErrorPayloadForClientErrorCodeSpy);
         assert.calledWith(
@@ -1066,6 +1143,8 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {
               correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
               userId: 'userId',
               deviceId: 'deviceUrl',
               orgId: 'orgId',
@@ -1097,6 +1176,8 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {
               correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
               userId: 'userId',
               deviceId: 'deviceUrl',
               orgId: 'orgId',

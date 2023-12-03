@@ -26,7 +26,7 @@ describe('plugin-meetings', () => {
 
     describe('#fetchMeetingInfo', () => {
       const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics}) => {
-        const body = {meetingKey: '1234323', url: 'url-123'};
+        const body = {meetingKey: '1234323', url: 'url-123', confID: '123', meetingId: '321'};
 
         sinon
           .stub(MeetingInfoUtil, 'generateOptions')
@@ -62,6 +62,8 @@ describe('plugin-meetings', () => {
             payload: {
               identifiers: {
                 meetingLookupUrl: 'url-123',
+                webexConferenceIdStr: '123',
+                globalMeetingId: '321'
               },
             },
             options: {

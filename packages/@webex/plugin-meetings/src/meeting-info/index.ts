@@ -96,6 +96,8 @@ export default class MeetingInfo {
             payload: {
               identifiers: {
                 meetingLookupUrl: info?.url,
+                webexConferenceIdStr: info?.body?.confID,
+                globalMeetingId: info?.body?.meetingId,
               },
             },
             options: {
