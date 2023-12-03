@@ -41,12 +41,12 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
    */
   submitHttpRequest(payload) {
     const batchId = uniqueId('call-diagnostic-metrics-batch-');
-    this.webex.logger.log(
-      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-      `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Sending the request:`,
-      'payload:',
-      payload
-    );
+    // this.webex.logger.log(
+    //   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+    //   `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Sending the request:`,
+    //   'payload:',
+    //   payload
+    // );
 
     return this.webex
       .request({
@@ -58,12 +58,12 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         },
       })
       .then((res) => {
-        this.webex.logger.log(
-          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
-          `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful:`,
-          `response:`,
-          res
-        );
+        // this.webex.logger.log(
+        //   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        //   `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful:`,
+        //   `response:`,
+        //   res
+        // );
 
         return res;
       })
