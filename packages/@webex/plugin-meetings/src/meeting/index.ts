@@ -5754,49 +5754,73 @@ export default class Meeting extends StatelessWebexPlugin {
       throw new Error('secondary media connection missing');
     }
 
+    const src = !this.secondaryMediaConn.isLive
+      ? {
+          remoteMediaManager: this.remoteMediaManager,
+          sendSlotManager: this.sendSlotManager,
+        }
+      : {
+          remoteMediaManager: this.secondaryMediaConn.remoteMediaManager,
+          sendSlotManager: this.secondaryMediaConn.sendSlotManager,
+        };
+
+    const dst = !this.secondaryMediaConn.isLive
+      ? {
+          remoteMediaManager: this.secondaryMediaConn.remoteMediaManager,
+          sendSlotManager: this.secondaryMediaConn.sendSlotManager,
+        }
+      : {
+          remoteMediaManager: this.remoteMediaManager,
+          sendSlotManager: this.sendSlotManager,
+        };
+
     if (!this.secondaryMediaConn.isLive) {
+      console.log('marcin: switching from primary to secondary');
       this.secondaryMediaConn.isLive = true;
-      // switching from the main one to the secondary one
-      this.remoteMediaManager.setAsSecondary();
+    } else {
+      console.log('marcin: switching from secondary to primary');
+      this.secondaryMediaConn.isLive = false;
+    }
 
-      const currentLayout = this.remoteMediaManager.getLayoutId();
+    src.remoteMediaManager.setAsSecondary();
 
-      this.secondaryMediaConn.remoteMediaManager.setAsPrimary();
-      await this.secondaryMediaConn.remoteMediaManager.setLayout(currentLayout);
+    const currentLayout = src.remoteMediaManager.getLayoutId();
 
-      // publish the streams on the new one and unpublish on the old one
-      if (this.mediaProperties.audioStream) {
-        await this.sendSlotManager.unpublishStream(MediaType.AudioMain);
+    dst.remoteMediaManager.setAsPrimary();
+    await dst.remoteMediaManager.setLayout(currentLayout);
 
-        await this.secondaryMediaConn.sendSlotManager.publishStream(
-          MediaType.AudioMain,
-          this.mediaProperties.audioStream
-        );
-      }
-      if (this.mediaProperties.videoStream) {
-        await this.sendSlotManager.unpublishStream(MediaType.VideoMain);
+    // publish the streams on the new one and unpublish on the old one
+    if (this.mediaProperties.audioStream) {
+      await src.sendSlotManager.unpublishStream(MediaType.AudioMain);
 
-        await this.secondaryMediaConn.sendSlotManager.publishStream(
-          MediaType.VideoMain,
-          this.mediaProperties.videoStream
-        );
-      }
-      if (this.mediaProperties.shareVideoStream) {
-        await this.sendSlotManager.unpublishStream(MediaType.VideoSlides);
+      await dst.sendSlotManager.publishStream(
+        MediaType.AudioMain,
+        this.mediaProperties.audioStream
+      );
+    }
+    if (this.mediaProperties.videoStream) {
+      await src.sendSlotManager.unpublishStream(MediaType.VideoMain);
 
-        await this.secondaryMediaConn.sendSlotManager.publishStream(
-          MediaType.VideoSlides,
-          this.mediaProperties.shareVideoStream
-        );
-      }
-      if (this.mediaProperties.shareAudioStream) {
-        await this.sendSlotManager.unpublishStream(MediaType.AudioSlides);
+      await dst.sendSlotManager.publishStream(
+        MediaType.VideoMain,
+        this.mediaProperties.videoStream
+      );
+    }
+    if (this.mediaProperties.shareVideoStream) {
+      await src.sendSlotManager.unpublishStream(MediaType.VideoSlides);
 
-        await this.secondaryMediaConn.sendSlotManager.publishStream(
-          MediaType.AudioSlides,
-          this.mediaProperties.shareAudioStream
-        );
-      }
+      await dst.sendSlotManager.publishStream(
+        MediaType.VideoSlides,
+        this.mediaProperties.shareVideoStream
+      );
+    }
+    if (this.mediaProperties.shareAudioStream) {
+      await src.sendSlotManager.unpublishStream(MediaType.AudioSlides);
+
+      await dst.sendSlotManager.publishStream(
+        MediaType.AudioSlides,
+        this.mediaProperties.shareAudioStream
+      );
     }
   }
 
