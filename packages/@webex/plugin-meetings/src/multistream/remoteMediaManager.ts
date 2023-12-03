@@ -173,7 +173,9 @@ export const DefaultConfiguration: Configuration = {
 export enum Event {
   // events for audio streams
   AudioCreated = 'AudioCreated',
+  AudioDestroyed = 'AudioDestroyed',
   ScreenShareAudioCreated = 'ScreenShareAudioCreated',
+  ScreenShareAudioDestroyed = 'ScreenShareAudioDestroyed',
 
   // events for video streams
   VideoLayoutChanged = 'VideoLayoutChanged',
@@ -208,7 +210,7 @@ export class RemoteMediaManager extends EventsScope {
   private config: Configuration;
 
   private started: boolean;
-
+  private isPrimary: boolean;
   private receiveSlotManager: ReceiveSlotManager;
 
   private mediaRequestManagers: {
@@ -273,6 +275,7 @@ export class RemoteMediaManager extends EventsScope {
   ) {
     super();
     this.started = false;
+    this.isPrimary = false;
     this.config = config;
     this.receiveSlotManager = receiveSlotManager;
     this.mediaRequestManagers = mediaRequestManagers;
@@ -358,20 +361,51 @@ export class RemoteMediaManager extends EventsScope {
    *
    * @returns {Promise}
    */
-  public async start() {
+  public async start(isPrimary = true) {
     if (this.started) {
       throw new Error('start() failure: already started');
     }
     this.started = true;
+    this.isPrimary = isPrimary;
 
     await this.createAudioMedia();
 
     await this.createScreenShareReceiveSlots();
     this.createScreenShareAudioMedia();
 
+    this.emitAudioCreatedEvents();
+
     await this.preallocateVideoReceiveSlots();
 
     await this.setLayout(this.config.video.initialLayoutId);
+  }
+
+  /**
+   * Switches to being "primary"
+   */
+  public setAsPrimary() {
+    // todo: maybe rename this to enableEventEmitting() or something like that
+    this.isPrimary = true;
+
+    this.emitAudioCreatedEvents();
+  }
+
+  /**
+   * Switches to being "secondary"
+   */
+  public setAsSecondary() {
+    this.isPrimary = false;
+
+    this.emitAudioDestroyedEvents();
+  }
+
+  /**
+   * Returns the config.
+   *
+   * @returns {Configuration}
+   */
+  public getConfig(): Configuration {
+    return this.config;
   }
 
   /**
@@ -526,6 +560,53 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Emits the events about destroyed remote audio media for all
+   * current remote audio media
+   */
+  private emitAudioDestroyedEvents() {
+    if (!this.isPrimary) {
+      if (this.media.audio) {
+        this.emit(
+          {file: 'multistream/remoteMediaManager', function: 'emitAudioDestroyedEvents'},
+          Event.AudioDestroyed,
+          this.media.audio
+        );
+      }
+
+      if (this.media.screenShare.audio) {
+        this.emit(
+          {file: 'multistream/remoteMediaManager', function: 'emitAudioDestroyedEvents'},
+          Event.ScreenShareAudioDestroyed,
+          this.media.screenShare.audio
+        );
+      }
+    }
+  }
+
+  /**
+   * Emits the events about created remote audio media
+   */
+  private emitAudioCreatedEvents() {
+    if (this.isPrimary) {
+      if (this.media.audio) {
+        this.emit(
+          {file: 'multistream/remoteMediaManager', function: 'emitAudioCreatedEvents'},
+          Event.AudioCreated,
+          this.media.audio
+        );
+      }
+
+      if (this.media.screenShare.audio) {
+        this.emit(
+          {file: 'multistream/remoteMediaManager', function: 'emitAudioCreatedEvents'},
+          Event.ScreenShareAudioCreated,
+          this.media.screenShare.audio
+        );
+      }
+    }
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {
@@ -543,12 +624,6 @@ export class RemoteMediaManager extends EventsScope {
       this.slots.audio,
       255,
       true
-    );
-
-    this.emit(
-      {file: 'multistream/remoteMediaManager', function: 'createAudioMedia'},
-      Event.AudioCreated,
-      this.media.audio
     );
   }
 
@@ -586,12 +661,6 @@ export class RemoteMediaManager extends EventsScope {
         this.slots.screenShare.audio,
         255,
         true
-      );
-
-      this.emit(
-        {file: 'multistream/remoteMediaManager', function: 'createScreenShareAudioMedia'},
-        Event.ScreenShareAudioCreated,
-        this.media.screenShare.audio
       );
     }
   }
@@ -954,19 +1023,25 @@ export class RemoteMediaManager extends EventsScope {
     // but in some cases they might never come, or would need to always make sure to use a new set of receiver slots)
     // for now it's fine to have it like this, we will re-evaluate if it needs improving after more testing
 
-    this.emit(
-      {
-        file: 'multistream/remoteMediaManager',
-        function: 'emitVideoLayoutChangedEvent',
-      },
-      Event.VideoLayoutChanged,
-      {
-        layoutId: this.currentLayoutId,
-        activeSpeakerVideoPanes: this.media.video.activeSpeakerGroups,
-        memberVideoPanes: this.media.video.memberPanes,
-        screenShareVideo: this.media.screenShare.video?.getRemoteMedia()[0],
-      }
+    console.log(
+      `marcin: emitting layout change (layout=${this.currentLayoutId}, primary=${this.isPrimary})`
     );
+
+    if (this.isPrimary) {
+      this.emit(
+        {
+          file: 'multistream/remoteMediaManager',
+          function: 'emitVideoLayoutChangedEvent',
+        },
+        Event.VideoLayoutChanged,
+        {
+          layoutId: this.currentLayoutId,
+          activeSpeakerVideoPanes: this.media.video.activeSpeakerGroups,
+          memberVideoPanes: this.media.video.memberPanes,
+          screenShareVideo: this.media.screenShare.video?.getRemoteMedia()[0],
+        }
+      );
+    }
   }
 
   /**

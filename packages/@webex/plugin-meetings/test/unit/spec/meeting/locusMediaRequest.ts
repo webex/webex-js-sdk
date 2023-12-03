@@ -114,6 +114,7 @@ describe('LocusMediaRequest.send()', () => {
       },
       correlationId: 'correlationId',
       preferTranscoding: true,
+      purpose: 'primary'
     }, {
       parent: mockWebex,
     });

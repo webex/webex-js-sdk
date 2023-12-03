@@ -100,7 +100,7 @@ export default class Roap extends StatelessWebexPlugin {
           locusSelfUrl: meeting.selfUrl,
           mediaId: options.mediaId,
           meetingId: meeting.id,
-          locusMediaRequest: meeting.locusMediaRequest,
+          locusMediaRequest: options.locusMediaRequest,
         })
         .then(() => {
           LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sent with seq ${options.seq}`);
@@ -134,7 +134,7 @@ export default class Roap extends StatelessWebexPlugin {
       locusSelfUrl: meeting.selfUrl,
       mediaId: options.mediaId,
       meetingId: meeting.id,
-      locusMediaRequest: meeting.locusMediaRequest,
+      locusMediaRequest: options.locusMediaRequest,
     });
   }
 
@@ -163,7 +163,7 @@ export default class Roap extends StatelessWebexPlugin {
         locusSelfUrl: meeting.selfUrl,
         mediaId: options.mediaId,
         meetingId: meeting.id,
-        locusMediaRequest: meeting.locusMediaRequest,
+        locusMediaRequest: options.locusMediaRequest,
       })
       .then(() => {
         LoggerProxy.logger.log(
@@ -179,7 +179,7 @@ export default class Roap extends StatelessWebexPlugin {
    * @memberof Roap
    */
   sendRoapMediaRequest(options: any) {
-    const {meeting, seq, sdp, reconnect, tieBreaker} = options;
+    const {meeting, seq, sdp, reconnect, tieBreaker, locusMediaRequest} = options;
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.OFFER,
       sdps: [sdp],
@@ -201,10 +201,11 @@ export default class Roap extends StatelessWebexPlugin {
           mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
           meetingId: meeting.id,
           preferTranscoding: !meeting.isMultistream,
-          locusMediaRequest: meeting.locusMediaRequest,
+          locusMediaRequest,
           ipVersion: MeetingUtil.getIpVersion(meeting.webex),
         })
         .then(({locus, mediaConnections}) => {
+          // todo:media: not sure if this will work for secondary connection....
           if (mediaConnections) {
             meeting.updateMediaConnections(mediaConnections);
           }

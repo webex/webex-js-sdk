@@ -174,9 +174,11 @@ export default class MediaProperties {
    *
    * @returns {Promise<void>}
    */
-  waitForMediaConnectionConnected(): Promise<void> {
+  waitForMediaConnectionConnected(
+    webrtcMediaConnection = this.webrtcMediaConnection
+  ): Promise<void> {
     const isConnected = () =>
-      this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
+      webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
 
     if (isConnected()) {
       return Promise.resolve();
@@ -187,22 +189,22 @@ export default class MediaProperties {
 
       const connectionStateListener = () => {
         LoggerProxy.logger.log(
-          `Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
+          `Media:properties#waitForMediaConnectionConnected --> connection state: ${webrtcMediaConnection.getConnectionState()}`
         );
 
         if (isConnected()) {
           clearTimeout(timer);
-          this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+          webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
           resolve();
         }
       };
 
       timer = setTimeout(() => {
-        this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+        webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
         reject();
       }, PC_BAIL_TIMEOUT);
 
-      this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+      webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
     });
   }
 
