@@ -15,6 +15,7 @@ import {
   Event,
   MediaContent,
   MediaType,
+  MultistreamRoapMediaConnection,
   RemoteTrackType,
 } from '@webex/internal-media-core';
 
@@ -450,6 +451,13 @@ export enum ScreenShareFloorStatus {
  * @memberof Meeting
  */
 
+type MediaRequestManagers = {
+  audio: MediaRequestManager;
+  video: MediaRequestManager;
+  screenShareAudio: MediaRequestManager;
+  screenShareVideo: MediaRequestManager;
+};
+
 /**
  * @description Meeting is the crux of the plugin
  * @export
@@ -485,7 +493,17 @@ export default class Meeting extends StatelessWebexPlugin {
   resource: string;
   roap: Roap;
   roapSeq: number;
-  secondaryMediaConn: any;
+  secondaryMediaConn?: {
+    isRoapInProgress: boolean;
+    locusMediaRequest: LocusMediaRequest;
+    webrtcMediaConnection: MultistreamRoapMediaConnection;
+    receiveSlotManager: ReceiveSlotManager;
+    mediaRequestManagers: MediaRequestManagers;
+    remoteMediaManager: RemoteMediaManager;
+    sendSlotManager: SendSlotManager;
+    isLive: boolean;
+  };
+
   selfUrl?: string; // comes from Locus, initialized by updateMeetingObject()
   sipUri: string;
   type: string;
@@ -510,12 +528,7 @@ export default class Meeting extends StatelessWebexPlugin {
   locusInfo: any;
   locusMediaRequest?: LocusMediaRequest;
   mediaProperties: MediaProperties;
-  mediaRequestManagers: {
-    audio: MediaRequestManager;
-    video: MediaRequestManager;
-    screenShareAudio: MediaRequestManager;
-    screenShareVideo: MediaRequestManager;
-  };
+  mediaRequestManagers: MediaRequestManagers;
 
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
@@ -680,6 +693,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.annotation = new Annotation({parent: this.webex});
     /**
+     *
+     * @instance
+     * @type {MediaProperties}
+     * @public
+     * @memberof Meeting
+     */
+    this.mediaProperties = new MediaProperties();
+    /**
      * helper class for managing receive slots (for multistream media connections)
      */
     this.receiveSlotManager = new ReceiveSlotManager(
@@ -692,96 +713,7 @@ export default class Meeting extends StatelessWebexPlugin {
       },
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
-    /**
-     * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
-     * All multistream media requests sent out for this meeting have to go through them.
-     */
-    this.mediaRequestManagers = {
-      audio: new MediaRequestManager(
-        (mediaRequests) => {
-          if (!this.mediaProperties.webrtcMediaConnection) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
-            );
-
-            return;
-          }
-          this.mediaProperties.webrtcMediaConnection.requestMedia(
-            MediaType.AudioMain,
-            mediaRequests
-          );
-        },
-        {
-          // @ts-ignore - config coming from registerPlugin
-          degradationPreferences: this.config.degradationPreferences,
-          kind: 'audio',
-          trimRequestsToNumOfSources: false,
-        }
-      ),
-      video: new MediaRequestManager(
-        (mediaRequests) => {
-          if (!this.mediaProperties.webrtcMediaConnection) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
-            );
-
-            return;
-          }
-          this.mediaProperties.webrtcMediaConnection.requestMedia(
-            MediaType.VideoMain,
-            mediaRequests
-          );
-        },
-        {
-          // @ts-ignore - config coming from registerPlugin
-          degradationPreferences: this.config.degradationPreferences,
-          kind: 'video',
-          trimRequestsToNumOfSources: true,
-        }
-      ),
-      screenShareAudio: new MediaRequestManager(
-        (mediaRequests) => {
-          if (!this.mediaProperties.webrtcMediaConnection) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#mediaRequestManager --> trying to send screenshare audio media request before media connection was created'
-            );
-
-            return;
-          }
-          this.mediaProperties.webrtcMediaConnection.requestMedia(
-            MediaType.AudioSlides,
-            mediaRequests
-          );
-        },
-        {
-          // @ts-ignore - config coming from registerPlugin
-          degradationPreferences: this.config.degradationPreferences,
-          kind: 'audio',
-          trimRequestsToNumOfSources: false,
-        }
-      ),
-      screenShareVideo: new MediaRequestManager(
-        (mediaRequests) => {
-          if (!this.mediaProperties.webrtcMediaConnection) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#mediaRequestManager --> trying to send screenshare video media request before media connection was created'
-            );
-
-            return;
-          }
-          this.mediaProperties.webrtcMediaConnection.requestMedia(
-            MediaType.VideoSlides,
-            mediaRequests
-          );
-        },
-        {
-          // @ts-ignore - config coming from registerPlugin
-          degradationPreferences: this.config.degradationPreferences,
-          kind: 'video',
-          trimRequestsToNumOfSources: false,
-        }
-      ),
-    };
+    this.mediaRequestManagers = this.createMediaRequestManagers(this.mediaProperties);
     /**
      * @instance
      * @type {Members}
@@ -980,14 +912,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.mediaConnections = mediaConnections.slice(-1);
       }
     };
-    /**
-     * Passing only info as we send basic info for meeting added event
-     * @instance
-     * @type {MediaProperties}
-     * @public
-     * @memberof Meeting
-     */
-    this.mediaProperties = new MediaProperties();
     /**
      * @instance
      * @type {InMeetingActions}
@@ -1264,6 +1188,95 @@ export default class Meeting extends StatelessWebexPlugin {
   getWebexObject() {
     // @ts-ignore
     return this.webex;
+  }
+
+  /**
+   * Creates MediaRequestManager instances for audio, video for main and slides
+   *
+   * @param {Object} mediaConnection object describing the media connection
+   * @returns {MediaRequestManagers}
+   */
+  private createMediaRequestManagers(mediaConnection: {
+    webrtcMediaConnection: MultistreamRoapMediaConnection;
+  }): MediaRequestManagers {
+    /**
+     * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
+     * All multistream media requests sent out for this meeting have to go through them.
+     */
+    return {
+      audio: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!mediaConnection.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created'
+            );
+
+            return;
+          }
+          mediaConnection.webrtcMediaConnection.requestMedia(MediaType.AudioMain, mediaRequests);
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
+          trimRequestsToNumOfSources: false,
+        }
+      ),
+      video: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!mediaConnection.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created'
+            );
+
+            return;
+          }
+          mediaConnection.webrtcMediaConnection.requestMedia(MediaType.VideoMain, mediaRequests);
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
+          trimRequestsToNumOfSources: true,
+        }
+      ),
+      screenShareAudio: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!mediaConnection.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send screenshare audio media request before media connection was created'
+            );
+
+            return;
+          }
+          mediaConnection.webrtcMediaConnection.requestMedia(MediaType.AudioSlides, mediaRequests);
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'audio',
+          trimRequestsToNumOfSources: false,
+        }
+      ),
+      screenShareVideo: new MediaRequestManager(
+        (mediaRequests) => {
+          if (!mediaConnection.webrtcMediaConnection) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#mediaRequestManager --> trying to send screenshare video media request before media connection was created'
+            );
+
+            return;
+          }
+          mediaConnection.webrtcMediaConnection.requestMedia(MediaType.VideoSlides, mediaRequests);
+        },
+        {
+          // @ts-ignore - config coming from registerPlugin
+          degradationPreferences: this.config.degradationPreferences,
+          kind: 'video',
+          trimRequestsToNumOfSources: false,
+        }
+      ),
+    };
   }
 
   /**
@@ -5366,19 +5379,22 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(
       Event.VIDEO_SOURCES_COUNT_CHANGED,
       (numTotalSources, numLiveSources, mediaContent) => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setupMediaConnectionListeners',
-          },
-          EVENT_TRIGGERS.REMOTE_VIDEO_SOURCE_COUNT_CHANGED,
-          {
-            numTotalSources,
-            numLiveSources,
-            mediaContent,
-          }
-        );
+        // todo: improve, it's a quick hack for now
+        if (!this.secondaryMediaConn?.isLive) {
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupMediaConnectionListeners',
+            },
+            EVENT_TRIGGERS.REMOTE_VIDEO_SOURCE_COUNT_CHANGED,
+            {
+              numTotalSources,
+              numLiveSources,
+              mediaContent,
+            }
+          );
+        }
 
         if (mediaContent === MediaContent.Main) {
           this.mediaRequestManagers.video.setNumCurrentSources(numTotalSources, numLiveSources);
@@ -5407,6 +5423,10 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   setupSecondaryMediaConnectionListeners = () => {
+    if (!this.secondaryMediaConn) {
+      throw new Error('missing secondary media connection');
+    }
+
     this.secondaryMediaConn.webrtcMediaConnection.on(Event.ROAP_STARTED, () => {
       this.secondaryMediaConn.isRoapInProgress = true;
     });
@@ -5494,7 +5514,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // todo:media (only transcoded?) Event.REMOTE_TRACK_ADDED
     // eslint-disable-next-line no-param-reassign
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+    this.secondaryMediaConn.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
       LoggerProxy.logger.info(
         `Meeting:index#setupSecondaryMediaConnectionListeners --> correlationId=${this.correlationId} connection state changed to ${event.state}`
       );
@@ -5512,9 +5532,38 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
+    // todo:
     // Event.ACTIVE_SPEAKERS_CHANGED
-    // Event.VIDEO_SOURCES_COUNT_CHANGED
     // Event.AUDIO_SOURCES_COUNT_CHANGED
+
+    this.secondaryMediaConn.webrtcMediaConnection.on(
+      Event.VIDEO_SOURCES_COUNT_CHANGED,
+      (numTotalSources, numLiveSources, mediaContent) => {
+        // todo: improve, it's a quick hack for now
+        if (this.secondaryMediaConn.isLive) {
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupMediaConnectionListeners',
+            },
+            EVENT_TRIGGERS.REMOTE_VIDEO_SOURCE_COUNT_CHANGED,
+            {
+              numTotalSources,
+              numLiveSources,
+              mediaContent,
+            }
+          );
+        }
+
+        if (mediaContent === MediaContent.Main) {
+          this.secondaryMediaConn.mediaRequestManagers.video.setNumCurrentSources(
+            numTotalSources,
+            numLiveSources
+          );
+        }
+      }
+    );
   };
 
   /**
@@ -5697,6 +5746,61 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   *
+   * @returns {Promise}
+   */
+  async switchMediaConnections() {
+    if (!this.secondaryMediaConn) {
+      throw new Error('secondary media connection missing');
+    }
+
+    if (!this.secondaryMediaConn.isLive) {
+      this.secondaryMediaConn.isLive = true;
+      // switching from the main one to the secondary one
+      this.remoteMediaManager.setAsSecondary();
+
+      const currentLayout = this.remoteMediaManager.getLayoutId();
+
+      this.secondaryMediaConn.remoteMediaManager.setAsPrimary();
+      await this.secondaryMediaConn.remoteMediaManager.setLayout(currentLayout);
+
+      // publish the streams on the new one and unpublish on the old one
+      if (this.mediaProperties.audioStream) {
+        await this.sendSlotManager.unpublishStream(MediaType.AudioMain);
+
+        await this.secondaryMediaConn.sendSlotManager.publishStream(
+          MediaType.AudioMain,
+          this.mediaProperties.audioStream
+        );
+      }
+      if (this.mediaProperties.videoStream) {
+        await this.sendSlotManager.unpublishStream(MediaType.VideoMain);
+
+        await this.secondaryMediaConn.sendSlotManager.publishStream(
+          MediaType.VideoMain,
+          this.mediaProperties.videoStream
+        );
+      }
+      if (this.mediaProperties.shareVideoStream) {
+        await this.sendSlotManager.unpublishStream(MediaType.VideoSlides);
+
+        await this.secondaryMediaConn.sendSlotManager.publishStream(
+          MediaType.VideoSlides,
+          this.mediaProperties.shareVideoStream
+        );
+      }
+      if (this.mediaProperties.shareAudioStream) {
+        await this.sendSlotManager.unpublishStream(MediaType.AudioSlides);
+
+        await this.secondaryMediaConn.sendSlotManager.publishStream(
+          MediaType.AudioSlides,
+          this.mediaProperties.shareAudioStream
+        );
+      }
+    }
+  }
+
+  /**
    * Creates a secondary media connection
    *
    * @returns {Promise}
@@ -5706,6 +5810,11 @@ export default class Meeting extends StatelessWebexPlugin {
       isRoapInProgress: false,
       locusMediaRequest: null,
       webrtcMediaConnection: null,
+      receiveSlotManager: null,
+      mediaRequestManagers: null,
+      remoteMediaManager: null,
+      sendSlotManager: new SendSlotManager(LoggerProxy),
+      isLive: false,
     };
     const LOG_HEADER = 'Meeting:index#createSecondaryConnection -->';
 
@@ -5726,10 +5835,25 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     try {
+      this.secondaryMediaConn.receiveSlotManager = new ReceiveSlotManager(
+        (mediaType: MediaType) => {
+          if (!this.secondaryMediaConn?.webrtcMediaConnection) {
+            return Promise.reject(new Error('Webrtc media connection is missing'));
+          }
+
+          return this.secondaryMediaConn.webrtcMediaConnection.createReceiveSlot(mediaType);
+        },
+        (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
+      );
+
+      this.secondaryMediaConn.mediaRequestManagers = this.createMediaRequestManagers(
+        this.secondaryMediaConn
+      );
+
       // todo: should we send any CA events?
       this.secondaryMediaConn.locusMediaRequest = new LocusMediaRequest(
         {
-          correlationId: this.correlationId,
+          correlationId: this.correlationId, // todo: generate a new correlation id?
           device: {
             url: this.deviceUrl,
             // @ts-ignore
@@ -5757,7 +5881,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mc = Media.createMediaConnection(
         this.isMultistream,
-        'secondary',
+        'MC-2nd',
         // @ts-ignore
         this.webex,
         this.id,
@@ -5774,13 +5898,50 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       );
 
+      // create the send slots
+      const [audioEnabled, videoEnabled, shareEnabled] = [
+        this.mediaProperties.mediaDirection.sendAudio ||
+          this.mediaProperties.mediaDirection.receiveAudio,
+        this.mediaProperties.mediaDirection.sendVideo ||
+          this.mediaProperties.mediaDirection.receiveVideo,
+        this.mediaProperties.mediaDirection.sendShare ||
+          this.mediaProperties.mediaDirection.receiveShare,
+      ];
+
+      this.secondaryMediaConn.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
+      this.secondaryMediaConn.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
+      this.secondaryMediaConn.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
+      this.secondaryMediaConn.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
+
       this.secondaryMediaConn.webrtcMediaConnection = mc;
       this.setupSecondaryMediaConnectionListeners();
 
       // todo:media: sendslot manager, publishing of tracks
 
       if (this.isMultistream) {
-        // todo:media: instantiate RemoteMediaManager if we want to see video etc
+        this.secondaryMediaConn.remoteMediaManager = new RemoteMediaManager(
+          this.secondaryMediaConn.receiveSlotManager,
+          this.secondaryMediaConn.mediaRequestManagers,
+          this.remoteMediaManager.getConfig()
+        );
+
+        this.forwardEvent(
+          this.secondaryMediaConn.remoteMediaManager,
+          RemoteMediaManagerEvent.AudioCreated,
+          EVENT_TRIGGERS.REMOTE_MEDIA_AUDIO_CREATED
+        );
+        this.forwardEvent(
+          this.secondaryMediaConn.remoteMediaManager,
+          RemoteMediaManagerEvent.ScreenShareAudioCreated,
+          EVENT_TRIGGERS.REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED
+        );
+        this.forwardEvent(
+          this.secondaryMediaConn.remoteMediaManager,
+          RemoteMediaManagerEvent.VideoLayoutChanged,
+          EVENT_TRIGGERS.REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED
+        );
+
+        await this.secondaryMediaConn.remoteMediaManager.start(false);
       }
 
       await mc.initiateOffer();
