@@ -595,7 +595,7 @@ const Services = WebexPlugin.extend({
    * @param {WaitForServicePTO} - The parameter transfer object.
    * @returns {Promise<string>} - Resolves to the priority host of a service.
    */
-  waitForService({name, timeout = 5, url}) {
+  waitForService({name, timeout = 30, url}) {
     const {services} = this.webex.config;
 
     // Save memory by grabbing the catalog after there isn't a priortyURL
