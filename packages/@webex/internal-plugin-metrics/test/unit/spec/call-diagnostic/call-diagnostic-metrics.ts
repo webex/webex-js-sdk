@@ -1169,6 +1169,22 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should generate the correct payload for client error 4009', () => {
+        const res = cd.getErrorPayloadForClientErrorCode({
+          clientErrorCode: 4009,
+          serviceErrorCode: undefined,
+        });
+        assert.deepEqual(res, {
+          category: 'network',
+          errorDescription: 'NetworkUnavailable',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          errorCode: 4009,
+          serviceErrorCode: undefined,
+        });
+      })
+
       it('it should return undefined if trying to get payload for client error code that doesnt exist', () => {
         const res = cd.getErrorPayloadForClientErrorCode({
           clientErrorCode: 123456,
@@ -1305,7 +1321,7 @@ describe('internal-plugin-metrics', () => {
           })
         );
         assert.deepEqual(res, {
-          category: 'signaling',
+          category: 'network',
           errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
           fatal: true,
           name: 'other',
@@ -1325,7 +1341,7 @@ describe('internal-plugin-metrics', () => {
           })
         );
         assert.deepEqual(res, {
-          category: 'signaling',
+          category: 'network',
           errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
           fatal: true,
           name: 'other',
