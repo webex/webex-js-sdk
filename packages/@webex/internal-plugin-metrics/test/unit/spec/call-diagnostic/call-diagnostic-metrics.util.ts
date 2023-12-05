@@ -15,6 +15,7 @@ const {
   prepareDiagnosticMetricItem,
   setMetricTimings,
   isNetworkError,
+  isUnauthorizedError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -129,6 +130,36 @@ describe('internal-plugin-metrics', () => {
       it(`for rawError ${rawError} returns the correct result`, () => {
         //@ts-ignore
         assert.deepEqual(isNetworkError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isUnauthorizedError', () => {
+    [
+      [
+        'unauthorized',
+        new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        true,
+      ],
+      [
+        'network or cors',
+        new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        false,
+      ],
+      ['other', {body: {data: {meetingInfo: 'something'}}}, false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isUnauthorizedError(rawError), expected);
       });
     });
   });
