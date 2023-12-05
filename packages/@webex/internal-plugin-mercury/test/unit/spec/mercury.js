@@ -568,12 +568,21 @@ describe('plugin-mercury', () => {
     });
 
     describe('#_emit()', () => {
-      it('emits Error-safe events', () => {
+      it('emits Error-safe events and log the error with the call parameters', () => {
+        const error = 'error';
+        const event = {data: 'some data'};
         mercury.on('break', () => {
-          throw new Error();
+          throw error;
         });
+        sinon.stub(mercury.logger, 'error');
 
-        return Promise.resolve(mercury._emit('break'));
+        return Promise.resolve(mercury._emit('break', event)).then((res) => {
+          assert.calledWith(mercury.logger.error, 'mercury: error occurred in event handler', {
+            error,
+            arguments: ['break', event],
+          });
+          return res;
+        });
       });
     });
 
