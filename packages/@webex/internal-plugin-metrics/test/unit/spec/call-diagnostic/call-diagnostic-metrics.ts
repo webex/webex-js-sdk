@@ -1315,6 +1315,26 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should return AuthenticationFailed code for an Unauthorized error', () => {
+        const res = cd.generateClientEventErrorPayload(
+          new WebexHttpError.Unauthorized({
+            url: 'https://example.com',
+            statusCode: 0,
+            body: {},
+            options: {headers: {}, url: 'https://example.com'},
+          })
+        );
+        assert.deepEqual(res, {
+          category: 'signaling',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1010,
+        });
+      });
+
       it('should return unknown error otherwise', () => {
         const res = cd.generateClientEventErrorPayload({somethgin: 'new'});
         assert.deepEqual(res, {

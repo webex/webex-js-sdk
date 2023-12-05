@@ -17,6 +17,7 @@ import {
   isMeetingInfoServiceError,
   isBrowserMediaErrorName,
   isNetworkError,
+  isUnauthorizedError,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -48,6 +49,7 @@ import {
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
   NETWORK_ERROR,
+  AUTHENTICATION_FAILED_CODE,
 } from './config';
 import {generateCommonErrorMetadata} from '../utils';
 
@@ -448,6 +450,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (isNetworkError(rawError)) {
       const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
+        serviceErrorCode,
+      });
+      payload.errorDescription = rawError.message;
+
+      return payload;
+    }
+
+    if (isUnauthorizedError(rawError)) {
+      const payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
       });
       payload.errorDescription = rawError.message;

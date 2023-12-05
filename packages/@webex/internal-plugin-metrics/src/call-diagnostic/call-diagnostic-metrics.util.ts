@@ -140,6 +140,20 @@ export const isNetworkError = (rawError: any) => {
 };
 
 /**
+ * Returns true if the error is an unauthorized error
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isUnauthorizedError = (rawError: any) => {
+  if (rawError instanceof WebexHttpError.Unauthorized) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * MDN Media Devices getUserMedia() method returns a name if it errs
  * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
  *
