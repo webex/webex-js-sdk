@@ -3863,7 +3863,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Convenience method to set the correlation id for the Meeting
    * @param {String} id correlation id to set on the class
    * @returns {undefined}
-   * @private
+   * @public
    * @memberof Meeting
    */
   public setCorrelationId(id: string) {
