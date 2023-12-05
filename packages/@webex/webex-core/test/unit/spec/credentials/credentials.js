@@ -32,7 +32,7 @@ function promiseTick(count) {
 const AUTHORIZATION_STRING =
   'https://api.ciscospark.com/v1/authorize?client_id=MOCK_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A8000&scope=spark%3Arooms_read%20spark%3Ateams_read&state=set_state_here';
 
-describe('webex-core', () => {
+describe.only('webex-core', () => {
   describe('Credentials', () => {
     let clock;
 
@@ -641,9 +641,8 @@ describe('webex-core', () => {
             access_token: 'ST',
           });
 
-          sinon
-            .stub(credentials.supertoken, 'downscope')
-            .returns(Promise.reject(new Error('downscope failed')));
+          const failReason = 'downscope failed';
+          sinon.stub(credentials.supertoken, 'downscope').returns(Promise.reject(failReason));
 
           sinon.stub(credentials.logger, 'warn').callsFake(() => {});
           sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
@@ -665,7 +664,8 @@ describe('webex-core', () => {
             );
             assert.calledWith(
               webex.internal.metrics.submitClientMetrics,
-              'JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED'
+              'JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED',
+              {fields: {failReason}}
             );
           });
         });
@@ -844,11 +844,13 @@ describe('webex-core', () => {
         const st = makeToken(webex, {
           access_token: 'ST',
           refresh_token: 'RT',
+          scope: 'scope1 scope2',
         });
 
         const st2 = makeToken(webex, {
           access_token: 'ST2',
           refresh_token: 'RT2',
+          scope: 'scope1 scope2',
         });
 
         const t1 = makeToken(webex, {
@@ -901,6 +903,7 @@ describe('webex-core', () => {
         const st2 = makeToken(webex, {
           access_token: 'ST2',
           refresh_token: 'RT2',
+          scope: 'scope1 scope2',
         });
 
         const t1 = makeToken(webex, {
@@ -1053,7 +1056,7 @@ describe('webex-core', () => {
           });
       });
 
-      it('log and call metrics when fetched supertoken scope mismatch with the configured scope', () => {
+      it('exclude invalid scopes from user token, log and call metrics when fetched supertoken scope mismatch with the configured scope', () => {
         const webex = new MockWebex({
           children: {
             logger: Logger,
@@ -1074,14 +1077,21 @@ describe('webex-core', () => {
           scope: 'scope1',
         });
 
+        const userToken = makeToken(webex, {
+          access_token: 'AT1',
+          scope: 'scope1 invalidScope1',
+        });
+
         credentials.set({
           supertoken: st,
-          userTokens: [],
+          userTokens: [userToken],
         });
-        credentials.config.scope = 'scope1 invalidScope1 invalidScope2';
+        const invalidScopes = 'invalidScope1 invalidScope2';
+        credentials.config.scope = `scope1 ${invalidScopes}`;
 
         sinon.stub(st2, 'downscope').returns(Promise.resolve());
         sinon.stub(st, 'refresh').returns(Promise.resolve(st2));
+        sinon.spy(credentials, 'downscope');
         sinon.spy(credentials, 'scheduleRefresh');
 
         sinon.stub(credentials.logger, 'warn').callsFake(() => {});
@@ -1090,12 +1100,14 @@ describe('webex-core', () => {
         return credentials.refresh().then(() => {
           assert.calledWith(
             credentials.logger.warn,
-            'credentials: "invalidScope1 invalidScope2" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.'
+            `credentials: "${invalidScopes}" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.`
           );
           assert.calledWith(
             webex.internal.metrics.submitClientMetrics,
-            'JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH'
+            'JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH',
+            {fields: {invalidScopes}}
           );
+          assert.calledWith(credentials.downscope, 'scope1');
         });
       });
     });

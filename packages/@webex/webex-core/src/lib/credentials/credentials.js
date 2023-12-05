@@ -260,12 +260,12 @@ const Credentials = WebexPlugin.extend({
    */
   downscope(scope) {
     return this.supertoken.downscope(scope).catch((reason) => {
-      this.logger.warn(
-        `credentials: failed to downscope supertoken to "${scope}"`,
-        reason.body ?? reason
-      );
+      const failReason = reason?.body ?? reason;
+      this.logger.warn(`credentials: failed to downscope supertoken to "${scope}"`, failReason);
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
-      this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED);
+      this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED, {
+        fields: {failReason},
+      });
 
       return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
         parent: this,
@@ -533,28 +533,33 @@ const Credentials = WebexPlugin.extend({
             `credentials: "${invalidScopes}" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.`
           );
           this.webex.internal.metrics.submitClientMetrics(
-            METRICS.JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH
+            METRICS.JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH,
+            {fields: {invalidScopes}}
           );
         }
 
         return Promise.all(
-          tokens.map((token) =>
-            this.downscope(token.scope)
-              // eslint-disable-next-line max-nested-callbacks
-              .then((t) => {
-                this.logger.info(`credentials: revoking token for ${token.scope}`);
+          tokens.map((token) => {
+            const tokenScope = filterScope(diffScopes(token.scope, st.scope), token.scope);
 
-                return token
-                  .revoke()
-                  .catch((err) => {
-                    this.logger.warn('credentials: failed to revoke user token', err);
-                  })
-                  .then(() => {
-                    this.userTokens.remove(token.scope);
-                    this.userTokens.add(t);
-                  });
-              })
-          )
+            return (
+              this.downscope(tokenScope)
+                // eslint-disable-next-line max-nested-callbacks
+                .then((t) => {
+                  this.logger.info(`credentials: revoking token for ${token.scope}`);
+
+                  return token
+                    .revoke()
+                    .catch((err) => {
+                      this.logger.warn('credentials: failed to revoke user token', err);
+                    })
+                    .then(() => {
+                      this.userTokens.remove(token.scope);
+                      this.userTokens.add(t);
+                    });
+                })
+            );
+          })
         );
       })
       .then(() => {

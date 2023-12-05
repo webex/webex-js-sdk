@@ -19,7 +19,7 @@ export function sortScope(scope) {
 
 /**
  * sorts a list of scopes and filters the specified scope
- * @param {string} toFilter
+ * @param {string|string[]} toFilter
  * @param {string} scope
  * @returns {string}
  */
@@ -27,16 +27,17 @@ export function filterScope(toFilter, scope) {
   if (!scope) {
     return '';
   }
+  const toFilterArr = Array.isArray(toFilter) ? toFilter : [toFilter];
 
   return scope
     .split(' ')
-    .filter((item) => item !== toFilter)
+    .filter((item) => !toFilterArr.includes(item))
     .sort()
     .join(' ');
 }
 
 /**
- * Returns the scopes not included in the other given scope
+ * Returns a string containing all items in scopeA that are not in scopeB, or an empty string if there are none.
  *
  * @param {string} scopeA
  * @param {string} scopeB

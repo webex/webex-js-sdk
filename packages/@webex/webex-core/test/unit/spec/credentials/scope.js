@@ -13,17 +13,26 @@ describe('webex-core', () => {
     });
 
     describe('filterScope', () => {
-      it('should filter out one filter from the filter list and sort the result', () => {
+      it('should filter out one scope from the original scope and sort the result', () => {
         assert.equal(filterScope('a', undefined), '');
         assert.equal(filterScope('a', ''), '');
         assert.equal(filterScope('a', 'a'), '');
         assert.equal(filterScope('a', 'a b c'), 'b c');
         assert.equal(filterScope('c', 'a c b'), 'a b');
       });
+
+      it('should filter out a list of scopes from the original scope and sort the result', () => {
+        assert.equal(filterScope([], 'a'), 'a');
+        assert.equal(filterScope(['a', 'b'], undefined), '');
+        assert.equal(filterScope(['a', 'b'], ''), '');
+        assert.equal(filterScope(['a', 'b'], 'a'), '');
+        assert.equal(filterScope(['a', 'b'], 'a b c'), 'c');
+        assert.equal(filterScope(['a', 'd'], 'a c a b'), 'b c');
+      });
     });
 
     describe('diffScopes', () => {
-      it('should return empty string when the first scope is subset of the second one', () => {
+      it('should return an empty string, if all items in the first scope are contained in the second scope', () => {
         assert.deepEqual(diffScopes(undefined, undefined), '');
         assert.deepEqual(diffScopes(undefined, ''), '');
         assert.deepEqual(diffScopes('', undefined), '');
@@ -34,7 +43,7 @@ describe('webex-core', () => {
         assert.deepEqual(diffScopes('a b c', 'a b c d'), '');
       });
 
-      it('should return different when the first scope is not a subset of the second one', () => {
+      it('should return a string containing all items in the first scope that are not in the second scope', () => {
         assert.deepEqual(diffScopes('a', undefined), 'a');
         assert.deepEqual(diffScopes('a', 'b'), 'a');
         assert.deepEqual(diffScopes('a b c', 'a b'), 'c');
