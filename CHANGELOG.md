@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.267](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.266...v3.0.0-beta.267) (2023-12-05)
+
+
+### Features
+
+* **plugin-metrics:** classify unauthorized errors ([#3229](https://github.com/webex/webex-js-sdk/issues/3229)) ([6f9270c](https://github.com/webex/webex-js-sdk/commit/6f9270cde85161e5dd124e1852a620fea184e773))
+
 ## [3.0.0-beta.266](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.265...v3.0.0-beta.266) (2023-12-05)
 
 
