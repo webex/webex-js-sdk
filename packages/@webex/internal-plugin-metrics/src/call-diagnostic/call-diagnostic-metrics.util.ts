@@ -3,6 +3,7 @@ import anonymize from 'ip-anonymize';
 import util from 'util';
 
 import {BrowserDetection} from '@webex/common';
+import {WebexHttpError} from '@webex/webex-core';
 import {isEmpty, merge} from 'lodash';
 import {
   ClientEvent,
@@ -118,6 +119,20 @@ export const isLocusServiceErrorCode = (errorCode: string | number) => {
  */
 export const isMeetingInfoServiceError = (rawError: any) => {
   if (rawError.body?.data?.meetingInfo || rawError.body?.url?.includes(WBX_APP_API_URL)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Returns true if the raw error is a network related error
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isNetworkError = (rawError: any) => {
+  if (rawError instanceof WebexHttpError.NetworkOrCORSError) {
     return true;
   }
 

@@ -6,6 +6,7 @@ import {ClientEventError} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
 
+export const NETWORK_ERROR = 1026;
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
 export const UNKNOWN_ERROR = 9999; // Unexpected error that is not a meetingInfo error, locus error or browser media error.
@@ -43,6 +44,7 @@ const ERROR_DESCRIPTIONS = {
   LOCUS_CONFLICT: 'LocusConflict',
   TIMEOUT: 'Timeout',
   LOCUS_INVALID_SEQUENCE_HASH: 'LocusInvalidSequenceHash',
+  NETWORK_ERROR: 'NetworkError',
   UPDATE_MEDIA_FAILED: 'UpdateMediaFailed',
   FAILED_TO_CONNECT_MEDIA: 'FailedToConnectMedia',
   MEDIA_ENGINE_LOST: 'MediaEngineLost',
@@ -307,6 +309,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   1007: {
     errorDescription: ERROR_DESCRIPTIONS.UPDATE_MEDIA_FAILED,
+    category: 'signaling',
+    fatal: true,
+  },
+  1026: {
+    errorDescription: ERROR_DESCRIPTIONS.NETWORK_ERROR,
     category: 'signaling',
     fatal: true,
   },
