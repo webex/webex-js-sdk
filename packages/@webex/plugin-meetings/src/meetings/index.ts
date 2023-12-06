@@ -1032,6 +1032,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {string} joinTrigger - the optional specified joinTrigger
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1042,7 +1043,8 @@ export default class Meetings extends WebexPlugin {
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
-    failOnMissingMeetingInfo = false
+    failOnMissingMeetingInfo = false,
+    joinTrigger: string = undefined
   ) {
     // TODO: type should be from a dictionary
 
@@ -1097,7 +1099,8 @@ export default class Meetings extends WebexPlugin {
               useRandomDelayForInfo,
               infoExtraParams,
               correlationId,
-              failOnMissingMeetingInfo
+              failOnMissingMeetingInfo,
+              joinTrigger
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1157,6 +1160,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {String} correlationId the optional specified correlationId
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {String} joinTrigger - the optional specified joinTrigger
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1167,7 +1171,8 @@ export default class Meetings extends WebexPlugin {
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
-    failOnMissingMeetingInfo = false
+    failOnMissingMeetingInfo = false,
+    joinTrigger: string = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1182,6 +1187,7 @@ export default class Meetings extends WebexPlugin {
         destination,
         destinationType: type,
         correlationId,
+        joinTrigger,
       },
       {
         // @ts-ignore

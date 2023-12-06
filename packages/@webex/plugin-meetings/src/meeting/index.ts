@@ -477,6 +477,7 @@ export default class Meeting extends StatelessWebexPlugin {
   hostId: string;
   id: string;
   isMultistream: boolean;
+  joinTrigger: string;
   locusUrl: string;
   mediaConnections: any[];
   mediaId?: string;
@@ -658,6 +659,14 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.deviceUrl = attrs.deviceUrl;
+    /**
+     * @instance
+     * @type {String}
+     * @readonly
+     * @public
+     * @memberof Meeting
+     */
+    this.joinTrigger = attrs.joinTrigger || 'user-interaction';
     /**
      * @instance
      * @type {Object}
@@ -3951,6 +3960,17 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Set the joinTrigger for the Meeting
+   * @param {String} joinTrigger joinTrigger to set on the class
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  public setJoinTrigger(joinTrigger: string) {
+    this.joinTrigger = joinTrigger;
+  }
+
+  /**
    * Enqueue request for screenshare floor and set the status to pending
    * @returns {Promise}
    * @private
@@ -4585,7 +4605,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
       payload: {
-        trigger: 'user-interaction',
+        trigger: this.joinTrigger,
         isRoapCallEnabled: true,
         pstnAudioType: options?.pstnAudioType,
       },
