@@ -259,9 +259,24 @@ export default class MediaProperties {
 
         return true;
       }
+      LoggerProxy.logger.warn(
+        `Media:properties#getCurrentConnectionType --> missing localCandidate.protocol, candidateType=${localCandidate.candidateType}`
+      );
 
       return false;
     });
+
+    if (foundConnectionType === 'unknown') {
+      const candidatePairStates = allStatsReports
+        .filter((report) => report.type === 'candidate-pair')
+        .map((report) => report.state);
+
+      LoggerProxy.logger.warn(
+        `Media:properties#getCurrentConnectionType --> all candidate pair states: ${JSON.stringify(
+          candidatePairStates
+        )}`
+      );
+    }
 
     return foundConnectionType;
   }
