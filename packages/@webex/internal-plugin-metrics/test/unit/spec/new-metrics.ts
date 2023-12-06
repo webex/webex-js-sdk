@@ -152,7 +152,8 @@ describe('internal-plugin-metrics', () => {
           resource: 'clientmetrics',
           headers: { 'x-prelogin-userid': 'my-id' },
           body: {},
-          qs: { alias: true }
+          qs: { alias: true },
+          waitForServiceTimeout: 15,
         });
         assert.calledWith(
           webex.logger.log,
