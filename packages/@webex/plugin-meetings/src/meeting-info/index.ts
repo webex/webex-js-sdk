@@ -96,12 +96,12 @@ export default class MeetingInfo {
             payload: {
               identifiers: {
                 meetingLookupUrl: info?.url,
-                webexConferenceIdStr: info?.body?.confID,
-                globalMeetingId: info?.body?.meetingId,
               },
             },
             options: {
               meetingId,
+              webexConferenceIdStr: info?.body?.confID,
+              globalMeetingId: info?.body?.meetingId,
             },
           });
         }

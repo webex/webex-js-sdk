@@ -17,7 +17,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe.only('internal-plugin-metrics', () => {
+describe('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 

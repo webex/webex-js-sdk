@@ -537,12 +537,12 @@ describe('plugin-meetings', () => {
                 payload: {
                   identifiers: {
                     meetingLookupUrl: result?.url,
-                    globalMeetingId: requestResponse.body?.meetingId,
-                    webexConferenceIdStr: requestResponse.body?.confID,
                   },
                 },
                 options: {
                   meetingId,
+                  globalMeetingId: requestResponse.body?.meetingId,
+                  webexConferenceIdStr: requestResponse.body?.confID,
                 }
               });
             } else {
@@ -609,12 +609,12 @@ describe('plugin-meetings', () => {
           payload: {
             identifiers: {
               meetingLookupUrl: result?.url,
-              globalMeetingId: requestResponse.body?.meetingId,
-              webexConferenceIdStr: requestResponse.body?.confID,
             },
           },
           options: {
             meetingId: 'meetingId',
+            globalMeetingId: requestResponse.body?.meetingId,
+            webexConferenceIdStr: requestResponse.body?.confID,
           }
         });
       });

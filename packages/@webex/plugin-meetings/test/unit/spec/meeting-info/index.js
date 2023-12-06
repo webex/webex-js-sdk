@@ -62,12 +62,12 @@ describe('plugin-meetings', () => {
             payload: {
               identifiers: {
                 meetingLookupUrl: 'url-123',
-                webexConferenceIdStr: '123',
-                globalMeetingId: '321'
               },
             },
             options: {
               meetingId,
+              webexConferenceIdStr: '123',
+              globalMeetingId: '321'
             },
           });
         } else {
