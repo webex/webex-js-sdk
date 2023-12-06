@@ -61,6 +61,9 @@ const BEHAVIORAL_METRICS = {
   LOCUS_DELTA_OUT_OF_ORDER: 'js_sdk_locus_delta_ooo',
   PERMISSION_TOKEN_REFRESH: 'js_sdk_permission_token_refresh',
   PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
+  TURN_DISCOVERY_LATENCY: 'js_sdk_turn_discovery_latency',
+  ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
+  ICE_AND_DTLS_LATENCY: 'js_sdk_ice_and_dtls_latency',
 };
 
 export {BEHAVIORAL_METRICS as default};

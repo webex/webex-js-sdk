@@ -5093,12 +5093,22 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_MESSAGE_TO_SEND, (event) => {
       const LOG_HEADER = `Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND --> correlationId=${this.correlationId}`;
 
+      // @ts-ignore
+      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
       switch (event.roapMessage.messageType) {
         case 'OK':
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.media-engine.remote-sdp-received',
             options: {meetingId: this.id},
+          });
+
+          // send metric here for latency/
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
+            correlation_id: this.correlationId,
+            latency: cdl.getLocalSDPGenRemoteSDPRecv(),
+            meetingId: this.id,
           });
 
           logRequest(
@@ -5292,6 +5302,10 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.info(
         `Meeting:index#setupMediaConnectionListeners --> correlationId=${this.correlationId} connection state changed to ${event.state}`
       );
+
+      // @ts-ignore
+      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
       switch (event.state) {
         case ConnectionState.Connecting:
           // @ts-ignore
@@ -5313,6 +5327,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
             locus_id: this.locusId,
+            latency: cdl.getICESetupTime(),
           });
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
@@ -5692,11 +5707,34 @@ export default class Meeting extends StatelessWebexPlugin {
       promises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
     }
 
+    // @ts-ignore
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
     return Promise.all(promises)
-      .then(() => this.roap.doTurnDiscovery(this, false))
+      .then(() => {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.client.add-media.turn-discovery.start',
+        });
+
+        return this.roap.doTurnDiscovery(this, false);
+      })
       .then(async (turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
         turnServerUsed = !turnDiscoverySkippedReason;
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.client.add-media.turn-discovery.end',
+        });
+
+        if (turnServerUsed) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
+            correlation_id: this.correlationId,
+            latency: cdl.getTurnDiscoveryTime(),
+            turnServerUsed,
+          });
+        }
 
         const {turnServerInfo} = turnDiscoveryObject;
 
