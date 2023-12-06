@@ -5103,8 +5103,6 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.media-engine.remote-sdp-received',
             options: {meetingId: this.id},
           });
-
-          // send metric here for latency/
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
             correlation_id: this.correlationId,
             latency: cdl.getLocalSDPGenRemoteSDPRecv(),
