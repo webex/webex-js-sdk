@@ -1,5 +1,6 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {WebexHttpError} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -1249,6 +1250,22 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should generate the correct payload for client error 4009', () => {
+        const res = cd.getErrorPayloadForClientErrorCode({
+          clientErrorCode: 4009,
+          serviceErrorCode: undefined,
+        });
+        assert.deepEqual(res, {
+          category: 'network',
+          errorDescription: 'NetworkUnavailable',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          errorCode: 4009,
+          serviceErrorCode: undefined,
+        });
+      })
+
       it('it should return undefined if trying to get payload for client error code that doesnt exist', () => {
         const res = cd.getErrorPayloadForClientErrorCode({
           clientErrorCode: 123456,
@@ -1373,6 +1390,46 @@ describe('internal-plugin-metrics', () => {
 
       it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
         checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
+      });
+
+      it('should return NetworkError code for a NetworkOrCORSERror', () => {
+        const res = cd.generateClientEventErrorPayload(
+          new WebexHttpError.NetworkOrCORSError({
+            url: 'https://example.com',
+            statusCode: 0,
+            body: {},
+            options: {headers: {}, url: 'https://example.com'},
+          })
+        );
+        assert.deepEqual(res, {
+          category: 'network',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1026,
+        });
+      });
+
+      it('should return AuthenticationFailed code for an Unauthorized error', () => {
+        const res = cd.generateClientEventErrorPayload(
+          new WebexHttpError.Unauthorized({
+            url: 'https://example.com',
+            statusCode: 0,
+            body: {},
+            options: {headers: {}, url: 'https://example.com'},
+          })
+        );
+        assert.deepEqual(res, {
+          category: 'network',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1010,
+        });
       });
 
       it('should return unknown error otherwise', () => {

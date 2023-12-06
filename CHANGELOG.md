@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.269](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.268...v3.0.0-beta.269) (2023-12-06)
+
+
+### Features
+
+* **plugin-metrics:** use network category for relevant errors ([#3231](https://github.com/webex/webex-js-sdk/issues/3231)) ([ecf4774](https://github.com/webex/webex-js-sdk/commit/ecf4774085670adf657f2bde2caad9413a74c99e))
+
+## [3.0.0-beta.268](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.267...v3.0.0-beta.268) (2023-12-05)
+
+
+### Bug Fixes
+
+* **public:** setcorrelation id is made public to be used in cantina ([#3230](https://github.com/webex/webex-js-sdk/issues/3230)) ([291a84f](https://github.com/webex/webex-js-sdk/commit/291a84fae8ee8fa7e27c87d97f4558e86d1aaba1))
+
+## [3.0.0-beta.267](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.266...v3.0.0-beta.267) (2023-12-05)
+
+
+### Features
+
+* **plugin-metrics:** classify unauthorized errors ([#3229](https://github.com/webex/webex-js-sdk/issues/3229)) ([6f9270c](https://github.com/webex/webex-js-sdk/commit/6f9270cde85161e5dd124e1852a620fea184e773))
+
+## [3.0.0-beta.266](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.265...v3.0.0-beta.266) (2023-12-05)
+
+
+### Features
+
+* **plugin-metrics:** classify network errors ([#3224](https://github.com/webex/webex-js-sdk/issues/3224)) ([dba5aed](https://github.com/webex/webex-js-sdk/commit/dba5aed82e1cd97c09b64dea053831f52d2919d5))
+
 ## [3.0.0-beta.265](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.264...v3.0.0-beta.265) (2023-11-29)
 
 
