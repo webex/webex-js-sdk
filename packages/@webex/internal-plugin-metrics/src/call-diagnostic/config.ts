@@ -316,12 +316,12 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [AUTHENTICATION_FAILED_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.AUTHENTICATION_FAILED,
-    category: 'signaling',
+    category: 'network',
     fatal: true,
   },
   1026: {
     errorDescription: ERROR_DESCRIPTIONS.NETWORK_ERROR,
-    category: 'signaling',
+    category: 'network',
     fatal: true,
   },
   2001: {
@@ -433,7 +433,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   4009: {
     errorDescription: ERROR_DESCRIPTIONS.NETWORK_UNAVAILABLE,
-    category: 'expected',
+    category: 'network',
     fatal: true,
   },
   4010: {
