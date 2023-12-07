@@ -507,7 +507,7 @@ describe('internal-plugin-metrics', () => {
 
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr, and gloablMeetingId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -527,9 +527,9 @@ describe('internal-plugin-metrics', () => {
 
         assert.calledWith(getIdentifiersSpy, {
           correlationId: 'correlationId',
-          preLoginId: undefined,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
+          preLoginId: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -608,6 +608,87 @@ describe('internal-plugin-metrics', () => {
 
 
       });
+
+      it('should submit client event successfully with preLoginId', () => {
+        webex.internal.device.userId = undefined;
+
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsPreLoginSpy = sinon.spy(cd, 'submitToCallDiagnosticsPreLogin');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          preLoginId: 'myPreLoginId'
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(getIdentifiersSpy, {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          preLoginId: 'myPreLoginId',
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'myPreLoginId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+          },
+          options
+        );
+        assert.notCalled(submitToCallDiagnosticsSpy);
+        assert.calledWith(submitToCallDiagnosticsPreLoginSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'myPreLoginId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+          },
+          eventId: 'my-fake-id',
+          origin: { buildType: 'test', networkType: 'unknown', origin: 'fake-origin' },
+          originTime: {
+            triggered: now.toISOString(),
+            sent: now.toISOString()
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      })
 
       it('it should include errors if provided with meetingId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
