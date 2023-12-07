@@ -624,7 +624,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.callStateForMetrics = attrs.callStateForMetrics || {};
-    const correlationId = attrs.correlationId || attrs.callStateForMetrics.correlationId;
+    const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
     if (correlationId) {
       LoggerProxy.logger.log(
         `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
@@ -634,7 +634,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.callStateForMetrics.correlationId = this.id;
     }
     this.callStateForMetrics.joinTrigger =
-      attrs.callStateForMetrics.joinTrigger || 'user-interaction';
+      attrs.callStateForMetrics?.joinTrigger || 'user-interaction';
     /**
      * @instance
      * @type {String}
@@ -1362,10 +1362,18 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Getter - Returns callStateForMetrics.correlationId
-   * @returns {Boolean}
+   * @returns {string}
    */
-  public get correlationId() {
+  get correlationId() {
     return this.callStateForMetrics.correlationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.correlationId
+   * @param {string} correlationId
+   */
+  set correlationId(correlationId: string) {
+    this.callStateForMetrics.correlationId = correlationId;
   }
 
   /**

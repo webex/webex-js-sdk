@@ -648,23 +648,23 @@ describe('plugin-meetings', () => {
         };
 
         it('calls createMeeting and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, true]
           );
         });
 
         it('calls createMeeting when failOnMissingMeetinginfo is undefined and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, undefined],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, false]
           );
         });
 
         it('calls createMeeting when failOnMissingMeetinginfo is false and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, false]
           );
         });
 
@@ -693,7 +693,8 @@ describe('plugin-meetings', () => {
             test2,
             FAKE_USE_RANDOM_DELAY,
             FAKE_INFO_EXTRA_PARAMS,
-            correlationId
+            {correlationId},
+            false
           );
         });
 
@@ -1390,7 +1391,7 @@ describe('plugin-meetings', () => {
               'test type',
               false,
               {},
-              'my-correlationId'
+              {correlationId: 'my-correlationId'}
             );
 
             const expectedMeetingData = {
