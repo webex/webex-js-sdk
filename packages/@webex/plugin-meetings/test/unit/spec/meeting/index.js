@@ -1503,7 +1503,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(fakeMediaConnection.initiateOffer);
           assert.equal(meeting.allowMediaInLobby, allowMediaInLobby);
         };
-////////////////////////////////////////
+
         it('should attach the media and return promise', async () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
