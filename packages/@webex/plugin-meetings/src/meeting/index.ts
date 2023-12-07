@@ -5518,8 +5518,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.mediaDirection.receiveShare,
       ];
 
-      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, audioEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
     }
