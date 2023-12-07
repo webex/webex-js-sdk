@@ -264,7 +264,10 @@ const Credentials = WebexPlugin.extend({
       this.logger.warn(`credentials: failed to downscope supertoken to "${scope}"`, failReason);
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
       this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED, {
-        fields: {failReason},
+        fields: {
+          requestedScope: scope,
+          failReason,
+        },
       });
 
       return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {

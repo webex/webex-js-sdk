@@ -32,7 +32,7 @@ function promiseTick(count) {
 const AUTHORIZATION_STRING =
   'https://api.ciscospark.com/v1/authorize?client_id=MOCK_CLIENT_ID&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A8000&scope=spark%3Arooms_read%20spark%3Ateams_read&state=set_state_here';
 
-describe.only('webex-core', () => {
+describe('webex-core', () => {
   describe('Credentials', () => {
     let clock;
 
@@ -665,7 +665,7 @@ describe.only('webex-core', () => {
             assert.calledWith(
               webex.internal.metrics.submitClientMetrics,
               'JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED',
-              {fields: {failReason}}
+              {fields: {failReason, requestedScope: 'scope2'}}
             );
           });
         });
