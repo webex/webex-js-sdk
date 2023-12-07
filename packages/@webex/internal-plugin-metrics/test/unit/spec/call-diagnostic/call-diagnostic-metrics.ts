@@ -28,6 +28,7 @@ describe('internal-plugin-metrics', () => {
     const fakeMeeting = {
       id: '1',
       correlationId: 'correlationId',
+      callStateForMetrics: {},
       environment: 'meeting_evn',
       locusUrl: 'locus/url',
       locusInfo: {
