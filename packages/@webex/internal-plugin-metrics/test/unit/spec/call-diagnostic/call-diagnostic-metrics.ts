@@ -40,6 +40,18 @@ describe('internal-plugin-metrics', () => {
       getCurUserType: () => 'host',
     };
 
+    const fakeMeeting2 = {
+      ...fakeMeeting,
+      id: '2',
+      correlationId: 'correlationId2',
+      callStateForMetrics: {loginType: 'fakeLoginType'},
+    };
+
+    const fakeMeetings = {
+      1: fakeMeeting,
+      2: fakeMeeting2,
+    };
+
     let webex;
 
     beforeEach(() => {
@@ -72,7 +84,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
           meetingCollection: {
-            get: () => fakeMeeting,
+            get: (id) => fakeMeetings[id],
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -756,7 +768,56 @@ describe('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
-      })
+      });
+
+      it('should use meeting loginType if present and meetingId provided', () => {
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          meetingId: fakeMeeting2.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId2',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'fakeLoginType',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
 
       it('it should include errors if provided with meetingId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
