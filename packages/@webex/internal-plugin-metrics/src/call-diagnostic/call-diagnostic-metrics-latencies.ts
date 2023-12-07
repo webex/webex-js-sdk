@@ -182,6 +182,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Time taken to do turn discovery
+   * @returns - latency
+   */
+  public getTurnDiscoveryTime() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.add-media.turn-discovery.start',
+      'internal.client.add-media.turn-discovery.end'
+    );
+  }
+
+  /**
    * Local SDP Generated Remote SDP REceived
    * @returns - latency
    */

@@ -30,6 +30,7 @@ import {
   SELF_POLICY,
   IP_VERSION,
   ERROR_DICTIONARY,
+  NETWORK_STATUS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -69,6 +70,7 @@ import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaR
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 
+import CallDiagnosticLatencies from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics-latencies';
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
@@ -226,6 +228,10 @@ describe('plugin-meetings', () => {
       getReachabilityMetrics: sinon.stub().resolves({}),
     };
     webex.internal.llm.on = sinon.stub();
+    webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
+      {},
+      {parent: webex}
+    );
     membersSpy = sinon.spy(MembersImport, 'default');
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
@@ -1186,22 +1192,42 @@ describe('plugin-meetings', () => {
           const error = await assert.isRejected(meeting.addMedia());
 
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
-          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            code: error.code,
-            turnDiscoverySkippedReason: undefined,
-            turnServerUsed: true,
-            isMultistream: false,
-            signalingState: 'unknown',
-            connectionState: 'unknown',
-            iceConnectionState: 'unknown',
-            someReachabilityMetric1: 'some value1',
-            someReachabilityMetric2: 'some value2',
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
           });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }
+          );
         });
 
         it('checks metrics called with skipped reason config', async () => {
@@ -1211,6 +1237,13 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
+            assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+              name: 'internal.client.add-media.turn-discovery.start',
+            });
+            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+              name: 'internal.client.add-media.turn-discovery.end',
+            });
             assert(Metrics.sendBehavioralMetric.calledOnce);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -1237,9 +1270,25 @@ describe('plugin-meetings', () => {
           });
           const result = await assert.isRejected(meeting.addMedia());
 
-          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
           assert.calledWith(
-            Metrics.sendBehavioralMetric,
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             sinon.match({
               correlation_id: meeting.correlationId,
@@ -1278,6 +1327,23 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
 
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
@@ -1297,7 +1363,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should include the peer connection properties correctly for transcoded', async () => {
@@ -1318,6 +1383,23 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
 
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
@@ -1337,7 +1419,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -1400,6 +1481,13 @@ describe('plugin-meetings', () => {
         const checkWorking = ({allowMediaInLobby} = {}) => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
@@ -1562,15 +1650,19 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          assert.calledOnce(Metrics.sendBehavioralMetric);
-          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusUrl.split('/').pop(),
-            connectionType: 'udp',
-            isMultistream: false,
-            someReachabilityMetric1: 'some value1',
-            someReachabilityMetric2: 'some value2'
-          });
+          assert.calledTwice(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              connectionType: 'udp',
+              isMultistream: false,
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }
+          );
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -4846,6 +4938,47 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('submitClientEvent on connectionSuccess', () => {
+          it('sends client.ice.end when connectionSuccess on CONNECTION_STATE_CHANGED event', () => {
+            meeting.reconnectionManager = new ReconnectionManager(meeting);
+            meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
+            meeting.setNetworkStatus = sinon.stub().returns(undefined);
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusId,
+              latency: undefined,
+            });
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.CONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.iceReconnected);
+            assert.calledOnce(meeting.statsAnalyzer.startAnalyzer);
+            assert.calledWith(
+              meeting.statsAnalyzer.startAnalyzer,
+              meeting.mediaProperties.webrtcMediaConnection
+            );
+          });
+        });
+
         describe('should send correct metrics for ROAP_FAILURE event', () => {
           const fakeErrorMessage = 'test error';
           const fakeRootCauseName = 'root cause name';
@@ -5008,6 +5141,17 @@ describe('plugin-meetings', () => {
               mediaId: meeting.mediaId,
               correlationId: meeting.correlationId,
             });
+
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY,
+              {
+                correlation_id: meeting.correlationId,
+                meetingId: meeting.id,
+                latency: undefined,
+              }
+            );
           });
 
           it('handles OFFER message correctly', () => {
