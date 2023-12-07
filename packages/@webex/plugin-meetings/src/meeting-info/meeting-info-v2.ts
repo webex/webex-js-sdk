@@ -366,6 +366,8 @@ export default class MeetingInfoV2 {
             },
             options: {
               meetingId,
+              webexConferenceIdStr: response?.body?.confID,
+              globalMeetingId: response?.body?.meetingId,
             },
           });
         }
