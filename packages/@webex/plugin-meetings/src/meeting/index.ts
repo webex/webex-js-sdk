@@ -178,6 +178,12 @@ export type AddMediaOptions = {
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
 };
 
+export type CallStateForMetrics = {
+  correlationId?: string;
+  joinTrigger?: string;
+  loginType?: string;
+};
+
 export const MEDIA_UPDATE_TYPE = {
   TRANSCODED_MEDIA_CONNECTION: 'TRANSCODED_MEDIA_CONNECTION',
   SHARE_FLOOR_REQUEST: 'SHARE_FLOOR_REQUEST',
@@ -470,14 +476,13 @@ export default class Meeting extends StatelessWebexPlugin {
   annotation: any;
   webinar: any;
   conversationUrl: string;
-  correlationId: string;
+  callStateForMetrics: CallStateForMetrics;
   destination: string;
   destinationType: string;
   deviceUrl: string;
   hostId: string;
   id: string;
   isMultistream: boolean;
-  joinTrigger: string;
   locusUrl: string;
   mediaConnections: any[];
   mediaId?: string;
@@ -611,21 +616,25 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.id = uuid.v4();
     /**
-     * Correlation ID used for network tracking of meeting
+     * Call state used for metrics
      * @instance
-     * @type {String}
+     * @type {CallStateForMetrics}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    if (attrs.correlationId) {
+    this.callStateForMetrics = attrs.callStateForMetrics || {};
+    const correlationId = attrs.correlationId || attrs.callStateForMetrics.correlationId;
+    if (correlationId) {
       LoggerProxy.logger.log(
-        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${this.correlationId}`
+        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
-      this.correlationId = attrs.correlationId;
+      this.callStateForMetrics.correlationId = correlationId;
     } else {
-      this.correlationId = this.id;
+      this.callStateForMetrics.correlationId = this.id;
     }
+    this.callStateForMetrics.joinTrigger =
+      attrs.callStateForMetrics.joinTrigger || 'user-interaction';
     /**
      * @instance
      * @type {String}
@@ -659,14 +668,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.deviceUrl = attrs.deviceUrl;
-    /**
-     * @instance
-     * @type {String}
-     * @readonly
-     * @public
-     * @memberof Meeting
-     */
-    this.joinTrigger = attrs.joinTrigger || 'user-interaction';
     /**
      * @instance
      * @type {Object}
@@ -1357,6 +1358,14 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   isLocusCall() {
     return this.type === 'CALL';
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.correlationId
+   * @returns {Boolean}
+   */
+  public get correlationId() {
+    return this.callStateForMetrics.correlationId;
   }
 
   /**
@@ -3949,25 +3958,25 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Convenience method to set the correlation id for the Meeting
-   * @param {String} id correlation id to set on the class
+   * Convenience method to set the correlation id for the callStateForMetrics
+   * @param {String} id correlation id to set on the callStateForMetrics
    * @returns {undefined}
    * @public
    * @memberof Meeting
    */
   public setCorrelationId(id: string) {
-    this.correlationId = id;
+    this.callStateForMetrics.correlationId = id;
   }
 
   /**
-   * Set the joinTrigger for the Meeting
-   * @param {String} joinTrigger joinTrigger to set on the class
+   * Update the callStateForMetrics
+   * @param {CallStateForMetrics} callStateForMetrics updated values for callStateForMetrics
    * @returns {undefined}
-   * @private
+   * @public
    * @memberof Meeting
    */
-  public setJoinTrigger(joinTrigger: string) {
-    this.joinTrigger = joinTrigger;
+  public updateCallStateForMetrics(callStateForMetrics: CallStateForMetrics) {
+    this.callStateForMetrics = {...this.callStateForMetrics, ...callStateForMetrics};
   }
 
   /**
@@ -4605,7 +4614,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
       payload: {
-        trigger: this.joinTrigger,
+        trigger: this.callStateForMetrics.joinTrigger,
         isRoapCallEnabled: true,
         pstnAudioType: options?.pstnAudioType,
       },

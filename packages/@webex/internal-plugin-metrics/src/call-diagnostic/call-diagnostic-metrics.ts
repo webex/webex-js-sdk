@@ -607,7 +607,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         webClientDomain: window.location.hostname,
       },
       userType: meeting.getCurUserType(),
-      loginType: this.getCurLoginType(),
+      loginType: meeting.callStateForMetrics.loginType || this.getCurLoginType(),
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),
