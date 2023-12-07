@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-metrics",
-  "version": "3.0.0-beta.261",
+  "version": "3.0.0-beta.272",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -30,7 +30,7 @@
   "dependencies": {
     "@webex/common": "workspace:^",
     "@webex/common-timers": "workspace:^",
-    "@webex/event-dictionary-ts": "^1.0.1268",
+    "@webex/event-dictionary-ts": "^1.0.1290",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-metrics": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",

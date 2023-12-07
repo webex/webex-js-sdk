@@ -127,6 +127,18 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getJoinReqResp(), 10);
     });
 
+    it('calculates getTurnDiscoveryTime correctly', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.add-media.turn-discovery.start',
+        value: 10,
+      });
+      cdl.saveTimestamp({
+        key: 'internal.client.add-media.turn-discovery.end',
+        value: 20,
+      });
+      assert.deepEqual(cdl.getTurnDiscoveryTime(), 10);
+    });
+
     it('calculates getLocalSDPGenRemoteSDPRecv correctly', () => {
       cdl.saveTimestamp({
         key: 'client.media-engine.local-sdp-generated',

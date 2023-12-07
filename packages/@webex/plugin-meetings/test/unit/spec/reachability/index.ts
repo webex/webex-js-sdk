@@ -328,8 +328,6 @@ describe('getReachabilityResults', () => {
 
   beforeEach(() => {
     webex = new MockWebex();
-
-    // sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
   });
 
   afterEach(() => {
@@ -412,6 +410,214 @@ describe('getReachabilityResults', () => {
           tcp: {reachable: 'false', untested: 'true'},
           xtls: {untested: 'true'},
         },
+      }
+    );
+  });
+});
+
+describe('getReachabilityMetrics', () => {
+  let webex;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  const runCheck = async (mockStorage: any, expectedResult: any) => {
+    if (mockStorage) {
+      await webex.boundedStorage.put(
+        'Reachability',
+        'reachability.result',
+        JSON.stringify(mockStorage)
+      );
+    }
+    const reachability = new Reachability(webex);
+    const result = await reachability.getReachabilityMetrics();
+
+    assert.deepEqual(result, expectedResult);
+  };
+
+  it('returns all zeros if reading from local storage fails', async () => {
+    sinon.stub(webex.boundedStorage, 'get').rejects(new Error('fake error'));
+
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.getReachabilityMetrics();
+
+    assert.deepEqual(result, {
+      reachability_public_udp_success: 0,
+      reachability_public_udp_failed: 0,
+      reachability_public_tcp_success: 0,
+      reachability_public_tcp_failed: 0,
+      reachability_vmn_udp_success: 0,
+      reachability_vmn_udp_failed: 0,
+      reachability_vmn_tcp_success: 0,
+      reachability_vmn_tcp_failed: 0,
+    });
+  });
+
+  it('returns correct stats based on local storage results', async () => {
+    await runCheck(
+      // mock storage:
+      {
+        public1: {
+          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          tcp: {untested: 'true'},
+          xtls: {untested: 'true'},
+        },
+        vmn1: {
+          udp: {reachable: 'true', latencyInMilliseconds: '200'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+        },
+        vmn2: {
+          udp: {untested: 'true'},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+          someOtherField: 'any value',
+        },
+        public2: {
+          udp: {reachable: 'false', latencyInMilliseconds: '300'},
+          tcp: {reachable: 'false', untested: 'true'},
+          xtls: {untested: 'true'},
+          someOtherField: 'any value',
+        },
+        public3: {
+          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+          isVideoMesh: false,
+          someOtherField: 'any value',
+        },
+        public4: {
+          udp: {reachable: 'true', latencyInMilliseconds: '40', clientMediaIPs: ['10.10.10.11']},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.11']},
+          xtls: {untested: 'true'},
+          isVideoMesh: false,
+          someOtherField: 'any value',
+        },
+        public5: {
+          udp: {reachable: 'false'},
+          tcp: {untested: 'true'},
+          xtls: {untested: 'true'},
+          isVideoMesh: false,
+          someOtherField: 'any value',
+        },
+      },
+      // expected result:
+      {
+        reachability_public_udp_success: 3,
+        reachability_public_udp_failed: 2,
+        reachability_public_tcp_success: 2,
+        reachability_public_tcp_failed: 1,
+        reachability_vmn_udp_success: 1,
+        reachability_vmn_udp_failed: 0,
+        reachability_vmn_tcp_success: 1,
+        reachability_vmn_tcp_failed: 1,
+      }
+    );
+  });
+
+  it('returns correct stats when only public nodes were tested', async () => {
+    await runCheck(
+      // mock storage:
+      {
+        public1: {
+          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+          isVideoMesh: false,
+        },
+        public2: {
+          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          tcp: {untested: 'true'},
+          xtls: {untested: 'true'},
+        },
+        public3: {
+          udp: {reachable: 'false', latencyInMilliseconds: '300'},
+          tcp: {reachable: 'false', untested: 'true'},
+          xtls: {untested: 'true'},
+          someOtherField: 'any value',
+        },
+        public4: {
+          udp: {untested: 'true'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+          isVideoMesh: false,
+          someOtherField: 'any value',
+        },
+        public5: {
+          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
+          tcp: {untested: 'true'},
+          xtls: {untested: 'true'},
+        },
+      },
+      // expected result:
+      {
+        reachability_public_udp_success: 3,
+        reachability_public_udp_failed: 1,
+        reachability_public_tcp_success: 1,
+        reachability_public_tcp_failed: 2,
+        reachability_vmn_udp_success: 0,
+        reachability_vmn_udp_failed: 0,
+        reachability_vmn_tcp_success: 0,
+        reachability_vmn_tcp_failed: 0,
+      }
+    );
+  });
+
+  it('returns correct stats when only video mesh nodes were tested', async () => {
+    await runCheck(
+      // mock storage:
+      {
+        vmn1: {
+          udp: {reachable: 'false'},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+        },
+        vmn2: {
+          udp: {reachable: 'true', latencyInMilliseconds: '200', clientMediaIPs: ['10.10.10.10']},
+          tcp: {untested: 'true'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+        },
+        vmn3: {
+          udp: {reachable: 'true', latencyInMilliseconds: '300', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'false', untested: 'true'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+        },
+        vmn4: {
+          udp: {untested: 'true'},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+          someOtherField: 'any value',
+        },
+        vmn5: {
+          udp: {reachable: 'true', latencyInMilliseconds: '200', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'false'},
+          xtls: {untested: 'true'},
+          isVideoMesh: true,
+          someOtherField: 'any value',
+        },
+      },
+      // expected result:
+      {
+        reachability_public_udp_success: 0,
+        reachability_public_udp_failed: 0,
+        reachability_public_tcp_success: 0,
+        reachability_public_tcp_failed: 0,
+        reachability_vmn_udp_success: 3,
+        reachability_vmn_udp_failed: 1,
+        reachability_vmn_tcp_success: 1,
+        reachability_vmn_tcp_failed: 3,
       }
     );
   });

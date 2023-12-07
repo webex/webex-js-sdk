@@ -16,6 +16,8 @@ import {
   extractVersionMetadata,
   isMeetingInfoServiceError,
   isBrowserMediaErrorName,
+  isNetworkError,
+  isUnauthorizedError,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -46,6 +48,8 @@ import {
   BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
   MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+  NETWORK_ERROR,
+  AUTHENTICATION_FAILED_CODE,
 } from './config';
 import {generateCommonErrorMetadata} from '../utils';
 
@@ -65,6 +69,8 @@ type GetIdentifiersOptions = {
   mediaConnections?: any[];
   correlationId?: string;
   preLoginId?: string;
+  globalMeetingId?: string;
+  webexConferenceIdStr?: string;
 };
 
 /**
@@ -203,8 +209,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param options
    */
   getIdentifiers(options: GetIdentifiersOptions) {
-    const {meeting, mediaConnections, correlationId, preLoginId} = options;
-    const identifiers: Event['event']['identifiers'] = {correlationId: 'unknown'};
+    const {
+      meeting,
+      mediaConnections,
+      correlationId,
+      webexConferenceIdStr,
+      globalMeetingId,
+      preLoginId,
+    } = options;
+    const identifiers: Event['event']['identifiers'] = {
+      correlationId: 'unknown',
+    };
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
@@ -231,9 +246,25 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meeting.locusInfo.fullState && meeting.locusInfo.fullState.lastActive;
     }
 
+    if (meeting?.meetingInfo?.confID) {
+      identifiers.webexConferenceIdStr = meeting.meetingInfo?.confID;
+    }
+
+    if (meeting?.meetingInfo?.meetingId) {
+      identifiers.globalMeetingId = meeting.meetingInfo?.meetingId;
+    }
+
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0]?.mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0]?.mediaAgentGroupId;
+    }
+
+    if (!identifiers?.webexConferenceIdStr && webexConferenceIdStr) {
+      identifiers.webexConferenceIdStr = webexConferenceIdStr;
+    }
+
+    if (!identifiers?.globalMeetingId && globalMeetingId) {
+      identifiers.globalMeetingId = globalMeetingId;
     }
 
     if (identifiers.correlationId === undefined) {
@@ -303,7 +334,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload: SubmitMQEPayload;
     options: SubmitMQEOptions;
   }) {
-    const {meetingId, mediaConnections} = options;
+    const {meetingId, mediaConnections, webexConferenceIdStr, globalMeetingId} = options;
 
     // events that will most likely happen in join phase
     if (meetingId) {
@@ -330,6 +361,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const identifiers = this.getIdentifiers({
         meeting,
         mediaConnections: meeting.mediaConnections || mediaConnections,
+        webexConferenceIdStr,
+        globalMeetingId,
       });
 
       // create media quality event object
@@ -444,6 +477,26 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
+    if (isNetworkError(rawError)) {
+      const payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: NETWORK_ERROR,
+        serviceErrorCode,
+      });
+      payload.errorDescription = rawError.message;
+
+      return payload;
+    }
+
+    if (isUnauthorizedError(rawError)) {
+      const payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: AUTHENTICATION_FAILED_CODE,
+        serviceErrorCode,
+      });
+      payload.errorDescription = rawError.message;
+
+      return payload;
+    }
+
     // otherwise return unkown error
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
@@ -472,7 +525,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       'CallDiagnosticMetrics: @createClientEventObjectInMeeting. Creating in meeting event object.',
       `name: ${name}`
     );
-    const {meetingId, mediaConnections} = options;
+    const {meetingId, mediaConnections, globalMeetingId, webexConferenceIdStr} = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -497,6 +550,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const identifiers = this.getIdentifiers({
       meeting,
       mediaConnections: meeting?.mediaConnections || mediaConnections,
+      webexConferenceIdStr,
+      globalMeetingId,
     });
 
     // create client event object
@@ -544,12 +599,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
       `name: ${name}`
     );
-    const {correlationId} = options;
+    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId} = options;
 
     // grab identifiers
     const identifiers = this.getIdentifiers({
       correlationId,
-      preLoginId: options?.preLoginId,
+      preLoginId,
+      globalMeetingId,
+      webexConferenceIdStr,
     });
 
     // create client event object
