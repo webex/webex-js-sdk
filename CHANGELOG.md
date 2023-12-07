@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.270](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.269...v3.0.0-beta.270) (2023-12-07)
+
+
+### Bug Fixes
+
+* added logging for getCurrentConnectionType() error cases ([#3233](https://github.com/webex/webex-js-sdk/issues/3233)) ([07dae95](https://github.com/webex/webex-js-sdk/commit/07dae95bf7bb0da195d8c3e86e15d6b96809bdf0))
+
 ## [3.0.0-beta.269](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.268...v3.0.0-beta.269) (2023-12-06)
 
 
