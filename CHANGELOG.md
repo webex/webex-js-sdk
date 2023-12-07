@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.272](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.271...v3.0.0-beta.272) (2023-12-07)
+
+
+### Features
+
+* **ca:** add identifiers confId, mid ([#3226](https://github.com/webex/webex-js-sdk/issues/3226)) ([b8a71de](https://github.com/webex/webex-js-sdk/commit/b8a71deee5acbf04a7f2a666ceec9fcf20acabaa))
+
 ## [3.0.0-beta.271](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.270...v3.0.0-beta.271) (2023-12-07)
 
 
