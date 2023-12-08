@@ -633,8 +633,6 @@ export default class Meeting extends StatelessWebexPlugin {
     } else {
       this.callStateForMetrics.correlationId = this.id;
     }
-    this.callStateForMetrics.joinTrigger =
-      attrs.callStateForMetrics?.joinTrigger || 'user-interaction';
     /**
      * @instance
      * @type {String}
@@ -4622,7 +4620,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
       payload: {
-        trigger: this.callStateForMetrics.joinTrigger,
+        trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
         isRoapCallEnabled: true,
         pstnAudioType: options?.pstnAudioType,
       },

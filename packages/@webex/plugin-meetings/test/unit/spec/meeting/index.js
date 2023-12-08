@@ -307,6 +307,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
           assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -374,6 +375,34 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
+          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id});
+        });
+
+        it('correlationId can be provided in callStateForMetrics', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: _MEETING_ID_,
+              callStateForMetrics: {
+                correlationId: uuid4,
+                joinTrigger: 'fake-join-trigger',
+                loginType: 'fake-login-type',
+              }
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.equal(newMeeting.correlationId, uuid4);
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: uuid4,
+            joinTrigger: 'fake-join-trigger',
+            loginType: 'fake-login-type',
+          });
         });
 
         describe('creates ReceiveSlot manager instance', () => {
@@ -841,6 +870,17 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
+          });
+
+          it('should take trigger from meeting joinTrigger if available', () => {
+            meeting.updateCallStateForMetrics({joinTrigger: 'fake-join-trigger'});
+            const join = meeting.join();
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'fake-join-trigger', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
+            });
           });
 
           it('should not create new correlation ID on join immediately after create', async () => {
@@ -5151,6 +5191,31 @@ describe('plugin-meetings', () => {
           }
         });
       });
+
+      describe('#setCorrelationId', () => {
+        it('should set the correlationId and return undefined', () => {
+          assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.setCorrelationId(uuid1);
+          assert.equal(meeting.correlationId, uuid1);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1});
+        });
+      });
+
+      describe('#updateCallStateForMetrics', () => {
+        it('should update the callState, overriding existing values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+        });
+
+        it('should update the callState, keeping non-supplied values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, joinTrigger: 'jt', loginType: 'lt'});
+        });
+      });
+
       describe('Local tracks publishing', () => {
         let audioStream;
         let videoStream;
@@ -7272,14 +7337,6 @@ describe('plugin-meetings', () => {
           };
           meeting.parseMeetingInfo(mockToggleOnData);
           assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
-        });
-      });
-
-      describe('#setCorrelationId', () => {
-        it('should set the correlationId and return undefined', () => {
-          assert.ok(meeting.correlationId);
-          meeting.setCorrelationId(uuid1);
-          assert.equal(meeting.correlationId, uuid1);
         });
       });
 
