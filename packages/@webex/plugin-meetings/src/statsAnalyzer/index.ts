@@ -1126,7 +1126,9 @@ export class StatsAnalyzer extends EventsScope {
       RemoteCandidateType[result.id].push(result.candidateType);
     }
 
-    if (result.protocol && RemoteTransport[result.id].indexOf(result.protocol) === -1) {
+    if (result.relayProtocol && RemoteTransport[result.id].indexOf(result.relayProtocol) === -1) {
+      RemoteTransport[result.id].push(result.relayProtocol.toUpperCase());
+    } else if (result.protocol && RemoteTransport[result.id].indexOf(result.protocol) === -1) {
       RemoteTransport[result.id].push(result.protocol.toUpperCase());
     }
 

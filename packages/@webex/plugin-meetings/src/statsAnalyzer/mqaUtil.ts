@@ -23,7 +23,7 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
   }
 
   audioReceiver.common.common.direction = statsResults[mediaType].direction;
-  audioReceiver.common.transportType = statsResults.connectionType.remote.transport[0];
+  audioReceiver.common.transportType = statsResults.connectionType.local.transport[0];
 
   // add rtpPacket info inside common as also for call analyzer
   audioReceiver.common.rtpPackets =
@@ -146,7 +146,8 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   }
 
   videoReceiver.common.common.direction = statsResults[mediaType].direction;
-  videoReceiver.common.transportType = statsResults.connectionType.remote.transport[0];
+  videoReceiver.common.transportType = statsResults.connectionType.local.transport[0];
+
   // collect the packets received for the last min
   videoReceiver.common.rtpPackets =
     statsResults[mediaType][sendrecvType].totalPacketsReceived - lastPacketsReceived || 0;
