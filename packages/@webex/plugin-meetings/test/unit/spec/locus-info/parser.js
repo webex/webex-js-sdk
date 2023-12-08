@@ -149,7 +149,6 @@ describe('locus-info/parser', () => {
     let parser;
 
     beforeEach(() => {
-      console.log('>>> beforeEach')
       sandbox = sinon.createSandbox();
       parser = new LocusDeltaParser();
       sandbox.stub(parser, 'isValidLocus').returns(true);
@@ -266,7 +265,6 @@ describe('locus-info/parser', () => {
     it('does not replace current loci when the locus URL changes but incoming sequence is not later', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
       const laterLoci = {...CURRENT_LOCI, sequence: {entries: [300]}};
-      console.log('>>> laterLoci', laterLoci);
 
       parser.queue.dequeue = sandbox.stub().returns(NEW_LOCI);
       parser.onDeltaAction = sandbox.stub();
