@@ -8,6 +8,7 @@ import {BrowserDetection} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
+import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -49,6 +50,7 @@ describe('internal-plugin-metrics', () => {
           },
           metrics: {
             submitClientMetrics: sinon.stub(),
+            config: {...CONFIG.metrics}
           },
           newMetrics: {
             postPreLoginMetric: sinon.stub(),
@@ -1453,6 +1455,7 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics-prelogin',
               service: 'metrics',
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
               headers: {
                 authorization: false,
                 'x-prelogin-userid': preLoginId,
@@ -1464,7 +1467,8 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics',
               service: 'metrics',
-              headers: {}
+              headers: {},
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
             })
           }
 
