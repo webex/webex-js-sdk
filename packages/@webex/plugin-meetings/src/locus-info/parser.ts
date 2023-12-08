@@ -280,6 +280,12 @@ export default class Parser {
       return pack(Parser.compareToAction(comparison), result);
     }
 
+    if (incoming.url !== current.url) {
+      // when moving to/from a breakout session, the locus URL will change and also
+      // the baseSequence, making incoming and current incomparable, so use incoming
+      return pack(USE_INCOMING, result);
+    }
+
     comparison = Parser.compareSequence(current.sequence, incoming.baseSequence);
 
     switch (extract(comparison)) {
@@ -289,13 +295,7 @@ export default class Parser {
         break;
 
       case LT:
-        if (incoming.url !== current.url) {
-          // when moving to/from a breakout session, the locus URL will change and also
-          // the baseSequence, making incoming and current incomparable, so use incoming
-          comparison = USE_INCOMING;
-        } else if (
-          extract(Parser.compareSequence(incoming.baseSequence, incoming.sequence)) === EQ
-        ) {
+        if (extract(Parser.compareSequence(incoming.baseSequence, incoming.sequence)) === EQ) {
           // special case where Locus sends a delta with baseSequence === sequence to trigger a sync,
           // because the delta event is too large to be sent over mercury connection
           comparison = DESYNC;
@@ -723,14 +723,14 @@ export default class Parser {
       // wait for desync response
       this.pause();
     } else if (lociComparison === USE_INCOMING) {
-      const locusUrlChanged = newLoci?.url !== this.workingCopy?.url;
+      const locusUrlChanged = this.workingCopy?.url && newLoci?.url !== this.workingCopy.url;
 
       // update working copy for future comparisons.
       // Note: The working copy of parser gets updated in .onFullLocus()
       // and here when USE_INCOMING locus.
       this.workingCopy = newLoci;
 
-      if (this.workingCopy?.url && locusUrlChanged) {
+      if (locusUrlChanged) {
         this.triggerSync('locus url changed, likely due to breakout session move');
       }
     } else if (lociComparison === WAIT) {
