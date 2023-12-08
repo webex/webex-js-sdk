@@ -11,6 +11,7 @@ const OOO_DELTA_WAIT_TIME = 10000; // [ms] minimum wait time before we do a sync
 const OOO_DELTA_WAIT_TIME_RANDOM_DELAY = 5000; // [ms] max random delay added to OOO_DELTA_WAIT_TIME
 
 type LocusDeltaDto = {
+  url: string;
   baseSequence: {
     rangeStart: number;
     rangeEnd: number;
@@ -288,7 +289,13 @@ export default class Parser {
         break;
 
       case LT:
-        if (extract(Parser.compareSequence(incoming.baseSequence, incoming.sequence)) === EQ) {
+        if (incoming.url !== current.url) {
+          // when moving to/from a breakout session, the locus URL will change and also
+          // the baseSequence, making incoming and current incomparable, so use incoming
+          comparison = USE_INCOMING;
+        } else if (
+          extract(Parser.compareSequence(incoming.baseSequence, incoming.sequence)) === EQ
+        ) {
           // special case where Locus sends a delta with baseSequence === sequence to trigger a sync,
           // because the delta event is too large to be sent over mercury connection
           comparison = DESYNC;
@@ -716,10 +723,16 @@ export default class Parser {
       // wait for desync response
       this.pause();
     } else if (lociComparison === USE_INCOMING) {
+      const locusUrlChanged = newLoci?.url !== this.workingCopy?.url;
+
       // update working copy for future comparisons.
       // Note: The working copy of parser gets updated in .onFullLocus()
       // and here when USE_INCOMING locus.
       this.workingCopy = newLoci;
+
+      if (this.workingCopy?.url && locusUrlChanged) {
+        this.triggerSync('locus url changed, likely due to breakout session move');
+      }
     } else if (lociComparison === WAIT) {
       // we've taken newLoci from the front of the queue, so put it back there as we have to wait
       // for the one that should be in front of it, before we can process it

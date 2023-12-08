@@ -5,6 +5,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 
 import basicSequenceComparisons from './lib/BasicSeqCmp.json';
 import sequenceComparisons from './lib/SeqCmp';
@@ -50,9 +51,11 @@ describe('locus-info/parser', () => {
     });
 
     describe('delta sequence comparisons', () => {
-      const {DESYNC, USE_CURRENT, USE_INCOMING} = LocusDeltaParser.loci;
+      const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT} = LocusDeltaParser.loci;
       const {extractComparisonState: extract} = LocusDeltaParser;
 
+      sinon.stub(Metrics, 'sendBehavioralMetric');
+      
       function translate(action) {
         switch (action) {
           case 'ACCEPT_NEW':
@@ -61,6 +64,8 @@ describe('locus-info/parser', () => {
             return USE_CURRENT;
           case 'DESYNC':
             return DESYNC;
+          case 'WAIT':
+            return WAIT;
           default:
             throw new Error(`${action} not recognized`);
         }
@@ -73,10 +78,12 @@ describe('locus-info/parser', () => {
 
         const current = {
           sequence: sequenceComparisons.sequences[currentKey],
+          url: sequenceComparisons.update_actions[key].currentUrl,
         };
         const incoming = {
           sequence: sequenceComparisons.sequences[incomingKey],
           baseSequence: sequenceComparisons.sequences[baseKey],
+          url: sequenceComparisons.update_actions[key].incomingUrl,
         };
         const comparison = LocusDeltaParser.compare(current, incoming);
         const action = extract(comparison);
@@ -106,7 +113,7 @@ describe('locus-info/parser', () => {
         return burst;
       })();
 
-      parser.onDeltaAction = true;
+      parser.onDeltaAction = sinon.stub();
       parser.processDeltaEvent = function () {
         const fakeLoci = this.queue.dequeue();
 
@@ -133,15 +140,21 @@ describe('locus-info/parser', () => {
   });
 
   describe('Processes delta events correctly', () => {
-    const NEW_LOCI = 'NEW LOCI';
+    const CURRENT_LOCI = {sequence: {entries: [100]}, url: 'CURRENT LOCI', baseSequence: {
+      "entries": [100], "rangeStart": 100, "rangeEnd": 100}};
+    const NEW_LOCI = {sequence: {entries: [200]}, url: 'NEW LOCI', baseSequence: {
+      "entries": [200], "rangeStart": 200, "rangeEnd": 200}};
+
     let sandbox = null;
     let parser;
 
     beforeEach(() => {
+      console.log('>>> beforeEach')
       sandbox = sinon.createSandbox();
       parser = new LocusDeltaParser();
       sandbox.stub(parser, 'isValidLocus').returns(true);
       parser.queue.dequeue = sandbox.stub().returns(NEW_LOCI);
+      parser.onDeltaAction = sandbox.stub();
     });
 
     afterEach(() => {
@@ -153,7 +166,7 @@ describe('locus-info/parser', () => {
       const {DESYNC} = LocusDeltaParser.loci;
 
       parser.pause = sandbox.stub();
-      LocusDeltaParser.compare = sandbox.stub().returns(DESYNC);
+      sandbox.stub(LocusDeltaParser, 'compare').returns(DESYNC);
 
       parser.processDeltaEvent();
 
@@ -164,7 +177,7 @@ describe('locus-info/parser', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
       parser.workingCopy = null;
-      LocusDeltaParser.compare = sandbox.stub().returns(USE_INCOMING);
+      sandbox.stub(LocusDeltaParser, 'compare').returns(USE_INCOMING);
 
       parser.processDeltaEvent();
 
@@ -175,8 +188,7 @@ describe('locus-info/parser', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
       const lociComparison = USE_INCOMING;
 
-      LocusDeltaParser.compare = sandbox.stub().returns(lociComparison);
-      parser.onDeltaAction = sandbox.stub();
+      sandbox.stub(LocusDeltaParser, 'compare').returns(lociComparison);
 
       parser.processDeltaEvent();
 
@@ -186,7 +198,7 @@ describe('locus-info/parser', () => {
     it('should call nextEvent()', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
-      LocusDeltaParser.compare = sandbox.stub().returns(USE_INCOMING);
+      sandbox.stub(LocusDeltaParser, 'compare').returns(USE_INCOMING);
       parser.nextEvent = sandbox.stub();
 
       parser.processDeltaEvent();
@@ -197,7 +209,8 @@ describe('locus-info/parser', () => {
     it('should not call compare() if locus is invalid', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
-      LocusDeltaParser.compare = sandbox.stub().returns(USE_INCOMING);
+      sandbox.stub(LocusDeltaParser, 'compare').returns(USE_INCOMING);
+
       // restore the original method
       parser.isValidLocus.restore();
       parser.isValidLocus.bind(parser);
@@ -208,9 +221,8 @@ describe('locus-info/parser', () => {
     });
 
     it('processDeltaEvent() should take next item in queue', () => {
-      // restore the original method
-      parser.queue.dequeue = sandbox.stub();
-
+      parser.workingCopy = CURRENT_LOCI;
+      
       parser.processDeltaEvent();
 
       assert.calledOnce(parser.queue.dequeue);
@@ -228,13 +240,41 @@ describe('locus-info/parser', () => {
       assert.equal(comparisonResults, expectedResults);
     });
 
-    it('shoud be able to unpack comparison results', () => {
+    it('should be able to unpack comparison results', () => {
       const {extractComparisonState: extract} = LocusDeltaParser;
 
       const comparisonResults = 'value04:value03:value:02:value01';
       const lastResult = extract(comparisonResults);
 
       assert.equal(lastResult, 'value04');
+    });
+    
+    it('replaces current loci when the locus URL changes and incoming sequence is later, even when baseSequence doesn\'t match', () => {
+      const {USE_INCOMING} = LocusDeltaParser.loci;
+
+      parser.queue.dequeue = sandbox.stub().returns(NEW_LOCI);
+      parser.onDeltaAction = sandbox.stub();
+      parser.workingCopy = CURRENT_LOCI;
+      parser.triggerSync = sandbox.stub();
+
+      parser.processDeltaEvent();
+
+      assert.equal(parser.workingCopy, NEW_LOCI);
+      assert.calledWith(parser.triggerSync, 'locus url changed, likely due to breakout session move');
+    });
+
+    it('does not replace current loci when the locus URL changes but incoming sequence is not later', () => {
+      const {USE_INCOMING} = LocusDeltaParser.loci;
+      const laterLoci = {...CURRENT_LOCI, sequence: {entries: [300]}};
+      console.log('>>> laterLoci', laterLoci);
+
+      parser.queue.dequeue = sandbox.stub().returns(NEW_LOCI);
+      parser.onDeltaAction = sandbox.stub();
+      parser.workingCopy = laterLoci;
+
+      parser.processDeltaEvent();
+
+      assert.equal(parser.workingCopy, laterLoci);
     });
   });
 
