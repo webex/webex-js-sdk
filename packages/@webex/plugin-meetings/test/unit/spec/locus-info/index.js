@@ -1884,6 +1884,27 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
+        const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
+        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const meeting = {
+          meetingRequest: {
+            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
+          },
+          locusInfo: {
+            handleLocusDelta: sandbox.stub(),
+          },
+          locusUrl: 'oldLocusUrl',
+        };
+
+        locusInfo.locusParser.workingCopy = {
+          syncUrl: 'oldSyncUrl',
+        };
+  
+        locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldSyncUrl'});
+      });
+
       describe('edge cases for sync failing', () => {
         const {DESYNC} = LocusDeltaParser.loci;
         const fakeFullLocusDto = {id: 'fake full locus dto'};

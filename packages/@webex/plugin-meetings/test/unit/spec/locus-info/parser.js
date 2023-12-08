@@ -51,7 +51,7 @@ describe('locus-info/parser', () => {
     });
 
     describe('delta sequence comparisons', () => {
-      const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT} = LocusDeltaParser.loci;
+      const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
       const {extractComparisonState: extract} = LocusDeltaParser;
 
       sinon.stub(Metrics, 'sendBehavioralMetric');
@@ -66,6 +66,8 @@ describe('locus-info/parser', () => {
             return DESYNC;
           case 'WAIT':
             return WAIT;
+          case 'LOCUS_URL_CHANGED':
+            return LOCUS_URL_CHANGED;
           default:
             throw new Error(`${action} not recognized`);
         }
@@ -94,6 +96,8 @@ describe('locus-info/parser', () => {
           assert.equal(action, translate(result));
         });
       });
+
+      Metrics.sendBehavioralMetric.restore();
     });
   });
 
@@ -259,7 +263,6 @@ describe('locus-info/parser', () => {
       parser.processDeltaEvent();
 
       assert.equal(parser.workingCopy, NEW_LOCI);
-      assert.calledWith(parser.triggerSync, 'locus url changed, likely due to breakout session move');
     });
 
     it('does not replace current loci when the locus URL changes but incoming sequence is not later', () => {

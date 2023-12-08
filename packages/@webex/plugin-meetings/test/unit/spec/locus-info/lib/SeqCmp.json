@@ -531,7 +531,7 @@
       "newbase": "seq5c",
       "new": "seq5b",
       "newUrl": "locus url 2",
-      "result": "ACCEPT_NEW",
+      "result": "LOCUS_URL_CHANGED",
       "description": "Locus url changes in incoming"
     }
   }
