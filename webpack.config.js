@@ -67,6 +67,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       fs: false,
       os: require.resolve('os-browserify'),
       stream: require.resolve('stream-browserify'),
+      querystring: require.resolve('querystring-es3'),
       crypto: false,
     },
     extensions: ['.ts', '.js', '.json'],

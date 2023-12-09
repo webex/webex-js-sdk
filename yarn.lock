@@ -30648,6 +30648,7 @@ __metadata:
     patch-package: ^6.4.7
     path-parse: ^1.0.7
     prettier: ^2.7.1
+    querystring-es3: ^0.2.1
     rimraf: ^2.6.3
     serve-handler: ^6.1.3
     shelljs: ^0.8.5
