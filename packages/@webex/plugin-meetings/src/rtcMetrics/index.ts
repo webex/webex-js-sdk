@@ -39,7 +39,7 @@ export default class RtcMetrics {
    *
    * @returns {void}
    */
-  private checkMetrics() {
+  public checkMetrics() {
     if (this.metricsQueue.length) {
       this.sendMetrics();
       this.metricsQueue = [];

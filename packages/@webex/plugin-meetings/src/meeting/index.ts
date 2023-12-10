@@ -5922,6 +5922,11 @@ export default class Meeting extends StatelessWebexPlugin {
           ...reachabilityMetrics,
         });
 
+        // media failed, so collect a stats report from webrtc
+        await this.mediaProperties?.webrtcMediaConnection?.multistreamConnection?.getForceStatsReport()?.();
+        // send a webrtc telemetry dump to the configured server
+        this.mediaProperties?.webrtcMediaConnection?.multistreamConnection?.sendStatsReport();
+
         // Clean up stats analyzer, peer connection, and turn off listeners
         if (this.statsAnalyzer) {
           await this.statsAnalyzer.stopAnalyzer();
