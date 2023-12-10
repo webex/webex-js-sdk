@@ -3,6 +3,8 @@ import {cloneDeep, isEqual, isEmpty} from 'lodash';
 import jwt from 'jsonwebtoken';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
+// @ts-ignore - Types not available for @webex/common
+import {Defer} from '@webex/common';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -99,6 +101,7 @@ import {
   SELF_POLICY,
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
+  ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -563,6 +566,8 @@ export default class Meeting extends StatelessWebexPlugin {
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
+  private defer?: Defer; // used for waiting for a response
+  private responseTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * @param {Object} attrs
@@ -4672,7 +4677,7 @@ export default class Meeting extends StatelessWebexPlugin {
           if (this.config.receiveTranscription || options.receiveTranscription) {
             if (this.isTranscriptionSupported()) {
               LoggerProxy.logger.info(
-                'Meeting:index#join --> Attempting to enabled to recieve transcription!'
+                'Meeting:index#join --> Attempting to enabled to receive transcription!'
               );
               this.receiveTranscription().catch((error) => {
                 LoggerProxy.logger.error(
@@ -5109,6 +5114,12 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           });
 
+          if (this.defer) {
+            this.defer.resolve();
+            clearTimeout(this.responseTimer);
+            this.responseTimer = undefined;
+          }
+
           logRequest(
             this.roap.sendRoapOK({
               seq: event.roapMessage.seq,
@@ -5127,6 +5138,9 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.media-engine.local-sdp-generated',
             options: {meetingId: this.id},
           });
+
+          // Instantiate Defer so that the SDP offer/answer exchange timeout can start, see waitForRemoteSDPAnswer()
+          this.defer = new Defer();
 
           logRequest(
             this.roap.sendRoapMediaRequest({
@@ -5589,27 +5603,181 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns a promise which resolves when the current call has an active state
+   * @returns {Promise<void>}
+   */
+  waitForCallToBeActive(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let timerCount = 0;
+
+      // eslint-disable-next-line func-names
+      // eslint-disable-next-line prefer-arrow-callback
+      if (this.type === _CALL_ || this.meetingState === FULL_STATE.ACTIVE) {
+        resolve();
+      }
+      const joiningTimer = setInterval(() => {
+        timerCount += 1;
+        if (this.meetingState === FULL_STATE.ACTIVE) {
+          clearInterval(joiningTimer);
+          resolve();
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WAIT_FOR_CALL_TO_BE_ACTIVE_TRY_COUNT, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusId,
+            timerCount,
+            error: false,
+          });
+        }
+
+        if (timerCount === 4) {
+          clearInterval(joiningTimer);
+          reject(new Error('Meeting is still not active '));
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WAIT_FOR_CALL_TO_BE_ACTIVE_TRY_COUNT, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusId,
+            timerCount,
+            error: true,
+          });
+        }
+      }, 1000);
+    });
+  }
+
+  /**
+   * Sets up all the references to local streams in this.mediaProperties before creating media connection
+   * and before TURN discovery, so that the correct mute state is sent with TURN discovery roap messages.
+   * @param {LocalStreams} localStreams
+   * @returns {Promise<void>}
+   */
+  async setUpLocalStreamReferences(localStreams: LocalStreams) {
+    const setUpStreamPromises = [];
+
+    if (localStreams?.microphone) {
+      setUpStreamPromises.push(this.setLocalAudioStream(localStreams.microphone));
+    }
+    if (localStreams?.camera) {
+      setUpStreamPromises.push(this.setLocalVideoStream(localStreams.camera));
+    }
+    if (localStreams?.screenShare?.video) {
+      setUpStreamPromises.push(this.setLocalShareVideoStream(localStreams.screenShare.video));
+    }
+    if (localStreams?.screenShare?.audio) {
+      setUpStreamPromises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
+    }
+
+    try {
+      await Promise.all(setUpStreamPromises);
+    } catch (error) {
+      LoggerProxy.logger.error(`Meeting:index#setUpLocalStreamReferences --> Error , `, error);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Does something
+   * @returns {Promise<void>}
+   */
+  async waitForMediaConnectionConnected(): Promise<void> {
+    try {
+      await this.mediaProperties.waitForMediaConnectionConnected();
+    } catch (error) {
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.ice.end',
+        payload: {
+          canProceed: false,
+          icePhase: 'JOIN_MEETING_FINAL',
+          errors: [
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
+              clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+            }),
+          ],
+        },
+        options: {
+          meetingId: this.id,
+        },
+      });
+      throw new Error(
+        `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
+      );
+    }
+  }
+
+  /**
+   * Cleans up stats analyzer, peer connection, and turns off listeners
+   * @returns {Promise<void>}
+   */
+  async cleanUpOnAddMediaFailure() {
+    if (this.statsAnalyzer) {
+      await this.statsAnalyzer.stopAnalyzer();
+    }
+
+    this.statsAnalyzer = null;
+
+    if (this.mediaProperties.webrtcMediaConnection) {
+      this.closePeerConnections();
+      this.unsetPeerConnections();
+    }
+  }
+
+  /**
+   * Returns a promise. This promise is created once the local sdp offer has been successfully created and is resolved
+   * once the remote sdp answer has been received.
+   * @returns {Promise<void>}
+   */
+  waitForRemoteSDPAnswer(): Promise<void> {
+    if (!this.defer) {
+      LoggerProxy.logger.warn('Meeting:index#waitForRemoteSDPAnswer --> offer not created yet');
+
+      return Promise.reject(
+        new Error('waitForRemoteSDPAnswer() called before local sdp offer created')
+      );
+    }
+
+    const {defer} = this;
+
+    this.responseTimer = setTimeout(() => {
+      LoggerProxy.logger.warn(
+        `Meeting:index#waitForRemoteSDPAnswer --> timeout! no REMOTE SDP ANSWER received within ${
+          ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT / 1000
+        } seconds`
+      );
+      defer.reject(new Error('Timed out waiting for REMOTE SDP ANSWER'));
+    }, ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT);
+
+    LoggerProxy.logger.info(
+      'Meeting:index#waitForRemoteSDPAnswer --> waiting for REMOTE SDP ANSWER...'
+    );
+
+    return defer.promise;
+  }
+
+  /**
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
-   * @returns {Promise}
+   * @returns {Promise<void>}
    * @public
    * @memberof Meeting
    */
-  addMedia(options: AddMediaOptions = {}) {
+  async addMedia(options: AddMediaOptions = {}) {
     const LOG_HEADER = 'Meeting:index#addMedia -->';
+    LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
     let turnDiscoverySkippedReason;
     let turnServerUsed = false;
-
-    LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
+    // @ts-ignore
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
     if (this.meetingState !== FULL_STATE.ACTIVE) {
-      return Promise.reject(new MeetingNotActiveError());
+      throw new MeetingNotActiveError();
     }
 
     if (MeetingUtil.isUserInLeftState(this.locusInfo)) {
-      return Promise.reject(new UserNotJoinedError());
+      throw new UserNotJoinedError();
     }
 
     const {
@@ -5628,7 +5796,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
     if (this.isUserUnadmitted && !this.wirelessShare && !allowMediaInLobby) {
-      return Promise.reject(new UserInLobbyError());
+      throw new UserInLobbyError();
     }
 
     // @ts-ignore
@@ -5688,36 +5856,18 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
-    const promises = [];
 
-    // setup all the references to local streams in this.mediaProperties before creating media connection
-    // and before TURN discovery, so that the correct mute state is sent with TURN discovery roap messages
-    if (localStreams?.microphone) {
-      promises.push(this.setLocalAudioStream(localStreams.microphone));
-    }
-    if (localStreams?.camera) {
-      promises.push(this.setLocalVideoStream(localStreams.camera));
-    }
-    if (localStreams?.screenShare?.video) {
-      promises.push(this.setLocalShareVideoStream(localStreams.screenShare.video));
-    }
-    if (localStreams?.screenShare?.audio) {
-      promises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
-    }
+    try {
+      await this.setUpLocalStreamReferences(localStreams);
 
-    // @ts-ignore
-    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
-
-    return Promise.all(promises)
-      .then(() => {
+      try {
         // @ts-ignore
         this.webex.internal.newMetrics.submitInternalEvent({
           name: 'internal.client.add-media.turn-discovery.start',
         });
 
-        return this.roap.doTurnDiscovery(this, false);
-      })
-      .then(async (turnDiscoveryObject) => {
+        const turnDiscoveryObject = await this.roap.doTurnDiscovery(this, false); // here is TURN_DISCOVERY_TIMEOUT
+
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
         turnServerUsed = !turnDiscoverySkippedReason;
 
@@ -5735,7 +5885,6 @@ export default class Meeting extends StatelessWebexPlugin {
         }
 
         const {turnServerInfo} = turnDiscoveryObject;
-
         const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
 
         if (this.isMultistream) {
@@ -5764,193 +5913,132 @@ export default class Meeting extends StatelessWebexPlugin {
           await this.remoteMediaManager.start();
         }
 
-        await mc.initiateOffer();
-      })
-      .then(() => {
         this.setMercuryListener();
-      })
-      .then(
-        () =>
-          getDevices()
-            .then((devices) => {
-              MeetingUtil.handleDeviceLogging(devices);
-            })
-            .catch(() => {}) // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
-      )
-      .then(() => {
+
+        await mc.initiateOffer();
+
+        await this.waitForRemoteSDPAnswer(); // this is where ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT is
+
+        try {
+          const devices = await getDevices();
+
+          MeetingUtil.handleDeviceLogging(devices);
+        } catch {
+          // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
+        }
+
         this.handleMediaLogging(this.mediaProperties);
         LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
-
-        // @ts-ignore - config coming from registerPlugin
-        if (this.config.stats.enableStatsAnalyzer) {
-          // @ts-ignore - config coming from registerPlugin
-          this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-          this.statsAnalyzer = new StatsAnalyzer(
-            // @ts-ignore - config coming from registerPlugin
-            this.config.stats,
-            (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
-            this.networkQualityMonitor
-          );
-          this.setupStatsAnalyzerEventHandlers();
-          this.networkQualityMonitor.on(
-            EVENT_TRIGGERS.NETWORK_QUALITY,
-            this.sendNetworkQualityEvent.bind(this)
-          );
-        }
-      })
-      .catch((error) => {
+      } catch (error) {
         LoggerProxy.logger.error(
           `${LOG_HEADER} Error adding media , setting up peerconnection, `,
           error
         );
 
         throw error;
-      })
-      .then(
-        () =>
-          new Promise<void>((resolve, reject) => {
-            let timerCount = 0;
+      }
 
-            // eslint-disable-next-line func-names
-            // eslint-disable-next-line prefer-arrow-callback
-            if (this.type === _CALL_ || this.meetingState === FULL_STATE.ACTIVE) {
-              resolve();
-            }
-            const joiningTimer = setInterval(() => {
-              timerCount += 1;
-              if (this.meetingState === FULL_STATE.ACTIVE) {
-                clearInterval(joiningTimer);
-                resolve();
-              }
-
-              if (timerCount === 4) {
-                clearInterval(joiningTimer);
-                reject(new Error('Meeting is still not active '));
-              }
-            }, 1000);
-          })
-      )
-      .then(() =>
-        this.mediaProperties.waitForMediaConnectionConnected().catch(() => {
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.end',
-            payload: {
-              canProceed: false,
-              icePhase: 'JOIN_MEETING_FINAL',
-              errors: [
-                // @ts-ignore
-                this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                  {
-                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
-                  }
-                ),
-              ],
-            },
-            options: {
-              meetingId: this.id,
-            },
-          });
-          throw new Error(
-            `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
-          );
-        })
-      )
-      .then(() => {
-        if (this.mediaProperties.hasLocalShareStream()) {
-          return this.enqueueScreenShareFloorRequest();
-        }
-
-        return Promise.resolve();
-      })
-      .then(() => this.mediaProperties.getCurrentConnectionType())
-      .then(async (connectionType) => {
-        // @ts-ignore
-        const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
-          correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
-          connectionType,
-          isMultistream: this.isMultistream,
-          ...reachabilityStats,
-        });
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.media-engine.ready',
-          options: {
-            meetingId: this.id,
-          },
-        });
-        LoggerProxy.logger.info(
-          `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+      // @ts-ignore - config coming from registerPlugin
+      if (this.config.stats.enableStatsAnalyzer) {
+        // @ts-ignore - config coming from registerPlugin
+        this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
+        this.statsAnalyzer = new StatsAnalyzer(
+          // @ts-ignore - config coming from registerPlugin
+          this.config.stats,
+          (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
+          this.networkQualityMonitor
         );
-
-        // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
-        this.remoteMediaManager?.logAllReceiveSlots();
-      })
-      .catch(async (error) => {
-        LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
-
-        // @ts-ignore
-        const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-          correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
-          reason: error.message,
-          stack: error.stack,
-          code: error.code,
-          turnDiscoverySkippedReason,
-          turnServerUsed,
-          isMultistream: this.isMultistream,
-          signalingState:
-            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.signalingState ||
-            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
-            'unknown',
-          connectionState:
-            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.connectionState ||
-            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.connectionState ||
-            'unknown',
-          iceConnectionState:
-            this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-              ?.iceConnectionState ||
-            this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
-            'unknown',
-          ...reachabilityMetrics,
-        });
-
-        // Clean up stats analyzer, peer connection, and turn off listeners
-        if (this.statsAnalyzer) {
-          await this.statsAnalyzer.stopAnalyzer();
-        }
-
-        this.statsAnalyzer = null;
-
-        if (this.mediaProperties.webrtcMediaConnection) {
-          this.closePeerConnections();
-          this.unsetPeerConnections();
-        }
-
-        // Upload logs on error while adding media
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'addMedia',
-          },
-          EVENTS.REQUEST_UPLOAD_LOGS,
-          this
+        this.setupStatsAnalyzerEventHandlers();
+        this.networkQualityMonitor.on(
+          EVENT_TRIGGERS.NETWORK_QUALITY,
+          this.sendNetworkQualityEvent.bind(this)
         );
+      }
 
-        if (error instanceof Errors.SdpError) {
-          this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
-        }
+      await this.waitForCallToBeActive(); // TODO remove, not needed
 
-        throw error;
+      await this.waitForMediaConnectionConnected(); // here is PC_BAIL_TIMEOUT
+
+      if (this.mediaProperties.hasLocalShareStream()) {
+        await this.enqueueScreenShareFloorRequest();
+      }
+
+      const connectionType = await this.mediaProperties.getCurrentConnectionType();
+      // @ts-ignore
+      const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
+        correlation_id: this.correlationId,
+        locus_id: this.locusUrl.split('/').pop(),
+        connectionType,
+        isMultistream: this.isMultistream,
+        ...reachabilityStats,
       });
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.ready',
+        options: {
+          meetingId: this.id,
+        },
+      });
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} successfully established media connection, type=${connectionType}`
+      );
+
+      // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
+      this.remoteMediaManager?.logAllReceiveSlots();
+    } catch (error) {
+      LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
+
+      // @ts-ignore
+      const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+        correlation_id: this.correlationId,
+        locus_id: this.locusUrl.split('/').pop(),
+        reason: error.message,
+        stack: error.stack,
+        code: error.code,
+        turnDiscoverySkippedReason,
+        turnServerUsed,
+        isMultistream: this.isMultistream,
+        signalingState:
+          this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+            ?.signalingState ||
+          this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
+          'unknown',
+        connectionState:
+          this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+            ?.connectionState ||
+          this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.connectionState ||
+          'unknown',
+        iceConnectionState:
+          this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+            ?.iceConnectionState ||
+          this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
+          'unknown',
+        ...reachabilityMetrics,
+      });
+
+      await this.cleanUpOnAddMediaFailure();
+
+      // Upload logs on error while adding media
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'addMedia',
+        },
+        EVENTS.REQUEST_UPLOAD_LOGS,
+        this
+      );
+
+      if (error instanceof Errors.SdpError) {
+        this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -6777,7 +6865,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (layoutType) {
       if (!LAYOUT_TYPES.includes(layoutType)) {
         this.rejectWithErrorLog(
-          'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
+          'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType received.'
         );
       }
 

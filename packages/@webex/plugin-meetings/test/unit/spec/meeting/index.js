@@ -1140,6 +1140,7 @@ describe('plugin-meetings', () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
+          meeting.waitForRoapDone = sinon.stub();
         });
 
         it('should have #addMedia', () => {
@@ -1901,6 +1902,7 @@ describe('plugin-meetings', () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
+          meeting.waitForRoapDone = sinon.stub();
 
           StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
 
