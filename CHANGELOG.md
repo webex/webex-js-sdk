@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.274](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.273...v3.0.0-beta.274) (2023-12-08)
+
+
+### Features
+
+* **ca:** add fallback to preLoginId for userId ([#3221](https://github.com/webex/webex-js-sdk/issues/3221)) ([4e180f3](https://github.com/webex/webex-js-sdk/commit/4e180f3dc5ff40844ba715faf0527eaabf0133e8))
+
+## [3.0.0-beta.273](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.272...v3.0.0-beta.273) (2023-12-07)
+
+
+### Bug Fixes
+
+* log call parameters when mercury _emit fails ([#3228](https://github.com/webex/webex-js-sdk/issues/3228)) ([0de6063](https://github.com/webex/webex-js-sdk/commit/0de6063108509a3cc86d03b02477334eb862e604))
+
 ## [3.0.0-beta.272](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.271...v3.0.0-beta.272) (2023-12-07)
 
 
