@@ -44,7 +44,7 @@ const localStreams = {
   },
 };
 
-
+// Updated expectedPublished from a boolean value to an object containing the stream and status properties
 const waitForPublished = (meeting, expectedPublished, description) => {
   return testUtils.waitForEvents([{
     scope: meeting,
