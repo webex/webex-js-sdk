@@ -564,11 +564,11 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
+  turnDiscoverySkippedReason: string;
+  turnServerUsed: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
-  turnDiscoverySkippedReason: string;
-  turnServerUsed: boolean;
 
   /**
    * @param {Object} attrs
