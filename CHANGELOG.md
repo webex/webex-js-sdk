@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.276](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.274...v3.0.0-beta.276) (2023-12-11)
+
+
+### Bug Fixes
+
+* **breakouts:** user gets removed from meeting after end of session ([#3239](https://github.com/webex/webex-js-sdk/issues/3239)) ([b60b44d](https://github.com/webex/webex-js-sdk/commit/b60b44d5a397cc4c87c252587d4a36146256a1d8))
+* downscopeing issues ([#3211](https://github.com/webex/webex-js-sdk/issues/3211)) ([e31469c](https://github.com/webex/webex-js-sdk/commit/e31469cdc7d31044a4d2eeb5308a323d10292fc6))
+* **plugin-meetings:** update internal media core to 2.0.6 ([#3241](https://github.com/webex/webex-js-sdk/issues/3241)) ([acb689f](https://github.com/webex/webex-js-sdk/commit/acb689fd6f8468ab84f7a14967d6011ef0818424))
+
 ## [3.0.0-beta.275](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.274...v3.0.0-beta.275) (2023-12-11)
 
 
