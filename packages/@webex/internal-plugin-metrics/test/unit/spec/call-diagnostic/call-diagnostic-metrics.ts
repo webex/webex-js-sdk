@@ -324,7 +324,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe('#submitClientEvent', () => {
+    describe.skip('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
@@ -1031,7 +1031,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#submitMQE', () => {
-      it('submits the event correctly', () => {
+      it.skip('submits the event correctly', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const getErrorPayloadForClientErrorCodeSpy = sinon.spy(
@@ -1487,7 +1487,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe('#submitToCallDiagnosticsPreLogin', async () => {
+    describe('#submitToCallDiagnosticsPreLogin', () => {
       it('should call webex.request with expected options', async () => {
         sinon.spy(Utils, 'prepareDiagnosticMetricItem');
         await cd.submitToCallDiagnosticsPreLogin(

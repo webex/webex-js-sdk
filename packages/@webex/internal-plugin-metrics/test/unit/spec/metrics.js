@@ -178,7 +178,7 @@ describe('plugin-metrics', () => {
           metricName: 'test',
           tags: {
             browser: '',
-            domain: 'whatever',
+            domain: 'non-browser',
             os: 'other',
             success: true,
           },

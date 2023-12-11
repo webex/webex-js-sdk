@@ -57,7 +57,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('#request()', () => {
-      describe('when the request completes successfully', async () => {
+      describe('when the request completes successfully', () => {
         it('clears the queue', async () => {
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
