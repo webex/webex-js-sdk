@@ -5129,6 +5129,13 @@ describe('plugin-meetings', () => {
           });
 
           it('handles OK message correctly', () => {
+            const clock = sinon.useFakeTimers();
+            sinon.spy(clock, "clearTimeout");
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+            };
+            meeting.sdpResponseTimer = '1234';
+
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {messageType: 'OK', seq: 1},
             });
@@ -5156,9 +5163,16 @@ describe('plugin-meetings', () => {
                 latency: undefined,
               }
             );
+
+            assert.calledOnce(meeting.deferSDPAnswer.resolve)
+            assert.calledOnce(clock.clearTimeout)
+            assert.calledWith(clock.clearTimeout, '1234')
+            assert.equal(meeting.sdpResponseTimer, undefined)
           });
 
           it('handles OFFER message correctly', () => {
+            assert.equal(meeting.deferSDPAnswer, undefined);
+
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
                 messageType: 'OFFER',
@@ -5182,6 +5196,8 @@ describe('plugin-meetings', () => {
               meeting,
               reconnect: false,
             });
+
+            assert.notEqual(meeting.deferSDPAnswer, undefined);
           });
 
           it('handles ANSWER message correctly', () => {
@@ -5287,6 +5303,7 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
 
         describe('audio and video source count change events', () => {
           beforeEach(() => {
