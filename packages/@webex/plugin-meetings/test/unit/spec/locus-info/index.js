@@ -1894,15 +1894,15 @@ describe('plugin-meetings', () => {
           locusInfo: {
             handleLocusDelta: sandbox.stub(),
           },
-          locusUrl: 'oldLocusUrl',
+          locusUrl: 'current locus url',
         };
 
         locusInfo.locusParser.workingCopy = {
-          syncUrl: 'oldSyncUrl',
+          syncUrl: 'current sync url',
         };
   
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldSyncUrl'});
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
       });
 
       describe('edge cases for sync failing', () => {
