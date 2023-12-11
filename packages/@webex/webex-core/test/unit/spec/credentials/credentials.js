@@ -62,7 +62,8 @@ describe('webex-core', () => {
     describe('#isUnverifiedGuest', () => {
       let credentials;
       let webex;
-      beforeEach('generate the webex instance', () => {
+      beforeEach(() => {
+        //generate the webex instance
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
