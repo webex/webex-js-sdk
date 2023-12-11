@@ -1325,6 +1325,11 @@ describe('plugin-meetings', () => {
           });
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          meeting.mediaProperties.webrtcMediaConnection = {
+            multistreamConnection: {
+              forceStatsReport: sinon.stub().resolves(),
+            }
+          };
           const error = await assert.isRejected(meeting.addMedia());
 
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
@@ -1363,6 +1368,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.multistreamConnection.forceStatsReport);
         });
 
         it('should include the peer connection properties correctly for transcoded', async () => {

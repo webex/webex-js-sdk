@@ -182,12 +182,10 @@ Media.createMediaConnection = (
     return new MultistreamRoapMediaConnection(
       config,
       meetingId,
-      // TODO
-      rtcMetrics: {
-        addMetricsCb: (data) => rtcMetrics.addMetrics(data),
-        closeMetricsCb: () => rtcMetrics.closeMetrics(),
-        checkMetricsCb: () => rtcMetrics.checkMetrics()
-      },
+      /* the rtc metrics objects callbacks */
+      (data) => rtcMetrics.addMetrics(data),
+      () => rtcMetrics.closeMetrics(),
+      () => rtcMetrics.checkMetrics()
     );
   }
 

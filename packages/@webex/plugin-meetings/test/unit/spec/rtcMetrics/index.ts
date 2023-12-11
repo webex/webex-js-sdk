@@ -33,6 +33,11 @@ describe('RtcMetrics', () => {
     assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].correlationId', 'mock-correlation-id'));
   });
 
+  it('should have a defined checkMetrics function which is public', () => {
+    assert.isDefined(metrics.checkMetrics);
+    assert.isFunction(metrics.checkMetrics);
+  });
+
   it('should send metrics requests over time', () => {
     assert.notCalled(webex.request);
 
