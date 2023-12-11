@@ -1310,6 +1310,61 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
         });
 
+        it('should send metrics and reset the statsAnalyzer to null if waitForRemoteSDPAnswer fails', async () => {
+          meeting.meetingState = 'ACTIVE';
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }),
+          };
+
+          meeting.waitForRemoteSDPAnswer = sinon.stub().rejects();
+
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+
+          const error = await assert.isRejected(meeting.addMedia());
+
+          assert.isNull(meeting.statsAnalyzer);
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }
+          );
+        });
+
         it('should include the peer connection properties correctly for multistream', async () => {
           meeting.meetingState = 'ACTIVE';
           // setup the mock to return an incomplete object - this will cause addMedia to fail
