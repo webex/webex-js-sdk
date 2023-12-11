@@ -31,6 +31,8 @@ import {
   IP_VERSION,
   ERROR_DICTIONARY,
   NETWORK_STATUS,
+  ONLINE,
+  OFFLINE,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -1140,7 +1142,7 @@ describe('plugin-meetings', () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
-          meeting.waitForRoapDone = sinon.stub();
+          meeting.waitForRemoteSDPAnswer = sinon.stub().resolves();
         });
 
         it('should have #addMedia', () => {
@@ -1902,7 +1904,7 @@ describe('plugin-meetings', () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
-          meeting.waitForRoapDone = sinon.stub();
+          meeting.waitForRemoteSDPAnswer = sinon.stub().resolves();
 
           StaticConfig.set({bandwidth: {audio: 1234, video: 5678, startBitrate: 9876}});
 
@@ -6133,6 +6135,18 @@ describe('plugin-meetings', () => {
           meeting.webex.internal.mercury.off = sinon.stub().returns(true);
           meeting.unsetPeerConnections();
           assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
+          assert.notCalled(meeting.webex.internal.mercury.off);
+        });
+
+        it('should unset the peer connections and turn off mercury listeners if config.reconnection.detection is true', () => {
+          meeting.config.reconnection.detection = true;
+          meeting.mediaProperties.unsetPeerConnection = sinon.stub().returns(true);
+          meeting.webex.internal.mercury.off = sinon.stub().returns(true);
+          meeting.unsetPeerConnections();
+          assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
+          assert.calledTwice(meeting.webex.internal.mercury.off);
+          assert.calledWith(meeting.webex.internal.mercury.off.firstCall, ONLINE);
+          assert.calledWith(meeting.webex.internal.mercury.off.secondCall, OFFLINE);
         });
       });
 
