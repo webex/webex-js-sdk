@@ -169,7 +169,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    */
   applyLocusDeltaData(action: string, locus: any, meeting: any) {
-    const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT} = LocusDeltaParser.loci;
+    const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
 
     switch (action) {
       case USE_INCOMING:
@@ -180,6 +180,7 @@ export default class LocusInfo extends EventsScope {
         // do nothing
         break;
       case DESYNC:
+      case LOCUS_URL_CHANGED:
         this.doLocusSync(meeting);
         break;
       default:

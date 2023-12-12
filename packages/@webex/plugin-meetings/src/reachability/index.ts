@@ -16,9 +16,20 @@ import ReachabilityRequest from './request';
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
 
+export type ReachabilityMetrics = {
+  reachability_public_udp_success: number;
+  reachability_public_udp_failed: number;
+  reachability_public_tcp_success: number;
+  reachability_public_tcp_failed: number;
+  reachability_vmn_udp_success: number;
+  reachability_vmn_udp_failed: number;
+  reachability_vmn_tcp_success: number;
+  reachability_vmn_tcp_failed: number;
+};
+
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
-  reachable: 'true' | 'false';
+  reachable?: 'true' | 'false';
   latencyInMilliseconds?: string;
   clientMediaIPs?: string[];
   untested?: 'true';
@@ -136,6 +147,58 @@ export default class Reachability {
 
       return {};
     }
+  }
+
+  /**
+   * Returns statistics about last reachability results. The returned value is an object
+   * with a flat list of properties so that it can be easily sent with metrics
+   *
+   * @returns {Promise} Promise with metrics values, it never rejects/throws.
+   */
+  async getReachabilityMetrics(): Promise<ReachabilityMetrics> {
+    const stats: ReachabilityMetrics = {
+      reachability_public_udp_success: 0,
+      reachability_public_udp_failed: 0,
+      reachability_public_tcp_success: 0,
+      reachability_public_tcp_failed: 0,
+      reachability_vmn_udp_success: 0,
+      reachability_vmn_udp_failed: 0,
+      reachability_vmn_tcp_success: 0,
+      reachability_vmn_tcp_failed: 0,
+    };
+
+    const updateStats = (clusterType: 'public' | 'vmn', result: ReachabilityResult) => {
+      if (result.udp?.reachable) {
+        const outcome = result.udp.reachable === 'true' ? 'success' : 'failed';
+        stats[`reachability_${clusterType}_udp_${outcome}`] += 1;
+      }
+      if (result.tcp?.reachable) {
+        const outcome = result.tcp.reachable === 'true' ? 'success' : 'failed';
+        stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
+      }
+    };
+
+    try {
+      // @ts-ignore
+      const resultsJson = await this.webex.boundedStorage.get(
+        REACHABILITY.namespace,
+        REACHABILITY.localStorageResult
+      );
+
+      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+
+      Object.values(internalResults).forEach((result) => {
+        updateStats(result.isVideoMesh ? 'vmn' : 'public', result);
+      });
+    } catch (e) {
+      // empty storage, that's ok
+      LoggerProxy.logger.warn(
+        'Roap:request#getReachabilityMetrics --> Error parsing reachability data: ',
+        e
+      );
+    }
+
+    return stats;
   }
 
   /**

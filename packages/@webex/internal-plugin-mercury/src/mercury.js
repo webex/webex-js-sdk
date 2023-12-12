@@ -362,7 +362,10 @@ const Mercury = WebexPlugin.extend({
     try {
       this.trigger(...args);
     } catch (error) {
-      this.logger.error('mercury: error occurred in event handler', error);
+      this.logger.error('mercury: error occurred in event handler', {
+        error,
+        arguments: args,
+      });
     }
   },
 

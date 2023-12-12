@@ -1,10 +1,11 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {WebexHttpError} from '@webex/webex-core';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 
-const  {
+const {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
@@ -13,6 +14,8 @@ const  {
   isMeetingInfoServiceError,
   prepareDiagnosticMetricItem,
   setMetricTimings,
+  isNetworkError,
+  isUnauthorizedError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -98,6 +101,65 @@ describe('internal-plugin-metrics', () => {
       it(`for rawError ${rawError} returns the correct result`, () => {
         //@ts-ignore
         assert.deepEqual(isMeetingInfoServiceError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isNetworkError', () => {
+    [
+      [{body: {data: {meetingInfo: 'something'}}}, false],
+      [
+        new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        true,
+      ],
+      [
+        new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        false,
+      ],
+    ].forEach(([rawError, expected]) => {
+      it(`for rawError ${rawError} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isNetworkError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isUnauthorizedError', () => {
+    [
+      [
+        'unauthorized',
+        new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        true,
+      ],
+      [
+        'network or cors',
+        new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        false,
+      ],
+      ['other', {body: {data: {meetingInfo: 'something'}}}, false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isUnauthorizedError(rawError), expected);
       });
     });
   });
