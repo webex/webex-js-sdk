@@ -41,7 +41,7 @@ export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
   [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
-const ERROR_DESCRIPTIONS = {
+export const ERROR_DESCRIPTIONS = {
   UNKNOWN_CALL_FAILURE: 'UnknownCallFailure',
   LOCUS_RATE_LIMITED_INCOMING: 'LocusRateLimitedIncoming',
   LOCUS_RATE_LIMITED_OUTGOING: 'LocusRateLimitedOutgoing',
@@ -377,7 +377,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'media',
     fatal: true,
   },
-  [ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE]: {
+  [ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
     category: 'media',
     fatal: true,

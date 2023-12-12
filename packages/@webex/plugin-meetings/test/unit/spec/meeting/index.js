@@ -69,7 +69,7 @@ import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
-import { CallDiagnosticUtils } from '@webex/internal-plugin-metrics';
+import { CallDiagnosticUtils  } from '@webex/internal-plugin-metrics';
 
 import CallDiagnosticLatencies from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics-latencies';
 import LLM from '@webex/internal-plugin-llm';
@@ -95,6 +95,16 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
+import {
+  CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
+  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+  ICE_FAILURE_CLIENT_CODE,
+  MISSING_ROAP_ANSWER_CLIENT_CODE,
+} from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
+import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics';
+import { ERROR_DESCRIPTIONS } from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
 
 
 describe('plugin-meetings', () => {
@@ -1870,6 +1880,131 @@ describe('plugin-meetings', () => {
           sinon.stub(internalMediaModule, 'getDevices').rejects(new Error('fake error'));
 
           await meeting.addMedia();
+        });
+
+        describe('CA ice failures checks', () => {
+          [
+            {
+              clientErrorCode: ICE_FAILURE_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILURE,
+              },
+            },
+            {
+              clientErrorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
+                category: 'signaling',
+              },
+            },
+            {
+              clientErrorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.DTLS_HANDSHAKE_FAILED,
+              },
+            },
+            {
+              clientErrorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITHOUT_TURN_TLS,
+              },
+            },
+            {
+              clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+              },
+            },
+          ].forEach(({clientErrorCode, expectedErrorPayload}) => {
+            it(`should handle all ice failures correctly for ${clientErrorCode}`, async () => {
+              // setting the method to the real implementation
+              // because newMetrics is mocked completely in the webex-mock
+              // the reason for this is that we want to test this on integration level
+              const CD = new CallDiagnosticMetrics({}, {parent: webex});
+              webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+                CD.getErrorPayloadForClientErrorCode;
+
+              const generateClientErrorCodeForIceFailureStub = sinon
+                .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
+                .returns(clientErrorCode);
+
+              meeting.meetingState = 'ACTIVE';
+              meeting.mediaProperties.waitForMediaConnectionConnected.rejects(
+                new Error('fake error')
+              );
+
+              let errorThrown = false;
+
+              await meeting
+                .addMedia({
+                  mediaSettings: {},
+                })
+                .catch(() => {
+                  errorThrown = true;
+                });
+
+              assert.calledOnceWithExactly(generateClientErrorCodeForIceFailureStub, {
+                signalingState: 'unknown',
+                iceConnectionState: 'unknown',
+                turnServerUsed: true,
+              });
+
+              const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+
+              assert.deepEqual(submitClientEventCalls[0].args, [
+                {
+                  name: 'client.media.capabilities',
+                  payload: {
+                    mediaCapabilities: {
+                      rx: {
+                        audio: false,
+                        share: false,
+                        share_audio: false,
+                        video: false,
+                        whiteboard: false,
+                      },
+                      tx: {
+                        audio: false,
+                        share: false,
+                        share_audio: false,
+                        video: false,
+                        whiteboard: false,
+                      },
+                    },
+                  },
+                  options: {
+                    meetingId: meeting.id,
+                  },
+                },
+              ]);
+
+              assert.deepEqual(submitClientEventCalls[1].args, [
+                {
+                  name: 'client.ice.end',
+                  payload: {
+                    canProceed: false,
+                    icePhase: 'JOIN_MEETING_FINAL',
+                    errors: [
+                      {
+                        fatal: true,
+                        shownToUser: false,
+                        name: 'other',
+                        category: 'media',
+                        errorCode: clientErrorCode,
+                        serviceErrorCode: undefined,
+                        ...expectedErrorPayload,
+                      },
+                    ],
+                  },
+                  options: {
+                    meetingId: meeting.id,
+                  },
+                },
+              ]);
+
+              assert.isTrue(errorThrown);
+            });
+          });
         });
       });
 
