@@ -4,7 +4,7 @@
 
 const t = require('@babel/types');
 
-const {version} = require('../package.json');
+const {version} = require('../packages/webex/package.json');
 
 /**
  * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
