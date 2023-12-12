@@ -2081,6 +2081,11 @@ describe('plugin-meetings', () => {
               iceServers,
             }, meetingId);
 
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.AudioMain, direction.audio !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.VideoMain, direction.video !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.AudioSlides, direction.screenShare !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.VideoSlides, direction.screenShare !== 'inactive');
+
             for(let type in localStreams){
               const stream = localStreams[type];
               if(stream !== undefined){
@@ -2109,7 +2114,7 @@ describe('plugin-meetings', () => {
                   screenShareVideo: localStreams.screenShareVideo?.outputTrack,
                   screenShareAudio: localStreams.screenShareAudio?.outputTrack,
                 },
-                direction,
+                direction: {audio: direction.audio, video: direction.video, screenShareVideo: direction.screenShare},
                 remoteQualityLevel,
               },
               expectedDebugId
@@ -2133,7 +2138,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2163,7 +2168,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2195,7 +2200,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2224,7 +2229,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'inactive',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2254,7 +2259,68 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'inactive',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+
+        it('addMedia() works correctly when video is disabled with no tracks to publish', async () => {
+          await meeting.addMedia({videoEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'inactive',
+              screenShare: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when screen share is disabled with no tracks to publish', async () => {
+          await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShare: 'inactive',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
