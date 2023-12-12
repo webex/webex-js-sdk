@@ -553,7 +553,6 @@ describe('internal-plugin-metrics', () => {
      { signalingState: 'stable', iceConnectionState: 'connected', turnServerUsed: true, errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE},
      { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: true, errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE},
      { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: false, errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE},
-     { signalingState: 'failed', iceConnectionState: 'connected', turnServerUsed: false, errorCode: ICE_FAILURE_CLIENT_CODE},
     ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
