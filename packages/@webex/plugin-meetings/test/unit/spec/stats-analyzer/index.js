@@ -125,6 +125,11 @@ describe('plugin-meetings', () => {
                     packetsSent: 0,
                     bytesSent: 1,
                   },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
                 ],
               },
             ],
@@ -135,6 +140,11 @@ describe('plugin-meetings', () => {
                     type: 'inbound-rtp',
                     packetsReceived: 0,
                     bytesReceived: 1,
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
                   },
                 ],
               },
@@ -149,6 +159,11 @@ describe('plugin-meetings', () => {
                     framesSent: 0,
                     bytesSent: 1,
                   },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
                 ],
               },
             ],
@@ -162,6 +177,11 @@ describe('plugin-meetings', () => {
                     frameHeight: 720,
                     frameWidth: 1280,
                     framesReceived: 1,
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
                   },
                 ],
               },
@@ -241,6 +261,13 @@ describe('plugin-meetings', () => {
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedHeight, 720);
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedWidth, 1280);
       };
+
+      const checkMqeTransportType = () => {
+        console.log(mqeData.audioTransmit[0])
+        console.log(mqeData.videoReceive[0])
+        assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TCP');
+        assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TCP');
+      }
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for audio', async () => {
         await startStatsAnalyzer({expected: {sendAudio: true}});
@@ -329,6 +356,14 @@ describe('plugin-meetings', () => {
 
         // Check that the mqe data has been emitted and is correctly computed.
         checkMqeData();
+      });
+
+      it('emits the correct transportType in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        checkMqeTransportType();
       });
     });
   });
