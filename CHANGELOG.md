@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.277](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.276...v3.0.0-beta.277) (2023-12-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** audio still working when addMedia called with audioEnabled: false ([#3247](https://github.com/webex/webex-js-sdk/issues/3247)) ([98799ed](https://github.com/webex/webex-js-sdk/commit/98799ed3ec30e76abd4c61a6195ba825f823916c))
+
 ## [3.0.0-beta.276](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.274...v3.0.0-beta.276) (2023-12-11)
 
 
