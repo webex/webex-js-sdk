@@ -36,6 +36,7 @@ import { forEach } from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {NoiseReductionEffect,VirtualBackgroundEffect} from '@webex/media-helpers';
+import NoMeetingInfoError from '../../../../src/common/errors/no-meeting-info';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -662,15 +663,28 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('calls createMeeting and returns its promise', async () => {
-          const FAKE_USE_RANDOM_DELAY = true;
-          const correlationId = 'my-correlationId';
-          const create = webex.meetings.create(test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId);
+        const FAKE_USE_RANDOM_DELAY = true;
+        const correlationId = 'my-correlationId';
+
+        const checkCallCreateMeeting = async (createParameters, createMeetingParameters) => {
+          const create = webex.meetings.create(...createParameters);
 
           assert.exists(create.then);
           await create;
           assert.calledOnce(webex.meetings.createMeeting);
-          assert.calledWith(webex.meetings.createMeeting, test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId);
+          assert.calledWith(webex.meetings.createMeeting, ...createMeetingParameters);
+        } 
+
+        it('calls createMeeting and returns its promise', async () => {
+          checkCallCreateMeeting([test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true], [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true]);
+        });
+
+        it('calls createMeeting when failOnMissingMeetinginfo is undefined and returns its promise', async () => {
+          checkCallCreateMeeting([test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, undefined], [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]);
+        });
+
+        it('calls createMeeting when failOnMissingMeetinginfo is false and returns its promise', async () => {
+          checkCallCreateMeeting([test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false], [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]);
         });
 
         it('calls createMeeting with extra info params and returns its promise', async () => {
@@ -1346,37 +1360,63 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingInfo.fetchMeetingInfo = sinon
               .stub()
               .returns(Promise.reject(new Error('test')));
+            webex.meetings.destroy = sinon
+              .stub()
+              .returns(Promise.resolve());
+            webex.meetings.createMeeting = sinon.spy(webex.meetings.createMeeting);
           });
-          it('creates the meeting from a rejected meeting info fetch', async () => {
-            const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
-            assert.instanceOf(
-              meeting,
-              Meeting,
-              'createMeeting should eventually resolve to a Meeting Object'
-            );
-            assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
-            assert.calledOnce(MeetingsUtil.getMeetingAddedType);
-            assert.calledThrice(TriggerProxy.trigger);
-            assert.calledWith(
-              webex.meetings.meetingInfo.fetchMeetingInfo,
-              'test destination',
-              'test type'
-            );
-            assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meetings),
-              {
-                file: 'meetings',
-                function: 'createMeeting',
-              },
-              'meeting:added',
-              {
-                meeting: sinon.match.instanceOf(Meeting),
-                type: 'test meeting added type',
+          const checkCreateMeetingWithNoMeetingInfo = async (failOnMissingMeetingInfo, destroy) => {
+            try {
+              const meeting = await webex.meetings.createMeeting('test destination', 'test type', undefined, undefined, undefined, failOnMissingMeetingInfo);
+              
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
+              assert.calledOnce(MeetingsUtil.getMeetingAddedType);
+              assert.calledThrice(TriggerProxy.trigger);
+              assert.calledWith(
+                webex.meetings.meetingInfo.fetchMeetingInfo,
+                'test destination',
+                'test type'
+              );
+  
+              if (destroy) {
+                assert.calledWith(webex.meetings.destroy, sinon.match.instanceOf(Meeting), 'MISSING_MEETING_INFO')
+                assert.notCalled(MeetingsUtil.getMeetingAddedType);
+                assert.notCalled(TriggerProxy.trigger);
+                assert.throw(webex.meetings.createMeeting, 'meeting information not found');
+              } else {
+                assert.notCalled(webex.meetings.destroy);
+                assert.calledWith(MeetingsUtil.getMeetingAddedType, 'test type');
+                assert.calledWith(
+                  TriggerProxy.trigger,
+                  sinon.match.instanceOf(Meetings),
+                  {
+                    file: 'meetings',
+                    function: 'createMeeting',
+                  },
+                  'meeting:added',
+                  {
+                    meeting: sinon.match.instanceOf(Meeting),
+                    type: 'test meeting added type',
+                  }
+                );
               }
-            );
+            } catch (err) { 
+              assert.instanceOf(err, NoMeetingInfoError);
+            }
+          }
+
+          it('creates the meeting from a rejected meeting info fetch', async () => {
+            checkCreateMeetingWithNoMeetingInfo(false, false);
+          });
+
+          it('creates the meeting from a rejected meeting info fetch and destroys it if failOnMissingMeetingInfo', async () => {
+            checkCreateMeetingWithNoMeetingInfo(true, true);
           });
         });
 

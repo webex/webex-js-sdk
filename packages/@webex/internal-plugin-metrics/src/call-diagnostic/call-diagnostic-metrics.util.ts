@@ -3,6 +3,7 @@ import anonymize from 'ip-anonymize';
 import util from 'util';
 
 import {BrowserDetection} from '@webex/common';
+import {WebexHttpError} from '@webex/webex-core';
 import {isEmpty, merge} from 'lodash';
 import {
   ClientEvent,
@@ -11,7 +12,15 @@ import {
   MediaQualityEventVideoSetupDelayPayload,
   MetricEventNames,
 } from '../metrics.types';
-import {BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP, WBX_APP_API_URL} from './config';
+import {
+  BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
+  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+  ICE_FAILURE_CLIENT_CODE,
+  MISSING_ROAP_ANSWER_CLIENT_CODE,
+  WBX_APP_API_URL,
+} from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -118,6 +127,34 @@ export const isLocusServiceErrorCode = (errorCode: string | number) => {
  */
 export const isMeetingInfoServiceError = (rawError: any) => {
   if (rawError.body?.data?.meetingInfo || rawError.body?.url?.includes(WBX_APP_API_URL)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Returns true if the raw error is a network related error
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isNetworkError = (rawError: any) => {
+  if (rawError instanceof WebexHttpError.NetworkOrCORSError) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Returns true if the error is an unauthorized error
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
+export const isUnauthorizedError = (rawError: any) => {
+  if (rawError instanceof WebexHttpError.Unauthorized) {
     return true;
   }
 
@@ -288,4 +325,38 @@ export const extractVersionMetadata = (version: string) => {
     majorVersion: parseInt(majorVersion, 10),
     minorVersion: parseInt(minorVersion, 10),
   };
+};
+
+/**
+ * Generates client error codes for specific ice failures
+ * that happen when trying to add media in a meeting.
+ */
+export const generateClientErrorCodeForIceFailure = ({
+  signalingState,
+  iceConnectionState,
+  turnServerUsed,
+}: {
+  signalingState: RTCPeerConnection['signalingState'];
+  iceConnectionState: RTCPeerConnection['iceConnectionState'];
+  turnServerUsed: boolean;
+}) => {
+  let errorCode = ICE_FAILURE_CLIENT_CODE; // default;
+
+  if (signalingState === 'have-local-offer') {
+    errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
+  }
+
+  if (signalingState === 'stable' && iceConnectionState === 'connected') {
+    errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
+  }
+
+  if (signalingState !== 'have-local-offer' && iceConnectionState !== 'connected') {
+    if (turnServerUsed) {
+      errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
+    } else {
+      errorCode = ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE;
+    }
+  }
+
+  return errorCode;
 };
