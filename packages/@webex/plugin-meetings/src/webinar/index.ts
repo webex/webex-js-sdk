@@ -7,9 +7,9 @@ import {MEETINGS} from '../constants';
 import WebinarCollection from './collection';
 
 /**
- * @class WebinarMeeting
+ * @class Webinar
  */
-const WebinarMeeting = WebexPlugin.extend({
+const Webinar = WebexPlugin.extend({
   namespace: MEETINGS,
   collections: {
     webinar: WebinarCollection,
@@ -59,4 +59,4 @@ const WebinarMeeting = WebexPlugin.extend({
   },
 });
 
-export default WebinarMeeting;
+export default Webinar;

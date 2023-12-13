@@ -5,17 +5,17 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
 describe('plugin-meetings', () => {
-    describe('WebinarMeeting', () => {
+    describe('Webinar', () => {
 
         let webex;
-        let webinarMeeting;
+        let webinar;
 
         beforeEach(() => {
             // @ts-ignore
             webex = new MockWebex({});
             webex.internal.mercury.on = sinon.stub();
-            webinarMeeting = new Webinar({}, {parent: webex});
-            webinarMeeting.locusUrl = 'locusUrl';
+            webinar = new Webinar({}, {parent: webex});
+            webinar.locusUrl = 'locusUrl';
             webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
             webex.meetings = {};
             webex.meetings.getMeetingByType = sinon.stub();
@@ -23,26 +23,38 @@ describe('plugin-meetings', () => {
 
         describe('#locusUrlUpdate', () => {
             it('sets the locus url', () => {
-                webinarMeeting.locusUrlUpdate('newUrl');
+                webinar.locusUrlUpdate('newUrl');
 
-                assert.equal(webinarMeeting.locusUrl, 'newUrl');
+                assert.equal(webinar.locusUrl, 'newUrl');
             });
         });
 
         describe('#webcastUrlUpdate', () => {
             it('sets the webcast url', () => {
-                webinarMeeting.webcastUrlUpdate('newUrl');
+                webinar.webcastUrlUpdate('newUrl');
 
-                assert.equal(webinarMeeting.webcastUrl, 'newUrl');
+                assert.equal(webinar.webcastUrl, 'newUrl');
             });
         });
 
         describe('#webinarAttendeesSearchingUrlUpdate', () => {
             it('sets the webinarAttendeesSearching url', () => {
-                webinarMeeting.webinarAttendeesSearchingUrlUpdate('newUrl');
+                webinar.webinarAttendeesSearchingUrlUpdate('newUrl');
 
-                assert.equal(webinarMeeting.webinarAttendeesSearchingUrl, 'newUrl');
+                assert.equal(webinar.webinarAttendeesSearchingUrl, 'newUrl');
             });
+        });
+
+        describe('#updateCanManageWebcast', () => {
+          it('update canManageWebcast', () => {
+            webinar.updateCanManageWebcast(true);
+
+            assert.equal(webinar.canManageWebcast, true);
+
+            webinar.updateCanManageWebcast(false);
+
+            assert.equal(webinar.canManageWebcast, false);
+          });
         });
     })
 })

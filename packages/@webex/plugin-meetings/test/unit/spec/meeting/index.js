@@ -75,7 +75,7 @@ import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
-import WebinarMeeting from '@webex/plugin-meetings/src/webinar';
+import Webinar from '@webex/plugin-meetings/src/webinar';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -334,7 +334,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.destinationType, _MEETING_ID_);
           assert.instanceOf(meeting.breakouts, Breakouts);
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
-          assert.instanceOf(meeting.webinarMeeting, WebinarMeeting);
+          assert.instanceOf(meeting.webinar, Webinar);
         });
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
@@ -5795,7 +5795,7 @@ describe('plugin-meetings', () => {
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
           meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
-          meeting.webinarMeeting.locusUrlUpdate = sinon.stub();
+          meeting.webinar.locusUrlUpdate = sinon.stub();
 
 
           meeting.locusInfo.emit(
@@ -5810,7 +5810,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
-          assert.calledWith(meeting.webinarMeeting.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
 
@@ -5843,7 +5843,7 @@ describe('plugin-meetings', () => {
               webcast: {
                 url: 'url',
               },
-              webinarAttendeesSearchingUrl: {
+              webinarAttendeesSearching: {
                 url: 'url',
               },
             },
@@ -5859,7 +5859,7 @@ describe('plugin-meetings', () => {
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
           };
-          meeting.webinarMeeting = {
+          meeting.webinar = {
             webcastUrlUpdate: sinon.stub().returns(undefined),
             webinarAttendeesSearchingUrlUpdate: sinon.stub().returns(undefined),
           };
@@ -5883,8 +5883,12 @@ describe('plugin-meetings', () => {
             newLocusServices.services.approval.url
           );
           assert.calledWith(
-              meeting.webinarMeeting.webcastUrlUpdate,
+              meeting.webinar.webcastUrlUpdate,
               newLocusServices.services.webcast.url
+          );
+          assert.calledWith(
+              meeting.webinar.webinarAttendeesSearchingUrlUpdate,
+              newLocusServices.services.webinarAttendeesSearching.url
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
           done();
