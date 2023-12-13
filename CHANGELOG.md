@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.278](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.277...v3.0.0-beta.278) (2023-12-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add tls transport type ([#3243](https://github.com/webex/webex-js-sdk/issues/3243)) ([8000036](https://github.com/webex/webex-js-sdk/commit/8000036c6148e840b1d88c6dac1df14fb1b06fe4))
+
 ## [3.0.0-beta.277](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.276...v3.0.0-beta.277) (2023-12-12)
 
 
