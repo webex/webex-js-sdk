@@ -75,6 +75,7 @@ import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
+import WebinarMeeting from '@webex/plugin-meetings/src/webinar';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -333,6 +334,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.destinationType, _MEETING_ID_);
           assert.instanceOf(meeting.breakouts, Breakouts);
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
+          assert.instanceOf(meeting.webinarMeeting, WebinarMeeting);
         });
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
@@ -1041,8 +1043,8 @@ describe('plugin-meetings', () => {
             })
           })
 
-          describe('refreshPermissionToken', () => { 
-            it('should continue if permissionTokenRefresh fails with a generic error', async () => { 
+          describe('refreshPermissionToken', () => {
+            it('should continue if permissionTokenRefresh fails with a generic error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new Error('bad day'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
 
@@ -1056,7 +1058,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a captcha error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a captcha error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new CaptchaError('bad captcha'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
@@ -1074,7 +1076,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a password error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a password error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PasswordError('bad password'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
@@ -1092,7 +1094,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a permission error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a permission error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PermissionError('bad permission'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
@@ -5793,6 +5795,8 @@ describe('plugin-meetings', () => {
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
           meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
+          meeting.webinarMeeting.locusUrlUpdate = sinon.stub();
+
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -5806,6 +5810,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.webinarMeeting.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
 
@@ -5835,6 +5840,12 @@ describe('plugin-meetings', () => {
               approval: {
                 url: 'url',
               },
+              webcast: {
+                url: 'url',
+              },
+              webinarAttendeesSearchingUrl: {
+                url: 'url',
+              },
             },
           };
 
@@ -5847,6 +5858,10 @@ describe('plugin-meetings', () => {
           };
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
+          };
+          meeting.webinarMeeting = {
+            webcastUrlUpdate: sinon.stub().returns(undefined),
+            webinarAttendeesSearchingUrlUpdate: sinon.stub().returns(undefined),
           };
 
           meeting.locusInfo.emit(
@@ -5866,6 +5881,10 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             meeting.simultaneousInterpretation.approvalUrlUpdate,
             newLocusServices.services.approval.url
+          );
+          assert.calledWith(
+              meeting.webinarMeeting.webcastUrlUpdate,
+              newLocusServices.services.webcast.url
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
           done();
@@ -7487,7 +7506,7 @@ describe('plugin-meetings', () => {
                       functionName: 'stopWhiteboardShare',
                     });
                   }
-                  
+
                   // Web client is sharing locally
                   if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                     eventTrigger.share.push({
@@ -8569,7 +8588,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('#checkAndRefreshPermissionToken', () => {
-    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => { 
+    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8580,7 +8599,7 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, undefined);
     });
 
-    it('should fire refreshPermissionToken if time left is below 10sec', async() => { 
+    it('should fire refreshPermissionToken if time left is below 10sec', async() => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8591,7 +8610,7 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, 'test return value');
     });
 
-    it('should fire refreshPermissionToken if time left is equal 10sec', async () => { 
+    it('should fire refreshPermissionToken if time left is equal 10sec', async () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8602,12 +8621,12 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, 'test return value');
     });
 
-    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => { 
+    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
-      
+
       assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);
