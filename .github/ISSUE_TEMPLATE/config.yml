@@ -1,9 +1,4 @@
 blank_issues_enabled: false
-contact_links:
-  - name: Webex Developer Support
-    url: https://developer.webex.com/support
-    about: For any other queries, contact Webex Developer Support.
-
 issue_templates:
   - name: Bug report
     description: File a bug report
