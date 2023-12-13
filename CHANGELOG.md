@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.280](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.279...v3.0.0-beta.280) (2023-12-13)
+
+
+### Bug Fixes
+
+* **integration:** fix waitForPublished() in SDK integration tests ([#3242](https://github.com/webex/webex-js-sdk/issues/3242)) ([742e9e9](https://github.com/webex/webex-js-sdk/commit/742e9e94de5579979b2560ff26d02bd749bbed16))
+
 ## [3.0.0-beta.279](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.278...v3.0.0-beta.279) (2023-12-13)
 
 
