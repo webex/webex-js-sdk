@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.280](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.279...v3.0.0-beta.280) (2023-12-13)
+
+
+### Bug Fixes
+
+* **integration:** fix waitForPublished() in SDK integration tests ([#3242](https://github.com/webex/webex-js-sdk/issues/3242)) ([742e9e9](https://github.com/webex/webex-js-sdk/commit/742e9e94de5579979b2560ff26d02bd749bbed16))
+
+## [3.0.0-beta.279](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.278...v3.0.0-beta.279) (2023-12-13)
+
+
+### Features
+
+* **media:** add ice failure groupings for CA ([#3240](https://github.com/webex/webex-js-sdk/issues/3240)) ([86db317](https://github.com/webex/webex-js-sdk/commit/86db3171527790ee1350d22a1e9eb5c8dc5852dc))
+
+## [3.0.0-beta.278](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.277...v3.0.0-beta.278) (2023-12-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add tls transport type ([#3243](https://github.com/webex/webex-js-sdk/issues/3243)) ([8000036](https://github.com/webex/webex-js-sdk/commit/8000036c6148e840b1d88c6dac1df14fb1b06fe4))
+
+## [3.0.0-beta.277](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.276...v3.0.0-beta.277) (2023-12-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** audio still working when addMedia called with audioEnabled: false ([#3247](https://github.com/webex/webex-js-sdk/issues/3247)) ([98799ed](https://github.com/webex/webex-js-sdk/commit/98799ed3ec30e76abd4c61a6195ba825f823916c))
+
+## [3.0.0-beta.276](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.274...v3.0.0-beta.276) (2023-12-11)
+
+
+### Bug Fixes
+
+* **breakouts:** user gets removed from meeting after end of session ([#3239](https://github.com/webex/webex-js-sdk/issues/3239)) ([b60b44d](https://github.com/webex/webex-js-sdk/commit/b60b44d5a397cc4c87c252587d4a36146256a1d8))
+* downscopeing issues ([#3211](https://github.com/webex/webex-js-sdk/issues/3211)) ([e31469c](https://github.com/webex/webex-js-sdk/commit/e31469cdc7d31044a4d2eeb5308a323d10292fc6))
+* **plugin-meetings:** update internal media core to 2.0.6 ([#3241](https://github.com/webex/webex-js-sdk/issues/3241)) ([acb689f](https://github.com/webex/webex-js-sdk/commit/acb689fd6f8468ab84f7a14967d6011ef0818424))
+
+## [3.0.0-beta.275](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.274...v3.0.0-beta.275) (2023-12-11)
+
+
+### Bug Fixes
+
+* downscopeing issues ([#3211](https://github.com/webex/webex-js-sdk/issues/3211)) ([e31469c](https://github.com/webex/webex-js-sdk/commit/e31469cdc7d31044a4d2eeb5308a323d10292fc6))
+* **plugin-meetings:** update internal media core to 2.0.6 ([#3241](https://github.com/webex/webex-js-sdk/issues/3241)) ([acb689f](https://github.com/webex/webex-js-sdk/commit/acb689fd6f8468ab84f7a14967d6011ef0818424))
+
 ## [3.0.0-beta.274](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.273...v3.0.0-beta.274) (2023-12-08)
 
 

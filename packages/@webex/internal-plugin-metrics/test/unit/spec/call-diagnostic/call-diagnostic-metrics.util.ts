@@ -4,6 +4,13 @@ import {WebexHttpError} from '@webex/webex-core';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
+import {
+  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+  ICE_FAILURE_CLIENT_CODE,
+  MISSING_ROAP_ANSWER_CLIENT_CODE,
+} from '../../../../src/call-diagnostic/config';
 
 const {
   clearEmptyKeysRecursively,
@@ -16,6 +23,7 @@ const {
   setMetricTimings,
   isNetworkError,
   isUnauthorizedError,
+  generateClientErrorCodeForIceFailure
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -535,6 +543,22 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([version, expected]) => {
       it(`returns expected result for ${version}`, () => {
         assert.deepEqual(extractVersionMetadata(version as string), expected);
+      });
+    });
+  });
+
+  describe('generateClientErrorCodeForIceFailure', () => {
+    [
+     { signalingState: 'have-local-offer', iceConnectionState: 'connected', turnServerUsed: true, errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'connected', turnServerUsed: true, errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: true, errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: false, errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE},
+    ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
+      it('returns expected result', () => {
+        assert.deepEqual(
+          generateClientErrorCodeForIceFailure({signalingState, iceConnectionState, turnServerUsed}),
+          errorCode
+        );
       });
     });
   });
