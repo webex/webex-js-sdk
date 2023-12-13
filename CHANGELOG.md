@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.279](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.278...v3.0.0-beta.279) (2023-12-13)
+
+
+### Features
+
+* **media:** add ice failure groupings for CA ([#3240](https://github.com/webex/webex-js-sdk/issues/3240)) ([86db317](https://github.com/webex/webex-js-sdk/commit/86db3171527790ee1350d22a1e9eb5c8dc5852dc))
+
 ## [3.0.0-beta.278](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.277...v3.0.0-beta.278) (2023-12-13)
 
 
