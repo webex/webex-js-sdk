@@ -185,7 +185,7 @@ Media.createMediaConnection = (
       /* the rtc metrics objects callbacks */
       (data) => rtcMetrics.addMetrics(data),
       () => rtcMetrics.closeMetrics(),
-      () => rtcMetrics.checkMetrics()
+      () => rtcMetrics.sendMetricsInQueue()
     );
   }
 

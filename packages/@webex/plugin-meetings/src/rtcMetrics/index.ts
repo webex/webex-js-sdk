@@ -26,12 +26,12 @@ export default class RtcMetrics {
    */
   constructor(webex, meetingId, correlationId) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.
-    this.intervalId = window.setInterval(this.checkMetrics.bind(this), 30 * 1000);
+    this.intervalId = window.setInterval(this.sendMetricsInQueue.bind(this), 30 * 1000);
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
-    setTimeout(this.checkMetrics.bind(this), 5 * 1000);
+    setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
   }
 
   /**
@@ -39,7 +39,7 @@ export default class RtcMetrics {
    *
    * @returns {void}
    */
-  public checkMetrics() {
+  public sendMetricsInQueue() {
     if (this.metricsQueue.length) {
       this.sendMetrics();
       this.metricsQueue = [];
@@ -65,7 +65,7 @@ export default class RtcMetrics {
    * @returns {void}
    */
   closeMetrics() {
-    this.checkMetrics();
+    this.sendMetricsInQueue();
     clearInterval(this.intervalId);
   }
 

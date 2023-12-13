@@ -5929,10 +5929,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.statsAnalyzer = null;
 
-        // media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
-        await this.mediaProperties?.webrtcMediaConnection?.multistreamConnection?.forceStatsReport?.();
-        // send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
-        this.mediaProperties?.webrtcMediaConnection?.checkMetrics();
+        // when media fails, we want to upload a webrtc dump to see whats going on
+        // this function is async, but returns once the stats have been gathered
+        await this.forceSendStatsReport({callFrom: 'addMedia'});
 
         if (this.mediaProperties.webrtcMediaConnection) {
           this.closePeerConnections();
@@ -5968,6 +5967,23 @@ export default class Meeting extends StatelessWebexPlugin {
     // so for now it's better to keep queuing any media updates at SDK meeting level
     return !this.isRoapInProgress;
   }
+
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const LOG_HEADER = `Meeting:index#forceSendStatsReport --> called from ${callFrom} : `;
+    // media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
+    // send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+    try {
+      await this.mediaProperties?.webrtcMediaConnection?.forceRtcMetricsSend();
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} failed but successfully uploaded available webrtc telemetry statistics`
+      );
+    } catch (e) {
+      LoggerProxy.logger.error(
+        `${LOG_HEADER} failed and failed to upload webrtc telemetry statistics: `,
+        e
+      );
+    }
+  };
 
   /**
    * Enqueues a media update operation.

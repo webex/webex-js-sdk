@@ -4235,6 +4235,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/internal-media-core@link:/Users/chdubois/Projects/webrtc-media-core::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings":
+  version: 0.0.0-use.local
+  resolution: "@webex/internal-media-core@link:/Users/chdubois/Projects/webrtc-media-core::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings"
+  languageName: node
+  linkType: soft
+
 "@webex/internal-media-core@npm:2.0.4":
   version: 2.0.4
   resolution: "@webex/internal-media-core@npm:2.0.4"
@@ -4845,7 +4851,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:2.0.4"
+    "@webex/internal-media-core": "link:/Users/chdubois/Projects/webrtc-media-core"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
