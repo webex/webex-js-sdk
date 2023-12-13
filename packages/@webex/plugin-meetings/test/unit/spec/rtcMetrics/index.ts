@@ -6,7 +6,7 @@ import RTC_METRICS from '../../../../src/rtcMetrics/constants';
 
 const FAKE_METRICS_ITEM = {payload: ['fake-metrics']};
 
-describe('RtcMetrics', () => {
+describe.only('RtcMetrics', () => {
   let metrics: RtcMetrics;
   let webex: MockWebex;
   let clock;
