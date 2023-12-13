@@ -1962,7 +1962,7 @@ describe('plugin-meetings', () => {
           await meeting.addMedia();
         });
 
-        describe.only('CA ice failures checks', () => {
+        describe('CA ice failures checks', () => {
           [
             {
               clientErrorCode: ICE_FAILURE_CLIENT_CODE,
