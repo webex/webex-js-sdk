@@ -23,11 +23,14 @@ import {
   UNPROCESSABLE_CONTENT_CODE,
 } from '../common/constants';
 import {VoicemailResponseEvent} from './types';
+import {ISDKConnector} from '../SDKConnector/types';
 
 let ucmBackendConnector: UcmBackendConnector;
 const webex = getTestUtilsWebex();
 let voicemailPayload: WebexRequestPayload;
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let sdkConnector: ISDKConnector;
 const messageId = mockUCMVoicemailBody.body.items['messageId'];
 
 describe('Voicemail UCM Backend Connector Test case', () => {
