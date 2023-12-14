@@ -245,6 +245,12 @@ export class LocusMediaRequest extends WebexPlugin {
       this.confluenceState = 'creation in progress';
     }
 
+    // console.log('------ in sendHttpRequest');
+    // console.log('method, ', HTTP_VERBS.PUT);
+    // console.log('uri, ', uri);
+    // console.log('body, ', body);
+    // console.log('--------------------------');
+
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
