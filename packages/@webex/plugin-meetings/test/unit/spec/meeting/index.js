@@ -2088,8 +2088,7 @@ describe('plugin-meetings', () => {
         let clock;
 
         beforeEach(() => {
-          clock = sinon.useFakeTimers();
-          sinon.spy(clock, "clearTimeout");
+          clock = sinon.useFakeTimers(); 
 
           sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
