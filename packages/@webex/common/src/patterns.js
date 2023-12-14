@@ -35,7 +35,7 @@ export default {
    * Matches a UUID
    * @type {RegExp}
    */
-  uuid: /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/,
+  uuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/i,
 
   /**
    * Same as this.email, but allows for surrounding characters
