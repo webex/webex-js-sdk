@@ -1190,6 +1190,7 @@ describe('plugin-meetings', () => {
 
         it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
+          
           meeting.webex.meetings.reachability = {
             getReachabilityMetrics: sinon.stub().resolves({
               someReachabilityMetric1: 'some value1',
@@ -1197,14 +1198,19 @@ describe('plugin-meetings', () => {
             }),
           };
 
+          const forceRtcMetricsSend = sinon.stub().resolves();
+
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
             close: sinon.stub(),
+            forceRtcMetricsSend,
           });
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledOnce(forceRtcMetricsSend);
 
           assert.isNull(meeting.statsAnalyzer);
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
