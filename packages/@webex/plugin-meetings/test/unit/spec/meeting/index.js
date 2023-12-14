@@ -1176,6 +1176,7 @@ describe('plugin-meetings', () => {
 
         it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
+          
           meeting.webex.meetings.reachability = {
             getReachabilityMetrics: sinon.stub().resolves({
               someReachabilityMetric1: 'some value1',
@@ -1183,14 +1184,19 @@ describe('plugin-meetings', () => {
             }),
           };
 
+          const forceRtcMetricsSend = sinon.stub().resolves();
+
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
             close: sinon.stub(),
+            forceRtcMetricsSend,
           });
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
+
+          assert.calledOnce(forceRtcMetricsSend);
 
           assert.isNull(meeting.statsAnalyzer);
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
@@ -1310,10 +1316,6 @@ describe('plugin-meetings', () => {
 
         it('should include the peer connection properties correctly for multistream', async () => {
           meeting.meetingState = 'ACTIVE';
-          const sendMetricsInQueue = sinon.stub();
-          sinon.stub(RtcMetricsModule, 'RtcMetrics').returns({
-            sendMetricsInQueue,
-          });
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
@@ -1326,7 +1328,6 @@ describe('plugin-meetings', () => {
                   iceConnectionState: 'checking',
                 },
               },
-              forceRtcMetricsSend: sinon.stub().resolves(),
             },
           });
           Media
@@ -1370,8 +1371,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.forceRtcMetricsSend);
-          assert.calledOnce(sendMetricsInQueue);
         });
 
         it('should include the peer connection properties correctly for transcoded', async () => {

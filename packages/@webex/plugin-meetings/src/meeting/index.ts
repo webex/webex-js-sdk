@@ -5968,10 +5968,14 @@ export default class Meeting extends StatelessWebexPlugin {
     return !this.isRoapInProgress;
   }
 
+  /**
+   *  media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
   private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
     const LOG_HEADER = `Meeting:index#forceSendStatsReport --> called from ${callFrom} : `;
-    // media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
-    // send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
     try {
       await this.mediaProperties?.webrtcMediaConnection?.forceRtcMetricsSend();
       LoggerProxy.logger.info(
