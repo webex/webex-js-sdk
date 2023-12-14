@@ -33,6 +33,11 @@ describe('RtcMetrics', () => {
     assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].correlationId', 'mock-correlation-id'));
   });
 
+  it('should have a defined sendMetricsInQueue function which is public', () => {
+    assert.isDefined(metrics.sendMetricsInQueue);
+    assert.isFunction(metrics.sendMetricsInQueue);
+  });
+
   it('should send metrics requests over time', () => {
     assert.notCalled(webex.request);
 
@@ -48,11 +53,11 @@ describe('RtcMetrics', () => {
     assert.notCalled(webex.request);
   });
 
-  it('checkMetrics should send metrics if any exist in the queue', () => {
+  it('sendMetricsInQueue should send metrics if any exist in the queue', () => {
     assert.notCalled(webex.request);
 
     metrics.addMetrics(FAKE_METRICS_ITEM);
-    (metrics as any).checkMetrics();
+    (metrics as any).sendMetricsInQueue();
 
     assert.callCount(webex.request, 1);
   });
