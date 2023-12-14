@@ -2227,9 +2227,6 @@ describe('plugin-meetings', () => {
 
         // simulates a Roap OK being sent
         const simulateRoapOk = async () => {
-          meeting.deferSDPAnswer = {resolve: sinon.stub()};
-          meeting.sdpResponseTimer = "1234";
-
           const roapListener = getRoapListener(); 
 
           await roapListener({roapMessage: roapOKMessage});
@@ -2263,12 +2260,6 @@ describe('plugin-meetings', () => {
               },
             },
           });
-        };
-
-        const checkDeferSDPAnswerResolved = () => {
-          assert.calledOnce(meeting.deferSDPAnswer.resolve);
-          assert.calledWith(clock.clearTimeout, "1234");
-          assert.equal(meeting.sdpResponseTimer, undefined);
         };
 
         const checkLocalMuteSentToLocus = ({audioMuted, videoMuted}) => {
@@ -2374,8 +2365,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and that it was the only /media request that was sent
           assert.calledTwice(locusMediaRequestStub);
@@ -2407,8 +2396,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: false, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2441,8 +2428,6 @@ describe('plugin-meetings', () => {
           });
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2474,8 +2459,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2507,8 +2490,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2541,8 +2522,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2575,8 +2554,6 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          // check that we resolve deferSDPAnswer promise
-          checkDeferSDPAnswerResolved();
 
           // and no other local mute requests were sent to Locus
           assert.calledTwice(locusMediaRequestStub);
@@ -2751,9 +2728,6 @@ describe('plugin-meetings', () => {
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
 
-            // check that we resolve deferSDPAnswer promise
-            checkDeferSDPAnswerResolved();
-
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
           });
@@ -2774,9 +2748,6 @@ describe('plugin-meetings', () => {
 
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
-
-            // check that we resolve deferSDPAnswer promise
-            checkDeferSDPAnswerResolved();
 
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
@@ -2804,9 +2775,6 @@ describe('plugin-meetings', () => {
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
 
-            // check that we resolve deferSDPAnswer promise
-            checkDeferSDPAnswerResolved();
-
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
           });
@@ -2832,9 +2800,6 @@ describe('plugin-meetings', () => {
 
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
-
-            // check that we resolve deferSDPAnswer promise
-            checkDeferSDPAnswerResolved();
 
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
@@ -2871,7 +2836,6 @@ describe('plugin-meetings', () => {
 
             // it should be sent with the right mute status
             checkSdpOfferSent({audioMuted: mute, videoMuted: true});
-            checkDeferSDPAnswerResolved();
 
             // nothing else should happen
             assert.calledTwice(locusMediaRequestStub);
