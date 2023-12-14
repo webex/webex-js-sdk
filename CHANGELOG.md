@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.281](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.280...v3.0.0-beta.281) (2023-12-14)
+
+
+### Features
+
+* **meeting:** stats report on media failure ([#3245](https://github.com/webex/webex-js-sdk/issues/3245)) ([c29aa22](https://github.com/webex/webex-js-sdk/commit/c29aa22da8b2870592b195badd313ed16214035c))
+
 ## [3.0.0-beta.280](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.279...v3.0.0-beta.280) (2023-12-13)
 
 
