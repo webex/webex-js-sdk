@@ -30,6 +30,7 @@ export default class Socket extends EventEmitter {
    */
   constructor() {
     super();
+    this.domain = 'unknown-domain';
     this.onmessage = this.onmessage.bind(this);
     this.onclose = this.onclose.bind(this);
   }
@@ -172,7 +173,11 @@ export default class Socket extends EventEmitter {
    * @returns {Promise}
    */
   open(url, options) {
-    this.domain = options.domain || '';
+    try {
+      this.domain = new URL(url).hostname;
+    } catch {
+      /* Ignore error */
+    }
 
     return new Promise((resolve, reject) => {
       /* eslint complexity: [0] */
