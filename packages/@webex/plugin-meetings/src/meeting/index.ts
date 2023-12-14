@@ -6,6 +6,7 @@ import {StatelessWebexPlugin} from '@webex/webex-core';
 import {
   ClientEvent,
   ClientEventLeaveReason,
+  CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {
@@ -5542,8 +5543,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.mediaDirection.receiveShare,
       ];
 
-      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, audioEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
     }
@@ -5842,7 +5843,21 @@ export default class Meeting extends StatelessWebexPlugin {
                 // @ts-ignore
                 this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
                   {
-                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                    clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                      signalingState:
+                        this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                          ?.signalingState ||
+                        this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                          ?.signalingState ||
+                        'unknown',
+                      iceConnectionState:
+                        this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                          ?.iceConnectionState ||
+                        this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                          ?.iceConnectionState ||
+                        'unknown',
+                      turnServerUsed,
+                    }),
                   }
                 ),
               ],

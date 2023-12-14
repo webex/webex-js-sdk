@@ -44,14 +44,14 @@ const localStreams = {
   },
 };
 
-
+// Updated expectedPublished from a boolean value to an object containing the stream and status properties
 const waitForPublished = (meeting, expectedPublished, description) => {
   return testUtils.waitForEvents([{
     scope: meeting,
     event: EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
     match: (event) => {
       console.log(`${description} is now ${event.isPublished ? 'published': 'not published'}`);
-      return (event.isPublished === expectedPublished);
+      return (event.isPublished === expectedPublished.status && event.stream.id === expectedPublished.stream.id) ;
     }
   }]);
 };
@@ -498,7 +498,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('alice update Audio', async () => {
         const newMicrophoneStream = await createMicrophoneStream();
-        const newStreamPublished = waitForPublished(alice.meeting, true, "Alice AUDIO: new microphone stream");
+        const newStreamPublished = waitForPublished(alice.meeting, {stream: newMicrophoneStream, status: true}, "Alice AUDIO: new microphone stream");
 
         await testUtils.delayedPromise(
             alice.meeting
@@ -521,7 +521,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('alice update video', async () => {
         const newCameraStream = await createCameraStream();
-        const newStreamPublished = waitForPublished(alice.meeting, true, "Alice VIDEO: new camera stream");
+        const newStreamPublished = waitForPublished(alice.meeting, {stream: newCameraStream, status:  true}, "Alice VIDEO: new camera stream");
 
         await testUtils.delayedPromise(
             alice.meeting
@@ -630,7 +630,7 @@ skipInNode(describe)('plugin-meetings', () => {
             );
           });
 
-        const screenShareVideoPublished = waitForPublished(alice.meeting, true, "alice's screen share video stream");
+        const screenShareVideoPublished = waitForPublished(alice.meeting, {stream: localStreams.alice.screenShare.video, status: true}, "alice's screen share video stream");
 
         await testUtils.delayedPromise(alice.meeting.publishStreams({screenShare: {video: localStreams.alice.screenShare.video}}));
 
@@ -666,8 +666,8 @@ skipInNode(describe)('plugin-meetings', () => {
               JSON.stringify(response, testUtils.getCircularReplacer())
             );
           });
-        const aliceScreenShareVideoUnpublished = waitForPublished(alice.meeting, false, "alice's screen share video stream");
-        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, true, "bob's screen share video stream");
+        const aliceScreenShareVideoUnpublished = waitForPublished(alice.meeting, {stream: localStreams.alice.screenShare.video, status: false}, "alice's screen share video stream");
+        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: true}, "bob's screen share video stream");
 
         await testUtils.delayedPromise(bob.meeting.publishStreams({screenShare: {video: localStreams.bob.screenShare.video}}));
 
@@ -689,7 +689,7 @@ skipInNode(describe)('plugin-meetings', () => {
       });
 
       it('bob stops sharing', async () => {
-        const screenShareVideoUnpublished = waitForPublished(bob.meeting, false, "bob's screen share video stream");
+        const screenShareVideoUnpublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: false}, "bob's screen share video stream");
         const stoppedSharingLocal = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:stoppedSharingLocal'}]);
         const stoppedSharingRemote = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingRemote'}]);
 
@@ -826,7 +826,7 @@ skipInNode(describe)('plugin-meetings', () => {
               JSON.stringify(response, testUtils.getCircularReplacer())
             );
           });
-        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, true, "bob's screen share video stream");
+        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: true}, "bob's screen share video stream");
 
         await testUtils.delayedPromise(bob.meeting.publishStreams({screenShare: {video: localStreams.bob.screenShare.video}}));
 

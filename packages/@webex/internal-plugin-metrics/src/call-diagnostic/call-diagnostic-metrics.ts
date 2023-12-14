@@ -68,6 +68,7 @@ type GetIdentifiersOptions = {
   meeting?: any;
   mediaConnections?: any[];
   correlationId?: string;
+  preLoginId?: string;
   globalMeetingId?: string;
   webexConferenceIdStr?: string;
 };
@@ -208,8 +209,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param options
    */
   getIdentifiers(options: GetIdentifiersOptions) {
-    const {meeting, mediaConnections, correlationId, webexConferenceIdStr, globalMeetingId} =
-      options;
+    const {
+      meeting,
+      mediaConnections,
+      correlationId,
+      webexConferenceIdStr,
+      globalMeetingId,
+      preLoginId,
+    } = options;
     const identifiers: Event['event']['identifiers'] = {
       correlationId: 'unknown',
     };
@@ -225,7 +232,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (this.webex.internal) {
       // @ts-ignore
       const {device} = this.webex.internal;
-      identifiers.userId = device.userId;
+      identifiers.userId = device.userId || preLoginId;
       identifiers.deviceId = device.url;
       identifiers.orgId = device.orgId;
       // @ts-ignore
@@ -592,11 +599,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       'CallDiagnosticMetrics: @createClientEventObjectPreMeeting. Creating pre meeting event object.',
       `name: ${name}`
     );
-    const {correlationId, globalMeetingId, webexConferenceIdStr} = options;
+    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId} = options;
 
     // grab identifiers
     const identifiers = this.getIdentifiers({
       correlationId,
+      preLoginId,
       globalMeetingId,
       webexConferenceIdStr,
     });
