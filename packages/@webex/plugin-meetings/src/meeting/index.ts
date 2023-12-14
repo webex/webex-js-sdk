@@ -127,6 +127,7 @@ import {
 import Breakouts from '../breakouts';
 import SimultaneousInterpretation from '../interpretation';
 import Annotation from '../annotation';
+import Webinar from '../webinar';
 
 import InMeetingActions from './in-meeting-actions';
 import {REACTION_RELAY_TYPES} from '../reactions/constants';
@@ -462,6 +463,7 @@ export default class Meeting extends StatelessWebexPlugin {
   breakouts: any;
   simultaneousInterpretation: any;
   annotation: any;
+  webinar: any;
   conversationUrl: string;
   correlationId: string;
   destination: string;
@@ -679,6 +681,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore
     this.annotation = new Annotation({parent: this.webex});
+    /**
+     * @instance
+     * @type {Webinar}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore
+    this.webinar = new Webinar({}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -2517,6 +2527,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.locusId = this.locusUrl?.split('/').pop();
       this.recordingController.setLocusUrl(this.locusUrl);
       this.controlsOptionsManager.setLocusUrl(this.locusUrl);
+      this.webinar.locusUrlUpdate(payload);
 
       Trigger.trigger(
         this,
@@ -2546,6 +2557,10 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
+      this.webinar.webcastUrlUpdate(payload?.services?.webcast?.url);
+      this.webinar.webinarAttendeesSearchingUrlUpdate(
+        payload?.services?.webinarAttendeesSearching?.url
+      );
     });
   }
 
@@ -2836,6 +2851,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
+      this.webinar.updateCanManageWebcast(payload.newRoles?.includes(SELF_ROLES.MODERATOR));
       Trigger.trigger(
         this,
         {
