@@ -482,5 +482,8 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
+      - name: Build media-helpers and plugin-meetings
+        run: yarn workspace @webex/media-helpers run build:src && yarn workspace @webex/plugin-meetings run build  
+
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
