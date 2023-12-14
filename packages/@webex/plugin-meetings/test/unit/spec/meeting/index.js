@@ -2077,7 +2077,7 @@ describe('plugin-meetings', () => {
          in various combinations.
       */
       [true,false].forEach((isMultistream) =>
-      describe.only(`addMedia/updateMedia semi-integration tests (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
+      describe(`addMedia/updateMedia semi-integration tests (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
         let fakeMicrophoneStream;
         let fakeRoapMediaConnection;
         let fakeMultistreamRoapMediaConnection;
@@ -2086,7 +2086,7 @@ describe('plugin-meetings', () => {
         let locusMediaRequestStub; // stub for /media requests to Locus
 
         const roapOfferMessage = {messageType: 'OFFER', sdp: 'sdp', seq: '1', tieBreaker: '123'};
-        const roapOKMessage = {messageType: 'OK', seq: 1};
+        const roapOKMessage = {messageType: 'OK', seq: '1'};
 
         let expectedMediaConnectionConfig;
         let expectedDebugId;
@@ -2243,7 +2243,7 @@ describe('plugin-meetings', () => {
         const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
           const {sdp, seq, tieBreaker} = roapOfferMessage;
 
-          assert.calledWith(locusMediaRequestStub.firstCall, {
+          assert.calledWith(locusMediaRequestStub, {
             method: 'PUT',
             uri: `${meeting.selfUrl}/media`,
             body: {
@@ -2269,10 +2269,10 @@ describe('plugin-meetings', () => {
           });
         };
 
-        const checkSdpOkSent = ({audioMuted, videoMuted}) => {
+        const checkOkSent = ({audioMuted, videoMuted}) => {
           const {seq} = roapOKMessage;
 
-          assert.calledWith(locusMediaRequestStub.firstCall, {
+          assert.calledWith(locusMediaRequestStub, {
             method: 'PUT',
             uri: `${meeting.selfUrl}/media`,
             body: {
@@ -2285,7 +2285,7 @@ describe('plugin-meetings', () => {
               correlationId: meeting.correlationId,
               clientMediaPreferences: {
                 preferTranscoding: !meeting.isMultistream,
-                ipver: 0,
+                ipver: undefined,
                 joinCookie: undefined
               },
               localMedias: [
@@ -2375,7 +2375,7 @@ describe('plugin-meetings', () => {
           }
         };
 
-        it.only('addMedia() works correctly when media is enabled without tracks to publish', async () => {
+        it('addMedia() works correctly when media is enabled without tracks to publish', async () => {
           await meeting.addMedia();
           await simulateRoapOffer();
           await simulateRoapOk();
@@ -2401,9 +2401,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
-          checkSdpOkSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and that it was the only /media request that was sent
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2433,8 +2434,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: false, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: false, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2465,8 +2468,10 @@ describe('plugin-meetings', () => {
           });
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2496,8 +2501,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2527,8 +2534,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2559,8 +2568,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2591,8 +2602,10 @@ describe('plugin-meetings', () => {
 
           // and SDP offer was sent with the right audioMuted/videoMuted values
           checkSdpOfferSent({audioMuted: true, videoMuted: true});
+          // check OK was sent with the right audioMuted/videoMuted values
+          checkOkSent({audioMuted: true, videoMuted: true});
 
-          // and no other local mute requests were sent to Locus
+          // and that these were the only /media requests that were sent
           assert.calledTwice(locusMediaRequestStub);
         });
 
@@ -2765,6 +2778,9 @@ describe('plugin-meetings', () => {
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
 
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
           });
@@ -2785,6 +2801,9 @@ describe('plugin-meetings', () => {
 
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
+
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
 
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
@@ -2812,6 +2831,9 @@ describe('plugin-meetings', () => {
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
 
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
           });
@@ -2837,6 +2859,9 @@ describe('plugin-meetings', () => {
 
             // simulate OK being sent in response to remote answer being received
             await simulateRoapOk();
+
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: false, videoMuted: true});
 
             // and no other local mute requests were sent to Locus
             assert.calledTwice(locusMediaRequestStub);
@@ -2873,6 +2898,8 @@ describe('plugin-meetings', () => {
 
             // it should be sent with the right mute status
             checkSdpOfferSent({audioMuted: mute, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: mute, videoMuted: true});
 
             // nothing else should happen
             assert.calledTwice(locusMediaRequestStub);
