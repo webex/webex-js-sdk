@@ -1340,7 +1340,6 @@ describe('plugin-meetings', () => {
               },
             },
           });
-          Media
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());

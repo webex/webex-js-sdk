@@ -5994,13 +5994,10 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties?.webrtcMediaConnection?.forceRtcMetricsSend();
       LoggerProxy.logger.info(
-        `${LOG_HEADER} failed but successfully uploaded available webrtc telemetry statistics`
+        `${LOG_HEADER} successfully uploaded available webrtc telemetry statistics`
       );
     } catch (e) {
-      LoggerProxy.logger.error(
-        `${LOG_HEADER} failed and failed to upload webrtc telemetry statistics: `,
-        e
-      );
+      LoggerProxy.logger.error(`${LOG_HEADER} failed to upload webrtc telemetry statistics: `, e);
     }
   };
 
