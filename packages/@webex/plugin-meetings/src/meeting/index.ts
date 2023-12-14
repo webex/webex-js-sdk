@@ -5669,7 +5669,10 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await Promise.all(setUpStreamPromises);
     } catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#setUpLocalStreamReferences --> Error , `, error);
+      LoggerProxy.logger.error(
+        `Meeting:index#addMedia():setUpLocalStreamReferences --> Error , `,
+        error
+      );
 
       throw error;
     }
@@ -5727,7 +5730,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @returns {void}
    */
-  private enableStatsAnalyzer() {
+  private createStatsAnalyzer() {
     // @ts-ignore - config coming from registerPlugin
     if (this.config.stats.enableStatsAnalyzer) {
       // @ts-ignore - config coming from registerPlugin
@@ -5771,7 +5774,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   private async waitForRemoteSDPAnswer(): Promise<void> {
-    const LOG_HEADER = 'Meeting:index#waitForRemoteSDPAnswer -->';
+    const LOG_HEADER = 'Meeting:index#addMedia():waitForRemoteSDPAnswer -->';
 
     if (!this.deferSDPAnswer) {
       LoggerProxy.logger.warn(`${LOG_HEADER} offer not created yet`);
@@ -5809,7 +5812,7 @@ export default class Meeting extends StatelessWebexPlugin {
     remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
     bundlePolicy?: BundlePolicy
   ): Promise<void> {
-    const LOG_HEADER = 'Meeting:index#establishMediaConnection -->';
+    const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
     // @ts-ignore
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
@@ -5839,6 +5842,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const {turnServerInfo} = turnDiscoveryObject;
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
+
+      LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
 
       if (this.isMultistream) {
         this.remoteMediaManager = new RemoteMediaManager(
@@ -5871,12 +5876,8 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.waitForRemoteSDPAnswer();
 
       this.handleMediaLogging(this.mediaProperties);
-      LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
     } catch (error) {
-      LoggerProxy.logger.error(
-        `${LOG_HEADER} Error adding media , setting up peerconnection, `,
-        error
-      );
+      LoggerProxy.logger.error(`${LOG_HEADER} error establishing media connection, `, error);
 
       throw error;
     }
@@ -6005,7 +6006,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.setMercuryListener();
 
-      this.enableStatsAnalyzer();
+      this.createStatsAnalyzer();
 
       await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy);
 
