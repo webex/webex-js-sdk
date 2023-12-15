@@ -169,7 +169,6 @@ export default class Socket extends EventEmitter {
    * @param {string} options.trackingId (required)
    * @param {Logger} options.logger (required)
    * @param {string} options.logLevelToken
-   * @param {string} options.domain
    * @returns {Promise}
    */
   open(url, options) {

@@ -203,6 +203,7 @@ const Mercury = WebexPlugin.extend({
             success: true,
           },
           tags: {
+            namespace: this.namespace,
             action: 'connected',
             url: attemptWSUrl,
           },
@@ -270,6 +271,7 @@ const Mercury = WebexPlugin.extend({
                     success: false,
                   },
                   tags: {
+                    namespace: this.namespace,
                     action: 'failed',
                     error: reason.message,
                     url: attemptWSUrl,

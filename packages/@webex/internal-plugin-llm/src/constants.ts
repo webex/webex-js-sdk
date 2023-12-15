@@ -1,2 +1,2 @@
 // eslint-disable-next-line import/prefer-default-export
-export const LLM = 'LowLatencyMercury';
+export const LLM = 'llm';
