@@ -1,8 +1,81 @@
 blank_issues_enabled: false
-contact_links:
-  - name: 🐞 Bug reports, ⁉️⁉ Questions & 🆘 Support
-    url: https://developer.webex.com/support
-    about: Something going wrong? Do you have a question? Checkout https://developer.webex.com/support
-  - name: ⚡️ Feature Requests and Ideas
-    url: https://ciscocollaboration.aha.io/
-    about: Got a suggestion? Please use https://ciscocollaboration.aha.io/ so others can help prioritize your awesome idea 💡
+issue_templates:
+  - name: Bug report
+    description: File a bug report
+    labels: ["bug"]
+    body:
+      - type: dropdown
+        attributes:
+          label: Domain
+          description: Which domain does this issue belong to?
+          options:
+            - Calling
+            - Meeting
+            - Messaging
+            - Other
+
+      - type: markdown
+        attributes:
+          value: |
+            **Please describe the problem**
+            (What happened? What were you trying to do? What should have happened?)
+
+      - type: input
+        attributes:
+          label: Frequency
+          description: How often does this occur?
+          placeholder: Every time, occasionally, first time, not sure
+
+      - type: input
+        attributes:
+          label: Version
+          description: What version are you using?
+          placeholder: v1.0.0
+
+      - type: input
+        attributes:
+          label: Platform
+          description: What platform are you using?
+          placeholder: Windows 10, Mac OS X, Ubuntu 20.04
+
+      - type: textarea
+        attributes:
+          label: Steps To Recreate
+          description: Please list the steps needed to recreate the issue.
+          placeholder: Step 1, Step 2, Step 3...
+
+      - type: textarea
+        attributes:
+          label: Console Logs
+          description: Please provide the relevant console logs.
+
+      - type: textarea
+        attributes:
+          label: HAR Logs
+          description: Please provide the relevant HAR logs.
+
+  - name: Enhancement
+    description: Suggest an enhancement
+    labels: ["enhancement"]
+    body:
+      - type: dropdown
+        attributes:
+          label: Domain
+          description: Which domain does this enhancement belong to?
+          options:
+            - Calling
+            - Meeting
+            - Messaging
+            - Other
+
+      - type: textarea
+        attributes:
+          label: Describe the feature
+          description: What feature would you like to see added?
+          placeholder: Write here...
+
+      - type: textarea
+        attributes:
+          label: Use Cases
+          description: Please describe a couple of use-cases for this feature.
+          placeholder: Write here... 

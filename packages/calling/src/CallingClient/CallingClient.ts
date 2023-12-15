@@ -6,7 +6,7 @@ import {Mutex} from 'async-mutex';
 import {filterMobiusUris, handleCallingClientErrors, validateServiceData} from '../common/Utils';
 import {LOGGER, LogContext} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
-import {ClientRegionInfo, ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {ClientRegionInfo, ISDKConnector, ServiceHost, WebexSDK} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
 import {
   CallingClientEventTypes,
@@ -40,6 +40,11 @@ import {
   SPARK_USER_AGENT,
   URL_ENDPOINT,
   NETWORK_FLAP_TIMEOUT,
+  API_V1,
+  MOBIUS_US_PROD,
+  MOBIUS_EU_PROD,
+  MOBIUS_US_INT,
+  MOBIUS_EU_INT,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -74,6 +79,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private backupMobiusUris: string[];
 
+  private mobiusClusters: ServiceHost[];
+
+  private mobiusHost: string;
+
   public mediaEngine: typeof Media;
 
   private lineDict: Record<string, ILine> = {};
@@ -106,6 +115,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.mobiusClusters =
+      this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
+      this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
+      this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
+      this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    this.mobiusHost = '';
 
     this.registerSessionsListener();
 
@@ -178,48 +193,57 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private async getClientRegionInfo(): Promise<RegionInfo> {
     const regionInfo = {} as RegionInfo;
 
-    try {
-      const temp = <WebexRequestPayload>await this.webex.request({
-        uri: `${this.webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}${IP_ENDPOINT}`,
-        method: HTTP_METHODS.GET,
-        headers: {
-          [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        },
-        service: ALLOWED_SERVICES.MOBIUS,
-      });
+    for (const mobius of this.mobiusClusters) {
+      this.mobiusHost = `https://${mobius.host}${API_V1}`;
 
-      const myIP = (temp.body as IpInfo).ipv4;
-      const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${DISCOVERY_URL}/${myIP}`,
-        method: HTTP_METHODS.GET,
-        addAuthHeader: false,
-        headers: {
-          [SPARK_USER_AGENT]: null,
-        },
-      });
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const temp = <WebexRequestPayload>await this.webex.request({
+          uri: `${this.mobiusHost}${URL_ENDPOINT}${IP_ENDPOINT}`,
+          method: HTTP_METHODS.GET,
+          headers: {
+            [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          },
+          service: ALLOWED_SERVICES.MOBIUS,
+        });
 
-      const clientRegionInfo = response.body as ClientRegionInfo;
+        const myIP = (temp.body as IpInfo).ipv4;
+        // eslint-disable-next-line no-await-in-loop
+        const response = <WebexRequestPayload>await this.webex.request({
+          uri: `${DISCOVERY_URL}/${myIP}`,
+          method: HTTP_METHODS.GET,
+          addAuthHeader: false,
+          headers: {
+            [SPARK_USER_AGENT]: null,
+          },
+        });
 
-      regionInfo.clientRegion = clientRegionInfo?.clientRegion ? clientRegionInfo.clientRegion : '';
+        const clientRegionInfo = response.body as ClientRegionInfo;
 
-      regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
-    } catch (err: unknown) {
-      handleCallingClientErrors(
-        err as WebexRequestPayload,
-        (clientError) => {
-          this.metricManager.submitRegistrationMetric(
-            METRIC_EVENT.REGISTRATION_ERROR,
-            REG_ACTION.REGISTER,
-            METRIC_TYPE.BEHAVIORAL,
-            clientError
-          );
-          this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
-        },
-        {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
-      );
-      regionInfo.clientRegion = '';
-      regionInfo.countryCode = '';
+        regionInfo.clientRegion = clientRegionInfo?.clientRegion
+          ? clientRegionInfo.clientRegion
+          : '';
+
+        regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
+        break;
+      } catch (err: unknown) {
+        handleCallingClientErrors(
+          err as WebexRequestPayload,
+          (clientError) => {
+            this.metricManager.submitRegistrationMetric(
+              METRIC_EVENT.REGISTRATION_ERROR,
+              REG_ACTION.REGISTER,
+              METRIC_TYPE.BEHAVIORAL,
+              clientError
+            );
+            this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+          },
+          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+        );
+        regionInfo.clientRegion = '';
+        regionInfo.countryCode = '';
+      }
     }
 
     return regionInfo;
@@ -250,6 +274,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
+      this.mobiusHost = this.webex.internal.services._serviceUrls.mobius;
     } else {
       log.info('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -269,8 +294,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       );
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         const temp = <WebexRequestPayload>await this.webex.request({
-          uri: `${this.webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
+          uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
           method: HTTP_METHODS.GET,
           headers: {
             [CISCO_DEVICE_URL]: this.webex.internal.device.url,
@@ -283,10 +309,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         const mobiusServers = temp.body as MobiusServers;
 
         /* update arrays of Mobius Uris. */
-        const mobiusUris = filterMobiusUris(
-          mobiusServers,
-          this.webex.internal.services._serviceUrls.mobius
-        );
+        const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
         this.primaryMobiusUris = mobiusUris.primary;
         this.backupMobiusUris = mobiusUris.backup;
         log.info(
@@ -320,10 +343,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
      */
 
     if (useDefault) {
-      log.warn('Error in finding Mobius Servers. Will use the default URL.', '' as LogContext);
-      this.primaryMobiusUris = [
-        `${this.webex.internal.services._serviceUrls.mobius}${URL_ENDPOINT}`,
-      ];
+      log.warn(
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
+        '' as LogContext
+      );
+      this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
+      this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
   }
 

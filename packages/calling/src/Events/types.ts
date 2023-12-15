@@ -92,6 +92,15 @@ export type CallRecordListOther = {
   email?: string;
 };
 
+export type RedirectionDetails = {
+  phoneNumber?: string;
+  sipUrl?: string;
+  name?: string;
+  reason: string;
+  userId?: string;
+  isPrivate: boolean;
+};
+
 export enum SessionType {
   SPARK = 'SPARK',
   WEBEX_CALLING = 'WEBEXCALLING',
@@ -116,6 +125,9 @@ export type UserSession = {
   other: CallRecordListOther;
   sessionType: SessionType;
   direction: string;
+  callingSpecifics?: {
+    redirectionDetails: RedirectionDetails;
+  };
 };
 
 export type CallingParty = {

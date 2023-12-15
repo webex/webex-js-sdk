@@ -10,6 +10,7 @@
     "Kesava Krishnan Madavan <kmadavan@cisco.com>",
     "Priya Kesari <pkesari@cisco.com>",
     "Rajesh Kumar <rarajes2@cisco.com>",
+    "Shreyas Sharma <shreysh2@cisco.com>",
     "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
   "main": "dist/index.js",

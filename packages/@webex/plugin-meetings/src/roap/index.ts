@@ -207,8 +207,6 @@ export default class Roap extends StatelessWebexPlugin {
           preferTranscoding: !meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
           ipVersion: MeetingUtil.getIpVersion(meeting.webex),
-          audioMuted: meeting.audio?.isLocallyMuted(),
-          videoMuted: meeting.video?.isLocallyMuted(),
         })
         .then(({locus, mediaConnections}) => {
           if (mediaConnections) {

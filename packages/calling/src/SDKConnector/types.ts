@@ -16,7 +16,7 @@ export type ServiceHost = {
   ttl: number;
   priority: number;
   id: string;
-  homeCluster: boolean;
+  homeCluster?: boolean;
 };
 
 export type Model = {
@@ -97,6 +97,7 @@ export interface WebexSDK {
     presence: unknown;
     support: unknown;
     services: {
+      _hostCatalog: Record<string, ServiceHost[]>;
       _serviceUrls: {
         mobius: string;
         identity: string;
