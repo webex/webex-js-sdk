@@ -30,6 +30,7 @@ import {
   SELF_POLICY,
   IP_VERSION,
   ERROR_DICTIONARY,
+  NETWORK_STATUS,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -68,7 +69,9 @@ import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
+import { CallDiagnosticUtils  } from '@webex/internal-plugin-metrics';
 
+import CallDiagnosticLatencies from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics-latencies';
 import LLM from '@webex/internal-plugin-llm';
 import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
@@ -92,6 +95,16 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
+import {
+  CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
+  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+  ICE_FAILURE_CLIENT_CODE,
+  MISSING_ROAP_ANSWER_CLIENT_CODE,
+} from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
+import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics';
+import { ERROR_DESCRIPTIONS } from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
 
 
 describe('plugin-meetings', () => {
@@ -226,6 +239,10 @@ describe('plugin-meetings', () => {
       getReachabilityMetrics: sinon.stub().resolves({}),
     };
     webex.internal.llm.on = sinon.stub();
+    webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
+      {},
+      {parent: webex}
+    );
     membersSpy = sinon.spy(MembersImport, 'default');
     meetingRequestSpy = sinon.spy(MeetingRequestImport, 'default');
 
@@ -1035,8 +1052,8 @@ describe('plugin-meetings', () => {
             })
           })
 
-          describe('refreshPermissionToken', () => { 
-            it('should continue if permissionTokenRefresh fails with a generic error', async () => { 
+          describe('refreshPermissionToken', () => {
+            it('should continue if permissionTokenRefresh fails with a generic error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new Error('bad day'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
 
@@ -1050,7 +1067,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a captcha error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a captcha error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new CaptchaError('bad captcha'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
@@ -1068,7 +1085,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a password error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a password error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PasswordError('bad password'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
@@ -1086,7 +1103,7 @@ describe('plugin-meetings', () => {
               }
             })
 
-            it('should throw if permissionTokenRefresh fails with a permission error', async () => { 
+            it('should throw if permissionTokenRefresh fails with a permission error', async () => {
               meeting.checkAndRefreshPermissionToken = sinon.stub().rejects(new PermissionError('bad permission'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
               const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
@@ -1169,6 +1186,7 @@ describe('plugin-meetings', () => {
 
         it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
+          
           meeting.webex.meetings.reachability = {
             getReachabilityMetrics: sinon.stub().resolves({
               someReachabilityMetric1: 'some value1',
@@ -1176,32 +1194,57 @@ describe('plugin-meetings', () => {
             }),
           };
 
+          const forceRtcMetricsSend = sinon.stub().resolves();
+
           // setup the mock to return an incomplete object - this will cause addMedia to fail
           // because some methods (like on() or initiateOffer()) are missing
           Media.createMediaConnection = sinon.stub().returns({
             close: sinon.stub(),
+            forceRtcMetricsSend,
           });
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
 
+          assert.calledOnce(forceRtcMetricsSend);
+
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
-          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            code: error.code,
-            turnDiscoverySkippedReason: undefined,
-            turnServerUsed: true,
-            isMultistream: false,
-            signalingState: 'unknown',
-            connectionState: 'unknown',
-            iceConnectionState: 'unknown',
-            someReachabilityMetric1: 'some value1',
-            someReachabilityMetric2: 'some value2',
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
           });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }
+          );
         });
 
         it('checks metrics called with skipped reason config', async () => {
@@ -1211,6 +1254,13 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
+            assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+              name: 'internal.client.add-media.turn-discovery.start',
+            });
+            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+              name: 'internal.client.add-media.turn-discovery.end',
+            });
             assert(Metrics.sendBehavioralMetric.calledOnce);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -1237,9 +1287,25 @@ describe('plugin-meetings', () => {
           });
           const result = await assert.isRejected(meeting.addMedia());
 
-          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
           assert.calledWith(
-            Metrics.sendBehavioralMetric,
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             sinon.match({
               correlation_id: meeting.correlationId,
@@ -1278,6 +1344,23 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
 
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
@@ -1297,7 +1380,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should include the peer connection properties correctly for transcoded', async () => {
@@ -1318,6 +1400,23 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           const error = await assert.isRejected(meeting.addMedia());
 
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
+          assert(Metrics.sendBehavioralMetric.calledTwice);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              latency: undefined,
+            }
+          );
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
@@ -1337,7 +1436,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
-          assert(Metrics.sendBehavioralMetric.calledOnce);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -1400,6 +1498,13 @@ describe('plugin-meetings', () => {
         const checkWorking = ({allowMediaInLobby} = {}) => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+          assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
+            name: 'internal.client.add-media.turn-discovery.start',
+          });
+          assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
+            name: 'internal.client.add-media.turn-discovery.end',
+          });
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
@@ -1520,6 +1625,13 @@ describe('plugin-meetings', () => {
           const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
             .stub()
             .returns(FAKE_ERROR);
+
+          const MOCK_CLIENT_ERROR_CODE = 2004;
+          const generateClientErrorCodeForIceFailureStub = sinon
+            .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
+            .returns(MOCK_CLIENT_ERROR_CODE);
+
+
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
@@ -1533,7 +1645,12 @@ describe('plugin-meetings', () => {
               errorThrown = true;
             });
 
-          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
+          assert.calledOnceWithExactly(generateClientErrorCodeForIceFailureStub, {
+            signalingState: 'unknown',
+            iceConnectionState: 'unknown',
+            turnServerUsed: true,
+          })
+          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: MOCK_CLIENT_ERROR_CODE});
           assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.ice.end',
@@ -1562,15 +1679,19 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          assert.calledOnce(Metrics.sendBehavioralMetric);
-          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusUrl.split('/').pop(),
-            connectionType: 'udp',
-            isMultistream: false,
-            someReachabilityMetric1: 'some value1',
-            someReachabilityMetric2: 'some value2'
-          });
+          assert.calledTwice(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              connectionType: 'udp',
+              isMultistream: false,
+              someReachabilityMetric1: 'some value1',
+              someReachabilityMetric2: 'some value2',
+            }
+          );
 
           assert.called(webex.internal.newMetrics.submitClientEvent);
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -1765,6 +1886,131 @@ describe('plugin-meetings', () => {
           sinon.stub(internalMediaModule, 'getDevices').rejects(new Error('fake error'));
 
           await meeting.addMedia();
+        });
+
+        describe('CA ice failures checks', () => {
+          [
+            {
+              clientErrorCode: ICE_FAILURE_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILURE,
+              },
+            },
+            {
+              clientErrorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
+                category: 'signaling',
+              },
+            },
+            {
+              clientErrorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.DTLS_HANDSHAKE_FAILED,
+              },
+            },
+            {
+              clientErrorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITHOUT_TURN_TLS,
+              },
+            },
+            {
+              clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+              },
+            },
+          ].forEach(({clientErrorCode, expectedErrorPayload}) => {
+            it(`should handle all ice failures correctly for ${clientErrorCode}`, async () => {
+              // setting the method to the real implementation
+              // because newMetrics is mocked completely in the webex-mock
+              // the reason for this is that we want to test this on integration level
+              const CD = new CallDiagnosticMetrics({}, {parent: webex});
+              webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+                CD.getErrorPayloadForClientErrorCode;
+
+              const generateClientErrorCodeForIceFailureStub = sinon
+                .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
+                .returns(clientErrorCode);
+
+              meeting.meetingState = 'ACTIVE';
+              meeting.mediaProperties.waitForMediaConnectionConnected.rejects(
+                new Error('fake error')
+              );
+
+              let errorThrown = false;
+
+              await meeting
+                .addMedia({
+                  mediaSettings: {},
+                })
+                .catch(() => {
+                  errorThrown = true;
+                });
+
+              assert.calledOnceWithExactly(generateClientErrorCodeForIceFailureStub, {
+                signalingState: 'unknown',
+                iceConnectionState: 'unknown',
+                turnServerUsed: true,
+              });
+
+              const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
+
+              assert.deepEqual(submitClientEventCalls[0].args, [
+                {
+                  name: 'client.media.capabilities',
+                  payload: {
+                    mediaCapabilities: {
+                      rx: {
+                        audio: false,
+                        share: false,
+                        share_audio: false,
+                        video: false,
+                        whiteboard: false,
+                      },
+                      tx: {
+                        audio: false,
+                        share: false,
+                        share_audio: false,
+                        video: false,
+                        whiteboard: false,
+                      },
+                    },
+                  },
+                  options: {
+                    meetingId: meeting.id,
+                  },
+                },
+              ]);
+
+              assert.deepEqual(submitClientEventCalls[1].args, [
+                {
+                  name: 'client.ice.end',
+                  payload: {
+                    canProceed: false,
+                    icePhase: 'JOIN_MEETING_FINAL',
+                    errors: [
+                      {
+                        fatal: true,
+                        shownToUser: false,
+                        name: 'other',
+                        category: 'media',
+                        errorCode: clientErrorCode,
+                        serviceErrorCode: undefined,
+                        ...expectedErrorPayload,
+                      },
+                    ],
+                  },
+                  options: {
+                    meetingId: meeting.id,
+                  },
+                },
+              ]);
+
+              assert.isTrue(errorThrown);
+            });
+          });
         });
       });
 
@@ -1989,6 +2235,11 @@ describe('plugin-meetings', () => {
               iceServers,
             }, meetingId);
 
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.AudioMain, direction.audio !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.VideoMain, direction.video !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.AudioSlides, direction.screenShare !== 'inactive');
+            assert.calledWith(fakeMultistreamRoapMediaConnection.createSendSlot, MediaType.VideoSlides, direction.screenShare !== 'inactive');
+
             for(let type in localStreams){
               const stream = localStreams[type];
               if(stream !== undefined){
@@ -2017,7 +2268,7 @@ describe('plugin-meetings', () => {
                   screenShareVideo: localStreams.screenShareVideo?.outputTrack,
                   screenShareAudio: localStreams.screenShareAudio?.outputTrack,
                 },
-                direction,
+                direction: {audio: direction.audio, video: direction.video, screenShareVideo: direction.screenShare},
                 remoteQualityLevel,
               },
               expectedDebugId
@@ -2041,7 +2292,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2071,7 +2322,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2103,7 +2354,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'sendrecv',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2132,7 +2383,7 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'inactive',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -2162,7 +2413,68 @@ describe('plugin-meetings', () => {
             direction: {
               audio: 'inactive',
               video: 'sendrecv',
-              screenShareVideo: 'recvonly',
+              screenShare: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+
+        it('addMedia() works correctly when video is disabled with no tracks to publish', async () => {
+          await meeting.addMedia({videoEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'inactive',
+              screenShare: 'recvonly',
+            },
+            remoteQualityLevel: 'HIGH',
+            expectedDebugId,
+            meetingId: meeting.id
+          });
+
+          // and SDP offer was sent with the right audioMuted/videoMuted values
+          checkSdpOfferSent({audioMuted: true, videoMuted: true});
+
+          // and no other local mute requests were sent to Locus
+          assert.calledOnce(locusMediaRequestStub);
+        });
+
+        it('addMedia() works correctly when screen share is disabled with no tracks to publish', async () => {
+          await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
+          await simulateRoapOffer();
+
+          // check RoapMediaConnection was created correctly
+          checkMediaConnectionCreated({
+            mediaConnectionConfig: expectedMediaConnectionConfig,
+            localStreams: {
+              audio: undefined,
+              video: undefined,
+              screenShareVideo: undefined,
+              screenShareAudio: undefined,
+            },
+            direction: {
+              audio: 'sendrecv',
+              video: 'sendrecv',
+              screenShare: 'inactive',
             },
             remoteQualityLevel: 'HIGH',
             expectedDebugId,
@@ -4846,6 +5158,47 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('submitClientEvent on connectionSuccess', () => {
+          it('sends client.ice.end when connectionSuccess on CONNECTION_STATE_CHANGED event', () => {
+            meeting.reconnectionManager = new ReconnectionManager(meeting);
+            meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
+            meeting.setNetworkStatus = sinon.stub().returns(undefined);
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusId,
+              latency: undefined,
+            });
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.CONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.iceReconnected);
+            assert.calledOnce(meeting.statsAnalyzer.startAnalyzer);
+            assert.calledWith(
+              meeting.statsAnalyzer.startAnalyzer,
+              meeting.mediaProperties.webrtcMediaConnection
+            );
+          });
+        });
+
         describe('should send correct metrics for ROAP_FAILURE event', () => {
           const fakeErrorMessage = 'test error';
           const fakeRootCauseName = 'root cause name';
@@ -5008,6 +5361,17 @@ describe('plugin-meetings', () => {
               mediaId: meeting.mediaId,
               correlationId: meeting.correlationId,
             });
+
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY,
+              {
+                correlation_id: meeting.correlationId,
+                meetingId: meeting.id,
+                latency: undefined,
+              }
+            );
           });
 
           it('handles OFFER message correctly', () => {
@@ -7343,7 +7707,7 @@ describe('plugin-meetings', () => {
                       functionName: 'stopWhiteboardShare',
                     });
                   }
-                  
+
                   // Web client is sharing locally
                   if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                     eventTrigger.share.push({
@@ -8425,7 +8789,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('#checkAndRefreshPermissionToken', () => {
-    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => { 
+    it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8436,7 +8800,7 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, undefined);
     });
 
-    it('should fire refreshPermissionToken if time left is below 10sec', async() => { 
+    it('should fire refreshPermissionToken if time left is below 10sec', async() => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8447,7 +8811,7 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, 'test return value');
     });
 
-    it('should fire refreshPermissionToken if time left is equal 10sec', async () => { 
+    it('should fire refreshPermissionToken if time left is equal 10sec', async () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
@@ -8458,12 +8822,12 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, 'test return value');
     });
 
-    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => { 
+    it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => {
       meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
-      
+
       assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);

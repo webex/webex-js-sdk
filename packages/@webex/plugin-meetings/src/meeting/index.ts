@@ -6,6 +6,7 @@ import {StatelessWebexPlugin} from '@webex/webex-core';
 import {
   ClientEvent,
   ClientEventLeaveReason,
+  CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {
@@ -3863,10 +3864,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * Convenience method to set the correlation id for the Meeting
    * @param {String} id correlation id to set on the class
    * @returns {undefined}
-   * @private
+   * @public
    * @memberof Meeting
    */
-  private setCorrelationId(id: string) {
+  public setCorrelationId(id: string) {
     this.correlationId = id;
   }
 
@@ -5093,12 +5094,20 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_MESSAGE_TO_SEND, (event) => {
       const LOG_HEADER = `Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND --> correlationId=${this.correlationId}`;
 
+      // @ts-ignore
+      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
       switch (event.roapMessage.messageType) {
         case 'OK':
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.media-engine.remote-sdp-received',
             options: {meetingId: this.id},
+          });
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
+            correlation_id: this.correlationId,
+            latency: cdl.getLocalSDPGenRemoteSDPRecv(),
+            meetingId: this.id,
           });
 
           logRequest(
@@ -5292,6 +5301,10 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.info(
         `Meeting:index#setupMediaConnectionListeners --> correlationId=${this.correlationId} connection state changed to ${event.state}`
       );
+
+      // @ts-ignore
+      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
       switch (event.state) {
         case ConnectionState.Connecting:
           // @ts-ignore
@@ -5313,6 +5326,7 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
             locus_id: this.locusId,
+            latency: cdl.getICESetupTime(),
           });
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
@@ -5529,8 +5543,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.mediaDirection.receiveShare,
       ];
 
-      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, audioEnabled);
-      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.VideoMain, videoEnabled);
+      this.sendSlotManager.createSlot(mc, MediaType.AudioMain, audioEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.VideoSlides, shareEnabled);
       this.sendSlotManager.createSlot(mc, MediaType.AudioSlides, shareEnabled);
     }
@@ -5692,11 +5706,34 @@ export default class Meeting extends StatelessWebexPlugin {
       promises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
     }
 
+    // @ts-ignore
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
     return Promise.all(promises)
-      .then(() => this.roap.doTurnDiscovery(this, false))
+      .then(() => {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.client.add-media.turn-discovery.start',
+        });
+
+        return this.roap.doTurnDiscovery(this, false);
+      })
       .then(async (turnDiscoveryObject) => {
         ({turnDiscoverySkippedReason} = turnDiscoveryObject);
         turnServerUsed = !turnDiscoverySkippedReason;
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.client.add-media.turn-discovery.end',
+        });
+
+        if (turnServerUsed) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
+            correlation_id: this.correlationId,
+            latency: cdl.getTurnDiscoveryTime(),
+            turnServerUsed,
+          });
+        }
 
         const {turnServerInfo} = turnDiscoveryObject;
 
@@ -5806,7 +5843,21 @@ export default class Meeting extends StatelessWebexPlugin {
                 // @ts-ignore
                 this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
                   {
-                    clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
+                    clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                      signalingState:
+                        this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                          ?.signalingState ||
+                        this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                          ?.signalingState ||
+                        'unknown',
+                      iceConnectionState:
+                        this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                          ?.iceConnectionState ||
+                        this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                          ?.iceConnectionState ||
+                        'unknown',
+                      turnServerUsed,
+                    }),
                   }
                 ),
               ],
@@ -5893,6 +5944,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.statsAnalyzer = null;
 
+        // when media fails, we want to upload a webrtc dump to see whats going on
+        // this function is async, but returns once the stats have been gathered
+        await this.forceSendStatsReport({callFrom: 'addMedia'});
+
         if (this.mediaProperties.webrtcMediaConnection) {
           this.closePeerConnections();
           this.unsetPeerConnections();
@@ -5927,6 +5982,24 @@ export default class Meeting extends StatelessWebexPlugin {
     // so for now it's better to keep queuing any media updates at SDK meeting level
     return !this.isRoapInProgress;
   }
+
+  /**
+   *  media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const LOG_HEADER = `Meeting:index#forceSendStatsReport --> called from ${callFrom} : `;
+    try {
+      await this.mediaProperties?.webrtcMediaConnection?.forceRtcMetricsSend();
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} successfully uploaded available webrtc telemetry statistics`
+      );
+    } catch (e) {
+      LoggerProxy.logger.error(`${LOG_HEADER} failed to upload webrtc telemetry statistics: `, e);
+    }
+  };
 
   /**
    * Enqueues a media update operation.
