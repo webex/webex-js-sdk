@@ -285,16 +285,9 @@ async function initCalling(e) {
 
       if (window.voicemail === undefined) {
         voicemail = window.voicemail = calling.voicemailClient;
-        const initResponse = await voicemail.init();
-
-        console.log(`Init response `, initResponse);
       }
 
       fetchLines();
-      fetchDNDSetting();
-      fetchCallForwardSetting();
-      fetchVoicemailSetting();
-      fetchCallWaitingSetting();
     });
   });
 
@@ -302,6 +295,13 @@ async function initCalling(e) {
 }
 
 credentialsFormElm.addEventListener('submit', initCalling);
+
+function getSettings() {
+  fetchCallForwardSetting();
+  fetchVoicemailSetting();
+  fetchCallWaitingSetting();
+  fetchDNDSetting();
+}
 
 function toggleDisplay(elementId, status) {
   const element = document.getElementById(elementId);
@@ -860,6 +860,7 @@ async function createCallHistory() {
  * Function to use Voice Mail API's.
  */
 async function createVoiceMail() {
+  await voicemail.init();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
