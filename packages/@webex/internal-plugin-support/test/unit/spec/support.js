@@ -92,6 +92,70 @@ describe('plugin-support', function () {
 
       assert.equal(found?.value, issueTypeTag);
     });
+
+    it('sends locussessionid if specified in metadata', () => {
+      const locussessionid = 'locussessionid';
+      const result = webex.internal.support._constructFileMetadata({locussessionid});
+      const found = result.find((attr) => attr.key === 'locussessionid');
+
+      assert.equal(found?.value, locussessionid);
+    });
+
+    it('sends locusId if specified in metadata', () => {
+      const locusId = 'locusId';
+      const result = webex.internal.support._constructFileMetadata({locusId});
+      const found = result.find((attr) => attr.key === 'locusId');
+
+      assert.equal(found?.value, locusId);
+    });
+
+    it('sends callStart if specified in metadata', () => {
+      const callStart = 'callStart';
+      const result = webex.internal.support._constructFileMetadata({callStart});
+      const found = result.find((attr) => attr.key === 'callStart');
+
+      assert.equal(found?.value, callStart);
+    });
+
+    it('sends feedbackId if specified in metadata', () => {
+      const feedbackId = 'feedbackId';
+      const result = webex.internal.support._constructFileMetadata({feedbackId});
+      const found = result.find((attr) => attr.key === 'feedbackId');
+
+      assert.equal(found?.value, feedbackId);
+    });
+
+    it('sends correlationId if specified in metadata', () => {
+      const correlationId = 'correlationId';
+      const result = webex.internal.support._constructFileMetadata({correlationId});
+      const found = result.find((attr) => attr.key === 'correlationId');
+
+      assert.equal(found?.value, correlationId);
+    });
+
+    it('sends meetingId if specified in metadata', () => {
+      const meetingId = 'meetingId';
+      const result = webex.internal.support._constructFileMetadata({meetingId});
+      const found = result.find((attr) => attr.key === 'meetingId');
+
+      assert.equal(found?.value, meetingId);
+    });
+
+    it('sends autoupload if specified in metadata', () => {
+      const autoupload = 'autoupload';
+      const result = webex.internal.support._constructFileMetadata({autoupload});
+      const found = result.find((attr) => attr.key === 'autoupload');
+
+      assert.equal(found?.value, autoupload);
+    });
+
+    it('sends appVersion if specified in metadata', () => {
+      const appVersion = 'appVersion';
+      const result = webex.internal.support._constructFileMetadata({appVersion});
+      const found = result.find((attr) => attr.key === 'appVersion');
+
+      assert.equal(found?.value, appVersion);
+    });
   });
 
   describe('#submitLogs()', () => {
