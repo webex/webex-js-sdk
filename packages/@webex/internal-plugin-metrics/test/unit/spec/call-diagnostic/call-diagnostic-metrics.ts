@@ -102,6 +102,12 @@ describe('internal-plugin-metrics', () => {
       sinon.restore();
     });
 
+    describe('#validator', () => {
+      it('should have a validator function defined', () => {
+        assert.isDefined(cd.validator);
+      });
+    });
+
     describe('#getOrigin', () => {
       it('should build origin correctly', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');

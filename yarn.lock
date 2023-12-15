@@ -4166,9 +4166,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1290":
-  version: 1.0.1290
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1290"
+"@webex/event-dictionary-ts@npm:^1.0.1313":
+  version: 1.0.1313
+  resolution: "@webex/event-dictionary-ts@npm:1.0.1313"
   dependencies:
     amf-client-js: "npm:^5.2.6"
     json-schema-to-typescript: "npm:^12.0.0"
@@ -4176,7 +4176,7 @@ __metadata:
     ramldt2jsonschema: "npm:^1.2.3"
     shelljs: "npm:^0.8.5"
     webapi-parser: "npm:^0.5.0"
-  checksum: 2bf83699a1000ca7091d4aa694034b5a85890fd43e1b08f6613873478d69115be65ad15d7206bdd3d1aefdc5ba353c0d9f9082c8d5d1c1b47d388b09bf46a2d0
+  checksum: c3d76ef58ecdcff7e7474b1f254c9c29630197c22d56b8fd7c2ffcd23660f068e58e6594bf6ba3463b45d2293a8f548ca02992396f11dd4bf06c5d5e99ba0557
   languageName: node
   linkType: hard
 
@@ -4545,7 +4545,7 @@ __metadata:
     "@sinonjs/fake-timers": "npm:^6.0.1"
     "@webex/common": "workspace:^"
     "@webex/common-timers": "workspace:^"
-    "@webex/event-dictionary-ts": "npm:^1.0.1290"
+    "@webex/event-dictionary-ts": "npm:^1.0.1313"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
