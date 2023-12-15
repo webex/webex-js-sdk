@@ -994,12 +994,12 @@ describe('plugin-meetings', () => {
           });
 
           describe('receive transcription', () => {
-            it('should invoke `receiveTranscription()` if receiveTranscription is set to true', async () => {
+            it('should invoke `startTranscription()` if receiveTranscription is set to true', async () => {
               meeting.isTranscriptionSupported = sinon.stub().returns(true);
-              meeting.receiveTranscription = sinon.stub().returns(Promise.resolve());
+              meeting.startTranscription = sinon.stub().returns(Promise.resolve());
 
               await meeting.join({receiveTranscription: true});
-              assert.calledOnce(meeting.receiveTranscription);
+              assert.calledOnce(meeting.startTranscription);
             });
 
             it('make sure that join does not wait for setting up receive transcriptions', async () => {
@@ -1019,7 +1019,7 @@ describe('plugin-meetings', () => {
               const defer = new Defer();
 
               meeting.isTranscriptionSupported = sinon.stub().returns(true);
-              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
+              meeting.startTranscription = sinon.stub().returns(defer.promise);
 
               const result = await meeting.join({receiveTranscription: true});
 
@@ -5438,6 +5438,36 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setupLocusControlsListener', () => {
+        it('transcription should start when meeting transcribe state is updated with active transcribing', (done) => {
+          const payload = {caption: true, transcribing: true};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = null;
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.calledOnce(meeting.startTranscription);
+          done();
+        });
+
+        it('transcription should stop when meeting transcribe state is updated with inactive transcribing', (done) => {
+          const payload = {caption: false, transcribing: false};
+          meeting.startTranscription = sinon.stub();
+          meeting.config.receiveTranscription = true;
+          meeting.transcription = {};
+
+          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
+          assert.notCalled(meeting.startTranscription);
+          assert.calledThrice(TriggerProxy.trigger);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            'meeting:receiveTranscription:stopped',
+            payload
+          );
+          done();
+        });
+
         it('listens to the locus breakouts update event', () => {
           const locus = {
             breakout: 'breakout',
@@ -5644,38 +5674,6 @@ describe('plugin-meetings', () => {
           );
         });
       });
-
-      describe('#setupLocusControlsListener', () => {
-        it('transcription should start when meeting transcribe state is updated with active transcribing', (done) => {
-          const payload = {caption: true, transcribing: true};
-          meeting.startTranscription = sinon.stub();
-          meeting.config.receiveTranscription = true;
-          meeting.transcription = null;
-
-          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
-          assert.calledOnce(meeting.startTranscription);
-          done();
-        })
-
-        it('transcription should stop when meeting transcribe state is updated with inactive transcribing', (done) => {
-          const payload = {caption: false, transcribing: false};
-          meeting.startTranscription = sinon.stub();
-          meeting.config.receiveTranscription = true;
-          meeting.transcription = {};
-
-          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
-          assert.notCalled(meeting.startTranscription);
-          assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'setupLocusControlsListener'},
-            'meeting:receiveTranscription:stopped',
-            payload
-          );
-          done();
-        })
-      })
 
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
@@ -6309,7 +6307,6 @@ describe('plugin-meetings', () => {
           );
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
-          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
           handleDataChannelUrlChangeSpy = sinon.spy(meeting, 'handleDataChannelUrlChange');
           updateMeetingActionsSpy = sinon.spy(meeting, 'updateMeetingActions');
         });
@@ -6346,6 +6343,12 @@ describe('plugin-meetings', () => {
           assert.equal(locusInfoOnSpy.secondCall.args[0], 'MEETING_UNLOCKED');
           assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
           const callback = locusInfoOnSpy.thirdCall.args[1];
+
+          const payload = {
+            info: {
+              userDisplayHints: ['LOCK_CONTROL_UNLOCK'],
+            },
+          };
 
           callback();
 

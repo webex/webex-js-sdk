@@ -136,6 +136,8 @@ export default class Roap extends StatelessWebexPlugin {
       locusSelfUrl: meeting.selfUrl,
       mediaId: options.mediaId,
       meetingId: meeting.id,
+      audioMuted: meeting.audio?.isLocallyMuted(),
+      videoMuted: meeting.video?.isLocallyMuted(),
       locusMediaRequest: meeting.locusMediaRequest,
     });
   }
