@@ -175,7 +175,7 @@ export default class Socket extends EventEmitter {
     try {
       this._domain = new URL(url).hostname;
     } catch {
-      /* Ignore error */
+      this._domain = url;
     }
 
     return new Promise((resolve, reject) => {

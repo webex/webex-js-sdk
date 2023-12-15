@@ -22,7 +22,7 @@ import {
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
 
 const Mercury = WebexPlugin.extend({
-  namespace: 'mercury',
+  namespace: 'Mercury',
 
   session: {
     connected: {
@@ -76,9 +76,7 @@ const Mercury = WebexPlugin.extend({
       if (this.socket) {
         this.socket.removeAllListeners('message');
         this.once('offline', resolve);
-        this.socket.close();
-
-        return;
+        resolve(this.socket.close());
       }
 
       resolve();
