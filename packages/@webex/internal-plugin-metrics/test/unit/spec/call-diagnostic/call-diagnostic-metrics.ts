@@ -414,6 +414,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
         const options = {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
@@ -489,6 +490,39 @@ describe('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+        assert.calledWith(validatorSpy, {type: 'ce', event: {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        }})
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
         assert.deepEqual(webexLoggerLogCalls[0].args, [
@@ -1217,6 +1251,7 @@ describe('internal-plugin-metrics', () => {
           cd,
           'getErrorPayloadForClientErrorCode'
         );
+        const validatorSpy = sinon.spy(cd, 'validator');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const options = {
@@ -1270,6 +1305,38 @@ describe('internal-plugin-metrics', () => {
           },
           options
         );
+
+        assert.calledWith(validatorSpy, {type: 'mqe', event: {
+          eventId: 'my-fake-id',
+          version: 1,
+          origin: {origin: 'fake-origin'},
+          originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+          senderCountryCode: 'UK',
+          event: {
+            name: 'client.mediaquality.event',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: {webClientDomain: 'whatever'},
+            intervals: [{}],
+            sourceMetadata: {
+              applicationSoftwareType: 'webex-js-sdk',
+              applicationSoftwareVersion: 'webex-version',
+              mediaEngineSoftwareType: 'browser',
+              mediaEngineSoftwareVersion: getOSVersion(),
+              startTime: now.toISOString(),
+            },
+          },
+        }});
 
         assert.calledWith(submitToCallDiagnosticsSpy, {
           eventId: 'my-fake-id',
