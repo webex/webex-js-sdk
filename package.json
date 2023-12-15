@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "description": "JavaScript SDK for interacting with the Webex API",
+  "description": "Web SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
     "url": "https://github.com/webex/webex-js-sdk/issues"
