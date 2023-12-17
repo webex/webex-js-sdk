@@ -5978,6 +5978,8 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Sends stats report, closes peer connection and cleans up any media connection
+   * related things before trying to establish media connection again with turn server
    *
    * @private
    * @returns {Promise<void>}
