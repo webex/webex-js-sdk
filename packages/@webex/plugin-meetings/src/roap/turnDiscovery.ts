@@ -274,12 +274,21 @@ export default class TurnDiscovery {
    * so it works fine no matter if TURN discovery is done or not.
    *
    * @param {Meeting} meeting
-   * @param {Boolean} isReconnecting should be set to true if this is a new
+   * @param {Boolean} [isReconnecting] should be set to true if this is a new
    *                                 media connection just after a reconnection
+   * @param {Boolean} [ignoreReachabilityResults]
    * @returns {Promise}
    */
-  async doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean) {
-    const turnDiscoverySkippedReason = await this.getSkipReason(meeting);
+  async doTurnDiscovery(
+    meeting: Meeting,
+    isReconnecting?: boolean,
+    ignoreReachabilityResults?: boolean
+  ) {
+    let turnDiscoverySkippedReason: string;
+
+    if (!ignoreReachabilityResults) {
+      turnDiscoverySkippedReason = await this.getSkipReason(meeting);
+    }
 
     if (turnDiscoverySkippedReason) {
       return {

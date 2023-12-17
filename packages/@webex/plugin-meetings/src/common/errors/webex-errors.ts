@@ -145,3 +145,20 @@ class IceGatheringFailed extends WebexMeetingsError {
 
 export {IceGatheringFailed};
 WebExMeetingsErrors[IceGatheringFailed.CODE] = IceGatheringFailed;
+
+/**
+ * @class RetryWithTurnServerFailed
+ * @classdesc Raised whenever we fail to connect media using UDP/TCP and on the retry using TURN server.
+ * @extends WebexMeetingsError
+ * @property {number} code - 30203
+ * @property {string} message - 'Failed to connect media on retry using TURN server'
+ */
+class RetryWithTurnServerFailed extends WebexMeetingsError {
+  static CODE = 30203;
+
+  constructor() {
+    super(RetryWithTurnServerFailed.CODE, 'Failed to connect media on retry using TURN server');
+  }
+}
+export {RetryWithTurnServerFailed};
+WebExMeetingsErrors[RetryWithTurnServerFailed.CODE] = RetryWithTurnServerFailed;
