@@ -12,7 +12,7 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
-describe.only('webex-core', () => {
+describe('webex-core', () => {
   describe('ServiceInterceptor', () => {
     let fixture;
     let interceptor;
