@@ -825,6 +825,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         metrics: [diagnosticEvent],
       },
       headers: {},
+      // @ts-ignore
+      waitForServiceTimeout: this.webex.internal.metrics.config.waitForServiceTimeout,
     };
 
     if (options.preLoginId) {

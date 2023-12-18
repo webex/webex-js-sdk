@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-import { uniqueId } from 'lodash';
+import {uniqueId} from 'lodash';
 
 const flushPromises = () => new Promise(setImmediate);
 
@@ -24,13 +24,11 @@ function promiseTick(count) {
   return promise;
 }
 
-
 describe('plugin-metrics', () => {
   describe('CallDiagnosticEventsBatcher', () => {
     let webex;
     let clock;
     let now;
-
 
     beforeEach(() => {
       now = new Date();
@@ -39,14 +37,15 @@ describe('plugin-metrics', () => {
       //@ts-ignore
       webex = new MockWebex({
         children: {
-          newMetrics: NewMetrics
-        }
+          newMetrics: NewMetrics,
+        },
       });
 
-      webex.request = (options) => Promise.resolve({body: {items: []}, options});
+      webex.request = (options) =>
+        Promise.resolve({body: {items: []}, waitForServiceTimeout: 15, options});
       sinon.spy(webex, 'request');
 
-      webex.emit("ready");
+      webex.emit('ready');
 
       webex.config.metrics = config.metrics;
     });
@@ -70,7 +69,10 @@ describe('plugin-metrics', () => {
 
           //@ts-ignore
           assert.calledOnce(webex.request);
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('doesnt include any joinTimes for other events', async () => {
@@ -88,12 +90,19 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.alert.displayed',
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.interstitial-window.launched', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -112,11 +121,16 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.call.initiated', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.call.initiated'}}
@@ -134,16 +148,27 @@ describe('plugin-metrics', () => {
               showInterstitialTime: 10,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.locus.join.response', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon.stub().returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon
+            .stub()
+            .returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
           webex.internal.newMetrics.callDiagnosticLatencies.getClientJMT = sinon.stub().returns(5);
-          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
@@ -169,11 +194,16 @@ describe('plugin-metrics', () => {
               clientJmt: 5,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.ice.end', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.ice.end'}}
@@ -194,11 +224,16 @@ describe('plugin-metrics', () => {
               videoICESetupTime: 10,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.media.rx.start', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media.rx.start'}}
@@ -216,13 +251,22 @@ describe('plugin-metrics', () => {
               localSDPGenRemoteSDPRecv: 10,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct join times to the request for client.media-engine.ready', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToMediaOKJMT = sinon.stub().returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToMediaOKJMT = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media-engine.ready'}}
@@ -243,11 +287,16 @@ describe('plugin-metrics', () => {
               stayLobbyTime: 10,
             },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('appends the correct audio and video setup delays to the request for client.mediaquality.event', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon.stub().returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.mediaquality.event'}}
@@ -268,9 +317,12 @@ describe('plugin-metrics', () => {
             videoSetupDelay: {
               joinRespRxStart: 10,
               joinRespTxStart: 10,
-            }
+            },
           });
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
 
         it('doesnt include audioSetup and videoSetup delays for other events', async () => {
@@ -285,10 +337,19 @@ describe('plugin-metrics', () => {
 
           //@ts-ignore
           assert.calledOnce(webex.request);
-          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.audioSetupDelay, undefined);
-          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.videoSetupDelay, undefined);
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
-        })
+          assert.deepEqual(
+            webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.audioSetupDelay,
+            undefined
+          );
+          assert.deepEqual(
+            webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event.videoSetupDelay,
+            undefined
+          );
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
+        });
       });
 
       describe('when the request fails', () => {
@@ -329,7 +390,10 @@ describe('plugin-metrics', () => {
           // This is horrific, but stubbing lodash is proving difficult
           const expectedBatchId = parseInt(uniqueId()) - 1;
 
-          assert.deepEqual(JSON.stringify(loggerLogCalls[1].args), `["call-diagnostic-events -> ","CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Sending the request:","payload:",[{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]]`);
+          assert.deepEqual(
+            JSON.stringify(loggerLogCalls[1].args),
+            `["call-diagnostic-events -> ","CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Sending the request:","payload:",[{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]]`
+          );
 
           // check that promise was rejected with the original error of the webex.request
           assert.deepEqual(err, error);
@@ -340,7 +404,10 @@ describe('plugin-metrics', () => {
             `CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Request failed:`,
             `error: formattedError`
           );
-          assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 0);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
       });
     });
@@ -349,10 +416,16 @@ describe('plugin-metrics', () => {
       it('calls prepareDiagnosticMetricItem correctly', async () => {
         // avoid setting .sent timestamp
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
-        (q) => Promise.resolve(q);
+          (q) => Promise.resolve(q);
 
-        const prepareItemSpy = sinon.spy(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher, 'prepareItem');
-        const prepareDiagnosticMetricItemSpy = sinon.spy(CallDiagnosticUtils, 'prepareDiagnosticMetricItem');
+        const prepareItemSpy = sinon.spy(
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher,
+          'prepareItem'
+        );
+        const prepareDiagnosticMetricItemSpy = sinon.spy(
+          CallDiagnosticUtils,
+          'prepareDiagnosticMetricItem'
+        );
 
         const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({
           event: 'my.event',
@@ -374,8 +447,7 @@ describe('plugin-metrics', () => {
 
         assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
 
-
-        const prepareDiagnosticMetricItemCalls = prepareDiagnosticMetricItemSpy.getCalls()
+        const prepareDiagnosticMetricItemCalls = prepareDiagnosticMetricItemSpy.getCalls();
 
         // second argument (item) also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[0], webex);
@@ -387,8 +459,7 @@ describe('plugin-metrics', () => {
           },
         });
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);
-
-      })
-    })
+      });
+    });
   });
 });
