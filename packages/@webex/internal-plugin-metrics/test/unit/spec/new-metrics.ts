@@ -152,7 +152,7 @@ describe('internal-plugin-metrics', () => {
           resource: 'clientmetrics',
           headers: { 'x-prelogin-userid': 'my-id' },
           body: {},
-          qs: { alias: true }
+          qs: { alias: true },
         });
         assert.calledWith(
           webex.logger.log,
