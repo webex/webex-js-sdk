@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.283](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.282...v3.0.0-beta.283) (2023-12-15)
+
+## [3.0.0-beta.282](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.281...v3.0.0-beta.282) (2023-12-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** refactor addMedia and add separate timeout for sdp exchange ([#3244](https://github.com/webex/webex-js-sdk/issues/3244)) ([e5d1370](https://github.com/webex/webex-js-sdk/commit/e5d137032047a66663ddb899150a3ab8bbe27986))
+
 ## [3.0.0-beta.281](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.280...v3.0.0-beta.281) (2023-12-14)
 
 
