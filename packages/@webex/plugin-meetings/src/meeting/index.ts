@@ -5817,7 +5817,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
    * @param {BundlePolicy} [bundlePolicy]
-   * @param {boolean} [ignoreReachabilityResults] - let ignoreReachabilityResults be true to do turn discovery regardless on reachability results
+   * @param {boolean} [ignoreReachabilityResults] - let ignoreReachabilityResults be true to do turn discovery regardless of reachability results
    * @returns {Promise<void>}
    */
   private async establishMediaConnection(
