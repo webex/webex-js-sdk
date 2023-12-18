@@ -22,17 +22,22 @@ describe('plugin-support', function () {
 
     webex.internal.device.userId = 'user-abc-123';
     webex.internal.device.orgId = 'org-abc-123';
+    webex.internal.support.config.appVersion = '0.0.0.0';
   });
 
   describe('#_constructFileMetadata()', () => {
     it('constructs a sample File Meta Data', () => {
       const result = webex.internal.support._constructFileMetadata({});
 
-      assert.equal(result.length, 3);
+      assert.equal(result.length, 4);
       assert.deepEqual(result, [
         {
           key: 'trackingId',
           value: 'mock-webex_88888888-4444-4444-4444-aaaaaaaaaaaa',
+        },
+        {
+          key: 'appVersion',
+          value: '0.0.0.0',
         },
         {
           key: 'userId',
@@ -147,14 +152,6 @@ describe('plugin-support', function () {
       const found = result.find((attr) => attr.key === 'autoupload');
 
       assert.equal(found?.value, autoupload);
-    });
-
-    it('sends appVersion if specified in metadata', () => {
-      const appVersion = 'appVersion';
-      const result = webex.internal.support._constructFileMetadata({appVersion});
-      const found = result.find((attr) => attr.key === 'appVersion');
-
-      assert.equal(found?.value, appVersion);
     });
   });
 

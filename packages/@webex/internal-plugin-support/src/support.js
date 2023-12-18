@@ -123,6 +123,7 @@ const Support = WebexPlugin.extend({
   _constructFileMetadata(metadata) {
     const metadataArray = [
       'locusId',
+      'appVersion',
       'callStart',
       'feedbackId',
       'correlationId',
