@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.287](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.286...v3.0.0-beta.287) (2023-12-19)
+
+
+### Features
+
+* **plugin-metrics:** payload overrides ([#3270](https://github.com/webex/webex-js-sdk/issues/3270)) ([9eb9f47](https://github.com/webex/webex-js-sdk/commit/9eb9f479406c9c7639768a413b94d73b11e5a7b5))
+
 ## [3.0.0-beta.286](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.285...v3.0.0-beta.286) (2023-12-19)
 
 
