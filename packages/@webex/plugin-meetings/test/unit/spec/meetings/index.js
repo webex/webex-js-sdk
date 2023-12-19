@@ -2129,7 +2129,7 @@ describe('plugin-meetings', () => {
         meeting.locusId = 'locus id';
         meeting.correlationId = 'correlation id';
         meeting.locusInfo = {
-          fullState: { lastActive: 'last active'},
+          fullState: { lastActive: 'last active', sessionId: 'locus session id'},
           info: { webExMeetingId: 'meeting id'}
         }
       });
@@ -2150,6 +2150,8 @@ describe('plugin-meetings', () => {
           feedbackId: 'correlation id',
           locusId: 'locus id',
           meetingId: 'meeting id',
+          autoupload: true,
+          locussessionid: 'locus session id',
         });
       });
 
@@ -2167,6 +2169,8 @@ describe('plugin-meetings', () => {
           locusId: 'locus id',
           meetingId: 'meeting id',
           reason: 'fake error',
+          autoupload: true,
+          locussessionid: 'locus session id',
         }));
       });
     });
