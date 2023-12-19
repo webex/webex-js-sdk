@@ -30,6 +30,21 @@ const MemberUtil: any = {};
 
 /**
  * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ * https://confluence-eng-gpk2.cisco.com/conf/pages/viewpage.action?spaceKey=LOCUS&title=Reclaim+Host+Role
+ */
+MemberUtil.canReclaimHost = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'canReclaimHostRole could not be processed, participant is undefined.'
+    );
+  }
+
+  return participant.canReclaimHostRole || false;
+};
+
+/**
+ * @param {Object} participant the locus participant
  * @returns {[ServerRoleShape]}
  */
 MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
