@@ -186,6 +186,7 @@ export default class Roap extends StatelessWebexPlugin {
       version: ROAP.ROAP_VERSION,
       seq,
       tieBreaker,
+      headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
     };
 
     // When reconnecting, it's important that the first roap message being sent out has empty media id.
@@ -209,7 +210,33 @@ export default class Roap extends StatelessWebexPlugin {
             meeting.updateMediaConnections(mediaConnections);
           }
 
-          return locus;
+          let roapAnswer;
+
+          if (mediaConnections?.[0]?.remoteSdp) {
+            const remoteSdp = JSON.parse(mediaConnections[0].remoteSdp);
+
+            if (remoteSdp.roapMessage) {
+              const {
+                seq: answerSeq,
+                messageType,
+                sdps,
+                errorType,
+                errorCause,
+                headers,
+              } = remoteSdp.roapMessage;
+
+              roapAnswer = {
+                seq: answerSeq,
+                messageType,
+                sdp: sdps[0],
+                errorType,
+                errorCause,
+                headers,
+              };
+            }
+          }
+
+          return {locus, roapAnswer};
         });
     });
   }

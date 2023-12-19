@@ -19,6 +19,7 @@ import {
   MediaContent,
   MediaType,
   RemoteTrackType,
+  RoapMessage,
 } from '@webex/internal-media-core';
 
 import {
@@ -54,6 +55,7 @@ import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from './request';
 import Members from '../members/index';
 import MeetingUtil from './util';
+import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
 import ControlsOptionsUtil from '../controls-options-manager/util';
 import MediaUtil from '../media/util';
@@ -5138,7 +5140,74 @@ export default class Meeting extends StatelessWebexPlugin {
     }
   };
 
+  /**
+   * Handles an incoming Roap message
+   * @internal
+   * @param {RoapMessage} roapMessage roap message
+   * @returns {undefined}
+   */
+  public roapMessageReceived = (roapMessage: RoapMessage) => {
+    const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+
+    this.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
+
+    if (mediaServer) {
+      this.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+    }
+  };
+
+  /**
+   * This function makes sure we send the right metrics when local and remote SDPs are processed/generated
+   *
+   * @returns {undefined}
+   */
+  setupSdpListeners = () => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.REMOTE_SDP_ANSWER_PROCESSED, () => {
+      // @ts-ignore
+      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.remote-sdp-received',
+        options: {meetingId: this.id},
+      });
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
+        correlation_id: this.correlationId,
+        latency: cdl.getLocalSDPGenRemoteSDPRecv(),
+        meetingId: this.id,
+      });
+
+      if (this.deferSDPAnswer) {
+        this.deferSDPAnswer.resolve();
+        clearTimeout(this.sdpResponseTimer);
+        this.sdpResponseTimer = undefined;
+      }
+    });
+
+    this.mediaProperties.webrtcMediaConnection.on(Event.LOCAL_SDP_OFFER_GENERATED, () => {
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.local-sdp-generated',
+        options: {meetingId: this.id},
+      });
+
+      // Instantiate Defer so that the SDP offer/answer exchange timeout can start, see waitForRemoteSDPAnswer()
+      this.deferSDPAnswer = new Defer();
+    });
+
+    this.mediaProperties.webrtcMediaConnection.on(Event.LOCAL_SDP_ANSWER_GENERATED, () => {
+      // we are sending "remote-sdp-received" only after we've generated the answer - this indicates that we've fully processed that incoming offer
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.remote-sdp-received',
+        options: {meetingId: this.id},
+      });
+    });
+  };
+
   setupMediaConnectionListeners = () => {
+    this.setupSdpListeners();
+
     this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_STARTED, () => {
       this.isRoapInProgress = true;
     });
@@ -5154,28 +5223,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(Event.ROAP_MESSAGE_TO_SEND, (event) => {
       const LOG_HEADER = `Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND --> correlationId=${this.correlationId}`;
 
-      // @ts-ignore
-      const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
-
       switch (event.roapMessage.messageType) {
         case 'OK':
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.media-engine.remote-sdp-received',
-            options: {meetingId: this.id},
-          });
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
-            correlation_id: this.correlationId,
-            latency: cdl.getLocalSDPGenRemoteSDPRecv(),
-            meetingId: this.id,
-          });
-
-          if (this.deferSDPAnswer) {
-            this.deferSDPAnswer.resolve();
-            clearTimeout(this.sdpResponseTimer);
-            this.sdpResponseTimer = undefined;
-          }
-
           logRequest(
             this.roap.sendRoapOK({
               seq: event.roapMessage.seq,
@@ -5189,23 +5238,22 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'OFFER':
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.media-engine.local-sdp-generated',
-            options: {meetingId: this.id},
-          });
-
-          // Instantiate Defer so that the SDP offer/answer exchange timeout can start, see waitForRemoteSDPAnswer()
-          this.deferSDPAnswer = new Defer();
-
           logRequest(
-            this.roap.sendRoapMediaRequest({
-              sdp: event.roapMessage.sdp,
-              seq: event.roapMessage.seq,
-              tieBreaker: event.roapMessage.tieBreaker,
-              meeting: this, // or can pass meeting ID
-              reconnect: this.reconnectionManager.isReconnectInProgress(),
-            }),
+            this.roap
+              .sendRoapMediaRequest({
+                sdp: event.roapMessage.sdp,
+                seq: event.roapMessage.seq,
+                tieBreaker: event.roapMessage.tieBreaker,
+                meeting: this, // or can pass meeting ID
+                reconnect: this.reconnectionManager.isReconnectInProgress(),
+              })
+              .then(({roapAnswer}) => {
+                if (roapAnswer) {
+                  LoggerProxy.logger.log(`${LOG_HEADER} received Roap ANSWER in http response`);
+
+                  this.roapMessageReceived(roapAnswer);
+                }
+              }),
             {
               logText: `${LOG_HEADER} Roap Offer`,
             }
@@ -5213,12 +5261,6 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'ANSWER':
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.media-engine.remote-sdp-received',
-            options: {meetingId: this.id},
-          });
-
           logRequest(
             this.roap.sendRoapAnswer({
               sdp: event.roapMessage.sdp,

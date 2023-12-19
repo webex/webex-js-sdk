@@ -47,6 +47,9 @@ describe('Roap', () => {
     let meeting;
 
     let webex;
+    let roap;
+
+    const fakeLocus = { id: 'fake locus'};
 
     beforeEach(() => {
       webex = new MockWebex({});
@@ -65,12 +68,16 @@ describe('Roap', () => {
         config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
         webex: { meetings: { reachability: { isAnyPublicClusterReachable: () => true}}},
+        updateMediaConnections: sinon.stub(),
       };
 
       sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
       meeting.setRoapSeq.resetHistory();
+
+      roap = new Roap({}, {parent: webex});
+      sinon.stub(roap.turnDiscovery, 'isSkipped').resolves(false);
     });
 
     afterEach(() => {
@@ -88,9 +95,7 @@ describe('Roap', () => {
       }reconnecting and TURN discovery is ${
         turnDiscoverySkipped ? 'skipped' : 'not skipped'
       }`, async () => {
-        const roap = new Roap({}, {parent: webex});
-
-        sinon.stub(roap.turnDiscovery, 'isSkipped').resolves(turnDiscoverySkipped);
+        roap.turnDiscovery.isSkipped.resolves(turnDiscoverySkipped);
 
         await roap.sendRoapMediaRequest({
           meeting,
@@ -106,6 +111,7 @@ describe('Roap', () => {
           version: '2',
           seq: 2,
           tieBreaker: 4294967294,
+          headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
         };
 
         assert.calledOnce(sendRoapStub);
@@ -118,5 +124,106 @@ describe('Roap', () => {
         }));
       })
     );
+
+    it('reads SDP answer from the http response', async () => {
+      const roapAnswer = {
+        seq: 5,
+        messageType: 'ANSWER',
+        sdps : ['sdp answer'],
+        errorType: 'error type', // normally ANSWER would not have errorType or errorCause (only error messages have these)
+        errorCause: 'error cause', // but we're just testing here that all the fields are forwarded to the caller of sendRoapMediaRequest()
+        headers: ['header1', 'header2'],
+      }
+      const fakeMediaConnections = [{
+        remoteSdp: JSON.stringify({
+          roapMessage: roapAnswer
+        })
+      }];
+
+      sendRoapStub.resolves({
+        mediaConnections: fakeMediaConnections,
+        locus: fakeLocus
+      });
+
+      const result = await roap.sendRoapMediaRequest({
+        meeting,
+        sdp: 'sdp',
+        reconnect: false,
+        seq: 1,
+        tieBreaker: 4294967294,
+      });
+
+      assert.calledOnce(sendRoapStub);
+      assert.calledOnceWithExactly(meeting.updateMediaConnections, fakeMediaConnections);
+      assert.deepEqual(result, {
+        locus: fakeLocus,
+        roapAnswer: {
+          seq: 5,
+          messageType: 'ANSWER',
+          sdp: 'sdp answer',
+          errorType: 'error type',
+          errorCause: 'error cause',
+          headers: ['header1', 'header2'],
+        }
+      });
+    });
+
+    it('handles the case when there is no answer in the http response', async () => {
+      const fakeMediaConnections = [{
+        // this is the actual value Locus returns to us when they don't send Roap ANSWER in the http response
+        remoteSdp: "{\"audioMuted\":false,\"videoMuted\":false,\"csis\":[],\"dtmfReceiveSupported\":true,\"type\":\"SDP\"}",
+      }];
+
+      sendRoapStub.resolves({
+        mediaConnections: fakeMediaConnections,
+        locus: fakeLocus
+      });
+
+      const result = await roap.sendRoapMediaRequest({
+        meeting,
+        sdp: 'sdp',
+        reconnect: false,
+        seq: 1,
+        tieBreaker: 4294967294,
+      });
+
+      assert.calledOnce(sendRoapStub);
+      assert.calledOnceWithExactly(meeting.updateMediaConnections, fakeMediaConnections);
+      assert.deepEqual(result, {
+        locus: fakeLocus,
+        roapAnswer: undefined
+      });
+    });
+
+    describe('does not crash when http response is missing things', () => {
+
+    });
+    [
+      {mediaConnections: undefined, title: 'mediaConnections are undefined'},
+      {mediaConnections: [], title: 'mediaConnections are empty array'},
+      {mediaConnections: [{}], title: 'mediaConnections[0] has no remoteSdp'},
+      {mediaConnections: [{remoteSdp: '{}'}], title: 'mediaConnections[0].remoteSdp is an empty json'},
+    ].forEach(({mediaConnections, title}) =>
+      it(title, async () => {
+        sendRoapStub.resolves({
+          mediaConnections,
+          locus: fakeLocus
+        });
+
+        const result = await roap.sendRoapMediaRequest({
+          meeting,
+          sdp: 'sdp',
+          reconnect: false,
+          seq: 1,
+          tieBreaker: 4294967294,
+        });
+
+        assert.calledOnce(sendRoapStub);
+        assert.deepEqual(result, {
+          locus: fakeLocus,
+          roapAnswer: undefined
+        });
+      }))
+    ;
   });
 });
