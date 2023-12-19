@@ -237,15 +237,6 @@ export default class TurnDiscovery {
       return 'reachability';
     }
 
-    // @ts-ignore - fix type
-    if (!meeting.config.experimental.enableTurnDiscovery) {
-      LoggerProxy.logger.info(
-        'Roap:turnDiscovery#getSkipReason --> TURN discovery disabled in config, skipping it'
-      );
-
-      return 'config';
-    }
-
     return '';
   }
 
@@ -276,17 +267,13 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @param {Boolean} [isReconnecting] should be set to true if this is a new
    *                                 media connection just after a reconnection
-   * @param {Boolean} [ignoreReachabilityResults]
+   * @param {Boolean} [isForced]
    * @returns {Promise}
    */
-  async doTurnDiscovery(
-    meeting: Meeting,
-    isReconnecting?: boolean,
-    ignoreReachabilityResults?: boolean
-  ) {
+  async doTurnDiscovery(meeting: Meeting, isReconnecting?: boolean, isForced?: boolean) {
     let turnDiscoverySkippedReason: string;
 
-    if (!ignoreReachabilityResults) {
+    if (!isForced) {
       turnDiscoverySkippedReason = await this.getSkipReason(meeting);
     }
 

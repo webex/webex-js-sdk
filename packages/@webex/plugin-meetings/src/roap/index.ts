@@ -222,10 +222,10 @@ export default class Roap extends StatelessWebexPlugin {
    * @param {Meeting} meeting
    * @param {Boolean} isReconnecting should be set to true if this is a new
    *                                 media connection just after a reconnection
-   * @param {Boolean} [ignoreReachabilityResults]
+   * @param {Boolean} [isForced]
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean, ignoreReachabilityResults?: boolean) {
-    return this.turnDiscovery.doTurnDiscovery(meeting, isReconnecting, ignoreReachabilityResults);
+  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean, isForced?: boolean) {
+    return this.turnDiscovery.doTurnDiscovery(meeting, isReconnecting, isForced);
   }
 }

@@ -63,10 +63,6 @@ const BEHAVIORAL_METRICS = {
   PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
   TURN_DISCOVERY_LATENCY: 'js_sdk_turn_discovery_latency',
   ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
-  RETRY_MEDIA_CONNECTION_WITH_TURN_SERVER_SUCCESS:
-    'js_sdk_retry_media_connection_with_turn_server_success',
-  RETRY_MEDIA_CONNECTION_WITH_TURN_SERVER_FAILURE:
-    'js_sdk_retry_media_connection_with_turn_server_failure',
 };
 
 export {BEHAVIORAL_METRICS as default};

@@ -13,8 +13,8 @@ import { IP_VERSION } from '../../../../src/constants';
 describe('Roap', () => {
   describe('doTurnDiscovery', () => {
     [false, true].forEach(function (isReconnecting) {
-      [false, true, undefined].forEach(function (ignoreReachabilityResults) {
-        it(`calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments when isReconnecting = ${isReconnecting} and ignoreReachabilityResults = ${ignoreReachabilityResults}`, async () => {
+      [false, true, undefined].forEach(function (isForced) {
+        it(`calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments when isReconnecting = ${isReconnecting} and isForced = ${isForced}`, async () => {
           const webex = new MockWebex({});
 
           const RESULT = {something: 'some value'};
@@ -26,9 +26,9 @@ describe('Roap', () => {
 
           const roap = new Roap({}, {parent: webex});
 
-          const result = await roap.doTurnDiscovery(meeting, isReconnecting, ignoreReachabilityResults);
+          const result = await roap.doTurnDiscovery(meeting, isReconnecting, isForced);
 
-          assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, isReconnecting, ignoreReachabilityResults);
+          assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, isReconnecting, isForced);
           assert.deepEqual(result, RESULT);
 
           sinon.restore();
@@ -57,7 +57,6 @@ describe('Roap', () => {
           isLocallyMuted: () => false,
         },
         setRoapSeq: sinon.stub(),
-        config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
         webex: { meetings: { reachability: { isAnyPublicClusterReachable: () => true}}},
       };
