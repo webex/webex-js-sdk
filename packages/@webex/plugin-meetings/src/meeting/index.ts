@@ -5830,7 +5830,7 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, true);
     } catch (err) {
       LoggerProxy.logger.error(
-        `${LOG_HEADER} retry with TURN server failed, media connection unable to connect, `,
+        `${LOG_HEADER} retry with TURN-TLS failed, media connection unable to connect, `,
         err
       );
 
@@ -5881,15 +5881,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - config coming from registerPlugin
     if (!this.turnServerUsed) {
-      LoggerProxy.logger.error(
-        `${LOG_HEADER} error waiting for media to connect on UDP/TCP, retrying using TURN server, `,
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} error waiting for media to connect on UDP, TCP, retrying using TURN-TLS, `,
         error
       );
 
       await this.retryWithForcedTurnDiscovery(remoteMediaManagerConfig, bundlePolicy);
     } else {
       LoggerProxy.logger.error(
-        `${LOG_HEADER} error waiting for media to connect using TURN server`,
+        `${LOG_HEADER} error waiting for media to connect using UDP, TCP and TURN-TLS`,
         error
       );
 

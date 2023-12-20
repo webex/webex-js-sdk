@@ -1809,6 +1809,20 @@ describe('plugin-meetings', () => {
             }
           ]);
 
+          // Check that doTurnDiscovery is called with th4 correct value of isForced
+          const doTurnDiscoveryCalls = meeting.roap.doTurnDiscovery.getCalls();
+          assert.equal(doTurnDiscoveryCalls.length, 2);
+          assert.deepEqual(doTurnDiscoveryCalls[0].args, [            
+            meeting,
+            false,
+            false
+          ]);
+          assert.deepEqual(doTurnDiscoveryCalls[1].args, [            
+            meeting,
+            true,
+            true
+          ]);
+
           // Some clean up steps happens twice
           assert.calledTwice(forceRtcMetricsSend);
           assert.calledTwice(closeMediaConnectionStub);
@@ -1951,6 +1965,21 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
             }
+          ]);
+          meeting.roap.doTurnDiscovery
+
+          // Check that doTurnDiscovery is called with th4 correct value of isForced
+          const doTurnDiscoveryCalls = meeting.roap.doTurnDiscovery.getCalls();
+          assert.equal(doTurnDiscoveryCalls.length, 2);
+          assert.deepEqual(doTurnDiscoveryCalls[0].args, [            
+            meeting,
+            false,
+            false
+          ]);
+          assert.deepEqual(doTurnDiscoveryCalls[1].args, [            
+            meeting,
+            true,
+            true
           ]);
 
           assert.calledOnce(forceRtcMetricsSend);
