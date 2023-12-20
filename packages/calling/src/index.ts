@@ -1,26 +1,4 @@
 import {NoiseReductionEffect, createMicrophoneStream} from '@webex/media-helpers';
-import {ERROR_LAYER, ERROR_TYPE} from './Errors/types';
-import {ICallingClient} from './CallingClient/types';
-import {ICallHistory, JanusResponseEvent} from './CallHistory/types';
-import {
-  CallForwardSetting,
-  CallSettingResponse,
-  ICallSettings,
-  VoicemailSetting,
-} from './CallSettings/types';
-import {Contact, ContactResponse, GroupType, IContacts} from './Contacts/types';
-import {IVoicemail, SummaryInfo, VoicemailResponseEvent} from './Voicemail/types';
-import {ILine, LINE_EVENTS} from './CallingClient/line/types';
-import {
-  CALLING_CLIENT_EVENT_KEYS,
-  CALL_EVENT_KEYS,
-  CallerIdDisplay,
-  Disposition,
-  LINE_EVENT_KEYS,
-} from './Events/types';
-import {CallDetails, CallDirection, CallType, DisplayInformation, SORT} from './common/types';
-import {CallError, LineError} from './Errors';
-import {ICall, TransferType} from './CallingClient/calling/types';
 import {createCallSettingsClient} from './CallSettings/CallSettings';
 import {createContactsClient} from './Contacts/ContactsClient';
 import {createClient} from './CallingClient/CallingClient';
@@ -39,33 +17,25 @@ export {
   NoiseReductionEffect,
 };
 
-// Interfaces
-export {ICallingClient, ICallHistory, ICallSettings, IContacts, IVoicemail, ICall, ILine};
-
+export {ERROR_LAYER, ERROR_TYPE} from './Errors/types';
+export {ICallingClient} from './CallingClient/types';
+export {ICallHistory, JanusResponseEvent} from './CallHistory/types';
 export {
-  CallDetails,
-  CallDirection,
-  CallerIdDisplay,
-  CallError,
-  CALL_EVENT_KEYS,
-  CALLING_CLIENT_EVENT_KEYS,
-  CallType,
-  DisplayInformation,
-  Disposition,
-  ERROR_LAYER,
-  ERROR_TYPE,
-  LINE_EVENTS,
-  LINE_EVENT_KEYS,
-  LineError,
-  SORT,
-  SummaryInfo,
-  TransferType,
   CallForwardSetting,
   CallSettingResponse,
-  Contact,
-  ContactResponse,
-  GroupType,
-  JanusResponseEvent,
+  ICallSettings,
   VoicemailSetting,
-  VoicemailResponseEvent,
-};
+} from './CallSettings/types';
+export {Contact, ContactResponse, GroupType, IContacts} from './Contacts/types';
+export {IVoicemail, SummaryInfo, VoicemailResponseEvent} from './Voicemail/types';
+export {ILine, LINE_EVENTS} from './CallingClient/line/types';
+export {
+  CALLING_CLIENT_EVENT_KEYS,
+  CALL_EVENT_KEYS,
+  CallerIdDisplay,
+  Disposition,
+  LINE_EVENT_KEYS,
+} from './Events/types';
+export {CallDetails, CallDirection, CallType, DisplayInformation, SORT} from './common/types';
+export {CallError, LineError} from './Errors';
+export {ICall, TransferType} from './CallingClient/calling/types';
