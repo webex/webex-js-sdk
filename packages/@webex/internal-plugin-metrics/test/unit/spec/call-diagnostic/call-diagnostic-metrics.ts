@@ -9,6 +9,7 @@ import {BrowserDetection} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
+import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -50,6 +51,7 @@ describe('internal-plugin-metrics', () => {
           },
           metrics: {
             submitClientMetrics: sinon.stub(),
+            config: {...CONFIG.metrics}
           },
           newMetrics: {
             postPreLoginMetric: sinon.stub(),
@@ -100,6 +102,12 @@ describe('internal-plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
+    });
+
+    describe('#validator', () => {
+      it('should have a validator function defined', () => {
+        assert.isDefined(cd.validator);
+      });
     });
 
     describe('#getOrigin', () => {
@@ -408,6 +416,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
         const options = {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
@@ -483,6 +492,39 @@ describe('internal-plugin-metrics', () => {
           senderCountryCode: 'UK',
           version: 1,
         });
+        assert.calledWith(validatorSpy, {type: 'ce', event: {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        }})
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
         assert.deepEqual(webexLoggerLogCalls[0].args, [
@@ -1211,6 +1253,7 @@ describe('internal-plugin-metrics', () => {
           cd,
           'getErrorPayloadForClientErrorCode'
         );
+        const validatorSpy = sinon.spy(cd, 'validator');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const options = {
@@ -1264,6 +1307,38 @@ describe('internal-plugin-metrics', () => {
           },
           options
         );
+
+        assert.calledWith(validatorSpy, {type: 'mqe', event: {
+          eventId: 'my-fake-id',
+          version: 1,
+          origin: {origin: 'fake-origin'},
+          originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+          senderCountryCode: 'UK',
+          event: {
+            name: 'client.mediaquality.event',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: {webClientDomain: 'whatever'},
+            intervals: [{}],
+            sourceMetadata: {
+              applicationSoftwareType: 'webex-js-sdk',
+              applicationSoftwareVersion: 'webex-version',
+              mediaEngineSoftwareType: 'browser',
+              mediaEngineSoftwareVersion: getOSVersion(),
+              startTime: now.toISOString(),
+            },
+          },
+        }});
 
         assert.calledWith(submitToCallDiagnosticsSpy, {
           eventId: 'my-fake-id',
@@ -1511,6 +1586,33 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should override custom properties for a NetworkOrCORSERror', () => {
+        const error = new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        });
+
+        error.payloadOverrides = {
+          shownToUser: true,
+          category: 'expected'
+        };
+
+        const res = cd.generateClientEventErrorPayload(
+          error
+        );
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
+          serviceErrorCode: undefined,
+          errorCode: 1026,
+        });
+      });
+
       it('should return AuthenticationFailed code for an Unauthorized error', () => {
         const res = cd.generateClientEventErrorPayload(
           new WebexHttpError.Unauthorized({
@@ -1526,6 +1628,33 @@ describe('internal-plugin-metrics', () => {
           fatal: true,
           name: 'other',
           shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1010,
+        });
+      });
+
+      it('should override custom properties for an Unauthorized error', () => {
+        const error = new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        });
+        
+        error.payloadOverrides = {
+          shownToUser: true,
+          category: 'expected'
+        };
+
+        const res = cd.generateClientEventErrorPayload(
+          error
+        );
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
           serviceErrorCode: undefined,
           errorCode: 1010,
         });
@@ -1690,6 +1819,7 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics-prelogin',
               service: 'metrics',
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
               headers: {
                 authorization: false,
                 'x-prelogin-userid': preLoginId,
@@ -1701,7 +1831,8 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics',
               service: 'metrics',
-              headers: {}
+              headers: {},
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
             })
           }
 

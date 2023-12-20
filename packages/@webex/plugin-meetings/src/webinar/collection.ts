@@ -2,14 +2,30 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 
-import AmpCollection from 'ampersand-collection';
-
 import {MEETINGS} from '../constants';
 
-const WebinarCollection = AmpCollection.extend({
-  namespace: MEETINGS,
+class WebinarCollection {
+  webinarInfo: any;
 
-  mainIndex: 'sessionId',
-});
+  namespace = MEETINGS;
+
+  mainIndex = 'sessionId';
+
+  constructor() {
+    this.webinarInfo = {};
+  }
+
+  set(id, info) {
+    this.webinarInfo[id] = info;
+  }
+
+  /**
+   * @param {String} id
+   * @returns {Member}
+   */
+  get(id: string) {
+    return this.webinarInfo[id];
+  }
+}
 
 export default WebinarCollection;
