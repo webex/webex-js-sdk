@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.288](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.287...v3.0.0-beta.288) (2023-12-20)
+
+
+### Features
+
+* **webinar:** add webinar related props ([#3253](https://github.com/webex/webex-js-sdk/issues/3253)) ([871640b](https://github.com/webex/webex-js-sdk/commit/871640b956368c9ba23dcbfc93433a95be30a8d6))
+
 ## [3.0.0-beta.287](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.286...v3.0.0-beta.287) (2023-12-19)
 
 
