@@ -5704,7 +5704,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.ice.end',
         payload: {
           canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
-          icePhase: 'JOIN_MEETING_FINAL',
+          icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
           errors: [
             // @ts-ignore
             this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({

@@ -1745,7 +1745,7 @@ describe('plugin-meetings', () => {
             name: 'client.ice.end',
             payload: {
               canProceed: true,
-              icePhase: 'JOIN_MEETING_FINAL',
+              icePhase: 'JOIN_MEETING_RETRY',
               errors: [FAKE_ERROR],
             },
             options: {
@@ -1902,7 +1902,7 @@ describe('plugin-meetings', () => {
             name: 'client.ice.end',
             payload: {
               canProceed: true,
-              icePhase: 'JOIN_MEETING_FINAL',
+              icePhase: 'JOIN_MEETING_RETRY',
               errors: [FAKE_ERROR],
             },
             options: {
