@@ -9,7 +9,8 @@
     "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
     "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
     "Moriah Maney <momaney@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>"
+    "Taymoor Khan <taykhan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>"
   ],
   "main": "dist/index.js",
   "devMain": "src/index.js",
