@@ -5812,6 +5812,56 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Calls establishMediaConnection with isForced = true to force turn discovery to happen
+   *
+   * @private
+   * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
+   * @param {BundlePolicy} [bundlePolicy]
+   * @returns {Promise<void>}
+   */
+  private async retryEstablishMediaConnectionWithForcedTurnDiscovery(
+    remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
+    bundlePolicy?: BundlePolicy
+  ): Promise<void> {
+    const LOG_HEADER =
+      'Meeting:index#addMedia():retryEstablishMediaConnectionWithForcedTurnDiscovery -->';
+
+    try {
+      await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, true);
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `${LOG_HEADER} retry with TURN server failed, media connection unable to connect, `,
+        err
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Does relevant clean up before retrying to establish media connection
+   * and performs the retry with forced turn discovery
+   *
+   * @private
+   * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
+   * @param {BundlePolicy} [bundlePolicy]
+   * @returns {Promise<void>}
+   */
+  private async retryWithForcedTurnDiscovery(
+    remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
+    bundlePolicy?: BundlePolicy
+  ): Promise<void> {
+    this.retriedWithTurnServer = true;
+
+    await this.cleanUpBeforeRetryWithTurnServer();
+
+    await this.retryEstablishMediaConnectionWithForcedTurnDiscovery(
+      remoteMediaManagerConfig,
+      bundlePolicy
+    );
+  }
+
+  /**
    * If waitForMediaConnectionConnected() fails when we haven't done turn discovery then we
    * attempt to establish a media connection again, but this time using turn discovery. If we
    * used turn discovery on the first pass we do not attempt connection again.
@@ -5835,20 +5885,8 @@ export default class Meeting extends StatelessWebexPlugin {
         `${LOG_HEADER} error waiting for media to connect on UDP/TCP, retrying using TURN server, `,
         error
       );
-      this.retriedWithTurnServer = true;
 
-      await this.cleanUpBeforeRetryWithTurnServer();
-
-      try {
-        await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, true);
-      } catch (err) {
-        LoggerProxy.logger.error(
-          `${LOG_HEADER} retry with TURN server failed, media connection unable to connect, `,
-          err
-        );
-
-        throw err;
-      }
+      await this.retryWithForcedTurnDiscovery(remoteMediaManagerConfig, bundlePolicy);
     } else {
       LoggerProxy.logger.error(
         `${LOG_HEADER} error waiting for media to connect using TURN server`,
