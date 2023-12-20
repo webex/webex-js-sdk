@@ -35,7 +35,16 @@ export {
   CallerIdDisplay,
   Disposition,
   LINE_EVENT_KEYS,
+  COMMON_EVENT_KEYS,
+  UserSession,
 } from './Events/types';
-export {CallDetails, CallDirection, CallType, DisplayInformation, SORT} from './common/types';
+export {
+  CallDetails,
+  CallDirection,
+  CallType,
+  DisplayInformation,
+  SORT,
+  SORT_BY,
+} from './common/types';
 export {CallError, LineError} from './Errors';
 export {ICall, TransferType} from './CallingClient/calling/types';
