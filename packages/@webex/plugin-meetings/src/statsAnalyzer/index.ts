@@ -394,11 +394,12 @@ export class StatsAnalyzer extends EventsScope {
   filterAndParseGetStatsResults(statsItem: any, type: string, isSender: boolean) {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
-    const reports = [];
-    statsItem.report.forEach((report) => reports.push(report));
-    this.successfulCandidatePair = reports.find(
-      (report) => report.type === 'candidate-pair' && report.state === 'succeeded'
-    );
+    // get the successful candidate pair before parsing stats.
+    statsItem.report.forEach((report) => {
+      if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        this.successfulCandidatePair = report;
+      }
+    });
 
     statsItem.report.forEach((result) => {
       if (types.includes(result.type)) {
