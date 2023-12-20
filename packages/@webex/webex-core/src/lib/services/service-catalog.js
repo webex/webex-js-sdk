@@ -413,6 +413,8 @@ const ServiceCatalog = AmpState.extend({
         resolve();
       }
 
+      const validatedTimeout = typeof timeout === 'number' && timeout >= 0 ? timeout : 60;
+
       const timeoutTimer = setTimeout(
         () =>
           reject(
@@ -420,7 +422,7 @@ const ServiceCatalog = AmpState.extend({
               `services: timeout occured while waiting for '${serviceGroup}' catalog to populate`
             )
           ),
-        timeout ? timeout * 1000 : 60000
+        validatedTimeout * 1000
       );
 
       this.once(serviceGroup, () => {
