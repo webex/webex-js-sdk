@@ -22,8 +22,10 @@ export {ICallingClient} from './CallingClient/types';
 export {ICallHistory, JanusResponseEvent} from './CallHistory/types';
 export {
   CallForwardSetting,
+  CallForwardAlwaysSetting,
   CallSettingResponse,
   ICallSettings,
+  ToggleSetting,
   VoicemailSetting,
 } from './CallSettings/types';
 export {Contact, ContactResponse, GroupType, IContacts} from './Contacts/types';
