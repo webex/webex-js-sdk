@@ -1,5 +1,5 @@
 import {NoiseReductionEffect, createMicrophoneStream} from '@webex/media-helpers';
-import {ERROR_LAYER} from './Errors/types';
+import {ERROR_LAYER, ERROR_TYPE} from './Errors/types';
 import {ICallingClient} from './CallingClient/types';
 import {ICallHistory, JanusResponseEvent} from './CallHistory/types';
 import {
@@ -19,7 +19,7 @@ import {
   LINE_EVENT_KEYS,
 } from './Events/types';
 import {CallDetails, CallDirection, CallType, DisplayInformation, SORT} from './common/types';
-import {CallError} from './Errors';
+import {CallError, LineError} from './Errors';
 import {ICall, TransferType} from './CallingClient/calling/types';
 import {createCallSettingsClient} from './CallSettings/CallSettings';
 import {createContactsClient} from './Contacts/ContactsClient';
@@ -53,8 +53,10 @@ export {
   DisplayInformation,
   Disposition,
   ERROR_LAYER,
+  ERROR_TYPE,
   LINE_EVENTS,
   LINE_EVENT_KEYS,
+  LineError,
   SORT,
   SummaryInfo,
   TransferType,
