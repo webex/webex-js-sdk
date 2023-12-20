@@ -352,6 +352,27 @@ describe('TurnDiscovery', () => {
     });
   });
 
+  describe('isSkipped', () => {
+    [
+      {enabledInConfig: true, isAnyClusterReachable: true, expectedIsSkipped: true},
+      {enabledInConfig: true, isAnyClusterReachable: false, expectedIsSkipped: false},
+      {enabledInConfig: false, isAnyClusterReachable: true, expectedIsSkipped: true},
+      {enabledInConfig: false, isAnyClusterReachable: false, expectedIsSkipped: true},
+    ].forEach(({enabledInConfig, isAnyClusterReachable, expectedIsSkipped}) => {
+      it(`returns ${expectedIsSkipped} when TURN discovery is ${enabledInConfig ? '' : 'not '} enabled in config and isAnyClusterReachable() returns ${isAnyClusterReachable ? 'true' : 'false'}`, async () => {
+        testMeeting.config.experimental.enableTurnDiscovery = enabledInConfig;
+
+        sinon.stub(testMeeting.webex.meetings.reachability, 'isAnyClusterReachable').resolves(isAnyClusterReachable);
+
+        const td = new TurnDiscovery(mockRoapRequest);
+
+        const isSkipped = await td.isSkipped(testMeeting);
+
+        assert.equal(isSkipped, expectedIsSkipped);
+      })
+    })
+  })
+
   describe('handleTurnDiscoveryResponse', () => {
     it("doesn't do anything if turn discovery was not started", () => {
       const td = new TurnDiscovery(mockRoapRequest);
