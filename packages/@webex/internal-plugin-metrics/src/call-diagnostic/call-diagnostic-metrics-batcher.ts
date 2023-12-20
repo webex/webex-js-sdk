@@ -56,6 +56,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         body: {
           metrics: payload,
         },
+        waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
       })
       .then((res) => {
         this.webex.logger.log(

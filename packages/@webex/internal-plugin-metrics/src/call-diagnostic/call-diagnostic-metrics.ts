@@ -410,16 +410,19 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg - get error arg
    * @param arg.clientErrorCode
    * @param arg.serviceErrorCode
+   * @param arg.payloadOverrides
    * @returns
    */
   public getErrorPayloadForClientErrorCode({
     clientErrorCode,
     serviceErrorCode,
     serviceErrorName,
+    payloadOverrides,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
+    payloadOverrides?: any;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -432,7 +435,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           {errorCode: clientErrorCode},
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
-          partialParsedError
+          partialParsedError,
+          payloadOverrides || {}
         );
 
         return error;
@@ -489,6 +493,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
+        payloadOverrides: rawError.payloadOverrides,
       });
       payload.errorDescription = rawError.message;
 
@@ -499,6 +504,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
+        payloadOverrides: rawError.payloadOverrides,
       });
       payload.errorDescription = rawError.message;
 
@@ -825,6 +831,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         metrics: [diagnosticEvent],
       },
       headers: {},
+      // @ts-ignore
+      waitForServiceTimeout: this.webex.internal.metrics.config.waitForServiceTimeout,
     };
 
     if (options.preLoginId) {

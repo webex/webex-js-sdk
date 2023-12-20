@@ -9,6 +9,7 @@ import {BrowserDetection} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
+import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -50,6 +51,7 @@ describe('internal-plugin-metrics', () => {
           },
           metrics: {
             submitClientMetrics: sinon.stub(),
+            config: {...CONFIG.metrics}
           },
           newMetrics: {
             postPreLoginMetric: sinon.stub(),
@@ -1584,6 +1586,33 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should override custom properties for a NetworkOrCORSERror', () => {
+        const error = new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        });
+
+        error.payloadOverrides = {
+          shownToUser: true,
+          category: 'expected'
+        };
+
+        const res = cd.generateClientEventErrorPayload(
+          error
+        );
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
+          serviceErrorCode: undefined,
+          errorCode: 1026,
+        });
+      });
+
       it('should return AuthenticationFailed code for an Unauthorized error', () => {
         const res = cd.generateClientEventErrorPayload(
           new WebexHttpError.Unauthorized({
@@ -1599,6 +1628,33 @@ describe('internal-plugin-metrics', () => {
           fatal: true,
           name: 'other',
           shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 1010,
+        });
+      });
+
+      it('should override custom properties for an Unauthorized error', () => {
+        const error = new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        });
+        
+        error.payloadOverrides = {
+          shownToUser: true,
+          category: 'expected'
+        };
+
+        const res = cd.generateClientEventErrorPayload(
+          error
+        );
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
           serviceErrorCode: undefined,
           errorCode: 1010,
         });
@@ -1763,6 +1819,7 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics-prelogin',
               service: 'metrics',
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
               headers: {
                 authorization: false,
                 'x-prelogin-userid': preLoginId,
@@ -1774,7 +1831,8 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics',
               service: 'metrics',
-              headers: {}
+              headers: {},
+              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
             })
           }
 

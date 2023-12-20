@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.288](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.287...v3.0.0-beta.288) (2023-12-20)
+
+
+### Features
+
+* **webinar:** add webinar related props ([#3253](https://github.com/webex/webex-js-sdk/issues/3253)) ([871640b](https://github.com/webex/webex-js-sdk/commit/871640b956368c9ba23dcbfc93433a95be30a8d6))
+
+## [3.0.0-beta.287](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.286...v3.0.0-beta.287) (2023-12-19)
+
+
+### Features
+
+* **plugin-metrics:** payload overrides ([#3270](https://github.com/webex/webex-js-sdk/issues/3270)) ([9eb9f47](https://github.com/webex/webex-js-sdk/commit/9eb9f479406c9c7639768a413b94d73b11e5a7b5))
+
+## [3.0.0-beta.286](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.285...v3.0.0-beta.286) (2023-12-19)
+
+
+### Bug Fixes
+
+* local linking with internal-media-core ([#3265](https://github.com/webex/webex-js-sdk/issues/3265)) ([bbf1acc](https://github.com/webex/webex-js-sdk/commit/bbf1accc4b85a448411b74db3e6a8ef19660d30a))
+
+## [3.0.0-beta.285](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.284...v3.0.0-beta.285) (2023-12-18)
+
+
+### Features
+
+* **logs:** add log metadata ([#3260](https://github.com/webex/webex-js-sdk/issues/3260)) ([f5b340a](https://github.com/webex/webex-js-sdk/commit/f5b340a5d12efe0b0067f6ebfce9d56a6276464f))
+
+## [3.0.0-beta.284](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.283...v3.0.0-beta.284) (2023-12-18)
+
+
+### Bug Fixes
+
+* **metrics:** catalog-delay ([#3235](https://github.com/webex/webex-js-sdk/issues/3235)) ([9d4c45f](https://github.com/webex/webex-js-sdk/commit/9d4c45f7a1dac42131ba30ee758f0b60cf4ea7ee))
+
 ## [3.0.0-beta.283](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.282...v3.0.0-beta.283) (2023-12-15)
 
 ## [3.0.0-beta.282](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.281...v3.0.0-beta.282) (2023-12-15)
