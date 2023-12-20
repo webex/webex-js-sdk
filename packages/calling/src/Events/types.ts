@@ -219,8 +219,6 @@ export type CallHistoryEventTypes = {
 /* External Eventing End */
 
 /** Internal Eventing Start */
-// https://sqbu-github.cisco.com/pages/webrtc-calling/mobius/mobius-api-spec/docs/async.html#operation-publish-calls
-
 enum CALL_STATE {
   HELD = 'held',
   REMOTE_HELD = 'remoteheld',
