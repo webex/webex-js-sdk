@@ -363,6 +363,90 @@ describe('Call Tests', () => {
     call.answer(localAudioStream);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
   });
+
+  it('answer fails if localAudioTrack is empty', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+          correlationId: '8a67806f-fc4d-446b-a131-31e71ea5b011',
+        },
+        callId: '8a67806f-fc4d-446b-a131-31e71ea5b020',
+      },
+    });
+
+    const warnSpy = jest.spyOn(log, 'warn');
+    const call = createCall(
+      activeUrl,
+      webex,
+      dest,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator
+    );
+
+    call.answer(localAudioStream);
+
+    await waitForMsecs(50);
+    expect(warnSpy).toBeCalledTimes(2);
+    expect(warnSpy).toBeCalledWith(
+      `Did not find a local track while answering the call ${call.getCorrelationId()}`,
+      {file: 'call', method: 'answer'}
+    );
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_IDLE');
+
+    expect(call.getDisconnectReason().code).toBe(DisconnectCode.MEDIA_INACTIVITY);
+    expect(call.getDisconnectReason().cause).toBe(DisconnectCause.MEDIA_INACTIVITY);
+
+    expect(webex.request.mock.calls[0][0].body.metrics).toStrictEqual(disconnectStats);
+  });
+  it('dial fails if localAudioTrack is empty', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+
+    const warnSpy = jest.spyOn(log, 'warn');
+    const call = createCall(
+      activeUrl,
+      webex,
+      dest,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator
+    );
+
+    call.dial(localAudioStream);
+
+    await waitForMsecs(50);
+    expect(warnSpy).toBeCalledTimes(1);
+    expect(warnSpy).toBeCalledWith(
+      `Did not find a local track while dialling the call ${call.getCorrelationId()}`,
+      {file: 'call', method: 'dial'}
+    );
+    expect(call['callStateMachine'].state.value).toBe('S_IDLE');
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_IDLE');
+
+    expect(webex.request).not.toBeCalledOnceWith();
+  });
 });
 
 describe('State Machine handler tests', () => {
@@ -1825,7 +1909,7 @@ describe('Supplementary Services tests', () => {
       /* We should return back to call established state */
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
 
-      expect(warnSpy).toHaveBeenCalledWith('MediaOk failed with Mobius', {
+      expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
         file: 'call',
         method: 'handleRoapEstablished',
       });
@@ -1869,7 +1953,7 @@ describe('Supplementary Services tests', () => {
       expect(call.isHeld()).toStrictEqual(true);
       /* We should return back to call established state */
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
-      expect(warnSpy).toHaveBeenCalledWith('MediaOk failed with Mobius', {
+      expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
         file: 'call',
         method: 'handleRoapEstablished',
       });
