@@ -1250,14 +1250,6 @@ export async function resolveCallerIdDisplay(filter: string) {
     displayResult.avatarSrc = photo ? photo.value : 'unknown';
 
     displayResult.id = scimResource.id;
-
-    log.info(
-      `Extracted details:- name: ${displayResult.name} , number: ${displayResult.num}, photo: ${displayResult.avatarSrc}, id: ${displayResult.id}`,
-      {
-        file: UTILS_FILE,
-        method: 'resolveCallerIdDisplay',
-      }
-    );
   }
 
   return displayResult;
