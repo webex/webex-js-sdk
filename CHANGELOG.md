@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.290](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.289...v3.0.0-beta.290) (2023-12-21)
+
+
+### Features
+
+* **members:** add reclaimHostRole functionality ([#3272](https://github.com/webex/webex-js-sdk/issues/3272)) ([24988d8](https://github.com/webex/webex-js-sdk/commit/24988d8c0c60cb89a00822917aa602f7b47dae2a))
+
 ## [3.0.0-beta.289](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.288...v3.0.0-beta.289) (2023-12-21)
 
 
