@@ -59,6 +59,32 @@ describe('plugin-meetings', () => {
           },
         });
       });
+
+      it('returns the correct request params with a hostKey', () => {
+        const format = {
+          locusUrl: 'locusUrl',
+          memberId: 'test',
+          roles: [
+            {type: 'PRESENTER', hasRole: true, hostKey: '123456'},
+            {type: 'MODERATOR', hasRole: false, hostKey: '123456'},
+            {type: 'COHOST', hasRole: true, hostKey: '123456'},
+          ],
+        };
+
+        assert.deepEqual(MembersUtil.getRoleAssignmentMemberRequestParams(format), {
+          method: 'PATCH',
+          uri: `locusUrl/${PARTICIPANT}/test/${CONTROLS}`,
+          body: {
+            role: {
+              roles: [
+                {type: 'PRESENTER', hasRole: true, hostKey: '123456'},
+                {type: 'MODERATOR', hasRole: false, hostKey: '123456'},
+                {type: 'COHOST', hasRole: true, hostKey: '123456'},
+              ],
+            },
+          },
+        });
+      });
     });
 
     describe('#generateRaiseHandMemberOptions', () => {
