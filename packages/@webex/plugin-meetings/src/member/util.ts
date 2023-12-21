@@ -31,7 +31,6 @@ const MemberUtil: any = {};
 /**
  * @param {Object} participant the locus participant
  * @returns {Boolean}
- * https://confluence-eng-gpk2.cisco.com/conf/pages/viewpage.action?spaceKey=LOCUS&title=Reclaim+Host+Role
  */
 MemberUtil.canReclaimHost = (participant) => {
   if (!participant) {
