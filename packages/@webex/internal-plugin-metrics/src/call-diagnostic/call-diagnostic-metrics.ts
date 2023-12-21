@@ -253,8 +253,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meeting.locusInfo.fullState && meeting.locusInfo.fullState.lastActive;
     }
 
-    if (meeting?.meetingInfo?.confID) {
-      identifiers.webexConferenceIdStr = `${meeting.meetingInfo?.confID}`;
+    if (meeting?.meetingInfo?.confIdStr || meeting?.meetingInfo?.confID) {
+      identifiers.webexConferenceIdStr = `${
+        meeting.meetingInfo?.confIdStr || meeting.meetingInfo?.confID
+      }`;
     }
 
     if (meeting?.meetingInfo?.meetingId) {
