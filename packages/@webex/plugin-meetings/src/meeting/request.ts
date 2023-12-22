@@ -4,6 +4,7 @@ import {debounce} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore
 import {deviceType} from '@webex/common';
+import {anonymizeIPAddress} from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
@@ -162,6 +163,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         url: deviceUrl,
         // @ts-ignore - config comes from registerPlugin
         deviceType: this.config.meetings.deviceType,
+        // TODO
+        // machineId: this.webex.internal.device.getMachineId(),
       },
       usingResource: resourceId || null,
       moveMediaToResource: (resourceId && moveToResource) || false,
@@ -198,6 +201,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body.device.countryCode = this.webex.meetings.geoHintInfo.countryCode;
       // @ts-ignore
       body.device.regionCode = this.webex.meetings.geoHintInfo.regionCode;
+      body.device.localIp =
+        // @ts-ignore
+        anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined;
     }
 
     if (moderator !== undefined) {
