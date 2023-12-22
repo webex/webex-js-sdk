@@ -51,7 +51,7 @@ describe('Roap', () => {
     let webex;
     let roap;
 
-    const fakeLocus = { id: 'fake locus'};
+    const fakeLocus = {id: 'fake locus'};
 
     beforeEach(() => {
       webex = new MockWebex({});
@@ -60,17 +60,17 @@ describe('Roap', () => {
         correlationId: 'correlation id',
         selfUrl: 'self url',
         mediaId: 'media id',
-        audio:{
+        audio: {
           isLocallyMuted: () => true,
         },
-        video:{
+        video: {
           isLocallyMuted: () => false,
         },
         isMultistream: true,
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
-        webex: { meetings: { reachability: { isAnyPublicClusterReachable: () => true}}},
+        webex: {meetings: {reachability: {isAnyPublicClusterReachable: () => true}}},
         updateMediaConnections: sinon.stub(),
       };
 
@@ -119,13 +119,16 @@ describe('Roap', () => {
         };
 
         assert.calledOnce(sendRoapStub);
-        assert.calledWith(sendRoapStub, sinon.match({
-          roapMessage: expectedRoapMessage,
-          locusSelfUrl: meeting.selfUrl,
-          mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-          meetingId: meeting.id,
-          locusMediaRequest: meeting.locusMediaRequest,
-        }));
+        assert.calledWith(
+          sendRoapStub,
+          sinon.match({
+            roapMessage: expectedRoapMessage,
+            locusSelfUrl: meeting.selfUrl,
+            mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
+            meetingId: meeting.id,
+            locusMediaRequest: meeting.locusMediaRequest,
+          })
+        );
       })
     );
 
@@ -133,20 +136,22 @@ describe('Roap', () => {
       const roapAnswer = {
         seq: 5,
         messageType: 'ANSWER',
-        sdps : ['sdp answer'],
+        sdps: ['sdp answer'],
         errorType: 'error type', // normally ANSWER would not have errorType or errorCause (only error messages have these)
         errorCause: 'error cause', // but we're just testing here that all the fields are forwarded to the caller of sendRoapMediaRequest()
         headers: ['header1', 'header2'],
-      }
-      const fakeMediaConnections = [{
-        remoteSdp: JSON.stringify({
-          roapMessage: roapAnswer
-        })
-      }];
+      };
+      const fakeMediaConnections = [
+        {
+          remoteSdp: JSON.stringify({
+            roapMessage: roapAnswer,
+          }),
+        },
+      ];
 
       sendRoapStub.resolves({
         mediaConnections: fakeMediaConnections,
-        locus: fakeLocus
+        locus: fakeLocus,
       });
 
       const result = await roap.sendRoapMediaRequest({
@@ -168,19 +173,22 @@ describe('Roap', () => {
           errorType: 'error type',
           errorCause: 'error cause',
           headers: ['header1', 'header2'],
-        }
+        },
       });
     });
 
     it('handles the case when there is no answer in the http response', async () => {
-      const fakeMediaConnections = [{
-        // this is the actual value Locus returns to us when they don't send Roap ANSWER in the http response
-        remoteSdp: "{\"audioMuted\":false,\"videoMuted\":false,\"csis\":[],\"dtmfReceiveSupported\":true,\"type\":\"SDP\"}",
-      }];
+      const fakeMediaConnections = [
+        {
+          // this is the actual value Locus returns to us when they don't send Roap ANSWER in the http response
+          remoteSdp:
+            '{"audioMuted":false,"videoMuted":false,"csis":[],"dtmfReceiveSupported":true,"type":"SDP"}',
+        },
+      ];
 
       sendRoapStub.resolves({
         mediaConnections: fakeMediaConnections,
-        locus: fakeLocus
+        locus: fakeLocus,
       });
 
       const result = await roap.sendRoapMediaRequest({
@@ -195,7 +203,7 @@ describe('Roap', () => {
       assert.calledOnceWithExactly(meeting.updateMediaConnections, fakeMediaConnections);
       assert.deepEqual(result, {
         locus: fakeLocus,
-        roapAnswer: undefined
+        roapAnswer: undefined,
       });
       assert.calledOnceWithExactly(
         Metrics.sendBehavioralMetric,
@@ -213,12 +221,15 @@ describe('Roap', () => {
         {mediaConnections: undefined, title: 'mediaConnections are undefined'},
         {mediaConnections: [], title: 'mediaConnections are empty array'},
         {mediaConnections: [{}], title: 'mediaConnections[0] has no remoteSdp'},
-        {mediaConnections: [{remoteSdp: '{}'}], title: 'mediaConnections[0].remoteSdp is an empty json'},
+        {
+          mediaConnections: [{remoteSdp: '{}'}],
+          title: 'mediaConnections[0].remoteSdp is an empty json',
+        },
       ].forEach(({mediaConnections, title}) =>
         it(title, async () => {
           sendRoapStub.resolves({
             mediaConnections,
-            locus: fakeLocus
+            locus: fakeLocus,
           });
 
           const result = await roap.sendRoapMediaRequest({
@@ -232,7 +243,7 @@ describe('Roap', () => {
           assert.calledOnce(sendRoapStub);
           assert.deepEqual(result, {
             locus: fakeLocus,
-            roapAnswer: undefined
+            roapAnswer: undefined,
           });
 
           assert.calledOnceWithExactly(
@@ -244,7 +255,8 @@ describe('Roap', () => {
               isMultistream: meeting.isMultistream,
             }
           );
-        }));
+        })
+      );
     });
   });
 });

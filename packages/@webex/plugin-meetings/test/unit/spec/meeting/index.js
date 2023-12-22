@@ -1193,7 +1193,7 @@ describe('plugin-meetings', () => {
 
         it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
-          
+
           meeting.webex.meetings.reachability = {
             getReachabilityMetrics: sinon.stub().resolves({
               someReachabilityMetric1: 'some value1',
@@ -2097,7 +2097,7 @@ describe('plugin-meetings', () => {
         let clock;
 
         beforeEach(() => {
-          clock = sinon.useFakeTimers(); 
+          clock = sinon.useFakeTimers();
 
           sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
@@ -2237,7 +2237,7 @@ describe('plugin-meetings', () => {
 
         // simulates a Roap OK being sent
         const simulateRoapOk = async () => {
-          const roapListener = getRoapListener(); 
+          const roapListener = getRoapListener();
 
           await roapListener({roapMessage: roapOKMessage});
           await stableState();
@@ -5489,7 +5489,7 @@ describe('plugin-meetings', () => {
 
           it('handles REMOTE_SDP_ANSWER_PROCESSED correctly', () => {
             const clock = sinon.useFakeTimers();
-            sinon.spy(clock, "clearTimeout");
+            sinon.spy(clock, 'clearTimeout');
             meeting.deferSDPAnswer = {
               resolve: sinon.stub(),
             };
@@ -5514,10 +5514,10 @@ describe('plugin-meetings', () => {
               }
             );
 
-            assert.calledOnce(meeting.deferSDPAnswer.resolve)
-            assert.calledOnce(clock.clearTimeout)
-            assert.calledWith(clock.clearTimeout, '1234')
-            assert.equal(meeting.sdpResponseTimer, undefined)
+            assert.calledOnce(meeting.deferSDPAnswer.resolve);
+            assert.calledOnce(clock.clearTimeout);
+            assert.calledWith(clock.clearTimeout, '1234');
+            assert.equal(meeting.sdpResponseTimer, undefined);
           });
 
           it('handles LOCAL_SDP_OFFER_GENERATED correctly', () => {
