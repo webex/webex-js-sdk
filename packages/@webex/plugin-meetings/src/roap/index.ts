@@ -8,6 +8,8 @@ import RoapRequest from './request';
 import TurnDiscovery from './turnDiscovery';
 import Meeting from '../meeting';
 import MeetingUtil from '../meeting/util';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 /**
  * Roap options
@@ -234,6 +236,14 @@ export default class Roap extends StatelessWebexPlugin {
                 headers,
               };
             }
+          }
+
+          if (!roapAnswer) {
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING, {
+              correlationId: meeting.correlationId,
+              messageType: 'ANSWER',
+              isMultistream: meeting.isMultistream,
+            });
           }
 
           return {locus, roapAnswer};

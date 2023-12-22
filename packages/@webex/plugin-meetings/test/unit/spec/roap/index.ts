@@ -7,6 +7,8 @@ import RoapRequest from '@webex/plugin-meetings/src/roap/request';
 import Roap from '@webex/plugin-meetings/src/roap/';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import Metrics from '@webex/plugin-meetings/src/metrics';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
 import { IP_VERSION } from '../../../../src/constants';
 
@@ -64,6 +66,7 @@ describe('Roap', () => {
         video:{
           isLocallyMuted: () => false,
         },
+        isMultistream: true,
         setRoapSeq: sinon.stub(),
         config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
@@ -72,6 +75,7 @@ describe('Roap', () => {
       };
 
       sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+      sinon.stub(Metrics, 'sendBehavioralMetric');
 
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
       meeting.setRoapSeq.resetHistory();
@@ -193,37 +197,54 @@ describe('Roap', () => {
         locus: fakeLocus,
         roapAnswer: undefined
       });
+      assert.calledOnceWithExactly(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING,
+        {
+          correlationId: meeting.correlationId,
+          messageType: 'ANSWER',
+          isMultistream: meeting.isMultistream,
+        }
+      );
     });
 
     describe('does not crash when http response is missing things', () => {
+      [
+        {mediaConnections: undefined, title: 'mediaConnections are undefined'},
+        {mediaConnections: [], title: 'mediaConnections are empty array'},
+        {mediaConnections: [{}], title: 'mediaConnections[0] has no remoteSdp'},
+        {mediaConnections: [{remoteSdp: '{}'}], title: 'mediaConnections[0].remoteSdp is an empty json'},
+      ].forEach(({mediaConnections, title}) =>
+        it(title, async () => {
+          sendRoapStub.resolves({
+            mediaConnections,
+            locus: fakeLocus
+          });
 
+          const result = await roap.sendRoapMediaRequest({
+            meeting,
+            sdp: 'sdp',
+            reconnect: false,
+            seq: 1,
+            tieBreaker: 4294967294,
+          });
+
+          assert.calledOnce(sendRoapStub);
+          assert.deepEqual(result, {
+            locus: fakeLocus,
+            roapAnswer: undefined
+          });
+
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING,
+            {
+              correlationId: meeting.correlationId,
+              messageType: 'ANSWER',
+              isMultistream: meeting.isMultistream,
+            }
+          );
+        }));
     });
-    [
-      {mediaConnections: undefined, title: 'mediaConnections are undefined'},
-      {mediaConnections: [], title: 'mediaConnections are empty array'},
-      {mediaConnections: [{}], title: 'mediaConnections[0] has no remoteSdp'},
-      {mediaConnections: [{remoteSdp: '{}'}], title: 'mediaConnections[0].remoteSdp is an empty json'},
-    ].forEach(({mediaConnections, title}) =>
-      it(title, async () => {
-        sendRoapStub.resolves({
-          mediaConnections,
-          locus: fakeLocus
-        });
-
-        const result = await roap.sendRoapMediaRequest({
-          meeting,
-          sdp: 'sdp',
-          reconnect: false,
-          seq: 1,
-          tieBreaker: 4294967294,
-        });
-
-        assert.calledOnce(sendRoapStub);
-        assert.deepEqual(result, {
-          locus: fakeLocus,
-          roapAnswer: undefined
-        });
-      }))
-    ;
   });
 });
