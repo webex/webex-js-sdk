@@ -29,9 +29,13 @@ describe('plugin-device', () => {
       })
     );
 
-    afterEach('unregister the device and remove test users', () =>
-      device.unregister().then(() => testUsers.remove([user]))
-    );
+    afterEach('unregister the device and remove test users', (done) => {
+      device
+        .unregister()
+        .then(() => testUsers.remove([user]))
+        .then(() => done())
+        .catch(done);
+    });
 
     describe('events', () => {
       describe('when a meeting is started', () => {
@@ -574,8 +578,9 @@ describe('plugin-device', () => {
                 );
               });
 
-              afterEach('reset the device request', () => {
+              afterEach('reset the device request', (done) => {
                 device.request = request;
+                done();
               });
 
               it('should clear the current device', () =>
@@ -604,8 +609,9 @@ describe('plugin-device', () => {
                 );
               });
 
-              afterEach('resest the request method', () => {
+              afterEach('resest the request method', (done) => {
                 device.request = request;
+                done();
               });
 
               it('should return a rejected promise', () => assert.isRejected(device.refresh()));
@@ -865,8 +871,9 @@ describe('plugin-device', () => {
             );
           });
 
-          afterEach('reset the request method', () => {
+          afterEach('reset the request method', (done) => {
             device.request = request;
+            done(0);
           });
 
           it('returns a rejected promise', () => assert.isRejected(device.unregister()));

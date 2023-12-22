@@ -10,7 +10,7 @@ import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import sinon from 'sinon';
 
-describe('plugin-people', function () {
+describe('plugin-people', async function () {
   this.timeout(60000);
   describe('People', () => {
     let bones, mccoy, spock;
@@ -32,19 +32,19 @@ describe('plugin-people', function () {
     );
 
     describe('#get()', () => {
-      it('gets a person by id', () =>
+      it('gets a person by id', async () =>
         spock.webex.people.get(mccoy.id).then((peopleResponse) => {
           assert.isPerson(peopleResponse);
           assert.equal(peopleResponse.emails[0], mccoy.email);
         }));
 
-      it('gets the current user with "get(\'me\')"', () =>
+      it('gets the current user with "get(\'me\')"', async () =>
         spock.webex.people.get('me').then((peopleResponse) => {
           assert.isPerson(peopleResponse);
           assert.equal(peopleResponse.emails[0], spock.email);
         }));
 
-      it('gets a user by hydra id', () =>
+      it('gets a user by hydra id', async () =>
         spock.webex.people
           .get('me')
           .then((person) => spock.webex.people.get(person.id))
@@ -53,7 +53,7 @@ describe('plugin-people', function () {
             assert.equal(person.emails[0], spock.email);
           }));
 
-      it('gets multiple users at a time', () =>
+      it('gets multiple users at a time', async () =>
         Promise.all([spock.webex.people.get(mccoy.id), spock.webex.people.get('me')]).then(
           (peopleResponse) => {
             assert.isPerson(peopleResponse[0]);
@@ -65,7 +65,7 @@ describe('plugin-people', function () {
     });
 
     describe('#list()', () => {
-      it('gets a group of people by ids', () =>
+      it('gets a group of people by ids', async () =>
         spock.webex.people.list([mccoy.id, spock.id, bones.id]).then((peopleResponse) => {
           assert.equal(peopleResponse.length, 3);
           assert.isPerson(peopleResponse[0]);
@@ -75,12 +75,12 @@ describe('plugin-people', function () {
           assert.equal(peopleResponse[1].emails[0], spock.email);
         }));
 
-      it('defaults to false showAllTypes', () =>
+      it('defaults to false showAllTypes', async () =>
         spock.webex.people
           .list([mccoy.id, spock.id, bones.id])
           .then(assert.isFalse(spock.webex.people.batcher.config.showAllTypes)));
 
-      it('sets showAllTypes to true', () => {
+      it('sets showAllTypes to true', async () => {
         spock.webex.people.batcher.config.showAllTypes = true;
 
         return spock.webex.people
@@ -88,7 +88,7 @@ describe('plugin-people', function () {
           .then(assert.isTrue(spock.webex.people.batcher.config.showAllTypes));
       });
 
-      it('returns a list of people matching email address', () =>
+      it('returns a list of people matching email address', async () =>
         spock.webex.people.list({email: mccoy.email}).then((peopleResponse) => {
           assert.isAbove(peopleResponse.items.length, 0);
           const person = peopleResponse.items[0];
@@ -98,7 +98,7 @@ describe('plugin-people', function () {
         }));
 
       // SPARK-413317
-      it.skip('returns a list of people matching name', () =>
+      it.skip('returns a list of people matching name', async () =>
         spock.webex.people.list({displayName: mccoy.name}).then((peopleResponse) => {
           assert.isAbove(peopleResponse.items.length, 0);
           let isMccoyFound = false;
@@ -121,7 +121,7 @@ describe('plugin-people', function () {
           })
         );
 
-        it('batches uuid get requests into one', () => {
+        it('batches uuid get requests into one', async () => {
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
           return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user.id))).then(
@@ -133,7 +133,7 @@ describe('plugin-people', function () {
           );
         });
 
-        it('batches people get requests into one', () => {
+        it('batches people get requests into one', async () => {
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
           return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user))).then(
@@ -146,7 +146,7 @@ describe('plugin-people', function () {
           );
         });
 
-        it('executes network requests for max limit', () => {
+        it('executes network requests for max limit', async () => {
           spock.webex.people.config.batcherMaxCalls = 2;
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
@@ -162,7 +162,7 @@ describe('plugin-people', function () {
     });
 
     describe('#inferPersonId', () => {
-      it('infers a person id without a network dip', () =>
+      it('infers a person id without a network dip', async () =>
         spock.webex.people
           .get(spock.id)
           .then((me) => assert.equal(spock.webex.people.inferPersonIdFromUuid(spock.id), me.id)));
