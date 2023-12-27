@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.291](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.290...v3.0.0-beta.291) (2023-12-21)
+
+
+### Bug Fixes
+
+* **metrics:** update to confIdStr ([#3280](https://github.com/webex/webex-js-sdk/issues/3280)) ([96f2310](https://github.com/webex/webex-js-sdk/commit/96f23106c5d83e7184a3e8b25a22503eb0b5625e))
+
+## [3.0.0-beta.290](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.289...v3.0.0-beta.290) (2023-12-21)
+
+
+### Features
+
+* **members:** add reclaimHostRole functionality ([#3272](https://github.com/webex/webex-js-sdk/issues/3272)) ([24988d8](https://github.com/webex/webex-js-sdk/commit/24988d8c0c60cb89a00822917aa602f7b47dae2a))
+
+## [3.0.0-beta.289](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.288...v3.0.0-beta.289) (2023-12-21)
+
+
+### Bug Fixes
+
+* use candidate pairs to identify correct local candidate ([#3258](https://github.com/webex/webex-js-sdk/issues/3258)) ([afe1ecc](https://github.com/webex/webex-js-sdk/commit/afe1ecc0f1c620266252abd3b1c917d7120fea88))
+
 ## [3.0.0-beta.288](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.287...v3.0.0-beta.288) (2023-12-20)
 
 
