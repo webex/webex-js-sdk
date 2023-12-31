@@ -100,7 +100,7 @@
               <fieldset>
                 <legend>Remote Video</legend>
                 <video id="remote-video" autoplay playsinline></video>
-                <audio id="remote-audio" autoplay></audio>
+                <audio id="remote-audio" autoplay playsinline></audio>
               </fieldset>
 
             </div>
@@ -205,9 +205,8 @@
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
 
-                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get
-                  Devices</button>
-
+                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get Devices</button>
+                <button id="sd-change-media" type="button" onclick="changeStream()">Change Device</button>
                 <div class="u-mv">
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio

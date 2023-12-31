@@ -2640,7 +2640,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   /**
-   * .
+   * Mutes/Unmutes the call.
    *
    * @param localAudioTrack -.
    */
@@ -2653,6 +2653,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       localAudioTrack.enabled = false;
       this.muted = true;
     }
+  };
+
+  /**
+   * Change the audio stream of the call.
+   *
+   * @param newAudioStream - The new audio stream to be used in the call.
+   */
+
+  public updateMedia = (newAudioStream: LocalMicrophoneStream): void => {
+    this.mediaConnection.updateLocalTracks({
+      audio: newAudioStream.outputStream.getAudioTracks()[0],
+    });
   };
 
   /**
