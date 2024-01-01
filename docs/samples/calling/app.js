@@ -488,6 +488,28 @@ function populateSourceDevices(mediaDevice) {
   select && select.appendChild(option);
 }
 
+async function changeInputStream() {
+  const selectedDevice = audioInputDevicesElem.options[audioInputDevicesElem.selectedIndex].value;
+
+  const constraints = {
+    audio: true,
+    deviceId: selectedDevice ? { exact: selectedDevice } : undefined
+  };
+  const newStream  = await Calling.createMicrophoneStream(constraints);
+
+  call.updateMedia(newStream);
+}
+
+async function changeOutputStream() {
+  const selectedDevice = audioOutputDevicesElem.options[audioOutputDevicesElem.selectedIndex].value;
+  mediaStreamsRemoteAudio.setSinkId(selectedDevice);
+}
+
+async function changeStream() {
+  changeInputStream();
+  changeOutputStream();
+}
+
 /**
  *
  */

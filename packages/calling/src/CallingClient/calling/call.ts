@@ -2016,7 +2016,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   public async dial(localAudioStream: LocalMicrophoneStream) {
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
     if (!localAudioTrack) {
-      log.warn(`Did not find a local track while dialling the call ${this.getCorrelationId()}`, {
+      log.warn(`Did not find a local track while dialing the call ${this.getCorrelationId()}`, {
         file: CALL_FILE,
         method: 'dial',
       });
@@ -2640,7 +2640,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   /**
-   * .
+   * Mutes/Unmutes the call.
    *
    * @param localAudioTrack -.
    */
@@ -2653,6 +2653,32 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       localAudioTrack.enabled = false;
       this.muted = true;
     }
+  };
+
+  /**
+   * Change the audio stream of the call.
+   *
+   * @param newAudioStream - The new audio stream to be used in the call.
+   */
+
+  public updateMedia = (newAudioStream: LocalMicrophoneStream): void => {
+    const localAudioTrack = newAudioStream.outputStream.getAudioTracks()[0];
+
+    if (!localAudioTrack) {
+      log.warn(
+        `Did not find a local track while updating media for call ${this.getCorrelationId()}. Will not update media`,
+        {
+          file: CALL_FILE,
+          method: 'updateMedia',
+        }
+      );
+
+      return;
+    }
+
+    this.mediaConnection.updateLocalTracks({
+      audio: localAudioTrack,
+    });
   };
 
   /**
